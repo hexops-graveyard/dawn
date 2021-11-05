@@ -7,9 +7,9 @@
 /build
 /buildtools
 /testing
-/third_party/abseil-cpp/
-/third_party/angle
-/third_party/clang-format
+#/third_party/abseil-cpp/
+#/third_party/angle
+#/third_party/clang-format
 /third_party/glfw
 /third_party/glm
 /third_party/googletest
@@ -19,11 +19,11 @@
 /third_party/markupsafe
 /third_party/node-addon-api
 /third_party/node-api-headers
-/third_party/swiftshader
-/third_party/tint
-/third_party/vulkan-deps
-/third_party/vulkan_memory_allocator
-/third_party/zlib
+#/third_party/swiftshader
+#/third_party/tint
+#/third_party/vulkan-deps
+#/third_party/vulkan_memory_allocator
+#/third_party/zlib
 /tools
 
 /out/**/*.o
