@@ -10,3 +10,6 @@
 [submodule "third_party/tint"]
 	path = third_party/tint
 	url = https://dawn.googlesource.com/tint
+[submodule "third_party/vulkan-deps"]
+	path = third_party/vulkan-deps
+	url = https://chromium.googlesource.com/vulkan-deps
