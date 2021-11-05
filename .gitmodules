@@ -7,3 +7,6 @@
 [submodule "third_party/swiftshader"]
 	path = third_party/swiftshader
 	url = https://swiftshader.googlesource.com/SwiftShader
+[submodule "third_party/tint"]
+	path = third_party/tint
+	url = https://dawn.googlesource.com/tint
