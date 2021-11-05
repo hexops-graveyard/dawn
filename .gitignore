@@ -25,7 +25,36 @@
 /third_party/vulkan_memory_allocator
 /third_party/zlib
 /tools
-/out
+
+/out/**/*.o
+/out/**/*.a
+/out/**/*.gn
+/out/**/bin/
+/out/**/*.ninja
+/out/**/*.stamp
+/out/**/*.json
+/out/**/*.dylib*
+/out/**/*.allowed_output_dirs
+/out/**/*.expected_outputs
+/out/**/*.ninja_deps
+/out/**/*.ninja_log
+/out/**/*.json_tarball*
+/out/**/*.stale_dirs
+/out/Debug/lib*
+/out/Debug/Animometer
+/out/Debug/CHelloTriangle
+/out/Debug/ComputeBoids
+/out/Debug/CppHelloTriangle
+/out/Debug/CubeReflection
+/out/Debug/ManualSwapChainTest
+/out/Debug/build.ninja.d
+/out/Debug/dawn_end2end_tests
+/out/Debug/ManualSwapChainTest
+/out/Debug/dawn_end2end_tests.runtime_deps
+/out/Debug/dawn_perf_tests*
+/out/Debug/dawn_unittests*
+/out/Debug/dawn_wire_server_and_frontend_fuzzer*
+/out/Debug/dawn_wire_server_and_vulkan_backend_fuzzer*
 
 # Modified from https://www.gitignore.io/api/vim,macos,linux,emacs,windows,sublimetext,visualstudio,visualstudiocode
 
