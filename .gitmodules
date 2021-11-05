@@ -4,3 +4,6 @@
 [submodule "third_party/angle"]
 	path = third_party/angle
 	url = https://chromium.googlesource.com/angle/angle
+[submodule "third_party/swiftshader"]
+	path = third_party/swiftshader
+	url = https://swiftshader.googlesource.com/SwiftShader
