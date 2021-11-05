@@ -16,3 +16,6 @@
 [submodule "third_party/vulkan_memory_allocator"]
 	path = third_party/vulkan_memory_allocator
 	url = https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://chromium.googlesource.com/chromium/src/third_party/zlib
