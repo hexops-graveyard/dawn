@@ -13,3 +13,6 @@
 [submodule "third_party/vulkan-deps"]
 	path = third_party/vulkan-deps
 	url = https://chromium.googlesource.com/vulkan-deps
+[submodule "third_party/vulkan_memory_allocator"]
+	path = third_party/vulkan_memory_allocator
+	url = https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
