@@ -10,12 +10,34 @@
 [submodule "third_party/tint"]
 	path = third_party/tint
 	url = https://dawn.googlesource.com/tint
-[submodule "third_party/vulkan-deps"]
-	path = third_party/vulkan-deps
-	url = https://chromium.googlesource.com/vulkan-deps
 [submodule "third_party/vulkan_memory_allocator"]
 	path = third_party/vulkan_memory_allocator
 	url = https://chromium.googlesource.com/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator
 [submodule "third_party/zlib"]
 	path = third_party/zlib
 	url = https://chromium.googlesource.com/chromium/src/third_party/zlib
+
+[submodule "third_party/vulkan-deps/glslang/src"]
+	path = third_party/vulkan-deps/glslang/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/glslang
+[submodule "third_party/vulkan-deps/spirv-cross/src"]
+	path = third_party/vulkan-deps/spirv-cross/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Cross
+[submodule "third_party/vulkan-deps/spirv-headers/src"]
+	path = third_party/vulkan-deps/spirv-headers/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Headers
+[submodule "third_party/vulkan-deps/spirv-tools/src"]
+	path = third_party/vulkan-deps/spirv-tools/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/SPIRV-Tools
+[submodule "third_party/vulkan-deps/vulkan-headers/src"]
+	path = third_party/vulkan-deps/vulkan-headers/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Headers
+[submodule "third_party/vulkan-deps/vulkan-loader/src"]
+	path = third_party/vulkan-deps/vulkan-loader/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Loader
+[submodule "third_party/vulkan-deps/vulkan-tools/src"]
+	path = third_party/vulkan-deps/vulkan-tools/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-Tools
+[submodule "third_party/vulkan-deps/vulkan-validation-layers/src"]
+	path = third_party/vulkan-deps/vulkan-validation-layers/src
+	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/Vulkan-ValidationLayers
