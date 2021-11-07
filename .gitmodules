@@ -16,7 +16,6 @@
 [submodule "third_party/zlib"]
 	path = third_party/zlib
 	url = https://chromium.googlesource.com/chromium/src/third_party/zlib
-
 [submodule "third_party/vulkan-deps/glslang/src"]
 	path = third_party/vulkan-deps/glslang/src
 	url = https://chromium.googlesource.com/external/github.com/KhronosGroup/glslang
