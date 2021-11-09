@@ -16,6 +16,7 @@ rm -rf third_party/tint/.git
 rm -rf third_party/vulkan_memory_allocator/.git
 rm -rf third_party/zlib/.git
 rm -rf third_party/vulkan-deps/.git
+rm -rf third_party/vulkan-deps/.gitignore
 rm -rf third_party/vulkan-deps/glslang/src/.git
 rm -rf third_party/vulkan-deps/spirv-cross/src/.git
 rm -rf third_party/vulkan-deps/spirv-headers/src/.git
