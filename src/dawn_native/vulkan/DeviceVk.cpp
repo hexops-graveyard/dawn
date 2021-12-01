@@ -45,13 +45,14 @@
 namespace dawn_native { namespace vulkan {
 
     // static
-    ResultOrError<Device*> Device::Create(Adapter* adapter, const DeviceDescriptor* descriptor) {
+    ResultOrError<Device*> Device::Create(Adapter* adapter,
+                                          const DawnDeviceDescriptor* descriptor) {
         Ref<Device> device = AcquireRef(new Device(adapter, descriptor));
         DAWN_TRY(device->Initialize());
         return device.Detach();
     }
 
-    Device::Device(Adapter* adapter, const DeviceDescriptor* descriptor)
+    Device::Device(Adapter* adapter, const DawnDeviceDescriptor* descriptor)
         : DeviceBase(adapter, descriptor) {
         InitTogglesFromDriver();
     }
@@ -67,7 +68,7 @@ namespace dawn_native { namespace vulkan {
         // Two things are crucial if device initialization fails: the function pointers to destroy
         // objects, and the fence deleter that calls these functions. Do not do anything before
         // these two are set up, so that a failed initialization doesn't cause a crash in
-        // ShutDownImpl()
+        // DestroyImpl()
         {
             VkPhysicalDevice physicalDevice = ToBackend(GetAdapter())->GetPhysicalDevice();
 
@@ -100,7 +101,7 @@ namespace dawn_native { namespace vulkan {
     }
 
     Device::~Device() {
-        ShutDownBase();
+        Destroy();
     }
 
     ResultOrError<Ref<BindGroupBase>> Device::CreateBindGroupImpl(
@@ -120,9 +121,9 @@ namespace dawn_native { namespace vulkan {
         const CommandBufferDescriptor* descriptor) {
         return CommandBuffer::Create(encoder, descriptor);
     }
-    ResultOrError<Ref<ComputePipelineBase>> Device::CreateComputePipelineImpl(
+    Ref<ComputePipelineBase> Device::CreateUninitializedComputePipelineImpl(
         const ComputePipelineDescriptor* descriptor) {
-        return ComputePipeline::Create(this, descriptor);
+        return ComputePipeline::CreateUninitialized(this, descriptor);
     }
     ResultOrError<Ref<PipelineLayoutBase>> Device::CreatePipelineLayoutImpl(
         const PipelineLayoutDescriptor* descriptor) {
@@ -162,16 +163,15 @@ namespace dawn_native { namespace vulkan {
         const TextureViewDescriptor* descriptor) {
         return TextureView::Create(texture, descriptor);
     }
-    void Device::CreateComputePipelineAsyncImpl(const ComputePipelineDescriptor* descriptor,
-                                                size_t blueprintHash,
-                                                WGPUCreateComputePipelineAsyncCallback callback,
-                                                void* userdata) {
-        ComputePipeline::CreateAsync(this, descriptor, blueprintHash, callback, userdata);
+    void Device::InitializeComputePipelineAsyncImpl(Ref<ComputePipelineBase> computePipeline,
+                                                    WGPUCreateComputePipelineAsyncCallback callback,
+                                                    void* userdata) {
+        ComputePipeline::InitializeAsync(std::move(computePipeline), callback, userdata);
     }
     void Device::InitializeRenderPipelineAsyncImpl(Ref<RenderPipelineBase> renderPipeline,
                                                    WGPUCreateRenderPipelineAsyncCallback callback,
                                                    void* userdata) {
-        RenderPipeline::InitializeAsync(renderPipeline, callback, userdata);
+        RenderPipeline::InitializeAsync(std::move(renderPipeline), callback, userdata);
     }
 
     MaybeError Device::TickImpl() {
@@ -348,31 +348,31 @@ namespace dawn_native { namespace vulkan {
             usedKnobs.features.samplerAnisotropy = VK_TRUE;
         }
 
-        if (IsExtensionEnabled(Extension::TextureCompressionBC)) {
+        if (IsFeatureEnabled(Feature::TextureCompressionBC)) {
             ASSERT(ToBackend(GetAdapter())->GetDeviceInfo().features.textureCompressionBC ==
                    VK_TRUE);
             usedKnobs.features.textureCompressionBC = VK_TRUE;
         }
 
-        if (IsExtensionEnabled(Extension::TextureCompressionETC2)) {
+        if (IsFeatureEnabled(Feature::TextureCompressionETC2)) {
             ASSERT(ToBackend(GetAdapter())->GetDeviceInfo().features.textureCompressionETC2 ==
                    VK_TRUE);
             usedKnobs.features.textureCompressionETC2 = VK_TRUE;
         }
 
-        if (IsExtensionEnabled(Extension::TextureCompressionASTC)) {
+        if (IsFeatureEnabled(Feature::TextureCompressionASTC)) {
             ASSERT(ToBackend(GetAdapter())->GetDeviceInfo().features.textureCompressionASTC_LDR ==
                    VK_TRUE);
             usedKnobs.features.textureCompressionASTC_LDR = VK_TRUE;
         }
 
-        if (IsExtensionEnabled(Extension::PipelineStatisticsQuery)) {
+        if (IsFeatureEnabled(Feature::PipelineStatisticsQuery)) {
             ASSERT(ToBackend(GetAdapter())->GetDeviceInfo().features.pipelineStatisticsQuery ==
                    VK_TRUE);
             usedKnobs.features.pipelineStatisticsQuery = VK_TRUE;
         }
 
-        if (IsExtensionEnabled(Extension::ShaderFloat16)) {
+        if (IsFeatureEnabled(Feature::ShaderFloat16)) {
             const VulkanDeviceInfo& deviceInfo = ToBackend(GetAdapter())->GetDeviceInfo();
             ASSERT(deviceInfo.HasExt(DeviceExt::ShaderFloat16Int8) &&
                    deviceInfo.shaderFloat16Int8Features.shaderFloat16 == VK_TRUE &&
@@ -390,7 +390,7 @@ namespace dawn_native { namespace vulkan {
                               VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES);
         }
 
-        if (IsExtensionEnabled(Extension::DepthClamping)) {
+        if (IsFeatureEnabled(Feature::DepthClamping)) {
             ASSERT(ToBackend(GetAdapter())->GetDeviceInfo().features.depthClamp == VK_TRUE);
             usedKnobs.features.depthClamp = VK_TRUE;
         }
@@ -497,25 +497,10 @@ namespace dawn_native { namespace vulkan {
     }
 
     void Device::ApplyDepth24PlusS8Toggle() {
-        VkPhysicalDevice physicalDevice = ToBackend(GetAdapter())->GetPhysicalDevice();
-
-        bool supportsD32s8 = false;
-        {
-            VkFormatProperties properties;
-            fn.GetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT,
-                                                 &properties);
-            supportsD32s8 =
-                properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        }
-
-        bool supportsD24s8 = false;
-        {
-            VkFormatProperties properties;
-            fn.GetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D24_UNORM_S8_UINT,
-                                                 &properties);
-            supportsD24s8 =
-                properties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        }
+        bool supportsD32s8 =
+            ToBackend(GetAdapter())->IsDepthStencilFormatSupported(VK_FORMAT_D32_SFLOAT_S8_UINT);
+        bool supportsD24s8 =
+            ToBackend(GetAdapter())->IsDepthStencilFormatSupported(VK_FORMAT_D24_UNORM_S8_UINT);
 
         ASSERT(supportsD32s8 || supportsD24s8);
 
@@ -746,16 +731,16 @@ namespace dawn_native { namespace vulkan {
         }
 
         // Check services support this combination of handle type / image info
-        if (!mExternalSemaphoreService->Supported()) {
-            return DAWN_VALIDATION_ERROR("External semaphore usage not supported");
-        }
-        if (!mExternalMemoryService->SupportsImportMemory(
+        DAWN_INVALID_IF(!mExternalSemaphoreService->Supported(),
+                        "External semaphore usage not supported");
+
+        DAWN_INVALID_IF(
+            !mExternalMemoryService->SupportsImportMemory(
                 VulkanImageFormat(this, textureDescriptor->format), VK_IMAGE_TYPE_2D,
                 VK_IMAGE_TILING_OPTIMAL,
                 VulkanImageUsage(usage, GetValidInternalFormat(textureDescriptor->format)),
-                VK_IMAGE_CREATE_ALIAS_BIT_KHR)) {
-            return DAWN_VALIDATION_ERROR("External memory usage not supported");
-        }
+                VK_IMAGE_CREATE_ALIAS_BIT_KHR),
+            "External memory usage not supported");
 
         // Create an external semaphore to signal when the texture is done being used
         DAWN_TRY_ASSIGN(*outSignalSemaphore,
@@ -816,7 +801,9 @@ namespace dawn_native { namespace vulkan {
         if (ConsumedError(ValidateTextureDescriptor(this, textureDescriptor))) {
             return nullptr;
         }
-        if (ConsumedError(ValidateVulkanImageCanBeWrapped(this, textureDescriptor))) {
+        if (ConsumedError(ValidateVulkanImageCanBeWrapped(this, textureDescriptor),
+                          "validating that a Vulkan image can be wrapped with %s.",
+                          textureDescriptor)) {
             return nullptr;
         }
 
@@ -912,7 +899,7 @@ namespace dawn_native { namespace vulkan {
         return {};
     }
 
-    void Device::ShutDownImpl() {
+    void Device::DestroyImpl() {
         ASSERT(GetState() == State::Disconnected);
 
         // We failed during initialization so early that we don't even have a VkDevice. There is

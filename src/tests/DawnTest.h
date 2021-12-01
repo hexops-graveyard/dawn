@@ -38,8 +38,11 @@
 // so resources should have the CopySrc allowed usage bit if you want to add expectations on
 // them.
 
+// AddBufferExpectation is defined in DawnTestBase as protected function. This ensures the macro can
+// only be used in derivd class of DawnTestBase. Use "this" pointer to ensure the macro works with
+// CRTP.
 #define EXPECT_BUFFER(buffer, offset, size, expectation) \
-    AddBufferExpectation(__FILE__, __LINE__, buffer, offset, size, expectation)
+    this->AddBufferExpectation(__FILE__, __LINE__, buffer, offset, size, expectation)
 
 #define EXPECT_BUFFER_U8_EQ(expected, buffer, offset) \
     EXPECT_BUFFER(buffer, offset, sizeof(uint8_t), new ::detail::ExpectEq<uint8_t>(expected))
@@ -475,15 +478,22 @@ class DawnTestBase {
     void FlushWire();
     void WaitForAllOperations();
 
-    bool SupportsExtensions(const std::vector<const char*>& extensions);
+    bool SupportsFeatures(const std::vector<const char*>& features);
 
-    // Called in SetUp() to get the extensions required to be enabled in the tests. The tests must
-    // check if the required extensions are supported by the adapter in this function and guarantee
-    // the returned extensions are all supported by the adapter. The tests may provide different
-    // code path to handle the situation when not all extensions are supported.
-    virtual std::vector<const char*> GetRequiredExtensions();
+    // Called in SetUp() to get the features required to be enabled in the tests. The tests must
+    // check if the required features are supported by the adapter in this function and guarantee
+    // the returned features are all supported by the adapter. The tests may provide different
+    // code path to handle the situation when not all features are supported.
+    virtual std::vector<const char*> GetRequiredFeatures();
+
+    virtual wgpu::RequiredLimits GetRequiredLimits(const wgpu::SupportedLimits&);
 
     const wgpu::AdapterProperties& GetAdapterProperties() const;
+
+    // TODO(crbug.com/dawn/689): Use limits returned from the wire
+    // This is implemented here because tests need to always query
+    // the |backendDevice| since limits are not implemented in the wire.
+    wgpu::SupportedLimits GetSupportedLimits();
 
   private:
     utils::ScopedAutoreleasePool mObjCAutoreleasePool;
@@ -568,7 +578,7 @@ class DawnTestBase {
         }                                                 \
     } while (0)
 
-// Skip a test which requires an extension or a toggle to be present / not present or some WIP
+// Skip a test which requires a feature or a toggle to be present / not present or some WIP
 // features.
 #define DAWN_TEST_UNSUPPORTED_IF(condition) \
     DAWN_SKIP_TEST_IF_BASE(condition, "unsupported", condition)

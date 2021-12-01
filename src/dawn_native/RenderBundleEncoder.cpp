@@ -37,12 +37,21 @@ namespace dawn_native {
     }
 
     MaybeError ValidateDepthStencilAttachmentFormat(const DeviceBase* device,
-                                                    wgpu::TextureFormat textureFormat) {
+                                                    wgpu::TextureFormat textureFormat,
+                                                    bool depthReadOnly,
+                                                    bool stencilReadOnly) {
         DAWN_TRY(ValidateTextureFormat(textureFormat));
         const Format* format = nullptr;
         DAWN_TRY_ASSIGN(format, device->GetInternalFormat(textureFormat));
         DAWN_INVALID_IF(!format->HasDepthOrStencil() || !format->isRenderable,
                         "Texture format %s is not depth/stencil renderable.", textureFormat);
+
+        DAWN_INVALID_IF(
+            format->HasDepth() && format->HasStencil() && depthReadOnly != stencilReadOnly,
+            "depthReadOnly (%u) and stencilReadOnly (%u) must be the same when format %s has "
+            "both depth and stencil aspects.",
+            depthReadOnly, stencilReadOnly, textureFormat);
+
         return {};
     }
 
@@ -67,9 +76,10 @@ namespace dawn_native {
         }
 
         if (descriptor->depthStencilFormat != wgpu::TextureFormat::Undefined) {
-            DAWN_TRY_CONTEXT(
-                ValidateDepthStencilAttachmentFormat(device, descriptor->depthStencilFormat),
-                "validating depthStencilFormat");
+            DAWN_TRY_CONTEXT(ValidateDepthStencilAttachmentFormat(
+                                 device, descriptor->depthStencilFormat, descriptor->depthReadOnly,
+                                 descriptor->stencilReadOnly),
+                             "validating depthStencilFormat");
         }
 
         return {};
@@ -78,14 +88,23 @@ namespace dawn_native {
     RenderBundleEncoder::RenderBundleEncoder(DeviceBase* device,
                                              const RenderBundleEncoderDescriptor* descriptor)
         : RenderEncoderBase(device,
+                            descriptor->label,
                             &mBundleEncodingContext,
-                            device->GetOrCreateAttachmentState(descriptor)),
+                            device->GetOrCreateAttachmentState(descriptor),
+                            descriptor->depthReadOnly,
+                            descriptor->stencilReadOnly),
           mBundleEncodingContext(device, this) {
+        TrackInDevice();
     }
 
     RenderBundleEncoder::RenderBundleEncoder(DeviceBase* device, ErrorTag errorTag)
         : RenderEncoderBase(device, &mBundleEncodingContext, errorTag),
           mBundleEncodingContext(device, this) {
+    }
+
+    void RenderBundleEncoder::DestroyImpl() {
+        RenderEncoderBase::DestroyImpl();
+        mBundleEncodingContext.Destroy();
     }
 
     // static
@@ -111,7 +130,8 @@ namespace dawn_native {
     RenderBundleBase* RenderBundleEncoder::APIFinish(const RenderBundleDescriptor* descriptor) {
         RenderBundleBase* result = nullptr;
 
-        if (GetDevice()->ConsumedError(FinishImpl(descriptor), &result)) {
+        if (GetDevice()->ConsumedError(FinishImpl(descriptor), &result, "calling %s.Finish(%s).",
+                                       this, descriptor)) {
             return RenderBundleBase::MakeError(GetDevice());
         }
 
@@ -132,7 +152,8 @@ namespace dawn_native {
             DAWN_TRY(ValidateFinish(usages));
         }
 
-        return new RenderBundleBase(this, descriptor, AcquireAttachmentState(), std::move(usages),
+        return new RenderBundleBase(this, descriptor, AcquireAttachmentState(), IsDepthReadOnly(),
+                                    IsStencilReadOnly(), std::move(usages),
                                     std::move(mIndirectDrawMetadata));
     }
 

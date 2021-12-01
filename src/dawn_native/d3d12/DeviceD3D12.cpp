@@ -52,7 +52,8 @@ namespace dawn_native { namespace d3d12 {
     static constexpr uint64_t kMaxDebugMessagesToPrint = 5;
 
     // static
-    ResultOrError<Device*> Device::Create(Adapter* adapter, const DeviceDescriptor* descriptor) {
+    ResultOrError<Device*> Device::Create(Adapter* adapter,
+                                          const DawnDeviceDescriptor* descriptor) {
         Ref<Device> device = AcquireRef(new Device(adapter, descriptor));
         DAWN_TRY(device->Initialize());
         return device.Detach();
@@ -73,7 +74,7 @@ namespace dawn_native { namespace d3d12 {
             CheckHRESULT(mD3d12Device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue)),
                          "D3D12 create command queue"));
 
-        if (IsExtensionEnabled(Extension::TimestampQuery)) {
+        if (IsFeatureEnabled(Feature::TimestampQuery)) {
             // Get GPU timestamp counter frequency (in ticks/second). This fails if the specified
             // command queue doesn't support timestamps. D3D12_COMMAND_LIST_TYPE_DIRECT queues
             // always support timestamps except where there are bugs in Windows container and vGPU
@@ -169,7 +170,7 @@ namespace dawn_native { namespace d3d12 {
     }
 
     Device::~Device() {
-        ShutDownBase();
+        Destroy();
     }
 
     ID3D12Device* Device::GetD3D12Device() const {
@@ -203,7 +204,7 @@ namespace dawn_native { namespace d3d12 {
     MaybeError Device::ApplyUseDxcToggle() {
         if (!ToBackend(GetAdapter())->GetBackend()->GetFunctions()->IsDXCAvailable()) {
             ForceSetToggle(Toggle::UseDXC, false);
-        } else if (IsExtensionEnabled(Extension::ShaderFloat16)) {
+        } else if (IsFeatureEnabled(Feature::ShaderFloat16)) {
             // Currently we can only use DXC to compile HLSL shaders using float16.
             ForceSetToggle(Toggle::UseDXC, true);
         }
@@ -334,9 +335,9 @@ namespace dawn_native { namespace d3d12 {
         const CommandBufferDescriptor* descriptor) {
         return CommandBuffer::Create(encoder, descriptor);
     }
-    ResultOrError<Ref<ComputePipelineBase>> Device::CreateComputePipelineImpl(
+    Ref<ComputePipelineBase> Device::CreateUninitializedComputePipelineImpl(
         const ComputePipelineDescriptor* descriptor) {
-        return ComputePipeline::Create(this, descriptor);
+        return ComputePipeline::CreateUninitialized(this, descriptor);
     }
     ResultOrError<Ref<PipelineLayoutBase>> Device::CreatePipelineLayoutImpl(
         const PipelineLayoutDescriptor* descriptor) {
@@ -376,16 +377,15 @@ namespace dawn_native { namespace d3d12 {
         const TextureViewDescriptor* descriptor) {
         return TextureView::Create(texture, descriptor);
     }
-    void Device::CreateComputePipelineAsyncImpl(const ComputePipelineDescriptor* descriptor,
-                                                size_t blueprintHash,
-                                                WGPUCreateComputePipelineAsyncCallback callback,
-                                                void* userdata) {
-        ComputePipeline::CreateAsync(this, descriptor, blueprintHash, callback, userdata);
+    void Device::InitializeComputePipelineAsyncImpl(Ref<ComputePipelineBase> computePipeline,
+                                                    WGPUCreateComputePipelineAsyncCallback callback,
+                                                    void* userdata) {
+        ComputePipeline::InitializeAsync(std::move(computePipeline), callback, userdata);
     }
     void Device::InitializeRenderPipelineAsyncImpl(Ref<RenderPipelineBase> renderPipeline,
                                                    WGPUCreateRenderPipelineAsyncCallback callback,
                                                    void* userdata) {
-        RenderPipeline::InitializeAsync(renderPipeline, callback, userdata);
+        RenderPipeline::InitializeAsync(std::move(renderPipeline), callback, userdata);
     }
 
     ResultOrError<std::unique_ptr<StagingBufferBase>> Device::CreateStagingBuffer(size_t size) {
@@ -518,10 +518,9 @@ namespace dawn_native { namespace d3d12 {
         SetToggle(Toggle::UseD3D12ResidencyManagement, true);
         SetToggle(Toggle::UseDXC, false);
 
-#if defined(_DEBUG)
-        // Enable better shader debugging with the graphics debugging tools.
-        SetToggle(Toggle::EmitHLSLDebugSymbols, true);
-#endif
+        // Disable optimizations when using FXC
+        // See https://crbug.com/dawn/1203
+        SetToggle(Toggle::FxcOptimizations, false);
 
         // By default use the maximum shader-visible heap size allowed.
         SetToggle(Toggle::UseD3D12SmallShaderVisibleHeapForTesting, false);
@@ -601,7 +600,7 @@ namespace dawn_native { namespace d3d12 {
         return DAWN_INTERNAL_ERROR(messages.str());
     }
 
-    void Device::ShutDownImpl() {
+    void Device::DestroyImpl() {
         ASSERT(GetState() == State::Disconnected);
 
         // Immediately forget about all pending commands for the case where device is lost on its
@@ -674,6 +673,11 @@ namespace dawn_native { namespace d3d12 {
 
     float Device::GetTimestampPeriodInNS() const {
         return mTimestampPeriod;
+    }
+
+    bool Device::ShouldDuplicateNumWorkgroupsForDispatchIndirect(
+        ComputePipelineBase* computePipeline) const {
+        return ToBackend(computePipeline)->UsesNumWorkgroups();
     }
 
 }}  // namespace dawn_native::d3d12

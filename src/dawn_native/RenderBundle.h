@@ -33,11 +33,13 @@ namespace dawn_native {
     struct RenderBundleDescriptor;
     class RenderBundleEncoder;
 
-    class RenderBundleBase : public ApiObjectBase {
+    class RenderBundleBase final : public ApiObjectBase {
       public:
         RenderBundleBase(RenderBundleEncoder* encoder,
                          const RenderBundleDescriptor* descriptor,
                          Ref<AttachmentState> attachmentState,
+                         bool depthReadOnly,
+                         bool stencilReadOnly,
                          RenderPassResourceUsage resourceUsage,
                          IndirectDrawMetadata indirectDrawMetadata);
 
@@ -48,18 +50,21 @@ namespace dawn_native {
         CommandIterator* GetCommands();
 
         const AttachmentState* GetAttachmentState() const;
+        bool IsDepthReadOnly() const;
+        bool IsStencilReadOnly() const;
         const RenderPassResourceUsage& GetResourceUsage() const;
         const IndirectDrawMetadata& GetIndirectDrawMetadata();
-
-      protected:
-        ~RenderBundleBase() override;
 
       private:
         RenderBundleBase(DeviceBase* device, ErrorTag errorTag);
 
+        void DestroyImpl() override;
+
         CommandIterator mCommands;
         IndirectDrawMetadata mIndirectDrawMetadata;
         Ref<AttachmentState> mAttachmentState;
+        bool mDepthReadOnly;
+        bool mStencilReadOnly;
         RenderPassResourceUsage mResourceUsage;
     };
 

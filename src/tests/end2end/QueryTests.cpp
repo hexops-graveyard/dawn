@@ -310,7 +310,7 @@ TEST_P(OcclusionQueryTests, ResolveSparseQueries) {
     // TODO(hao.x.li@intel.com): Investigate why it's failed on D3D12 on Nvidia when running with
     // the previous occlusion tests. Expect resolve to 0 for these unwritten queries but the
     // occlusion result of the previous tests is got.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() & IsNvidia());
+    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsNvidia());
 
     constexpr uint32_t kQueryCount = 7;
 
@@ -370,7 +370,7 @@ TEST_P(OcclusionQueryTests, ResolveWithoutWritten) {
     // TODO(hao.x.li@intel.com): Investigate why it's failed on D3D12 on Nvidia when running with
     // the previous occlusion tests. Expect resolve to 0 but the occlusion result of the previous
     // tests is got.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() & IsNvidia());
+    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsNvidia());
 
     constexpr uint32_t kQueryCount = 1;
 
@@ -453,17 +453,17 @@ class PipelineStatisticsQueryTests : public QueryTests {
     void SetUp() override {
         DawnTest::SetUp();
 
-        // Skip all tests if pipeline statistics extension is not supported
-        DAWN_TEST_UNSUPPORTED_IF(!SupportsExtensions({"pipeline_statistics_query"}));
+        // Skip all tests if pipeline statistics feature is not supported
+        DAWN_TEST_UNSUPPORTED_IF(!SupportsFeatures({"pipeline-statistics-query"}));
     }
 
-    std::vector<const char*> GetRequiredExtensions() override {
-        std::vector<const char*> requiredExtensions = {};
-        if (SupportsExtensions({"pipeline_statistics_query"})) {
-            requiredExtensions.push_back("pipeline_statistics_query");
+    std::vector<const char*> GetRequiredFeatures() override {
+        std::vector<const char*> requiredFeatures = {};
+        if (SupportsFeatures({"pipeline-statistics-query"})) {
+            requiredFeatures.push_back("pipeline-statistics-query");
         }
 
-        return requiredExtensions;
+        return requiredFeatures;
     }
 
     wgpu::QuerySet CreateQuerySetForPipelineStatistics(
@@ -522,16 +522,16 @@ class TimestampQueryTests : public QueryTests {
     void SetUp() override {
         DawnTest::SetUp();
 
-        // Skip all tests if timestamp extension is not supported
-        DAWN_TEST_UNSUPPORTED_IF(!SupportsExtensions({"timestamp_query"}));
+        // Skip all tests if timestamp feature is not supported
+        DAWN_TEST_UNSUPPORTED_IF(!SupportsFeatures({"timestamp-query"}));
     }
 
-    std::vector<const char*> GetRequiredExtensions() override {
-        std::vector<const char*> requiredExtensions = {};
-        if (SupportsExtensions({"timestamp_query"})) {
-            requiredExtensions.push_back("timestamp_query");
+    std::vector<const char*> GetRequiredFeatures() override {
+        std::vector<const char*> requiredFeatures = {};
+        if (SupportsFeatures({"timestamp-query"})) {
+            requiredFeatures.push_back("timestamp-query");
         }
-        return requiredExtensions;
+        return requiredFeatures;
     }
 
     wgpu::QuerySet CreateQuerySetForTimestamp(uint32_t queryCount) {

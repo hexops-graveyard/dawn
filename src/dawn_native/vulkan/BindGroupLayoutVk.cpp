@@ -20,6 +20,7 @@
 #include "dawn_native/vulkan/DescriptorSetAllocator.h"
 #include "dawn_native/vulkan/DeviceVk.h"
 #include "dawn_native/vulkan/FencedDeleter.h"
+#include "dawn_native/vulkan/UtilsVulkan.h"
 #include "dawn_native/vulkan/VulkanError.h"
 
 #include <map>
@@ -138,6 +139,9 @@ namespace dawn_native { namespace vulkan {
         // counts.
         mDescriptorSetAllocator =
             std::make_unique<DescriptorSetAllocator>(this, std::move(descriptorCountPerType));
+
+        SetLabelImpl();
+
         return {};
     }
 
@@ -148,7 +152,9 @@ namespace dawn_native { namespace vulkan {
           mBindGroupAllocator(MakeFrontendBindGroupAllocator<BindGroup>(4096)) {
     }
 
-    BindGroupLayout::~BindGroupLayout() {
+    BindGroupLayout::~BindGroupLayout() = default;
+
+    void BindGroupLayout::DestroyImpl() {
         Device* device = ToBackend(GetDevice());
 
         // DescriptorSetLayout aren't used by execution on the GPU and can be deleted at any time,
@@ -185,6 +191,11 @@ namespace dawn_native { namespace vulkan {
 
     void BindGroupLayout::FinishDeallocation(ExecutionSerial completedSerial) {
         mDescriptorSetAllocator->FinishDeallocation(completedSerial);
+    }
+
+    void BindGroupLayout::SetLabelImpl() {
+        SetDebugName(ToBackend(GetDevice()), VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+                     reinterpret_cast<uint64_t&>(mHandle), "Dawn_BindGroupLayout", GetLabel());
     }
 
 }}  // namespace dawn_native::vulkan

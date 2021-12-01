@@ -25,17 +25,26 @@ namespace dawn_native {
     RenderBundleBase::RenderBundleBase(RenderBundleEncoder* encoder,
                                        const RenderBundleDescriptor* descriptor,
                                        Ref<AttachmentState> attachmentState,
+                                       bool depthReadOnly,
+                                       bool stencilReadOnly,
                                        RenderPassResourceUsage resourceUsage,
                                        IndirectDrawMetadata indirectDrawMetadata)
         : ApiObjectBase(encoder->GetDevice(), kLabelNotImplemented),
           mCommands(encoder->AcquireCommands()),
           mIndirectDrawMetadata(std::move(indirectDrawMetadata)),
           mAttachmentState(std::move(attachmentState)),
+          mDepthReadOnly(depthReadOnly),
+          mStencilReadOnly(stencilReadOnly),
           mResourceUsage(std::move(resourceUsage)) {
+        TrackInDevice();
     }
 
-    RenderBundleBase::~RenderBundleBase() {
+    void RenderBundleBase::DestroyImpl() {
         FreeCommands(&mCommands);
+
+        // Remove reference to the attachment state so that we don't have lingering references to
+        // it preventing it from being uncached in the device.
+        mAttachmentState = nullptr;
     }
 
     // static
@@ -44,7 +53,7 @@ namespace dawn_native {
     }
 
     RenderBundleBase::RenderBundleBase(DeviceBase* device, ErrorTag errorTag)
-        : ApiObjectBase(device, errorTag) {
+        : ApiObjectBase(device, errorTag), mIndirectDrawMetadata(device->GetLimits()) {
     }
 
     ObjectType RenderBundleBase::GetType() const {
@@ -58,6 +67,16 @@ namespace dawn_native {
     const AttachmentState* RenderBundleBase::GetAttachmentState() const {
         ASSERT(!IsError());
         return mAttachmentState.Get();
+    }
+
+    bool RenderBundleBase::IsDepthReadOnly() const {
+        ASSERT(!IsError());
+        return mDepthReadOnly;
+    }
+
+    bool RenderBundleBase::IsStencilReadOnly() const {
+        ASSERT(!IsError());
+        return mStencilReadOnly;
     }
 
     const RenderPassResourceUsage& RenderBundleBase::GetResourceUsage() const {

@@ -126,7 +126,11 @@ namespace wgpu { namespace binding {
     }
 
     interop::Interface<interop::GPUSupportedLimits> GPUDevice::getLimits(Napi::Env env) {
-        return interop::GPUSupportedLimits::Create<GPUSupportedLimits>(env);
+        wgpu::SupportedLimits limits{};
+        if (!device_.GetLimits(&limits)) {
+            Napi::Error::New(env, "failed to get device limits").ThrowAsJavaScriptException();
+        }
+        return interop::GPUSupportedLimits::Create<GPUSupportedLimits>(env, limits);
     }
 
     interop::Interface<interop::GPUQueue> GPUDevice::getQueue(Napi::Env env) {
@@ -134,7 +138,12 @@ namespace wgpu { namespace binding {
         return interop::GPUQueue::Create<GPUQueue>(env, device_.GetQueue(), async_);
     }
 
-    void GPUDevice::destroy(Napi::Env) {
+    void GPUDevice::destroy(Napi::Env env) {
+        for (auto promise : lost_promises_) {
+            promise.Resolve(interop::GPUDeviceLostInfo::Create<DeviceLostInfo>(
+                env_, interop::GPUDeviceLostReason::kDestroyed, "device was destroyed"));
+        }
+        lost_promises_.clear();
         device_.Release();
     }
 
@@ -172,28 +181,24 @@ namespace wgpu { namespace binding {
 
     interop::Interface<interop::GPUSampler> GPUDevice::createSampler(
         Napi::Env env,
-        std::optional<interop::GPUSamplerDescriptor> descriptor) {
+        interop::GPUSamplerDescriptor descriptor) {
         Converter conv(env);
 
-        if (descriptor.has_value()) {
-            wgpu::SamplerDescriptor desc{};
-            if (!conv(desc.label, descriptor->label) ||                //
-                !conv(desc.addressModeU, descriptor->addressModeU) ||  //
-                !conv(desc.addressModeV, descriptor->addressModeV) ||  //
-                !conv(desc.addressModeW, descriptor->addressModeW) ||  //
-                !conv(desc.magFilter, descriptor->magFilter) ||        //
-                !conv(desc.minFilter, descriptor->minFilter) ||        //
-                !conv(desc.mipmapFilter, descriptor->mipmapFilter) ||  //
-                !conv(desc.lodMinClamp, descriptor->lodMinClamp) ||    //
-                !conv(desc.lodMaxClamp, descriptor->lodMaxClamp) ||    //
-                !conv(desc.compare, descriptor->compare) ||            //
-                !conv(desc.maxAnisotropy, descriptor->maxAnisotropy)) {
-                return {};
-            }
-            return interop::GPUSampler::Create<GPUSampler>(env, device_.CreateSampler(&desc));
+        wgpu::SamplerDescriptor desc{};
+        if (!conv(desc.label, descriptor.label) ||                //
+            !conv(desc.addressModeU, descriptor.addressModeU) ||  //
+            !conv(desc.addressModeV, descriptor.addressModeV) ||  //
+            !conv(desc.addressModeW, descriptor.addressModeW) ||  //
+            !conv(desc.magFilter, descriptor.magFilter) ||        //
+            !conv(desc.minFilter, descriptor.minFilter) ||        //
+            !conv(desc.mipmapFilter, descriptor.mipmapFilter) ||  //
+            !conv(desc.lodMinClamp, descriptor.lodMinClamp) ||    //
+            !conv(desc.lodMaxClamp, descriptor.lodMaxClamp) ||    //
+            !conv(desc.compare, descriptor.compare) ||            //
+            !conv(desc.maxAnisotropy, descriptor.maxAnisotropy)) {
+            return {};
         }
-
-        return interop::GPUSampler::Create<GPUSampler>(env, device_.CreateSampler());
+        return interop::GPUSampler::Create<GPUSampler>(env, device_.CreateSampler(&desc));
     }
 
     interop::Interface<interop::GPUExternalTexture> GPUDevice::importExternalTexture(
@@ -293,21 +298,23 @@ namespace wgpu { namespace binding {
     interop::Promise<interop::Interface<interop::GPUComputePipeline>>
     GPUDevice::createComputePipelineAsync(Napi::Env env,
                                           interop::GPUComputePipelineDescriptor descriptor) {
+        using Promise = interop::Promise<interop::Interface<interop::GPUComputePipeline>>;
+
         Converter conv(env);
 
         wgpu::ComputePipelineDescriptor desc{};
         if (!conv(desc, descriptor)) {
-            return {env};
+            Promise promise(env, PROMISE_INFO);
+            promise.Reject(Errors::OperationError(env));
+            return promise;
         }
-
-        using Promise = interop::Promise<interop::Interface<interop::GPUComputePipeline>>;
 
         struct Context {
             Napi::Env env;
             Promise promise;
             AsyncTask task;
         };
-        auto ctx = new Context{env, env, async_};
+        auto ctx = new Context{env, Promise(env, PROMISE_INFO), async_};
         auto promise = ctx->promise;
 
         device_.CreateComputePipelineAsync(
@@ -334,21 +341,23 @@ namespace wgpu { namespace binding {
     interop::Promise<interop::Interface<interop::GPURenderPipeline>>
     GPUDevice::createRenderPipelineAsync(Napi::Env env,
                                          interop::GPURenderPipelineDescriptor descriptor) {
+        using Promise = interop::Promise<interop::Interface<interop::GPURenderPipeline>>;
+
         Converter conv(env);
 
         wgpu::RenderPipelineDescriptor desc{};
         if (!conv(desc, descriptor)) {
-            return {env};
+            Promise promise(env, PROMISE_INFO);
+            promise.Reject(Errors::OperationError(env));
+            return promise;
         }
-
-        using Promise = interop::Promise<interop::Interface<interop::GPURenderPipeline>>;
 
         struct Context {
             Napi::Env env;
             Promise promise;
             AsyncTask task;
         };
-        auto ctx = new Context{env, env, async_};
+        auto ctx = new Context{env, Promise(env, PROMISE_INFO), async_};
         auto promise = ctx->promise;
 
         device_.CreateRenderPipelineAsync(
@@ -374,7 +383,7 @@ namespace wgpu { namespace binding {
 
     interop::Interface<interop::GPUCommandEncoder> GPUDevice::createCommandEncoder(
         Napi::Env env,
-        std::optional<interop::GPUCommandEncoderDescriptor> descriptor) {
+        interop::GPUCommandEncoderDescriptor descriptor) {
         wgpu::CommandEncoderDescriptor desc{};
         return interop::GPUCommandEncoder::Create<GPUCommandEncoder>(
             env, device_.CreateCommandEncoder(&desc));
@@ -415,7 +424,8 @@ namespace wgpu { namespace binding {
 
     interop::Promise<interop::Interface<interop::GPUDeviceLostInfo>> GPUDevice::getLost(
         Napi::Env env) {
-        auto promise = interop::Promise<interop::Interface<interop::GPUDeviceLostInfo>>(env);
+        auto promise =
+            interop::Promise<interop::Interface<interop::GPUDeviceLostInfo>>(env, PROMISE_INFO);
         lost_promises_.emplace_back(promise);
         return promise;
     }
@@ -444,7 +454,7 @@ namespace wgpu { namespace binding {
             Promise promise;
             AsyncTask task;
         };
-        auto* ctx = new Context{env, env, async_};
+        auto* ctx = new Context{env, Promise(env, PROMISE_INFO), async_};
         auto promise = ctx->promise;
 
         bool ok = device_.PopErrorScope(
@@ -476,10 +486,8 @@ namespace wgpu { namespace binding {
         }
 
         delete ctx;
-        Promise p(env);
-        p.Resolve(
-            interop::GPUValidationError::Create<ValidationError>(env, "failed to pop error scope"));
-        return p;
+        promise.Reject(Errors::OperationError(env));
+        return promise;
     }
 
     std::optional<std::string> GPUDevice::getLabel(Napi::Env) {

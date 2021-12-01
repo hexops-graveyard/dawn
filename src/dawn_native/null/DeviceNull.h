@@ -40,10 +40,10 @@ namespace dawn_native { namespace null {
 
     class Adapter;
     class BindGroup;
-    using BindGroupLayout = BindGroupLayoutBase;
+    class BindGroupLayout;
     class Buffer;
     class CommandBuffer;
-    using ComputePipeline = ComputePipelineBase;
+    class ComputePipeline;
     class Device;
     using PipelineLayout = PipelineLayoutBase;
     class QuerySet;
@@ -84,9 +84,10 @@ namespace dawn_native { namespace null {
         virtual void Execute() = 0;
     };
 
-    class Device : public DeviceBase {
+    class Device final : public DeviceBase {
       public:
-        static ResultOrError<Device*> Create(Adapter* adapter, const DeviceDescriptor* descriptor);
+        static ResultOrError<Device*> Create(Adapter* adapter,
+                                             const DawnDeviceDescriptor* descriptor);
         ~Device() override;
 
         MaybeError Initialize();
@@ -129,7 +130,7 @@ namespace dawn_native { namespace null {
             PipelineCompatibilityToken pipelineCompatibilityToken) override;
         ResultOrError<Ref<BufferBase>> CreateBufferImpl(
             const BufferDescriptor* descriptor) override;
-        ResultOrError<Ref<ComputePipelineBase>> CreateComputePipelineImpl(
+        Ref<ComputePipelineBase> CreateUninitializedComputePipelineImpl(
             const ComputePipelineDescriptor* descriptor) override;
         ResultOrError<Ref<PipelineLayoutBase>> CreatePipelineLayoutImpl(
             const PipelineLayoutDescriptor* descriptor) override;
@@ -156,7 +157,7 @@ namespace dawn_native { namespace null {
 
         ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
 
-        void ShutDownImpl() override;
+        void DestroyImpl() override;
         MaybeError WaitForIdleForDestruction() override;
 
         std::vector<std::unique_ptr<PendingOperation>> mPendingOperations;
@@ -173,11 +174,16 @@ namespace dawn_native { namespace null {
         // AdapterBase Implementation
         bool SupportsExternalImages() const override;
 
-        // Used for the tests that intend to use an adapter without all extensions enabled.
-        void SetSupportedExtensions(const std::vector<const char*>& requiredExtensions);
+        // Used for the tests that intend to use an adapter without all features enabled.
+        void SetSupportedFeatures(const std::vector<const char*>& requiredFeatures);
 
       private:
-        ResultOrError<DeviceBase*> CreateDeviceImpl(const DeviceDescriptor* descriptor) override;
+        MaybeError InitializeImpl() override;
+        MaybeError InitializeSupportedFeaturesImpl() override;
+        MaybeError InitializeSupportedLimitsImpl(CombinedLimits* limits) override;
+
+        ResultOrError<DeviceBase*> CreateDeviceImpl(
+            const DawnDeviceDescriptor* descriptor) override;
     };
 
     // Helper class so |BindGroup| can allocate memory for its binding data,
@@ -200,6 +206,16 @@ namespace dawn_native { namespace null {
         ~BindGroup() override = default;
     };
 
+    class BindGroupLayout final : public BindGroupLayoutBase {
+      public:
+        BindGroupLayout(DeviceBase* device,
+                        const BindGroupLayoutDescriptor* descriptor,
+                        PipelineCompatibilityToken pipelineCompatibilityToken);
+
+      private:
+        ~BindGroupLayout() override = default;
+    };
+
     class Buffer final : public BufferBase {
       public:
         Buffer(Device* device, const BufferDescriptor* descriptor);
@@ -212,7 +228,6 @@ namespace dawn_native { namespace null {
         void DoWriteBuffer(uint64_t bufferOffset, const void* data, size_t size);
 
       private:
-        ~Buffer() override;
         MaybeError MapAsyncImpl(wgpu::MapMode mode, size_t offset, size_t size) override;
         void UnmapImpl() override;
         void DestroyImpl() override;
@@ -233,8 +248,6 @@ namespace dawn_native { namespace null {
         QuerySet(Device* device, const QuerySetDescriptor* descriptor);
 
       private:
-        ~QuerySet() override;
-
         void DestroyImpl() override;
     };
 
@@ -249,6 +262,13 @@ namespace dawn_native { namespace null {
                                    uint64_t bufferOffset,
                                    const void* data,
                                    size_t size) override;
+    };
+
+    class ComputePipeline final : public ComputePipelineBase {
+      public:
+        using ComputePipelineBase::ComputePipelineBase;
+
+        MaybeError Initialize() override;
     };
 
     class RenderPipeline final : public RenderPipelineBase {

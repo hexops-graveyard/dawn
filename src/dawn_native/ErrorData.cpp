@@ -73,23 +73,27 @@ namespace dawn_native {
 
     std::string ErrorData::GetFormattedMessage() const {
         std::ostringstream ss;
-        ss << mMessage;
+        ss << mMessage << "\n";
 
         if (!mContexts.empty()) {
             for (auto context : mContexts) {
-                ss << "\n - While " << context;
+                ss << " - While " << context << "\n";
             }
-        } else {
+        }
+
+        // For non-validation errors, or erros that lack a context include the
+        // stack trace for debugging purposes.
+        if (mContexts.empty() || mType != InternalErrorType::Validation) {
             for (const auto& callsite : mBacktrace) {
-                ss << "\n    at " << callsite.function << " (" << callsite.file << ":"
-                   << callsite.line << ")";
+                ss << "    at " << callsite.function << " (" << callsite.file << ":"
+                   << callsite.line << ")\n";
             }
         }
 
         if (!mDebugGroups.empty()) {
-            ss << "\n\nDebug group stack: ";
+            ss << "\nDebug group stack:\n";
             for (auto label : mDebugGroups) {
-                ss << "\n > \"" << label << "\"";
+                ss << " > \"" << label << "\"\n";
             }
         }
 

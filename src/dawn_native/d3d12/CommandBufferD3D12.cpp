@@ -254,6 +254,18 @@ namespace dawn_native { namespace d3d12 {
             return {};
         }
 
+        void RecordNumWorkgroupsForDispatch(ID3D12GraphicsCommandList* commandList,
+                                            ComputePipeline* pipeline,
+                                            DispatchCmd* dispatch) {
+            if (!pipeline->UsesNumWorkgroups()) {
+                return;
+            }
+
+            PipelineLayout* layout = ToBackend(pipeline->GetLayout());
+            commandList->SetComputeRoot32BitConstants(layout->GetNumWorkgroupsParameterIndex(), 3,
+                                                      dispatch, 0);
+        }
+
         // Records the necessary barriers for a synchronization scope using the resource usage
         // data pre-computed in the frontend. Also performs lazy initialization if required.
         // Returns whether any UAV are used in the synchronization scope.
@@ -516,6 +528,24 @@ namespace dawn_native { namespace d3d12 {
                     }
 
                     mBoundRootSamplerTables[index] = baseDescriptor;
+                }
+            }
+
+            const auto& dynamicStorageBufferLengths = group->GetDynamicStorageBufferLengths();
+            if (dynamicStorageBufferLengths.size() != 0) {
+                uint32_t parameterIndex =
+                    pipelineLayout->GetDynamicStorageBufferLengthsParameterIndex();
+                uint32_t firstRegisterOffset =
+                    pipelineLayout->GetDynamicStorageBufferLengthInfo()[index].firstRegisterOffset;
+
+                if (mInCompute) {
+                    commandList->SetComputeRoot32BitConstants(
+                        parameterIndex, dynamicStorageBufferLengths.size(),
+                        dynamicStorageBufferLengths.data(), firstRegisterOffset);
+                } else {
+                    commandList->SetGraphicsRoot32BitConstants(
+                        parameterIndex, dynamicStorageBufferLengths.size(),
+                        dynamicStorageBufferLengths.data(), firstRegisterOffset);
                 }
             }
         }
@@ -981,10 +1011,6 @@ namespace dawn_native { namespace d3d12 {
                     break;
                 }
 
-                case Command::SetValidatedBufferLocationsInternal:
-                    DoNextSetValidatedBufferLocationsInternal();
-                    break;
-
                 case Command::WriteBuffer: {
                     WriteBufferCmd* write = mCommands.NextCommand<WriteBufferCmd>();
                     const uint64_t offset = write->offset;
@@ -1030,6 +1056,7 @@ namespace dawn_native { namespace d3d12 {
         ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
 
         Command type;
+        ComputePipeline* lastPipeline = nullptr;
         while (mCommands.NextCommandId(&type)) {
             switch (type) {
                 case Command::Dispatch: {
@@ -1045,6 +1072,7 @@ namespace dawn_native { namespace d3d12 {
                                                    resourceUsages.dispatchUsages[currentDispatch]);
                     DAWN_TRY(bindingTracker->Apply(commandContext));
 
+                    RecordNumWorkgroupsForDispatch(commandList, lastPipeline, dispatch);
                     commandList->Dispatch(dispatch->x, dispatch->y, dispatch->z);
                     currentDispatch++;
                     break;
@@ -1052,16 +1080,16 @@ namespace dawn_native { namespace d3d12 {
 
                 case Command::DispatchIndirect: {
                     DispatchIndirectCmd* dispatch = mCommands.NextCommand<DispatchIndirectCmd>();
-                    Buffer* buffer = ToBackend(dispatch->indirectBuffer.Get());
 
                     TransitionAndClearForSyncScope(commandContext,
                                                    resourceUsages.dispatchUsages[currentDispatch]);
                     DAWN_TRY(bindingTracker->Apply(commandContext));
 
                     ComPtr<ID3D12CommandSignature> signature =
-                        ToBackend(GetDevice())->GetDispatchIndirectSignature();
-                    commandList->ExecuteIndirect(signature.Get(), 1, buffer->GetD3D12Resource(),
-                                                 dispatch->indirectOffset, nullptr, 0);
+                        lastPipeline->GetDispatchIndirectCommandSignature();
+                    commandList->ExecuteIndirect(
+                        signature.Get(), 1, ToBackend(dispatch->indirectBuffer)->GetD3D12Resource(),
+                        dispatch->indirectOffset, nullptr, 0);
                     currentDispatch++;
                     break;
                 }
@@ -1078,6 +1106,7 @@ namespace dawn_native { namespace d3d12 {
                     commandList->SetPipelineState(pipeline->GetPipelineState());
 
                     bindingTracker->OnSetPipeline(pipeline);
+                    lastPipeline = pipeline;
                     break;
                 }
 
@@ -1205,7 +1234,8 @@ namespace dawn_native { namespace d3d12 {
                 dsvAllocation,
                 device->GetDepthStencilViewAllocator()->AllocateTransientCPUDescriptors());
 
-            const D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc = view->GetDSVDescriptor();
+            const D3D12_DEPTH_STENCIL_VIEW_DESC viewDesc = view->GetDSVDescriptor(
+                attachmentInfo.depthReadOnly, attachmentInfo.stencilReadOnly);
             const D3D12_CPU_DESCRIPTOR_HANDLE baseDescriptor = dsvAllocation.GetBaseDescriptor();
 
             device->GetD3D12Device()->CreateDepthStencilView(
@@ -1377,6 +1407,11 @@ namespace dawn_native { namespace d3d12 {
 
                     DAWN_TRY(bindingTracker->Apply(commandContext));
                     vertexBufferTracker.Apply(commandList, lastPipeline);
+
+                    // TODO(dawn:548): remove this once builtins are emulated for indirect draws.
+                    // Zero the index offset values to avoid reusing values from the previous draw
+                    RecordFirstIndexOffset(commandList, lastPipeline, 0, 0);
+
                     Buffer* buffer = ToBackend(draw->indirectBuffer.Get());
                     ComPtr<ID3D12CommandSignature> signature =
                         ToBackend(GetDevice())->GetDrawIndirectSignature();
@@ -1387,16 +1422,21 @@ namespace dawn_native { namespace d3d12 {
 
                 case Command::DrawIndexedIndirect: {
                     DrawIndexedIndirectCmd* draw = iter->NextCommand<DrawIndexedIndirectCmd>();
-                    ASSERT(!draw->indirectBufferLocation->IsNull());
 
                     DAWN_TRY(bindingTracker->Apply(commandContext));
                     vertexBufferTracker.Apply(commandList, lastPipeline);
-                    Buffer* buffer = ToBackend(draw->indirectBufferLocation->GetBuffer());
+
+                    // TODO(dawn:548): remove this once builtins are emulated for indirect draws.
+                    // Zero the index offset values to avoid reusing values from the previous draw
+                    RecordFirstIndexOffset(commandList, lastPipeline, 0, 0);
+
+                    Buffer* buffer = ToBackend(draw->indirectBuffer.Get());
+                    ASSERT(buffer != nullptr);
+
                     ComPtr<ID3D12CommandSignature> signature =
                         ToBackend(GetDevice())->GetDrawIndexedIndirectSignature();
                     commandList->ExecuteIndirect(signature.Get(), 1, buffer->GetD3D12Resource(),
-                                                 draw->indirectBufferLocation->GetOffset(), nullptr,
-                                                 0);
+                                                 draw->indirectOffset, nullptr, 0);
                     break;
                 }
 

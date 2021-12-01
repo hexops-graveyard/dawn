@@ -51,6 +51,19 @@ namespace dawn_native {
         return {true};
     }
 
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(const Origin3D* value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s) {
+        if (value == nullptr) {
+            s->Append("[null]");
+            return {true};
+        }
+        s->Append(absl::StrFormat("[Origin3D x:%u, y:%u, z:%u]",
+            value->x, value->y, value->z));
+        return {true};
+    }
+
     //
     // Objects
     //
@@ -81,6 +94,9 @@ namespace dawn_native {
             return {true};
         }
         s->Append("[");
+        if (value->IsError()) {
+            s->Append("Invalid ");
+        }
         s->Append(ObjectTypeAsString(value->GetType()));
         const std::string& label = value->GetLabel();
         if (!label.empty()) {
@@ -99,6 +115,9 @@ namespace dawn_native {
             return {true};
         }
         s->Append("[");
+        if (value->IsError()) {
+            s->Append("Invalid ");
+        }
         s->Append(ObjectTypeAsString(value->GetType()));
         const std::string& label = value->GetLabel();
         if (!label.empty()) {

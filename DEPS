@@ -10,9 +10,9 @@ vars = {
 
   'dawn_standalone': True,
   'dawn_node': False, # Also fetches dependencies required for building NodeJS bindings.
-  'cmake_version': 'version:3.13.5',
-  'cmake_win32_sha1': 'b106d66bcdc8a71ea2cdf5446091327bfdb1bcd7',
-  'go_version': 'version:1.16',
+  'dawn_cmake_version': 'version:3.13.5',
+  'dawn_cmake_win32_sha1': 'b106d66bcdc8a71ea2cdf5446091327bfdb1bcd7',
+  'dawn_go_version': 'version:1.16',
 }
 
 deps = {
@@ -90,7 +90,7 @@ deps = {
 
   # Jinja2 and MarkupSafe for the code generator
   'third_party/jinja2': {
-    'url': '{chromium_git}/chromium/src/third_party/jinja2@a82a4944a7f2496639f34a89c9923be5908b80aa',
+    'url': '{chromium_git}/chromium/src/third_party/jinja2@ee69aa00ee8536f61db6a451f3858745cf587de6',
     'condition': 'dawn_standalone',
   },
   'third_party/markupsafe': {
@@ -100,7 +100,7 @@ deps = {
 
   # WGSL support
   'third_party/tint': {
-    'url': '{dawn_git}/tint@5e35864c1bda215632105aec58242e5e83255035',
+    'url': '{dawn_git}/tint@77e2c6f0b2479d286406c2dc8802ba93c79ca5fb',
   },
 
   # GLFW for tests and samples
@@ -121,7 +121,7 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@4aedb71f4b51f7fc0cecb11b5288ddec7c3faa65',
+    'url': '{chromium_git}/angle/angle@17261f3bffe2475cab26117719afc62c9fb794e3',
     'condition': 'dawn_standalone',
   },
 
@@ -163,7 +163,7 @@ deps = {
     'condition': 'dawn_node',
     'packages': [{
       'package': 'infra/3pp/tools/go/${{platform}}',
-      'version': Var('go_version'),
+      'version': Var('dawn_go_version'),
     }],
     'dep_type': 'cipd',
   },
@@ -172,7 +172,7 @@ deps = {
     'condition': 'dawn_node and (host_os == "mac" or host_os == "linux")',
     'packages': [{
       'package': 'infra/3pp/tools/cmake/${{platform}}',
-      'version': Var('cmake_version'),
+      'version': Var('dawn_cmake_version'),
     }],
     'dep_type': 'cipd',
   },
@@ -280,7 +280,7 @@ hooks = [
                 '--platform=win32',
                 '--no_auth',
                 '--bucket', 'chromium-tools',
-                Var('cmake_win32_sha1'),
+                Var('dawn_cmake_win32_sha1'),
                 '-o', 'tools/cmake-win32.zip'
     ],
   },

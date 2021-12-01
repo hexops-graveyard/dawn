@@ -45,7 +45,9 @@ namespace dawn_native { namespace opengl {
 
     }  // namespace
 
-    PipelineGL::PipelineGL() = default;
+    PipelineGL::PipelineGL() : mProgram(0) {
+    }
+
     PipelineGL::~PipelineGL() = default;
 
     MaybeError PipelineGL::InitializeBase(const OpenGLFunctions& gl,
@@ -66,9 +68,8 @@ namespace dawn_native { namespace opengl {
                 if (infoLogLength > 1) {
                     std::vector<char> buffer(infoLogLength);
                     gl.GetShaderInfoLog(shader, infoLogLength, nullptr, &buffer[0]);
-                    std::stringstream ss;
-                    ss << source << "\nProgram compilation failed:\n" << buffer.data();
-                    return DAWN_VALIDATION_ERROR(ss.str().c_str());
+                    return DAWN_FORMAT_VALIDATION_ERROR("%s\nProgram compilation failed:\n%s",
+                                                        source, buffer.data());
                 }
             }
             return shader;
@@ -87,6 +88,7 @@ namespace dawn_native { namespace opengl {
         // Create an OpenGL shader for each stage and gather the list of combined samplers.
         PerStage<CombinedSamplerInfo> combinedSamplers;
         bool needsDummySampler = false;
+        std::vector<GLuint> glShaders;
         for (SingleShaderStage stage : IterateStages(activeStages)) {
             const ShaderModule* module = ToBackend(stages[stage].module.Get());
             std::string glsl;
@@ -96,6 +98,7 @@ namespace dawn_native { namespace opengl {
             GLuint shader;
             DAWN_TRY_ASSIGN(shader, CreateShader(gl, GLShaderType(stage), glsl.c_str()));
             gl.AttachShader(mProgram, shader);
+            glShaders.push_back(shader);
         }
 
         if (needsDummySampler) {
@@ -119,9 +122,7 @@ namespace dawn_native { namespace opengl {
             if (infoLogLength > 1) {
                 std::vector<char> buffer(infoLogLength);
                 gl.GetProgramInfoLog(mProgram, infoLogLength, nullptr, &buffer[0]);
-                std::stringstream ss;
-                ss << "Program link failed:\n" << buffer.data();
-                return DAWN_VALIDATION_ERROR(ss.str().c_str());
+                return DAWN_FORMAT_VALIDATION_ERROR("Program link failed:\n%s", buffer.data());
             }
         }
 
@@ -178,7 +179,17 @@ namespace dawn_native { namespace opengl {
 
             textureUnit++;
         }
+
+        for (GLuint glShader : glShaders) {
+            gl.DetachShader(mProgram, glShader);
+            gl.DeleteShader(glShader);
+        }
+
         return {};
+    }
+
+    void PipelineGL::DeleteProgram(const OpenGLFunctions& gl) {
+        gl.DeleteProgram(mProgram);
     }
 
     const std::vector<PipelineGL::SamplerUnit>& PipelineGL::GetTextureUnitsForSampler(

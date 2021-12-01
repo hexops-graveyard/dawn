@@ -30,7 +30,7 @@ namespace dawn_native {
       public:
         CommandEncoder(DeviceBase* device, const CommandEncoderDescriptor* descriptor);
 
-        ObjectType GetType() const;
+        ObjectType GetType() const override;
 
         CommandIterator AcquireCommands();
         CommandBufferResourceUsage AcquireResourceUsages();
@@ -78,10 +78,8 @@ namespace dawn_native {
 
         CommandBufferBase* APIFinish(const CommandBufferDescriptor* descriptor = nullptr);
 
-        void EncodeSetValidatedBufferLocationsInternal(
-            std::vector<DeferredBufferLocationUpdate> updates);
-
       private:
+        void DestroyImpl() override;
         ResultOrError<Ref<CommandBufferBase>> FinishInternal(
             const CommandBufferDescriptor* descriptor);
 
@@ -102,9 +100,6 @@ namespace dawn_native {
 
         uint64_t mDebugGroupStackSize = 0;
     };
-
-    // For the benefit of template generation.
-    using CommandEncoderBase = CommandEncoder;
 
 }  // namespace dawn_native
 

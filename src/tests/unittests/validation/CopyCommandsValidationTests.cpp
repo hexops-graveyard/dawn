@@ -2046,9 +2046,9 @@ TEST_F(CopyCommandTest_T2T, CopyWithinSameTexture) {
 class CopyCommandTest_CompressedTextureFormats : public CopyCommandTest {
   protected:
     WGPUDevice CreateTestDevice() override {
-        dawn_native::DeviceDescriptor descriptor;
-        descriptor.requiredExtensions = {"texture_compression_bc", "texture-compression-etc2",
-                                         "texture-compression-astc"};
+        dawn_native::DawnDeviceDescriptor descriptor;
+        descriptor.requiredFeatures = {"texture-compression-bc", "texture-compression-etc2",
+                                       "texture-compression-astc"};
         return adapter.CreateDevice(&descriptor);
     }
 

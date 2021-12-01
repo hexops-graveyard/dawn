@@ -121,9 +121,7 @@ namespace dawn_native { namespace metal {
         return mCounterSampleBuffer;
     }
 
-    QuerySet::~QuerySet() {
-        DestroyInternal();
-    }
+    QuerySet::~QuerySet() = default;
 
     void QuerySet::DestroyImpl() {
         mVisibilityBuffer = nullptr;

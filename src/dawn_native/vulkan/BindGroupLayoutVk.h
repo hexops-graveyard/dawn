@@ -65,6 +65,10 @@ namespace dawn_native { namespace vulkan {
       private:
         ~BindGroupLayout() override;
         MaybeError Initialize();
+        void DestroyImpl() override;
+
+        // Dawn API
+        void SetLabelImpl() override;
 
         VkDescriptorSetLayout mHandle = VK_NULL_HANDLE;
 

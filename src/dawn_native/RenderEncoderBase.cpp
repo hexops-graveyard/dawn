@@ -17,7 +17,6 @@
 #include "common/Constants.h"
 #include "common/Log.h"
 #include "dawn_native/Buffer.h"
-#include "dawn_native/BufferLocation.h"
 #include "dawn_native/CommandEncoder.h"
 #include "dawn_native/CommandValidation.h"
 #include "dawn_native/Commands.h"
@@ -31,26 +30,49 @@
 namespace dawn_native {
 
     RenderEncoderBase::RenderEncoderBase(DeviceBase* device,
+                                         const char* label,
                                          EncodingContext* encodingContext,
-                                         Ref<AttachmentState> attachmentState)
-        : ProgrammablePassEncoder(device, encodingContext),
+                                         Ref<AttachmentState> attachmentState,
+                                         bool depthReadOnly,
+                                         bool stencilReadOnly)
+        : ProgrammableEncoder(device, label, encodingContext),
+          mIndirectDrawMetadata(device->GetLimits()),
           mAttachmentState(std::move(attachmentState)),
           mDisableBaseVertex(device->IsToggleEnabled(Toggle::DisableBaseVertex)),
           mDisableBaseInstance(device->IsToggleEnabled(Toggle::DisableBaseInstance)) {
+        mDepthReadOnly = depthReadOnly;
+        mStencilReadOnly = stencilReadOnly;
     }
 
     RenderEncoderBase::RenderEncoderBase(DeviceBase* device,
                                          EncodingContext* encodingContext,
                                          ErrorTag errorTag)
-        : ProgrammablePassEncoder(device, encodingContext, errorTag),
+        : ProgrammableEncoder(device, encodingContext, errorTag),
+          mIndirectDrawMetadata(device->GetLimits()),
           mDisableBaseVertex(device->IsToggleEnabled(Toggle::DisableBaseVertex)),
           mDisableBaseInstance(device->IsToggleEnabled(Toggle::DisableBaseInstance)) {
+    }
+
+    void RenderEncoderBase::DestroyImpl() {
+        // Remove reference to the attachment state so that we don't have lingering references to
+        // it preventing it from being uncached in the device.
+        mAttachmentState = nullptr;
     }
 
     const AttachmentState* RenderEncoderBase::GetAttachmentState() const {
         ASSERT(!IsError());
         ASSERT(mAttachmentState != nullptr);
         return mAttachmentState.Get();
+    }
+
+    bool RenderEncoderBase::IsDepthReadOnly() const {
+        ASSERT(!IsError());
+        return mDepthReadOnly;
+    }
+
+    bool RenderEncoderBase::IsStencilReadOnly() const {
+        ASSERT(!IsError());
+        return mStencilReadOnly;
     }
 
     Ref<AttachmentState> RenderEncoderBase::AcquireAttachmentState() {
@@ -84,7 +106,7 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding Draw(%u, %u, %u, %u).", vertexCount, instanceCount, firstVertex,
+            "encoding %s.Draw(%u, %u, %u, %u).", this, vertexCount, instanceCount, firstVertex,
             firstInstance);
     }
 
@@ -125,8 +147,8 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding DrawIndexed(%u, %u, %u, %i, %u).", indexCount, instanceCount, firstIndex,
-            baseVertex, firstInstance);
+            "encoding %s.DrawIndexed(%u, %u, %u, %i, %u).", this, indexCount, instanceCount,
+            firstIndex, baseVertex, firstInstance);
     }
 
     void RenderEncoderBase::APIDrawIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset) {
@@ -156,7 +178,7 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding DrawIndirect(%s, %u).", indirectBuffer, indirectOffset);
+            "encoding %s.DrawIndirect(%s, %u).", this, indirectBuffer, indirectOffset);
     }
 
     void RenderEncoderBase::APIDrawIndexedIndirect(BufferBase* indirectBuffer,
@@ -168,14 +190,6 @@ namespace dawn_native {
                     DAWN_TRY(GetDevice()->ValidateObject(indirectBuffer));
                     DAWN_TRY(ValidateCanUseAs(indirectBuffer, wgpu::BufferUsage::Indirect));
                     DAWN_TRY(mCommandBufferState.ValidateCanDrawIndexed());
-
-                    // Disallow draw indexed indirect until the validation is correctly implemented.
-                    if (GetDevice()->IsToggleEnabled(Toggle::DisallowUnsafeAPIs)) {
-                        return DAWN_VALIDATION_ERROR(
-                            "DrawIndexedIndirect is disallowed because it doesn't correctly "
-                            "validate that "
-                            "the index range is valid yet.");
-                    }
 
                     DAWN_INVALID_IF(indirectOffset % 4 != 0,
                                     "Indirect offset (%u) is not a multiple of 4.", indirectOffset);
@@ -190,21 +204,30 @@ namespace dawn_native {
                 DrawIndexedIndirectCmd* cmd =
                     allocator->Allocate<DrawIndexedIndirectCmd>(Command::DrawIndexedIndirect);
                 if (IsValidationEnabled()) {
-                    cmd->indirectBufferLocation = BufferLocation::New();
+                    // Later, EncodeIndirectDrawValidationCommands will allocate a scratch storage
+                    // buffer which will store the validated indirect data. The buffer and offset
+                    // will be updated to point to it.
+                    // |EncodeIndirectDrawValidationCommands| is called at the end of encoding the
+                    // render pass, while the |cmd| pointer is still valid.
+                    cmd->indirectBuffer = nullptr;
+
                     mIndirectDrawMetadata.AddIndexedIndirectDraw(
                         mCommandBufferState.GetIndexFormat(),
                         mCommandBufferState.GetIndexBufferSize(), indirectBuffer, indirectOffset,
-                        cmd->indirectBufferLocation.Get());
+                        cmd);
                 } else {
-                    cmd->indirectBufferLocation =
-                        BufferLocation::New(indirectBuffer, indirectOffset);
+                    cmd->indirectBuffer = indirectBuffer;
+                    cmd->indirectOffset = indirectOffset;
                 }
 
+                // TODO(crbug.com/dawn/1166): Adding the indirectBuffer is needed for correct usage
+                // validation, but it will unecessarily transition to indirectBuffer usage in the
+                // backend.
                 mUsageTracker.BufferUsedAs(indirectBuffer, wgpu::BufferUsage::Indirect);
 
                 return {};
             },
-            "encoding DrawIndexedIndirect(%s, %u).", indirectBuffer, indirectOffset);
+            "encoding %s.DrawIndexedIndirect(%s, %u).", this, indirectBuffer, indirectOffset);
     }
 
     void RenderEncoderBase::APISetPipeline(RenderPipelineBase* pipeline) {
@@ -220,6 +243,14 @@ namespace dawn_native {
                         pipeline->GetAttachmentState() != mAttachmentState.Get(),
                         "Attachment state of %s is not compatible with the attachment state of %s",
                         pipeline, this);
+
+                    DAWN_INVALID_IF(pipeline->WritesDepth() && mDepthReadOnly,
+                                    "%s writes depth while %s's depthReadOnly is true", pipeline,
+                                    this);
+
+                    DAWN_INVALID_IF(pipeline->WritesStencil() && mStencilReadOnly,
+                                    "%s writes stencil while %s's stencilReadOnly is true",
+                                    pipeline, this);
                 }
 
                 mCommandBufferState.SetRenderPipeline(pipeline);
@@ -230,7 +261,7 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding SetPipeline(%s).", pipeline);
+            "encoding %s.SetPipeline(%s).", this, pipeline);
     }
 
     void RenderEncoderBase::APISetIndexBuffer(BufferBase* buffer,
@@ -261,17 +292,6 @@ namespace dawn_native {
 
                     uint64_t remainingSize = bufferSize - offset;
 
-                    // Temporarily treat 0 as undefined for size, and give a warning
-                    // TODO(dawn:1058): Remove this if block
-                    if (size == 0) {
-                        size = wgpu::kWholeSize;
-                        GetDevice()->EmitDeprecationWarning(
-                            "Using size=0 to indicate default binding size for setIndexBuffer "
-                            "is deprecated. In the future it will result in a zero-size binding. "
-                            "Use `undefined` (wgpu::kWholeSize) or just omit the parameter "
-                            "instead.");
-                    }
-
                     if (size == wgpu::kWholeSize) {
                         size = remainingSize;
                     } else {
@@ -301,7 +321,7 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding SetIndexBuffer(%s, %s, %u, %u).", buffer, format, offset, size);
+            "encoding %s.SetIndexBuffer(%s, %s, %u, %u).", this, buffer, format, offset, size);
     }
 
     void RenderEncoderBase::APISetVertexBuffer(uint32_t slot,
@@ -328,17 +348,6 @@ namespace dawn_native {
                                     offset, bufferSize, buffer);
 
                     uint64_t remainingSize = bufferSize - offset;
-
-                    // Temporarily treat 0 as undefined for size, and give a warning
-                    // TODO(dawn:1058): Remove this if block
-                    if (size == 0) {
-                        size = wgpu::kWholeSize;
-                        GetDevice()->EmitDeprecationWarning(
-                            "Using size=0 to indicate default binding size for setVertexBuffer "
-                            "is deprecated. In the future it will result in a zero-size binding. "
-                            "Use `undefined` (wgpu::kWholeSize) or just omit the parameter "
-                            "instead.");
-                    }
 
                     if (size == wgpu::kWholeSize) {
                         size = remainingSize;
@@ -369,7 +378,7 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding SetVertexBuffer(%u, %s, %u, %u).", slot, buffer, offset, size);
+            "encoding %s.SetVertexBuffer(%u, %s, %u, %u).", this, slot, buffer, offset, size);
     }
 
     void RenderEncoderBase::APISetBindGroup(uint32_t groupIndexIn,
@@ -388,12 +397,14 @@ namespace dawn_native {
 
                 RecordSetBindGroup(allocator, groupIndex, group, dynamicOffsetCount,
                                    dynamicOffsets);
-                mCommandBufferState.SetBindGroup(groupIndex, group);
+                mCommandBufferState.SetBindGroup(groupIndex, group, dynamicOffsetCount,
+                                                 dynamicOffsets);
                 mUsageTracker.AddBindGroup(group);
 
                 return {};
             },
-            "encoding SetBindGroup(%u, %s, %u).", groupIndexIn, group, dynamicOffsetCount);
+            "encoding %s.SetBindGroup(%u, %s, %u, ...).", this, groupIndexIn, group,
+            dynamicOffsetCount);
     }
 
 }  // namespace dawn_native

@@ -557,9 +557,9 @@ namespace {
     class WriteTextureTest_CompressedTextureFormats : public QueueWriteTextureValidationTest {
       protected:
         WGPUDevice CreateTestDevice() override {
-            dawn_native::DeviceDescriptor descriptor;
-            descriptor.requiredExtensions = {"texture_compression_bc", "texture-compression-etc2",
-                                             "texture-compression-astc"};
+            dawn_native::DawnDeviceDescriptor descriptor;
+            descriptor.requiredFeatures = {"texture-compression-bc", "texture-compression-etc2",
+                                           "texture-compression-astc"};
             return adapter.CreateDevice(&descriptor);
         }
 
