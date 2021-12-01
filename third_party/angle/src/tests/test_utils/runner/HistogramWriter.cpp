@@ -38,7 +38,7 @@ std::string GetUnitAndDirection(proto::UnitAndDirection unit)
 {
     ASSERT(unit.improvement_direction() == proto::SMALLER_IS_BETTER);
     ASSERT(unit.unit() == proto::MS_BEST_FIT_FORMAT);
-    return "msBestFitFormat";
+    return "msBestFitFormat_smallerIsBetter";
 }
 }  // namespace
 

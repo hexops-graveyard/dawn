@@ -16,6 +16,7 @@
 #define SRC_SEM_EXPRESSION_H_
 
 #include "src/ast/expression.h"
+#include "src/sem/behavior.h"
 #include "src/sem/constant.h"
 #include "src/sem/node.h"
 
@@ -35,31 +36,39 @@ class Expression : public Castable<Expression, Node> {
   /// @param constant the constant value of the expression. May be invalid
   Expression(const ast::Expression* declaration,
              const sem::Type* type,
-             Statement* statement,
+             const Statement* statement,
              Constant constant);
 
   /// Destructor
   ~Expression() override;
 
+  /// @returns the AST node
+  const ast::Expression* Declaration() const { return declaration_; }
+
   /// @return the resolved type of the expression
-  sem::Type* Type() const { return const_cast<sem::Type*>(type_); }
+  const sem::Type* Type() const { return type_; }
 
   /// @return the statement that owns this expression
-  Statement* Stmt() const { return statement_; }
+  const Statement* Stmt() const { return statement_; }
 
   /// @return the constant value of this expression
   const Constant& ConstantValue() const { return constant_; }
 
-  /// @returns the AST node
-  ast::Expression* Declaration() const {
-    return const_cast<ast::Expression*>(declaration_);
-  }
+  /// @return the behaviors of this statement
+  const sem::Behaviors& Behaviors() const { return behaviors_; }
+
+  /// @return the behaviors of this statement
+  sem::Behaviors& Behaviors() { return behaviors_; }
+
+ protected:
+  /// The AST expression node for this semantic expression
+  const ast::Expression* const declaration_;
 
  private:
-  const ast::Expression* declaration_;
   const sem::Type* const type_;
-  Statement* const statement_;
-  Constant const constant_;
+  const Statement* const statement_;
+  const Constant constant_;
+  sem::Behaviors behaviors_;
 };
 
 }  // namespace sem

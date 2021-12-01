@@ -42,6 +42,7 @@ void InvokeCPUMemSync(ContextMtl *context, mtl::BlitCommandEncoder *blitEncoder,
         blitEncoder->synchronizeResource(resource);
 
         resource->resetCPUReadMemNeedSync();
+        resource->setCPUReadMemSyncPending(true);
     }
 #endif
 }
@@ -59,6 +60,7 @@ void EnsureCPUMemWillBeSynced(ContextMtl *context, T *resource)
         InvokeCPUMemSync(context, blitEncoder, resource);
     }
 #endif
+    resource->resetCPUReadMemNeedSync();
 }
 
 }  // namespace
@@ -76,6 +78,7 @@ void Resource::reset()
     mUsageRef->cmdBufferQueueSerial = 0;
     resetCPUReadMemDirty();
     resetCPUReadMemNeedSync();
+    resetCPUReadMemSyncPending();
 }
 
 bool Resource::isBeingUsedByGPU(Context *context) const
@@ -556,7 +559,7 @@ void Texture::replaceRegion(ContextMtl *context,
     // NOTE(hqle): what if multiple contexts on multiple threads are using this texture?
     if (this->isBeingUsedByGPU(context))
     {
-        context->flushCommandBufer();
+        context->flushCommandBuffer(mtl::NoWait);
     }
 
     cmdQueue.ensureResourceReadyForCPU(this);
@@ -591,7 +594,7 @@ void Texture::getBytes(ContextMtl *context,
     // NOTE(hqle): what if multiple contexts on multiple threads are using this texture?
     if (this->isBeingUsedByGPU(context))
     {
-        context->flushCommandBufer();
+        context->flushCommandBuffer(mtl::NoWait);
     }
 
     cmdQueue.ensureResourceReadyForCPU(this);
@@ -997,7 +1000,7 @@ uint8_t *Buffer::mapWithOpt(ContextMtl *context, bool readonly, bool noSync)
 {
     mMapReadOnly = readonly;
 
-    if (!noSync)
+    if (!noSync && (isCPUReadMemSyncPending() || isCPUReadMemNeedSync() || !readonly))
     {
         CommandQueue &cmdQueue = context->cmdQueue();
 
@@ -1005,10 +1008,11 @@ uint8_t *Buffer::mapWithOpt(ContextMtl *context, bool readonly, bool noSync)
 
         if (this->isBeingUsedByGPU(context))
         {
-            context->flushCommandBufer();
+            context->flushCommandBuffer(mtl::NoWait);
         }
 
         cmdQueue.ensureResourceReadyForCPU(this);
+        resetCPUReadMemSyncPending();
     }
 
     return reinterpret_cast<uint8_t *>([get() contents]);

@@ -182,7 +182,7 @@ void GL_APIENTRY GL_{name}({params})
         {{
             context->{name_lower_no_suffix}({internal_params});
         }}
-        ANGLE_CAPTURE({name}, isCallValid, {validate_params});
+        ANGLE_CAPTURE({name}, isCallValid, {capture_params});
     }}
     else
     {{
@@ -210,7 +210,7 @@ TEMPLATE_GLES_ENTRY_POINT_WITH_RETURN = """\
         {{
             returnValue = GetDefaultReturnValue<angle::EntryPoint::GL{name}, {return_type}>();
     }}
-        ANGLE_CAPTURE({name}, isCallValid, {validate_params}, returnValue);
+        ANGLE_CAPTURE({name}, isCallValid, {capture_params}, returnValue);
     }}
     else
     {{
@@ -435,6 +435,7 @@ TEMPLATE_GL_VALIDATION_HEADER = """\
 #ifndef LIBANGLE_VALIDATION_{annotation}_AUTOGEN_H_
 #define LIBANGLE_VALIDATION_{annotation}_AUTOGEN_H_
 
+#include "common/entry_points_enum_autogen.h"
 #include "common/PackedEnums.h"
 
 namespace gl
@@ -1047,6 +1048,8 @@ T AccessParamValue(ParamType paramType, const ParamValue &value)
     {{
 {access_param_value_cases}
     }}
+    UNREACHABLE();
+    return T();
 }}
 
 template <ParamType PType, typename T>
@@ -1082,6 +1085,11 @@ enum class ResourceIDType
 
 ResourceIDType GetResourceIDTypeFromParamType(ParamType paramType);
 const char *GetResourceIDTypeName(ResourceIDType resourceIDType);
+
+template <typename ResourceType>
+struct GetResourceIDTypeFromType;
+
+{type_to_resource_id_type_structs}
 }}  // namespace angle
 
 #endif  // LIBANGLE_FRAME_CAPTURE_UTILS_AUTOGEN_H_
@@ -1523,6 +1531,7 @@ def format_entry_point_def(api, command_node, cmd_name, proto, params, cmd_packe
     initialization = "InitBackEnds(%s);\n" % INIT_DICT[cmd_name] if cmd_name in INIT_DICT else ""
     event_comment = TEMPLATE_EVENT_COMMENT if cmd_name in NO_EVENT_MARKER_EXCEPTIONS_LIST else ""
     name_lower_no_suffix = strip_suffix(api, cmd_name[2:3].lower() + cmd_name[3:])
+    entry_point_name = "angle::EntryPoint::GL" + strip_api_prefix(cmd_name)
 
     format_params = {
         "name":
@@ -1543,8 +1552,10 @@ def format_entry_point_def(api, command_node, cmd_name, proto, params, cmd_packe
             ", ".join(pass_params),
         "comma_if_needed":
             ", " if len(params) > 0 else "",
-        "validate_params":
+        "capture_params":
             ", ".join(["context"] + internal_params),
+        "validate_params":
+            ", ".join(["context"] + [entry_point_name] + internal_params),
         "format_params":
             ", ".join(format_params),
         "context_getter":
@@ -1725,7 +1736,7 @@ def format_validation_proto(api, cmd_name, proto, params, cmd_packed_gl_enums, p
     else:
         return_type = "bool"
     if api in [apis.GL, apis.GLES]:
-        with_extra_params = ["Context *context"] + params
+        with_extra_params = ["Context *context"] + ["angle::EntryPoint entryPoint"] + params
     elif api == apis.EGL:
         with_extra_params = ["ValidationContext *val"] + params
     else:
@@ -2170,10 +2181,8 @@ def format_init_param_value_case(param_type):
 
 
 def format_write_param_type_to_stream_case(param_type):
-    # Force all enum printing to go through "const void *"
-    param_out = "voidConstPointer" if "Pointer" in param_type else param_type
     return TEMPLATE_WRITE_PARAM_TYPE_TO_STREAM_CASE.format(
-        enum_in=param_type, enum_out=param_out, union_name=get_param_type_union_name(param_out))
+        enum_in=param_type, enum_out=param_type, union_name=get_param_type_union_name(param_type))
 
 
 def get_resource_id_types(all_param_types):
@@ -2190,6 +2199,19 @@ def format_resource_id_types(all_param_types):
     return resource_id_types
 
 
+def format_resource_id_convert_structs(all_param_types):
+    templ = """\
+template <>
+struct GetResourceIDTypeFromType<gl::%sID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::%s;
+};
+"""
+    resource_id_types = get_resource_id_types(all_param_types)
+    convert_struct_strings = [templ % (id, id) for id in resource_id_types]
+    return "\n".join(convert_struct_strings)
+
+
 def write_capture_helper_header(all_param_types):
 
     param_types = "\n    ".join(["T%s," % t for t in all_param_types])
@@ -2202,6 +2224,7 @@ def write_capture_helper_header(all_param_types):
         [format_set_param_val_specialization(t) for t in all_param_types])
     init_param_value_cases = "\n".join([format_init_param_value_case(t) for t in all_param_types])
     resource_id_types = format_resource_id_types(all_param_types)
+    convert_structs = format_resource_id_convert_structs(all_param_types)
 
     content = TEMPLATE_FRAME_CAPTURE_UTILS_HEADER.format(
         script_name=os.path.basename(sys.argv[0]),
@@ -2213,7 +2236,8 @@ def write_capture_helper_header(all_param_types):
         access_param_value_cases=access_param_value_cases,
         set_param_val_specializations=set_param_val_specializations,
         init_param_value_cases=init_param_value_cases,
-        resource_id_types=resource_id_types)
+        resource_id_types=resource_id_types,
+        type_to_resource_id_type_structs=convert_structs)
 
     path = path_to(os.path.join("libANGLE", "capture"), "frame_capture_utils_autogen.h")
 

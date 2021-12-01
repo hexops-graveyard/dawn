@@ -7,8 +7,8 @@
 #ifndef COMPILER_TRANSLATOR_TRANSLATORMETALDIRECT_INTERMREBUILD_H_
 #define COMPILER_TRANSLATOR_TRANSLATORMETALDIRECT_INTERMREBUILD_H_
 
-#include "compiler/translator/TranslatorMetalDirect/NodeType.h"
 #include "compiler/translator/tree_util/IntermTraverse.h"
+#include "compiler/translator/tree_util/NodeType.h"
 
 namespace sh
 {
@@ -102,7 +102,7 @@ class TIntermRebuild : angle::NonCopyable
         BaseResult(BaseResult &other);  // For subclass move constructor impls
         BaseResult(TIntermNode &node, VisitBits visit);
         BaseResult(TIntermNode *node, VisitBits visit);
-        BaseResult(nullptr_t);
+        BaseResult(std::nullptr_t);
         BaseResult(Fail);
         BaseResult(std::vector<TIntermNode *> &&nodes);
 
@@ -142,8 +142,8 @@ class TIntermRebuild : angle::NonCopyable
         PreResult(PreResult &&other);
         PreResult(TIntermNode &node, VisitBits visit = VisitBits::BothWhenSame);
         PreResult(TIntermNode *node, VisitBits visit = VisitBits::BothWhenSame);
-        PreResult(nullptr_t);  // Used to drop a node.
-        PreResult(Fail);       // Used to signal failure.
+        PreResult(std::nullptr_t);  // Used to drop a node.
+        PreResult(Fail);            // Used to signal failure.
 
         void operator=(PreResult &&other);
 
@@ -175,8 +175,8 @@ class TIntermRebuild : angle::NonCopyable
         PostResult(PostResult &&other);
         PostResult(TIntermNode &node);
         PostResult(TIntermNode *node);
-        PostResult(nullptr_t);  // Used to drop a node
-        PostResult(Fail);       // Used to signal failure.
+        PostResult(std::nullptr_t);  // Used to drop a node
+        PostResult(Fail);            // Used to signal failure.
 
         void operator=(PostResult &&other);
 

@@ -374,6 +374,22 @@ const char *TOutputGLSLBase::mapQualifierToString(TQualifier qualifier)
     return sh::getQualifierString(qualifier);
 }
 
+namespace
+{
+
+constexpr char kIndent[]      = "                    ";  // 10x2 spaces
+constexpr int kIndentWidth    = 2;
+constexpr int kMaxIndentLevel = sizeof(kIndent) / kIndentWidth;
+
+}  // namespace
+
+const char *TOutputGLSLBase::getIndentPrefix(int extraIndentation)
+{
+    int indentDepth = std::min(kMaxIndentLevel, getCurrentBlockDepth() + extraIndentation);
+    ASSERT(indentDepth >= 0);
+    return kIndent + (kMaxIndentLevel - indentDepth) * kIndentWidth;
+}
+
 void TOutputGLSLBase::writeVariableType(const TType &type,
                                         const TSymbol *symbol,
                                         bool isFunctionArgument)
@@ -792,7 +808,7 @@ bool TOutputGLSLBase::visitIfElse(Visit visit, TIntermIfElse *node)
 
     if (node->getFalseBlock())
     {
-        out << "else\n";
+        out << getIndentPrefix() << "else\n";
         visitCodeBlock(node->getFalseBlock());
     }
     return false;
@@ -835,6 +851,9 @@ bool TOutputGLSLBase::visitBlock(Visit visit, TIntermBlock *node)
     {
         TIntermNode *curNode = *iter;
         ASSERT(curNode != nullptr);
+
+        out << getIndentPrefix(curNode->getAsCaseNode() ? -1 : 0);
+
         curNode->traverse(this);
 
         if (isSingleStatement(curNode))
@@ -844,7 +863,7 @@ bool TOutputGLSLBase::visitBlock(Visit visit, TIntermBlock *node)
     // Scope the blocks except when at the global scope.
     if (getCurrentTraversalDepth() > 0)
     {
-        out << "}\n";
+        out << getIndentPrefix(-1) << "}\n";
     }
     return false;
 }
@@ -924,13 +943,12 @@ bool TOutputGLSLBase::visitDeclaration(Visit visit, TIntermDeclaration *node)
     if (visit == PreVisit)
     {
         const TIntermSequence &sequence = *(node->getSequence());
-        TIntermTyped *variable          = sequence.front()->getAsTyped();
-        TIntermSymbol *symbolNode       = variable->getAsSymbolNode();
+        TIntermTyped *decl              = sequence.front()->getAsTyped();
+        TIntermSymbol *symbolNode       = decl->getAsSymbolNode();
         if (symbolNode == nullptr)
         {
-            ASSERT(variable->getAsBinaryNode() &&
-                   variable->getAsBinaryNode()->getOp() == EOpInitialize);
-            symbolNode = variable->getAsBinaryNode()->getLeft()->getAsSymbolNode();
+            ASSERT(decl->getAsBinaryNode() && decl->getAsBinaryNode()->getOp() == EOpInitialize);
+            symbolNode = decl->getAsBinaryNode()->getLeft()->getAsSymbolNode();
         }
         ASSERT(symbolNode);
 
@@ -941,11 +959,7 @@ bool TOutputGLSLBase::visitDeclaration(Visit visit, TIntermDeclaration *node)
             writeLayoutQualifier(symbolNode);
         }
 
-        // Note: the TIntermDeclaration type is used for variable declaration instead of the
-        // TIntermSymbol one.  The TIntermDeclaration type includes precision promotions from the
-        // right hand side that the symbol may be missing.  This is an inconsistency in the tree
-        // that is too ingrained.
-        writeVariableType(variable->getType(), &symbolNode->variable(), false);
+        writeVariableType(symbolNode->getType(), &symbolNode->variable(), false);
         if (symbolNode->variable().symbolType() != SymbolType::Empty)
         {
             out << " ";
@@ -1041,6 +1055,7 @@ void TOutputGLSLBase::visitCodeBlock(TIntermBlock *node)
     TInfoSinkBase &out = objSink();
     if (node != nullptr)
     {
+        out << getIndentPrefix();
         node->traverse(this);
         // Single statements not part of a sequence need to be terminated
         // with semi-colon.
@@ -1141,6 +1156,7 @@ void TOutputGLSLBase::declareStruct(const TStructure *structure)
     const TFieldList &fields = structure->fields();
     for (size_t i = 0; i < fields.size(); ++i)
     {
+        out << getIndentPrefix(1);
         const TField *field    = fields[i];
         const TType &fieldType = *field->type();
         if (writeVariablePrecision(fieldType.getPrecision()))
@@ -1158,7 +1174,7 @@ void TOutputGLSLBase::declareStruct(const TStructure *structure)
         }
         out << ";\n";
     }
-    out << "}";
+    out << getIndentPrefix() << "}";
 }
 
 void TOutputGLSLBase::declareInterfaceBlockLayout(const TType &type)
@@ -1245,6 +1261,7 @@ void TOutputGLSLBase::declareInterfaceBlock(const TType &type)
     const TFieldList &fields = interfaceBlock->fields();
     for (const TField *field : fields)
     {
+        out << getIndentPrefix(1);
         if (!IsShaderIoBlock(type.getQualifier()) && type.getQualifier() != EvqPatchIn &&
             type.getQualifier() != EvqPatchOut)
         {

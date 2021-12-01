@@ -7,8 +7,10 @@
 # gen_restricted_traces.py:
 #   Generates integration code for the restricted trace tests.
 
+import getpass
 import glob
 import fnmatch
+import re
 import json
 import os
 import sys
@@ -39,42 +41,15 @@ HEADER_TEMPLATE = """\
 //
 // {filename}: Types and enumerations for trace tests.
 
-#ifndef ANGLE_RESTRICTED_TRACES_H_
-#define ANGLE_RESTRICTED_TRACES_H_
+#ifndef ANGLE_RESTRICTED_TRACES_AUTOGEN_H_
+#define ANGLE_RESTRICTED_TRACES_AUTOGEN_H_
 
 #include <cstdint>
 #include <vector>
 #include <KHR/khrplatform.h>
 #include <EGL/egl.h>
 
-// See util/util_export.h for details on import/export labels.
-#if !defined(ANGLE_TRACE_EXPORT)
-#    if defined(_WIN32)
-#        if defined(ANGLE_TRACE_IMPLEMENTATION)
-#            define ANGLE_TRACE_EXPORT __declspec(dllexport)
-#        else
-#            define ANGLE_TRACE_EXPORT __declspec(dllimport)
-#        endif
-#    elif defined(__GNUC__)
-#        define ANGLE_TRACE_EXPORT __attribute__((visibility("default")))
-#    else
-#        define ANGLE_TRACE_EXPORT
-#    endif
-#endif  // !defined(ANGLE_TRACE_EXPORT)
-
-#if !defined(ANGLE_TRACE_LOADER_EXPORT)
-#    if defined(_WIN32)
-#        if defined(ANGLE_TRACE_LOADER_IMPLEMENTATION)
-#            define ANGLE_TRACE_LOADER_EXPORT __declspec(dllexport)
-#        else
-#            define ANGLE_TRACE_LOADER_EXPORT __declspec(dllimport)
-#        endif
-#    elif defined(__GNUC__)
-#        define ANGLE_TRACE_LOADER_EXPORT __attribute__((visibility("default")))
-#    else
-#        define ANGLE_TRACE_LOADER_EXPORT
-#    endif
-#endif  // !defined(ANGLE_TRACE_LOADER_EXPORT)
+#include "restricted_traces_export.h"
 
 namespace trace_angle
 {{
@@ -82,16 +57,8 @@ using GenericProc = void (*)();
 using LoadProc    = GenericProc(KHRONOS_APIENTRY *)(const char *);
 ANGLE_TRACE_LOADER_EXPORT void LoadEGL(LoadProc loadProc);
 ANGLE_TRACE_LOADER_EXPORT void LoadGLES(LoadProc loadProc);
-}}  // namespace trace_angle
 
-namespace angle
-{{
-enum class RestrictedTraceID
-{{
-{trace_ids}, InvalidEnum, EnumCount = InvalidEnum
-}};
-
-static constexpr size_t kTraceInfoMaxNameLen = 32;
+static constexpr size_t kTraceInfoMaxNameLen = 128;
 
 static constexpr uint32_t kDefaultReplayContextClientMajorVersion = 3;
 static constexpr uint32_t kDefaultReplayContextClientMinorVersion = 1;
@@ -99,20 +66,33 @@ static constexpr uint32_t kDefaultReplayDrawSurfaceColorSpace = EGL_COLORSPACE_L
 
 struct TraceInfo
 {{
+    char name[kTraceInfoMaxNameLen];
     uint32_t contextClientMajorVersion;
     uint32_t contextClientMinorVersion;
-    uint32_t startFrame;
-    uint32_t endFrame;
+    uint32_t frameEnd;
+    uint32_t frameStart;
     uint32_t drawSurfaceWidth;
     uint32_t drawSurfaceHeight;
     uint32_t drawSurfaceColorSpace;
-    char name[kTraceInfoMaxNameLen];
+    uint32_t displayPlatformType;
+    uint32_t displayDeviceType;
+    int configRedBits;
+    int configBlueBits;
+    int configGreenBits;
+    int configAlphaBits;
+    int configDepthBits;
+    int configStencilBits;
+    bool isBinaryDataCompressed;
+    bool areClientArraysEnabled;
+    bool isBindGeneratesResourcesEnabled;
+    bool isWebGLCompatibilityEnabled;
+    bool isRobustResourceInitEnabled;
 }};
 
-ANGLE_TRACE_EXPORT const TraceInfo &GetTraceInfo(RestrictedTraceID traceID);
-}}  // namespace angle
+ANGLE_TRACE_EXPORT const TraceInfo &GetTraceInfo(const char *traceName);
+}}  // namespace trace_angle
 
-#endif  // ANGLE_RESTRICTED_TRACES_H_
+#endif  // ANGLE_RESTRICTED_TRACES_AUTOGEN_H_
 """
 
 SOURCE_TEMPLATE = """\
@@ -132,23 +112,39 @@ SOURCE_TEMPLATE = """\
 
 {trace_includes}
 
-namespace angle
+namespace trace_angle
 {{
 namespace
 {{
-constexpr angle::PackedEnumMap<RestrictedTraceID, TraceInfo> kTraceInfos = {{
+constexpr size_t kNumTraces = {num_traces};
+struct TracePair
+{{
+    const char name[kTraceInfoMaxNameLen];
+    TraceInfo info;
+}};
+constexpr TracePair kTraceInfos[kNumTraces] = {{
 {trace_infos}
 }};
 }}
 
-const TraceInfo &GetTraceInfo(RestrictedTraceID traceID)
+const TraceInfo &GetTraceInfo(const char *traceName)
 {{
-    return kTraceInfos[traceID];
+    // Could be improved using std::lower_bound.
+    for (const TracePair &tracePair : kTraceInfos)
+    {{
+        if (strncmp(tracePair.name, traceName, kTraceInfoMaxNameLen) == 0)
+        {{
+            return tracePair.info;
+        }}
+    }}
+    UNREACHABLE();
+    return kTraceInfos[0].info;
 }}
-}}  // namespace angle
+}}  // namespace trace_angle
 """
 
 CIPD_TRACE_PREFIX = 'angle/traces'
+EXPERIMENTAL_CIPD_PREFIX = 'experimental/google.com/%s/angle/traces'
 DEPS_PATH = '../../../DEPS'
 DEPS_START = '# === ANGLE Restricted Trace Generated Code Start ==='
 DEPS_END = '# === ANGLE Restricted Trace Generated Code End ==='
@@ -181,19 +177,45 @@ def get_angledata_filename(trace):
     angledata_files = glob.glob('%s/%s*angledata.gz' % (trace, trace))
     assert len(angledata_files) == 1, "Trace '%s' has %d angledata.gz files" % (
         trace, len(angledata_files))
-    return angledata_files[0]
+    return angledata_files[0].replace('\\', '/')
 
 
+# TODO(jmadill): Remove the GNI generation. http://anglebug.com/5133
 def gen_gni(traces, gni_file, format_args):
     test_list = []
     for trace in traces:
         context = get_context(trace)
         angledata_file = get_angledata_filename(trace)
-        with open('%s/%s_capture_context%s_files.txt' % (trace, trace, context)) as f:
-            files = f.readlines()
-            f.close()
-        files = ['"%s/%s"' % (trace, file.strip()) for file in files]
-        test_list += ['["%s", %s, [%s], "%s"]' % (trace, context, ','.join(files), angledata_file)]
+        txt_file = '%s/%s_capture_context%s_files.txt' % (trace, trace, context)
+        json_file_name = '%s/%s.json' % (trace, trace)
+        if os.path.exists(txt_file):
+            with open(txt_file) as f:
+                files = f.readlines()
+                f.close()
+                source_files = ['"%s/%s"' % (trace, file.strip()) for file in files]
+        else:
+            assert os.path.exists(json_file_name), '%s does not exist' % json_file_name
+            with open(json_file_name) as f:
+                json_data = json.loads(f.read())
+                files = json_data["TraceFiles"]
+
+        source_files = ['"%s/%s"' % (trace, file.strip()) for file in files]
+        data_files = ['"%s"' % angledata_file]
+        if os.path.exists(json_file_name):
+            data_files.append('"%s"' % json_file_name)
+
+        for prefix_expr in ['%s/%s_capture_context%s', '%s/%s_context%s']:
+            prefix = prefix_expr % (trace, trace, context)
+            prefix_cpp = '%s.cpp' % prefix
+            if os.path.exists(prefix_cpp):
+                break
+
+        assert os.path.exists(prefix_cpp), '%s does not exist' % prefix_cpp
+
+        test_list += [
+            '["%s", %s, [%s], [%s], "%s"]' %
+            (trace, context, ','.join(source_files), ','.join(data_files), prefix)
+        ]
 
     format_args['test_list'] = ',\n'.join(test_list)
     gni_data = GNI_TEMPLATE.format(**format_args)
@@ -222,38 +244,50 @@ def contains_colorspace(trace):
     return contains_string(trace, 'kReplayDrawSurfaceColorSpace')
 
 
+def json_metadata_exists(trace):
+    return os.path.isfile('%s/%s.json' % (trace, trace))
+
+
 def get_trace_info(trace):
+    # Skip getting trace info if we're using JSON metadata.
+    # TODO: Remove generated code. http://anglebug.com/5133
+    if json_metadata_exists(trace):
+        return ''
+
     # Some traces don't contain major/minor version, so use defaults
-    info = []
+    info = [f'"{trace}"']
     if contains_context_version(trace):
         info += [
-            f"{trace}::kReplayContextClientMajorVersion",
-            f"{trace}::kReplayContextClientMinorVersion"
+            f'{trace}::kReplayContextClientMajorVersion',
+            f'{trace}::kReplayContextClientMinorVersion'
         ]
     else:
         info += [
-            "kDefaultReplayContextClientMajorVersion", "kDefaultReplayContextClientMinorVersion"
+            'kDefaultReplayContextClientMajorVersion', 'kDefaultReplayContextClientMinorVersion'
         ]
 
     info += [
-        f"{trace}::kReplayFrameStart", f"{trace}::kReplayFrameEnd",
-        f"{trace}::kReplayDrawSurfaceWidth", f"{trace}::kReplayDrawSurfaceHeight"
+        f'{trace}::kReplayFrameStart', f'{trace}::kReplayFrameEnd',
+        f'{trace}::kReplayDrawSurfaceWidth', f'{trace}::kReplayDrawSurfaceHeight'
     ]
 
     if contains_colorspace(trace):
-        info += [f"{trace}::kReplayDrawSurfaceColorSpace"]
+        info += [f'{trace}::kReplayDrawSurfaceColorSpace']
     else:
-        info += ["kDefaultReplayDrawSurfaceColorSpace"]
+        info += ['kDefaultReplayDrawSurfaceColorSpace']
 
-    info += [f"\"{trace}\""]
+    # Add placeholder fields to fix an MSVC warning.
+    info += ['0'] * 8
+    info += ['false'] * 5
 
     return ", ".join(info)
 
 
 def get_context(trace):
-    """Returns the context number used by trace txt file"""
+    """Returns the trace context number."""
+    # TODO(jmadill): Remove the txt scan once migrated. http://anglebug.com/5133
+    # Load up the only header present for each trace
     for file in os.listdir(trace):
-        # Load up the only header present for each trace
         if fnmatch.fnmatch(file, '*.txt'):
             # Strip the extension to isolate the context by scanning
             # for numbers leading up to the last one, i.e.:
@@ -265,16 +299,21 @@ def get_context(trace):
             while file[start - 1].isdigit():
                 start -= 1
             context = file[start:end]
-            assert context.isnumeric(), "Failed to find trace context number"
+            assert context.isnumeric(), 'Trace context number is not numeric: %s' % context
             return context
+
+    expr = re.compile(r'.*_context(\d+).cpp')
+    for file in os.listdir(trace):
+        m = expr.match(file)
+        if m:
+            context = m.group(1)
+            assert context.isnumeric(), 'Trace context number is not numeric: %s' % context
+            return context
+    assert False, 'Failed to find context number for %s' % trace
 
 
 def get_header_name(trace):
-    return "%s/%s_capture_context%s.h" % (trace, trace, get_context(trace))
-
-
-def get_source_name(trace):
-    return "%s/%s_capture_context%s.cpp" % (trace, trace, get_context(trace))
+    return '%s/%s_capture_context%s.h' % (trace, trace, get_context(trace))
 
 
 def gen_header(header_file, format_args):
@@ -307,7 +346,12 @@ def update_deps(trace_pairs):
     # Generate substitution string
     replacement = ""
     for (trace, version) in trace_pairs:
-        sub = {'trace': trace, 'version': version, 'trace_prefix': CIPD_TRACE_PREFIX}
+        if 'x' in version:
+            version = version.strip('x')
+            trace_prefix = EXPERIMENTAL_CIPD_PREFIX % getpass.getuser()
+        else:
+            trace_prefix = CIPD_TRACE_PREFIX
+        sub = {'trace': trace, 'version': version, 'trace_prefix': trace_prefix}
         replacement += DEPS_TEMPLATE.format(**sub)
 
     # Update DEPS to download CIPD dependencies
@@ -366,23 +410,23 @@ def main():
         return 0
 
     format_args = {
-        "script_name": os.path.basename(__file__),
-        "data_source_name": json_file,
+        'script_name': os.path.basename(__file__),
+        'data_source_name': json_file,
     }
 
     if not gen_gni(traces, gni_file, format_args):
         print('.gni file generation failed.')
         return 1
 
-    includes = ["#include \"%s\"" % get_header_name(trace) for trace in traces]
-    trace_infos = [
-        "{RestrictedTraceID::%s, {%s}}" % (trace, get_trace_info(trace)) for trace in traces
-    ]
+    trace_infos = ['{"%s", {%s}}' % (trace, get_trace_info(trace)) for trace in traces]
 
-    format_args["filename"] = "restricted_traces_autogen"
-    format_args["trace_ids"] = ",\n".join(traces)
-    format_args["trace_includes"] = "\n".join(includes)
-    format_args["trace_infos"] = ",\n".join(trace_infos)
+    no_json_traces = filter(lambda trace: not json_metadata_exists(trace), traces)
+    includes = ['#include "%s"' % get_header_name(trace) for trace in no_json_traces]
+
+    format_args['filename'] = 'restricted_traces_autogen'
+    format_args['num_traces'] = len(trace_infos)
+    format_args['trace_includes'] = '\n'.join(includes)
+    format_args['trace_infos'] = ',\n'.join(trace_infos)
     if not gen_header(header_file, format_args):
         print('.h file generation failed.')
         return 1

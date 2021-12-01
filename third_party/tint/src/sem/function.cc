@@ -28,36 +28,26 @@ TINT_INSTANTIATE_TYPEINFO(tint::sem::Function);
 namespace tint {
 namespace sem {
 
-Function::Function(ast::Function* declaration,
+Function::Function(const ast::Function* declaration,
                    Type* return_type,
-                   std::vector<Parameter*> parameters,
-                   std::vector<const Variable*> referenced_module_vars,
-                   std::vector<const Variable*> local_referenced_module_vars,
-                   std::vector<const ast::ReturnStatement*> return_statements,
-                   std::vector<const ast::CallExpression*> callsites,
-                   std::vector<Symbol> ancestor_entry_points,
-                   std::array<WorkgroupDimension, 3> workgroup_size)
+                   std::vector<Parameter*> parameters)
     : Base(return_type, utils::ToConstPtrVec(parameters)),
       declaration_(declaration),
-      referenced_module_vars_(std::move(referenced_module_vars)),
-      local_referenced_module_vars_(std::move(local_referenced_module_vars)),
-      return_statements_(std::move(return_statements)),
-      callsites_(callsites),
-      ancestor_entry_points_(std::move(ancestor_entry_points)),
-      workgroup_size_(std::move(workgroup_size)) {
+      workgroup_size_{WorkgroupDimension{1}, WorkgroupDimension{1},
+                      WorkgroupDimension{1}} {
   for (auto* parameter : parameters) {
     parameter->SetOwner(this);
   }
-}
+}  // namespace sem
 
 Function::~Function() = default;
 
-std::vector<std::pair<const Variable*, ast::LocationDecoration*>>
-Function::ReferencedLocationVariables() const {
-  std::vector<std::pair<const Variable*, ast::LocationDecoration*>> ret;
+std::vector<std::pair<const Variable*, const ast::LocationDecoration*>>
+Function::TransitivelyReferencedLocationVariables() const {
+  std::vector<std::pair<const Variable*, const ast::LocationDecoration*>> ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
-    for (auto* deco : var->Declaration()->decorations()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
+    for (auto* deco : var->Declaration()->decorations) {
       if (auto* location = deco->As<ast::LocationDecoration>()) {
         ret.push_back({var, location});
         break;
@@ -67,42 +57,44 @@ Function::ReferencedLocationVariables() const {
   return ret;
 }
 
-Function::VariableBindings Function::ReferencedUniformVariables() const {
+Function::VariableBindings Function::TransitivelyReferencedUniformVariables()
+    const {
   VariableBindings ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
     if (var->StorageClass() != ast::StorageClass::kUniform) {
       continue;
     }
 
-    if (auto binding_point = var->Declaration()->binding_point()) {
+    if (auto binding_point = var->Declaration()->BindingPoint()) {
       ret.push_back({var, binding_point});
     }
   }
   return ret;
 }
 
-Function::VariableBindings Function::ReferencedStorageBufferVariables() const {
+Function::VariableBindings
+Function::TransitivelyReferencedStorageBufferVariables() const {
   VariableBindings ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
     if (var->StorageClass() != ast::StorageClass::kStorage) {
       continue;
     }
 
-    if (auto binding_point = var->Declaration()->binding_point()) {
+    if (auto binding_point = var->Declaration()->BindingPoint()) {
       ret.push_back({var, binding_point});
     }
   }
   return ret;
 }
 
-std::vector<std::pair<const Variable*, ast::BuiltinDecoration*>>
-Function::ReferencedBuiltinVariables() const {
-  std::vector<std::pair<const Variable*, ast::BuiltinDecoration*>> ret;
+std::vector<std::pair<const Variable*, const ast::BuiltinDecoration*>>
+Function::TransitivelyReferencedBuiltinVariables() const {
+  std::vector<std::pair<const Variable*, const ast::BuiltinDecoration*>> ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
-    for (auto* deco : var->Declaration()->decorations()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
+    for (auto* deco : var->Declaration()->decorations) {
       if (auto* builtin = deco->As<ast::BuiltinDecoration>()) {
         ret.push_back({var, builtin});
         break;
@@ -112,31 +104,34 @@ Function::ReferencedBuiltinVariables() const {
   return ret;
 }
 
-Function::VariableBindings Function::ReferencedSamplerVariables() const {
-  return ReferencedSamplerVariablesImpl(ast::SamplerKind::kSampler);
-}
-
-Function::VariableBindings Function::ReferencedComparisonSamplerVariables()
+Function::VariableBindings Function::TransitivelyReferencedSamplerVariables()
     const {
-  return ReferencedSamplerVariablesImpl(ast::SamplerKind::kComparisonSampler);
+  return TransitivelyReferencedSamplerVariablesImpl(ast::SamplerKind::kSampler);
 }
 
-Function::VariableBindings Function::ReferencedSampledTextureVariables() const {
-  return ReferencedSampledTextureVariablesImpl(false);
+Function::VariableBindings
+Function::TransitivelyReferencedComparisonSamplerVariables() const {
+  return TransitivelyReferencedSamplerVariablesImpl(
+      ast::SamplerKind::kComparisonSampler);
 }
 
-Function::VariableBindings Function::ReferencedMultisampledTextureVariables()
-    const {
-  return ReferencedSampledTextureVariablesImpl(true);
+Function::VariableBindings
+Function::TransitivelyReferencedSampledTextureVariables() const {
+  return TransitivelyReferencedSampledTextureVariablesImpl(false);
 }
 
-Function::VariableBindings Function::ReferencedVariablesOfType(
+Function::VariableBindings
+Function::TransitivelyReferencedMultisampledTextureVariables() const {
+  return TransitivelyReferencedSampledTextureVariablesImpl(true);
+}
+
+Function::VariableBindings Function::TransitivelyReferencedVariablesOfType(
     const tint::TypeInfo& type_info) const {
   VariableBindings ret;
-  for (auto* var : ReferencedModuleVariables()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
     auto* unwrapped_type = var->Type()->UnwrapRef();
     if (unwrapped_type->TypeInfo().Is(type_info)) {
-      if (auto binding_point = var->Declaration()->binding_point()) {
+      if (auto binding_point = var->Declaration()->BindingPoint()) {
         ret.push_back({var, binding_point});
       }
     }
@@ -145,37 +140,38 @@ Function::VariableBindings Function::ReferencedVariablesOfType(
 }
 
 bool Function::HasAncestorEntryPoint(Symbol symbol) const {
-  for (const auto& point : ancestor_entry_points_) {
-    if (point == symbol) {
+  for (const auto* point : ancestor_entry_points_) {
+    if (point->Declaration()->symbol == symbol) {
       return true;
     }
   }
   return false;
 }
 
-Function::VariableBindings Function::ReferencedSamplerVariablesImpl(
+Function::VariableBindings Function::TransitivelyReferencedSamplerVariablesImpl(
     ast::SamplerKind kind) const {
   VariableBindings ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
     auto* unwrapped_type = var->Type()->UnwrapRef();
     auto* sampler = unwrapped_type->As<sem::Sampler>();
     if (sampler == nullptr || sampler->kind() != kind) {
       continue;
     }
 
-    if (auto binding_point = var->Declaration()->binding_point()) {
+    if (auto binding_point = var->Declaration()->BindingPoint()) {
       ret.push_back({var, binding_point});
     }
   }
   return ret;
 }
 
-Function::VariableBindings Function::ReferencedSampledTextureVariablesImpl(
+Function::VariableBindings
+Function::TransitivelyReferencedSampledTextureVariablesImpl(
     bool multisampled) const {
   VariableBindings ret;
 
-  for (auto* var : ReferencedModuleVariables()) {
+  for (auto* var : TransitivelyReferencedGlobals()) {
     auto* unwrapped_type = var->Type()->UnwrapRef();
     auto* texture = unwrapped_type->As<sem::Texture>();
     if (texture == nullptr) {
@@ -189,7 +185,7 @@ Function::VariableBindings Function::ReferencedSampledTextureVariablesImpl(
       continue;
     }
 
-    if (auto binding_point = var->Declaration()->binding_point()) {
+    if (auto binding_point = var->Declaration()->BindingPoint()) {
       ret.push_back({var, binding_point});
     }
   }

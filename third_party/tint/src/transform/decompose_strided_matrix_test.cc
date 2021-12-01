@@ -20,9 +20,9 @@
 
 #include "src/ast/disable_validation_decoration.h"
 #include "src/program_builder.h"
-#include "src/transform/inline_pointer_lets.h"
-#include "src/transform/simplify.h"
+#include "src/transform/simplify_pointers.h"
 #include "src/transform/test_helper.h"
+#include "src/transform/unshadow.h"
 
 namespace tint {
 namespace transform {
@@ -35,17 +35,7 @@ TEST_F(DecomposeStridedMatrixTest, Empty) {
   auto* src = R"()";
   auto* expect = src;
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(src);
-
-  EXPECT_EQ(expect, str(got));
-}
-
-TEST_F(DecomposeStridedMatrixTest, MissingDependencyInlinePointerLets) {
-  auto* src = R"()";
-  auto* expect =
-      R"(error: tint::transform::DecomposeStridedMatrix depends on tint::transform::InlinePointerLets but the dependency was not run)";
-
-  auto got = Run<Simplify, DecomposeStridedMatrix>(src);
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(src);
 
   EXPECT_EQ(expect, str(got));
 }
@@ -53,9 +43,9 @@ TEST_F(DecomposeStridedMatrixTest, MissingDependencyInlinePointerLets) {
 TEST_F(DecomposeStridedMatrixTest, MissingDependencySimplify) {
   auto* src = R"()";
   auto* expect =
-      R"(error: tint::transform::DecomposeStridedMatrix depends on tint::transform::Simplify but the dependency was not run)";
+      R"(error: tint::transform::DecomposeStridedMatrix depends on tint::transform::SimplifyPointers but the dependency was not run)";
 
-  auto got = Run<InlinePointerLets, DecomposeStridedMatrix>(src);
+  auto got = Run<DecomposeStridedMatrix>(src);
 
   EXPECT_EQ(expect, str(got));
 }
@@ -82,8 +72,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(16),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -121,7 +110,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -149,8 +138,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformColumn) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(16),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -184,7 +172,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -212,8 +200,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix_DefaultStride) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(16),
                   b.create<ast::StrideDecoration>(8),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -248,7 +235,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -276,8 +263,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageMatrix) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -315,7 +301,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -343,8 +329,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageColumn) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(16),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -378,7 +363,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -406,8 +391,7 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageMatrix) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -446,7 +430,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -474,8 +458,7 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageColumn) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -509,7 +492,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -543,8 +526,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadWriteViaPointerLets) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       },
       {
@@ -599,7 +581,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -626,8 +608,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadPrivateMatrix) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       });
   b.Global("s", b.ty.Of(S), ast::StorageClass::kPrivate);
@@ -657,7 +638,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));
@@ -684,8 +665,7 @@ TEST_F(DecomposeStridedMatrixTest, WritePrivateMatrix) {
               {
                   b.create<ast::StructMemberOffsetDecoration>(8),
                   b.create<ast::StrideDecoration>(32),
-                  b.ASTNodes().Create<ast::DisableValidationDecoration>(
-                      b.ID(), ast::DisabledValidation::kIgnoreStrideDecoration),
+                  b.Disable(ast::DisabledValidation::kIgnoreStrideDecoration),
               }),
       });
   b.Global("s", b.ty.Of(S), ast::StorageClass::kPrivate);
@@ -716,7 +696,7 @@ fn f() {
 }
 )";
 
-  auto got = Run<InlinePointerLets, Simplify, DecomposeStridedMatrix>(
+  auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedMatrix>(
       Program(std::move(b)));
 
   EXPECT_EQ(expect, str(got));

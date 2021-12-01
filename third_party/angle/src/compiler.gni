@@ -1,5 +1,5 @@
-# Copyright 2013 The ANGLE Project Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
+# Copyright 2013 The ANGLE Project Authors.All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
 # found in the LICENSE file.
 
 angle_translator_exported_headers = [
@@ -41,6 +41,7 @@ angle_translator_sources = [
   "src/compiler/translator/Diagnostics.h",
   "src/compiler/translator/DirectiveHandler.cpp",
   "src/compiler/translator/DirectiveHandler.h",
+  "src/compiler/translator/DriverUniformMetal.h",
   "src/compiler/translator/ExtensionBehavior.cpp",
   "src/compiler/translator/ExtensionBehavior.h",
   "src/compiler/translator/FlagStd140Structs.cpp",
@@ -127,6 +128,8 @@ angle_translator_sources = [
   "src/compiler/translator/tree_ops/ClampIndirectIndices.h",
   "src/compiler/translator/tree_ops/ClampPointSize.cpp",
   "src/compiler/translator/tree_ops/ClampPointSize.h",
+  "src/compiler/translator/tree_ops/ConvertUnsupportedConstructorsToFunctionCalls.cpp",
+  "src/compiler/translator/tree_ops/ConvertUnsupportedConstructorsToFunctionCalls.h",
   "src/compiler/translator/tree_ops/DeclareAndInitBuiltinsForInstancedMultiview.cpp",
   "src/compiler/translator/tree_ops/DeclareAndInitBuiltinsForInstancedMultiview.h",
   "src/compiler/translator/tree_ops/DeferGlobalInitializers.cpp",
@@ -213,9 +216,12 @@ angle_translator_sources = [
   "src/compiler/translator/tree_util/IntermNodePatternMatcher.h",
   "src/compiler/translator/tree_util/IntermNode_util.cpp",
   "src/compiler/translator/tree_util/IntermNode_util.h",
+  "src/compiler/translator/tree_util/IntermRebuild.cpp",
+  "src/compiler/translator/tree_util/IntermRebuild.h",
   "src/compiler/translator/tree_util/IntermTraverse.cpp",
   "src/compiler/translator/tree_util/IntermTraverse.h",
   "src/compiler/translator/tree_util/NodeSearch.h",
+  "src/compiler/translator/tree_util/NodeType.h",
   "src/compiler/translator/tree_util/ReplaceArrayOfMatrixVarying.cpp",
   "src/compiler/translator/tree_util/ReplaceArrayOfMatrixVarying.h",
   "src/compiler/translator/tree_util/ReplaceClipCullDistanceVariable.cpp",
@@ -258,7 +264,6 @@ angle_translator_glsl_sources = [
   "src/compiler/translator/ExtensionGLSL.h",
   "src/compiler/translator/TranslatorGLSL.cpp",
   "src/compiler/translator/VersionGLSL.cpp",
-  "src/compiler/translator/VersionGLSL.h",
   "src/compiler/translator/tree_ops/gl/ClampFragDepth.cpp",
   "src/compiler/translator/tree_ops/gl/RegenerateStructNames.cpp",
   "src/compiler/translator/tree_ops/gl/RewriteRepeatedAssignToSwizzled.cpp",
@@ -336,7 +341,6 @@ angle_translator_lib_vulkan_sources = [
   "src/compiler/translator/OutputVulkanGLSL.cpp",
   "src/compiler/translator/OutputVulkanGLSL.h",
   "src/compiler/translator/TranslatorVulkan.cpp",
-  "src/compiler/translator/glslang_wrapper.cpp",
   "src/compiler/translator/tree_ops/vulkan/DeclarePerVertexBlocks.cpp",
   "src/compiler/translator/tree_ops/vulkan/DeclarePerVertexBlocks.h",
   "src/compiler/translator/tree_ops/vulkan/EarlyFragmentTestsOptimization.cpp",
@@ -351,19 +355,18 @@ angle_translator_lib_vulkan_sources = [
   "src/compiler/translator/tree_ops/vulkan/RewriteR32fImages.cpp",
   "src/compiler/translator/tree_ops/vulkan/RewriteR32fImages.h",
 ]
-if (is_android) {
-  angle_translator_sources += [
-    "src/compiler/translator/ImmutableString_ESSL_autogen.cpp",
-    "src/compiler/translator/SymbolTable_ESSL_autogen.cpp",
-  ]
-} else {
-  angle_translator_sources += [
-    "src/compiler/translator/ImmutableString_autogen.cpp",
-    "src/compiler/translator/SymbolTable_autogen.cpp",
-  ]
-}
+
+angle_translator_essl_symbol_table_sources = [
+  "src/compiler/translator/ImmutableString_ESSL_autogen.cpp",
+  "src/compiler/translator/SymbolTable_ESSL_autogen.cpp",
+]
+angle_translator_glsl_symbol_table_sources = [
+  "src/compiler/translator/ImmutableString_autogen.cpp",
+  "src/compiler/translator/SymbolTable_autogen.cpp",
+]
 
 angle_translator_lib_metal_sources = [
+  "src/compiler/translator/DriverUniformMetal.cpp",
   "src/compiler/translator/TranslatorMetal.cpp",
   "src/compiler/translator/TranslatorMetalDirect.cpp",
   "src/compiler/translator/TranslatorMetalDirect/AddExplicitTypeCasts.cpp",
@@ -383,8 +386,6 @@ angle_translator_lib_metal_sources = [
   "src/compiler/translator/TranslatorMetalDirect/HoistConstants.h",
   "src/compiler/translator/TranslatorMetalDirect/IdGen.cpp",
   "src/compiler/translator/TranslatorMetalDirect/IdGen.h",
-  "src/compiler/translator/TranslatorMetalDirect/IntermRebuild.cpp",
-  "src/compiler/translator/TranslatorMetalDirect/IntermRebuild.h",
   "src/compiler/translator/TranslatorMetalDirect/IntroduceVertexIndexID.cpp",
   "src/compiler/translator/TranslatorMetalDirect/IntroduceVertexIndexID.h",
   "src/compiler/translator/TranslatorMetalDirect/Layout.cpp",
@@ -399,7 +400,6 @@ angle_translator_lib_metal_sources = [
   "src/compiler/translator/TranslatorMetalDirect/Name.h",
   "src/compiler/translator/TranslatorMetalDirect/NameEmbeddedUniformStructsMetal.cpp",
   "src/compiler/translator/TranslatorMetalDirect/NameEmbeddedUniformStructsMetal.h",
-  "src/compiler/translator/TranslatorMetalDirect/NodeType.h",
   "src/compiler/translator/TranslatorMetalDirect/Pipeline.cpp",
   "src/compiler/translator/TranslatorMetalDirect/Pipeline.h",
   "src/compiler/translator/TranslatorMetalDirect/ProgramPrelude.cpp",
@@ -409,10 +409,6 @@ angle_translator_lib_metal_sources = [
   "src/compiler/translator/TranslatorMetalDirect/Reference.h",
   "src/compiler/translator/TranslatorMetalDirect/RewriteCaseDeclarations.cpp",
   "src/compiler/translator/TranslatorMetalDirect/RewriteCaseDeclarations.h",
-  "src/compiler/translator/TranslatorMetalDirect/RewriteGlobalQualifierDecls.cpp",
-  "src/compiler/translator/TranslatorMetalDirect/RewriteGlobalQualifierDecls.h",
-  "src/compiler/translator/TranslatorMetalDirect/RewriteKeywords.cpp",
-  "src/compiler/translator/TranslatorMetalDirect/RewriteKeywords.h",
   "src/compiler/translator/TranslatorMetalDirect/RewriteOutArgs.cpp",
   "src/compiler/translator/TranslatorMetalDirect/RewriteOutArgs.h",
   "src/compiler/translator/TranslatorMetalDirect/RewritePipelines.cpp",

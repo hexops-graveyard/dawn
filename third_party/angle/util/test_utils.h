@@ -16,10 +16,6 @@
 #include "common/angleutils.h"
 #include "util/Timer.h"
 
-// DeleteFile is defined in the Windows headers to either DeleteFileA or DeleteFileW. Make sure
-// there are no conflicts.
-#undef DeleteFile
-
 namespace angle
 {
 // Cross platform equivalent of the Windows Sleep function
@@ -44,7 +40,7 @@ void PrintStackBacktrace();
 // Get temporary directory.
 bool GetTempDir(char *tempDirOut, uint32_t maxDirNameLen);
 
-// Creates a temporary file. The full path is placed in |path|, and the
+// Creates a temporary file. The full path is placed in |tempFileNameOut|, and the
 // function returns true if was successful in creating the file. The file will
 // be empty and all handles closed after this function returns.
 bool CreateTemporaryFile(char *tempFileNameOut, uint32_t maxFileNameLen);
@@ -53,7 +49,7 @@ bool CreateTemporaryFile(char *tempFileNameOut, uint32_t maxFileNameLen);
 bool CreateTemporaryFileInDir(const char *dir, char *tempFileNameOut, uint32_t maxFileNameLen);
 
 // Deletes a file or directory.
-bool DeleteFile(const char *path);
+bool DeleteSystemFile(const char *path);
 
 // Reads a file contents into a string.
 bool ReadEntireFileToString(const char *filePath, char *contentsOut, uint32_t maxLen);
@@ -72,7 +68,7 @@ class Process : angle::NonCopyable
     virtual bool kill()       = 0;
     virtual int getExitCode() = 0;
 
-    double getElapsedTimeSeconds() const { return mTimer.getElapsedTime(); }
+    double getElapsedTimeSeconds() const { return mTimer.getElapsedWallClockTime(); }
     const std::string &getStdout() const { return mStdout; }
     const std::string &getStderr() const { return mStderr; }
 

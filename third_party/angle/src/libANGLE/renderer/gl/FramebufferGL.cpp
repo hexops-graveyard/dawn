@@ -305,8 +305,9 @@ class ScopedEXTTextureNorm16ReadbackWorkaround
                 checkedAllocatedBytes += area.width * pixelBytes - rowBytes;
             }
             ANGLE_CHECK_GL_MATH(contextGL, checkedAllocatedBytes.IsValid());
-            tmpPixels = new GLubyte[checkedAllocatedBytes.ValueOrDie()];
-            memset(tmpPixels, 0, checkedAllocatedBytes.ValueOrDie());
+            const GLuint allocatedBytes = checkedAllocatedBytes.ValueOrDie();
+            tmpPixels                   = new GLubyte[allocatedBytes];
+            memset(tmpPixels, 0, allocatedBytes);
         }
 
         return angle::Result::Continue;
@@ -714,7 +715,7 @@ angle::Result FramebufferGL::readPixels(const gl::Context *context,
 
     // We want to use rowLength, but that might not be supported.
     bool cannotSetDesiredRowLength =
-        packState.rowLength && !GetImplAs<ContextGL>(context)->getNativeExtensions().packSubimage;
+        packState.rowLength && !GetImplAs<ContextGL>(context)->getNativeExtensions().packSubimageNV;
 
     bool usePackSkipWorkaround = features.emulatePackSkipRowsAndPackSkipPixels.enabled &&
                                  (packState.skipRows != 0 || packState.skipPixels != 0);

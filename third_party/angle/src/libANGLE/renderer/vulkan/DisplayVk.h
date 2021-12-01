@@ -44,10 +44,6 @@ class ShareGroupVk : public ShareGroupImpl
         mResourceUseLists.emplace_back(std::move(resourceUseList));
     }
 
-    bool isSyncObjectPendingFlush() { return mSyncObjectPendingFlush; }
-    void setSyncObjectPendingFlush() { mSyncObjectPendingFlush = true; }
-    void clearSyncObjectPendingFlush() { mSyncObjectPendingFlush = false; }
-
   private:
     // ANGLE uses a PipelineLayout cache to store compatible pipeline layouts.
     PipelineLayoutCache mPipelineLayoutCache;
@@ -61,8 +57,6 @@ class ShareGroupVk : public ShareGroupImpl
     // List of resources currently used that need to be freed when any ContextVk in this
     // ShareGroupVk submits the next command.
     std::vector<vk::ResourceUseList> mResourceUseLists;
-
-    bool mSyncObjectPendingFlush;
 };
 
 class DisplayVk : public DisplayImpl, public vk::Context
@@ -85,6 +79,8 @@ class DisplayVk : public DisplayImpl, public vk::Context
     std::string getRendererDescription() override;
     std::string getVendorString() override;
     std::string getVersionString() override;
+
+    DeviceImpl *createDevice() override;
 
     egl::Error waitClient(const gl::Context *context) override;
     egl::Error waitNative(const gl::Context *context, EGLint engine) override;

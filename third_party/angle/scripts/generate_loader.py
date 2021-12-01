@@ -234,9 +234,8 @@ def gen_trace_gles_and_egl_loaders():
 def gen_util_wgl_loader():
 
     supported_wgl_extensions = [
-        "WGL_ARB_create_context",
-        "WGL_ARB_extensions_string",
-        "WGL_EXT_swap_control",
+        "WGL_ARB_create_context", "WGL_ARB_extensions_string", "WGL_ARB_pixel_format",
+        "WGL_EXT_colorspace", "WGL_EXT_swap_control"
     ]
 
     source = "wgl.xml"
@@ -319,13 +318,14 @@ trace_gles_preamble = """#if defined(GL_GLES_PROTOTYPES) && GL_GLES_PROTOTYPES
 #endif  // defined(GL_GLES_PROTOTYPES)
 
 #include "angle_gl.h"
-#include "restricted_traces_autogen.h"
+#include "restricted_traces_export.h"
 """
 
-trace_egl_preamble = """#include "restricted_traces_autogen.h"
-
+trace_egl_preamble = """
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+
+#include "restricted_traces_export.h"
 """
 
 util_wgl_preamble = """

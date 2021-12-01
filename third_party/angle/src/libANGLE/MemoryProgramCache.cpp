@@ -16,11 +16,12 @@
 #include <GLSLANG/ShaderVars.h>
 #include <anglebase/sha1.h>
 
-#include "common/angle_version.h"
+#include "common/angle_version_info.h"
 #include "common/utilities.h"
 #include "libANGLE/BinaryStream.h"
 #include "libANGLE/Context.h"
 #include "libANGLE/Uniform.h"
+#include "libANGLE/capture/FrameCapture.h"
 #include "libANGLE/histogram_macros.h"
 #include "libANGLE/renderer/ProgramImpl.h"
 #include "platform/PlatformMethods.h"
@@ -115,7 +116,7 @@ void MemoryProgramCache::ComputeHash(const Context *context,
     }
 
     // Add some ANGLE metadata and Context properties, such as version and back-end.
-    hashStream << ANGLE_COMMIT_HASH << context->getClientMajorVersion()
+    hashStream << angle::GetANGLECommitHash() << context->getClientMajorVersion()
                << context->getClientMinorVersion() << context->getString(GL_RENDERER);
 
     // Hash pre-link program properties.
@@ -125,6 +126,9 @@ void MemoryProgramCache::ComputeHash(const Context *context,
                << program->getState().getTransformFeedbackBufferMode()
                << program->getState().getOutputLocations()
                << program->getState().getSecondaryOutputLocations();
+
+    // Include the status of FrameCapture, which adds source strings to the binary
+    hashStream << context->getShareGroup()->getFrameCaptureShared()->enabled();
 
     // Call the secure SHA hashing function.
     const std::string &programKey = hashStream.str();

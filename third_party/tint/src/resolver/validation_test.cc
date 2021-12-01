@@ -47,21 +47,16 @@ namespace {
 
 using ResolverValidationTest = ResolverTest;
 
-class FakeStmt : public ast::Statement {
+class FakeStmt : public Castable<FakeStmt, ast::Statement> {
  public:
-  FakeStmt(ProgramID program_id, Source source)
-      : ast::Statement(program_id, source) {}
+  FakeStmt(ProgramID pid, Source src) : Base(pid, src) {}
   FakeStmt* Clone(CloneContext*) const override { return nullptr; }
-  void to_str(const sem::Info&, std::ostream& out, size_t) const override {
-    out << "Fake";
-  }
 };
 
 class FakeExpr : public Castable<FakeExpr, ast::Expression> {
  public:
-  FakeExpr(ProgramID program_id, Source source) : Base(program_id, source) {}
+  FakeExpr(ProgramID pid, Source src) : Base(pid, src) {}
   FakeExpr* Clone(CloneContext*) const override { return nullptr; }
-  void to_str(const sem::Info&, std::ostream&, size_t) const override {}
 };
 
 TEST_F(ResolverValidationTest, WorkgroupMemoryUsedInVertexStage) {
@@ -95,10 +90,8 @@ TEST_F(ResolverValidationTest, WorkgroupMemoryUsedInFragmentStage) {
   auto* stmt = Assign(Expr("dst"), Expr(Source{{3, 4}}, "wg"));
 
   Func(Source{{5, 6}}, "f2", {}, ty.void_(), {stmt});
-  Func(Source{{7, 8}}, "f1", {}, ty.void_(),
-       {create<ast::CallStatement>(Call("f2"))});
-  Func(Source{{9, 10}}, "f0", {}, ty.void_(),
-       {create<ast::CallStatement>(Call("f1"))},
+  Func(Source{{7, 8}}, "f1", {}, ty.void_(), {CallStmt(Call("f2"))});
+  Func(Source{{9, 10}}, "f0", {}, ty.void_(), {CallStmt(Call("f1"))},
        ast::DecorationList{Stage(ast::PipelineStage::kFragment)});
 
   EXPECT_FALSE(r()->Resolve());
@@ -111,32 +104,20 @@ TEST_F(ResolverValidationTest, WorkgroupMemoryUsedInFragmentStage) {
 9:10 note: called by entry point 'f0')");
 }
 
-TEST_F(ResolverValidationTest, Error_WithEmptySource) {
-  auto* s = create<FakeStmt>();
-  WrapInFunction(s);
-
-  EXPECT_FALSE(r()->Resolve());
-
-  EXPECT_EQ(r()->error(),
-            "error: unknown statement type for type determination: Fake");
-}
-
-TEST_F(ResolverValidationTest, Stmt_Error_Unknown) {
-  auto* s = create<FakeStmt>(Source{Source::Location{2, 30}});
-  WrapInFunction(s);
-
-  EXPECT_FALSE(r()->Resolve());
-
-  EXPECT_EQ(r()->error(),
-            "2:30 error: unknown statement type for type determination: Fake");
+TEST_F(ResolverValidationTest, UnhandledStmt) {
+  EXPECT_FATAL_FAILURE(
+      {
+        ProgramBuilder b;
+        b.WrapInFunction(b.create<FakeStmt>());
+        Program(std::move(b));
+      },
+      "internal compiler error: unhandled node type: tint::resolver::FakeStmt");
 }
 
 TEST_F(ResolverValidationTest, Stmt_If_NonBool) {
   // if (1.23f) {}
 
-  WrapInFunction(If(create<ast::ScalarConstructorExpression>(Source{{12, 34}},
-                                                             Literal(1.23f)),
-                    Block()));
+  WrapInFunction(If(Expr(Source{{12, 34}}, 1.23f), Block()));
 
   EXPECT_FALSE(r()->Resolve());
 
@@ -147,10 +128,8 @@ TEST_F(ResolverValidationTest, Stmt_If_NonBool) {
 TEST_F(ResolverValidationTest, Stmt_Else_NonBool) {
   // else (1.23f) {}
 
-  WrapInFunction(If(Expr(true), Block(),
-                    Else(create<ast::ScalarConstructorExpression>(
-                             Source{{12, 34}}, Literal(1.23f)),
-                         Block())));
+  WrapInFunction(
+      If(Expr(true), Block(), Else(Expr(Source{{12, 34}}, 1.23f), Block())));
 
   EXPECT_FALSE(r()->Resolve());
 
@@ -171,23 +150,26 @@ TEST_F(ResolverValidationTest, Expr_ErrUnknownExprType) {
 
 TEST_F(ResolverValidationTest, Expr_DontCall_Function) {
   Func("func", {}, ty.void_(), {}, {});
-  auto* ident = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("func"));
-  WrapInFunction(ident);
+  WrapInFunction(Expr(Source{{{3, 3}, {3, 8}}}, "func"));
 
   EXPECT_FALSE(r()->Resolve());
   EXPECT_EQ(r()->error(), "3:8 error: missing '(' for function call");
 }
 
 TEST_F(ResolverValidationTest, Expr_DontCall_Intrinsic) {
-  auto* ident = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("round"));
-  WrapInFunction(ident);
+  WrapInFunction(Expr(Source{{{3, 3}, {3, 8}}}, "round"));
 
   EXPECT_FALSE(r()->Resolve());
   EXPECT_EQ(r()->error(), "3:8 error: missing '(' for intrinsic call");
+}
+
+TEST_F(ResolverValidationTest, Expr_DontCall_Type) {
+  Alias("T", ty.u32());
+  WrapInFunction(Expr(Source{{{3, 3}, {3, 8}}}, "T"));
+
+  EXPECT_FALSE(r()->Resolve());
+  EXPECT_EQ(r()->error(),
+            "3:8 error: missing '(' for type constructor or cast");
 }
 
 TEST_F(ResolverValidationTest,
@@ -212,8 +194,7 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariable_Fail) {
   WrapInFunction(assign);
 
   EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "12:34 error: identifier must be declared before use: b");
+  EXPECT_EQ(r()->error(), "12:34 error: unknown identifier: 'b'");
 }
 
 TEST_F(ResolverValidationTest, UsingUndefinedVariableInBlockStatement_Fail) {
@@ -228,30 +209,7 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariableInBlockStatement_Fail) {
   WrapInFunction(body);
 
   EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "12:34 error: identifier must be declared before use: b");
-}
-
-TEST_F(ResolverValidationTest, UsingUndefinedVariableGlobalVariableAfter_Fail) {
-  // fn my_func() {
-  //   global_var = 3.14f;
-  // }
-  // var global_var: f32 = 2.1;
-
-  auto* lhs = Expr(Source{{12, 34}}, "global_var");
-  auto* rhs = Expr(3.14f);
-
-  Func("my_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Assign(lhs, rhs),
-       },
-       ast::DecorationList{Stage(ast::PipelineStage::kVertex)});
-
-  Global("global_var", ty.f32(), ast::StorageClass::kPrivate, Expr(2.1f));
-
-  EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "12:34 error: identifier must be declared before use: global_var");
+  EXPECT_EQ(r()->error(), "12:34 error: unknown identifier: 'b'");
 }
 
 TEST_F(ResolverValidationTest, UsingUndefinedVariableGlobalVariable_Pass) {
@@ -264,8 +222,8 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariableGlobalVariable_Pass) {
   Global("global_var", ty.f32(), ast::StorageClass::kPrivate, Expr(2.1f));
 
   Func("my_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Assign(Expr(Source{Source::Location{12, 34}}, "global_var"), 3.14f),
+       {
+           Assign(Expr(Source{{12, 34}}, "global_var"), 3.14f),
            Return(),
        });
 
@@ -282,7 +240,7 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariableInnerScope_Fail) {
   auto* cond = Expr(true);
   auto* body = Block(Decl(var));
 
-  SetSource(Source{Source::Location{12, 34}});
+  SetSource(Source{{12, 34}});
   auto* lhs = Expr(Source{{12, 34}}, "a");
   auto* rhs = Expr(3.14f);
 
@@ -293,8 +251,7 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariableInnerScope_Fail) {
   WrapInFunction(outer_body);
 
   EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "12:34 error: identifier must be declared before use: a");
+  EXPECT_EQ(r()->error(), "12:34 error: unknown identifier: 'a'");
 }
 
 TEST_F(ResolverValidationTest, UsingUndefinedVariableOuterScope_Pass) {
@@ -336,16 +293,14 @@ TEST_F(ResolverValidationTest, UsingUndefinedVariableDifferentScope_Fail) {
   WrapInFunction(outer_body);
 
   EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "12:34 error: identifier must be declared before use: a");
+  EXPECT_EQ(r()->error(), "12:34 error: unknown identifier: 'a'");
 }
 
 TEST_F(ResolverValidationTest, StorageClass_FunctionVariableWorkgroupClass) {
   auto* var = Var("var", ty.i32(), ast::StorageClass::kWorkgroup);
 
   auto* stmt = Decl(var);
-  Func("func", ast::VariableList{}, ty.void_(), ast::StatementList{stmt},
-       ast::DecorationList{});
+  Func("func", ast::VariableList{}, ty.void_(), {stmt}, ast::DecorationList{});
 
   EXPECT_FALSE(r()->Resolve());
 
@@ -357,8 +312,7 @@ TEST_F(ResolverValidationTest, StorageClass_FunctionVariableI32) {
   auto* var = Var("s", ty.i32(), ast::StorageClass::kPrivate);
 
   auto* stmt = Decl(var);
-  Func("func", ast::VariableList{}, ty.void_(), ast::StatementList{stmt},
-       ast::DecorationList{});
+  Func("func", ast::VariableList{}, ty.void_(), {stmt}, ast::DecorationList{});
 
   EXPECT_FALSE(r()->Resolve());
 
@@ -399,9 +353,7 @@ TEST_F(ResolverValidationTest, StorageClass_TextureExplicitStorageClass) {
 TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_BadChar) {
   Global("my_vec", ty.vec3<f32>(), ast::StorageClass::kPrivate);
 
-  auto* ident = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 7}}},
-      Symbols().Register("xyqz"));
+  auto* ident = Expr(Source{{{3, 3}, {3, 7}}}, "xyqz");
 
   auto* mem = MemberAccessor("my_vec", ident);
   WrapInFunction(mem);
@@ -413,9 +365,7 @@ TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_BadChar) {
 TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_MixedChars) {
   Global("my_vec", ty.vec4<f32>(), ast::StorageClass::kPrivate);
 
-  auto* ident = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 7}}},
-      Symbols().Register("rgyw"));
+  auto* ident = Expr(Source{{{3, 3}, {3, 7}}}, "rgyw");
 
   auto* mem = MemberAccessor("my_vec", ident);
   WrapInFunction(mem);
@@ -429,9 +379,7 @@ TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_MixedChars) {
 TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_BadLength) {
   Global("my_vec", ty.vec3<f32>(), ast::StorageClass::kPrivate);
 
-  auto* ident = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("zzzzz"));
+  auto* ident = Expr(Source{{{3, 3}, {3, 8}}}, "zzzzz");
   auto* mem = MemberAccessor("my_vec", ident);
   WrapInFunction(mem);
 
@@ -442,8 +390,7 @@ TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_BadLength) {
 TEST_F(ResolverValidationTest, Expr_MemberAccessor_VectorSwizzle_BadIndex) {
   Global("my_vec", ty.vec2<f32>(), ast::StorageClass::kPrivate);
 
-  auto* ident = create<ast::IdentifierExpression>(Source{{3, 3}},
-                                                  Symbols().Register("z"));
+  auto* ident = Expr(Source{{3, 3}}, "z");
   auto* mem = MemberAccessor("my_vec", ident);
   WrapInFunction(mem);
 
@@ -455,9 +402,7 @@ TEST_F(ResolverValidationTest, Expr_MemberAccessor_BadParent) {
   // var param: vec4<f32>
   // let ret: f32 = *(&param).x;
   auto* param = Var("param", ty.vec4<f32>());
-  auto* x = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("x"));
+  auto* x = Expr(Source{{{3, 3}, {3, 8}}}, "x");
 
   auto* addressOf_expr = AddressOf(Source{{12, 34}}, param);
   auto* accessor_expr = MemberAccessor(addressOf_expr, x);
@@ -479,9 +424,7 @@ TEST_F(ResolverValidationTest, EXpr_MemberAccessor_FuncGoodParent) {
   auto* p =
       Param("p", ty.pointer(ty.vec4<f32>(), ast::StorageClass::kFunction));
   auto* star_p = Deref(p);
-  auto* z = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("z"));
+  auto* z = Expr(Source{{{3, 3}, {3, 8}}}, "z");
   auto* accessor_expr = MemberAccessor(star_p, z);
   auto* x = Var("x", ty.f32(), accessor_expr);
   Func("func", {p}, ty.f32(), {Decl(x), Return(x)});
@@ -495,18 +438,17 @@ TEST_F(ResolverValidationTest, EXpr_MemberAccessor_FuncBadParent) {
   // }
   auto* p =
       Param("p", ty.pointer(ty.vec4<f32>(), ast::StorageClass::kFunction));
-  auto* z = create<ast::IdentifierExpression>(
-      Source{{Source::Location{3, 3}, Source::Location{3, 8}}},
-      Symbols().Register("z"));
+  auto* z = Expr(Source{{{3, 3}, {3, 8}}}, "z");
   auto* accessor_expr = MemberAccessor(p, z);
   auto* star_p = Deref(accessor_expr);
   auto* x = Var("x", ty.f32(), star_p);
   Func("func", {p}, ty.f32(), {Decl(x), Return(x)});
 
   EXPECT_FALSE(r()->Resolve());
-  EXPECT_EQ(r()->error(),
-            "error: invalid member accessor expression. Expected vector or "
-            "struct, got 'ptr<function, vec4<f32>>'");
+  EXPECT_EQ(
+      r()->error(),
+      "error: invalid member accessor expression. "
+      "Expected vector or struct, got 'ptr<function, vec4<f32>, read_write>'");
 }
 
 TEST_F(ResolverValidationTest,
@@ -521,7 +463,7 @@ TEST_F(ResolverValidationTest,
   //     }
   // }
 
-  auto error_loc = Source{Source::Location{12, 34}};
+  auto error_loc = Source{{12, 34}};
   auto* body =
       Block(create<ast::ContinueStatement>(),
             Decl(error_loc, Var("z", ty.i32(), ast::StorageClass::kNone)),
@@ -572,9 +514,9 @@ TEST_F(ResolverValidationTest,
   //     }
   // }
 
-  auto cont_loc = Source{Source::Location{12, 34}};
-  auto decl_loc = Source{Source::Location{56, 78}};
-  auto ref_loc = Source{Source::Location{90, 12}};
+  auto cont_loc = Source{{12, 34}};
+  auto decl_loc = Source{{56, 78}};
+  auto ref_loc = Source{{90, 12}};
   auto* body =
       Block(If(Expr(true), Block(create<ast::ContinueStatement>(cont_loc))),
             Decl(Var(decl_loc, "z", ty.i32(), ast::StorageClass::kNone)));
@@ -604,9 +546,9 @@ TEST_F(
   //     }
   // }
 
-  auto cont_loc = Source{Source::Location{12, 34}};
-  auto decl_loc = Source{Source::Location{56, 78}};
-  auto ref_loc = Source{Source::Location{90, 12}};
+  auto cont_loc = Source{{12, 34}};
+  auto decl_loc = Source{{56, 78}};
+  auto ref_loc = Source{{90, 12}};
   auto* body =
       Block(If(Expr(true), Block(create<ast::ContinueStatement>(cont_loc))),
             Decl(Var(decl_loc, "z", ty.i32(), ast::StorageClass::kNone)));
@@ -638,9 +580,9 @@ TEST_F(ResolverValidationTest,
   //     }
   // }
 
-  auto cont_loc = Source{Source::Location{12, 34}};
-  auto decl_loc = Source{Source::Location{56, 78}};
-  auto ref_loc = Source{Source::Location{90, 12}};
+  auto cont_loc = Source{{12, 34}};
+  auto decl_loc = Source{{56, 78}};
+  auto ref_loc = Source{{90, 12}};
   auto* body =
       Block(If(Expr(true), Block(create<ast::ContinueStatement>(cont_loc))),
             Decl(Var(decl_loc, "z", ty.i32(), ast::StorageClass::kNone)));
@@ -671,9 +613,9 @@ TEST_F(ResolverValidationTest,
   //     }
   // }
 
-  auto cont_loc = Source{Source::Location{12, 34}};
-  auto decl_loc = Source{Source::Location{56, 78}};
-  auto ref_loc = Source{Source::Location{90, 12}};
+  auto cont_loc = Source{{12, 34}};
+  auto decl_loc = Source{{56, 78}};
+  auto ref_loc = Source{{90, 12}};
   auto* body =
       Block(If(Expr(true), Block(create<ast::ContinueStatement>(cont_loc))),
             Decl(Var(decl_loc, "z", ty.i32(), ast::StorageClass::kNone)));
@@ -772,7 +714,7 @@ TEST_F(ResolverTest, Stmt_Loop_ContinueInLoopBodyAfterDecl_UsageInContinuing) {
   //     }
   // }
 
-  auto error_loc = Source{Source::Location{12, 34}};
+  auto error_loc = Source{{12, 34}};
   auto* body = Block(Decl(Var("z", ty.i32(), ast::StorageClass::kNone)),
                      create<ast::ContinueStatement>());
   auto* continuing = Block(Assign(Expr(error_loc, "z"), 2));
@@ -939,7 +881,7 @@ TEST_F(ResolverValidationTest, Stmt_BreakInLoop) {
 TEST_F(ResolverValidationTest, Stmt_BreakInSwitch) {
   WrapInFunction(Loop(Block(Switch(
       Expr(1),
-      Case(Literal(1), Block(create<ast::BreakStatement>(Source{{12, 34}}))),
+      Case(Expr(1), Block(create<ast::BreakStatement>(Source{{12, 34}}))),
       DefaultCase()))));
   EXPECT_TRUE(r()->Resolve()) << r()->error();
 }
@@ -1043,9 +985,9 @@ TEST_F(ResolverValidationTest, OffsetAndAlignAndSizeDecoration) {
 
 TEST_F(ResolverTest, Expr_Constructor_Cast_Pointer) {
   auto* vf = Var("vf", ty.f32());
-  auto* c = create<ast::TypeConstructorExpression>(
-      Source{{12, 34}}, ty.pointer<i32>(ast::StorageClass::kFunction),
-      ExprList(vf));
+  auto* c =
+      Construct(Source{{12, 34}}, ty.pointer<i32>(ast::StorageClass::kFunction),
+                ExprList(vf));
   auto* ip = Const("ip", ty.pointer<i32>(ast::StorageClass::kFunction), c);
   WrapInFunction(Decl(vf), Decl(ip));
 
@@ -1057,4 +999,5 @@ TEST_F(ResolverTest, Expr_Constructor_Cast_Pointer) {
 }  // namespace resolver
 }  // namespace tint
 
+TINT_INSTANTIATE_TYPEINFO(tint::resolver::FakeStmt);
 TINT_INSTANTIATE_TYPEINFO(tint::resolver::FakeExpr);

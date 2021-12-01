@@ -23,7 +23,7 @@ namespace angle
 {
 // Given x, create 1 << x.
 template <typename BitsT, typename ParamT>
-constexpr static BitsT Bit(ParamT x)
+constexpr BitsT Bit(ParamT x)
 {
     // It's undefined behavior if the shift size is equal to or larger than the width of the type.
     ASSERT(static_cast<size_t>(x) < sizeof(BitsT) * 8);
@@ -33,7 +33,7 @@ constexpr static BitsT Bit(ParamT x)
 
 // Given x, create (1 << x) - 1, i.e. a mask with x bits set.
 template <typename BitsT, typename ParamT>
-constexpr static BitsT BitMask(ParamT x)
+constexpr BitsT BitMask(ParamT x)
 {
     if (static_cast<size_t>(x) == 0)
     {
@@ -737,13 +737,14 @@ template <std::size_t N>
 typename BitSetArray<N>::Iterator &BitSetArray<N>::Iterator::operator++()
 {
     ++mCurrentIterator;
-    if (mCurrentIterator == mCurrentParent->mBaseBitSetArray[mIndex].end())
+    while (mCurrentIterator == mCurrentParent->mBaseBitSetArray[mIndex].end())
     {
         mIndex++;
-        if (mIndex < mCurrentParent->kArraySize)
+        if (mIndex >= mCurrentParent->kArraySize)
         {
-            mCurrentIterator = mCurrentParent->mBaseBitSetArray[mIndex].begin();
+            break;
         }
+        mCurrentIterator = mCurrentParent->mBaseBitSetArray[mIndex].begin();
     }
     return *this;
 }

@@ -299,7 +299,7 @@ void CaptureGetFragDataLocation_name(const State &glState,
                                      const GLchar *name,
                                      ParamCapture *paramCapture)
 {
-    UNIMPLEMENTED();
+    CaptureString(name, paramCapture);
 }
 
 void CaptureGetInteger64i_v_data(const State &glState,
@@ -600,7 +600,8 @@ void CaptureGetUniformuiv_params(const State &glState,
                                  GLuint *params,
                                  ParamCapture *paramCapture)
 {
-    UNIMPLEMENTED();
+    /* At most a mat4 can be returned, so use this upper bound as count */
+    CaptureArray(params, 16 * sizeof(GLuint), paramCapture);
 }
 
 void CaptureGetVertexAttribIiv_params(const State &glState,
@@ -645,7 +646,7 @@ void CaptureInvalidateSubFramebuffer_attachments(const State &glState,
                                                  GLsizei height,
                                                  ParamCapture *paramCapture)
 {
-    UNIMPLEMENTED();
+    CaptureMemory(attachments, sizeof(GLenum) * numAttachments, paramCapture);
 }
 
 void CaptureProgramBinary_binary(const State &glState,
@@ -656,7 +657,7 @@ void CaptureProgramBinary_binary(const State &glState,
                                  GLsizei length,
                                  ParamCapture *paramCapture)
 {
-    UNIMPLEMENTED();
+    // Do nothing. glProgramBinary will be overridden in GenerateLinkedProgram.
 }
 
 void CaptureSamplerParameterfv_param(const State &glState,

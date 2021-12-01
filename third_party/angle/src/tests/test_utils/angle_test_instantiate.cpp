@@ -176,6 +176,11 @@ bool IsMetalTextureSwizzleAvailable()
 {
     return false;
 }
+
+bool IsMetalCompressedTexture3DAvailable()
+{
+    return false;
+}
 #endif
 
 SystemInfo *GetTestSystemInfo()
@@ -337,6 +342,11 @@ bool IsPixel4()
     return IsAndroidDevice("Pixel 4");
 }
 
+bool IsPixel4XL()
+{
+    return IsAndroidDevice("Pixel 4 XL");
+}
+
 bool IsNVIDIAShield()
 {
     return IsAndroidDevice("SHIELD Android TV");
@@ -381,7 +391,17 @@ bool IsNVIDIA()
 
 bool IsQualcomm()
 {
-    return IsNexus5X() || IsNexus9() || IsPixelXL() || IsPixel2() || IsPixel2XL();
+    return IsNexus5X() || IsNexus9() || IsPixelXL() || IsPixel2() || IsPixel2XL() || IsPixel4() ||
+           IsPixel4XL();
+}
+
+bool Is64Bit()
+{
+#if defined(ANGLE_IS_64_BIT_CPU)
+    return true;
+#else
+    return false;
+#endif  // defined(ANGLE_IS_64_BIT_CPU)
 }
 
 bool IsConfigAllowlisted(const SystemInfo &systemInfo, const PlatformParameters &param)

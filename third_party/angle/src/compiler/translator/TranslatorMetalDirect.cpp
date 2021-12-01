@@ -9,6 +9,7 @@
 #include "angle_gl.h"
 #include "common/utilities.h"
 #include "compiler/translator/BuiltinsWorkaroundGLSL.h"
+#include "compiler/translator/DriverUniformMetal.h"
 #include "compiler/translator/ImmutableStringBuilder.h"
 #include "compiler/translator/OutputGLSLBase.h"
 #include "compiler/translator/StaticType.h"
@@ -22,8 +23,6 @@
 #include "compiler/translator/TranslatorMetalDirect/NameEmbeddedUniformStructsMetal.h"
 #include "compiler/translator/TranslatorMetalDirect/ReduceInterfaceBlocks.h"
 #include "compiler/translator/TranslatorMetalDirect/RewriteCaseDeclarations.h"
-#include "compiler/translator/TranslatorMetalDirect/RewriteGlobalQualifierDecls.h"
-#include "compiler/translator/TranslatorMetalDirect/RewriteKeywords.h"
 #include "compiler/translator/TranslatorMetalDirect/RewriteOutArgs.h"
 #include "compiler/translator/TranslatorMetalDirect/RewritePipelines.h"
 #include "compiler/translator/TranslatorMetalDirect/RewriteUnaddressableReferences.h"
@@ -33,6 +32,7 @@
 #include "compiler/translator/TranslatorMetalDirect/ToposortStructs.h"
 #include "compiler/translator/TranslatorMetalDirect/TranslatorMetalUtils.h"
 #include "compiler/translator/TranslatorMetalDirect/WrapMain.h"
+#include "compiler/translator/tree_ops/ConvertUnsupportedConstructorsToFunctionCalls.h"
 #include "compiler/translator/tree_ops/InitializeVariables.h"
 #include "compiler/translator/tree_ops/MonomorphizeUnsupportedFunctions.h"
 #include "compiler/translator/tree_ops/NameNamelessUniformBuffers.h"
@@ -64,8 +64,8 @@ namespace
 {
 
 constexpr Name kSampleMaskWriteFuncName("writeSampleMask", SymbolType::AngleInternal);
-constexpr Name kFlippedPointCoordName("flippedPointCoord", SymbolType::UserDefined);
-constexpr Name kFlippedFragCoordName("flippedFragCoord", SymbolType::UserDefined);
+constexpr Name kFlippedPointCoordName("flippedPointCoord", SymbolType::AngleInternal);
+constexpr Name kFlippedFragCoordName("flippedFragCoord", SymbolType::AngleInternal);
 
 constexpr const TVariable kgl_VertexIDMetal(BuiltInId::gl_VertexID,
                                             ImmutableString("gl_VertexID"),
@@ -194,7 +194,7 @@ class DeclareDefaultUniformsTraverser : public TIntermTraverser
 // Declares a new variable to replace gl_DepthRange, its values are fed from a driver uniform.
 ANGLE_NO_DISCARD bool ReplaceGLDepthRangeWithDriverUniform(TCompiler *compiler,
                                                            TIntermBlock *root,
-                                                           const DriverUniform *driverUniforms,
+                                                           const DriverUniformMetal *driverUniforms,
                                                            TSymbolTable *symbolTable)
 {
     // Create a symbol reference to "gl_DepthRange"
@@ -212,39 +212,6 @@ TIntermSequence *GetMainSequence(TIntermBlock *root)
 {
     TIntermFunctionDefinition *main = FindMain(root);
     return main->getBody()->getSequence();
-}
-
-// This operation performs Android pre-rotation and y-flip.  For Android (and potentially other
-// platforms), the device may rotate, such that the orientation of the application is rotated
-// relative to the native orientation of the device.  This is corrected in part by multiplying
-// gl_Position by a mat2.
-// The equations reduce to an expression:
-//
-//     gl_Position.xy = gl_Position.xy * preRotation
-ANGLE_NO_DISCARD bool AppendPreRotation(TCompiler *compiler,
-                                        TIntermBlock *root,
-                                        TSymbolTable *symbolTable,
-                                        SpecConst *specConst,
-                                        const DriverUniform *driverUniforms)
-{
-    TIntermTyped *preRotationRef = specConst->getPreRotationMatrix();
-    if (!preRotationRef)
-    {
-        preRotationRef = driverUniforms->getPreRotationMatrixRef();
-    }
-    TIntermSymbol *glPos         = new TIntermSymbol(BuiltInVariable::gl_Position());
-    TVector<int> swizzleOffsetXY = {0, 1};
-    TIntermSwizzle *glPosXY      = new TIntermSwizzle(glPos, swizzleOffsetXY);
-
-    // Create the expression "(gl_Position.xy * preRotation)"
-    TIntermBinary *zRotated = new TIntermBinary(EOpMatrixTimesVector, preRotationRef, glPosXY);
-
-    // Create the assignment "gl_Position.xy = (gl_Position.xy * preRotation)"
-    TIntermBinary *assignment =
-        new TIntermBinary(TOperator::EOpAssign, glPosXY->deepCopy(), zRotated);
-
-    // Append the assignment as a statement at the end of the shader.
-    return RunAtTheEndOfShader(compiler, root, assignment, symbolTable);
 }
 
 // Replaces a builtin variable with a version that is rotated and corrects the X and Y coordinates.
@@ -266,7 +233,7 @@ ANGLE_NO_DISCARD bool RotateAndFlipBuiltinVariable(TCompiler *compiler,
     TIntermSwizzle *builtinXY    = new TIntermSwizzle(builtinRef, swizzleOffsetXY);
 
     // Create a symbol reference to our new variable that will hold the modified builtin.
-    const TType *type = StaticType::GetForVec<EbtFloat>(
+    const TType *type = StaticType::GetForVec<EbtFloat, EbpHigh>(
         EvqGlobal, static_cast<unsigned char>(builtin->getType().getNominalSize()));
     TVariable *replacementVar =
         new TVariable(symbolTable, flippedVariableName.rawName(), type, SymbolType::AngleInternal);
@@ -321,7 +288,7 @@ ANGLE_NO_DISCARD bool InsertFragCoordCorrection(TCompiler *compiler,
                                                 TIntermSequence *insertSequence,
                                                 TSymbolTable *symbolTable,
                                                 SpecConst *specConst,
-                                                const DriverUniform *driverUniforms)
+                                                const DriverUniformMetal *driverUniforms)
 {
     TIntermTyped *flipXY = specConst->getFlipXY();
     if (!flipXY)
@@ -344,9 +311,11 @@ ANGLE_NO_DISCARD bool InsertFragCoordCorrection(TCompiler *compiler,
             fragRotation = driverUniforms->getFragRotationMatrixRef();
         }
     }
+
+    const TVariable *fragCoord = static_cast<const TVariable *>(
+        symbolTable->findBuiltIn(ImmutableString("gl_FragCoord"), compiler->getShaderVersion()));
     return RotateAndFlipBuiltinVariable(compiler, root, insertSequence, flipXY, symbolTable,
-                                        BuiltInVariable::gl_FragCoord(), kFlippedFragCoordName,
-                                        pivot, fragRotation);
+                                        fragCoord, kFlippedFragCoordName, pivot, fragRotation);
 }
 
 void DeclareRightBeforeMain(TIntermBlock &root, const TVariable &var)
@@ -449,6 +418,19 @@ ANGLE_NO_DISCARD bool EmulateInstanceID(TCompiler &compiler,
     return ReplaceVariableWithTyped(&compiler, &root, instanceID, emuInstanceID);
 }
 
+ANGLE_NO_DISCARD bool AppendVertexShaderTransformFeedbackOutputToMain(TCompiler &compiler,
+                                                                      SymbolEnv &mSymbolEnv,
+                                                                      TIntermBlock &root)
+{
+    TSymbolTable &symbolTable = compiler.getSymbolTable();
+
+    // Append the assignment as a statement at the end of the shader.
+    return RunAtTheEndOfShader(&compiler, &root,
+                               &(mSymbolEnv.callFunctionOverload(Name("@@XFB-OUT@@"), *new TType(),
+                                                                 *new TIntermSequence())),
+                               &symbolTable);
+}
+
 // Unlike Vulkan having auto viewport flipping extension, in Metal we have to flip gl_Position.y
 // manually.
 // This operation performs flipping the gl_Position.y using this expression:
@@ -479,6 +461,13 @@ ANGLE_NO_DISCARD bool AppendVertexShaderPositionYCorrectionToMain(TCompiler *com
 }
 }  // namespace
 
+namespace mtl
+{
+TranslatorMetalReflection *getTranslatorMetalReflection(const TCompiler *compiler)
+{
+    return ((TranslatorMetalDirect *)compiler)->getTranslatorMetalReflection();
+}
+}  // namespace mtl
 TranslatorMetalDirect::TranslatorMetalDirect(sh::GLenum type,
                                              ShShaderSpec spec,
                                              ShShaderOutput output)
@@ -489,7 +478,7 @@ TranslatorMetalDirect::TranslatorMetalDirect(sh::GLenum type,
 // kCoverageMaskEnabledName
 ANGLE_NO_DISCARD bool TranslatorMetalDirect::insertSampleMaskWritingLogic(
     TIntermBlock &root,
-    DriverUniform &driverUniforms)
+    DriverUniformMetal &driverUniforms)
 {
     // This transformation leaves the tree in an inconsistent state by using a variable that's
     // defined in text, outside of the knowledge of the AST.
@@ -506,9 +495,9 @@ ANGLE_NO_DISCARD bool TranslatorMetalDirect::insertSampleMaskWritingLogic(
         new TVariable(symbolTable, sh::ImmutableString(sh::mtl::kCoverageMaskEnabledConstName),
                       boolType, SymbolType::AngleInternal);
 
-    TFunction *sampleMaskWriteFunc = new TFunction(symbolTable, kSampleMaskWriteFuncName.rawName(),
-                                                   kSampleMaskWriteFuncName.symbolType(),
-                                                   StaticType::GetBasic<EbtVoid>(), false);
+    TFunction *sampleMaskWriteFunc = new TFunction(
+        symbolTable, kSampleMaskWriteFuncName.rawName(), kSampleMaskWriteFuncName.symbolType(),
+        StaticType::GetBasic<EbtVoid, EbpUndefined>(), false);
 
     TType *uintType = new TType(EbtUInt);
     TVariable *maskArg =
@@ -526,7 +515,7 @@ ANGLE_NO_DISCARD bool TranslatorMetalDirect::insertSampleMaskWritingLogic(
     //      ANGLE_fragmentOut.gl_SampleMask);
     // }
     TIntermSequence *args       = new TIntermSequence;
-    TIntermBinary *coverageMask = driverUniforms.getCoverageMask();
+    TIntermBinary *coverageMask = driverUniforms.getCoverageMaskFieldRef();
     args->push_back(coverageMask);
     const TIntermSymbol *gl_SampleMask = FindSymbolNode(&root, ImmutableString("gl_SampleMask"));
     args->push_back(gl_SampleMask->deepCopy());
@@ -561,10 +550,10 @@ ANGLE_NO_DISCARD bool TranslatorMetalDirect::insertRasterizationDiscardLogic(TIn
     // Create vec4(-3, -3, -3, 1):
     auto vec4Type             = new TType(EbtFloat, 4);
     TIntermSequence *vec4Args = new TIntermSequence();
-    vec4Args->push_back(CreateFloatNode(-3.0f));
-    vec4Args->push_back(CreateFloatNode(-3.0f));
-    vec4Args->push_back(CreateFloatNode(-3.0f));
-    vec4Args->push_back(CreateFloatNode(1.0f));
+    vec4Args->push_back(CreateFloatNode(-3.0f, EbpMedium));
+    vec4Args->push_back(CreateFloatNode(-3.0f, EbpMedium));
+    vec4Args->push_back(CreateFloatNode(-3.0f, EbpMedium));
+    vec4Args->push_back(CreateFloatNode(1.0f, EbpMedium));
     TIntermAggregate *constVarConstructor =
         TIntermAggregate::CreateConstructor(*vec4Type, vec4Args);
 
@@ -585,7 +574,7 @@ ANGLE_NO_DISCARD bool TranslatorMetalDirect::insertRasterizationDiscardLogic(TIn
 // This is achieved by multiply the depth value with scale value stored in
 // driver uniform's depthRange.reserved
 bool TranslatorMetalDirect::transformDepthBeforeCorrection(TIntermBlock *root,
-                                                           const DriverUniform *driverUniforms)
+                                                           const DriverUniformMetal *driverUniforms)
 {
     // Create a symbol reference to "gl_Position"
     const TVariable *position  = BuiltInVariable::gl_Position();
@@ -609,89 +598,36 @@ bool TranslatorMetalDirect::transformDepthBeforeCorrection(TIntermBlock *root,
     return RunAtTheEndOfShader(this, root, assignment, &getSymbolTable());
 }
 
-static std::set<ImmutableString> GetMslKeywords()
+// This operation performs the viewport depth translation needed by Metal. GL uses a
+// clip space z range of -1 to +1 where as Metal uses 0 to 1. The translation becomes
+// this expression
+//
+//     z_metal = 0.5 * (w_gl + z_gl)
+//
+// where z_metal is the depth output of a Metal vertex shader and z_gl is the same for GL.
+bool TranslatorMetalDirect::appendVertexShaderDepthCorrectionToMain(TIntermBlock *root)
 {
-    std::set<ImmutableString> keywords;
+    const TVariable *position  = BuiltInVariable::gl_Position();
+    TIntermSymbol *positionRef = new TIntermSymbol(position);
 
-    keywords.emplace("alignas");
-    keywords.emplace("alignof");
-    keywords.emplace("as_type");
-    keywords.emplace("auto");
-    keywords.emplace("catch");
-    keywords.emplace("char");
-    keywords.emplace("class");
-    keywords.emplace("const_cast");
-    keywords.emplace("constant");
-    keywords.emplace("constexpr");
-    keywords.emplace("decltype");
-    keywords.emplace("delete");
-    keywords.emplace("device");
-    keywords.emplace("dynamic_cast");
-    keywords.emplace("enum");
-    keywords.emplace("explicit");
-    keywords.emplace("export");
-    keywords.emplace("extern");
-    keywords.emplace("fragment");
-    keywords.emplace("friend");
-    keywords.emplace("goto");
-    keywords.emplace("half");
-    keywords.emplace("inline");
-    keywords.emplace("int16_t");
-    keywords.emplace("int32_t");
-    keywords.emplace("int64_t");
-    keywords.emplace("int8_t");
-    keywords.emplace("kernel");
-    keywords.emplace("long");
-    keywords.emplace("main0");
-    keywords.emplace("metal");
-    keywords.emplace("mutable");
-    keywords.emplace("namespace");
-    keywords.emplace("new");
-    keywords.emplace("noexcept");
-    keywords.emplace("nullptr_t");
-    keywords.emplace("nullptr");
-    keywords.emplace("operator");
-    keywords.emplace("override");
-    keywords.emplace("private");
-    keywords.emplace("protected");
-    keywords.emplace("ptrdiff_t");
-    keywords.emplace("public");
-    keywords.emplace("ray_data");
-    keywords.emplace("register");
-    keywords.emplace("short");
-    keywords.emplace("signed");
-    keywords.emplace("size_t");
-    keywords.emplace("sizeof");
-    keywords.emplace("stage_in");
-    keywords.emplace("static_assert");
-    keywords.emplace("static_cast");
-    keywords.emplace("static");
-    keywords.emplace("template");
-    keywords.emplace("this");
-    keywords.emplace("thread_local");
-    keywords.emplace("thread");
-    keywords.emplace("threadgroup_imageblock");
-    keywords.emplace("threadgroup");
-    keywords.emplace("throw");
-    keywords.emplace("try");
-    keywords.emplace("typedef");
-    keywords.emplace("typeid");
-    keywords.emplace("typename");
-    keywords.emplace("uchar");
-    keywords.emplace("uint16_t");
-    keywords.emplace("uint32_t");
-    keywords.emplace("uint64_t");
-    keywords.emplace("uint8_t");
-    keywords.emplace("union");
-    keywords.emplace("unsigned");
-    keywords.emplace("ushort");
-    keywords.emplace("using");
-    keywords.emplace("vertex");
-    keywords.emplace("virtual");
-    keywords.emplace("volatile");
-    keywords.emplace("wchar_t");
+    TVector<int> swizzleOffsetZ = {2};
+    TIntermSwizzle *positionZ   = new TIntermSwizzle(positionRef, swizzleOffsetZ);
 
-    return keywords;
+    TIntermConstantUnion *oneHalf = CreateFloatNode(0.5f, EbpMedium);
+
+    TVector<int> swizzleOffsetW = {3};
+    TIntermSwizzle *positionW   = new TIntermSwizzle(positionRef->deepCopy(), swizzleOffsetW);
+
+    // Create the expression "(gl_Position.z + gl_Position.w) * 0.5".
+    TIntermBinary *zPlusW = new TIntermBinary(EOpAdd, positionZ->deepCopy(), positionW->deepCopy());
+    TIntermBinary *halfZPlusW = new TIntermBinary(EOpMul, zPlusW, oneHalf->deepCopy());
+
+    // Create the assignment "gl_Position.z = (gl_Position.z + gl_Position.w) * 0.5"
+    TIntermTyped *positionZLHS = positionZ->deepCopy();
+    TIntermBinary *assignment  = new TIntermBinary(TOperator::EOpAssign, positionZLHS, halfZPlusW);
+
+    // Append the assignment as a statement at the end of the shader.
+    return RunAtTheEndOfShader(this, root, assignment, &getSymbolTable());
 }
 
 static inline MetalShaderType metalShaderTypeFromGLSL(sh::GLenum shaderType)
@@ -716,7 +652,7 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
                                           ShCompileOptions compileOptions,
                                           PerformanceDiagnostics * /*perfDiagnostics*/,
                                           SpecConst *specConst,
-                                          DriverUniform *driverUniforms)
+                                          DriverUniformMetal *driverUniforms)
 {
     TSymbolTable &symbolTable = getSymbolTable();
     IdGen idGen;
@@ -734,7 +670,7 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
     // is inactive.
     if (!RemoveInactiveInterfaceVariables(this, root, &getSymbolTable(), getAttributes(),
                                           getInputVaryings(), getOutputVariables(), getUniforms(),
-                                          getInterfaceBlocks()))
+                                          getInterfaceBlocks(), false))
     {
         return false;
     }
@@ -970,8 +906,6 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
             AddSampleMaskDeclaration(*root, symbolTable);
         }
 
-        bool usePreRotation = compileOptions & SH_ADD_PRE_ROTATION;
-
         if (usesPointCoord)
         {
             TIntermTyped *flipNegXY = specConst->getNegFlipXY();
@@ -979,16 +913,8 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
             {
                 flipNegXY = driverUniforms->getNegFlipXYRef();
             }
-            TIntermConstantUnion *pivot = CreateFloatNode(0.5f);
+            TIntermConstantUnion *pivot = CreateFloatNode(0.5f, EbpMedium);
             TIntermTyped *fragRotation  = nullptr;
-            if (usePreRotation)
-            {
-                fragRotation = specConst->getFragRotationMatrix();
-                if (!fragRotation)
-                {
-                    fragRotation = driverUniforms->getFragRotationMatrixRef();
-                }
-            }
             if (!RotateAndFlipBuiltinVariable(this, root, GetMainSequence(root), flipNegXY,
                                               &getSymbolTable(), BuiltInVariable::gl_PointCoord(),
                                               kFlippedPointCoordName, pivot, fragRotation))
@@ -1005,7 +931,9 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
             {
                 return false;
             }
-            DeclareRightBeforeMain(*root, *BuiltInVariable::gl_FragCoord());
+            const TVariable *fragCoord = static_cast<const TVariable *>(
+                getSymbolTable().findBuiltIn(ImmutableString("gl_FragCoord"), getShaderVersion()));
+            DeclareRightBeforeMain(*root, *fragCoord);
         }
 
         if (!RewriteDfdy(this, compileOptions, root, getSymbolTable(), getShaderVersion(),
@@ -1027,7 +955,9 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
 
         if (FindSymbolNode(root, BuiltInVariable::gl_PointSize()->name()))
         {
-            DeclareRightBeforeMain(*root, *BuiltInVariable::gl_PointSize());
+            const TVariable *pointSize = static_cast<const TVariable *>(
+                getSymbolTable().findBuiltIn(ImmutableString("gl_PointSize"), getShaderVersion()));
+            DeclareRightBeforeMain(*root, *pointSize);
         }
 
         if (FindSymbolNode(root, BuiltInVariable::gl_VertexIndex()->name()))
@@ -1037,6 +967,12 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
                 return false;
             }
             DeclareRightBeforeMain(*root, kgl_VertexIDMetal);
+        }
+
+        // Append a macro for transform feedback substitution prior to modifying depth.
+        if (!AppendVertexShaderTransformFeedbackOutputToMain(*this, symbolEnv, *root))
+        {
+            return false;
         }
 
         // Search for the gl_ClipDistance usage, if its used, we need to do some replacements.
@@ -1062,8 +998,7 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
             return false;
         }
 
-        if ((compileOptions & SH_ADD_PRE_ROTATION) != 0 &&
-            !AppendPreRotation(this, root, &getSymbolTable(), specConst, driverUniforms))
+        if (!appendVertexShaderDepthCorrectionToMain(root))
         {
             return false;
         }
@@ -1096,7 +1031,6 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
         {
             return false;
         }
-
         if (!insertRasterizationDiscardLogic(*root))
         {
             return false;
@@ -1115,20 +1049,6 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
         return false;
     }
 
-    if (!RewriteKeywords(*this, *root, idGen, GetMslKeywords()))
-    {
-        return false;
-    }
-
-    if (!ReduceInterfaceBlocks(*this, *root, idGen))
-    {
-        return false;
-    }
-
-    if (!SeparateCompoundStructDeclarations(*this, idGen, *root))
-    {
-        return false;
-    }
     // This is the largest size required to pass all the tests in
     // (dEQP-GLES3.functional.shaders.large_constant_arrays)
     // This value could in principle be smaller.
@@ -1138,13 +1058,49 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
         return false;
     }
 
-    Invariants invariants;
-    if (!RewriteGlobalQualifierDecls(*this, *root, invariants))
+    if (!ConvertUnsupportedConstructorsToFunctionCalls(*this, *root))
     {
         return false;
     }
 
-    if (!AddExplicitTypeCasts(*this, *root, symbolEnv))
+    const bool needsExplicitBoolCasts = (compileOptions & SH_ADD_EXPLICIT_BOOL_CASTS) != 0;
+    if (!AddExplicitTypeCasts(*this, *root, symbolEnv, needsExplicitBoolCasts))
+    {
+        return false;
+    }
+
+    if (!SeparateCompoundExpressions(*this, symbolEnv, idGen, *root))
+    {
+        return false;
+    }
+
+    if ((compileOptions & SH_REWRITE_ROW_MAJOR_MATRICES) != 0 && getShaderVersion() >= 300)
+    {
+        // "Make sure every uniform buffer variable has a name.  The following transformation
+        // relies on this." This pass was removed in e196bc85ac2dda0e9f6664cfc2eca0029e33d2d1,
+        // but currently finding it still necessary for MSL.
+        if (!NameNamelessUniformBuffers(this, root, &getSymbolTable()))
+        {
+            return false;
+        }
+        // Note: RewriteRowMajorMatrices can create temporaries moved above
+        // the statement they are used in. As such it must come after
+        // SeparateCompoundExpressions since it is not aware of short circuits
+        // and side effects.
+        if (!RewriteRowMajorMatrices(this, root, &getSymbolTable()))
+        {
+            return false;
+        }
+    }
+
+    // Note: ReduceInterfaceBlocks removes row_major matrix layout specifiers
+    // so it must come after RewriteRowMajorMatrices.
+    if (!ReduceInterfaceBlocks(*this, *root, idGen, &getSymbolTable()))
+    {
+        return false;
+    }
+
+    if (!SeparateCompoundStructDeclarations(*this, idGen, *root, &getSymbolTable()))
     {
         return false;
     }
@@ -1159,21 +1115,18 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
     mValidateASTOptions.validateQualifiers = false;
 
     PipelineStructs pipelineStructs;
-    if (!RewritePipelines(*this, *root, idGen, *driverUniforms, symbolEnv, invariants,
-                          pipelineStructs))
+    if (!RewritePipelines(*this, *root, getInputVaryings(), getOutputVaryings(), idGen,
+                          *driverUniforms, symbolEnv, pipelineStructs))
     {
         return false;
     }
     if (getShaderType() == GL_VERTEX_SHADER)
     {
+        // This has to happen after RewritePipelines.
         if (!IntroduceVertexAndInstanceIndex(*this, *root))
         {
             return false;
         }
-    }
-    if (!SeparateCompoundExpressions(*this, symbolEnv, idGen, *root))
-    {
-        return false;
     }
 
     if (!RewriteCaseDeclarations(*this, *root))
@@ -1198,8 +1151,7 @@ bool TranslatorMetalDirect::translateImpl(TInfoSinkBase &sink,
     {
         return false;
     }
-    if (!EmitMetal(*this, *root, idGen, pipelineStructs, invariants, symbolEnv, ppc,
-                   &getSymbolTable()))
+    if (!EmitMetal(*this, *root, idGen, pipelineStructs, symbolEnv, ppc, &getSymbolTable()))
     {
         return false;
     }
@@ -1221,28 +1173,12 @@ bool TranslatorMetalDirect::translate(TIntermBlock *root,
     // TODO: refactor the code in TranslatorMetalDirect to not issue raw function calls.
     // http://anglebug.com/6059#c2
     mValidateASTOptions.validateNoRawFunctionCalls = false;
+    // A validation error is generated in this backend due to bool uniforms.
+    mValidateASTOptions.validatePrecision = false;
 
     TInfoSinkBase &sink = getInfoSink().obj;
-
-    if ((compileOptions & SH_REWRITE_ROW_MAJOR_MATRICES) != 0 && getShaderVersion() >= 300)
-    {
-        // "Make sure every uniform buffer variable has a name.  The following transformation relies
-        // on this." This pass was removed in e196bc85ac2dda0e9f6664cfc2eca0029e33d2d1, but
-        // currently finding it still necessary for MSL.
-        // TODO(jcunningham): Look into removing the NameNamelessUniformBuffers and fixing the root
-        // cause in RewriteRowMajorMatrices
-        if (!NameNamelessUniformBuffers(this, root, &getSymbolTable()))
-        {
-            return false;
-        }
-        if (!RewriteRowMajorMatrices(this, root, &getSymbolTable()))
-        {
-            return false;
-        }
-    }
-
     SpecConst specConst(&getSymbolTable(), compileOptions, getShaderType());
-    DriverUniformExtended driverUniforms(DriverUniformMode::Structure);
+    DriverUniformMetal driverUniforms(DriverUniformMode::Structure);
     if (!translateImpl(sink, root, compileOptions, perfDiagnostics, &specConst, &driverUniforms))
     {
         return false;

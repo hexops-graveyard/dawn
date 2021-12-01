@@ -61,6 +61,42 @@ namespace sh
 
 namespace
 {
+// Helper that returns if a top-level node is unused.  If it's a function, the function prototype is
+// returned as well.
+bool IsTopLevelNodeUnusedFunction(const CallDAG &callDag,
+                                  const std::vector<TFunctionMetadata> &metadata,
+                                  TIntermNode *node,
+                                  const TFunction **functionOut)
+{
+    const TIntermFunctionPrototype *asFunctionPrototype   = node->getAsFunctionPrototypeNode();
+    const TIntermFunctionDefinition *asFunctionDefinition = node->getAsFunctionDefinition();
+
+    *functionOut = nullptr;
+
+    if (asFunctionDefinition)
+    {
+        *functionOut = asFunctionDefinition->getFunction();
+    }
+    else if (asFunctionPrototype)
+    {
+        *functionOut = asFunctionPrototype->getFunction();
+    }
+    if (*functionOut == nullptr)
+    {
+        return false;
+    }
+
+    size_t callDagIndex = callDag.findIndex((*functionOut)->uniqueId());
+    if (callDagIndex == CallDAG::InvalidIndex)
+    {
+        // This happens only for unimplemented prototypes which are thus unused
+        ASSERT(asFunctionPrototype);
+        return true;
+    }
+
+    ASSERT(callDagIndex < metadata.size());
+    return !metadata[callDagIndex].used;
+}
 
 #if defined(ANGLE_ENABLE_FUZZER_CORPUS_OUTPUT)
 void DumpFuzzerCase(char const *const *shaderStrings,
@@ -615,6 +651,10 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
                                     ShCompileOptions compileOptions)
 {
     mValidateASTOptions = {};
+
+    // Desktop GLSL shaders don't have precision, so don't expect them to be specified.
+    mValidateASTOptions.validatePrecision = !IsDesktopGLSpec(mShaderSpec);
+
     if (!validateAST(root))
     {
         return false;
@@ -678,9 +718,24 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
     bool highPrecisionSupported        = isHighPrecisionSupported();
     bool enableNonConstantInitializers = IsExtensionEnabled(
         mExtensionBehavior, TExtension::EXT_shader_non_constant_global_initializers);
+    // forceDeferGlobalInitializers is needed for MSL
+    // to convert a non-const global. For example:
+    //
+    //    int someGlobal = 123;
+    //
+    // to
+    //
+    //    int someGlobal;
+    //    void main() {
+    //        someGlobal = 123;
+    //
+    // This is because MSL doesn't allow statically initialized globals.
+    bool forceDeferGlobalInitializers = getOutputType() == SH_MSL_METAL_OUTPUT;
+
     if (enableNonConstantInitializers &&
         !DeferGlobalInitializers(this, root, initializeLocalsAndGlobals, canUseLoopsToInitialize,
-                                 highPrecisionSupported, &mSymbolTable))
+                                 highPrecisionSupported, forceDeferGlobalInitializers,
+                                 &mSymbolTable))
     {
         return false;
     }
@@ -704,7 +759,11 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
         return false;
     }
 
-    pruneUnusedFunctions(root);
+    if (!pruneUnusedFunctions(root))
+    {
+        return false;
+    }
+
     if (IsSpecWithFunctionBodyNewScope(mShaderSpec, mShaderVersion))
     {
         if (!ReplaceShadowingVariables(this, root, &mSymbolTable))
@@ -843,7 +902,7 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
 
     // Note that separate declarations need to be run before other AST transformations that
     // generate new statements from expressions.
-    if (!SeparateDeclarations(this, root))
+    if (!SeparateDeclarations(this, root, &getSymbolTable()))
     {
         return false;
     }
@@ -878,7 +937,6 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
     }
 
     // Built-in function emulation needs to happen after validateLimitations pass.
-    // TODO(jmadill): Remove global pool allocator.
     GetGlobalPoolAllocator()->lock();
     initBuiltInFunctionEmulator(&mBuiltInFunctionEmulator, compileOptions);
     GetGlobalPoolAllocator()->unlock();
@@ -974,7 +1032,8 @@ bool TCompiler::checkAndSimplifyAST(TIntermBlock *root,
     // be optimized out
     if (!enableNonConstantInitializers &&
         !DeferGlobalInitializers(this, root, initializeLocalsAndGlobals, canUseLoopsToInitialize,
-                                 highPrecisionSupported, &mSymbolTable))
+                                 highPrecisionSupported, forceDeferGlobalInitializers,
+                                 &mSymbolTable))
     {
         return false;
     }
@@ -1430,61 +1489,50 @@ void TCompiler::internalTagUsedFunction(size_t index)
     }
 }
 
-// A predicate for the stl that returns if a top-level node is unused
-class TCompiler::UnusedPredicate
+bool TCompiler::pruneUnusedFunctions(TIntermBlock *root)
 {
-  public:
-    UnusedPredicate(const CallDAG *callDag, const std::vector<FunctionMetadata> *metadatas)
-        : mCallDag(callDag), mMetadatas(metadatas)
-    {}
-
-    bool operator()(TIntermNode *node)
-    {
-        const TIntermFunctionPrototype *asFunctionPrototype   = node->getAsFunctionPrototypeNode();
-        const TIntermFunctionDefinition *asFunctionDefinition = node->getAsFunctionDefinition();
-
-        const TFunction *func = nullptr;
-
-        if (asFunctionDefinition)
-        {
-            func = asFunctionDefinition->getFunction();
-        }
-        else if (asFunctionPrototype)
-        {
-            func = asFunctionPrototype->getFunction();
-        }
-        if (func == nullptr)
-        {
-            return false;
-        }
-
-        size_t callDagIndex = mCallDag->findIndex(func->uniqueId());
-        if (callDagIndex == CallDAG::InvalidIndex)
-        {
-            // This happens only for unimplemented prototypes which are thus unused
-            ASSERT(asFunctionPrototype);
-            return true;
-        }
-
-        ASSERT(callDagIndex < mMetadatas->size());
-        return !(*mMetadatas)[callDagIndex].used;
-    }
-
-  private:
-    const CallDAG *mCallDag;
-    const std::vector<FunctionMetadata> *mMetadatas;
-};
-
-void TCompiler::pruneUnusedFunctions(TIntermBlock *root)
-{
-    UnusedPredicate isUnused(&mCallDag, &mFunctionMetadata);
     TIntermSequence *sequence = root->getSequence();
 
-    if (!sequence->empty())
+    size_t writeIndex = 0;
+    for (size_t readIndex = 0; readIndex < sequence->size(); ++readIndex)
     {
-        sequence->erase(std::remove_if(sequence->begin(), sequence->end(), isUnused),
-                        sequence->end());
+        TIntermNode *node = sequence->at(readIndex);
+
+        // Keep anything that's not unused.
+        const TFunction *function = nullptr;
+        const bool shouldPrune =
+            IsTopLevelNodeUnusedFunction(mCallDag, mFunctionMetadata, node, &function);
+        if (!shouldPrune)
+        {
+            (*sequence)[writeIndex++] = node;
+            continue;
+        }
+
+        // If a function is unused, it may have a struct declaration in its return value which
+        // shouldn't be pruned.  In that case, replace the function definition with the struct
+        // definition.
+        ASSERT(function != nullptr);
+        const TType &returnType = function->getReturnType();
+        if (!returnType.isStructSpecifier())
+        {
+            continue;
+        }
+
+        TVariable *structVariable =
+            new TVariable(&mSymbolTable, kEmptyImmutableString, &returnType, SymbolType::Empty);
+        TIntermSymbol *structSymbol           = new TIntermSymbol(structVariable);
+        TIntermDeclaration *structDeclaration = new TIntermDeclaration;
+        structDeclaration->appendDeclarator(structSymbol);
+
+        structSymbol->setLine(node->getLine());
+        structDeclaration->setLine(node->getLine());
+
+        (*sequence)[writeIndex++] = structDeclaration;
     }
+
+    sequence->resize(writeIndex);
+
+    return validateAST(root);
 }
 
 bool TCompiler::limitExpressionComplexity(TIntermBlock *root)
@@ -1559,7 +1607,13 @@ bool TCompiler::initializeOutputVariables(TIntermBlock *root)
         ASSERT(mShaderType == GL_FRAGMENT_SHADER);
         for (const sh::ShaderVariable &var : mOutputVariables)
         {
-            list.push_back(var);
+            // in-out variables represent the context of the framebuffer
+            // when the draw call starts, so they have to be considered
+            // as already initialized.
+            if (!var.isFragmentInOut)
+            {
+                list.push_back(var);
+            }
         }
     }
     return InitializeVariables(this, root, list, &mSymbolTable, mShaderVersion, mExtensionBehavior,

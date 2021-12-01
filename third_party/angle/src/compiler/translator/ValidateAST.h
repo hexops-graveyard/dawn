@@ -56,18 +56,16 @@ struct ValidateASTOptions
     //  - Function-local variables must have the EvqTemporary qualifier.
     //  - Symbol references and declarations have identical qualifiers.
     bool validateQualifiers = true;
-    // Check that the nodes are consistent w.r.t the precision of the operands involved.
-    bool validatePrecision = true;  // TODO
+    // Check that every symbol has its precision specified.  That includes variables, block members,
+    // function parameters and return values.
+    bool validatePrecision = true;
     // Check that variable declarations that can't have initializers don't have initializers
     // (varyings, uniforms for example).
     bool validateInitializers = true;  // TODO
     // Check that there is only one TFunction with each function name referenced in the nodes (no
     // two TFunctions with the same name, taking internal/non-internal namespaces into account).
     bool validateUniqueFunctions = true;  // TODO
-    // Check that references to structs are matched with the corresponding struct declaration.  This
-    // is only done for references to structs inside other struct or interface blocks declarations,
-    // as validateVariableReferences already ensures other references to the struct match the
-    // declaration.
+    // Check that references to structs are matched with the corresponding struct declaration.
     bool validateStructUsage = true;
     // Check that expression nodes have the correct type considering their operand(s).  The
     // following validation is possible:

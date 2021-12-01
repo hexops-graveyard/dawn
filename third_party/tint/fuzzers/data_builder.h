@@ -18,23 +18,33 @@
 #include <cassert>
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "fuzzers/random_generator.h"
+#include "src/writer/hlsl/generator.h"
+#include "src/writer/msl/generator.h"
 
 namespace tint {
 namespace fuzzers {
 
-/// Builder for generic pseudo-random data using a data buffer as seed
+/// Builder for generic pseudo-random data
 class DataBuilder {
  public:
-  /// @brief Initialize random number generations
-  /// @param data - pointer to a data buffer to use as a seed
+  /// @brief Initializes the internal engine using a seed value
+  /// @param seed - seed value passed to engine
+  explicit DataBuilder(uint64_t seed) : generator_(seed) {}
+
+  /// @brief Initializes the internal engine using seed data
+  /// @param data - data fuzzer to calculate seed from
   /// @param size - size of data buffer
   explicit DataBuilder(const uint8_t* data, size_t size)
-      : generator_(data, size) {}
+      : generator_(RandomGenerator::CalculateSeed(data, size)) {
+    assert(data != nullptr && "|data| must be !nullptr");
+  }
 
-  ~DataBuilder() {}
+  ~DataBuilder() = default;
+  DataBuilder(DataBuilder&&) = default;
 
   /// Generate pseudo-random data of a specific type
   /// @tparam T - type of data to produce
@@ -85,6 +95,10 @@ class DataBuilder {
  private:
   RandomGenerator generator_;
 
+  // Disallow copy & assign
+  DataBuilder(const DataBuilder&) = delete;
+  DataBuilder& operator=(const DataBuilder&) = delete;
+
   /// Get N bytes of pseudo-random data
   /// @param out - pointer to location to save data
   /// @param n - number of bytes to get
@@ -93,6 +107,14 @@ class DataBuilder {
     assert(n > 0 && "|n| must be > 0");
 
     generator_.GetNBytes(reinterpret_cast<uint8_t*>(out), n);
+  }
+
+  /// Generate pseudo-random data of a specific type into an output var
+  /// @tparam T - type of data to produce
+  /// @param out - output var to generate into
+  template <typename T>
+  void build(T& out) {
+    out = build<T>();
   }
 
   /// Implementation of ::build<T>()
@@ -122,7 +144,7 @@ class DataBuilder {
       }
       std::vector<uint8_t> source(count);
       b->build(source.data(), count);
-      return std::string(source.begin(), source.end());
+      return {source.begin(), source.end()};
     }
   };
 
@@ -133,6 +155,70 @@ class DataBuilder {
     /// @param b - data builder to use
     /// @returns a boolean with even odds of being true or false
     static bool impl(DataBuilder* b) { return b->generator_.GetBool(); }
+  };
+
+  /// Specialization for writer::msl::Options
+  template <>
+  struct BuildImpl<writer::msl::Options> {
+    /// Generate a pseudo-random writer::msl::Options struct
+    /// @param b - data builder to use
+    /// @returns writer::msl::Options filled with pseudo-random data
+    static writer::msl::Options impl(DataBuilder* b) {
+      writer::msl::Options out{};
+      b->build(out.buffer_size_ubo_index);
+      b->build(out.fixed_sample_mask);
+      b->build(out.emit_vertex_point_size);
+      b->build(out.disable_workgroup_init);
+      b->build(out.array_length_from_uniform);
+      return out;
+    }
+  };
+
+  /// Specialization for writer::hlsl::Options
+  template <>
+  struct BuildImpl<writer::hlsl::Options> {
+    /// Generate a pseudo-random writer::hlsl::Options struct
+    /// @param b - data builder to use
+    /// @returns writer::hlsl::Options filled with pseudo-random data
+    static writer::hlsl::Options impl(DataBuilder* b) {
+      writer::hlsl::Options out{};
+      b->build(out.root_constant_binding_point);
+      b->build(out.disable_workgroup_init);
+      b->build(out.array_length_from_uniform);
+      return out;
+    }
+  };
+
+  /// Specialization for writer::ArrayLengthFromUniformOptions
+  template <>
+  struct BuildImpl<writer::ArrayLengthFromUniformOptions> {
+    /// Generate a pseudo-random writer::ArrayLengthFromUniformOptions struct
+    /// @param b - data builder to use
+    /// @returns writer::ArrayLengthFromUniformOptions filled with pseudo-random
+    /// data
+    static writer::ArrayLengthFromUniformOptions impl(DataBuilder* b) {
+      writer::ArrayLengthFromUniformOptions out{};
+      b->build(out.ubo_binding);
+      b->build(out.bindpoint_to_size_index);
+      return out;
+    }
+  };
+
+  /// Specialization for std::unordered_map<K, V>
+  template <typename K, typename V>
+  struct BuildImpl<std::unordered_map<K, V>> {
+    /// Generate a pseudo-random std::unordered_map<K, V>
+    /// @param b - data builder to use
+    /// @returns std::unordered_map<K, V> filled with
+    /// pseudo-random data
+    static std::unordered_map<K, V> impl(DataBuilder* b) {
+      std::unordered_map<K, V> out;
+      uint8_t count = b->build<uint8_t>();
+      for (uint8_t i = 0; i < count; ++i) {
+        out.emplace(b->build<K>(), b->build<V>());
+      }
+      return out;
+    }
   };
 };
 

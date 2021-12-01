@@ -30,7 +30,7 @@ TEST_F(ParserImplTest, VariableIdentDecl_Parses) {
   ASSERT_TRUE(decl->type->Is<ast::F32>());
 
   EXPECT_EQ(decl->source.range, (Source::Range{{1u, 1u}, {1u, 7u}}));
-  EXPECT_EQ(decl->type->source().range, (Source::Range{{1u, 10u}, {1u, 13u}}));
+  EXPECT_EQ(decl->type->source.range, (Source::Range{{1u, 10u}, {1u, 13u}}));
 }
 
 TEST_F(ParserImplTest, VariableIdentDecl_Inferred_Parses) {
@@ -76,14 +76,6 @@ TEST_F(ParserImplTest, VariableIdentDecl_InvalidIdent) {
   ASSERT_EQ(p->error(), "1:1: expected identifier for test");
 }
 
-TEST_F(ParserImplTest, VariableIdentDecl_InvalidType) {
-  auto p = parser("my_var : invalid");
-  auto decl = p->expect_variable_ident_decl("test");
-  ASSERT_TRUE(p->has_error());
-  ASSERT_TRUE(decl.errored);
-  ASSERT_EQ(p->error(), "1:10: unknown type 'invalid'");
-}
-
 TEST_F(ParserImplTest, VariableIdentDecl_NonAccessDecoFail) {
   auto p = parser("my_var : [[stride(1)]] S");
 
@@ -94,10 +86,6 @@ TEST_F(ParserImplTest, VariableIdentDecl_NonAccessDecoFail) {
   auto* block_deco = create<ast::StructBlockDecoration>();
   ast::DecorationList decos;
   decos.push_back(block_deco);
-
-  auto* s = Structure(Sym("S"), members, decos);
-
-  p->register_type("S", s);
 
   auto decl = p->expect_variable_ident_decl("test");
   ASSERT_TRUE(p->has_error());
