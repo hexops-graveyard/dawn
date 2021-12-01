@@ -173,19 +173,21 @@ namespace dawn_native {
             return {};
         }
 
-        MaybeError ValidateTextureSize(const TextureDescriptor* descriptor, const Format* format) {
+        MaybeError ValidateTextureSize(const DeviceBase* device,
+                                       const TextureDescriptor* descriptor,
+                                       const Format* format) {
             ASSERT(descriptor->size.width != 0 && descriptor->size.height != 0 &&
                    descriptor->size.depthOrArrayLayers != 0);
-
+            const CombinedLimits& limits = device->GetLimits();
             Extent3D maxExtent;
             switch (descriptor->dimension) {
                 case wgpu::TextureDimension::e2D:
-                    maxExtent = {kMaxTextureDimension2D, kMaxTextureDimension2D,
-                                 kMaxTextureArrayLayers};
+                    maxExtent = {limits.v1.maxTextureDimension2D, limits.v1.maxTextureDimension2D,
+                                 limits.v1.maxTextureArrayLayers};
                     break;
                 case wgpu::TextureDimension::e3D:
-                    maxExtent = {kMaxTextureDimension3D, kMaxTextureDimension3D,
-                                 kMaxTextureDimension3D};
+                    maxExtent = {limits.v1.maxTextureDimension3D, limits.v1.maxTextureDimension3D,
+                                 limits.v1.maxTextureDimension3D};
                     break;
                 case wgpu::TextureDimension::e1D:
                 default:
@@ -209,8 +211,6 @@ namespace dawn_native {
                 Log2(maxMippedDimension) + 1 < descriptor->mipLevelCount,
                 "Texture mip level count (%u) exceeds the maximum (%u) for its size (%s).",
                 descriptor->mipLevelCount, Log2(maxMippedDimension) + 1, &descriptor->size);
-
-            ASSERT(descriptor->mipLevelCount <= kMaxTexture2DMipLevels);
 
             if (format->isCompressed) {
                 const TexelBlockInfo& blockInfo =
@@ -273,9 +273,9 @@ namespace dawn_native {
         DAWN_INVALID_IF(descriptor->dimension == wgpu::TextureDimension::e1D,
                         "1D textures aren't supported (yet).");
 
-        DAWN_INVALID_IF(internalUsageDesc != nullptr &&
-                            !device->IsExtensionEnabled(Extension::DawnInternalUsages),
-                        "The dawn-internal-usages feature is not enabled");
+        DAWN_INVALID_IF(
+            internalUsageDesc != nullptr && !device->IsFeatureEnabled(Feature::DawnInternalUsages),
+            "The dawn-internal-usages feature is not enabled");
 
         const Format* format;
         DAWN_TRY_ASSIGN(format, device->GetInternalFormat(descriptor->format));
@@ -308,7 +308,7 @@ namespace dawn_native {
             "The dimension (%s) of a texture with a depth/stencil format (%s) is not 2D.",
             descriptor->dimension, format->format);
 
-        DAWN_TRY(ValidateTextureSize(descriptor, format));
+        DAWN_TRY(ValidateTextureSize(device, descriptor, format));
 
         // TODO(crbug.com/dawn/838): Implement a workaround for this issue.
         // Readbacks from the non-zero mip of a stencil texture may contain garbage data.
@@ -434,7 +434,7 @@ namespace dawn_native {
     }
 
     // WebGPU only supports sample counts of 1 and 4. We could expand to more based on
-    // platform support, but it would probably be an extension.
+    // platform support, but it would probably be a feature.
     bool IsValidSampleCount(uint32_t sampleCount) {
         switch (sampleCount) {
             case 1:
@@ -469,12 +469,28 @@ namespace dawn_native {
         if (internalUsageDesc != nullptr) {
             mInternalUsage |= internalUsageDesc->internalUsage;
         }
+        TrackInDevice();
     }
 
     static Format kUnusedFormat;
 
+    TextureBase::TextureBase(DeviceBase* device, TextureState state)
+        : ApiObjectBase(device, kLabelNotImplemented), mFormat(kUnusedFormat), mState(state) {
+        TrackInDevice();
+    }
+
     TextureBase::TextureBase(DeviceBase* device, ObjectBase::ErrorTag tag)
         : ApiObjectBase(device, tag), mFormat(kUnusedFormat) {
+    }
+
+    bool TextureBase::Destroy() {
+        // We need to run the destroy operations prior to setting the state to destroyed so that
+        // the state is both consistent, and implementations of the destroy that may check the
+        // state do not skip operations unintentionally. (Example in Vulkan backend, the destroy
+        // implementation will not be ran if we are already in the Destroyed state.)
+        bool wasDestroyed = ApiObjectBase::Destroy();
+        mState = TextureState::Destroyed;
+        return wasDestroyed;
     }
 
     // static
@@ -555,12 +571,7 @@ namespace dawn_native {
     uint32_t TextureBase::GetSubresourceIndex(uint32_t mipLevel,
                                               uint32_t arraySlice,
                                               Aspect aspect) const {
-        ASSERT(arraySlice <= kMaxTextureArrayLayers);
-        ASSERT(mipLevel <= kMaxTexture2DMipLevels);
         ASSERT(HasOneBit(aspect));
-        static_assert(
-            kMaxTexture2DMipLevels <= std::numeric_limits<uint32_t>::max() / kMaxTextureArrayLayers,
-            "texture size overflows uint32_t");
         return mipLevel +
                GetNumMipLevels() * (arraySlice + GetArrayLayers() * GetAspectIndex(aspect));
     }
@@ -675,15 +686,7 @@ namespace dawn_native {
             return;
         }
         ASSERT(!IsError());
-        DestroyInternal();
-    }
-
-    void TextureBase::DestroyImpl() {
-    }
-
-    void TextureBase::DestroyInternal() {
-        DestroyImpl();
-        mState = TextureState::Destroyed;
+        Destroy();
     }
 
     MaybeError TextureBase::ValidateDestroy() const {
@@ -694,13 +697,21 @@ namespace dawn_native {
     // TextureViewBase
 
     TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDescriptor* descriptor)
-        : ApiObjectBase(texture->GetDevice(), kLabelNotImplemented),
+        : ApiObjectBase(texture->GetDevice(), descriptor->label),
           mTexture(texture),
           mFormat(GetDevice()->GetValidInternalFormat(descriptor->format)),
           mDimension(descriptor->dimension),
           mRange({ConvertViewAspect(mFormat, descriptor->aspect),
                   {descriptor->baseArrayLayer, descriptor->arrayLayerCount},
                   {descriptor->baseMipLevel, descriptor->mipLevelCount}}) {
+        TrackInDevice();
+    }
+
+    TextureViewBase::TextureViewBase(TextureBase* texture)
+        : ApiObjectBase(texture->GetDevice(), kLabelNotImplemented),
+          mTexture(texture),
+          mFormat(kUnusedFormat) {
+        TrackInDevice();
     }
 
     TextureViewBase::TextureViewBase(DeviceBase* device, ObjectBase::ErrorTag tag)

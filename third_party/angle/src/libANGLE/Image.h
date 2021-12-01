@@ -59,7 +59,8 @@ class ImageSibling : public gl::FramebufferAttachmentObject
     void setTargetImage(const gl::Context *context, egl::Image *imageTarget);
 
     // Orphan all EGL image sources and targets
-    angle::Result orphanImages(const gl::Context *context);
+    angle::Result orphanImages(const gl::Context *context,
+                               RefCountObjectReleaser<Image> *outReleaseImage);
 
     void notifySiblings(angle::SubjectMessage message);
 
@@ -174,6 +175,8 @@ class Image final : public RefCountObject, public LabeledObject
     bool orphaned() const;
     gl::InitState sourceInitState() const;
     void setInitState(gl::InitState initState);
+
+    Error exportVkImage(void *vkImage, void *vkImageCreateInfo);
 
   private:
     friend class ImageSibling;

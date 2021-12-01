@@ -23,6 +23,7 @@
 #include <climits>
 #include <cstdarg>
 #include <cstddef>
+#include <fstream>
 #include <set>
 #include <sstream>
 #include <string>
@@ -62,6 +63,30 @@ class NonCopyable
 };
 
 extern const uintptr_t DirtyPointer;
+
+struct SaveFileHelper
+{
+  public:
+    // We always use ios::binary to avoid inconsistent line endings when captured on Linux vs Win.
+    SaveFileHelper(const std::string &filePathIn);
+    ~SaveFileHelper();
+
+    template <typename T>
+    SaveFileHelper &operator<<(const T &value)
+    {
+        mOfs << value;
+        checkError();
+        return *this;
+    }
+
+    void write(const uint8_t *data, size_t size);
+
+  private:
+    void checkError();
+
+    std::ofstream mOfs;
+    std::string mFilePath;
+};
 
 }  // namespace angle
 
@@ -404,4 +429,37 @@ inline bool IsLittleEndian()
 #    define ANGLE_REQUIRE_CONSTANT_INIT
 #endif  // __has_cpp_attribute(require_constant_initialization)
 
+#if __has_cpp_attribute(clang::fallthrough)
+#    define ANGLE_FALLTHROUGH [[clang::fallthrough]]
+#else
+#    define ANGLE_FALLTHROUGH
+#endif
+
+// Compiler configs.
+inline bool IsASan()
+{
+#if defined(ANGLE_WITH_ASAN)
+    return true;
+#else
+    return false;
+#endif  // defined(ANGLE_WITH_ASAN)
+}
+
+inline bool IsTSan()
+{
+#if defined(ANGLE_WITH_TSAN)
+    return true;
+#else
+    return false;
+#endif  // defined(ANGLE_WITH_TSAN)
+}
+
+inline bool IsUBSan()
+{
+#if defined(ANGLE_WITH_UBSAN)
+    return true;
+#else
+    return false;
+#endif  // defined(ANGLE_WITH_UBSAN)
+}
 #endif  // COMMON_ANGLEUTILS_H_

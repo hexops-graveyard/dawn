@@ -193,7 +193,8 @@ angle::Result TextureD3D::setStorageExternalMemory(const gl::Context *context,
                                                    gl::MemoryObject *memoryObject,
                                                    GLuint64 offset,
                                                    GLbitfield createFlags,
-                                                   GLbitfield usageFlags)
+                                                   GLbitfield usageFlags,
+                                                   const void *imageCreateInfoPNext)
 {
     ANGLE_HR_UNREACHABLE(GetImplAs<ContextD3D>(context));
     return angle::Result::Continue;
@@ -402,7 +403,7 @@ angle::Result TextureD3D::fastUnpackPixels(const gl::Context *context,
 GLint TextureD3D::creationLevels(GLsizei width, GLsizei height, GLsizei depth) const
 {
     if ((gl::isPow2(width) && gl::isPow2(height) && gl::isPow2(depth)) ||
-        mRenderer->getNativeExtensions().textureNPOTOES)
+        mRenderer->getNativeExtensions().textureNpotOES)
     {
         // Maximum number of levels
         return gl::log2(std::max(std::max(width, height), depth)) + 1;
@@ -448,9 +449,9 @@ angle::Result TextureD3D::generateMipmap(const gl::Context *context)
     if (mTexStorage && mRenderer->getFeatures().zeroMaxLodWorkaround.enabled)
     {
         // Switch to using the mipmapped texture.
-        TextureStorage *textureStorage = nullptr;
-        ANGLE_TRY(getNativeTexture(context, &textureStorage));
-        ANGLE_TRY(textureStorage->useLevelZeroWorkaroundTexture(context, false));
+        TextureStorage *textureStorageEXT = nullptr;
+        ANGLE_TRY(getNativeTexture(context, &textureStorageEXT));
+        ANGLE_TRY(textureStorageEXT->useLevelZeroWorkaroundTexture(context, false));
     }
 
     // Set up proper mipmap chain in our Image array.
@@ -695,14 +696,18 @@ angle::Result TextureD3D::setBaseLevel(const gl::Context *context, GLuint baseLe
     return angle::Result::Continue;
 }
 
+void TextureD3D::onLabelUpdate()
+{
+    if (mTexStorage)
+    {
+        mTexStorage->onLabelUpdate();
+    }
+}
+
 angle::Result TextureD3D::syncState(const gl::Context *context,
                                     const gl::Texture::DirtyBits &dirtyBits,
                                     gl::Command source)
 {
-    if (dirtyBits.test(gl::Texture::DirtyBitType::DIRTY_BIT_LABEL))
-    {
-        mTexStorage->onLabelUpdate();
-    }
     // This could be improved using dirty bits.
     return angle::Result::Continue;
 }
@@ -1073,8 +1078,7 @@ angle::Result TextureD3D_2D::copyImage(const gl::Context *context,
     // WebGL requires that pixels that would be outside the framebuffer are treated as zero values,
     // so clear the mip level to 0 prior to making the copy if any pixel would be sampled outside.
     // Same thing for robust resource init.
-    if (outside &&
-        (context->getExtensions().webglCompatibility || context->isRobustResourceInitEnabled()))
+    if (outside && (context->isWebGL() || context->isRobustResourceInitEnabled()))
     {
         ANGLE_TRY(initializeContents(context, index));
     }
@@ -1828,8 +1832,7 @@ angle::Result TextureD3D_Cube::copyImage(const gl::Context *context,
     // WebGL requires that pixels that would be outside the framebuffer are treated as zero values,
     // so clear the mip level to 0 prior to making the copy if any pixel would be sampled outside.
     // Same thing for robust resource init.
-    if (outside &&
-        (context->getExtensions().webglCompatibility || context->isRobustResourceInitEnabled()))
+    if (outside && (context->isWebGL() || context->isRobustResourceInitEnabled()))
     {
         ANGLE_TRY(initializeContents(context, index));
     }
@@ -2182,8 +2185,8 @@ angle::Result TextureD3D_Cube::createCompleteStorage(bool renderTarget,
     bool hintLevelZeroOnly = false;
     if (mRenderer->getFeatures().zeroMaxLodWorkaround.enabled)
     {
-        // If any of the CPU images (levels >= 1) are dirty, then the textureStorage should use the
-        // mipped texture to begin with. Otherwise, it should use the level-zero-only texture.
+        // If any of the CPU images (levels >= 1) are dirty, then the textureStorageEXT should use
+        // the mipped texture to begin with. Otherwise, it should use the level-zero-only texture.
         hintLevelZeroOnly = true;
         for (int faceIndex = 0;
              faceIndex < static_cast<int>(gl::kCubeFaceCount) && hintLevelZeroOnly; faceIndex++)

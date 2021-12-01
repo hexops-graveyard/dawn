@@ -256,7 +256,8 @@ void VulkanExternalHelper::initialize(bool useSwiftshader, bool enableValidation
     ASSERT(physicalDevices.size() > 0);
 
     VkPhysicalDeviceProperties physicalDeviceProperties;
-    ChoosePhysicalDevice(physicalDevices, icd, &mPhysicalDevice, &physicalDeviceProperties);
+    ChoosePhysicalDevice(vkGetPhysicalDeviceProperties, physicalDevices, icd, &mPhysicalDevice,
+                         &physicalDeviceProperties);
 
     vkGetPhysicalDeviceMemoryProperties(mPhysicalDevice, &mMemoryProperties);
 
@@ -264,9 +265,11 @@ void VulkanExternalHelper::initialize(bool useSwiftshader, bool enableValidation
         EnumerateDeviceExtensionProperties(mPhysicalDevice, nullptr);
 
     std::vector<const char *> requestedDeviceExtensions = {
-        VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,  VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-        VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,     VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-        VK_FUCHSIA_EXTERNAL_MEMORY_EXTENSION_NAME, VK_FUCHSIA_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+        VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,   VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+        VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+        VK_FUCHSIA_EXTERNAL_MEMORY_EXTENSION_NAME,  VK_FUCHSIA_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+        VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,    VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
     };
 
     std::vector<const char *> enabledDeviceExtensions;
@@ -427,6 +430,7 @@ bool VulkanExternalHelper::canCreateImageExternal(
 VkResult VulkanExternalHelper::createImage2DExternal(VkFormat format,
                                                      VkImageCreateFlags createFlags,
                                                      VkImageUsageFlags usageFlags,
+                                                     const void *imageCreateInfoPNext,
                                                      VkExtent3D extent,
                                                      VkExternalMemoryHandleTypeFlags handleTypes,
                                                      VkImage *imageOut,
@@ -435,7 +439,7 @@ VkResult VulkanExternalHelper::createImage2DExternal(VkFormat format,
 {
     VkExternalMemoryImageCreateInfoKHR externalMemoryImageCreateInfo = {
         /* .sType = */ VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
-        /* .pNext = */ nullptr,
+        /* .pNext = */ imageCreateInfoPNext,
         /* .handleTypes = */ handleTypes,
     };
 
@@ -531,12 +535,13 @@ bool VulkanExternalHelper::canCreateImageOpaqueFd(VkFormat format,
 VkResult VulkanExternalHelper::createImage2DOpaqueFd(VkFormat format,
                                                      VkImageCreateFlags createFlags,
                                                      VkImageUsageFlags usageFlags,
+                                                     const void *imageCreateInfoPNext,
                                                      VkExtent3D extent,
                                                      VkImage *imageOut,
                                                      VkDeviceMemory *deviceMemoryOut,
                                                      VkDeviceSize *deviceMemorySizeOut)
 {
-    return createImage2DExternal(format, createFlags, usageFlags, extent,
+    return createImage2DExternal(format, createFlags, usageFlags, imageCreateInfoPNext, extent,
                                  VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT, imageOut,
                                  deviceMemoryOut, deviceMemorySizeOut);
 }
@@ -571,12 +576,13 @@ bool VulkanExternalHelper::canCreateImageZirconVmo(VkFormat format,
 VkResult VulkanExternalHelper::createImage2DZirconVmo(VkFormat format,
                                                       VkImageCreateFlags createFlags,
                                                       VkImageUsageFlags usageFlags,
+                                                      const void *imageCreateInfoPNext,
                                                       VkExtent3D extent,
                                                       VkImage *imageOut,
                                                       VkDeviceMemory *deviceMemoryOut,
                                                       VkDeviceSize *deviceMemorySizeOut)
 {
-    return createImage2DExternal(format, createFlags, usageFlags, extent,
+    return createImage2DExternal(format, createFlags, usageFlags, imageCreateInfoPNext, extent,
                                  VK_EXTERNAL_MEMORY_HANDLE_TYPE_ZIRCON_VMO_BIT_FUCHSIA, imageOut,
                                  deviceMemoryOut, deviceMemorySizeOut);
 }
@@ -976,7 +982,7 @@ void VulkanExternalHelper::readPixels(VkImage srcImage,
     vkFreeCommandBuffers(mDevice, mCommandPool, commandBufferCount, commandBuffers);
 
     void *stagingMemory = nullptr;
-    result = vkMapMemory(mDevice, deviceMemory, 0 /* offset */, pixelsSize, 0 /* flags */,
+    result = vkMapMemory(mDevice, deviceMemory, 0 /* offset */, deviceMemorySize, 0 /* flags */,
                          &stagingMemory);
     ASSERT(result == VK_SUCCESS);
 
@@ -986,7 +992,7 @@ void VulkanExternalHelper::readPixels(VkImage srcImage,
             /* .pNext = */ nullptr,
             /* .memory = */ deviceMemory,
             /* .offset = */ 0,
-            /* .size = */ pixelsSize,
+            /* .size = */ deviceMemorySize,
         },
     };
     constexpr uint32_t memoryRangeCount = std::extent<decltype(memoryRanges)>();

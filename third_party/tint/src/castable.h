@@ -74,7 +74,8 @@ struct TypeInfo {
   /// @returns the static TypeInfo for the type T
   template <typename T>
   static const TypeInfo& Of() {
-    return detail::TypeInfoOf<T>::info;
+    using NO_CV = typename std::remove_cv<T>::type;
+    return detail::TypeInfoOf<NO_CV>::info;
   }
 };
 
@@ -302,7 +303,8 @@ class Castable : public BASE {
   /// object is of, or derives from the class `TO`.
   template <int FLAGS = 0, typename Pred = detail::Infer>
   inline bool Is(Pred&& pred) const {
-    using TO = typename std::remove_pointer<traits::ParamTypeT<Pred, 0>>::type;
+    using TO =
+        typename std::remove_pointer<traits::ParameterType<Pred, 0>>::type;
     return tint::Is<TO, FLAGS>(static_cast<const CLASS*>(this),
                                std::forward<Pred>(pred));
   }

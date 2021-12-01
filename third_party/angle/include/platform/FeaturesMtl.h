@@ -103,12 +103,6 @@ struct FeaturesMtl : FeatureSetBase
         "macOS), force using GPU memory allocation for buffers everytime or not.",
         &members};
 
-    // Whether SPIR-V should be generated directly instead of through glslang.  Transitory feature
-    // until the work is complete.
-    Feature directSPIRVGeneration = {"directSPIRVGeneration", FeatureCategory::MetalFeatures,
-                                     "Direct translation to SPIR-V.", &members,
-                                     "http://anglebug.com/4889"};
-
     // Generate Metal directly instead of generating SPIR-V and then using SPIR-V Cross.  Transitory
     // feature until the work is complete.
     Feature directMetalGeneration = {"directMetalGeneration", FeatureCategory::MetalFeatures,
@@ -129,6 +123,16 @@ struct FeaturesMtl : FeatureSetBase
     Feature rewriteRowMajorMatrices = {"rewrite_row_major_matrices", FeatureCategory::MetalFeatures,
                                        "Rewrite row major matrices in shaders as column major.",
                                        &members};
+
+    Feature intelExplicitBoolCastWorkaround = {
+        "intel_explicit_bool_cast_workaround", FeatureCategory::MetalWorkarounds,
+        "Insert explicit casts for float/double/unsigned/signed int on macOS 10.15 with Intel "
+        "driver",
+        &members};
+
+    Feature intelDisableFastMath = {
+        "intel_disable_fast_math", FeatureCategory::MetalWorkarounds,
+        "Disable fast math in atan and invariance cases when running below macOS 12.0", &members};
 };
 
 }  // namespace angle

@@ -27,18 +27,17 @@ namespace tint {
 namespace transform {
 namespace {
 
-ast::VariableDeclStatement* AsTrivialLetDecl(ast::Statement* stmt) {
+const ast::VariableDeclStatement* AsTrivialLetDecl(const ast::Statement* stmt) {
   auto* var_decl = stmt->As<ast::VariableDeclStatement>();
   if (!var_decl) {
     return nullptr;
   }
-  auto* var = var_decl->variable();
-  if (!var->is_const()) {
+  auto* var = var_decl->variable;
+  if (!var->is_const) {
     return nullptr;
   }
-  auto* ctor = var->constructor();
-  if (!IsAnyOf<ast::IdentifierExpression, ast::ScalarConstructorExpression>(
-          ctor)) {
+  auto* ctor = var->constructor;
+  if (!IsAnyOf<ast::IdentifierExpression, ast::LiteralExpression>(ctor)) {
     return nullptr;
   }
   return var_decl;
@@ -55,11 +54,11 @@ void FoldTrivialSingleUseLets::Run(CloneContext& ctx,
                                    DataMap&) {
   for (auto* node : ctx.src->ASTNodes().Objects()) {
     if (auto* block = node->As<ast::BlockStatement>()) {
-      auto& stmts = block->statements();
+      auto& stmts = block->statements;
       for (size_t stmt_idx = 0; stmt_idx < stmts.size(); stmt_idx++) {
         auto* stmt = stmts[stmt_idx];
         if (auto* let_decl = AsTrivialLetDecl(stmt)) {
-          auto* let = let_decl->variable();
+          auto* let = let_decl->variable;
           auto* sem_let = ctx.src->Sem().Get(let);
           auto& users = sem_let->Users();
           if (users.size() != 1) {
@@ -73,7 +72,7 @@ void FoldTrivialSingleUseLets::Run(CloneContext& ctx,
             if (user_stmt == stmts[i]) {
               auto* user_expr = user->Declaration();
               ctx.Remove(stmts, let_decl);
-              ctx.Replace(user_expr, ctx.Clone(let->constructor()));
+              ctx.Replace(user_expr, ctx.Clone(let->constructor));
             }
             if (!AsTrivialLetDecl(stmts[i])) {
               // Stop if we hit a statement that isn't the single use of the

@@ -53,7 +53,7 @@ import subprocess
 import sys
 from typing import * # mypy annotations
 
-REPO_DIR = pathlib.Path.cwd()
+SCRIPT_DIR = os.path.dirname(__file__)
 
 GN_ENV = dict(os.environ)
 # We need to set DEPOT_TOOLS_WIN_TOOLCHAIN to 0 for non-Googlers, but otherwise
@@ -61,12 +61,8 @@ GN_ENV = dict(os.environ)
 # the Visual Studio files in depot_tools if DEPOT_TOOLS_WIN_TOOLCHAIN is not
 # explicitly set to 0.
 vs_found = False
-for directory in os.environ['PATH'].split(os.pathsep):
-    vs_dir = os.path.join(directory, 'win_toolchain', 'vs_files')
-    if os.path.exists(vs_dir):
-        vs_found = True
-        break
-if not vs_found:
+vs_dir = os.path.join(SCRIPT_DIR, '..', 'third_party', 'depot_tools', 'win_toolchain', 'vs_files')
+if not os.path.isdir(vs_dir):
     GN_ENV['DEPOT_TOOLS_WIN_TOOLCHAIN'] = '0'
 
 if len(sys.argv) < 3:
@@ -215,6 +211,7 @@ IGNORED_INCLUDES = {
     b'libANGLE/renderer/vulkan/win32/DisplayVkWin32.h',
     b'libANGLE/renderer/vulkan/xcb/DisplayVkXcb.h',
     b'loader_cmake_config.h',
+    b'loader_windows.h',
     b'optick.h',
     b'spirv-tools/libspirv.h',
     b'third_party/volk/volk.h',
@@ -241,6 +238,8 @@ IGNORED_INCLUDES = {
     # Validation layers support building with robin hood hashing, but we are not enabling that
     # See http://anglebug.com/5791
     b'robin_hood.h',
+    # From the Vulkan-Loader
+    b'winres.h',
 }
 
 IGNORED_INCLUDE_PREFIXES = {

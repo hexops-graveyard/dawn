@@ -639,7 +639,7 @@ TEST_F(RenderPipelineValidationTest, TextureComponentTypeCompatibility) {
                    << kScalarTypes[i] << R"(>;
 
                 [[stage(fragment)]] fn main() {
-                    ignore(textureDimensions(myTexture));
+                    textureDimensions(myTexture);
                 })";
             descriptor.cFragment.module = utils::CreateShaderModule(device, stream.str().c_str());
             descriptor.cTargets[0].writeMask = wgpu::ColorWriteMask::None;
@@ -688,7 +688,7 @@ TEST_F(RenderPipelineValidationTest, TextureViewDimensionCompatibility) {
                 [[group(0), binding(0)]] var myTexture : )"
                    << kTextureKeywords[i] << R"(<f32>;
                 [[stage(fragment)]] fn main() {
-                    ignore(textureDimensions(myTexture));
+                    textureDimensions(myTexture);
                 })";
             descriptor.cFragment.module = utils::CreateShaderModule(device, stream.str().c_str());
             descriptor.cTargets[0].writeMask = wgpu::ColorWriteMask::None;
@@ -782,7 +782,7 @@ TEST_F(RenderPipelineValidationTest, StripIndexFormatRequired) {
 }
 
 // Test that specifying a clampDepth value results in an error if the feature is not enabled.
-TEST_F(RenderPipelineValidationTest, ClampDepthWithoutExtension) {
+TEST_F(RenderPipelineValidationTest, ClampDepthWithoutFeature) {
     {
         utils::ComboRenderPipelineDescriptor descriptor;
         descriptor.vertex.module = vsModule;
@@ -1124,13 +1124,13 @@ TEST_F(RenderPipelineValidationTest, BindingsFromCorrectEntryPoint) {
 class DepthClampingValidationTest : public RenderPipelineValidationTest {
   protected:
     WGPUDevice CreateTestDevice() override {
-        dawn_native::DeviceDescriptor descriptor;
-        descriptor.requiredExtensions = {"depth_clamping"};
+        dawn_native::DawnDeviceDescriptor descriptor;
+        descriptor.requiredFeatures = {"depth-clamping"};
         return adapter.CreateDevice(&descriptor);
     }
 };
 
-// Tests that specifying a clampDepth value succeeds if the extension is enabled.
+// Tests that specifying a clampDepth value succeeds if the feature is enabled.
 TEST_F(DepthClampingValidationTest, Success) {
     {
         utils::ComboRenderPipelineDescriptor descriptor;

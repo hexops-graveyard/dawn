@@ -4,6 +4,18 @@
 
 namespace dawn_wire { namespace server {
 
+    bool Server::DoBindGroupLayoutSetLabel(WGPUBindGroupLayout self, char const * label) {
+        
+        mProcs.bindGroupLayoutSetLabel(self, label);
+        return true;
+    }
+
+    bool Server::DoBindGroupSetLabel(WGPUBindGroup self, char const * label) {
+        
+        mProcs.bindGroupSetLabel(self, label);
+        return true;
+    }
+
     bool Server::DoBufferDestroy(WGPUBuffer self) {
         
         mProcs.bufferDestroy(self);
@@ -23,6 +35,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+
+    bool Server::DoCommandBufferSetLabel(WGPUCommandBuffer self, char const * label) {
+        
+        mProcs.commandBufferSetLabel(self, label);
+        return true;
+    }
 
     bool Server::DoCommandEncoderBeginComputePass(WGPUCommandEncoder self, WGPUComputePassDescriptor const * descriptor, WGPUComputePassEncoder* result) {
         *result =
@@ -105,6 +123,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoCommandEncoderSetLabel(WGPUCommandEncoder self, char const * label) {
+        
+        mProcs.commandEncoderSetLabel(self, label);
+        return true;
+    }
+
     bool Server::DoCommandEncoderWriteBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
         
         mProcs.commandEncoderWriteBuffer(self, buffer, bufferOffset, data, size);
@@ -156,6 +180,12 @@ namespace dawn_wire { namespace server {
     bool Server::DoComputePassEncoderSetBindGroup(WGPUComputePassEncoder self, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) {
         
         mProcs.computePassEncoderSetBindGroup(self, groupIndex, group, dynamicOffsetCount, dynamicOffsets);
+        return true;
+    }
+
+    bool Server::DoComputePassEncoderSetLabel(WGPUComputePassEncoder self, char const * label) {
+        
+        mProcs.computePassEncoderSetLabel(self, label);
         return true;
     }
 
@@ -324,6 +354,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoExternalTextureSetLabel(WGPUExternalTexture self, char const * label) {
+        
+        mProcs.externalTextureSetLabel(self, label);
+        return true;
+    }
+
     bool Server::DoInstanceCreateSurface(WGPUInstance self, WGPUSurfaceDescriptor const * descriptor, WGPUSurface* result) {
         *result =
         mProcs.instanceCreateSurface(self, descriptor);
@@ -331,9 +367,21 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoPipelineLayoutSetLabel(WGPUPipelineLayout self, char const * label) {
+        
+        mProcs.pipelineLayoutSetLabel(self, label);
+        return true;
+    }
+
     bool Server::DoQuerySetDestroy(WGPUQuerySet self) {
         
         mProcs.querySetDestroy(self);
+        return true;
+    }
+
+    bool Server::DoQuerySetSetLabel(WGPUQuerySet self, char const * label) {
+        
+        mProcs.querySetSetLabel(self, label);
         return true;
     }
 
@@ -410,6 +458,12 @@ namespace dawn_wire { namespace server {
     bool Server::DoRenderBundleEncoderSetIndexBuffer(WGPURenderBundleEncoder self, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) {
         
         mProcs.renderBundleEncoderSetIndexBuffer(self, buffer, format, offset, size);
+        return true;
+    }
+
+    bool Server::DoRenderBundleEncoderSetLabel(WGPURenderBundleEncoder self, char const * label) {
+        
+        mProcs.renderBundleEncoderSetLabel(self, label);
         return true;
     }
 
@@ -509,6 +563,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoRenderPassEncoderSetLabel(WGPURenderPassEncoder self, char const * label) {
+        
+        mProcs.renderPassEncoderSetLabel(self, label);
+        return true;
+    }
+
     bool Server::DoRenderPassEncoderSetPipeline(WGPURenderPassEncoder self, WGPURenderPipeline pipeline) {
         
         mProcs.renderPassEncoderSetPipeline(self, pipeline);
@@ -558,6 +618,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoSamplerSetLabel(WGPUSampler self, char const * label) {
+        
+        mProcs.samplerSetLabel(self, label);
+        return true;
+    }
+
 
     bool Server::DoShaderModuleSetLabel(WGPUShaderModule self, char const * label) {
         
@@ -600,6 +666,12 @@ namespace dawn_wire { namespace server {
     bool Server::DoTextureSetLabel(WGPUTexture self, char const * label) {
         
         mProcs.textureSetLabel(self, label);
+        return true;
+    }
+
+    bool Server::DoTextureViewSetLabel(WGPUTextureView self, char const * label) {
+        
+        mProcs.textureViewSetLabel(self, label);
         return true;
     }
 

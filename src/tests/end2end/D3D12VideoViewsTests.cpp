@@ -68,13 +68,13 @@ namespace {
             mD3d11Device = std::move(d3d11Device);
         }
 
-        std::vector<const char*> GetRequiredExtensions() override {
-            mIsMultiPlanarFormatsSupported = SupportsExtensions({"multiplanar_formats"});
+        std::vector<const char*> GetRequiredFeatures() override {
+            mIsMultiPlanarFormatsSupported = SupportsFeatures({"multiplanar-formats"});
             if (!mIsMultiPlanarFormatsSupported) {
                 return {};
             }
 
-            return {"multiplanar_formats"};
+            return {"multiplanar-formats"};
         }
 
         bool IsMultiPlanarFormatsSupported() const {

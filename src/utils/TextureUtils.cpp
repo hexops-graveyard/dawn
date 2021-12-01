@@ -134,6 +134,7 @@ namespace utils {
             case wgpu::TextureFormat::RG8Snorm:
             case wgpu::TextureFormat::RG8Uint:
             case wgpu::TextureFormat::RG8Sint:
+            case wgpu::TextureFormat::Depth16Unorm:
                 return 2u;
 
             case wgpu::TextureFormat::R32Float:
@@ -232,14 +233,14 @@ namespace utils {
 
             case wgpu::TextureFormat::Depth24Plus:
             case wgpu::TextureFormat::Depth24PlusStencil8:
+            case wgpu::TextureFormat::Depth24UnormStencil8:
+            case wgpu::TextureFormat::Depth32FloatStencil8:
 
             // Block size of a multi-planar format depends on aspect.
             case wgpu::TextureFormat::R8BG8Biplanar420Unorm:
 
             // TODO(dawn:666): implement stencil8
             case wgpu::TextureFormat::Stencil8:
-            // TODO(dawn:570): implement depth16unorm
-            case wgpu::TextureFormat::Depth16Unorm:
             case wgpu::TextureFormat::Undefined:
                 break;
         }
@@ -287,6 +288,9 @@ namespace utils {
             case wgpu::TextureFormat::Depth32Float:
             case wgpu::TextureFormat::Depth24Plus:
             case wgpu::TextureFormat::Depth24PlusStencil8:
+            case wgpu::TextureFormat::Depth16Unorm:
+            case wgpu::TextureFormat::Depth24UnormStencil8:
+            case wgpu::TextureFormat::Depth32FloatStencil8:
                 return 1u;
 
             case wgpu::TextureFormat::BC1RGBAUnorm:
@@ -355,8 +359,6 @@ namespace utils {
 
             // TODO(dawn:666): implement stencil8
             case wgpu::TextureFormat::Stencil8:
-            // TODO(dawn:570): implement depth16unorm
-            case wgpu::TextureFormat::Depth16Unorm:
             case wgpu::TextureFormat::Undefined:
                 break;
         }
@@ -404,6 +406,9 @@ namespace utils {
             case wgpu::TextureFormat::Depth32Float:
             case wgpu::TextureFormat::Depth24Plus:
             case wgpu::TextureFormat::Depth24PlusStencil8:
+            case wgpu::TextureFormat::Depth16Unorm:
+            case wgpu::TextureFormat::Depth24UnormStencil8:
+            case wgpu::TextureFormat::Depth32FloatStencil8:
                 return 1u;
 
             case wgpu::TextureFormat::BC1RGBAUnorm:
@@ -472,8 +477,6 @@ namespace utils {
 
             // TODO(dawn:666): implement stencil8
             case wgpu::TextureFormat::Stencil8:
-            // TODO(dawn:570): implement depth16unorm
-            case wgpu::TextureFormat::Depth16Unorm:
             case wgpu::TextureFormat::Undefined:
                 break;
         }

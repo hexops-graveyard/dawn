@@ -4,6 +4,10 @@
 using namespace testing;
 
 namespace {
+    void ForwardBindGroupSetLabel(WGPUBindGroup self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->BindGroupSetLabel(self, label);
+    }
     void ForwardBindGroupReference(WGPUBindGroup self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->BindGroupReference(self);
@@ -13,6 +17,10 @@ namespace {
         return object->procs->BindGroupRelease(self);
     }
 
+    void ForwardBindGroupLayoutSetLabel(WGPUBindGroupLayout self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->BindGroupLayoutSetLabel(self, label);
+    }
     void ForwardBindGroupLayoutReference(WGPUBindGroupLayout self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->BindGroupLayoutReference(self);
@@ -55,6 +63,10 @@ namespace {
         return object->procs->BufferRelease(self);
     }
 
+    void ForwardCommandBufferSetLabel(WGPUCommandBuffer self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->CommandBufferSetLabel(self, label);
+    }
     void ForwardCommandBufferReference(WGPUCommandBuffer self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->CommandBufferReference(self);
@@ -116,6 +128,10 @@ namespace {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->CommandEncoderResolveQuerySet(self, querySet, firstQuery, queryCount, destination, destinationOffset);
     }
+    void ForwardCommandEncoderSetLabel(WGPUCommandEncoder self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->CommandEncoderSetLabel(self, label);
+    }
     void ForwardCommandEncoderWriteBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->CommandEncoderWriteBuffer(self, buffer, bufferOffset, data, size);
@@ -160,6 +176,10 @@ namespace {
     void ForwardComputePassEncoderSetBindGroup(WGPUComputePassEncoder self, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->ComputePassEncoderSetBindGroup(self, groupIndex, group, dynamicOffsetCount, dynamicOffsets);
+    }
+    void ForwardComputePassEncoderSetLabel(WGPUComputePassEncoder self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->ComputePassEncoderSetLabel(self, label);
     }
     void ForwardComputePassEncoderSetPipeline(WGPUComputePassEncoder self, WGPUComputePipeline pipeline) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
@@ -316,6 +336,10 @@ namespace {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->ExternalTextureDestroy(self);
     }
+    void ForwardExternalTextureSetLabel(WGPUExternalTexture self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->ExternalTextureSetLabel(self, label);
+    }
     void ForwardExternalTextureReference(WGPUExternalTexture self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->ExternalTextureReference(self);
@@ -338,6 +362,10 @@ namespace {
         return object->procs->InstanceRelease(self);
     }
 
+    void ForwardPipelineLayoutSetLabel(WGPUPipelineLayout self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->PipelineLayoutSetLabel(self, label);
+    }
     void ForwardPipelineLayoutReference(WGPUPipelineLayout self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->PipelineLayoutReference(self);
@@ -350,6 +378,10 @@ namespace {
     void ForwardQuerySetDestroy(WGPUQuerySet self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->QuerySetDestroy(self);
+    }
+    void ForwardQuerySetSetLabel(WGPUQuerySet self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->QuerySetSetLabel(self, label);
     }
     void ForwardQuerySetReference(WGPUQuerySet self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
@@ -438,6 +470,10 @@ namespace {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->RenderBundleEncoderSetIndexBuffer(self, buffer, format, offset, size);
     }
+    void ForwardRenderBundleEncoderSetLabel(WGPURenderBundleEncoder self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->RenderBundleEncoderSetLabel(self, label);
+    }
     void ForwardRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder self, WGPURenderPipeline pipeline) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->RenderBundleEncoderSetPipeline(self, pipeline);
@@ -511,6 +547,10 @@ namespace {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->RenderPassEncoderSetIndexBuffer(self, buffer, format, offset, size);
     }
+    void ForwardRenderPassEncoderSetLabel(WGPURenderPassEncoder self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->RenderPassEncoderSetLabel(self, label);
+    }
     void ForwardRenderPassEncoderSetPipeline(WGPURenderPassEncoder self, WGPURenderPipeline pipeline) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->RenderPassEncoderSetPipeline(self, pipeline);
@@ -561,6 +601,10 @@ namespace {
         return object->procs->RenderPipelineRelease(self);
     }
 
+    void ForwardSamplerSetLabel(WGPUSampler self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->SamplerSetLabel(self, label);
+    }
     void ForwardSamplerReference(WGPUSampler self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->SamplerReference(self);
@@ -638,6 +682,10 @@ namespace {
         return object->procs->TextureRelease(self);
     }
 
+    void ForwardTextureViewSetLabel(WGPUTextureView self, char const * label) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->TextureViewSetLabel(self, label);
+    }
     void ForwardTextureViewReference(WGPUTextureView self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->TextureViewReference(self);
@@ -655,8 +703,10 @@ ProcTableAsClass::~ProcTableAsClass() {
 void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* device) {
     *device = GetNewDevice();
 
+    table->bindGroupSetLabel = reinterpret_cast<WGPUProcBindGroupSetLabel>(ForwardBindGroupSetLabel);
     table->bindGroupReference = reinterpret_cast<WGPUProcBindGroupReference>(ForwardBindGroupReference);
     table->bindGroupRelease = reinterpret_cast<WGPUProcBindGroupRelease>(ForwardBindGroupRelease);
+    table->bindGroupLayoutSetLabel = reinterpret_cast<WGPUProcBindGroupLayoutSetLabel>(ForwardBindGroupLayoutSetLabel);
     table->bindGroupLayoutReference = reinterpret_cast<WGPUProcBindGroupLayoutReference>(ForwardBindGroupLayoutReference);
     table->bindGroupLayoutRelease = reinterpret_cast<WGPUProcBindGroupLayoutRelease>(ForwardBindGroupLayoutRelease);
     table->bufferDestroy = reinterpret_cast<WGPUProcBufferDestroy>(ForwardBufferDestroy);
@@ -667,6 +717,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->bufferUnmap = reinterpret_cast<WGPUProcBufferUnmap>(ForwardBufferUnmap);
     table->bufferReference = reinterpret_cast<WGPUProcBufferReference>(ForwardBufferReference);
     table->bufferRelease = reinterpret_cast<WGPUProcBufferRelease>(ForwardBufferRelease);
+    table->commandBufferSetLabel = reinterpret_cast<WGPUProcCommandBufferSetLabel>(ForwardCommandBufferSetLabel);
     table->commandBufferReference = reinterpret_cast<WGPUProcCommandBufferReference>(ForwardCommandBufferReference);
     table->commandBufferRelease = reinterpret_cast<WGPUProcCommandBufferRelease>(ForwardCommandBufferRelease);
     table->commandEncoderBeginComputePass = reinterpret_cast<WGPUProcCommandEncoderBeginComputePass>(ForwardCommandEncoderBeginComputePass);
@@ -682,6 +733,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->commandEncoderPopDebugGroup = reinterpret_cast<WGPUProcCommandEncoderPopDebugGroup>(ForwardCommandEncoderPopDebugGroup);
     table->commandEncoderPushDebugGroup = reinterpret_cast<WGPUProcCommandEncoderPushDebugGroup>(ForwardCommandEncoderPushDebugGroup);
     table->commandEncoderResolveQuerySet = reinterpret_cast<WGPUProcCommandEncoderResolveQuerySet>(ForwardCommandEncoderResolveQuerySet);
+    table->commandEncoderSetLabel = reinterpret_cast<WGPUProcCommandEncoderSetLabel>(ForwardCommandEncoderSetLabel);
     table->commandEncoderWriteBuffer = reinterpret_cast<WGPUProcCommandEncoderWriteBuffer>(ForwardCommandEncoderWriteBuffer);
     table->commandEncoderWriteTimestamp = reinterpret_cast<WGPUProcCommandEncoderWriteTimestamp>(ForwardCommandEncoderWriteTimestamp);
     table->commandEncoderReference = reinterpret_cast<WGPUProcCommandEncoderReference>(ForwardCommandEncoderReference);
@@ -693,6 +745,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->computePassEncoderPopDebugGroup = reinterpret_cast<WGPUProcComputePassEncoderPopDebugGroup>(ForwardComputePassEncoderPopDebugGroup);
     table->computePassEncoderPushDebugGroup = reinterpret_cast<WGPUProcComputePassEncoderPushDebugGroup>(ForwardComputePassEncoderPushDebugGroup);
     table->computePassEncoderSetBindGroup = reinterpret_cast<WGPUProcComputePassEncoderSetBindGroup>(ForwardComputePassEncoderSetBindGroup);
+    table->computePassEncoderSetLabel = reinterpret_cast<WGPUProcComputePassEncoderSetLabel>(ForwardComputePassEncoderSetLabel);
     table->computePassEncoderSetPipeline = reinterpret_cast<WGPUProcComputePassEncoderSetPipeline>(ForwardComputePassEncoderSetPipeline);
     table->computePassEncoderWriteTimestamp = reinterpret_cast<WGPUProcComputePassEncoderWriteTimestamp>(ForwardComputePassEncoderWriteTimestamp);
     table->computePassEncoderReference = reinterpret_cast<WGPUProcComputePassEncoderReference>(ForwardComputePassEncoderReference);
@@ -731,14 +784,17 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->deviceReference = reinterpret_cast<WGPUProcDeviceReference>(ForwardDeviceReference);
     table->deviceRelease = reinterpret_cast<WGPUProcDeviceRelease>(ForwardDeviceRelease);
     table->externalTextureDestroy = reinterpret_cast<WGPUProcExternalTextureDestroy>(ForwardExternalTextureDestroy);
+    table->externalTextureSetLabel = reinterpret_cast<WGPUProcExternalTextureSetLabel>(ForwardExternalTextureSetLabel);
     table->externalTextureReference = reinterpret_cast<WGPUProcExternalTextureReference>(ForwardExternalTextureReference);
     table->externalTextureRelease = reinterpret_cast<WGPUProcExternalTextureRelease>(ForwardExternalTextureRelease);
     table->instanceCreateSurface = reinterpret_cast<WGPUProcInstanceCreateSurface>(ForwardInstanceCreateSurface);
     table->instanceReference = reinterpret_cast<WGPUProcInstanceReference>(ForwardInstanceReference);
     table->instanceRelease = reinterpret_cast<WGPUProcInstanceRelease>(ForwardInstanceRelease);
+    table->pipelineLayoutSetLabel = reinterpret_cast<WGPUProcPipelineLayoutSetLabel>(ForwardPipelineLayoutSetLabel);
     table->pipelineLayoutReference = reinterpret_cast<WGPUProcPipelineLayoutReference>(ForwardPipelineLayoutReference);
     table->pipelineLayoutRelease = reinterpret_cast<WGPUProcPipelineLayoutRelease>(ForwardPipelineLayoutRelease);
     table->querySetDestroy = reinterpret_cast<WGPUProcQuerySetDestroy>(ForwardQuerySetDestroy);
+    table->querySetSetLabel = reinterpret_cast<WGPUProcQuerySetSetLabel>(ForwardQuerySetSetLabel);
     table->querySetReference = reinterpret_cast<WGPUProcQuerySetReference>(ForwardQuerySetReference);
     table->querySetRelease = reinterpret_cast<WGPUProcQuerySetRelease>(ForwardQuerySetRelease);
     table->queueCopyTextureForBrowser = reinterpret_cast<WGPUProcQueueCopyTextureForBrowser>(ForwardQueueCopyTextureForBrowser);
@@ -760,6 +816,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->renderBundleEncoderPushDebugGroup = reinterpret_cast<WGPUProcRenderBundleEncoderPushDebugGroup>(ForwardRenderBundleEncoderPushDebugGroup);
     table->renderBundleEncoderSetBindGroup = reinterpret_cast<WGPUProcRenderBundleEncoderSetBindGroup>(ForwardRenderBundleEncoderSetBindGroup);
     table->renderBundleEncoderSetIndexBuffer = reinterpret_cast<WGPUProcRenderBundleEncoderSetIndexBuffer>(ForwardRenderBundleEncoderSetIndexBuffer);
+    table->renderBundleEncoderSetLabel = reinterpret_cast<WGPUProcRenderBundleEncoderSetLabel>(ForwardRenderBundleEncoderSetLabel);
     table->renderBundleEncoderSetPipeline = reinterpret_cast<WGPUProcRenderBundleEncoderSetPipeline>(ForwardRenderBundleEncoderSetPipeline);
     table->renderBundleEncoderSetVertexBuffer = reinterpret_cast<WGPUProcRenderBundleEncoderSetVertexBuffer>(ForwardRenderBundleEncoderSetVertexBuffer);
     table->renderBundleEncoderReference = reinterpret_cast<WGPUProcRenderBundleEncoderReference>(ForwardRenderBundleEncoderReference);
@@ -778,6 +835,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->renderPassEncoderSetBindGroup = reinterpret_cast<WGPUProcRenderPassEncoderSetBindGroup>(ForwardRenderPassEncoderSetBindGroup);
     table->renderPassEncoderSetBlendConstant = reinterpret_cast<WGPUProcRenderPassEncoderSetBlendConstant>(ForwardRenderPassEncoderSetBlendConstant);
     table->renderPassEncoderSetIndexBuffer = reinterpret_cast<WGPUProcRenderPassEncoderSetIndexBuffer>(ForwardRenderPassEncoderSetIndexBuffer);
+    table->renderPassEncoderSetLabel = reinterpret_cast<WGPUProcRenderPassEncoderSetLabel>(ForwardRenderPassEncoderSetLabel);
     table->renderPassEncoderSetPipeline = reinterpret_cast<WGPUProcRenderPassEncoderSetPipeline>(ForwardRenderPassEncoderSetPipeline);
     table->renderPassEncoderSetScissorRect = reinterpret_cast<WGPUProcRenderPassEncoderSetScissorRect>(ForwardRenderPassEncoderSetScissorRect);
     table->renderPassEncoderSetStencilReference = reinterpret_cast<WGPUProcRenderPassEncoderSetStencilReference>(ForwardRenderPassEncoderSetStencilReference);
@@ -790,6 +848,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->renderPipelineSetLabel = reinterpret_cast<WGPUProcRenderPipelineSetLabel>(ForwardRenderPipelineSetLabel);
     table->renderPipelineReference = reinterpret_cast<WGPUProcRenderPipelineReference>(ForwardRenderPipelineReference);
     table->renderPipelineRelease = reinterpret_cast<WGPUProcRenderPipelineRelease>(ForwardRenderPipelineRelease);
+    table->samplerSetLabel = reinterpret_cast<WGPUProcSamplerSetLabel>(ForwardSamplerSetLabel);
     table->samplerReference = reinterpret_cast<WGPUProcSamplerReference>(ForwardSamplerReference);
     table->samplerRelease = reinterpret_cast<WGPUProcSamplerRelease>(ForwardSamplerRelease);
     table->shaderModuleGetCompilationInfo = reinterpret_cast<WGPUProcShaderModuleGetCompilationInfo>(ForwardShaderModuleGetCompilationInfo);
@@ -808,6 +867,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->textureSetLabel = reinterpret_cast<WGPUProcTextureSetLabel>(ForwardTextureSetLabel);
     table->textureReference = reinterpret_cast<WGPUProcTextureReference>(ForwardTextureReference);
     table->textureRelease = reinterpret_cast<WGPUProcTextureRelease>(ForwardTextureRelease);
+    table->textureViewSetLabel = reinterpret_cast<WGPUProcTextureViewSetLabel>(ForwardTextureViewSetLabel);
     table->textureViewReference = reinterpret_cast<WGPUProcTextureViewReference>(ForwardTextureViewReference);
     table->textureViewRelease = reinterpret_cast<WGPUProcTextureViewRelease>(ForwardTextureViewRelease);
 }

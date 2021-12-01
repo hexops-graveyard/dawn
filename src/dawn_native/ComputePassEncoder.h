@@ -19,15 +19,16 @@
 #include "dawn_native/Error.h"
 #include "dawn_native/Forward.h"
 #include "dawn_native/PassResourceUsageTracker.h"
-#include "dawn_native/ProgrammablePassEncoder.h"
+#include "dawn_native/ProgrammableEncoder.h"
 
 namespace dawn_native {
 
     class SyncScopeUsageTracker;
 
-    class ComputePassEncoder final : public ProgrammablePassEncoder {
+    class ComputePassEncoder final : public ProgrammableEncoder {
       public:
         ComputePassEncoder(DeviceBase* device,
+                           const ComputePassDescriptor* descriptor,
                            CommandEncoder* commandEncoder,
                            EncodingContext* encodingContext);
 
@@ -50,6 +51,11 @@ namespace dawn_native {
 
         void APIWriteTimestamp(QuerySetBase* querySet, uint32_t queryIndex);
 
+        CommandBufferStateTracker* GetCommandBufferStateTrackerForTesting();
+        void RestoreCommandBufferStateForTesting(CommandBufferStateTracker state) {
+            RestoreCommandBufferState(std::move(state));
+        }
+
       protected:
         ComputePassEncoder(DeviceBase* device,
                            CommandEncoder* commandEncoder,
@@ -57,6 +63,14 @@ namespace dawn_native {
                            ErrorTag errorTag);
 
       private:
+        void DestroyImpl() override;
+
+        ResultOrError<std::pair<Ref<BufferBase>, uint64_t>> TransformIndirectDispatchBuffer(
+            Ref<BufferBase> indirectBuffer,
+            uint64_t indirectOffset);
+
+        void RestoreCommandBufferState(CommandBufferStateTracker state);
+
         CommandBufferStateTracker mCommandBufferState;
 
         // Adds the bindgroups used for the current dispatch to the SyncScopeResourceUsage and
@@ -68,9 +82,6 @@ namespace dawn_native {
         // Keep a reference to the encoder to make sure the context isn't freed.
         Ref<CommandEncoder> mCommandEncoder;
     };
-
-    // For the benefit of template generation.
-    using ComputePassEncoderBase = ComputePassEncoder;
 
 }  // namespace dawn_native
 

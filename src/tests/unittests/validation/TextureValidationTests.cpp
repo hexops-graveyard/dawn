@@ -15,6 +15,7 @@
 #include "tests/unittests/validation/ValidationTest.h"
 
 #include "common/Constants.h"
+#include "common/Math.h"
 #include "utils/ComboRenderPipelineDescriptor.h"
 #include "utils/TextureUtils.h"
 #include "utils/WGPUHelpers.h"
@@ -25,6 +26,11 @@ namespace {
         wgpu::TextureFormat::RG11B10Ufloat, wgpu::TextureFormat::RGB9E5Ufloat,
         wgpu::TextureFormat::R8Snorm,       wgpu::TextureFormat::RG8Snorm,
         wgpu::TextureFormat::RGBA8Snorm,
+    };
+
+    wgpu::TextureDimension kDimensions[] = {
+        wgpu::TextureDimension::e1D,
+        wgpu::TextureDimension::e3D,
     };
 
     class TextureValidationTest : public ValidationTest {
@@ -264,12 +270,24 @@ namespace {
             device.CreateTexture(&descriptor);
         }
 
-        // Mip level exceeding kMaxTexture2DMipLevels not allowed
+        // Mip level equal to the maximum for a 2D texture is allowed
         {
+            uint32_t maxTextureDimension2D = GetSupportedLimits().limits.maxTextureDimension2D;
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.width = 1 >> kMaxTexture2DMipLevels;
-            descriptor.size.height = 1 >> kMaxTexture2DMipLevels;
-            descriptor.mipLevelCount = kMaxTexture2DMipLevels + 1u;
+            descriptor.size.width = maxTextureDimension2D;
+            descriptor.size.height = maxTextureDimension2D;
+            descriptor.mipLevelCount = Log2(maxTextureDimension2D) + 1u;
+
+            device.CreateTexture(&descriptor);
+        }
+
+        // Mip level exceeding the maximum for a 2D texture not allowed
+        {
+            uint32_t maxTextureDimension2D = GetSupportedLimits().limits.maxTextureDimension2D;
+            wgpu::TextureDescriptor descriptor = defaultDescriptor;
+            descriptor.size.width = maxTextureDimension2D;
+            descriptor.size.height = maxTextureDimension2D;
+            descriptor.mipLevelCount = Log2(maxTextureDimension2D) + 2u;
 
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
         }
@@ -278,26 +296,27 @@ namespace {
     // Test the validation of array layer count
     TEST_F(TextureValidationTest, ArrayLayerCount) {
         wgpu::TextureDescriptor defaultDescriptor = CreateDefaultTextureDescriptor();
+        wgpu::Limits supportedLimits = GetSupportedLimits().limits;
 
-        // Array layer count exceeding kMaxTextureArrayLayers is not allowed for 2D texture
+        // Array layer count exceeding maxTextureArrayLayers is not allowed for 2D texture
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
 
-            descriptor.size.depthOrArrayLayers = kMaxTextureArrayLayers + 1u;
+            descriptor.size.depthOrArrayLayers = supportedLimits.maxTextureArrayLayers + 1u;
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
         }
 
-        // Array layer count less than kMaxTextureArrayLayers is allowed
+        // Array layer count less than maxTextureArrayLayers is allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.depthOrArrayLayers = kMaxTextureArrayLayers >> 1;
+            descriptor.size.depthOrArrayLayers = supportedLimits.maxTextureArrayLayers >> 1;
             device.CreateTexture(&descriptor);
         }
 
-        // Array layer count equal to kMaxTextureArrayLayers is allowed
+        // Array layer count equal to maxTextureArrayLayers is allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.depthOrArrayLayers = kMaxTextureArrayLayers;
+            descriptor.size.depthOrArrayLayers = supportedLimits.maxTextureArrayLayers;
             device.CreateTexture(&descriptor);
         }
     }
@@ -305,15 +324,16 @@ namespace {
     // Test the validation of 2D texture size
     TEST_F(TextureValidationTest, 2DTextureSize) {
         wgpu::TextureDescriptor defaultDescriptor = CreateDefaultTextureDescriptor();
+        wgpu::Limits supportedLimits = GetSupportedLimits().limits;
 
         // Out-of-bound texture dimension is not allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.width = kMaxTextureDimension2D + 1u;
+            descriptor.size.width = supportedLimits.maxTextureDimension2D + 1u;
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
 
             descriptor.size.width = 1;
-            descriptor.size.height = kMaxTextureDimension2D + 1u;
+            descriptor.size.height = supportedLimits.maxTextureDimension2D + 1u;
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
         }
 
@@ -334,16 +354,16 @@ namespace {
         // Texture size less than max dimension is allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.width = kMaxTextureDimension2D >> 1;
-            descriptor.size.height = kMaxTextureDimension2D >> 1;
+            descriptor.size.width = supportedLimits.maxTextureDimension2D >> 1;
+            descriptor.size.height = supportedLimits.maxTextureDimension2D >> 1;
             device.CreateTexture(&descriptor);
         }
 
         // Texture size equal to max dimension is allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
-            descriptor.size.width = kMaxTextureDimension2D;
-            descriptor.size.height = kMaxTextureDimension2D;
+            descriptor.size.width = supportedLimits.maxTextureDimension2D;
+            descriptor.size.height = supportedLimits.maxTextureDimension2D;
             descriptor.dimension = wgpu::TextureDimension::e2D;
             device.CreateTexture(&descriptor);
         }
@@ -352,19 +372,20 @@ namespace {
     // Test the validation of 3D texture size
     TEST_F(TextureValidationTest, 3DTextureSize) {
         wgpu::TextureDescriptor defaultDescriptor = CreateDefaultTextureDescriptor();
+        wgpu::Limits supportedLimits = GetSupportedLimits().limits;
 
         // Out-of-bound texture dimension is not allowed
         {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
             descriptor.dimension = wgpu::TextureDimension::e3D;
 
-            descriptor.size = {kMaxTextureDimension3D + 1u, 1, 1};
+            descriptor.size = {supportedLimits.maxTextureDimension3D + 1u, 1, 1};
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
 
-            descriptor.size = {1, kMaxTextureDimension3D + 1u, 1};
+            descriptor.size = {1, supportedLimits.maxTextureDimension3D + 1u, 1};
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
 
-            descriptor.size = {1, 1, kMaxTextureDimension3D + 1u};
+            descriptor.size = {1, 1, supportedLimits.maxTextureDimension3D + 1u};
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
         }
 
@@ -388,8 +409,9 @@ namespace {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
             descriptor.dimension = wgpu::TextureDimension::e3D;
 
-            descriptor.size = {kMaxTextureDimension3D >> 1, kMaxTextureDimension3D >> 1,
-                               kMaxTextureDimension3D >> 1};
+            descriptor.size = {supportedLimits.maxTextureDimension3D >> 1,
+                               supportedLimits.maxTextureDimension3D >> 1,
+                               supportedLimits.maxTextureDimension3D >> 1};
             device.CreateTexture(&descriptor);
         }
 
@@ -398,8 +420,9 @@ namespace {
             wgpu::TextureDescriptor descriptor = defaultDescriptor;
             descriptor.dimension = wgpu::TextureDimension::e3D;
 
-            descriptor.size = {kMaxTextureDimension3D, kMaxTextureDimension3D,
-                               kMaxTextureDimension3D};
+            descriptor.size = {supportedLimits.maxTextureDimension3D,
+                               supportedLimits.maxTextureDimension3D,
+                               supportedLimits.maxTextureDimension3D};
             device.CreateTexture(&descriptor);
         }
     }
@@ -408,21 +431,13 @@ namespace {
     TEST_F(TextureValidationTest, DepthStencilFormatsFor3D) {
         wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
 
-        wgpu::TextureDimension dimensions[] = {
-            wgpu::TextureDimension::e1D,
-            wgpu::TextureDimension::e3D,
-        };
-
-        // TODO(dawn:690): Uncomment these depth/stencil formats after we implement them in Dawn.
         wgpu::TextureFormat depthStencilFormats[] = {
             wgpu::TextureFormat::Stencil8,     wgpu::TextureFormat::Depth16Unorm,
             wgpu::TextureFormat::Depth24Plus,  wgpu::TextureFormat::Depth24PlusStencil8,
             wgpu::TextureFormat::Depth32Float,
-            // wgpu::TextureFormat::Depth24UnormStencil8,
-            // wgpu::TextureFormat::Depth32FloatStencil8,
         };
 
-        for (wgpu::TextureDimension dimension : dimensions) {
+        for (wgpu::TextureDimension dimension : kDimensions) {
             for (wgpu::TextureFormat format : depthStencilFormats) {
                 descriptor.format = format;
                 descriptor.dimension = dimension;
@@ -533,9 +548,25 @@ namespace {
         ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
     }
 
-    // Test that the creation of a texture with BC format will fail when the extension
+    // Test that the creation of a texture with depth24unorm-stencil8 will fail when the feature
+    // Depth24UnormStencil8 is not enabled.
+    TEST_F(TextureValidationTest, UseD24S8FormatWithoutEnablingFeature) {
+        wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
+        descriptor.format = wgpu::TextureFormat::Depth24UnormStencil8;
+        ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
+    }
+
+    // Test that the creation of a texture with depth32float-stencil8 will fail when the feature
+    // Depth32FloatStencil8 is not enabled.
+    TEST_F(TextureValidationTest, UseD32S8FormatWithoutEnablingFeature) {
+        wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
+        descriptor.format = wgpu::TextureFormat::Depth32FloatStencil8;
+        ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
+    }
+
+    // Test that the creation of a texture with BC format will fail when the feature
     // textureCompressionBC is not enabled.
-    TEST_F(TextureValidationTest, UseBCFormatWithoutEnablingExtension) {
+    TEST_F(TextureValidationTest, UseBCFormatWithoutEnablingFeature) {
         for (wgpu::TextureFormat format : utils::kBCFormats) {
             wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
             descriptor.format = format;
@@ -543,9 +574,9 @@ namespace {
         }
     }
 
-    // Test that the creation of a texture with ETC2 format will fail when the extension
+    // Test that the creation of a texture with ETC2 format will fail when the feature
     // textureCompressionETC2 is not enabled.
-    TEST_F(TextureValidationTest, UseETC2FormatWithoutEnablingExtension) {
+    TEST_F(TextureValidationTest, UseETC2FormatWithoutEnablingFeature) {
         for (wgpu::TextureFormat format : utils::kETC2Formats) {
             wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
             descriptor.format = format;
@@ -553,12 +584,52 @@ namespace {
         }
     }
 
-    // Test that the creation of a texture with ASTC format will fail when the extension
+    // Test that the creation of a texture with ASTC format will fail when the feature
     // textureCompressionASTC is not enabled.
-    TEST_F(TextureValidationTest, UseASTCFormatWithoutEnablingExtension) {
+    TEST_F(TextureValidationTest, UseASTCFormatWithoutEnablingFeature) {
         for (wgpu::TextureFormat format : utils::kASTCFormats) {
             wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
             descriptor.format = format;
+            ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
+        }
+    }
+
+    class D24S8TextureFormatsValidationTests : public TextureValidationTest {
+      protected:
+        WGPUDevice CreateTestDevice() override {
+            dawn_native::DeviceDescriptor descriptor;
+            descriptor.requiredFeatures = {"depth24unorm-stencil8"};
+            return adapter.CreateDevice(&descriptor);
+        }
+    };
+
+    // Test that depth24unorm-stencil8 format is invalid for 3D texture
+    TEST_F(D24S8TextureFormatsValidationTests, DepthStencilFormatsFor3D) {
+        wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
+
+        for (wgpu::TextureDimension dimension : kDimensions) {
+            descriptor.format = wgpu::TextureFormat::Depth24UnormStencil8;
+            descriptor.dimension = dimension;
+            ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
+        }
+    }
+
+    class D32S8TextureFormatsValidationTests : public TextureValidationTest {
+      protected:
+        WGPUDevice CreateTestDevice() override {
+            dawn_native::DeviceDescriptor descriptor;
+            descriptor.requiredFeatures = {"depth32float-stencil8"};
+            return adapter.CreateDevice(&descriptor);
+        }
+    };
+
+    // Test that depth32float-stencil8 format is invalid for 3D texture
+    TEST_F(D32S8TextureFormatsValidationTests, DepthStencilFormatsFor3D) {
+        wgpu::TextureDescriptor descriptor = CreateDefaultTextureDescriptor();
+
+        for (wgpu::TextureDimension dimension : kDimensions) {
+            descriptor.format = wgpu::TextureFormat::Depth32FloatStencil8;
+            descriptor.dimension = dimension;
             ASSERT_DEVICE_ERROR(device.CreateTexture(&descriptor));
         }
     }
@@ -568,9 +639,9 @@ namespace {
     class CompressedTextureFormatsValidationTests : public TextureValidationTest {
       protected:
         WGPUDevice CreateTestDevice() override {
-            dawn_native::DeviceDescriptor descriptor;
-            descriptor.requiredExtensions = {"texture_compression_bc", "texture-compression-etc2",
-                                             "texture-compression-astc"};
+            dawn_native::DawnDeviceDescriptor descriptor;
+            descriptor.requiredFeatures = {"texture-compression-bc", "texture-compression-etc2",
+                                           "texture-compression-astc"};
             return adapter.CreateDevice(&descriptor);
         }
 

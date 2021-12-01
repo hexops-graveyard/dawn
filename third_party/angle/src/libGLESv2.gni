@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 libangle_common_sources = [
+  "src/common/CircularBuffer.h",
   "src/common/Color.h",
   "src/common/Color.inc",
   "src/common/FastVector.h",
@@ -50,10 +51,19 @@ libangle_common_sources = [
   "src/common/third_party/base/anglebase/logging.h",
   "src/common/third_party/base/anglebase/macros.h",
   "src/common/third_party/base/anglebase/no_destructor.h",
+  "src/common/third_party/base/anglebase/numerics/checked_math.h",
+  "src/common/third_party/base/anglebase/numerics/checked_math_impl.h",
+  "src/common/third_party/base/anglebase/numerics/clamped_math.h",
+  "src/common/third_party/base/anglebase/numerics/clamped_math_impl.h",
+  "src/common/third_party/base/anglebase/numerics/math_constants.h",
+  "src/common/third_party/base/anglebase/numerics/ranges.h",
   "src/common/third_party/base/anglebase/numerics/safe_conversions.h",
+  "src/common/third_party/base/anglebase/numerics/safe_conversions_arm_impl.h",
   "src/common/third_party/base/anglebase/numerics/safe_conversions_impl.h",
   "src/common/third_party/base/anglebase/numerics/safe_math.h",
-  "src/common/third_party/base/anglebase/numerics/safe_math_impl.h",
+  "src/common/third_party/base/anglebase/numerics/safe_math_arm_impl.h",
+  "src/common/third_party/base/anglebase/numerics/safe_math_clang_gcc_impl.h",
+  "src/common/third_party/base/anglebase/numerics/safe_math_shared_impl.h",
   "src/common/third_party/base/anglebase/sha1.cc",
   "src/common/third_party/base/anglebase/sha1.h",
   "src/common/third_party/base/anglebase/sys_byteorder.h",
@@ -175,7 +185,6 @@ libangle_includes = [
   "include/GLES/gl.h",
   "include/GLES/glplatform.h",
   "include/GLES/glext.h",
-  "include/GLES/glext_angle.h",
   "include/GLES2/gl2.h",
   "include/GLES2/gl2ext.h",
   "include/GLES2/gl2ext_angle.h",
@@ -276,6 +285,7 @@ libangle_headers = [
   "src/libANGLE/entry_points_utils.h",
   "src/libANGLE/features.h",
   "src/libANGLE/formatutils.h",
+  "src/libANGLE/gles_extensions_autogen.h",
   "src/libANGLE/histogram_macros.h",
   "src/libANGLE/queryconversions.h",
   "src/libANGLE/queryutils.h",
@@ -400,6 +410,7 @@ libangle_sources = [
   "src/libANGLE/format_map_autogen.cpp",
   "src/libANGLE/format_map_desktop.cpp",
   "src/libANGLE/formatutils.cpp",
+  "src/libANGLE/gles_extensions_autogen.cpp",
   "src/libANGLE/queryconversions.cpp",
   "src/libANGLE/queryutils.cpp",
   "src/libANGLE/renderer/BufferImpl.cpp",
@@ -409,6 +420,7 @@ libangle_sources = [
   "src/libANGLE/renderer/EGLReusableSync.cpp",
   "src/libANGLE/renderer/EGLSyncImpl.cpp",
   "src/libANGLE/renderer/Format_table_autogen.cpp",
+  "src/libANGLE/renderer/ImageImpl.cpp",
   "src/libANGLE/renderer/ProgramPipelineImpl.cpp",
   "src/libANGLE/renderer/QueryImpl.cpp",
   "src/libANGLE/renderer/ShaderImpl.cpp",
@@ -552,6 +564,7 @@ libangle_capture_sources = [
   "src/libANGLE/capture/frame_capture_utils_autogen.cpp",
   "src/libANGLE/capture/gl_enum_utils.cpp",
   "src/libANGLE/capture/gl_enum_utils_autogen.cpp",
+  "src/third_party/ceval/ceval.h",
 ]
 
 libgl_sources = [
@@ -622,10 +635,6 @@ libglesv2_cl_sources = [
   "src/libGLESv2/proc_table_cl_autogen.cpp",
 ]
 
-if (is_win) {
-  libglesv2_sources += [ "src/libGLESv2/libGLESv2.rc" ]
-}
-
 libglesv1_cm_sources = [
   "src/libGLESv1_CM/libGLESv1_CM.cpp",
   "src/libGLESv1_CM/resource.h",
@@ -642,7 +651,3 @@ libegl_sources = [
   "src/libGLESv2/entry_points_egl_autogen.h",
   "src/libGLESv2/entry_points_egl_ext_autogen.h",
 ]
-
-if (is_win) {
-  libegl_sources += [ "src/libEGL/libEGL.rc" ]
-}

@@ -19,6 +19,9 @@ If you're not an ANGLE team member, you can contact us on the public ANGLE proje
 **Note**: It's highly recommend that all wranglers install the [Chromium Flake Linker][Flaker]
 extension for inspecting bot builds. It'll save you a lot of time.
 
+**Note**: If you need to suppress test failures (e.g. to keep an auto-roller unblocked), see
+[Handling Test Failures](../doc/TestingAndProcesses.md).
+
 [Flaker]: https://chrome.google.com/webstore/detail/flake-linker/boamnmbgmfnobomddmenbaicodgglkhc
 
 ## Task 1: Monitor ANGLE CI and Try Testers
@@ -90,7 +93,7 @@ the Label `Hotlist-PixelWrangler` for bugs that aren't caused by ANGLE regressio
  1. Use this URL:
     `https://chromium.googlesource.com/angle/angle.git/+log/<last passing revision>..<first failing revision>`
 
-## Task 3: The Auto-Rollers
+## <a name="the-auto-rollers"></a>Task 3: The Auto-Rollers
 
 The [ANGLE auto-roller](https://autoroll.skia.org/r/angle-chromium-autoroll) automatically updates
 Chrome with the latest ANGLE changes.
@@ -100,16 +103,17 @@ Chrome with the latest ANGLE changes.
  1. **Chrome Branching**: You are responsible for pausing the roller 24h before branch days, and resuming afterwards.
     See the [Chrome Release Schedule](https://chromiumdash.appspot.com/schedule).
 
-We also use additional auto-rollers to roll third party libraries into ANGLE once per day:
+We also use additional auto-rollers to roll third party libraries, and Chromium, into ANGLE once per day:
 
  * [SwiftShader into ANGLE](https://autoroll.skia.org/r/swiftshader-angle-autoroll)
  * [vulkan-deps into ANGLE](https://autoroll.skia.org/r/vulkan-deps-angle-autoroll)
  * [VK-GL-CTS into ANGLE](https://autoroll.skia.org/r/vk-gl-cts-angle-autoroll?tab=status)
+ * [Chromium into ANGLE](https://autoroll.skia.org/r/chromium-angle-autoroll)
 
 Please ensure these rollers are also healthy and unblocked. You can trigger manual rolls using the
-dashboards to land high-priority changes. When a roll fails, stop the roller, determine if the root
-cause is a problem with ANGLE or with the upstream repo, and file an issue with an appropriate next
-step.
+dashboards to land high-priority changes, for example Chromium-side test expectation updates or
+suppressions. When a roll fails, stop the roller, determine if the root cause is a problem with
+ANGLE or with the upstream repo, and file an issue with an appropriate next step.
 
 The autoroller configurations live in the [skia/buildbot repository](https://skia.googlesource.com/buildbot/)
 in the [autoroll/config](https://skia.googlesource.com/buildbot/+/main/autoroll/config) folder.
@@ -120,6 +124,12 @@ vulkan-deps houses Vulkan-Tools, Vulkan-Loader, Vulkan-ValidationLayers, Vulkan-
 related repos. If the roll fails, you will have to determine the correct upstream repo and file
 an issue upstream. For more info on vulkan-deps see the
 [README](https://chromium.googlesource.com/vulkan-deps/+/refs/heads/main/README.md).
+
+Occasionally, a vulkan-deps AutoRoll CL will get an error in the `presubmit` bot.  For example,
+see: https://chromium-review.googlesource.com/c/angle/angle/+/3198390 where the
+`export_targets.py` script had trouble with the `loader_windows.h` file.  The `export_targets.py`
+script sometimes has difficulty with headers.  If you cannot see an obvious problem, create a CL
+that adds the header to `IGNORED_INCLUDES` in `export_targets.py`.
 
 ## Task 4: ANGLE Standalone Testing
 

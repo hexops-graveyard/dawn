@@ -385,7 +385,7 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
                    "    enable all available backend validation with less performance overhead.\n"
                    "    Set to 'disabled' to run with no validation (same as no flag).\n"
                    "  --enable-toggles: Comma-delimited list of Dawn toggles to enable.\n"
-                   "    ex.) skip_validation,use_tint_generator,disable_robustness,turn_off_vsync\n"
+                   "    ex.) skip_validation,disable_robustness,turn_off_vsync\n"
                    "  --disable-toggles: Comma-delimited list of Dawn toggles to disable\n"
                    "  --adapter-vendor-id: Select adapter by vendor id to run end2end tests"
                    "on multi-GPU systems \n"
@@ -436,9 +436,11 @@ std::unique_ptr<dawn_native::Instance> DawnTestEnvironment::CreateInstanceAndDis
 
 #ifdef DAWN_ENABLE_BACKEND_OPENGLES
 
-    if (GetEnvironmentVar("ANGLE_DEFAULT_PLATFORM").empty()) {
-        SetEnvironmentVar("ANGLE_DEFAULT_PLATFORM", "swiftshader");
+    ScopedEnvironmentVar angleDefaultPlatform;
+    if (GetEnvironmentVar("ANGLE_DEFAULT_PLATFORM").first.empty()) {
+        angleDefaultPlatform.Set("ANGLE_DEFAULT_PLATFORM", "swiftshader");
     }
+
     if (!glfwInit()) {
         return instance;
     }
@@ -854,7 +856,11 @@ dawn_native::Adapter DawnTestBase::GetAdapter() const {
     return mBackendAdapter;
 }
 
-std::vector<const char*> DawnTestBase::GetRequiredExtensions() {
+std::vector<const char*> DawnTestBase::GetRequiredFeatures() {
+    return {};
+}
+
+wgpu::RequiredLimits DawnTestBase::GetRequiredLimits(const wgpu::SupportedLimits&) {
     return {};
 }
 
@@ -862,15 +868,22 @@ const wgpu::AdapterProperties& DawnTestBase::GetAdapterProperties() const {
     return mParam.adapterProperties;
 }
 
-bool DawnTestBase::SupportsExtensions(const std::vector<const char*>& extensions) {
+wgpu::SupportedLimits DawnTestBase::GetSupportedLimits() {
+    WGPUSupportedLimits supportedLimits;
+    supportedLimits.nextInChain = nullptr;
+    dawn_native::GetProcs().deviceGetLimits(backendDevice, &supportedLimits);
+    return *reinterpret_cast<wgpu::SupportedLimits*>(&supportedLimits);
+}
+
+bool DawnTestBase::SupportsFeatures(const std::vector<const char*>& features) {
     ASSERT(mBackendAdapter);
-    std::set<std::string> supportedExtensionsSet;
-    for (const char* supportedExtensionName : mBackendAdapter.GetSupportedExtensions()) {
-        supportedExtensionsSet.insert(supportedExtensionName);
+    std::set<std::string> supportedFeaturesSet;
+    for (const char* supportedFeatureName : mBackendAdapter.GetSupportedFeatures()) {
+        supportedFeaturesSet.insert(supportedFeatureName);
     }
 
-    for (const char* extensionName : extensions) {
-        if (supportedExtensionsSet.find(extensionName) == supportedExtensionsSet.end()) {
+    for (const char* featureName : features) {
+        if (supportedFeaturesSet.find(featureName) == supportedFeaturesSet.end()) {
             return false;
         }
     }
@@ -909,10 +922,15 @@ void DawnTestBase::SetUp() {
     for (const char* forceDisabledWorkaround : mParam.forceDisabledWorkarounds) {
         ASSERT(gTestEnv->GetInstance()->GetToggleInfo(forceDisabledWorkaround) != nullptr);
     }
-    dawn_native::DeviceDescriptor deviceDescriptor = {};
+    dawn_native::DawnDeviceDescriptor deviceDescriptor = {};
     deviceDescriptor.forceEnabledToggles = mParam.forceEnabledWorkarounds;
     deviceDescriptor.forceDisabledToggles = mParam.forceDisabledWorkarounds;
-    deviceDescriptor.requiredExtensions = GetRequiredExtensions();
+    deviceDescriptor.requiredFeatures = GetRequiredFeatures();
+
+    wgpu::SupportedLimits supportedLimits;
+    mBackendAdapter.GetLimits(reinterpret_cast<WGPUSupportedLimits*>(&supportedLimits));
+    wgpu::RequiredLimits requiredLimits = GetRequiredLimits(supportedLimits);
+    deviceDescriptor.requiredLimits = reinterpret_cast<WGPURequiredLimits*>(&requiredLimits);
 
     // Disabled disallowing unsafe APIs so we can test them.
     deviceDescriptor.forceDisabledToggles.push_back("disallow_unsafe_apis");
@@ -1423,7 +1441,8 @@ void DawnTestBase::MapSlotsSynchronously() {
         MapReadUserdata* userdata = new MapReadUserdata{this, i};
 
         const ReadbackSlot& slot = mReadbackSlots[i];
-        slot.buffer.MapAsync(wgpu::MapMode::Read, 0, 0, SlotMapCallback, userdata);
+        slot.buffer.MapAsync(wgpu::MapMode::Read, 0, wgpu::kWholeMapSize, SlotMapCallback,
+                             userdata);
     }
 
     // Busy wait until all map operations are done.

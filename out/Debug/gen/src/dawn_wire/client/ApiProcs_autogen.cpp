@@ -13,6 +13,19 @@ namespace dawn_wire { namespace client {
 
 
 
+    void ClientBindGroupSetLabel(WGPUBindGroup cSelf, char const * label) {
+        auto self = reinterpret_cast<BindGroup*>(cSelf);
+        BindGroupSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientBindGroupRelease(WGPUBindGroup cObj) {
         BindGroup* obj = reinterpret_cast<BindGroup*>(cObj);
         obj->refcount --;
@@ -34,6 +47,19 @@ namespace dawn_wire { namespace client {
         obj->refcount ++;
     }
 
+
+    void ClientBindGroupLayoutSetLabel(WGPUBindGroupLayout cSelf, char const * label) {
+        auto self = reinterpret_cast<BindGroupLayout*>(cSelf);
+        BindGroupLayoutSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
 
     void ClientBindGroupLayoutRelease(WGPUBindGroupLayout cObj) {
         BindGroupLayout* obj = reinterpret_cast<BindGroupLayout*>(cObj);
@@ -121,6 +147,19 @@ namespace dawn_wire { namespace client {
         obj->refcount ++;
     }
 
+
+    void ClientCommandBufferSetLabel(WGPUCommandBuffer cSelf, char const * label) {
+        auto self = reinterpret_cast<CommandBuffer*>(cSelf);
+        CommandBufferSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
 
     void ClientCommandBufferRelease(WGPUCommandBuffer cObj) {
         CommandBuffer* obj = reinterpret_cast<CommandBuffer*>(cObj);
@@ -337,6 +376,19 @@ namespace dawn_wire { namespace client {
 
     }
 
+    void ClientCommandEncoderSetLabel(WGPUCommandEncoder cSelf, char const * label) {
+        auto self = reinterpret_cast<CommandEncoder*>(cSelf);
+        CommandEncoderSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientCommandEncoderWriteBuffer(WGPUCommandEncoder cSelf, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
         auto self = reinterpret_cast<CommandEncoder*>(cSelf);
         CommandEncoderWriteBufferCmd cmd;
@@ -479,6 +531,19 @@ namespace dawn_wire { namespace client {
         cmd.group = group;
         cmd.dynamicOffsetCount = dynamicOffsetCount;
         cmd.dynamicOffsets = dynamicOffsets;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
+    void ClientComputePassEncoderSetLabel(WGPUComputePassEncoder cSelf, char const * label) {
+        auto self = reinterpret_cast<ComputePassEncoder*>(cSelf);
+        ComputePassEncoderSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
 
         self->client->SerializeCommand(cmd);
 
@@ -923,6 +988,19 @@ namespace dawn_wire { namespace client {
 
     }
 
+    void ClientExternalTextureSetLabel(WGPUExternalTexture cSelf, char const * label) {
+        auto self = reinterpret_cast<ExternalTexture*>(cSelf);
+        ExternalTextureSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientExternalTextureRelease(WGPUExternalTexture cObj) {
         ExternalTexture* obj = reinterpret_cast<ExternalTexture*>(cObj);
         obj->refcount --;
@@ -983,6 +1061,19 @@ namespace dawn_wire { namespace client {
     }
 
 
+    void ClientPipelineLayoutSetLabel(WGPUPipelineLayout cSelf, char const * label) {
+        auto self = reinterpret_cast<PipelineLayout*>(cSelf);
+        PipelineLayoutSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientPipelineLayoutRelease(WGPUPipelineLayout cObj) {
         PipelineLayout* obj = reinterpret_cast<PipelineLayout*>(cObj);
         obj->refcount --;
@@ -1012,6 +1103,19 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
+    void ClientQuerySetSetLabel(WGPUQuerySet cSelf, char const * label) {
+        auto self = reinterpret_cast<QuerySet*>(cSelf);
+        QuerySetSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
 
         self->client->SerializeCommand(cmd);
 
@@ -1278,6 +1382,19 @@ namespace dawn_wire { namespace client {
 
     }
 
+    void ClientRenderBundleEncoderSetLabel(WGPURenderBundleEncoder cSelf, char const * label) {
+        auto self = reinterpret_cast<RenderBundleEncoder*>(cSelf);
+        RenderBundleEncoderSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder cSelf, WGPURenderPipeline pipeline) {
         auto self = reinterpret_cast<RenderBundleEncoder*>(cSelf);
         RenderBundleEncoderSetPipelineCmd cmd;
@@ -1524,6 +1641,19 @@ namespace dawn_wire { namespace client {
 
     }
 
+    void ClientRenderPassEncoderSetLabel(WGPURenderPassEncoder cSelf, char const * label) {
+        auto self = reinterpret_cast<RenderPassEncoder*>(cSelf);
+        RenderPassEncoderSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientRenderPassEncoderSetPipeline(WGPURenderPassEncoder cSelf, WGPURenderPipeline pipeline) {
         auto self = reinterpret_cast<RenderPassEncoder*>(cSelf);
         RenderPassEncoderSetPipelineCmd cmd;
@@ -1686,6 +1816,19 @@ namespace dawn_wire { namespace client {
         obj->refcount ++;
     }
 
+
+    void ClientSamplerSetLabel(WGPUSampler cSelf, char const * label) {
+        auto self = reinterpret_cast<Sampler*>(cSelf);
+        SamplerSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
 
     void ClientSamplerRelease(WGPUSampler cObj) {
         Sampler* obj = reinterpret_cast<Sampler*>(cObj);
@@ -1900,6 +2043,19 @@ namespace dawn_wire { namespace client {
     }
 
 
+    void ClientTextureViewSetLabel(WGPUTextureView cSelf, char const * label) {
+        auto self = reinterpret_cast<TextureView*>(cSelf);
+        TextureViewSetLabelCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        cmd.label = label;
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
     void ClientTextureViewRelease(WGPUTextureView cObj) {
         TextureView* obj = reinterpret_cast<TextureView*>(cObj);
         obj->refcount --;
@@ -1934,8 +2090,10 @@ namespace dawn_wire { namespace client {
         static const ProcEntry sProcMap[] = {
             { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutReference), "wgpuBindGroupLayoutReference" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutRelease), "wgpuBindGroupLayoutRelease" },
+            { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutSetLabel), "wgpuBindGroupLayoutSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupReference), "wgpuBindGroupReference" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupRelease), "wgpuBindGroupRelease" },
+            { reinterpret_cast<WGPUProc>(ClientBindGroupSetLabel), "wgpuBindGroupSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientBufferDestroy), "wgpuBufferDestroy" },
             { reinterpret_cast<WGPUProc>(ClientBufferGetConstMappedRange), "wgpuBufferGetConstMappedRange" },
             { reinterpret_cast<WGPUProc>(ClientBufferGetMappedRange), "wgpuBufferGetMappedRange" },
@@ -1946,6 +2104,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientBufferUnmap), "wgpuBufferUnmap" },
             { reinterpret_cast<WGPUProc>(ClientCommandBufferReference), "wgpuCommandBufferReference" },
             { reinterpret_cast<WGPUProc>(ClientCommandBufferRelease), "wgpuCommandBufferRelease" },
+            { reinterpret_cast<WGPUProc>(ClientCommandBufferSetLabel), "wgpuCommandBufferSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderBeginComputePass), "wgpuCommandEncoderBeginComputePass" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderBeginRenderPass), "wgpuCommandEncoderBeginRenderPass" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderCopyBufferToBuffer), "wgpuCommandEncoderCopyBufferToBuffer" },
@@ -1961,6 +2120,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderReference), "wgpuCommandEncoderReference" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderRelease), "wgpuCommandEncoderRelease" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderResolveQuerySet), "wgpuCommandEncoderResolveQuerySet" },
+            { reinterpret_cast<WGPUProc>(ClientCommandEncoderSetLabel), "wgpuCommandEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderWriteBuffer), "wgpuCommandEncoderWriteBuffer" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderWriteTimestamp), "wgpuCommandEncoderWriteTimestamp" },
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderDispatch), "wgpuComputePassEncoderDispatch" },
@@ -1972,6 +2132,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderReference), "wgpuComputePassEncoderReference" },
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderRelease), "wgpuComputePassEncoderRelease" },
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderSetBindGroup), "wgpuComputePassEncoderSetBindGroup" },
+            { reinterpret_cast<WGPUProc>(ClientComputePassEncoderSetLabel), "wgpuComputePassEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderSetPipeline), "wgpuComputePassEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(ClientComputePassEncoderWriteTimestamp), "wgpuComputePassEncoderWriteTimestamp" },
             { reinterpret_cast<WGPUProc>(ClientComputePipelineGetBindGroupLayout), "wgpuComputePipelineGetBindGroupLayout" },
@@ -2010,14 +2171,17 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientExternalTextureDestroy), "wgpuExternalTextureDestroy" },
             { reinterpret_cast<WGPUProc>(ClientExternalTextureReference), "wgpuExternalTextureReference" },
             { reinterpret_cast<WGPUProc>(ClientExternalTextureRelease), "wgpuExternalTextureRelease" },
+            { reinterpret_cast<WGPUProc>(ClientExternalTextureSetLabel), "wgpuExternalTextureSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientInstanceCreateSurface), "wgpuInstanceCreateSurface" },
             { reinterpret_cast<WGPUProc>(ClientInstanceReference), "wgpuInstanceReference" },
             { reinterpret_cast<WGPUProc>(ClientInstanceRelease), "wgpuInstanceRelease" },
             { reinterpret_cast<WGPUProc>(ClientPipelineLayoutReference), "wgpuPipelineLayoutReference" },
             { reinterpret_cast<WGPUProc>(ClientPipelineLayoutRelease), "wgpuPipelineLayoutRelease" },
+            { reinterpret_cast<WGPUProc>(ClientPipelineLayoutSetLabel), "wgpuPipelineLayoutSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientQuerySetDestroy), "wgpuQuerySetDestroy" },
             { reinterpret_cast<WGPUProc>(ClientQuerySetReference), "wgpuQuerySetReference" },
             { reinterpret_cast<WGPUProc>(ClientQuerySetRelease), "wgpuQuerySetRelease" },
+            { reinterpret_cast<WGPUProc>(ClientQuerySetSetLabel), "wgpuQuerySetSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientQueueCopyTextureForBrowser), "wgpuQueueCopyTextureForBrowser" },
             { reinterpret_cast<WGPUProc>(ClientQueueOnSubmittedWorkDone), "wgpuQueueOnSubmittedWorkDone" },
             { reinterpret_cast<WGPUProc>(ClientQueueReference), "wgpuQueueReference" },
@@ -2037,6 +2201,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderRelease), "wgpuRenderBundleEncoderRelease" },
             { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderSetBindGroup), "wgpuRenderBundleEncoderSetBindGroup" },
             { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderSetIndexBuffer), "wgpuRenderBundleEncoderSetIndexBuffer" },
+            { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderSetLabel), "wgpuRenderBundleEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderSetPipeline), "wgpuRenderBundleEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(ClientRenderBundleEncoderSetVertexBuffer), "wgpuRenderBundleEncoderSetVertexBuffer" },
             { reinterpret_cast<WGPUProc>(ClientRenderBundleReference), "wgpuRenderBundleReference" },
@@ -2057,6 +2222,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetBindGroup), "wgpuRenderPassEncoderSetBindGroup" },
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetBlendConstant), "wgpuRenderPassEncoderSetBlendConstant" },
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetIndexBuffer), "wgpuRenderPassEncoderSetIndexBuffer" },
+            { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetLabel), "wgpuRenderPassEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetPipeline), "wgpuRenderPassEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetScissorRect), "wgpuRenderPassEncoderSetScissorRect" },
             { reinterpret_cast<WGPUProc>(ClientRenderPassEncoderSetStencilReference), "wgpuRenderPassEncoderSetStencilReference" },
@@ -2069,6 +2235,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientRenderPipelineSetLabel), "wgpuRenderPipelineSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientSamplerReference), "wgpuSamplerReference" },
             { reinterpret_cast<WGPUProc>(ClientSamplerRelease), "wgpuSamplerRelease" },
+            { reinterpret_cast<WGPUProc>(ClientSamplerSetLabel), "wgpuSamplerSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientShaderModuleGetCompilationInfo), "wgpuShaderModuleGetCompilationInfo" },
             { reinterpret_cast<WGPUProc>(ClientShaderModuleReference), "wgpuShaderModuleReference" },
             { reinterpret_cast<WGPUProc>(ClientShaderModuleRelease), "wgpuShaderModuleRelease" },
@@ -2087,6 +2254,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientTextureSetLabel), "wgpuTextureSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientTextureViewReference), "wgpuTextureViewReference" },
             { reinterpret_cast<WGPUProc>(ClientTextureViewRelease), "wgpuTextureViewRelease" },
+            { reinterpret_cast<WGPUProc>(ClientTextureViewSetLabel), "wgpuTextureViewSetLabel" },
         };
         static constexpr size_t sProcMapSize = sizeof(sProcMap) / sizeof(sProcMap[0]);
     }  // anonymous namespace
@@ -2130,8 +2298,10 @@ namespace dawn_wire { namespace client {
     static DawnProcTable gProcTable = {
         ClientGetProcAddress,
         ClientCreateInstance,
+        ClientBindGroupSetLabel,
         ClientBindGroupReference,
         ClientBindGroupRelease,
+        ClientBindGroupLayoutSetLabel,
         ClientBindGroupLayoutReference,
         ClientBindGroupLayoutRelease,
         ClientBufferDestroy,
@@ -2142,6 +2312,7 @@ namespace dawn_wire { namespace client {
         ClientBufferUnmap,
         ClientBufferReference,
         ClientBufferRelease,
+        ClientCommandBufferSetLabel,
         ClientCommandBufferReference,
         ClientCommandBufferRelease,
         ClientCommandEncoderBeginComputePass,
@@ -2157,6 +2328,7 @@ namespace dawn_wire { namespace client {
         ClientCommandEncoderPopDebugGroup,
         ClientCommandEncoderPushDebugGroup,
         ClientCommandEncoderResolveQuerySet,
+        ClientCommandEncoderSetLabel,
         ClientCommandEncoderWriteBuffer,
         ClientCommandEncoderWriteTimestamp,
         ClientCommandEncoderReference,
@@ -2168,6 +2340,7 @@ namespace dawn_wire { namespace client {
         ClientComputePassEncoderPopDebugGroup,
         ClientComputePassEncoderPushDebugGroup,
         ClientComputePassEncoderSetBindGroup,
+        ClientComputePassEncoderSetLabel,
         ClientComputePassEncoderSetPipeline,
         ClientComputePassEncoderWriteTimestamp,
         ClientComputePassEncoderReference,
@@ -2206,14 +2379,17 @@ namespace dawn_wire { namespace client {
         ClientDeviceReference,
         ClientDeviceRelease,
         ClientExternalTextureDestroy,
+        ClientExternalTextureSetLabel,
         ClientExternalTextureReference,
         ClientExternalTextureRelease,
         ClientInstanceCreateSurface,
         ClientInstanceReference,
         ClientInstanceRelease,
+        ClientPipelineLayoutSetLabel,
         ClientPipelineLayoutReference,
         ClientPipelineLayoutRelease,
         ClientQuerySetDestroy,
+        ClientQuerySetSetLabel,
         ClientQuerySetReference,
         ClientQuerySetRelease,
         ClientQueueCopyTextureForBrowser,
@@ -2235,6 +2411,7 @@ namespace dawn_wire { namespace client {
         ClientRenderBundleEncoderPushDebugGroup,
         ClientRenderBundleEncoderSetBindGroup,
         ClientRenderBundleEncoderSetIndexBuffer,
+        ClientRenderBundleEncoderSetLabel,
         ClientRenderBundleEncoderSetPipeline,
         ClientRenderBundleEncoderSetVertexBuffer,
         ClientRenderBundleEncoderReference,
@@ -2253,6 +2430,7 @@ namespace dawn_wire { namespace client {
         ClientRenderPassEncoderSetBindGroup,
         ClientRenderPassEncoderSetBlendConstant,
         ClientRenderPassEncoderSetIndexBuffer,
+        ClientRenderPassEncoderSetLabel,
         ClientRenderPassEncoderSetPipeline,
         ClientRenderPassEncoderSetScissorRect,
         ClientRenderPassEncoderSetStencilReference,
@@ -2265,6 +2443,7 @@ namespace dawn_wire { namespace client {
         ClientRenderPipelineSetLabel,
         ClientRenderPipelineReference,
         ClientRenderPipelineRelease,
+        ClientSamplerSetLabel,
         ClientSamplerReference,
         ClientSamplerRelease,
         ClientShaderModuleGetCompilationInfo,
@@ -2283,6 +2462,7 @@ namespace dawn_wire { namespace client {
         ClientTextureSetLabel,
         ClientTextureReference,
         ClientTextureRelease,
+        ClientTextureViewSetLabel,
         ClientTextureViewReference,
         ClientTextureViewRelease,
     };

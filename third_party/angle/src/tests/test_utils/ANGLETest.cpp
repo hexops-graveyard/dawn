@@ -384,6 +384,7 @@ constexpr char kEnableANGLEPerTestCaptureLabel[] = "--angle-per-test-capture-lab
 constexpr char kBatchId[]                        = "--batch-id=";
 constexpr char kDelayTestStart[]                 = "--delay-test-start=";
 constexpr char kRenderDoc[]                      = "--renderdoc";
+constexpr char kNoRenderDoc[]                    = "--no-renderdoc";
 
 void SetupEnvironmentVarsForCaptureReplay()
 {
@@ -408,7 +409,11 @@ void SetTestStartDelay(const char *testStartDelay)
     gTestStartDelaySeconds = std::stoi(testStartDelay);
 }
 
+#if defined(ANGLE_TEST_ENABLE_RENDERDOC_CAPTURE)
+bool gEnableRenderDocCapture = true;
+#else
 bool gEnableRenderDocCapture = false;
+#endif
 
 // static
 std::array<Vector3, 6> ANGLETestBase::GetQuadVertices()
@@ -426,6 +431,24 @@ std::array<GLushort, 6> ANGLETestBase::GetQuadIndices()
 std::array<Vector3, 4> ANGLETestBase::GetIndexedQuadVertices()
 {
     return kIndexedQuadVertices;
+}
+
+testing::AssertionResult AssertEGLEnumsEqual(const char *lhsExpr,
+                                             const char *rhsExpr,
+                                             EGLenum lhs,
+                                             EGLenum rhs)
+{
+    if (lhs == rhs)
+    {
+        return testing::AssertionSuccess();
+    }
+    else
+    {
+        std::stringstream strstr;
+        strstr << std::hex << lhsExpr << " (0x" << int(lhs) << ") != " << rhsExpr << " (0x"
+               << int(rhs) << ")";
+        return testing::AssertionFailure() << strstr.str();
+    }
 }
 
 ANGLETestBase::ANGLETestBase(const PlatformParameters &params)
@@ -598,14 +621,15 @@ void ANGLETestBase::ANGLETestSetUp()
 
     angle::GPUTestConfig::API api = GetTestConfigAPIFromRenderer(mCurrentParams->getRenderer(),
                                                                  mCurrentParams->getDeviceType());
-    GPUTestConfig testConfig      = GPUTestConfig(api, 0, false);
+    GPUTestConfig testConfig      = GPUTestConfig(api, 0);
 
     std::stringstream fullTestNameStr;
     fullTestNameStr << testInfo->test_case_name() << "." << testInfo->name();
     std::string fullTestName = fullTestNameStr.str();
 
-    TestSuite *testSuite    = TestSuite::GetInstance();
-    int32_t testExpectation = testSuite->getTestExpectationWithConfig(testConfig, fullTestName);
+    TestSuite *testSuite = TestSuite::GetInstance();
+    int32_t testExpectation =
+        testSuite->getTestExpectationWithConfigAndUpdateTimeout(testConfig, fullTestName);
 
     if (testExpectation == GPUTestExpectationsParser::kGpuTestSkip)
     {
@@ -694,8 +718,8 @@ void ANGLETestBase::ANGLETestSetUp()
             FAIL() << "Internal parameter conflict error.";
         }
 
-        if (!mFixture->eglWindow->initializeSurface(mFixture->osWindow, driverLib,
-                                                    mFixture->configParams))
+        if (mFixture->eglWindow->initializeSurface(
+                mFixture->osWindow, driverLib, mFixture->configParams) != GLWindowResult::NoError)
         {
             FAIL() << "egl surface init failed.";
         }
@@ -1203,12 +1227,15 @@ void ANGLETestBase::draw3DTexturedQuad(GLfloat positionAttribZ,
 
 bool ANGLETestBase::platformSupportsMultithreading() const
 {
-    return (IsOpenGLES() && IsAndroid()) || IsVulkan();
+    return (mFixture && mFixture->eglWindow &&
+            IsEGLDisplayExtensionEnabled(mFixture->eglWindow->getDisplay(),
+                                         "EGL_ANGLE_context_virtualization")) ||
+           IsVulkan();
 }
 
 void ANGLETestBase::checkD3D11SDKLayersMessages()
 {
-#if defined(ANGLE_PLATFORM_WINDOWS)
+#if defined(ANGLE_ENABLE_D3D11)
     // On Windows D3D11, check ID3D11InfoQueue to see if any D3D11 SDK Layers messages
     // were outputted by the test. We enable the Debug layers in Release tests as well.
     if (mIgnoreD3D11SDKLayersWarnings ||
@@ -1276,7 +1303,7 @@ void ANGLETestBase::checkD3D11SDKLayersMessages()
     }
 
     SafeRelease(infoQueue);
-#endif  // defined(ANGLE_PLATFORM_WINDOWS)
+#endif  // defined(ANGLE_ENABLE_D3D11)
 }
 
 void ANGLETestBase::setWindowWidth(int width)
@@ -1576,6 +1603,10 @@ void ANGLEProcessTestArgs(int *argc, char *argv[])
         else if (strncmp(argv[argIndex], kRenderDoc, strlen(kRenderDoc)) == 0)
         {
             gEnableRenderDocCapture = true;
+        }
+        else if (strncmp(argv[argIndex], kNoRenderDoc, strlen(kNoRenderDoc)) == 0)
+        {
+            gEnableRenderDocCapture = false;
         }
     }
 }

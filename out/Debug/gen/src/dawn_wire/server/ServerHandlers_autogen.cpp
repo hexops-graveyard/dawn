@@ -4,6 +4,40 @@
 
 namespace dawn_wire { namespace server {
 
+    bool Server::HandleBindGroupLayoutSetLabel(DeserializeBuffer* deserializeBuffer) {
+        BindGroupLayoutSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoBindGroupLayoutSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleBindGroupSetLabel(DeserializeBuffer* deserializeBuffer) {
+        BindGroupSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoBindGroupSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleBufferDestroy(DeserializeBuffer* deserializeBuffer) {
         BufferDestroyCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -88,6 +122,23 @@ namespace dawn_wire { namespace server {
 
 
         bool success = DoBufferUpdateMappedData(cmd.bufferId, cmd.writeDataUpdateInfoLength, cmd.writeDataUpdateInfo, cmd.offset, cmd.size);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleCommandBufferSetLabel(DeserializeBuffer* deserializeBuffer) {
+        CommandBufferSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoCommandBufferSetLabel(cmd.self, cmd.label);
 
         if (!success) {
             return false;
@@ -364,6 +415,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleCommandEncoderSetLabel(DeserializeBuffer* deserializeBuffer) {
+        CommandEncoderSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoCommandEncoderSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleCommandEncoderWriteBuffer(DeserializeBuffer* deserializeBuffer) {
         CommandEncoderWriteBufferCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -510,6 +578,23 @@ namespace dawn_wire { namespace server {
 
 
         bool success = DoComputePassEncoderSetBindGroup(cmd.self, cmd.groupIndex, cmd.group, cmd.dynamicOffsetCount, cmd.dynamicOffsets);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleComputePassEncoderSetLabel(DeserializeBuffer* deserializeBuffer) {
+        ComputePassEncoderSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoComputePassEncoderSetLabel(cmd.self, cmd.label);
 
         if (!success) {
             return false;
@@ -1251,6 +1336,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleExternalTextureSetLabel(DeserializeBuffer* deserializeBuffer) {
+        ExternalTextureSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoExternalTextureSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleInstanceCreateSurface(DeserializeBuffer* deserializeBuffer) {
         InstanceCreateSurfaceCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -1284,6 +1386,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandlePipelineLayoutSetLabel(DeserializeBuffer* deserializeBuffer) {
+        PipelineLayoutSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoPipelineLayoutSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleQuerySetDestroy(DeserializeBuffer* deserializeBuffer) {
         QuerySetDestroyCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -1294,6 +1413,23 @@ namespace dawn_wire { namespace server {
 
 
         bool success = DoQuerySetDestroy(cmd.self);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleQuerySetSetLabel(DeserializeBuffer* deserializeBuffer) {
+        QuerySetSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoQuerySetSetLabel(cmd.self, cmd.label);
 
         if (!success) {
             return false;
@@ -1565,6 +1701,23 @@ namespace dawn_wire { namespace server {
 
 
         bool success = DoRenderBundleEncoderSetIndexBuffer(cmd.self, cmd.buffer, cmd.format, cmd.offset, cmd.size);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleRenderBundleEncoderSetLabel(DeserializeBuffer* deserializeBuffer) {
+        RenderBundleEncoderSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoRenderBundleEncoderSetLabel(cmd.self, cmd.label);
 
         if (!success) {
             return false;
@@ -1844,6 +1997,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleRenderPassEncoderSetLabel(DeserializeBuffer* deserializeBuffer) {
+        RenderPassEncoderSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoRenderPassEncoderSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleRenderPassEncoderSetPipeline(DeserializeBuffer* deserializeBuffer) {
         RenderPassEncoderSetPipelineCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -1989,6 +2159,23 @@ namespace dawn_wire { namespace server {
 
 
         bool success = DoRenderPipelineSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
+    bool Server::HandleSamplerSetLabel(DeserializeBuffer* deserializeBuffer) {
+        SamplerSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoSamplerSetLabel(cmd.self, cmd.label);
 
         if (!success) {
             return false;
@@ -2164,6 +2351,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleTextureViewSetLabel(DeserializeBuffer* deserializeBuffer) {
+        TextureViewSetLabelCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoTextureViewSetLabel(cmd.self, cmd.label);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     const volatile char* Server::HandleCommandsImpl(const volatile char* commands, size_t size) {
         DeserializeBuffer deserializeBuffer(commands, size);
 
@@ -2183,6 +2387,12 @@ namespace dawn_wire { namespace server {
                 deserializeBuffer.Buffer() + sizeof(CmdHeader)));
             bool success = false;
             switch (cmdId) {
+                case WireCmd::BindGroupLayoutSetLabel:
+                    success = HandleBindGroupLayoutSetLabel(&deserializeBuffer);
+                    break;
+                case WireCmd::BindGroupSetLabel:
+                    success = HandleBindGroupSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::BufferDestroy:
                     success = HandleBufferDestroy(&deserializeBuffer);
                     break;
@@ -2197,6 +2407,9 @@ namespace dawn_wire { namespace server {
                     break;
                 case WireCmd::BufferUpdateMappedData:
                     success = HandleBufferUpdateMappedData(&deserializeBuffer);
+                    break;
+                case WireCmd::CommandBufferSetLabel:
+                    success = HandleCommandBufferSetLabel(&deserializeBuffer);
                     break;
                 case WireCmd::CommandEncoderBeginComputePass:
                     success = HandleCommandEncoderBeginComputePass(&deserializeBuffer);
@@ -2237,6 +2450,9 @@ namespace dawn_wire { namespace server {
                 case WireCmd::CommandEncoderResolveQuerySet:
                     success = HandleCommandEncoderResolveQuerySet(&deserializeBuffer);
                     break;
+                case WireCmd::CommandEncoderSetLabel:
+                    success = HandleCommandEncoderSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::CommandEncoderWriteBuffer:
                     success = HandleCommandEncoderWriteBuffer(&deserializeBuffer);
                     break;
@@ -2263,6 +2479,9 @@ namespace dawn_wire { namespace server {
                     break;
                 case WireCmd::ComputePassEncoderSetBindGroup:
                     success = HandleComputePassEncoderSetBindGroup(&deserializeBuffer);
+                    break;
+                case WireCmd::ComputePassEncoderSetLabel:
+                    success = HandleComputePassEncoderSetLabel(&deserializeBuffer);
                     break;
                 case WireCmd::ComputePassEncoderSetPipeline:
                     success = HandleComputePassEncoderSetPipeline(&deserializeBuffer);
@@ -2351,11 +2570,20 @@ namespace dawn_wire { namespace server {
                 case WireCmd::ExternalTextureDestroy:
                     success = HandleExternalTextureDestroy(&deserializeBuffer);
                     break;
+                case WireCmd::ExternalTextureSetLabel:
+                    success = HandleExternalTextureSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::InstanceCreateSurface:
                     success = HandleInstanceCreateSurface(&deserializeBuffer);
                     break;
+                case WireCmd::PipelineLayoutSetLabel:
+                    success = HandlePipelineLayoutSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::QuerySetDestroy:
                     success = HandleQuerySetDestroy(&deserializeBuffer);
+                    break;
+                case WireCmd::QuerySetSetLabel:
+                    success = HandleQuerySetSetLabel(&deserializeBuffer);
                     break;
                 case WireCmd::QueueCopyTextureForBrowser:
                     success = HandleQueueCopyTextureForBrowser(&deserializeBuffer);
@@ -2401,6 +2629,9 @@ namespace dawn_wire { namespace server {
                     break;
                 case WireCmd::RenderBundleEncoderSetIndexBuffer:
                     success = HandleRenderBundleEncoderSetIndexBuffer(&deserializeBuffer);
+                    break;
+                case WireCmd::RenderBundleEncoderSetLabel:
+                    success = HandleRenderBundleEncoderSetLabel(&deserializeBuffer);
                     break;
                 case WireCmd::RenderBundleEncoderSetPipeline:
                     success = HandleRenderBundleEncoderSetPipeline(&deserializeBuffer);
@@ -2450,6 +2681,9 @@ namespace dawn_wire { namespace server {
                 case WireCmd::RenderPassEncoderSetIndexBuffer:
                     success = HandleRenderPassEncoderSetIndexBuffer(&deserializeBuffer);
                     break;
+                case WireCmd::RenderPassEncoderSetLabel:
+                    success = HandleRenderPassEncoderSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::RenderPassEncoderSetPipeline:
                     success = HandleRenderPassEncoderSetPipeline(&deserializeBuffer);
                     break;
@@ -2474,6 +2708,9 @@ namespace dawn_wire { namespace server {
                 case WireCmd::RenderPipelineSetLabel:
                     success = HandleRenderPipelineSetLabel(&deserializeBuffer);
                     break;
+                case WireCmd::SamplerSetLabel:
+                    success = HandleSamplerSetLabel(&deserializeBuffer);
+                    break;
                 case WireCmd::ShaderModuleGetCompilationInfo:
                     success = HandleShaderModuleGetCompilationInfo(&deserializeBuffer);
                     break;
@@ -2497,6 +2734,9 @@ namespace dawn_wire { namespace server {
                     break;
                 case WireCmd::TextureSetLabel:
                     success = HandleTextureSetLabel(&deserializeBuffer);
+                    break;
+                case WireCmd::TextureViewSetLabel:
+                    success = HandleTextureViewSetLabel(&deserializeBuffer);
                     break;
                 default:
                     success = false;

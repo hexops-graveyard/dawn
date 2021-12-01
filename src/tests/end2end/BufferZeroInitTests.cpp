@@ -46,12 +46,12 @@ namespace {
 
 class BufferZeroInitTest : public DawnTest {
   protected:
-    std::vector<const char*> GetRequiredExtensions() override {
-        std::vector<const char*> requiredExtensions = {};
-        if (SupportsExtensions({"timestamp_query"})) {
-            requiredExtensions.push_back("timestamp_query");
+    std::vector<const char*> GetRequiredFeatures() override {
+        std::vector<const char*> requiredFeatures = {};
+        if (SupportsFeatures({"timestamp-query"})) {
+            requiredFeatures.push_back("timestamp-query");
         }
-        return requiredExtensions;
+        return requiredFeatures;
     }
 
   public:
@@ -1139,6 +1139,7 @@ TEST_P(BufferZeroInitTest, SetVertexBuffer) {
 // still see zeros at the end of the buffer.
 TEST_P(BufferZeroInitTest, PaddingInitialized) {
     DAWN_SUPPRESS_TEST_IF(IsANGLE());  // TODO(crbug.com/dawn/1084).
+    DAWN_SUPPRESS_TEST_IF(IsLinux() && IsVulkan() && IsNvidia());  // TODO(crbug.com/dawn/1214).
 
     constexpr wgpu::TextureFormat kColorAttachmentFormat = wgpu::TextureFormat::RGBA8Unorm;
     // A small sub-4-byte format means a single vertex can fit entirely within the padded buffer,
@@ -1314,8 +1315,8 @@ TEST_P(BufferZeroInitTest, ResolveQuerySet) {
     // without any copy commands on Metal on AMD GPU.
     DAWN_SUPPRESS_TEST_IF(IsMetal() && IsAMD());
 
-    // Skip if timestamp extension is not supported on device
-    DAWN_TEST_UNSUPPORTED_IF(!SupportsExtensions({"timestamp_query"}));
+    // Skip if timestamp feature is not supported on device
+    DAWN_TEST_UNSUPPORTED_IF(!SupportsFeatures({"timestamp-query"}));
 
     // crbug.com/dawn/940: Does not work on Mac 11.0+. Backend validation changed.
     DAWN_TEST_UNSUPPORTED_IF(IsMacOS() && !IsMacOS(10));

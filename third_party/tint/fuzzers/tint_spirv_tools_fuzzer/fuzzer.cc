@@ -70,7 +70,8 @@ std::unique_ptr<Mutator> CreateMutator(const std::vector<uint32_t>& binary,
 
   assert(!types.empty() && "At least one mutator type must be specified");
   RandomGenerator generator(seed);
-  auto mutator_type = types[generator.GetUInt64(types.size())];
+  auto mutator_type =
+      types[generator.GetUInt32(static_cast<uint32_t>(types.size()))];
 
   const auto& mutator_params = context->params.mutator_params;
   switch (mutator_type) {
@@ -223,7 +224,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   CommonFuzzer spv_to_wgsl(InputFormat::kSpv, OutputFormat::kWGSL);
-  spv_to_wgsl.EnableInspector();
   spv_to_wgsl.Run(data, size);
   if (spv_to_wgsl.HasErrors()) {
     auto error = spv_to_wgsl.Diagnostics().str();
@@ -246,7 +246,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
 
     CommonFuzzer fuzzer(InputFormat::kWGSL, target.second);
-    fuzzer.EnableInspector();
     fuzzer.Run(reinterpret_cast<const uint8_t*>(wgsl.data()), wgsl.size());
     if (fuzzer.HasErrors()) {
       auto error = spv_to_wgsl.Diagnostics().str();

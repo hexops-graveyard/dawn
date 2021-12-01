@@ -42,9 +42,14 @@ namespace dawn_native {
 
         static ExternalTextureBase* MakeError(DeviceBase* device);
 
+        bool Destroy() override;
         ObjectType GetType() const override;
 
         void APIDestroy();
+
+      protected:
+        // Constructor used only for mocking and testing.
+        ExternalTextureBase(DeviceBase* device);
 
       private:
         enum class ExternalTextureState { Alive, Destroyed };

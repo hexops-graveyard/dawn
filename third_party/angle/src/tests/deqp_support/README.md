@@ -35,7 +35,7 @@ reflect the reality of the situation.  The expected format for every line in the
     QUADROP400
     SWIFTSHADER
     PREROTATION PREROTATION90 PREROTATION180 PREROTATION270
-    SPIRVGEN
+    NOSAN ASAN TSAN UBSAN
 
 `TEST_NAME` can be a specific test name, or set of test names using `'*'` as wildcard anywhere in
 the name.  Examples:
@@ -59,5 +59,5 @@ the name.  Examples:
     // Failing when emulated pre-rotation is enabled with 270 degree angle:
     1234 PREROTATION270 : dEQP-GLES3.*blit* = FAIL
 
-    // Crashing when generating SPIR-V directly from the translator
-    1234 SPIRVGEN : dEQP.GLES2/functional_shaders_texture_functions_vertex_texture2dprojlod_vec4 = SKIP
+    // Flaky when run with thread-sanitizer (TSan)
+    6678 TSAN : dEQP-EGL.functional.sharing.gles2.multithread.random* = FLAKY

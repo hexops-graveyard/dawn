@@ -152,13 +152,17 @@ class ProgramMtl : public ProgramImpl, public mtl::RenderPipelineCacheSpecialize
                             bool forceTexturesSetting,
                             bool uniformBuffersDirty);
 
-    std::array<uint32_t, mtl::kMaxShaderXFBs> getXfbBindings() const { return mXfbBindings; }
     std::string getTranslatedShaderSource(const gl::ShaderType shaderType) const
     {
         return mMslShaderTranslateInfo[shaderType].metalShaderSource;
     }
 
-    mtl::RenderPipelineCache *mMetalXfbRenderPipelineCache;
+    mtl::TranslatedShaderInfo getTranslatedShaderInfo(const gl::ShaderType shaderType) const
+    {
+        return mMslShaderTranslateInfo[shaderType];
+    }
+
+    bool hasFlatAttribute() const { return mProgramHasFlatAttributes; }
 
   private:
     template <int cols, int rows>
@@ -210,6 +214,8 @@ class ProgramMtl : public ProgramImpl, public mtl::RenderPipelineCacheSpecialize
     void saveShaderInternalInfo(gl::BinaryOutputStream *stream);
     void loadShaderInternalInfo(gl::BinaryInputStream *stream);
 
+    void linkUpdateHasFlatAttributes();
+
 #if ANGLE_ENABLE_METAL_SPIRV
 
     angle::Result linkImplSpirv(const gl::Context *glContext,
@@ -246,6 +252,7 @@ class ProgramMtl : public ProgramImpl, public mtl::RenderPipelineCacheSpecialize
         std::vector<sh::BlockMemberInfo> uniformLayout;
     };
 
+    bool mProgramHasFlatAttributes;
     gl::ShaderBitSet mDefaultUniformBlocksDirty;
     gl::ShaderBitSet mSamplerBindingsDirty;
     gl::ShaderMap<DefaultUniformBlock> mDefaultUniformBlocks;
@@ -281,7 +288,6 @@ class ProgramMtl : public ProgramImpl, public mtl::RenderPipelineCacheSpecialize
     uint32_t mShadowCompareModes[mtl::kMaxShaderSamplers];
 
     mtl::RenderPipelineCache mMetalRenderPipelineCache;
-    std::array<uint32_t, mtl::kMaxShaderXFBs> mXfbBindings;
     mtl::BufferPool *mAuxBufferPool;
 };
 

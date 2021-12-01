@@ -20,8 +20,10 @@
 #include "common/debug.h"
 #include "libANGLE/Error.h"
 #include "libANGLE/Observer.h"
+#include "libANGLE/angletypes.h"
 #include "libANGLE/renderer/serial_utils.h"
 #include "libANGLE/renderer/vulkan/SecondaryCommandBuffer.h"
+#include "libANGLE/renderer/vulkan/VulkanSecondaryCommandBuffer.h"
 #include "libANGLE/renderer/vulkan/vk_wrapper.h"
 #include "vulkan/vulkan_fuchsia_ext.h"
 
@@ -52,12 +54,8 @@ class ShareGroup;
 
 namespace gl
 {
-struct Box;
 class MockOverlay;
-struct Extents;
 struct RasterizerState;
-struct Rectangle;
-class State;
 struct SwizzleState;
 struct VertexAttribute;
 class VertexBinding;
@@ -112,8 +110,6 @@ constexpr uint32_t kAttributeOffsetMaxBits = 15;
 
 namespace vk
 {
-struct Format;
-
 // A packed attachment index interface with vulkan API
 class PackedAttachmentIndex final
 {
@@ -159,6 +155,23 @@ void AddToPNextChain(VulkanStruct1 *chainStart, VulkanStruct2 *ptr)
     localPtr->pNext              = reinterpret_cast<VkBaseOutStructure *>(ptr);
 }
 
+// Append ptr to the end of the chain
+template <typename VulkanStruct1, typename VulkanStruct2>
+void AppendToPNextChain(VulkanStruct1 *chainStart, VulkanStruct2 *ptr)
+{
+    if (!ptr)
+    {
+        return;
+    }
+
+    VkBaseOutStructure *endPtr = reinterpret_cast<VkBaseOutStructure *>(chainStart);
+    while (endPtr->pNext)
+    {
+        endPtr = endPtr->pNext;
+    }
+    endPtr->pNext = reinterpret_cast<VkBaseOutStructure *>(ptr);
+}
+
 struct Error
 {
     VkResult errorCode;
@@ -185,13 +198,15 @@ class Context : angle::NonCopyable
     RendererVk *const mRenderer;
 };
 
+class RenderPassDesc;
+
 #if ANGLE_USE_CUSTOM_VULKAN_CMD_BUFFERS
 using CommandBuffer = priv::SecondaryCommandBuffer;
 #else
-using CommandBuffer                          = priv::CommandBuffer;
+using CommandBuffer                          = VulkanSecondaryCommandBuffer;
 #endif
 
-using PrimaryCommandBuffer = priv::CommandBuffer;
+using SecondaryCommandBufferList = std::vector<CommandBuffer>;
 
 VkImageAspectFlags GetDepthStencilAspectFlags(const angle::Format &format);
 VkImageAspectFlags GetFormatAspectFlags(const angle::Format &format);
@@ -352,8 +367,55 @@ class MemoryProperties final : angle::NonCopyable
         return mMemoryProperties.memoryHeaps[heapIndex].size;
     }
 
+    uint32_t getMemoryTypeCount() const { return mMemoryProperties.memoryTypeCount; }
+
   private:
     VkPhysicalDeviceMemoryProperties mMemoryProperties;
+};
+
+class BufferMemory : angle::NonCopyable
+{
+  public:
+    BufferMemory();
+    ~BufferMemory();
+    angle::Result initExternal(void *clientBuffer);
+    angle::Result init();
+
+    void destroy(RendererVk *renderer);
+
+    angle::Result map(ContextVk *contextVk, VkDeviceSize size, uint8_t **ptrOut)
+    {
+        if (mMappedMemory == nullptr)
+        {
+            ANGLE_TRY(mapImpl(contextVk, size));
+        }
+        *ptrOut = mMappedMemory;
+        return angle::Result::Continue;
+    }
+    void unmap(RendererVk *renderer);
+    void flush(RendererVk *renderer,
+               VkMemoryMapFlags memoryPropertyFlags,
+               VkDeviceSize offset,
+               VkDeviceSize size);
+    void invalidate(RendererVk *renderer,
+                    VkMemoryMapFlags memoryPropertyFlags,
+                    VkDeviceSize offset,
+                    VkDeviceSize size);
+
+    bool isExternalBuffer() const { return mClientBuffer != nullptr; }
+
+    uint8_t *getMappedMemory() const { return mMappedMemory; }
+    DeviceMemory *getExternalMemoryObject() { return &mExternalMemory; }
+    Allocation *getMemoryObject() { return &mAllocation; }
+
+  private:
+    angle::Result mapImpl(ContextVk *contextVk, VkDeviceSize size);
+
+    Allocation mAllocation;        // use mAllocation if isExternalBuffer() is false
+    DeviceMemory mExternalMemory;  // use mExternalMemory if isExternalBuffer() is true
+
+    void *mClientBuffer;
+    uint8_t *mMappedMemory;
 };
 
 // Similar to StagingImage, for Buffers.
@@ -406,12 +468,14 @@ angle::Result AllocateImageMemory(Context *context,
                                   DeviceMemory *deviceMemoryOut,
                                   VkDeviceSize *sizeOut);
 
-angle::Result AllocateImageMemoryWithRequirements(Context *context,
-                                                  VkMemoryPropertyFlags memoryPropertyFlags,
-                                                  const VkMemoryRequirements &memoryRequirements,
-                                                  const void *extraAllocationInfo,
-                                                  Image *image,
-                                                  DeviceMemory *deviceMemoryOut);
+angle::Result AllocateImageMemoryWithRequirements(
+    Context *context,
+    VkMemoryPropertyFlags memoryPropertyFlags,
+    const VkMemoryRequirements &memoryRequirements,
+    const void *extraAllocationInfo,
+    const VkBindImagePlaneMemoryInfoKHR *extraBindInfo,
+    Image *image,
+    DeviceMemory *deviceMemoryOut);
 
 angle::Result AllocateBufferMemoryWithRequirements(Context *context,
                                                    VkMemoryPropertyFlags memoryPropertyFlags,
@@ -735,6 +799,9 @@ ANGLE_DISABLE_STRUCT_PADDING_WARNINGS
 template <typename T>
 using SpecializationConstantMap = angle::PackedEnumMap<sh::vk::SpecializationConstantId, T>;
 
+using ShaderAndSerialPointer = BindingPointer<ShaderAndSerial>;
+using ShaderAndSerialMap     = gl::ShaderMap<ShaderAndSerialPointer>;
+
 void MakeDebugUtilsLabel(GLenum source, const char *marker, VkDebugUtilsLabelEXT *label);
 
 constexpr size_t kUnpackedDepthIndex   = gl::IMPLEMENTATION_MAX_DRAW_BUFFERS;
@@ -882,6 +949,8 @@ struct PerfCounters
     uint32_t descriptorSetAllocations;
     uint32_t shaderBuffersDescriptorSetCacheHits;
     uint32_t shaderBuffersDescriptorSetCacheMisses;
+    uint32_t buffersGhosted;
+    uint32_t vertexArraySyncStateCalls;
 };
 
 // A Vulkan image level index.
@@ -937,9 +1006,12 @@ void InitExternalFenceFdFunctions(VkInstance instance);
 // VK_KHR_external_semaphore_capabilities
 void InitExternalSemaphoreCapabilitiesFunctions(VkInstance instance);
 
+// VK_KHR_shared_presentable_image
+void InitGetSwapchainStatusKHRFunctions(VkDevice device);
+
 #endif  // !defined(ANGLE_SHARED_LIBVULKAN)
 
-GLenum CalculateGenerateMipmapFilter(ContextVk *contextVk, const vk::Format &format);
+GLenum CalculateGenerateMipmapFilter(ContextVk *contextVk, angle::FormatID formatID);
 size_t PackSampleCount(GLint sampleCount);
 
 namespace gl_vk
@@ -985,6 +1057,7 @@ void GetExtentsAndLayerCount(gl::TextureType textureType,
                              uint32_t *layerCountOut);
 
 vk::LevelIndex GetLevelIndex(gl::LevelIndex levelGL, gl::LevelIndex baseLevel);
+
 }  // namespace gl_vk
 
 namespace vk_gl
@@ -1012,6 +1085,82 @@ GLuint GetSampleCount(VkSampleCountFlags supportedCounts, GLuint requestedCount)
 
 gl::LevelIndex GetLevelIndex(vk::LevelIndex levelVk, gl::LevelIndex baseLevel);
 }  // namespace vk_gl
+
+enum class RenderPassClosureReason
+{
+    // Don't specify the reason (it should already be specified elsewhere)
+    AlreadySpecifiedElsewhere,
+
+    // Implicit closures due to flush/wait/etc.
+    ContextDestruction,
+    ContextChange,
+    GLFlush,
+    GLFinish,
+    EGLSwapBuffers,
+    EGLWaitClient,
+
+    // Closure due to switching rendering to another framebuffer.
+    FramebufferBindingChange,
+    FramebufferChange,
+    NewRenderPass,
+
+    // Incompatible use of resource in the same render pass
+    BufferUseThenXfbWrite,
+    XfbWriteThenVertexIndexBuffer,
+    XfbWriteThenIndirectDrawBuffer,
+    XfbResumeAfterDrawBasedClear,
+    DepthStencilUseInFeedbackLoop,
+    DepthStencilWriteAfterFeedbackLoop,
+    PipelineBindWhileXfbActive,
+
+    // Use of resource after render pass
+    BufferWriteThenMap,
+    BufferUseThenOutOfRPRead,
+    BufferUseThenOutOfRPWrite,
+    ImageUseThenOutOfRPRead,
+    ImageUseThenOutOfRPWrite,
+    XfbWriteThenComputeRead,
+    XfbWriteThenIndirectDispatchBuffer,
+    ImageAttachmentThenComputeRead,
+    GetQueryResult,
+    BeginNonRenderPassQuery,
+    EndNonRenderPassQuery,
+    TimestampQuery,
+    GLReadPixels,
+
+    // Synchronization
+    BufferUseThenReleaseToExternal,
+    ImageUseThenReleaseToExternal,
+    BufferInUseWhenSynchronizedMap,
+    ImageOrphan,
+    GLMemoryBarrierThenStorageResource,
+    StorageResourceUseThenGLMemoryBarrier,
+    ExternalSemaphoreSignal,
+    SyncObjectInit,
+    SyncObjectWithFdInit,
+    SyncObjectClientWait,
+    SyncObjectServerWait,
+
+    // Closures that ANGLE could have avoided, but doesn't for simplicity or optimization of more
+    // common cases.
+    XfbPause,
+    FramebufferFetchEmulation,
+    ColorBufferInvalidate,
+    GenerateMipmapOnCPU,
+    CopyTextureOnCPU,
+    TextureReformatToRenderable,
+    DeviceLocalBufferMap,
+
+    // UtilsVk
+    TemporaryForImageClear,
+    TemporaryForImageCopy,
+
+    // Misc
+    OverlayFontCreation,
+
+    InvalidEnum,
+    EnumCount = InvalidEnum,
+};
 
 }  // namespace rx
 

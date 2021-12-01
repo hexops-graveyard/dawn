@@ -134,7 +134,7 @@ typedef std::tuple<ast::ImageFormat,
                    ResourceBinding::ImageFormat,
                    ResourceBinding::SampledKind>
     ImageFormatParams;
-typedef std::tuple<bool, DimensionParams, ImageFormatParams>
+typedef std::tuple<DimensionParams, ImageFormatParams>
     GetStorageTextureTestParams;
 class InspectorGetStorageTextureResourceBindingsTestWithParam
     : public InspectorBuilder,
@@ -300,7 +300,7 @@ TEST_P(InspectorGetEntryPointComponentAndCompositionTest, Test) {
   ComponentType component;
   CompositionType composition;
   std::tie(component, composition) = GetParam();
-  std::function<ast::Type*()> tint_type =
+  std::function<const ast::Type*()> tint_type =
       GetTypeFunction(component, composition);
 
   auto* in_var = Param("in_var", tint_type(), {Location(0u)});
@@ -554,7 +554,7 @@ TEST_F(InspectorGetEntryPointTest, MixInOutVariablesAndStruct) {
 }
 
 TEST_F(InspectorGetEntryPointTest, OverridableConstantUnreferenced) {
-  AddOverridableConstantWithoutID<float>("foo", ty.f32(), nullptr);
+  AddOverridableConstantWithoutID("foo", ty.f32(), nullptr);
   MakeEmptyBodyFunction(
       "ep_func", {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
 
@@ -567,7 +567,7 @@ TEST_F(InspectorGetEntryPointTest, OverridableConstantUnreferenced) {
 }
 
 TEST_F(InspectorGetEntryPointTest, OverridableConstantReferencedByEntryPoint) {
-  AddOverridableConstantWithoutID<float>("foo", ty.f32(), nullptr);
+  AddOverridableConstantWithoutID("foo", ty.f32(), nullptr);
   MakePlainGlobalReferenceBodyFunction(
       "ep_func", "foo", ty.f32(),
       {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
@@ -582,7 +582,7 @@ TEST_F(InspectorGetEntryPointTest, OverridableConstantReferencedByEntryPoint) {
 }
 
 TEST_F(InspectorGetEntryPointTest, OverridableConstantReferencedByCallee) {
-  AddOverridableConstantWithoutID<float>("foo", ty.f32(), nullptr);
+  AddOverridableConstantWithoutID("foo", ty.f32(), nullptr);
   MakePlainGlobalReferenceBodyFunction("callee_func", "foo", ty.f32(), {});
   MakeCallerBodyFunction(
       "ep_func", {"callee_func"},
@@ -598,8 +598,8 @@ TEST_F(InspectorGetEntryPointTest, OverridableConstantReferencedByCallee) {
 }
 
 TEST_F(InspectorGetEntryPointTest, OverridableConstantSomeReferenced) {
-  AddOverridableConstantWithID<float>("foo", 1, ty.f32(), nullptr);
-  AddOverridableConstantWithID<float>("bar", 2, ty.f32(), nullptr);
+  AddOverridableConstantWithID("foo", 1, ty.f32(), nullptr);
+  AddOverridableConstantWithID("bar", 2, ty.f32(), nullptr);
   MakePlainGlobalReferenceBodyFunction("callee_func", "foo", ty.f32(), {});
   MakeCallerBodyFunction(
       "ep_func", {"callee_func"},
@@ -612,10 +612,104 @@ TEST_F(InspectorGetEntryPointTest, OverridableConstantSomeReferenced) {
   ASSERT_EQ(1u, result.size());
   ASSERT_EQ(1u, result[0].overridable_constants.size());
   EXPECT_EQ("foo", result[0].overridable_constants[0].name);
+  EXPECT_EQ(1, result[0].overridable_constants[0].numeric_id);
+}
+
+TEST_F(InspectorGetEntryPointTest, OverridableConstantTypes) {
+  AddOverridableConstantWithoutID("bool_var", ty.bool_(), nullptr);
+  AddOverridableConstantWithoutID("float_var", ty.f32(), nullptr);
+  AddOverridableConstantWithoutID("u32_var", ty.u32(), nullptr);
+  AddOverridableConstantWithoutID("i32_var", ty.i32(), nullptr);
+
+  MakePlainGlobalReferenceBodyFunction("bool_func", "bool_var", ty.bool_(), {});
+  MakePlainGlobalReferenceBodyFunction("float_func", "float_var", ty.f32(), {});
+  MakePlainGlobalReferenceBodyFunction("u32_func", "u32_var", ty.u32(), {});
+  MakePlainGlobalReferenceBodyFunction("i32_func", "i32_var", ty.i32(), {});
+
+  MakeCallerBodyFunction(
+      "ep_func", {"bool_func", "float_func", "u32_func", "i32_func"},
+      {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
+
+  Inspector& inspector = Build();
+
+  auto result = inspector.GetEntryPoints();
+
+  ASSERT_EQ(1u, result.size());
+  ASSERT_EQ(4u, result[0].overridable_constants.size());
+  EXPECT_EQ("bool_var", result[0].overridable_constants[0].name);
+  EXPECT_EQ(inspector::OverridableConstant::Type::kBool,
+            result[0].overridable_constants[0].type);
+  EXPECT_EQ("float_var", result[0].overridable_constants[1].name);
+  EXPECT_EQ(inspector::OverridableConstant::Type::kFloat32,
+            result[0].overridable_constants[1].type);
+  EXPECT_EQ("u32_var", result[0].overridable_constants[2].name);
+  EXPECT_EQ(inspector::OverridableConstant::Type::kUint32,
+            result[0].overridable_constants[2].type);
+  EXPECT_EQ("i32_var", result[0].overridable_constants[3].name);
+  EXPECT_EQ(inspector::OverridableConstant::Type::kInt32,
+            result[0].overridable_constants[3].type);
+}
+
+TEST_F(InspectorGetEntryPointTest, OverridableConstantInitialized) {
+  AddOverridableConstantWithoutID("foo", ty.f32(), Expr(0.0f));
+  MakePlainGlobalReferenceBodyFunction(
+      "ep_func", "foo", ty.f32(),
+      {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
+
+  Inspector& inspector = Build();
+
+  auto result = inspector.GetEntryPoints();
+
+  ASSERT_EQ(1u, result.size());
+  ASSERT_EQ(1u, result[0].overridable_constants.size());
+  EXPECT_EQ("foo", result[0].overridable_constants[0].name);
+  EXPECT_TRUE(result[0].overridable_constants[0].is_initialized);
+}
+
+TEST_F(InspectorGetEntryPointTest, OverridableConstantUninitialized) {
+  AddOverridableConstantWithoutID("foo", ty.f32(), nullptr);
+  MakePlainGlobalReferenceBodyFunction(
+      "ep_func", "foo", ty.f32(),
+      {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
+
+  Inspector& inspector = Build();
+
+  auto result = inspector.GetEntryPoints();
+
+  ASSERT_EQ(1u, result.size());
+  ASSERT_EQ(1u, result[0].overridable_constants.size());
+  EXPECT_EQ("foo", result[0].overridable_constants[0].name);
+
+  EXPECT_FALSE(result[0].overridable_constants[0].is_initialized);
+}
+
+TEST_F(InspectorGetEntryPointTest, OverridableConstantNumericIDSpecified) {
+  AddOverridableConstantWithoutID("foo_no_id", ty.f32(), nullptr);
+  AddOverridableConstantWithID("foo_id", 1234, ty.f32(), nullptr);
+
+  MakePlainGlobalReferenceBodyFunction("no_id_func", "foo_no_id", ty.f32(), {});
+  MakePlainGlobalReferenceBodyFunction("id_func", "foo_id", ty.f32(), {});
+
+  MakeCallerBodyFunction(
+      "ep_func", {"no_id_func", "id_func"},
+      {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1)});
+
+  Inspector& inspector = Build();
+
+  auto result = inspector.GetEntryPoints();
+
+  ASSERT_EQ(1u, result.size());
+  ASSERT_EQ(2u, result[0].overridable_constants.size());
+  EXPECT_EQ("foo_no_id", result[0].overridable_constants[0].name);
+  EXPECT_EQ("foo_id", result[0].overridable_constants[1].name);
+  EXPECT_EQ(1234, result[0].overridable_constants[1].numeric_id);
+
+  EXPECT_FALSE(result[0].overridable_constants[0].is_numeric_id_specified);
+  EXPECT_TRUE(result[0].overridable_constants[1].is_numeric_id_specified);
 }
 
 TEST_F(InspectorGetEntryPointTest, NonOverridableConstantSkipped) {
-  ast::Struct* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
+  auto* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
   AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
   MakeStructVariableReferenceBodyFunction("ub_func", "foo_ub", {{0, ty.i32()}});
   MakeCallerBodyFunction("ep_func", {"ub_func"},
@@ -991,11 +1085,9 @@ TEST_F(InspectorGetRemappedNameForEntryPointTest,
 }
 
 TEST_F(InspectorGetConstantIDsTest, Bool) {
-  bool val_true = true;
-  bool val_false = false;
-  AddOverridableConstantWithID<bool>("foo", 1, ty.bool_(), nullptr);
-  AddOverridableConstantWithID<bool>("bar", 20, ty.bool_(), &val_true);
-  AddOverridableConstantWithID<bool>("baz", 300, ty.bool_(), &val_false);
+  AddOverridableConstantWithID("foo", 1, ty.bool_(), nullptr);
+  AddOverridableConstantWithID("bar", 20, ty.bool_(), Expr(true));
+  AddOverridableConstantWithID("baz", 300, ty.bool_(), Expr(false));
 
   Inspector& inspector = Build();
 
@@ -1015,9 +1107,8 @@ TEST_F(InspectorGetConstantIDsTest, Bool) {
 }
 
 TEST_F(InspectorGetConstantIDsTest, U32) {
-  uint32_t val = 42;
-  AddOverridableConstantWithID<uint32_t>("foo", 1, ty.u32(), nullptr);
-  AddOverridableConstantWithID<uint32_t>("bar", 20, ty.u32(), &val);
+  AddOverridableConstantWithID("foo", 1, ty.u32(), nullptr);
+  AddOverridableConstantWithID("bar", 20, ty.u32(), Expr(42u));
 
   Inspector& inspector = Build();
 
@@ -1033,11 +1124,9 @@ TEST_F(InspectorGetConstantIDsTest, U32) {
 }
 
 TEST_F(InspectorGetConstantIDsTest, I32) {
-  int32_t val_neg = -42;
-  int32_t val_pos = 42;
-  AddOverridableConstantWithID<int32_t>("foo", 1, ty.i32(), nullptr);
-  AddOverridableConstantWithID<int32_t>("bar", 20, ty.i32(), &val_neg);
-  AddOverridableConstantWithID<int32_t>("baz", 300, ty.i32(), &val_pos);
+  AddOverridableConstantWithID("foo", 1, ty.i32(), nullptr);
+  AddOverridableConstantWithID("bar", 20, ty.i32(), Expr(-42));
+  AddOverridableConstantWithID("baz", 300, ty.i32(), Expr(42));
 
   Inspector& inspector = Build();
 
@@ -1057,13 +1146,10 @@ TEST_F(InspectorGetConstantIDsTest, I32) {
 }
 
 TEST_F(InspectorGetConstantIDsTest, Float) {
-  float val_zero = 0.0f;
-  float val_neg = -10.0f;
-  float val_pos = 15.0f;
-  AddOverridableConstantWithID<float>("foo", 1, ty.f32(), nullptr);
-  AddOverridableConstantWithID<float>("bar", 20, ty.f32(), &val_zero);
-  AddOverridableConstantWithID<float>("baz", 300, ty.f32(), &val_neg);
-  AddOverridableConstantWithID<float>("x", 4000, ty.f32(), &val_pos);
+  AddOverridableConstantWithID("foo", 1, ty.f32(), nullptr);
+  AddOverridableConstantWithID("bar", 20, ty.f32(), Expr(0.0f));
+  AddOverridableConstantWithID("baz", 300, ty.f32(), Expr(-10.0f));
+  AddOverridableConstantWithID("x", 4000, ty.f32(), Expr(15.0f));
 
   Inspector& inspector = Build();
 
@@ -1087,12 +1173,12 @@ TEST_F(InspectorGetConstantIDsTest, Float) {
 }
 
 TEST_F(InspectorGetConstantNameToIdMapTest, WithAndWithoutIds) {
-  AddOverridableConstantWithID<float>("v1", 1, ty.f32(), nullptr);
-  AddOverridableConstantWithID<float>("v20", 20, ty.f32(), nullptr);
-  AddOverridableConstantWithID<float>("v300", 300, ty.f32(), nullptr);
-  auto* a = AddOverridableConstantWithoutID<float>("a", ty.f32(), nullptr);
-  auto* b = AddOverridableConstantWithoutID<float>("b", ty.f32(), nullptr);
-  auto* c = AddOverridableConstantWithoutID<float>("c", ty.f32(), nullptr);
+  AddOverridableConstantWithID("v1", 1, ty.f32(), nullptr);
+  AddOverridableConstantWithID("v20", 20, ty.f32(), nullptr);
+  AddOverridableConstantWithID("v300", 300, ty.f32(), nullptr);
+  auto* a = AddOverridableConstantWithoutID("a", ty.f32(), nullptr);
+  auto* b = AddOverridableConstantWithoutID("b", ty.f32(), nullptr);
+  auto* c = AddOverridableConstantWithoutID("c", ty.f32(), nullptr);
 
   Inspector& inspector = Build();
 
@@ -1133,8 +1219,7 @@ TEST_F(InspectorGetStorageSizeTest, Empty) {
 }
 
 TEST_F(InspectorGetStorageSizeTest, Simple) {
-  ast::Struct* ub_struct_type =
-      MakeUniformBufferType("ub_type", {ty.i32(), ty.i32()});
+  auto* ub_struct_type = MakeUniformBufferType("ub_type", {ty.i32(), ty.i32()});
   AddUniformBuffer("ub_var", ty.Of(ub_struct_type), 0, 0);
   MakeStructVariableReferenceBodyFunction("ub_func", "ub_var", {{0, ty.i32()}});
 
@@ -1172,7 +1257,7 @@ TEST_F(InspectorGetResourceBindingsTest, Empty) {
 }
 
 TEST_F(InspectorGetResourceBindingsTest, Simple) {
-  ast::Struct* ub_struct_type = MakeUniformBufferType("ub_type", {ty.i32()});
+  auto* ub_struct_type = MakeUniformBufferType("ub_type", {ty.i32()});
   AddUniformBuffer("ub_var", ty.Of(ub_struct_type), 0, 0);
   MakeStructVariableReferenceBodyFunction("ub_func", "ub_var", {{0, ty.i32()}});
 
@@ -1207,18 +1292,13 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
   Func("depth_ms_func", {}, ty.void_(), {Ignore("depth_ms_texture")});
 
   auto* st_type = MakeStorageTextureTypes(ast::TextureDimension::k2d,
-                                          ast::ImageFormat::kR32Uint, false);
+                                          ast::ImageFormat::kR32Uint);
   AddStorageTexture("st_var", st_type, 4, 0);
   MakeStorageTextureBodyFunction("st_func", "st_var", ty.vec2<i32>(), {});
 
-  auto* rost_type = MakeStorageTextureTypes(ast::TextureDimension::k2d,
-                                            ast::ImageFormat::kR32Uint, true);
-  AddStorageTexture("rost_var", rost_type, 4, 1);
-  MakeStorageTextureBodyFunction("rost_func", "rost_var", ty.vec2<i32>(), {});
-
   MakeCallerBodyFunction("ep_func",
                          {"ub_func", "sb_func", "rosb_func", "s_func",
-                          "cs_func", "depth_ms_func", "st_func", "rost_func"},
+                          "cs_func", "depth_ms_func", "st_func"},
                          ast::DecorationList{
                              Stage(ast::PipelineStage::kFragment),
                          });
@@ -1227,7 +1307,7 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
 
   auto result = inspector.GetResourceBindings("ep_func");
   ASSERT_FALSE(inspector.has_error()) << inspector.error();
-  ASSERT_EQ(10u, result.size());
+  ASSERT_EQ(9u, result.size());
 
   EXPECT_EQ(ResourceBinding::ResourceType::kUniformBuffer,
             result[0].resource_type);
@@ -1258,25 +1338,20 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
   EXPECT_EQ(2u, result[5].bind_group);
   EXPECT_EQ(0u, result[5].binding);
 
-  EXPECT_EQ(ResourceBinding::ResourceType::kReadOnlyStorageTexture,
+  EXPECT_EQ(ResourceBinding::ResourceType::kWriteOnlyStorageTexture,
             result[6].resource_type);
   EXPECT_EQ(4u, result[6].bind_group);
-  EXPECT_EQ(1u, result[6].binding);
-
-  EXPECT_EQ(ResourceBinding::ResourceType::kWriteOnlyStorageTexture,
-            result[7].resource_type);
-  EXPECT_EQ(4u, result[7].bind_group);
-  EXPECT_EQ(0u, result[7].binding);
+  EXPECT_EQ(0u, result[6].binding);
 
   EXPECT_EQ(ResourceBinding::ResourceType::kDepthTexture,
-            result[8].resource_type);
-  EXPECT_EQ(3u, result[8].bind_group);
-  EXPECT_EQ(1u, result[8].binding);
+            result[7].resource_type);
+  EXPECT_EQ(3u, result[7].bind_group);
+  EXPECT_EQ(1u, result[7].binding);
 
   EXPECT_EQ(ResourceBinding::ResourceType::kDepthMultisampledTexture,
-            result[9].resource_type);
-  EXPECT_EQ(3u, result[9].bind_group);
-  EXPECT_EQ(3u, result[9].binding);
+            result[8].resource_type);
+  EXPECT_EQ(3u, result[8].bind_group);
+  EXPECT_EQ(3u, result[8].binding);
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, MissingEntryPoint) {
@@ -1289,7 +1364,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, MissingEntryPoint) {
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, NonEntryPointFunc) {
-  ast::Struct* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
+  auto* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
   AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
 
   MakeStructVariableReferenceBodyFunction("ub_func", "foo_ub", {{0, ty.i32()}});
@@ -1307,7 +1382,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, NonEntryPointFunc) {
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, Simple) {
-  ast::Struct* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
+  auto* foo_struct_type = MakeUniformBufferType("foo_type", {ty.i32()});
   AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
 
   MakeStructVariableReferenceBodyFunction("ub_func", "foo_ub", {{0, ty.i32()}});
@@ -1332,7 +1407,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, Simple) {
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleMembers) {
-  ast::Struct* foo_struct_type =
+  auto* foo_struct_type =
       MakeUniformBufferType("foo_type", {ty.i32(), ty.u32(), ty.f32()});
   AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
 
@@ -1359,8 +1434,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleMembers) {
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, ContainingPadding) {
-  ast::Struct* foo_struct_type =
-      MakeUniformBufferType("foo_type", {ty.vec3<f32>()});
+  auto* foo_struct_type = MakeUniformBufferType("foo_type", {ty.vec3<f32>()});
   AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
 
   MakeStructVariableReferenceBodyFunction("ub_func", "foo_ub",
@@ -1386,7 +1460,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, ContainingPadding) {
 }
 
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleUniformBuffers) {
-  ast::Struct* ub_struct_type =
+  auto* ub_struct_type =
       MakeUniformBufferType("ub_type", {ty.i32(), ty.u32(), ty.f32()});
   AddUniformBuffer("ub_foo", ty.Of(ub_struct_type), 0, 0);
   AddUniformBuffer("ub_bar", ty.Of(ub_struct_type), 0, 1);
@@ -1443,9 +1517,9 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleUniformBuffers) {
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, ContainingArray) {
   // Manually create uniform buffer to make sure it had a valid layout (array
   // with elem stride of 16, and that is 16-byte aligned within the struct)
-  ast::Struct* foo_struct_type = Structure(
+  auto* foo_struct_type = Structure(
       "foo_type",
-      {Member("0__i32", ty.i32()),
+      {Member("0i32", ty.i32()),
        Member("b", ty.array(ty.u32(), 4, /*stride*/ 16), {MemberAlign(16)})},
       {create<ast::StructBlockDecoration>()});
 
@@ -2185,8 +2259,8 @@ TEST_P(InspectorGetMultisampledTextureResourceBindingsTestWithParam,
 
   Func("ep", ast::VariableList(), ty.void_(),
        ast::StatementList{
-           Ignore(Call("textureLoad", "foo_texture", "foo_coords",
-                       "foo_sample_index")),
+           CallStmt(Call("textureLoad", "foo_texture", "foo_coords",
+                         "foo_sample_index")),
        },
        ast::DecorationList{
            Stage(ast::PipelineStage::kFragment),
@@ -2298,20 +2372,15 @@ TEST_F(InspectorGetStorageTextureResourceBindingsTest, Empty) {
 
   Inspector& inspector = Build();
 
-  auto result = inspector.GetReadOnlyStorageTextureResourceBindings("ep");
-  ASSERT_FALSE(inspector.has_error()) << inspector.error();
-  EXPECT_EQ(0u, result.size());
-
-  result = inspector.GetWriteOnlyStorageTextureResourceBindings("ep");
+  auto result = inspector.GetWriteOnlyStorageTextureResourceBindings("ep");
   ASSERT_FALSE(inspector.has_error()) << inspector.error();
   EXPECT_EQ(0u, result.size());
 }
 
 TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
-  bool read_only;
   DimensionParams dim_params;
   ImageFormatParams format_params;
-  std::tie(read_only, dim_params, format_params) = GetParam();
+  std::tie(dim_params, format_params) = GetParam();
 
   ast::TextureDimension dim;
   ResourceBinding::TextureDimension expected_dim;
@@ -2322,10 +2391,10 @@ TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
   ResourceBinding::SampledKind expected_kind;
   std::tie(format, expected_format, expected_kind) = format_params;
 
-  auto* st_type = MakeStorageTextureTypes(dim, format, read_only);
+  auto* st_type = MakeStorageTextureTypes(dim, format);
   AddStorageTexture("st_var", st_type, 0, 0);
 
-  ast::Type* dim_type = nullptr;
+  const ast::Type* dim_type = nullptr;
   switch (dim) {
     case ast::TextureDimension::k1d:
       dim_type = ty.i32();
@@ -2349,33 +2418,23 @@ TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
 
   Inspector& inspector = Build();
 
-  auto result =
-      read_only ? inspector.GetReadOnlyStorageTextureResourceBindings("ep")
-                : inspector.GetWriteOnlyStorageTextureResourceBindings("ep");
+  auto result = inspector.GetWriteOnlyStorageTextureResourceBindings("ep");
   ASSERT_FALSE(inspector.has_error()) << inspector.error();
   ASSERT_EQ(1u, result.size());
 
-  EXPECT_EQ(read_only ? ResourceBinding::ResourceType::kReadOnlyStorageTexture
-                      : ResourceBinding::ResourceType::kWriteOnlyStorageTexture,
+  EXPECT_EQ(ResourceBinding::ResourceType::kWriteOnlyStorageTexture,
             result[0].resource_type);
   EXPECT_EQ(0u, result[0].bind_group);
   EXPECT_EQ(0u, result[0].binding);
   EXPECT_EQ(expected_dim, result[0].dim);
   EXPECT_EQ(expected_format, result[0].image_format);
   EXPECT_EQ(expected_kind, result[0].sampled_kind);
-
-  result = read_only
-               ? inspector.GetWriteOnlyStorageTextureResourceBindings("ep")
-               : inspector.GetReadOnlyStorageTextureResourceBindings("ep");
-  ASSERT_FALSE(inspector.has_error()) << inspector.error();
-  ASSERT_EQ(0u, result.size());
 }
 
 INSTANTIATE_TEST_SUITE_P(
     InspectorGetStorageTextureResourceBindingsTest,
     InspectorGetStorageTextureResourceBindingsTestWithParam,
     testing::Combine(
-        testing::Bool(),
         testing::Values(
             std::make_tuple(ast::TextureDimension::k1d,
                             ResourceBinding::TextureDimension::k1d),
@@ -2442,7 +2501,7 @@ TEST_P(InspectorGetDepthTextureResourceBindingsTestWithParam,
 
   Func("ep", ast::VariableList(), ty.void_(),
        ast::StatementList{
-           Ignore(Call("textureDimensions", "dt")),
+           CallStmt(Call("textureDimensions", "dt")),
        },
        ast::DecorationList{
            Stage(ast::PipelineStage::kFragment),
@@ -2486,7 +2545,7 @@ TEST_F(InspectorGetDepthMultisampledTextureResourceBindingsTest,
 
   Func("ep", ast::VariableList(), ty.void_(),
        ast::StatementList{
-           Ignore(Call("textureDimensions", "tex")),
+           CallStmt(Call("textureDimensions", "tex")),
        },
        ast::DecorationList{
            Stage(ast::PipelineStage::kFragment),
@@ -2511,7 +2570,7 @@ TEST_F(InspectorGetExternalTextureResourceBindingsTest, Simple) {
 
   Func("ep", ast::VariableList(), ty.void_(),
        ast::StatementList{
-           Ignore(Call("textureDimensions", "et")),
+           CallStmt(Call("textureDimensions", "et")),
        },
        ast::DecorationList{
            Stage(ast::PipelineStage::kFragment),
@@ -2814,7 +2873,7 @@ TEST_F(InspectorGetWorkgroupStorageSizeTest, Simple) {
 TEST_F(InspectorGetWorkgroupStorageSizeTest, CompoundTypes) {
   // This struct should occupy 68 bytes. 4 from the i32 field, and another 64
   // from the 4-element array with 16-byte stride.
-  ast::Struct* wg_struct_type = MakeStructType(
+  auto* wg_struct_type = MakeStructType(
       "WgStruct", {ty.i32(), ty.array(ty.i32(), 4, /*stride=*/16)},
       /*is_block=*/false);
   AddWorkgroupStorage("wg_struct_var", ty.Of(wg_struct_type));
@@ -2856,7 +2915,7 @@ TEST_F(InspectorGetWorkgroupStorageSizeTest, StructAlignment) {
   // Per WGSL spec, a struct's size is the offset its last member plus the size
   // of its last member, rounded up to the alignment of its largest member. So
   // here the struct is expected to occupy 1024 bytes of workgroup storage.
-  ast::Struct* wg_struct_type = MakeStructTypeFromMembers(
+  const auto* wg_struct_type = MakeStructTypeFromMembers(
       "WgStruct",
       {MakeStructMember(0, ty.f32(),
                         {create<ast::StructMemberAlignDecoration>(1024)})},

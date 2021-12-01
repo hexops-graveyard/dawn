@@ -24,14 +24,28 @@
 
 namespace dawn_native {
 
-    EncodingContext::EncodingContext(DeviceBase* device, const ObjectBase* initialEncoder)
+    EncodingContext::EncodingContext(DeviceBase* device, const ApiObjectBase* initialEncoder)
         : mDevice(device), mTopLevelEncoder(initialEncoder), mCurrentEncoder(initialEncoder) {
     }
 
     EncodingContext::~EncodingContext() {
+        Destroy();
+    }
+
+    void EncodingContext::Destroy() {
+        if (mDestroyed) {
+            return;
+        }
         if (!mWereCommandsAcquired) {
             FreeCommands(GetIterator());
         }
+        // If we weren't already finished, then we want to handle an error here so that any calls
+        // to Finish after Destroy will return a meaningful error.
+        if (!IsFinished()) {
+            HandleError(DAWN_FORMAT_VALIDATION_ERROR("Destroyed encoder cannot be finished."));
+        }
+        mDestroyed = true;
+        mCurrentEncoder = nullptr;
     }
 
     CommandIterator EncodingContext::AcquireCommands() {
@@ -87,7 +101,7 @@ namespace dawn_native {
         }
     }
 
-    void EncodingContext::EnterPass(const ObjectBase* passEncoder) {
+    void EncodingContext::EnterPass(const ApiObjectBase* passEncoder) {
         // Assert we're at the top level.
         ASSERT(mCurrentEncoder == mTopLevelEncoder);
         ASSERT(passEncoder != nullptr);
@@ -95,7 +109,7 @@ namespace dawn_native {
         mCurrentEncoder = passEncoder;
     }
 
-    MaybeError EncodingContext::ExitRenderPass(const ObjectBase* passEncoder,
+    MaybeError EncodingContext::ExitRenderPass(const ApiObjectBase* passEncoder,
                                                RenderPassResourceUsageTracker usageTracker,
                                                CommandEncoder* commandEncoder,
                                                IndirectDrawMetadata indirectDrawMetadata) {
@@ -121,13 +135,22 @@ namespace dawn_native {
         return {};
     }
 
-    void EncodingContext::ExitComputePass(const ObjectBase* passEncoder,
+    void EncodingContext::ExitComputePass(const ApiObjectBase* passEncoder,
                                           ComputePassResourceUsage usages) {
         ASSERT(mCurrentEncoder != mTopLevelEncoder);
         ASSERT(mCurrentEncoder == passEncoder);
 
         mCurrentEncoder = mTopLevelEncoder;
         mComputePassUsages.push_back(std::move(usages));
+    }
+
+    void EncodingContext::EnsurePassExited(const ApiObjectBase* passEncoder) {
+        if (mCurrentEncoder != mTopLevelEncoder && mCurrentEncoder == passEncoder) {
+            // The current pass encoder is being deleted. Implicitly end the pass with an error.
+            mCurrentEncoder = mTopLevelEncoder;
+            HandleError(DAWN_FORMAT_VALIDATION_ERROR(
+                "Command buffer recording ended before %s was ended.", passEncoder));
+        }
     }
 
     const RenderPassUsages& EncodingContext::GetRenderPassUsages() const {
@@ -161,12 +184,10 @@ namespace dawn_native {
     }
 
     MaybeError EncodingContext::Finish() {
-        if (IsFinished()) {
-            return DAWN_VALIDATION_ERROR("Command encoding already finished");
-        }
+        DAWN_INVALID_IF(IsFinished(), "Command encoding already finished.");
 
-        const void* currentEncoder = mCurrentEncoder;
-        const void* topLevelEncoder = mTopLevelEncoder;
+        const ApiObjectBase* currentEncoder = mCurrentEncoder;
+        const ApiObjectBase* topLevelEncoder = mTopLevelEncoder;
 
         // Even if finish validation fails, it is now invalid to call any encoding commands,
         // so we clear the encoders. Note: mTopLevelEncoder == nullptr is used as a flag for
@@ -178,9 +199,8 @@ namespace dawn_native {
         if (mError != nullptr) {
             return std::move(mError);
         }
-        if (currentEncoder != topLevelEncoder) {
-            return DAWN_VALIDATION_ERROR("Command buffer recording ended mid-pass");
-        }
+        DAWN_INVALID_IF(currentEncoder != topLevelEncoder,
+                        "Command buffer recording ended before %s was ended.", currentEncoder);
         return {};
     }
 

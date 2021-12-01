@@ -61,9 +61,7 @@ namespace dawn_native { namespace opengl {
         }
     }
 
-    Buffer::~Buffer() {
-        DestroyInternal();
-    }
+    Buffer::~Buffer() = default;
 
     GLuint Buffer::GetHandle() const {
         return mBuffer;

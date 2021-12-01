@@ -76,7 +76,7 @@ public:
 template<>
 class Converter<{{$.Name}}> {
 public:
-  static bool FromJS(Napi::Env, Napi::Value, {{$.Name}}&);
+  static Result FromJS(Napi::Env, Napi::Value, {{$.Name}}&);
   static Napi::Value ToJS(Napi::Env, {{$.Name}});
 };
 
@@ -166,7 +166,7 @@ enum class {{$.Name}} {
 template<>
 class Converter<{{$.Name}}> {
 public:
-  static bool FromJS(Napi::Env, Napi::Value, {{$.Name}}&);
+  static Result FromJS(Napi::Env, Napi::Value, {{$.Name}}&);
   static Napi::Value ToJS(Napi::Env, {{$.Name}});
   static bool FromString(std::string, {{$.Name}}&);
   static const char* ToString({{$.Name}});
@@ -275,9 +275,8 @@ std::ostream& operator<<(std::ostream& o, {{$.Name}});
 --------------------------------------------------------------------------------
 */ -}}
 {{- define "Parameter" -}}
-{{-   if $.Optional -}}
-std::optional<{{template "Type" $.Type}}> {{$.Name}}
-{{-   else}}
-{{-     template "Type" $.Type}} {{$.Name}}
-{{-   end}}
+{{-   if      $.Init    }}{{template "Type" $.Type}} {{$.Name}}
+{{-   else if $.Optional}}std::optional<{{template "Type" $.Type}}> {{$.Name}}
+{{-   else              }}{{template "Type" $.Type}} {{$.Name}}
+{{-   end               }}
 {{- end}}

@@ -77,20 +77,21 @@ namespace dawn_native { namespace vulkan {
     }
 
     ShaderModule::ShaderModule(Device* device, const ShaderModuleDescriptor* descriptor)
-        : ShaderModuleBase(device, descriptor), mTransformedShaderModuleCache(device) {
+        : ShaderModuleBase(device, descriptor),
+          mTransformedShaderModuleCache(
+              std::make_unique<ConcurrentTransformedShaderModuleCache>(device)) {
     }
 
     MaybeError ShaderModule::Initialize(ShaderModuleParseResult* parseResult) {
         if (GetDevice()->IsRobustnessEnabled()) {
             ScopedTintICEHandler scopedICEHandler(GetDevice());
 
-            tint::transform::BoundArrayAccessors boundArrayAccessors;
+            tint::transform::Robustness robustness;
             tint::transform::DataMap transformInputs;
 
             tint::Program program;
-            DAWN_TRY_ASSIGN(program,
-                            RunTransforms(&boundArrayAccessors, parseResult->tintProgram.get(),
-                                          transformInputs, nullptr, nullptr));
+            DAWN_TRY_ASSIGN(program, RunTransforms(&robustness, parseResult->tintProgram.get(),
+                                                   transformInputs, nullptr, nullptr));
             // Rather than use a new ParseResult object, we just reuse the original parseResult
             parseResult->tintProgram = std::make_unique<tint::Program>(std::move(program));
         }
@@ -98,23 +99,29 @@ namespace dawn_native { namespace vulkan {
         return InitializeBase(parseResult);
     }
 
+    void ShaderModule::DestroyImpl() {
+        // Remove reference to internal cache to trigger cleanup.
+        mTransformedShaderModuleCache = nullptr;
+    }
+
     ShaderModule::~ShaderModule() = default;
 
     ResultOrError<VkShaderModule> ShaderModule::GetTransformedModuleHandle(
         const char* entryPointName,
         PipelineLayout* layout) {
+        // If the shader was destroyed, we should never call this function.
+        ASSERT(IsAlive());
+
         ScopedTintICEHandler scopedICEHandler(GetDevice());
 
         auto cacheKey = std::make_pair(layout, entryPointName);
         VkShaderModule cachedShaderModule =
-            mTransformedShaderModuleCache.FindShaderModule(cacheKey);
+            mTransformedShaderModuleCache->FindShaderModule(cacheKey);
         if (cachedShaderModule != VK_NULL_HANDLE) {
             return cachedShaderModule;
         }
 
         // Creation of VkShaderModule is deferred to this point when using tint generator
-        std::ostringstream errorStream;
-        errorStream << "Tint SPIR-V writer failure:" << std::endl;
 
         // Remap BindingNumber to BindingIndex in WGSL shader
         using BindingRemapper = tint::transform::BindingRemapper;
@@ -160,10 +167,8 @@ namespace dawn_native { namespace vulkan {
         options.emit_vertex_point_size = true;
         options.disable_workgroup_init = GetDevice()->IsToggleEnabled(Toggle::DisableWorkgroupInit);
         auto result = tint::writer::spirv::Generate(&program, options);
-        if (!result.success) {
-            errorStream << "Generator: " << result.error << std::endl;
-            return DAWN_VALIDATION_ERROR(errorStream.str().c_str());
-        }
+        DAWN_INVALID_IF(!result.success, "An error occured while generating SPIR-V: %s.",
+                        result.error);
 
         std::vector<uint32_t> spirv = std::move(result.spirv);
         DAWN_TRY(
@@ -185,7 +190,7 @@ namespace dawn_native { namespace vulkan {
             "CreateShaderModule"));
         if (newHandle != VK_NULL_HANDLE) {
             newHandle =
-                mTransformedShaderModuleCache.AddOrGetCachedShaderModule(cacheKey, newHandle);
+                mTransformedShaderModuleCache->AddOrGetCachedShaderModule(cacheKey, newHandle);
         }
 
         SetDebugName(ToBackend(GetDevice()), VK_OBJECT_TYPE_SHADER_MODULE,

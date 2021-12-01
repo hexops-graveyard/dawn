@@ -802,7 +802,7 @@ TEST_P(StateChangeRenderTest, GenerateMipmap)
     drawQuad(mProgram, "position", 0.5f);
     EXPECT_PIXEL_COLOR_EQ(0, 0, red);
 
-    // This will trigger the texture to be re-created on FL9_3.
+    // This may trigger the texture to be re-created internally.
     glGenerateMipmap(GL_TEXTURE_2D);
 
     // Explictly check FBO status sync in some versions of ANGLE no_error skips FBO checks.
@@ -1691,8 +1691,7 @@ TEST_P(SimpleStateChangeTest, DrawArraysThenDrawElements)
 {
     // http://anglebug.com/4121
     ANGLE_SKIP_TEST_IF(IsIntel() && IsLinux() && IsOpenGLES());
-    // http://anglebug.com/4177
-    ANGLE_SKIP_TEST_IF(IsOSX() && IsMetal());
+
     ANGLE_GL_PROGRAM(program, essl1_shaders::vs::Simple(), essl1_shaders::fs::Blue());
     glUseProgram(program);
 
@@ -2096,8 +2095,6 @@ TEST_P(SimpleStateChangeTest, DrawRepeatUnalignedVboChange)
 {
     // http://anglebug.com/4470
     ANGLE_SKIP_TEST_IF(isSwiftshader() && (IsWindows() || IsLinux()));
-    // http://anglebug.com/6171
-    ANGLE_SKIP_TEST_IF(IsOSX() && IsARM64() && IsMetal());
 
     const int kRepeat = 2;
 
@@ -2684,9 +2681,7 @@ TEST_P(SimpleStateChangeTestES3, ReadFramebufferDrawFramebufferDifferentAttachme
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // A handful of non-draw calls can sync framebuffer state, such as discard, invalidate,
-    // invalidateSub and multisamplefv.  The trick here is to give GL_FRAMEBUFFER as target, which
-    // includes both the read and draw framebuffers.  The test is to make sure syncing the read
-    // framebuffer doesn't affect the draw call.
+    // invalidateSub and multisamplefv.
     GLenum invalidateAttachment = GL_COLOR_ATTACHMENT0;
     glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &invalidateAttachment);
     EXPECT_GL_NO_ERROR();
@@ -3060,6 +3055,99 @@ TEST_P(SimpleStateChangeTestES3, SubInvalidateThenDraw)
     // Blend into the framebuffer, then verify that the framebuffer should have had cyan.
     glBindFramebuffer(GL_READ_FRAMEBUFFER, drawFBO);
     blendAndVerifyColor(GLColor32F(0.0f, 0.0f, 1.0f, 0.5f), GLColor(127, 127, 127, 191));
+}
+
+// Tests that mid-render-pass invalidate then clear works for color buffers.  This test ensures that
+// the invalidate is undone on draw.
+TEST_P(SimpleStateChangeTestES3, ColorInvalidateThenClear)
+{
+    // Create the framebuffer that will be invalidated
+    GLTexture color;
+    glBindTexture(GL_TEXTURE_2D, color);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 2, 2);
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+    ASSERT_GL_FRAMEBUFFER_COMPLETE(GL_FRAMEBUFFER);
+
+    EXPECT_GL_NO_ERROR();
+
+    // Initialize the framebuffer with a draw call.
+    ANGLE_GL_PROGRAM(program, essl1_shaders::vs::Simple(), essl1_shaders::fs::Red());
+    drawQuad(program, essl1_shaders::PositionAttrib(), 0.5f);
+
+    // Invalidate it.
+    GLenum invalidateAttachment = GL_COLOR_ATTACHMENT0;
+    glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &invalidateAttachment);
+
+    // Clear the framebuffer.
+    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Expect the clear color, ensuring that invalidate wasn't applied after clear.
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green);
+}
+
+// Tests that mid-render-pass invalidate then clear works for depth buffers.  This test ensures that
+// the invalidate is undone on draw.
+TEST_P(SimpleStateChangeTestES3, DepthInvalidateThenClear)
+{
+    // Create the framebuffer that will be invalidated
+    GLTexture color;
+    glBindTexture(GL_TEXTURE_2D, color);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 2, 2);
+
+    GLRenderbuffer depth;
+    glBindRenderbuffer(GL_RENDERBUFFER, depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 2, 2);
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth);
+    ASSERT_GL_FRAMEBUFFER_COMPLETE(GL_FRAMEBUFFER);
+
+    EXPECT_GL_NO_ERROR();
+
+    // Initialize the framebuffer with a draw call.
+    ANGLE_GL_PROGRAM(drawColor, essl1_shaders::vs::Simple(), essl1_shaders::fs::UniformColor());
+    glUseProgram(drawColor);
+    GLint colorUniformLocation =
+        glGetUniformLocation(drawColor, angle::essl1_shaders::ColorUniform());
+    ASSERT_NE(colorUniformLocation, -1);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_ALWAYS);
+
+    glUniform4f(colorUniformLocation, 1.0f, 0.0f, 0.0f, 1.0f);
+    drawQuad(drawColor, essl1_shaders::PositionAttrib(), 0.0f);
+
+    // Invalidate depth.
+    GLenum invalidateAttachment = GL_DEPTH_ATTACHMENT;
+    glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, &invalidateAttachment);
+
+    // Clear the framebuffer.
+    glClearDepthf(0.8f);
+    glClear(GL_DEPTH_BUFFER_BIT);
+
+    // Expect the draw color.  This breaks the render pass.  Later, the test ensures that invalidate
+    // of depth wasn't applied after clear.
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::red);
+
+    // Blend with depth test and make sure depth is as expected.
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_ONE, GL_ONE);
+
+    glDepthFunc(GL_LESS);
+    glUniform4f(colorUniformLocation, 0.0f, 1.0f, 0.0f, 1.0f);
+    drawQuad(drawColor, essl1_shaders::PositionAttrib(), 0.59f);
+
+    glDepthFunc(GL_GREATER);
+    glUniform4f(colorUniformLocation, 0.0f, 0.0f, 1.0f, 1.0f);
+    drawQuad(drawColor, essl1_shaders::PositionAttrib(), 0.61f);
+
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::white);
 }
 
 // Tests deleting a Framebuffer that is in use.
@@ -5384,9 +5472,6 @@ TEST_P(WebGL2ValidationStateChangeTest, MultiAttachmentDrawFramebufferNegativeAP
     // Crashes on 64-bit Android.  http://anglebug.com/3878
     ANGLE_SKIP_TEST_IF(IsVulkan() && IsAndroid());
 
-    // http://anglebug.com/5233
-    ANGLE_SKIP_TEST_IF(IsMetal());
-
     // Set up a program that writes to two outputs: one int and one float.
     constexpr char kVS[] = R"(#version 300 es
 layout(location = 0) in vec2 position;
@@ -6477,9 +6562,9 @@ TEST_P(ImageRespecificationTest, ImageTarget2DOESSwitch)
         EGL_TRUE,
         EGL_NONE,
     };
-    EGLImageKHR firstEGLImage =
-        eglCreateImageKHR(window->getDisplay(), window->getContext(), EGL_GL_TEXTURE_2D_KHR,
-                          reinterpret_cast<EGLClientBuffer>(firstTexture.get()), attribs);
+    EGLImageKHR firstEGLImage = eglCreateImageKHR(
+        window->getDisplay(), window->getContext(), EGL_GL_TEXTURE_2D_KHR,
+        reinterpret_cast<EGLClientBuffer>(static_cast<uintptr_t>(firstTexture.get())), attribs);
     ASSERT_EGL_SUCCESS();
 
     // Create the target texture and attach it to the framebuffer
@@ -6520,9 +6605,9 @@ TEST_P(ImageRespecificationTest, ImageTarget2DOESSwitch)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    EGLImageKHR secondEGLImage =
-        eglCreateImageKHR(window->getDisplay(), window->getContext(), EGL_GL_TEXTURE_2D_KHR,
-                          reinterpret_cast<EGLClientBuffer>(secondTexture.get()), attribs);
+    EGLImageKHR secondEGLImage = eglCreateImageKHR(
+        window->getDisplay(), window->getContext(), EGL_GL_TEXTURE_2D_KHR,
+        reinterpret_cast<EGLClientBuffer>(static_cast<uintptr_t>(secondTexture.get())), attribs);
     ASSERT_EGL_SUCCESS();
 
     glBindTexture(GL_TEXTURE_2D, mTargetTexture);
@@ -6911,7 +6996,7 @@ void main()
         EGLConfig config           = window->getConfig();
         EGLint pbufferAttributes[] = {EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE, EGL_NONE};
         EGLSurface surface         = eglCreatePbufferSurface(dpy, config, pbufferAttributes);
-        EGLContext ctx             = window->createContext(EGL_NO_CONTEXT);
+        EGLContext ctx             = window->createContext(EGL_NO_CONTEXT, nullptr);
         EXPECT_EGL_SUCCESS();
         std::thread flushThread = std::thread([&]() {
             EXPECT_EGL_TRUE(eglMakeCurrent(dpy, surface, surface, ctx));
@@ -6948,6 +7033,292 @@ TEST_P(SimpleStateChangeTestES31, PrimitiveBoundingBoxNegativeTest)
     GLfloat boundingBox[8] = {0};
     glGetFloatv(GL_PRIMITIVE_BOUNDING_BOX_EXT, boundingBox);
     EXPECT_GL_ERROR(GL_INVALID_ENUM);
+}
+
+// Update an element array buffer that is already in use.
+TEST_P(SimpleStateChangeTest, UpdateBoundElementArrayBuffer)
+{
+    constexpr char kVS[] = R"(attribute vec4 position;
+attribute float color;
+varying float colorVarying;
+void main()
+{
+    gl_Position = position;
+    colorVarying = color;
+})";
+
+    constexpr char kFS[] = R"(precision mediump float;
+varying float colorVarying;
+void main()
+{
+    if (colorVarying == 1.0)
+    {
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
+    else
+    {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    }
+})";
+
+    ANGLE_GL_PROGRAM(testProgram, kVS, kFS);
+    glUseProgram(testProgram);
+
+    GLint posLoc = glGetAttribLocation(testProgram, "position");
+    ASSERT_NE(-1, posLoc);
+    GLint colorLoc = glGetAttribLocation(testProgram, "color");
+    ASSERT_NE(-1, colorLoc);
+
+    std::array<GLushort, 6> quadIndices = GetQuadIndices();
+
+    std::vector<GLubyte> indices;
+    for (GLushort index : quadIndices)
+    {
+        indices.push_back(static_cast<GLubyte>(index));
+    }
+
+    GLBuffer indexBuffer;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(indices[0]), indices.data(),
+                 GL_STATIC_DRAW);
+
+    std::array<Vector3, 4> quadVertices = GetIndexedQuadVertices();
+
+    std::vector<Vector3> positionVertices;
+    for (Vector3 vertex : quadVertices)
+    {
+        positionVertices.push_back(vertex);
+    }
+    for (Vector3 vertex : quadVertices)
+    {
+        positionVertices.push_back(vertex);
+    }
+
+    GLBuffer positionVertexBuffer;
+    glBindBuffer(GL_ARRAY_BUFFER, positionVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, positionVertices.size() * sizeof(positionVertices[0]),
+                 positionVertices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(posLoc);
+
+    std::vector<float> colorVertices = {1, 1, 1, 1, 0, 0, 0, 0};
+
+    GLBuffer colorVertexBuffer;
+    glBindBuffer(GL_ARRAY_BUFFER, colorVertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, colorVertices.size() * sizeof(colorVertices[0]),
+                 colorVertices.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(colorLoc, 1, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glEnableVertexAttribArray(colorLoc);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, nullptr);
+    ASSERT_GL_NO_ERROR();
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::green);
+
+    indices.clear();
+    for (GLushort index : quadIndices)
+    {
+        indices.push_back(static_cast<GLubyte>(index + 4));
+    }
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.size() * sizeof(indices[0]),
+                    indices.data());
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_BYTE, nullptr);
+    ASSERT_GL_NO_ERROR();
+    EXPECT_PIXEL_COLOR_EQ(0, 0, GLColor::red);
+}
+
+// Covers a bug where we would use a stale cache variable in the Vulkan back-end.
+TEST_P(SimpleStateChangeTestES3, DeleteFramebufferBeforeQuery)
+{
+    ANGLE_GL_PROGRAM(testProgram, essl1_shaders::vs::Zero(), essl1_shaders::fs::Red());
+    glUseProgram(testProgram);
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+
+    GLRenderbuffer rbo;
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH32F_STENCIL8, 16, 16);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    GLfloat floatArray[] = {1, 2, 3, 4};
+
+    GLBuffer buffer;
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLfloat) * 4, floatArray, GL_DYNAMIC_COPY);
+    glDrawElements(GL_TRIANGLE_FAN, 5, GL_UNSIGNED_SHORT, 0);
+
+    fbo.reset();
+
+    GLQuery query2;
+    glBeginQuery(GL_ANY_SAMPLES_PASSED_CONSERVATIVE, query2);
+
+    ASSERT_GL_NO_ERROR();
+}
+
+// Covers an edge case
+TEST_P(SimpleStateChangeTestES3, TextureTypeConflictAfterDraw)
+{
+    constexpr char kVS[] = R"(precision highp float;
+attribute vec4 a_position;
+void main()
+{
+    gl_Position = a_position;
+}
+)";
+
+    constexpr char kFS[] = R"(precision highp float;
+uniform sampler2D u_2d1;
+uniform samplerCube u_Cube1;
+void main()
+{
+    gl_FragColor = texture2D(u_2d1, vec2(0.0, 0.0)) + textureCube(u_Cube1, vec3(0.0, 0.0, 0.0));
+}
+)";
+
+    ANGLE_GL_PROGRAM(testProgram, kVS, kFS);
+    glUseProgram(testProgram);
+
+    GLTexture texture;
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexStorage2D(GL_TEXTURE_2D, 4, GL_SRGB8, 1268, 614);
+
+    GLint uniformloc = glGetUniformLocation(testProgram, "u_Cube1");
+    ASSERT_NE(-1, uniformloc);
+    glUniform1i(uniformloc, 1);
+
+    glDrawArrays(GL_POINTS, 0, 1);
+    ASSERT_GL_NO_ERROR();
+
+    // Trigger the state update.
+    glLinkProgram(testProgram);
+    texture.reset();
+
+    // The texture types are now conflicting, and draws should fail.
+    glDrawArrays(GL_POINTS, 0, 1);
+    EXPECT_GL_ERROR(GL_INVALID_OPERATION);
+}
+
+// Regression test for a bug where a mutable texture is used with non-zero base level then rebased
+// to zero but made incomplete and attached to the framebuffer.  The texture's image is not
+// recreated with level 0, leading to errors when drawing to the framebuffer.
+TEST_P(SimpleStateChangeTestES3, NonZeroBaseMutableTextureThenZeroBaseButIncompleteBug)
+{
+    ANGLE_GL_PROGRAM(program, essl1_shaders::vs::Texture2D(), essl1_shaders::fs::Texture2D());
+    glUseProgram(program);
+
+    const std::array<GLColor, 4> kMip0Data = {GLColor::red, GLColor::red, GLColor::red,
+                                              GLColor::red};
+    const std::array<GLColor, 2> kMip1Data = {GLColor::green, GLColor::green};
+
+    // Create two textures.
+    GLTexture immutableTex;
+    glBindTexture(GL_TEXTURE_2D, immutableTex);
+    glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, kMip0Data.data());
+
+    GLTexture mutableTex;
+    glBindTexture(GL_TEXTURE_2D, mutableTex);
+    for (uint32_t mip = 0; mip < 2; ++mip)
+    {
+        const uint32_t size = 4 >> mip;
+        glTexImage2D(GL_TEXTURE_2D, mip, GL_RGBA8, size, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+                     mip == 0 ? kMip0Data.data() : kMip1Data.data());
+    }
+
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // Sample from the mutable texture at non-zero base level.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, immutableTex, 0);
+    drawQuad(program, std::string(essl1_shaders::PositionAttrib()), 0.0f);
+    EXPECT_PIXEL_COLOR_EQ(0, 0, kMip1Data[0]);
+
+    // Rebase the mutable texture to zero, but enable mipmapping which makes it incomplete.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+
+    // Remove feedback loop for good measure.
+    glBindTexture(GL_TEXTURE_2D, immutableTex);
+
+    // Draw into base zero of the texture.
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mutableTex, 0);
+    drawQuad(program, std::string(essl1_shaders::PositionAttrib()), 0.0f);
+
+    EXPECT_PIXEL_COLOR_EQ(0, 0, kMip1Data[1]);
+    ASSERT_GL_NO_ERROR();
+}
+
+// Regression test for a bug where the framebuffer binding was not synced during invalidate when a
+// clear operation was deferred.
+TEST_P(SimpleStateChangeTestES3, ChangeFramebufferThenInvalidateWithClear)
+{
+    // Clear the default framebuffer.
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Start rendering to another framebuffer
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+
+    GLRenderbuffer rbo;
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, 16, 16);
+    glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, rbo);
+
+    ANGLE_GL_PROGRAM(program, essl1_shaders::vs::Passthrough(), essl1_shaders::fs::Red());
+    glUseProgram(program);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    // Switch back to the default framebuffer
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    // Invalidate it.  Don't invalidate color, as that's the one being cleared.
+    constexpr GLenum kAttachment = GL_DEPTH;
+    glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, &kAttachment);
+    EXPECT_GL_NO_ERROR();
+}
+
+// Test that clear / invalidate / clear works.  The invalidate is for a target that's not cleared.
+// Regression test for a bug where invalidate() would start a render pass to perform the first
+// clear, while the second clear didn't expect a render pass opened without any draw calls in it.
+TEST_P(SimpleStateChangeTestES3, ClearColorInvalidateDepthClearColor)
+{
+    // Clear color.
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Invalidate depth.
+    constexpr GLenum kAttachment = GL_DEPTH;
+    glInvalidateFramebuffer(GL_DRAW_FRAMEBUFFER, 1, &kAttachment);
+    EXPECT_GL_NO_ERROR();
+
+    // Clear color again.
+    glClear(GL_COLOR_BUFFER_BIT);
+    ASSERT_GL_NO_ERROR();
+}
+
+// Regression test for a bug where glInvalidateFramebuffer(GL_FRAMEBUFFER, ...) was invalidating
+// both the draw and read framebuffers.
+TEST_P(SimpleStateChangeTestES3, InvalidateFramebufferShouldntInvalidateReadFramebuffer)
+{
+    // Create an invalid read framebuffer.
+    GLFramebuffer fbo;
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+
+    GLTexture tex;
+    glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_R8, 1, 1, 1);
+    glFramebufferTextureLayer(GL_READ_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, tex, 0, 5);
+
+    // Invalidate using GL_FRAMEBUFFER.  If GL_READ_FRAMEBUFFER was used, validation would fail due
+    // to the framebuffer not being complete.  A bug here was attempting to invalidate the read
+    // framebuffer given GL_FRAMEBUFFER anyway.
+    constexpr std::array<GLenum, 2> kAttachments = {GL_DEPTH, GL_STENCIL};
+    glInvalidateFramebuffer(GL_FRAMEBUFFER, 2, kAttachments.data());
+    EXPECT_GL_NO_ERROR();
 }
 }  // anonymous namespace
 

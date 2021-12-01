@@ -5,6 +5,7 @@
 angle_unittests_sources = [
   "../../util/test_utils_unittest.cpp",
   "../../util/test_utils_unittest_helper.h",
+  "../common/CircularBuffer_unittest.cpp",
   "../common/FastVector_unittest.cpp",
   "../common/FixedVector_unittest.cpp",
   "../common/Optional_unittest.cpp",
@@ -48,7 +49,6 @@ angle_unittests_sources = [
   "../libANGLE/renderer/TextureImpl_mock.h",
   "../libANGLE/renderer/TransformFeedbackImpl_mock.h",
   "../libANGLE/renderer/serial_utils_unittest.cpp",
-  "../libANGLE/serializer/JsonSerializer_unittest.cpp",
   "angle_unittests_utils.h",
   "preprocessor_tests/MockDiagnostics.h",
   "preprocessor_tests/MockDirectiveHandler.h",

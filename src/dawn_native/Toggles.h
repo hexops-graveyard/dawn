@@ -48,7 +48,6 @@ namespace dawn_native {
         DisableRobustness,
         MetalEnableVertexPulling,
         DisallowUnsafeAPIs,
-        UseTintGenerator,
         FlushBeforeClientWaitSync,
         UseTempBufferInSmallFormatTextureToTextureCopyFromGreaterToLessMipLevel,
         EmitHLSLDebugSymbols,
@@ -61,6 +60,7 @@ namespace dawn_native {
         UseUserDefinedLabelsInBackend,
         DisableR8RG8Mipmaps,
         UseDummyFragmentInVertexOnlyPipeline,
+        FxcOptimizations,
 
         EnumCount,
         InvalidEnum = EnumCount,

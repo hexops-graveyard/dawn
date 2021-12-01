@@ -217,7 +217,7 @@ TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInput_Fail) {
             "fragment pipeline stage");
 }
 
-TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInputStruct_Ignored) {
+TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInputStruct_Fail) {
   // struct MyInputs {
   //   [[builtin(frag_depth)]] ff: f32;
   // };
@@ -231,8 +231,28 @@ TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInputStruct_Ignored) {
 
   Func("fragShader", {Param("arg", ty.Of(s))}, ty.f32(), {Return(1.0f)},
        {Stage(ast::PipelineStage::kFragment)}, {Location(0)});
+  EXPECT_FALSE(r()->Resolve());
+  EXPECT_EQ(r()->error(),
+            "12:34 error: builtin(frag_depth) cannot be used in input of "
+            "fragment pipeline stage\n"
+            "note: while analysing entry point 'fragShader'");
+}
+
+TEST_F(ResolverBuiltinsValidationTest, StructBuiltinInsideEntryPoint_Ignored) {
+  // struct S {
+  //   [[builtin(vertex_index)]] idx: u32;
+  // };
+  // [[stage(fragment)]]
+  // fn fragShader() { var s : S; }
+
+  Structure("S",
+            {Member("idx", ty.u32(), {Builtin(ast::Builtin::kVertexIndex)})});
+
+  Func("fragShader", {}, ty.void_(), {Decl(Var("s", ty.type_name("S")))},
+       {Stage(ast::PipelineStage::kFragment)});
   EXPECT_TRUE(r()->Resolve());
 }
+
 }  // namespace StageTest
 
 TEST_F(ResolverBuiltinsValidationTest, PositionNotF32_Struct_Fail) {
@@ -746,87 +766,131 @@ TEST_F(ResolverBuiltinsValidationTest, Determinant_Mat4x4) {
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Scalar) {
-  auto* a = Var("a", ty.i32());
-  auto* builtin = Call("frexp", 1.0f, AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("frexp", 1.0f);
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->Is<sem::F32>());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  EXPECT_TRUE(members[0]->Type()->Is<sem::F32>());
+  EXPECT_TRUE(members[1]->Type()->Is<sem::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec2) {
-  auto* a = Var("a", ty.vec2<int>());
-  auto* builtin = Call("frexp", vec2<f32>(1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("frexp", vec2<f32>(1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 2u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 2u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec3) {
-  auto* a = Var("a", ty.vec3<int>());
-  auto* builtin =
-      Call("frexp", vec3<f32>(1.0f, 1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("frexp", vec3<f32>(1.0f, 1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 3u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 3u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec4) {
-  auto* a = Var("a", ty.vec4<int>());
-  auto* builtin =
-      Call("frexp", vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("frexp", vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 4u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 4u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Scalar) {
-  auto* a = Var("a", ty.f32());
-  auto* builtin = Call("modf", 1.0f, AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("modf", 1.0f);
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->Is<sem::F32>());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  EXPECT_TRUE(members[0]->Type()->Is<sem::F32>());
+  EXPECT_TRUE(members[1]->Type()->Is<sem::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec2) {
-  auto* a = Var("a", ty.vec2<f32>());
-  auto* builtin = Call("modf", vec2<f32>(1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("modf", vec2<f32>(1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 2u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 2u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec3) {
-  auto* a = Var("a", ty.vec3<f32>());
-  auto* builtin =
-      Call("modf", vec3<f32>(1.0f, 1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("modf", vec3<f32>(1.0f, 1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 3u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 3u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec4) {
-  auto* a = Var("a", ty.vec4<f32>());
-  auto* builtin =
-      Call("modf", vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f), AddressOf(Expr("a")));
-  WrapInFunction(Decl(a), builtin);
+  auto* builtin = Call("modf", vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f));
+  WrapInFunction(builtin);
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
-  EXPECT_TRUE(TypeOf(builtin)->is_float_vector());
-  EXPECT_TRUE(TypeOf(builtin->params()[1])->Is<sem::Pointer>());
+  auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
+  ASSERT_TRUE(res_ty != nullptr);
+  auto& members = res_ty->Members();
+  ASSERT_EQ(members.size(), 2u);
+  ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
+  ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
+  EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 4u);
+  EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+  EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 4u);
+  EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Cross_Float_Vec3) {
@@ -922,7 +986,7 @@ TEST_P(FloatAllMatching, Scalar) {
     params.push_back(Expr(1.0f));
   }
   auto* builtin = Call(name, params);
-  Func("func", {}, ty.void_(), {Ignore(builtin)},
+  Func("func", {}, ty.void_(), {CallStmt(builtin)},
        {create<ast::StageDecoration>(ast::PipelineStage::kFragment)});
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -938,7 +1002,7 @@ TEST_P(FloatAllMatching, Vec2) {
     params.push_back(vec2<f32>(1.0f, 1.0f));
   }
   auto* builtin = Call(name, params);
-  Func("func", {}, ty.void_(), {Ignore(builtin)},
+  Func("func", {}, ty.void_(), {CallStmt(builtin)},
        {create<ast::StageDecoration>(ast::PipelineStage::kFragment)});
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -954,7 +1018,7 @@ TEST_P(FloatAllMatching, Vec3) {
     params.push_back(vec3<f32>(1.0f, 1.0f, 1.0f));
   }
   auto* builtin = Call(name, params);
-  Func("func", {}, ty.void_(), {Ignore(builtin)},
+  Func("func", {}, ty.void_(), {CallStmt(builtin)},
        {create<ast::StageDecoration>(ast::PipelineStage::kFragment)});
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -970,7 +1034,7 @@ TEST_P(FloatAllMatching, Vec4) {
     params.push_back(vec4<f32>(1.0f, 1.0f, 1.0f, 1.0f));
   }
   auto* builtin = Call(name, params);
-  Func("func", {}, ty.void_(), {Ignore(builtin)},
+  Func("func", {}, ty.void_(), {CallStmt(builtin)},
        {create<ast::StageDecoration>(ast::PipelineStage::kFragment)});
 
   EXPECT_TRUE(r()->Resolve()) << r()->error();

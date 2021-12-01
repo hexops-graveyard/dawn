@@ -17,27 +17,25 @@
 #include "dawn_native/CreatePipelineAsyncTask.h"
 #include "dawn_native/metal/DeviceMTL.h"
 #include "dawn_native/metal/ShaderModuleMTL.h"
+#include "dawn_native/metal/UtilsMetal.h"
 
 namespace dawn_native { namespace metal {
 
     // static
-    ResultOrError<Ref<ComputePipeline>> ComputePipeline::Create(
+    Ref<ComputePipeline> ComputePipeline::CreateUninitialized(
         Device* device,
         const ComputePipelineDescriptor* descriptor) {
-        Ref<ComputePipeline> pipeline = AcquireRef(new ComputePipeline(device, descriptor));
-        DAWN_TRY(pipeline->Initialize());
-        return pipeline;
+        return AcquireRef(new ComputePipeline(device, descriptor));
     }
 
     MaybeError ComputePipeline::Initialize() {
         auto mtlDevice = ToBackend(GetDevice())->GetMTLDevice();
 
         const ProgrammableStage& computeStage = GetStage(SingleShaderStage::Compute);
-        ShaderModule* computeModule = ToBackend(computeStage.module.Get());
-        const char* computeEntryPoint = computeStage.entryPoint.c_str();
         ShaderModule::MetalFunctionData computeData;
-        DAWN_TRY(computeModule->CreateFunction(computeEntryPoint, SingleShaderStage::Compute,
-                                               ToBackend(GetLayout()), &computeData));
+
+        DAWN_TRY(CreateMTLFunction(computeStage, SingleShaderStage::Compute, ToBackend(GetLayout()),
+                                   &computeData));
 
         NSError* error = nullptr;
         mMtlComputePipelineState.Acquire([mtlDevice
@@ -76,14 +74,11 @@ namespace dawn_native { namespace metal {
         return mRequiresStorageBufferLength;
     }
 
-    void ComputePipeline::CreateAsync(Device* device,
-                                      const ComputePipelineDescriptor* descriptor,
-                                      size_t blueprintHash,
-                                      WGPUCreateComputePipelineAsyncCallback callback,
-                                      void* userdata) {
-        Ref<ComputePipeline> pipeline = AcquireRef(new ComputePipeline(device, descriptor));
+    void ComputePipeline::InitializeAsync(Ref<ComputePipelineBase> computePipeline,
+                                          WGPUCreateComputePipelineAsyncCallback callback,
+                                          void* userdata) {
         std::unique_ptr<CreateComputePipelineAsyncTask> asyncTask =
-            std::make_unique<CreateComputePipelineAsyncTask>(pipeline, blueprintHash, callback,
+            std::make_unique<CreateComputePipelineAsyncTask>(std::move(computePipeline), callback,
                                                              userdata);
         CreateComputePipelineAsyncTask::RunAsync(std::move(asyncTask));
     }

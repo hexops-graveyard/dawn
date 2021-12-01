@@ -24,17 +24,20 @@
 
 namespace dawn_native { namespace d3d12 {
 
-    ResultOrError<Ref<ComputePipeline>> ComputePipeline::Create(
+    Ref<ComputePipeline> ComputePipeline::CreateUninitialized(
         Device* device,
         const ComputePipelineDescriptor* descriptor) {
-        Ref<ComputePipeline> pipeline = AcquireRef(new ComputePipeline(device, descriptor));
-        DAWN_TRY(pipeline->Initialize());
-        return pipeline;
+        return AcquireRef(new ComputePipeline(device, descriptor));
     }
 
     MaybeError ComputePipeline::Initialize() {
         Device* device = ToBackend(GetDevice());
         uint32_t compileFlags = 0;
+
+        if (!device->IsToggleEnabled(Toggle::UseDXC) &&
+            !device->IsToggleEnabled(Toggle::FxcOptimizations)) {
+            compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL0;
+        }
 
         if (device->IsToggleEnabled(Toggle::EmitHLSLDebugSymbols)) {
             compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
@@ -50,9 +53,8 @@ namespace dawn_native { namespace d3d12 {
         d3dDesc.pRootSignature = ToBackend(GetLayout())->GetRootSignature();
 
         CompiledShader compiledShader;
-        DAWN_TRY_ASSIGN(compiledShader,
-                        module->Compile(computeStage.entryPoint.c_str(), SingleShaderStage::Compute,
-                                        ToBackend(GetLayout()), compileFlags));
+        DAWN_TRY_ASSIGN(compiledShader, module->Compile(computeStage, SingleShaderStage::Compute,
+                                                        ToBackend(GetLayout()), compileFlags));
         d3dDesc.CS = compiledShader.GetD3D12ShaderBytecode();
         auto* d3d12Device = device->GetD3D12Device();
         DAWN_TRY(CheckHRESULT(
@@ -64,7 +66,9 @@ namespace dawn_native { namespace d3d12 {
         return {};
     }
 
-    ComputePipeline::~ComputePipeline() {
+    ComputePipeline::~ComputePipeline() = default;
+
+    void ComputePipeline::DestroyImpl() {
         ToBackend(GetDevice())->ReferenceUntilUnused(mPipelineState);
     }
 
@@ -77,16 +81,24 @@ namespace dawn_native { namespace d3d12 {
                      GetLabel());
     }
 
-    void ComputePipeline::CreateAsync(Device* device,
-                                      const ComputePipelineDescriptor* descriptor,
-                                      size_t blueprintHash,
-                                      WGPUCreateComputePipelineAsyncCallback callback,
-                                      void* userdata) {
-        Ref<ComputePipeline> pipeline = AcquireRef(new ComputePipeline(device, descriptor));
+    void ComputePipeline::InitializeAsync(Ref<ComputePipelineBase> computePipeline,
+                                          WGPUCreateComputePipelineAsyncCallback callback,
+                                          void* userdata) {
         std::unique_ptr<CreateComputePipelineAsyncTask> asyncTask =
-            std::make_unique<CreateComputePipelineAsyncTask>(pipeline, blueprintHash, callback,
+            std::make_unique<CreateComputePipelineAsyncTask>(std::move(computePipeline), callback,
                                                              userdata);
         CreateComputePipelineAsyncTask::RunAsync(std::move(asyncTask));
+    }
+
+    bool ComputePipeline::UsesNumWorkgroups() const {
+        return GetStage(SingleShaderStage::Compute).metadata->usesNumWorkgroups;
+    }
+
+    ComPtr<ID3D12CommandSignature> ComputePipeline::GetDispatchIndirectCommandSignature() {
+        if (UsesNumWorkgroups()) {
+            return ToBackend(GetLayout())->GetDispatchIndirectCommandSignatureWithNumWorkgroups();
+        }
+        return ToBackend(GetDevice())->GetDispatchIndirectSignature();
     }
 
 }}  // namespace dawn_native::d3d12

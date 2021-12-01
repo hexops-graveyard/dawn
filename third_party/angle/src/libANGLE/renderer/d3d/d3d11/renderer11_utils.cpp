@@ -1567,95 +1567,96 @@ void GenerateCaps(ID3D11Device *device,
     caps->minProgramTextureGatherOffset = GetMinimumTextureGatherOffset(featureLevel);
     caps->maxProgramTextureGatherOffset = GetMaximumTextureGatherOffset(featureLevel);
 
+    caps->maxTextureAnisotropy        = GetMaximumAnisotropy(featureLevel);
+    caps->queryCounterBitsTimeElapsed = 64;
+    caps->queryCounterBitsTimestamp = 0;  // Timestamps cannot be supported due to D3D11 limitations
+    caps->maxDualSourceDrawBuffers  = 1;
+
     // GL extension support
     extensions->setTextureExtensionSupport(*textureCapsMap);
 
     // Explicitly disable GL_OES_compressed_ETC1_RGB8_texture because it's emulated and never
     // becomes core. WebGL doesn't want to expose it unless there is native support.
-    extensions->compressedETC1RGB8TextureOES = false;
-    extensions->compressedETC1RGB8SubTexture = false;
+    extensions->compressedETC1RGB8TextureOES    = false;
+    extensions->compressedETC1RGB8SubTextureEXT = false;
 
     extensions->elementIndexUintOES = true;
     extensions->getProgramBinaryOES = true;
-    extensions->rgb8rgba8OES        = true;
-    extensions->readFormatBGRA      = true;
+    extensions->rgb8Rgba8OES        = true;
+    extensions->readFormatBgraEXT   = true;
     extensions->pixelBufferObjectNV = true;
-    extensions->mapBufferOES        = true;
-    extensions->mapBufferRange      = true;
-    extensions->textureNPOTOES      = GetNPOTTextureSupport(featureLevel);
-    extensions->drawBuffers         = GetMaximumSimultaneousRenderTargets(featureLevel) > 1;
+    extensions->mapbufferOES        = true;
+    extensions->mapBufferRangeEXT   = true;
+    extensions->textureNpotOES      = GetNPOTTextureSupport(featureLevel);
+    extensions->drawBuffersEXT      = GetMaximumSimultaneousRenderTargets(featureLevel) > 1;
     extensions->drawBuffersIndexedEXT =
         (renderer11DeviceCaps.featureLevel >= D3D_FEATURE_LEVEL_10_1);
     extensions->drawBuffersIndexedOES       = extensions->drawBuffersIndexedEXT;
-    extensions->textureStorage              = true;
-    extensions->textureFilterAnisotropic    = true;
-    extensions->maxTextureAnisotropy        = GetMaximumAnisotropy(featureLevel);
-    extensions->occlusionQueryBoolean       = GetOcclusionQuerySupport(featureLevel);
+    extensions->textureStorageEXT           = true;
+    extensions->textureFilterAnisotropicEXT = true;
+    extensions->occlusionQueryBooleanEXT    = GetOcclusionQuerySupport(featureLevel);
     extensions->fenceNV                     = GetEventQuerySupport(featureLevel);
-    extensions->disjointTimerQuery          = true;
-    extensions->queryCounterBitsTimeElapsed = 64;
-    extensions->queryCounterBitsTimestamp =
-        0;  // Timestamps cannot be supported due to D3D11 limitations
-    extensions->robustness = true;
+    extensions->disjointTimerQueryEXT       = true;
+    extensions->robustnessEXT               = true;
     // Direct3D guarantees to return zero for any resource that is accessed out of bounds.
     // See https://msdn.microsoft.com/en-us/library/windows/desktop/ff476332(v=vs.85).aspx
     // and https://msdn.microsoft.com/en-us/library/windows/desktop/ff476900(v=vs.85).aspx
-    extensions->robustBufferAccessBehavior = true;
-    extensions->blendMinMax                = true;
+    extensions->robustBufferAccessBehaviorKHR = true;
+    extensions->blendMinmaxEXT                = true;
     // https://docs.microsoft.com/en-us/windows/desktop/direct3ddxgi/format-support-for-direct3d-11-0-feature-level-hardware
-    extensions->floatBlend             = true;
-    extensions->framebufferBlitANGLE   = GetFramebufferBlitSupport(featureLevel);
-    extensions->framebufferBlitNV      = extensions->framebufferBlitANGLE;
-    extensions->framebufferMultisample = GetFramebufferMultisampleSupport(featureLevel);
-    extensions->instancedArraysANGLE   = GetInstancingSupport(featureLevel);
-    extensions->instancedArraysEXT     = GetInstancingSupport(featureLevel);
-    extensions->packReverseRowOrder    = true;
-    extensions->standardDerivativesOES = GetDerivativeInstructionSupport(featureLevel);
-    extensions->shaderTextureLOD       = GetShaderTextureLODSupport(featureLevel);
-    extensions->fragDepth              = true;
-    extensions->multiview              = IsMultiviewSupported(featureLevel);
-    extensions->multiview2             = IsMultiviewSupported(featureLevel);
-    if (extensions->multiview || extensions->multiview2)
+    extensions->floatBlendEXT               = true;
+    extensions->framebufferBlitANGLE        = GetFramebufferBlitSupport(featureLevel);
+    extensions->framebufferBlitNV           = extensions->framebufferBlitANGLE;
+    extensions->framebufferMultisampleANGLE = GetFramebufferMultisampleSupport(featureLevel);
+    extensions->instancedArraysANGLE        = GetInstancingSupport(featureLevel);
+    extensions->instancedArraysEXT          = GetInstancingSupport(featureLevel);
+    extensions->packReverseRowOrderANGLE    = true;
+    extensions->standardDerivativesOES      = GetDerivativeInstructionSupport(featureLevel);
+    extensions->shaderTextureLodEXT         = GetShaderTextureLODSupport(featureLevel);
+    extensions->fragDepthEXT                = true;
+    extensions->multiviewOVR                = IsMultiviewSupported(featureLevel);
+    extensions->multiview2OVR               = IsMultiviewSupported(featureLevel);
+    if (extensions->multiviewOVR || extensions->multiview2OVR)
     {
-        extensions->maxViews =
-            std::min(static_cast<GLuint>(GetMaximum2DTextureArraySize(featureLevel)),
-                     GetMaxViewportAndScissorRectanglesPerPipeline(featureLevel));
+        caps->maxViews = std::min(static_cast<GLuint>(GetMaximum2DTextureArraySize(featureLevel)),
+                                  GetMaxViewportAndScissorRectanglesPerPipeline(featureLevel));
     }
-    extensions->textureUsage       = true;  // This could be false since it has no effect in D3D11
-    extensions->discardFramebuffer = true;
-    extensions->translatedShaderSource              = true;
+    extensions->textureUsageANGLE = true;  // This could be false since it has no effect in D3D11
+    extensions->discardFramebufferEXT               = true;
+    extensions->translatedShaderSourceANGLE         = true;
     extensions->fboRenderMipmapOES                  = true;
-    extensions->debugMarker                         = true;
-    extensions->eglImageOES                         = true;
-    extensions->eglImageExternalOES                 = true;
-    extensions->eglImageExternalWrapModesEXT        = true;
-    extensions->eglImageExternalEssl3OES            = true;
-    extensions->eglStreamConsumerExternalNV         = true;
-    extensions->unpackSubimage                      = true;
-    extensions->packSubimage                        = true;
-    extensions->lossyETCDecode                      = true;
-    extensions->syncQuery                           = GetEventQuerySupport(featureLevel);
-    extensions->copyTexture                         = true;
-    extensions->copyCompressedTexture               = true;
-    extensions->textureStorageMultisample2DArrayOES = true;
-    extensions->multiviewMultisample     = ((extensions->multiview || extensions->multiview2) &&
-                                        extensions->textureStorageMultisample2DArrayOES);
-    extensions->copyTexture3d            = true;
-    extensions->textureBorderClampOES    = true;
-    extensions->textureMultisample       = true;
-    extensions->provokingVertex          = true;
-    extensions->blendFuncExtended        = true;
-    extensions->maxDualSourceDrawBuffers = 1;
+    extensions->debugMarkerEXT                      = true;
+    extensions->EGLImageOES                         = true;
+    extensions->EGLImageExternalOES                 = true;
+    extensions->EGLImageExternalWrapModesEXT        = true;
+    extensions->EGLImageExternalEssl3OES            = true;
+    extensions->EGLStreamConsumerExternalNV         = true;
+    extensions->unpackSubimageEXT                   = true;
+    extensions->packSubimageNV                      = true;
+    extensions->lossyEtcDecodeANGLE                 = true;
+    extensions->syncQueryCHROMIUM                   = GetEventQuerySupport(featureLevel);
+    extensions->copyTextureCHROMIUM                 = true;
+    extensions->copyCompressedTextureCHROMIUM       = true;
+    extensions->textureStorageMultisample2dArrayOES = true;
+    extensions->multiviewMultisampleANGLE =
+        ((extensions->multiviewOVR || extensions->multiview2OVR) &&
+         extensions->textureStorageMultisample2dArrayOES);
+    extensions->copyTexture3dANGLE      = true;
+    extensions->textureBorderClampOES   = true;
+    extensions->multiDrawIndirectEXT    = true;
+    extensions->textureMultisampleANGLE = true;
+    extensions->provokingVertexANGLE    = true;
+    extensions->blendFuncExtendedEXT    = true;
     // http://anglebug.com/4926
-    extensions->texture3DOES              = false;
-    extensions->baseVertexBaseInstance    = true;
-    extensions->drawElementsBaseVertexOES = true;
-    extensions->drawElementsBaseVertexEXT = true;
+    extensions->texture3DOES                = false;
+    extensions->baseVertexBaseInstanceANGLE = true;
+    extensions->drawElementsBaseVertexOES   = true;
+    extensions->drawElementsBaseVertexEXT   = true;
     if (!strstr(description, "Adreno"))
     {
-        extensions->multisampledRenderToTexture = true;
+        extensions->multisampledRenderToTextureEXT = true;
     }
-    extensions->webglVideoTexture = true;
+    extensions->videoTextureWEBGL = true;
 
     // D3D11 cannot support reading depth texture as a luminance texture.
     // It treats it as a red-channel-only texture.
@@ -1665,6 +1666,9 @@ void GenerateCaps(ID3D11Device *device,
     extensions->readDepthNV         = false;
     extensions->readStencilNV       = false;
     extensions->depthBufferFloat2NV = false;
+
+    // GL_EXT_clip_control
+    extensions->clipControlEXT = (renderer11DeviceCaps.featureLevel >= D3D_FEATURE_LEVEL_9_3);
 
     // D3D11 Feature Level 10_0+ uses SV_IsFrontFace in HLSL to emulate gl_FrontFacing.
     // D3D11 Feature Level 9_3 doesn't support SV_IsFrontFace, and has no equivalent, so can't
@@ -2185,28 +2189,35 @@ angle::Result GenerateInitialTextureData(
     const d3d11::DXGIFormatSize &dxgiFormatInfo =
         d3d11::GetDXGIFormatSizeInfo(d3dFormatInfo.texFormat);
 
-    unsigned int rowPitch     = dxgiFormatInfo.pixelBytes * width;
-    unsigned int depthPitch   = rowPitch * height;
-    unsigned int maxImageSize = depthPitch * depth;
+    using CheckedSize        = angle::CheckedNumeric<size_t>;
+    CheckedSize rowPitch     = CheckedSize(dxgiFormatInfo.pixelBytes) * CheckedSize(width);
+    CheckedSize depthPitch   = rowPitch * CheckedSize(height);
+    CheckedSize maxImageSize = depthPitch * CheckedSize(depth);
+
+    Context11 *context11 = GetImplAs<Context11>(context);
+    ANGLE_CHECK_GL_ALLOC(context11, maxImageSize.IsValid());
 
     angle::MemoryBuffer *scratchBuffer = nullptr;
-    ANGLE_CHECK_GL_ALLOC(GetImplAs<Context11>(context),
-                         context->getScratchBuffer(maxImageSize, &scratchBuffer));
+    ANGLE_CHECK_GL_ALLOC(context11,
+                         context->getScratchBuffer(maxImageSize.ValueOrDie(), &scratchBuffer));
 
-    d3dFormatInfo.dataInitializerFunction(width, height, depth, scratchBuffer->data(), rowPitch,
-                                          depthPitch);
+    d3dFormatInfo.dataInitializerFunction(width, height, depth, scratchBuffer->data(),
+                                          rowPitch.ValueOrDie(), depthPitch.ValueOrDie());
 
     for (unsigned int i = 0; i < mipLevels; i++)
     {
         unsigned int mipWidth  = std::max(width >> i, 1U);
         unsigned int mipHeight = std::max(height >> i, 1U);
 
-        unsigned int mipRowPitch   = dxgiFormatInfo.pixelBytes * mipWidth;
-        unsigned int mipDepthPitch = mipRowPitch * mipHeight;
+        using CheckedUINT         = angle::CheckedNumeric<UINT>;
+        CheckedUINT mipRowPitch   = CheckedUINT(dxgiFormatInfo.pixelBytes) * CheckedUINT(mipWidth);
+        CheckedUINT mipDepthPitch = mipRowPitch * CheckedUINT(mipHeight);
+
+        ANGLE_CHECK_GL_ALLOC(context11, mipRowPitch.IsValid() && mipDepthPitch.IsValid());
 
         outSubresourceData->at(i).pSysMem          = scratchBuffer->data();
-        outSubresourceData->at(i).SysMemPitch      = mipRowPitch;
-        outSubresourceData->at(i).SysMemSlicePitch = mipDepthPitch;
+        outSubresourceData->at(i).SysMemPitch      = mipRowPitch.ValueOrDie();
+        outSubresourceData->at(i).SysMemSlicePitch = mipDepthPitch.ValueOrDie();
     }
 
     return angle::Result::Continue;
@@ -2277,35 +2288,30 @@ bool operator!=(const RasterizerStateKey &a, const RasterizerStateKey &b)
     return !(a == b);
 }
 
-HRESULT SetDebugName(ID3D11DeviceChild *resource, const char *name)
+HRESULT SetDebugName(ID3D11DeviceChild *resource,
+                     const char *internalName,
+                     const std::string *khrDebugName)
 {
-    UINT existingDataSize = 0;
-    resource->GetPrivateData(WKPDID_D3DDebugObjectName, &existingDataSize, nullptr);
-    // Don't check the HRESULT- if it failed then that probably just means that no private data
-    // exists yet
-
-    if (existingDataSize > 0)
+    // Prepend ANGLE to separate names from other components in the same process.
+    std::string d3dName = "ANGLE";
+    bool sendNameToD3D  = false;
+    if (internalName && internalName[0] != '\0')
     {
-        // In some cases, ANGLE will try to apply two names to one object, which causes
-        // a D3D SDK Layers warning. This can occur if, for example, you 'create' two objects
-        // (e.g.Rasterizer States) with identical DESCs on the same device. D3D11 will optimize
-        // these calls and return the same object both times.
-        static const char *multipleNamesUsed = "MultipleNamesSetByANGLE";
-
-        // Remove the existing name
-        const HRESULT hr = resource->SetPrivateData(WKPDID_D3DDebugObjectName, 0, nullptr);
-        if (FAILED(hr))
-        {
-            return hr;
-        }
-
-        name = multipleNamesUsed;
+        d3dName += std::string("_") + internalName;
+        sendNameToD3D = true;
     }
-
-    // Prepend ANGLE_ to separate names from other components in the same process.
-    const std::string d3dName = std::string("ANGLE_") + name;
-    return resource->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(d3dName.size()),
-                                    d3dName.c_str());
+    if (khrDebugName && !khrDebugName->empty())
+    {
+        d3dName += std::string("_") + *khrDebugName;
+        sendNameToD3D = true;
+    }
+    // If both internalName and khrDebugName are empty, avoid sending the string to d3d.
+    if (sendNameToD3D)
+    {
+        return resource->SetPrivateData(WKPDID_D3DDebugObjectName,
+                                        static_cast<UINT>(d3dName.size()), d3dName.c_str());
+    }
+    return S_OK;
 }
 
 // Keep this in cpp file where it has visibility of Renderer11.h, otherwise calling
@@ -2321,7 +2327,7 @@ angle::Result LazyResource<ResourceT>::resolveImpl(d3d::Context *context,
     if (!mResource.valid())
     {
         ANGLE_TRY(renderer->allocateResource(context, desc, initData, &mResource));
-        mResource.setDebugName(name);
+        mResource.setInternalName(name);
     }
     return angle::Result::Continue;
 }

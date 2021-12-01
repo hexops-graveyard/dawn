@@ -118,7 +118,7 @@ namespace dawn_native { namespace metal {
             }
         }
         if (GetDevice()->IsRobustnessEnabled()) {
-            transformManager.Add<tint::transform::BoundArrayAccessors>();
+            transformManager.Add<tint::transform::Robustness>();
         }
         transformManager.Add<tint::transform::BindingRemapper>();
         transformManager.Add<tint::transform::Renamer>();
@@ -143,14 +143,13 @@ namespace dawn_native { namespace metal {
             if (it != data->remappings.end()) {
                 *remappedEntryPointName = it->second;
             } else {
-                if (GetDevice()->IsToggleEnabled(Toggle::DisableSymbolRenaming)) {
-                    *remappedEntryPointName = entryPointName;
-                } else {
-                    return DAWN_VALIDATION_ERROR("Could not find remapped name for entry point.");
-                }
+                DAWN_INVALID_IF(!GetDevice()->IsToggleEnabled(Toggle::DisableSymbolRenaming),
+                                "Could not find remapped name for entry point.");
+
+                *remappedEntryPointName = entryPointName;
             }
         } else {
-            return DAWN_VALIDATION_ERROR("Transform output missing renamer data.");
+            return DAWN_FORMAT_VALIDATION_ERROR("Transform output missing renamer data.");
         }
 
         tint::writer::msl::Options options;
@@ -161,10 +160,8 @@ namespace dawn_native { namespace metal {
             stage == SingleShaderStage::Vertex &&
             renderPipeline->GetPrimitiveTopology() == wgpu::PrimitiveTopology::PointList;
         auto result = tint::writer::msl::Generate(&program, options);
-        if (!result.success) {
-            errorStream << "Generator: " << result.error << std::endl;
-            return DAWN_VALIDATION_ERROR(errorStream.str().c_str());
-        }
+        DAWN_INVALID_IF(!result.success, "An error occured while generating MSL: %s.",
+                        result.error);
 
         *needsStorageBufferLength = result.needs_storage_buffer_sizes;
         *hasInvariantAttribute = result.has_invariant_attribute;
@@ -177,6 +174,7 @@ namespace dawn_native { namespace metal {
                                             SingleShaderStage stage,
                                             const PipelineLayout* layout,
                                             ShaderModule::MetalFunctionData* out,
+                                            id constantValuesPointer,
                                             uint32_t sampleMask,
                                             const RenderPipeline* renderPipeline) {
         ASSERT(!IsError());
@@ -226,16 +224,34 @@ namespace dawn_native { namespace metal {
                                                   options:compileOptions.Get()
                                                     error:&error]);
         if (error != nullptr) {
-            if (error.code != MTLLibraryErrorCompileWarning) {
-                return DAWN_VALIDATION_ERROR(std::string("Unable to create library object: ") +
-                                             [error.localizedDescription UTF8String]);
-            }
+            DAWN_INVALID_IF(error.code != MTLLibraryErrorCompileWarning,
+                            "Unable to create library object: %s.",
+                            [error.localizedDescription UTF8String]);
         }
         ASSERT(library != nil);
 
         NSRef<NSString> name =
             AcquireNSRef([[NSString alloc] initWithUTF8String:remappedEntryPointName.c_str()]);
-        out->function = AcquireNSPRef([*library newFunctionWithName:name.Get()]);
+
+        if (constantValuesPointer != nil) {
+            if (@available(macOS 10.12, *)) {
+                MTLFunctionConstantValues* constantValues = constantValuesPointer;
+                out->function = AcquireNSPRef([*library newFunctionWithName:name.Get()
+                                                             constantValues:constantValues
+                                                                      error:&error]);
+                if (error != nullptr) {
+                    if (error.code != MTLLibraryErrorCompileWarning) {
+                        return DAWN_VALIDATION_ERROR(std::string("Function compile error: ") +
+                                                     [error.localizedDescription UTF8String]);
+                    }
+                }
+                ASSERT(out->function != nil);
+            } else {
+                UNREACHABLE();
+            }
+        } else {
+            out->function = AcquireNSPRef([*library newFunctionWithName:name.Get()]);
+        }
 
         if (GetDevice()->IsToggleEnabled(Toggle::MetalEnableVertexPulling) &&
             GetEntryPoint(entryPointName).usedVertexInputs.any()) {

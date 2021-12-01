@@ -31,6 +31,9 @@ On Linux:
 On MacOS:
 
  * [XCode](https://developer.apple.com/xcode/) for Clang and development files.
+ * For Googlers on MacOS, you'll first need authorization to download macOS SDK's from Chromium
+   servers before running `gclient sync`. Obtain this authorization via `cipd auth-login`
+   and following the instructions.
 
 ### Getting the source
 
@@ -41,6 +44,8 @@ python scripts/bootstrap.py
 gclient sync
 git checkout main
 ```
+
+If you're contributing code, you will also need to set up the commit-msg hook. See [ContributingCode#getting-started-with-gerrit](ContributingCode.md#getting-started-with-gerrit) for more detailed instructions.
 
 On Linux only, you need to install all the necessary dependencies before going further by running this command:
 ```
@@ -54,13 +59,16 @@ gn gen out/Debug
 
 On Windows only, ensure you **set `DEPOT_TOOLS_WIN_TOOLCHAIN=0` in your environment** (if you are not a Googler).
 
-GN will generate ninja files. To change the default build options run `gn args out/Debug`.  Some commonly used options are:
+GN will generate ninja files. The default build options build ANGLE with clang and in release mode.
+Often, the default options are the desired ones, but they can be changed by running
+`gn args out/Debug`. Some options that are commonly overriden for development are:
+
 ```
-is_component_build = false      (links dependencies into the build targets)
-target_cpu = "x86"              (default is "x64")
-is_clang = false                (to use system default compiler instead of clang)
-is_debug = false                (for release builds. is_debug = true is the default)
-angle_assert_always_on = true   (enable release asserts and debug layers)
+is_component_build = false         (links dependencies into the build targets)
+target_cpu = "x86"                 (default is "x64")
+is_clang = false (NOT RECOMMENDED) (to use system default compiler instead of clang)
+is_debug = false                   (for release builds. is_debug = true is the default)
+angle_assert_always_on = true      (enable release asserts and debug layers)
 ```
 
 For a release build run `gn args out/Release` and set `is_debug = false`.
@@ -169,18 +177,29 @@ On Linux and MacOS, either:
  - Link you application against `libGLESv2` and `libEGL`
  - Use `dlopen` to load the OpenGL ES and EGL entry points at runtime.
 
-## GLSL ES to GLSL Translator
-In addition to OpenGL ES 2.0 and EGL 1.4 libraries, ANGLE also provides a GLSL ES to GLSL translator. This is useful for implementing OpenGL ES emulators on top of desktop OpenGL.
+## GLSL ES Translator
+
+In addition to OpenGL ES and EGL libraries, ANGLE also provides a GLSL ES
+translator. The translator targets various back-ends, including HLSL, GLSL
+for desktop and mobile, SPIR-V and Metal SL. To build the translator, build
+the `angle_shader_translator` target. Run the translator binary without
+arguments to see a usage message.
 
 ### Source and Building
-The translator code is included with ANGLE but fully independent; it resides in `src/compiler`.
-Follow the steps above for [getting and building ANGLE](#getting-the-source) to build the translator on the platform of your choice.
+
+The translator code is included with ANGLE but fully independent; it resides
+in [`src/compiler`](../src/compiler). Follow the steps above for
+[getting and building ANGLE](#getting-the-source) to build the translator on
+the platform of your choice.
 
 ### Usage
-The basic usage is shown in `essl_to_glsl` sample under `samples/translator`. To translate a GLSL ES shader, following functions need to be called in the same order:
 
- * `ShInitialize()` initializes the translator library and must be called only once from each process using the translator.
- * `ShContructCompiler()` creates a translator object for vertex or fragment shader.
- * `ShCompile()` translates the given shader.
- * `ShDestruct()` destroys the given translator.
- * `ShFinalize()` shuts down the translator library and must be called only once from each process using the translator.
+The ANGLE [`shader_translator`](../samples/shader_translator/shader_translator.cpp)
+sample demos basic C++ API usage. To translate a GLSL ES shader, call the following
+functions in the same order:
+
+ * `sh::Initialize()` initializes the translator library and must be called only once from each process using the translator.
+ * `sh::ContructCompiler()` creates a translator object for vertex or fragment shader.
+ * `sh::Compile()` translates the given shader.
+ * `sh::Destruct()` destroys the given translator.
+ * `sh::Finalize()` shuts down the translator library and must be called only once from each process using the translator.

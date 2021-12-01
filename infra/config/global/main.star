@@ -8,9 +8,9 @@
 main.star: lucicfg configuration for Dawn's standalone builers.
 """
 
-# Enable realms experiment.
-lucicfg.enable_experiment("crbug.com/1085650")
-luci.builder.defaults.experiments.set({"luci.use_realms": 100})
+luci.builder.defaults.experiments.set({
+    "luci.recipes.use_python3": 100,
+})
 
 lucicfg.config(fail_on_warnings = True)
 
@@ -43,6 +43,12 @@ luci.project(
                 acl.LOGDOG_WRITER,
             ],
             groups = "luci-logdog-chromium-writers",
+        ),
+    ],
+    bindings = [
+        luci.binding(
+            roles = "role/configs.validator",
+            users = "dawn-try-builder@chops-service-accounts.iam.gserviceaccount.com",
         ),
     ],
 )
@@ -104,7 +110,7 @@ def os_enum(dimension, category, console_name):
 
 os = struct(
     LINUX = os_enum("Ubuntu-18.04", os_category.LINUX, "linux"),
-    MAC = os_enum("Mac-10.15", os_category.MAC, "mac"),
+    MAC = os_enum("Mac-10.15|Mac-11", os_category.MAC, "mac"),
     WINDOWS = os_enum("Windows-10", os_category.WINDOWS, "win"),
 )
 

@@ -29,6 +29,7 @@ enum class ParamType
     TCullFaceMode,
     TDrawElementsType,
     TEGLAttrib,
+    TEGLAttribKHR,
     TEGLClientBuffer,
     TEGLConfig,
     TEGLContext,
@@ -171,7 +172,7 @@ enum class ParamType
     TvoidPointerPointer,
 };
 
-constexpr uint32_t kParamTypeCount = 152;
+constexpr uint32_t kParamTypeCount = 153;
 
 union ParamValue
 {
@@ -187,6 +188,7 @@ union ParamValue
     gl::CullFaceMode CullFaceModeVal;
     gl::DrawElementsType DrawElementsTypeVal;
     EGLAttrib EGLAttribVal;
+    EGLAttribKHR EGLAttribKHRVal;
     EGLClientBuffer EGLClientBufferVal;
     EGLConfig EGLConfigVal;
     EGLContext EGLContextVal;
@@ -412,6 +414,12 @@ template <>
 inline EGLAttrib GetParamVal<ParamType::TEGLAttrib, EGLAttrib>(const ParamValue &value)
 {
     return value.EGLAttribVal;
+}
+
+template <>
+inline EGLAttribKHR GetParamVal<ParamType::TEGLAttribKHR, EGLAttribKHR>(const ParamValue &value)
+{
+    return value.EGLAttribKHRVal;
 }
 
 template <>
@@ -1370,6 +1378,8 @@ T AccessParamValue(ParamType paramType, const ParamValue &value)
             return GetParamVal<ParamType::TDrawElementsType, T>(value);
         case ParamType::TEGLAttrib:
             return GetParamVal<ParamType::TEGLAttrib, T>(value);
+        case ParamType::TEGLAttribKHR:
+            return GetParamVal<ParamType::TEGLAttribKHR, T>(value);
         case ParamType::TEGLClientBuffer:
             return GetParamVal<ParamType::TEGLClientBuffer, T>(value);
         case ParamType::TEGLConfig:
@@ -1651,6 +1661,8 @@ T AccessParamValue(ParamType paramType, const ParamValue &value)
         case ParamType::TvoidPointerPointer:
             return GetParamVal<ParamType::TvoidPointerPointer, T>(value);
     }
+    UNREACHABLE();
+    return T();
 }
 
 template <ParamType PType, typename T>
@@ -1731,6 +1743,12 @@ template <>
 inline void SetParamVal<ParamType::TEGLAttrib>(EGLAttrib valueIn, ParamValue *valueOut)
 {
     valueOut->EGLAttribVal = valueIn;
+}
+
+template <>
+inline void SetParamVal<ParamType::TEGLAttribKHR>(EGLAttribKHR valueIn, ParamValue *valueOut)
+{
+    valueOut->EGLAttribKHRVal = valueIn;
 }
 
 template <>
@@ -2680,6 +2698,9 @@ void InitParamValue(ParamType paramType, T valueIn, ParamValue *valueOut)
         case ParamType::TEGLAttrib:
             SetParamVal<ParamType::TEGLAttrib>(valueIn, valueOut);
             break;
+        case ParamType::TEGLAttribKHR:
+            SetParamVal<ParamType::TEGLAttribKHR>(valueIn, valueOut);
+            break;
         case ParamType::TEGLClientBuffer:
             SetParamVal<ParamType::TEGLClientBuffer>(valueIn, valueOut);
             break;
@@ -3130,6 +3151,88 @@ enum class ResourceIDType
 
 ResourceIDType GetResourceIDTypeFromParamType(ParamType paramType);
 const char *GetResourceIDTypeName(ResourceIDType resourceIDType);
+
+template <typename ResourceType>
+struct GetResourceIDTypeFromType;
+
+template <>
+struct GetResourceIDTypeFromType<gl::BufferID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Buffer;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::FenceNVID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::FenceNV;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::FramebufferID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Framebuffer;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::MemoryObjectID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::MemoryObject;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::ProgramPipelineID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::ProgramPipeline;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::QueryID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Query;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::RenderbufferID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Renderbuffer;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::SamplerID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Sampler;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::SemaphoreID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Semaphore;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::ShaderProgramID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::ShaderProgram;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::TextureID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::Texture;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::TransformFeedbackID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::TransformFeedback;
+};
+
+template <>
+struct GetResourceIDTypeFromType<gl::VertexArrayID>
+{
+    static constexpr ResourceIDType IDType = ResourceIDType::VertexArray;
+};
+
 }  // namespace angle
 
 #endif  // LIBANGLE_FRAME_CAPTURE_UTILS_AUTOGEN_H_

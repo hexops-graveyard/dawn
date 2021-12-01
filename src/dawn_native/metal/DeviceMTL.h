@@ -36,11 +36,11 @@ namespace dawn_native { namespace metal {
         struct KalmanInfo;
     }
 
-    class Device : public DeviceBase {
+    class Device final : public DeviceBase {
       public:
         static ResultOrError<Device*> Create(AdapterBase* adapter,
                                              NSPRef<id<MTLDevice>> mtlDevice,
-                                             const DeviceDescriptor* descriptor);
+                                             const DawnDeviceDescriptor* descriptor);
         ~Device() override;
 
         MaybeError Initialize();
@@ -77,7 +77,7 @@ namespace dawn_native { namespace metal {
       private:
         Device(AdapterBase* adapter,
                NSPRef<id<MTLDevice>> mtlDevice,
-               const DeviceDescriptor* descriptor);
+               const DawnDeviceDescriptor* descriptor);
 
         ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
             const BindGroupDescriptor* descriptor) override;
@@ -89,14 +89,10 @@ namespace dawn_native { namespace metal {
         ResultOrError<Ref<CommandBufferBase>> CreateCommandBuffer(
             CommandEncoder* encoder,
             const CommandBufferDescriptor* descriptor) override;
-        ResultOrError<Ref<ComputePipelineBase>> CreateComputePipelineImpl(
-            const ComputePipelineDescriptor* descriptor) override;
         ResultOrError<Ref<PipelineLayoutBase>> CreatePipelineLayoutImpl(
             const PipelineLayoutDescriptor* descriptor) override;
         ResultOrError<Ref<QuerySetBase>> CreateQuerySetImpl(
             const QuerySetDescriptor* descriptor) override;
-        Ref<RenderPipelineBase> CreateUninitializedRenderPipelineImpl(
-            const RenderPipelineDescriptor* descriptor) override;
         ResultOrError<Ref<SamplerBase>> CreateSamplerImpl(
             const SamplerDescriptor* descriptor) override;
         ResultOrError<Ref<ShaderModuleBase>> CreateShaderModuleImpl(
@@ -113,16 +109,19 @@ namespace dawn_native { namespace metal {
         ResultOrError<Ref<TextureViewBase>> CreateTextureViewImpl(
             TextureBase* texture,
             const TextureViewDescriptor* descriptor) override;
-        void CreateComputePipelineAsyncImpl(const ComputePipelineDescriptor* descriptor,
-                                            size_t blueprintHash,
-                                            WGPUCreateComputePipelineAsyncCallback callback,
-                                            void* userdata) override;
+        Ref<ComputePipelineBase> CreateUninitializedComputePipelineImpl(
+            const ComputePipelineDescriptor* descriptor) override;
+        Ref<RenderPipelineBase> CreateUninitializedRenderPipelineImpl(
+            const RenderPipelineDescriptor* descriptor) override;
+        void InitializeComputePipelineAsyncImpl(Ref<ComputePipelineBase> computePipeline,
+                                                WGPUCreateComputePipelineAsyncCallback callback,
+                                                void* userdata) override;
         void InitializeRenderPipelineAsyncImpl(Ref<RenderPipelineBase> renderPipeline,
                                                WGPUCreateRenderPipelineAsyncCallback callback,
                                                void* userdata) override;
 
         void InitTogglesFromDriver();
-        void ShutDownImpl() override;
+        void DestroyImpl() override;
         MaybeError WaitForIdleForDestruction() override;
         ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
 

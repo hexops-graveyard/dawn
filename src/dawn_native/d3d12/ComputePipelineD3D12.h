@@ -25,25 +25,31 @@ namespace dawn_native { namespace d3d12 {
 
     class ComputePipeline final : public ComputePipelineBase {
       public:
-        static ResultOrError<Ref<ComputePipeline>> Create(
+        static Ref<ComputePipeline> CreateUninitialized(
             Device* device,
             const ComputePipelineDescriptor* descriptor);
-        static void CreateAsync(Device* device,
-                                const ComputePipelineDescriptor* descriptor,
-                                size_t blueprintHash,
-                                WGPUCreateComputePipelineAsyncCallback callback,
-                                void* userdata);
+        static void InitializeAsync(Ref<ComputePipelineBase> computePipeline,
+                                    WGPUCreateComputePipelineAsyncCallback callback,
+                                    void* userdata);
         ComputePipeline() = delete;
 
         ID3D12PipelineState* GetPipelineState() const;
 
+        MaybeError Initialize() override;
+
         // Dawn API
         void SetLabelImpl() override;
 
+        bool UsesNumWorkgroups() const;
+
+        ComPtr<ID3D12CommandSignature> GetDispatchIndirectCommandSignature();
+
       private:
         ~ComputePipeline() override;
+
+        void DestroyImpl() override;
+
         using ComputePipelineBase::ComputePipelineBase;
-        MaybeError Initialize() override;
         ComPtr<ID3D12PipelineState> mPipelineState;
     };
 

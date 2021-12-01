@@ -105,6 +105,7 @@ dawn_json_generator("dawn_native_utils_gen") {
     "src/dawn_native/ChainUtils_autogen.h",
     "src/dawn_native/ChainUtils_autogen.cpp",
     "src/dawn_native/ProcTable.cpp",
+    "src/dawn_native/dawn_platform_autogen.h",
     "src/dawn_native/wgpu_structs_autogen.h",
     "src/dawn_native/wgpu_structs_autogen.cpp",
     "src/dawn_native/ValidationUtils_autogen.h",
@@ -204,8 +205,6 @@ source_set("dawn_native_sources") {
     "BuddyMemoryAllocator.h",
     "Buffer.cpp",
     "Buffer.h",
-    "BufferLocation.cpp",
-    "BufferLocation.h",
     "CachedObject.cpp",
     "CachedObject.h",
     "CallbackTaskManager.cpp",
@@ -248,10 +247,10 @@ source_set("dawn_native_sources") {
     "ErrorInjector.h",
     "ErrorScope.cpp",
     "ErrorScope.h",
-    "Extensions.cpp",
-    "Extensions.h",
     "ExternalTexture.cpp",
     "ExternalTexture.h",
+    "Features.cpp",
+    "Features.h",
     "Format.cpp",
     "Format.h",
     "Forward.h",
@@ -283,8 +282,8 @@ source_set("dawn_native_sources") {
     "PipelineLayout.h",
     "PooledResourceMemoryAllocator.cpp",
     "PooledResourceMemoryAllocator.h",
-    "ProgrammablePassEncoder.cpp",
-    "ProgrammablePassEncoder.h",
+    "ProgrammableEncoder.cpp",
+    "ProgrammableEncoder.h",
     "QueryHelper.cpp",
     "QueryHelper.h",
     "QuerySet.cpp",
@@ -332,6 +331,8 @@ source_set("dawn_native_sources") {
     "VertexFormat.cpp",
     "VertexFormat.h",
     "dawn_platform.h",
+    "utils/WGPUHelpers.cpp",
+    "utils/WGPUHelpers.h",
   ]
 
   if (dawn_use_x11) {
@@ -678,6 +679,7 @@ source_set("dawn_native_sources") {
     }
     if (enable_vulkan_loader) {
       data_deps += [ "${dawn_vulkan_loader_dir}:libvulkan" ]
+      defines += [ "DAWN_ENABLE_VULKAN_LOADER" ]
     }
     if (use_swiftshader) {
       data_deps += [

@@ -236,9 +236,7 @@ namespace dawn_native { namespace vulkan {
         return {};
     }
 
-    Buffer::~Buffer() {
-        DestroyInternal();
-    }
+    Buffer::~Buffer() = default;
 
     VkBuffer Buffer::GetHandle() const {
         return mHandle;

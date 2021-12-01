@@ -31,7 +31,7 @@ namespace dawn_native { namespace vulkan {
 
         class VulkanImageWrappingTestBase : public DawnTest {
           protected:
-            std::vector<const char*> GetRequiredExtensions() override {
+            std::vector<const char*> GetRequiredFeatures() override {
                 return {"dawn-internal-usages"};
             }
 
@@ -419,7 +419,7 @@ namespace dawn_native { namespace vulkan {
         dawn_native::vulkan::Device* secondDeviceVk;
 
         dawn_native::vulkan::Adapter* backendAdapter;
-        dawn_native::DeviceDescriptor deviceDescriptor;
+        dawn_native::DawnDeviceDescriptor deviceDescriptor;
 
         wgpu::TextureDescriptor defaultDescriptor;
         VkImage defaultImage;

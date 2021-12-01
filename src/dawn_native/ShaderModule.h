@@ -32,6 +32,7 @@
 #include <bitset>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace tint {
@@ -149,6 +150,15 @@ namespace dawn_native {
     using BindingGroupInfoMap = std::map<BindingNumber, ShaderBindingInfo>;
     using BindingInfoArray = ityp::array<BindGroupIndex, BindingGroupInfoMap, kMaxBindGroups>;
 
+    // The WebGPU overridable constants only support these scalar types
+    union OverridableConstantScalar {
+        // Use int32_t for boolean to initialize the full 32bit
+        int32_t b;
+        float f32;
+        int32_t i32;
+        uint32_t u32;
+    };
+
     // Contains all the reflection data for a valid (ShaderModule, entryPoint, stage). They are
     // stored in the ShaderModuleBase and destroyed only when the shader program is destroyed so
     // pointers to EntryPointMetadata are safe to store as long as you also keep a Ref to the
@@ -200,25 +210,53 @@ namespace dawn_native {
             // Match tint::inspector::OverridableConstant::Type
             // Bool is defined as a macro on linux X11 and cannot compile
             enum class Type { Boolean, Float32, Uint32, Int32 } type;
+
+            // If the constant doesn't not have an initializer in the shader
+            // Then it is required for the pipeline stage to have a constant record to initialize a
+            // value
+            bool isInitialized;
+
+            // Store the default initialized value in shader
+            // This is used by metal backend as the function_constant does not have dafault values
+            // Initialized when isInitialized == true
+            OverridableConstantScalar defaultValue;
         };
 
-        // Store overridableConstants from tint program
-        std::unordered_map<std::string, OverridableConstant> overridableConstants;
+        using OverridableConstantsMap = std::unordered_map<std::string, OverridableConstant>;
+
+        // Map identifier to overridable constant
+        // Identifier is unique: either the variable name or the numeric ID if specified
+        OverridableConstantsMap overridableConstants;
+
+        // Overridable constants that are not initialized in shaders
+        // They need value initialization from pipeline stage or it is a validation error
+        std::unordered_set<std::string> uninitializedOverridableConstants;
+
+        // Store constants with shader initialized values as well
+        // This is used by metal backend to set values with default initializers that are not
+        // overridden
+        std::unordered_set<std::string> initializedOverridableConstants;
+
+        bool usesNumWorkgroups = false;
     };
 
     class ShaderModuleBase : public ApiObjectBase, public CachedObject {
       public:
+        ShaderModuleBase(DeviceBase* device,
+                         const ShaderModuleDescriptor* descriptor,
+                         ApiObjectBase::UntrackedByDeviceTag tag);
         ShaderModuleBase(DeviceBase* device, const ShaderModuleDescriptor* descriptor);
         ~ShaderModuleBase() override;
 
         static Ref<ShaderModuleBase> MakeError(DeviceBase* device);
 
+        bool Destroy() override;
         ObjectType GetType() const override;
 
         // Return true iff the program has an entrypoint called `entryPoint`.
         bool HasEntryPoint(const std::string& entryPoint) const;
 
-        // Returns the metadata for the given `entryPoint`. HasEntryPoint with the same argument
+        // Return the metadata for the given `entryPoint`. HasEntryPoint with the same argument
         // must be true.
         const EntryPointMetadata& GetEntryPoint(const std::string& entryPoint) const;
 
@@ -239,6 +277,9 @@ namespace dawn_native {
         OwnedCompilationMessages* GetCompilationMessages() const;
 
       protected:
+        // Constructor used only for mocking and testing.
+        ShaderModuleBase(DeviceBase* device);
+
         MaybeError InitializeBase(ShaderModuleParseResult* parseResult);
 
       private:

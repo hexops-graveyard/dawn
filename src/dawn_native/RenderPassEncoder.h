@@ -26,13 +26,16 @@ namespace dawn_native {
     class RenderPassEncoder final : public RenderEncoderBase {
       public:
         RenderPassEncoder(DeviceBase* device,
+                          const RenderPassDescriptor* descriptor,
                           CommandEncoder* commandEncoder,
                           EncodingContext* encodingContext,
                           RenderPassResourceUsageTracker usageTracker,
                           Ref<AttachmentState> attachmentState,
                           QuerySetBase* occlusionQuerySet,
                           uint32_t renderTargetWidth,
-                          uint32_t renderTargetHeight);
+                          uint32_t renderTargetHeight,
+                          bool depthReadOnly,
+                          bool stencilReadOnly);
 
         static RenderPassEncoder* MakeError(DeviceBase* device,
                                             CommandEncoder* commandEncoder,
@@ -65,6 +68,8 @@ namespace dawn_native {
                           ErrorTag errorTag);
 
       private:
+        void DestroyImpl() override;
+
         void TrackQueryAvailability(QuerySetBase* querySet, uint32_t queryIndex);
 
         // For render and compute passes, the encoding context is borrowed from the command encoder.
@@ -79,9 +84,6 @@ namespace dawn_native {
         uint32_t mCurrentOcclusionQueryIndex = 0;
         bool mOcclusionQueryActive = false;
     };
-
-    // For the benefit of template generation.
-    using RenderPassEncoderBase = RenderPassEncoder;
 
 }  // namespace dawn_native
 

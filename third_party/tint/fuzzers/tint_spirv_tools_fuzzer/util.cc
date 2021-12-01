@@ -100,9 +100,6 @@ void LogWgslError(const std::string& message,
     case OutputFormat::kWGSL:
       error_type = "WGSL -> WGSL";
       break;
-    default:
-      assert(false && "All output formats should've been handled");
-      break;
   }
   auto error_path = error_dir.empty() ? error_dir : error_dir + "/wgsl/";
   LogError(wgsl_count++, error_type, message,
@@ -129,7 +126,7 @@ bool ReadBinary(const std::string& path, std::vector<uint32_t>* out) {
     return false;
   }
 
-  auto size = file.tellg();
+  size_t size = static_cast<size_t>(file.tellg());
   if (!file) {
     return false;
   }
@@ -139,7 +136,7 @@ bool ReadBinary(const std::string& path, std::vector<uint32_t>* out) {
     return false;
   }
 
-  std::vector<char> binary(static_cast<size_t>(size));
+  std::vector<char> binary(size);
   if (!file.read(binary.data(), size)) {
     return false;
   }

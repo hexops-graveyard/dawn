@@ -60,6 +60,7 @@ enum Token
     kConfigAMD,
     kConfigIntel,
     kConfigVMWare,
+    kConfigApple,
     // build type
     kConfigRelease,
     kConfigDebug,
@@ -77,13 +78,17 @@ enum Token
     kConfigPixel4,
     // GPU devices
     kConfigNVIDIAQuadroP400,
+    kConfigNVIDIAGTX1660,
     // PreRotation
     kConfigPreRotation,
     kConfigPreRotation90,
     kConfigPreRotation180,
     kConfigPreRotation270,
-    // SPIR-V generation
-    kConfigSPIRVGen,
+    // Sanitizers
+    kConfigNoSan,
+    kConfigASan,
+    kConfigTSan,
+    kConfigUBSan,
     // expectation
     kExpectationPass,
     kExpectationFail,
@@ -164,6 +169,7 @@ constexpr TokenInfo kTokenData[kNumberOfTokens] = {
     {"amd", GPUTestConfig::kConditionAMD},
     {"intel", GPUTestConfig::kConditionIntel},
     {"vmware", GPUTestConfig::kConditionVMWare},
+    {"apple", GPUTestConfig::kConditionApple},
     {"release", GPUTestConfig::kConditionRelease},
     {"debug", GPUTestConfig::kConditionDebug},
     {"d3d9", GPUTestConfig::kConditionD3D9},
@@ -177,11 +183,15 @@ constexpr TokenInfo kTokenData[kNumberOfTokens] = {
     {"pixel2orxl", GPUTestConfig::kConditionPixel2OrXL},
     {"pixel4orxl", GPUTestConfig::kConditionPixel4OrXL},
     {"quadrop400", GPUTestConfig::kConditionNVIDIAQuadroP400},
+    {"gtx1660", GPUTestConfig::kConditionNVIDIAGTX1660},
     {"prerotation", GPUTestConfig::kConditionPreRotation},
     {"prerotation90", GPUTestConfig::kConditionPreRotation90},
     {"prerotation180", GPUTestConfig::kConditionPreRotation180},
     {"prerotation270", GPUTestConfig::kConditionPreRotation270},
-    {"spirvgen", GPUTestConfig::kConditionSPIRVGen},
+    {"nosan", GPUTestConfig::kConditionNoSan},
+    {"asan", GPUTestConfig::kConditionASan},
+    {"tsan", GPUTestConfig::kConditionTSan},
+    {"ubsan", GPUTestConfig::kConditionUBSan},
     {"pass", GPUTestConfig::kConditionNone, GPUTestExpectationsParser::kGpuTestPass},
     {"fail", GPUTestConfig::kConditionNone, GPUTestExpectationsParser::kGpuTestFail},
     {"flaky", GPUTestConfig::kConditionNone, GPUTestExpectationsParser::kGpuTestFlaky},
@@ -487,6 +497,7 @@ bool GPUTestExpectationsParser::parseLine(const GPUTestConfig *config,
             case kConfigAMD:
             case kConfigIntel:
             case kConfigVMWare:
+            case kConfigApple:
             case kConfigRelease:
             case kConfigDebug:
             case kConfigD3D9:
@@ -500,11 +511,15 @@ bool GPUTestExpectationsParser::parseLine(const GPUTestConfig *config,
             case kConfigPixel2:
             case kConfigPixel4:
             case kConfigNVIDIAQuadroP400:
+            case kConfigNVIDIAGTX1660:
             case kConfigPreRotation:
             case kConfigPreRotation90:
             case kConfigPreRotation180:
             case kConfigPreRotation270:
-            case kConfigSPIRVGen:
+            case kConfigNoSan:
+            case kConfigASan:
+            case kConfigTSan:
+            case kConfigUBSan:
                 // MODIFIERS, check each condition and add accordingly.
                 if (stage != kLineParserConfigs && stage != kLineParserBugID)
                 {

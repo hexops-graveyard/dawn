@@ -434,8 +434,6 @@ namespace dawn_native {
                 return {};
             case wgpu::SType::ShaderModuleWGSLDescriptor:
                 return {};
-            case wgpu::SType::PrimitiveDepthClampingState:
-                return {};
             case wgpu::SType::SurfaceDescriptorFromWindowsCoreWindow:
                 return {};
             case wgpu::SType::ExternalTextureBindingEntry:
@@ -445,6 +443,8 @@ namespace dawn_native {
             case wgpu::SType::SurfaceDescriptorFromWindowsSwapChainPanel:
                 return {};
             case wgpu::SType::DawnTextureInternalUsageDescriptor:
+                return {};
+            case wgpu::SType::PrimitiveDepthClampingState:
                 return {};
             default:
                 return DAWN_VALIDATION_ERROR("Invalid value for WGPUSType");
@@ -634,7 +634,11 @@ namespace dawn_native {
                 return {};
             case wgpu::TextureFormat::Depth24PlusStencil8:
                 return {};
+            case wgpu::TextureFormat::Depth24UnormStencil8:
+                return {};
             case wgpu::TextureFormat::Depth32Float:
+                return {};
+            case wgpu::TextureFormat::Depth32FloatStencil8:
                 return {};
             case wgpu::TextureFormat::BC1RGBAUnorm:
                 return {};

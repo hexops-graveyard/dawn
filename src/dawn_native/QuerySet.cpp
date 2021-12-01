@@ -15,7 +15,7 @@
 #include "dawn_native/QuerySet.h"
 
 #include "dawn_native/Device.h"
-#include "dawn_native/Extensions.h"
+#include "dawn_native/Features.h"
 #include "dawn_native/ObjectType_autogen.h"
 #include "dawn_native/ValidationUtils_autogen.h"
 
@@ -63,8 +63,8 @@ namespace dawn_native {
                                 "fully implemented");
 
                 DAWN_INVALID_IF(
-                    !device->IsExtensionEnabled(Extension::PipelineStatisticsQuery),
-                    "Pipeline statistics query set created without the extension being enabled.");
+                    !device->IsFeatureEnabled(Feature::PipelineStatisticsQuery),
+                    "Pipeline statistics query set created without the feature being enabled.");
 
                 DAWN_INVALID_IF(descriptor->pipelineStatisticsCount == 0,
                                 "Pipeline statistics query set created with 0 statistics.");
@@ -85,8 +85,8 @@ namespace dawn_native {
                                 "Timestamp queries are disallowed because they may expose precise "
                                 "timing information.");
 
-                DAWN_INVALID_IF(!device->IsExtensionEnabled(Extension::TimestampQuery),
-                                "Timestamp query set created without the extension being enabled.");
+                DAWN_INVALID_IF(!device->IsFeatureEnabled(Feature::TimestampQuery),
+                                "Timestamp query set created without the feature being enabled.");
 
                 DAWN_INVALID_IF(descriptor->pipelineStatisticsCount != 0,
                                 "Pipeline statistics specified for a query of type %s.",
@@ -101,7 +101,7 @@ namespace dawn_native {
     }
 
     QuerySetBase::QuerySetBase(DeviceBase* device, const QuerySetDescriptor* descriptor)
-        : ApiObjectBase(device, kLabelNotImplemented),
+        : ApiObjectBase(device, descriptor->label),
           mQueryType(descriptor->type),
           mQueryCount(descriptor->count),
           mState(QuerySetState::Available) {
@@ -110,6 +110,11 @@ namespace dawn_native {
         }
 
         mQueryAvailability.resize(descriptor->count);
+        TrackInDevice();
+    }
+
+    QuerySetBase::QuerySetBase(DeviceBase* device) : ApiObjectBase(device, kLabelNotImplemented) {
+        TrackInDevice();
     }
 
     QuerySetBase::QuerySetBase(DeviceBase* device, ObjectBase::ErrorTag tag)
@@ -119,6 +124,11 @@ namespace dawn_native {
     QuerySetBase::~QuerySetBase() {
         // Uninitialized or already destroyed
         ASSERT(mState == QuerySetState::Unavailable || mState == QuerySetState::Destroyed);
+    }
+
+    bool QuerySetBase::Destroy() {
+        mState = QuerySetState::Destroyed;
+        return ApiObjectBase::Destroy();
     }
 
     // static
@@ -160,19 +170,12 @@ namespace dawn_native {
         if (GetDevice()->ConsumedError(ValidateDestroy())) {
             return;
         }
-        DestroyInternal();
+        Destroy();
     }
 
     MaybeError QuerySetBase::ValidateDestroy() const {
         DAWN_TRY(GetDevice()->ValidateObject(this));
         return {};
-    }
-
-    void QuerySetBase::DestroyInternal() {
-        if (mState != QuerySetState::Destroyed) {
-            DestroyImpl();
-        }
-        mState = QuerySetState::Destroyed;
     }
 
 }  // namespace dawn_native

@@ -21,11 +21,12 @@
 #include "src/dawn_node/interop/WebGPU.h"
 
 namespace wgpu { namespace binding {
+    class Flags;
 
     // GPUAdapter is an implementation of interop::GPUAdapter that wraps a dawn_native::Adapter.
     class GPUAdapter final : public interop::GPUAdapter {
       public:
-        GPUAdapter(dawn_native::Adapter a);
+        GPUAdapter(dawn_native::Adapter a, const Flags& flags);
 
         // interop::GPUAdapter interface compliance
         std::string getName(Napi::Env) override;
@@ -34,10 +35,11 @@ namespace wgpu { namespace binding {
         bool getIsFallbackAdapter(Napi::Env) override;
         interop::Promise<interop::Interface<interop::GPUDevice>> requestDevice(
             Napi::Env env,
-            std::optional<interop::GPUDeviceDescriptor> descriptor) override;
+            interop::GPUDeviceDescriptor descriptor) override;
 
       private:
         dawn_native::Adapter adapter_;
+        const Flags& flags_;
     };
 
 }}  // namespace wgpu::binding

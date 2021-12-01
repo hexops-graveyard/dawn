@@ -51,11 +51,7 @@ const struct ImageFormatPair
     {VK_FORMAT_R8_UNORM, GL_ALPHA8_EXT},                         // ALPHA_8
     {VK_FORMAT_R8_UNORM, GL_LUMINANCE8_EXT},                     // LUMINANCE_8
     {VK_FORMAT_R8G8_UNORM, GL_RG8_EXT},                          // RG_88
-
-    // TODO(spang): Chrome could use GL_RGBA8_OES here if we can solve a couple
-    // of validation comformance issues (see crbug.com/1058521). Or, we can add
-    // a new internalformat that's unambiguously R8G8B8X8 in ANGLE and use that.
-    {VK_FORMAT_R8G8B8A8_UNORM, GL_RGB8_OES},  // RGBX_8888
+    {VK_FORMAT_R8G8B8A8_UNORM, GL_RGB8_OES},                     // RGBX_8888
 };
 
 struct OpaqueFdTraits
@@ -102,13 +98,15 @@ struct OpaqueFdTraits
                                   VkFormat format,
                                   VkImageCreateFlags createFlags,
                                   VkImageUsageFlags usageFlags,
+                                  const void *imageCreateInfoPNext,
                                   VkExtent3D extent,
                                   VkImage *imageOut,
                                   VkDeviceMemory *deviceMemoryOut,
                                   VkDeviceSize *deviceMemorySizeOut)
     {
-        return helper->createImage2DOpaqueFd(format, createFlags, usageFlags, extent, imageOut,
-                                             deviceMemoryOut, deviceMemorySizeOut);
+        return helper->createImage2DOpaqueFd(format, createFlags, usageFlags, imageCreateInfoPNext,
+                                             extent, imageOut, deviceMemoryOut,
+                                             deviceMemorySizeOut);
     }
 
     static VkResult ExportMemory(VulkanExternalHelper *helper,
@@ -169,13 +167,15 @@ struct FuchsiaTraits
                                   VkFormat format,
                                   VkImageCreateFlags createFlags,
                                   VkImageUsageFlags usageFlags,
+                                  const void *imageCreateInfoPNext,
                                   VkExtent3D extent,
                                   VkImage *imageOut,
                                   VkDeviceMemory *deviceMemoryOut,
                                   VkDeviceSize *deviceMemorySizeOut)
     {
-        return helper->createImage2DZirconVmo(format, createFlags, usageFlags, extent, imageOut,
-                                              deviceMemoryOut, deviceMemorySizeOut);
+        return helper->createImage2DZirconVmo(format, createFlags, usageFlags, imageCreateInfoPNext,
+                                              extent, imageOut, deviceMemoryOut,
+                                              deviceMemorySizeOut);
     }
 
     static VkResult ExportMemory(VulkanExternalHelper *helper,
@@ -234,8 +234,8 @@ void RunShouldImportMemoryTest(VkImageCreateFlags createFlags,
     VkDeviceSize deviceMemorySize = 0;
 
     VkExtent3D extent = {1, 1, 1};
-    VkResult result   = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, extent,
-                                            &image, &deviceMemory, &deviceMemorySize);
+    VkResult result   = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, nullptr,
+                                            extent, &image, &deviceMemory, &deviceMemorySize);
     EXPECT_EQ(result, VK_SUCCESS);
 
     typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -344,8 +344,8 @@ void RunShouldClearTest(bool useMemoryObjectFlags,
     VkDeviceSize deviceMemorySize = 0;
 
     VkExtent3D extent = {1, 1, 1};
-    VkResult result   = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, extent,
-                                            &image, &deviceMemory, &deviceMemorySize);
+    VkResult result   = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, nullptr,
+                                            extent, &image, &deviceMemory, &deviceMemorySize);
     EXPECT_EQ(result, VK_SUCCESS);
 
     typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -365,7 +365,7 @@ void RunShouldClearTest(bool useMemoryObjectFlags,
         if (useMemoryObjectFlags)
         {
             glTexStorageMemFlags2DANGLE(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1, memoryObject, 0,
-                                        createFlags, usageFlags);
+                                        createFlags, usageFlags, nullptr);
         }
         else
         {
@@ -469,7 +469,8 @@ void RunTextureFormatCompatChromiumTest(bool useMemoryObjectFlags,
                                         VkImageCreateFlags createFlags,
                                         VkImageUsageFlags usageFlags,
                                         bool isSwiftshader,
-                                        bool enableDebugLayers)
+                                        bool enableDebugLayers,
+                                        bool isES3)
 {
     ASSERT(EnsureGLExtensionEnabled(Traits::MemoryObjectExtension()));
 
@@ -478,7 +479,7 @@ void RunTextureFormatCompatChromiumTest(bool useMemoryObjectFlags,
     for (const ImageFormatPair &format : kChromeFormats)
     {
         // https://crbug.com/angleproject/5046
-        if (format.vkFormat == VK_FORMAT_R4G4B4A4_UNORM_PACK16 && IsIntel())
+        if ((format.vkFormat == VK_FORMAT_R4G4B4A4_UNORM_PACK16) && IsIntel())
         {
             continue;
         }
@@ -494,13 +495,20 @@ void RunTextureFormatCompatChromiumTest(bool useMemoryObjectFlags,
             continue;
         }
 
+        if (format.internalFormat == GL_RGB10_A2_EXT && !isES3 &&
+            !IsGLExtensionEnabled("GL_EXT_texture_type_2_10_10_10_REV"))
+        {
+            continue;
+        }
+
         VkImage image                 = VK_NULL_HANDLE;
         VkDeviceMemory deviceMemory   = VK_NULL_HANDLE;
         VkDeviceSize deviceMemorySize = 0;
 
         VkExtent3D extent = {113, 211, 1};
-        VkResult result   = Traits::CreateImage2D(&helper, format.vkFormat, createFlags, usageFlags,
-                                                extent, &image, &deviceMemory, &deviceMemorySize);
+        VkResult result =
+            Traits::CreateImage2D(&helper, format.vkFormat, createFlags, usageFlags, nullptr,
+                                  extent, &image, &deviceMemory, &deviceMemorySize);
         EXPECT_EQ(result, VK_SUCCESS);
 
         typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -520,8 +528,8 @@ void RunTextureFormatCompatChromiumTest(bool useMemoryObjectFlags,
             if (useMemoryObjectFlags)
             {
                 glTexStorageMemFlags2DANGLE(GL_TEXTURE_2D, 1, format.internalFormat, extent.width,
-                                            extent.height, memoryObject, 0, createFlags,
-                                            usageFlags);
+                                            extent.height, memoryObject, 0, createFlags, usageFlags,
+                                            nullptr);
             }
             else
             {
@@ -541,9 +549,9 @@ void RunTextureFormatCompatChromiumTest(bool useMemoryObjectFlags,
 TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumFd)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_memory_object_fd"));
-    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(false, kDefaultImageCreateFlags,
-                                                       kDefaultImageUsageFlags, isSwiftshader(),
-                                                       enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(
+        false, kDefaultImageCreateFlags, kDefaultImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (opaque fd), using
@@ -552,9 +560,9 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumWithFlagsFd)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_memory_object_fd"));
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_flags"));
-    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(true, kDefaultImageCreateFlags,
-                                                       kDefaultImageUsageFlags, isSwiftshader(),
-                                                       enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(
+        true, kDefaultImageCreateFlags, kDefaultImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (opaque fd), without STORAGE
@@ -563,9 +571,9 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumNoStorageFd)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_EXT_memory_object_fd"));
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_flags"));
-    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(true, kDefaultImageCreateFlags,
-                                                       kNoStorageImageUsageFlags, isSwiftshader(),
-                                                       enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(
+        true, kDefaultImageCreateFlags, kNoStorageImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (opaque fd), without STORAGE
@@ -578,18 +586,18 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumMutableNoStorageFd)
     // http://anglebug.com/5682
     ANGLE_SKIP_TEST_IF(IsLinux() && IsAMD() && IsVulkan());
 
-    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(true, kMutableImageCreateFlags,
-                                                       kNoStorageImageUsageFlags, isSwiftshader(),
-                                                       enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<OpaqueFdTraits>(
+        true, kMutableImageCreateFlags, kNoStorageImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (fuchsia).
 TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumZirconVmo)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_fuchsia"));
-    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(false, kDefaultImageCreateFlags,
-                                                      kDefaultImageUsageFlags, isSwiftshader(),
-                                                      enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(
+        false, kDefaultImageCreateFlags, kDefaultImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (fuchsia), using
@@ -598,9 +606,9 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumWithFlagsZirconVmo)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_fuchsia"));
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_flags"));
-    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(true, kDefaultImageCreateFlags,
-                                                      kDefaultImageUsageFlags, isSwiftshader(),
-                                                      enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(
+        true, kDefaultImageCreateFlags, kDefaultImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (fuchsia), without STORAGE usage.
@@ -608,9 +616,9 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumNoStorageZirconVmo)
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_fuchsia"));
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_flags"));
-    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(true, kDefaultImageCreateFlags,
-                                                      kNoStorageImageUsageFlags, isSwiftshader(),
-                                                      enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(
+        true, kDefaultImageCreateFlags, kNoStorageImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 // Test all format combinations used by Chrome import successfully (fuchsia), without STORAGE usage
@@ -619,9 +627,9 @@ TEST_P(VulkanExternalImageTest, TextureFormatCompatChromiumMutableNoStorageZirco
 {
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_fuchsia"));
     ANGLE_SKIP_TEST_IF(!EnsureGLExtensionEnabled("GL_ANGLE_memory_object_flags"));
-    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(true, kMutableImageCreateFlags,
-                                                      kNoStorageImageUsageFlags, isSwiftshader(),
-                                                      enableDebugLayers());
+    RunTextureFormatCompatChromiumTest<FuchsiaTraits>(
+        true, kMutableImageCreateFlags, kNoStorageImageUsageFlags, isSwiftshader(),
+        enableDebugLayers(), getClientMajorVersion() >= 3);
 }
 
 template <typename Traits>
@@ -667,8 +675,8 @@ void RunShouldClearWithSemaphoresTest(bool useMemoryObjectFlags,
     VkDeviceSize deviceMemorySize = 0;
 
     VkExtent3D extent = {1, 1, 1};
-    result = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, extent, &image,
-                                   &deviceMemory, &deviceMemorySize);
+    result = Traits::CreateImage2D(&helper, format, createFlags, usageFlags, nullptr, extent,
+                                   &image, &deviceMemory, &deviceMemorySize);
     EXPECT_EQ(result, VK_SUCCESS);
 
     typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -688,7 +696,7 @@ void RunShouldClearWithSemaphoresTest(bool useMemoryObjectFlags,
         if (useMemoryObjectFlags)
         {
             glTexStorageMemFlags2DANGLE(GL_TEXTURE_2D, 1, GL_RGBA8, 1, 1, memoryObject, 0,
-                                        createFlags, usageFlags);
+                                        createFlags, usageFlags, nullptr);
         }
         else
         {
@@ -738,7 +746,6 @@ void RunShouldClearWithSemaphoresTest(bool useMemoryObjectFlags,
                                             vkReleaseSemaphore);
         uint8_t pixels[4];
         VkOffset3D offset = {};
-        VkExtent3D extent = {1, 1, 1};
         helper.readPixels(image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, format, offset, extent,
                           pixels, sizeof(pixels));
 
@@ -908,7 +915,7 @@ void VulkanExternalImageTest::runShouldDrawTest(bool isSwiftshader, bool enableD
     VkExtent3D extent = {1, 1, 1};
     result =
         Traits::CreateImage2D(&helper, format, kDefaultImageCreateFlags, kDefaultImageUsageFlags,
-                              extent, &image, &deviceMemory, &deviceMemorySize);
+                              nullptr, extent, &image, &deviceMemory, &deviceMemorySize);
     EXPECT_EQ(result, VK_SUCCESS);
 
     typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -976,7 +983,6 @@ void VulkanExternalImageTest::runShouldDrawTest(bool isSwiftshader, bool enableD
 
         uint8_t pixels[4];
         VkOffset3D offset = {};
-        VkExtent3D extent = {1, 1, 1};
         helper.readPixels(image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, format, offset, extent,
                           pixels, sizeof(pixels));
 
@@ -1060,7 +1066,7 @@ void VulkanExternalImageTest::runWaitSemaphoresRetainsContentTest(bool isSwiftsh
     VkExtent3D extent = {1, 1, 1};
     result =
         Traits::CreateImage2D(&helper, format, kDefaultImageCreateFlags, kDefaultImageUsageFlags,
-                              extent, &image, &deviceMemory, &deviceMemorySize);
+                              nullptr, extent, &image, &deviceMemory, &deviceMemorySize);
     EXPECT_EQ(result, VK_SUCCESS);
 
     typename Traits::Handle memoryHandle = Traits::InvalidHandle();
@@ -1147,7 +1153,6 @@ void VulkanExternalImageTest::runWaitSemaphoresRetainsContentTest(bool isSwiftsh
 
         uint8_t pixels[4];
         VkOffset3D offset = {};
-        VkExtent3D extent = {1, 1, 1};
         helper.readPixels(image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, format, offset, extent,
                           pixels, sizeof(pixels));
 

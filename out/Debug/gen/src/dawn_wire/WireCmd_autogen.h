@@ -143,11 +143,14 @@ namespace dawn_wire {
     };
 
     enum class WireCmd : uint32_t {
+        BindGroupLayoutSetLabel,
+        BindGroupSetLabel,
         BufferDestroy,
         BufferMapAsync,
         BufferSetLabel,
         BufferUnmap,
         BufferUpdateMappedData,
+        CommandBufferSetLabel,
         CommandEncoderBeginComputePass,
         CommandEncoderBeginRenderPass,
         CommandEncoderCopyBufferToBuffer,
@@ -161,6 +164,7 @@ namespace dawn_wire {
         CommandEncoderPopDebugGroup,
         CommandEncoderPushDebugGroup,
         CommandEncoderResolveQuerySet,
+        CommandEncoderSetLabel,
         CommandEncoderWriteBuffer,
         CommandEncoderWriteTimestamp,
         ComputePassEncoderDispatch,
@@ -170,6 +174,7 @@ namespace dawn_wire {
         ComputePassEncoderPopDebugGroup,
         ComputePassEncoderPushDebugGroup,
         ComputePassEncoderSetBindGroup,
+        ComputePassEncoderSetLabel,
         ComputePassEncoderSetPipeline,
         ComputePassEncoderWriteTimestamp,
         ComputePipelineGetBindGroupLayout,
@@ -199,8 +204,11 @@ namespace dawn_wire {
         DevicePushErrorScope,
         DeviceTick,
         ExternalTextureDestroy,
+        ExternalTextureSetLabel,
         InstanceCreateSurface,
+        PipelineLayoutSetLabel,
         QuerySetDestroy,
+        QuerySetSetLabel,
         QueueCopyTextureForBrowser,
         QueueOnSubmittedWorkDone,
         QueueSubmit,
@@ -216,6 +224,7 @@ namespace dawn_wire {
         RenderBundleEncoderPushDebugGroup,
         RenderBundleEncoderSetBindGroup,
         RenderBundleEncoderSetIndexBuffer,
+        RenderBundleEncoderSetLabel,
         RenderBundleEncoderSetPipeline,
         RenderBundleEncoderSetVertexBuffer,
         RenderPassEncoderBeginOcclusionQuery,
@@ -232,6 +241,7 @@ namespace dawn_wire {
         RenderPassEncoderSetBindGroup,
         RenderPassEncoderSetBlendConstant,
         RenderPassEncoderSetIndexBuffer,
+        RenderPassEncoderSetLabel,
         RenderPassEncoderSetPipeline,
         RenderPassEncoderSetScissorRect,
         RenderPassEncoderSetStencilReference,
@@ -240,6 +250,7 @@ namespace dawn_wire {
         RenderPassEncoderWriteTimestamp,
         RenderPipelineGetBindGroupLayout,
         RenderPipelineSetLabel,
+        SamplerSetLabel,
         ShaderModuleGetCompilationInfo,
         ShaderModuleSetLabel,
         SwapChainConfigure,
@@ -248,6 +259,7 @@ namespace dawn_wire {
         TextureCreateView,
         TextureDestroy,
         TextureSetLabel,
+        TextureViewSetLabel,
     };
 
     enum class ReturnWireCmd : uint32_t {
@@ -267,12 +279,50 @@ namespace dawn_wire {
     };
 
 
+    struct BindGroupLayoutSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUBindGroupLayout self;
+    char const * label;
+};
+
+    struct BindGroupSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUBindGroup self;
+    char const * label;
+};
+
     struct BufferDestroyCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -282,14 +332,12 @@ namespace dawn_wire {
     struct BufferMapAsyncCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -304,8 +352,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -317,8 +369,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -328,14 +384,12 @@ namespace dawn_wire {
     struct BufferUpdateMappedDataCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -346,12 +400,33 @@ namespace dawn_wire {
     uint64_t size;
 };
 
+    struct CommandBufferSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUCommandBuffer self;
+    char const * label;
+};
+
     struct CommandEncoderBeginComputePassCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -364,8 +439,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -378,8 +457,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -395,8 +478,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -410,8 +497,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -425,8 +516,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -440,8 +535,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -455,8 +554,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -469,8 +572,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -482,8 +589,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -495,8 +606,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -507,8 +622,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -520,8 +639,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -533,12 +656,33 @@ namespace dawn_wire {
     uint64_t destinationOffset;
 };
 
+    struct CommandEncoderSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUCommandEncoder self;
+    char const * label;
+};
+
     struct CommandEncoderWriteBufferCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -553,8 +697,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -567,8 +715,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -582,8 +734,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -596,8 +752,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -608,8 +768,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -621,8 +785,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -633,8 +801,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -646,8 +818,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -658,12 +834,33 @@ namespace dawn_wire {
     uint32_t const * dynamicOffsets;
 };
 
+    struct ComputePassEncoderSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUComputePassEncoder self;
+    char const * label;
+};
+
     struct ComputePassEncoderSetPipelineCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -675,8 +872,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -689,8 +890,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -703,8 +908,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -715,14 +924,12 @@ namespace dawn_wire {
     struct DestroyObjectCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -734,8 +941,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -748,8 +959,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -762,8 +977,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
     ObjectId deviceId;
@@ -779,8 +998,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -793,8 +1016,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -807,8 +1034,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
     ObjectId deviceId;
@@ -821,8 +1052,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -834,8 +1069,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -848,8 +1087,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -862,8 +1105,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -876,8 +1123,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -890,8 +1141,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -904,8 +1159,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
     ObjectId deviceId;
@@ -918,8 +1177,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -932,8 +1195,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -946,8 +1213,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -961,8 +1232,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -975,8 +1250,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -988,8 +1267,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1002,8 +1285,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1013,14 +1300,12 @@ namespace dawn_wire {
     struct DevicePopErrorScopeCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1032,8 +1317,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1045,8 +1334,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1057,20 +1350,45 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
     WGPUExternalTexture self;
 };
 
+    struct ExternalTextureSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUExternalTexture self;
+    char const * label;
+};
+
     struct InstanceCreateSurfaceCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1079,24 +1397,66 @@ namespace dawn_wire {
     ObjectHandle result;
 };
 
+    struct PipelineLayoutSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUPipelineLayout self;
+    char const * label;
+};
+
     struct QuerySetDestroyCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
     WGPUQuerySet self;
 };
 
+    struct QuerySetSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUQuerySet self;
+    char const * label;
+};
+
     struct QueueCopyTextureForBrowserCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1110,14 +1470,12 @@ namespace dawn_wire {
     struct QueueOnSubmittedWorkDoneCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1130,8 +1488,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1143,14 +1505,12 @@ namespace dawn_wire {
     struct QueueWriteBufferInternalCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1165,8 +1525,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
     ObjectId queueId;
@@ -1181,8 +1545,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1197,8 +1565,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1214,8 +1586,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1228,8 +1604,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1242,8 +1622,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1256,8 +1640,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1269,8 +1657,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1281,8 +1673,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1294,8 +1690,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1310,8 +1710,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1322,12 +1726,33 @@ namespace dawn_wire {
     uint64_t size;
 };
 
+    struct RenderBundleEncoderSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPURenderBundleEncoder self;
+    char const * label;
+};
+
     struct RenderBundleEncoderSetPipelineCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1339,8 +1764,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1355,8 +1784,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1368,8 +1801,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1384,8 +1821,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1401,8 +1842,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1415,8 +1860,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1429,8 +1878,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1441,8 +1894,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1453,8 +1910,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1467,8 +1928,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1480,8 +1945,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1492,8 +1961,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1505,8 +1978,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1521,8 +1998,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1534,8 +2015,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1546,12 +2031,33 @@ namespace dawn_wire {
     uint64_t size;
 };
 
+    struct RenderPassEncoderSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPURenderPassEncoder self;
+    char const * label;
+};
+
     struct RenderPassEncoderSetPipelineCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1563,8 +2069,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1579,8 +2089,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1592,8 +2106,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1608,8 +2126,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1626,8 +2148,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1640,8 +2166,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1654,8 +2184,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1663,17 +2197,32 @@ namespace dawn_wire {
     char const * label;
 };
 
+    struct SamplerSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUSampler self;
+    char const * label;
+};
+
     struct ShaderModuleGetCompilationInfoCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1685,8 +2234,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1698,8 +2251,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1714,8 +2271,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1727,8 +2288,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1739,8 +2304,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1753,8 +2322,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1765,8 +2338,12 @@ namespace dawn_wire {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
 
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
     ObjectId selfId;
 
@@ -1774,18 +2351,33 @@ namespace dawn_wire {
     char const * label;
 };
 
+    struct TextureViewSetLabelCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUTextureView self;
+    char const * label;
+};
+
 
     struct ReturnBufferMapAsyncCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1799,14 +2391,12 @@ namespace dawn_wire {
     struct ReturnDeviceCreateComputePipelineAsyncCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1819,14 +2409,12 @@ namespace dawn_wire {
     struct ReturnDeviceCreateRenderPipelineAsyncCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1839,14 +2427,12 @@ namespace dawn_wire {
     struct ReturnDeviceLoggingCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1858,14 +2444,12 @@ namespace dawn_wire {
     struct ReturnDeviceLostCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1877,14 +2461,12 @@ namespace dawn_wire {
     struct ReturnDevicePopErrorScopeCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1897,14 +2479,12 @@ namespace dawn_wire {
     struct ReturnDeviceUncapturedErrorCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1916,14 +2496,12 @@ namespace dawn_wire {
     struct ReturnQueueWorkDoneCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 
@@ -1935,14 +2513,12 @@ namespace dawn_wire {
     struct ReturnShaderModuleGetCompilationInfoCallbackCmd {
     size_t GetRequiredSize() const;
 
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
-    // Override which drops the provider if it's not needed.
-    WireResult Serialize(size_t commandSize,
-                         SerializeBuffer* serializeBuffer,
-                         const ObjectIdProvider&) const {
-        return Serialize(commandSize, serializeBuffer);
-    }
 
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
     WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
 
 

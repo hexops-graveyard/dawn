@@ -36,12 +36,15 @@ namespace dawn_native { namespace vulkan {
         VkPhysicalDevice GetPhysicalDevice() const;
         Backend* GetBackend() const;
 
-        MaybeError Initialize();
+        bool IsDepthStencilFormatSupported(VkFormat format);
 
       private:
-        ResultOrError<DeviceBase*> CreateDeviceImpl(const DeviceDescriptor* descriptor) override;
-        MaybeError CheckCoreWebGPUSupport();
-        void InitializeSupportedExtensions();
+        MaybeError InitializeImpl() override;
+        MaybeError InitializeSupportedFeaturesImpl() override;
+        MaybeError InitializeSupportedLimitsImpl(CombinedLimits* limits) override;
+
+        ResultOrError<DeviceBase*> CreateDeviceImpl(
+            const DawnDeviceDescriptor* descriptor) override;
 
         VkPhysicalDevice mPhysicalDevice;
         Backend* mBackend;

@@ -66,14 +66,6 @@ void FindInChain(const ChainedStruct* chain, const ShaderModuleWGSLDescriptor** 
         }
     }
 }
-void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState** out) {
-    for (; chain; chain = chain->nextInChain) {
-        if (chain->sType == wgpu::SType::PrimitiveDepthClampingState) {
-            *out = static_cast<const PrimitiveDepthClampingState*>(chain);
-            break;
-        }
-    }
-}
 void FindInChain(const ChainedStruct* chain, const SurfaceDescriptorFromWindowsCoreWindow** out) {
     for (; chain; chain = chain->nextInChain) {
         if (chain->sType == wgpu::SType::SurfaceDescriptorFromWindowsCoreWindow) {
@@ -110,6 +102,14 @@ void FindInChain(const ChainedStruct* chain, const DawnTextureInternalUsageDescr
     for (; chain; chain = chain->nextInChain) {
         if (chain->sType == wgpu::SType::DawnTextureInternalUsageDescriptor) {
             *out = static_cast<const DawnTextureInternalUsageDescriptor*>(chain);
+            break;
+        }
+    }
+}
+void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState** out) {
+    for (; chain; chain = chain->nextInChain) {
+        if (chain->sType == wgpu::SType::PrimitiveDepthClampingState) {
+            *out = static_cast<const PrimitiveDepthClampingState*>(chain);
             break;
         }
     }

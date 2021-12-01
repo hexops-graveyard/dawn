@@ -33,6 +33,13 @@ namespace dawn_native {
     namespace {
 
 
+        void NativeBindGroupSetLabel(WGPUBindGroup cSelf, char const * label) {
+            auto self = reinterpret_cast<BindGroupBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeBindGroupReference(WGPUBindGroup cSelf) {
             auto self = reinterpret_cast<BindGroupBase*>(cSelf);
 
@@ -43,6 +50,13 @@ namespace dawn_native {
             auto self = reinterpret_cast<BindGroupBase*>(cSelf);
 
             self->APIRelease();
+        }
+
+        void NativeBindGroupLayoutSetLabel(WGPUBindGroupLayout cSelf, char const * label) {
+            auto self = reinterpret_cast<BindGroupLayoutBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
         }
 
         void NativeBindGroupLayoutReference(WGPUBindGroupLayout cSelf) {
@@ -115,6 +129,13 @@ namespace dawn_native {
             auto self = reinterpret_cast<BufferBase*>(cSelf);
 
             self->APIRelease();
+        }
+
+        void NativeCommandBufferSetLabel(WGPUCommandBuffer cSelf, char const * label) {
+            auto self = reinterpret_cast<CommandBufferBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
         }
 
         void NativeCommandBufferReference(WGPUCommandBuffer cSelf) {
@@ -238,6 +259,13 @@ namespace dawn_native {
             self->APIResolveQuerySet(querySet_, firstQuery_, queryCount_, destination_, destinationOffset_);
         }
 
+        void NativeCommandEncoderSetLabel(WGPUCommandEncoder cSelf, char const * label) {
+            auto self = reinterpret_cast<CommandEncoderBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeCommandEncoderWriteBuffer(WGPUCommandEncoder cSelf, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
             auto self = reinterpret_cast<CommandEncoderBase*>(cSelf);
 
@@ -319,6 +347,13 @@ namespace dawn_native {
             auto dynamicOffsetCount_ = dynamicOffsetCount;
             auto dynamicOffsets_ = reinterpret_cast<uint32_t const * >(dynamicOffsets);
             self->APISetBindGroup(groupIndex_, group_, dynamicOffsetCount_, dynamicOffsets_);
+        }
+
+        void NativeComputePassEncoderSetLabel(WGPUComputePassEncoder cSelf, char const * label) {
+            auto self = reinterpret_cast<ComputePassEncoderBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
         }
 
         void NativeComputePassEncoderSetPipeline(WGPUComputePassEncoder cSelf, WGPUComputePipeline pipeline) {
@@ -606,6 +641,13 @@ namespace dawn_native {
             self->APIDestroy();
         }
 
+        void NativeExternalTextureSetLabel(WGPUExternalTexture cSelf, char const * label) {
+            auto self = reinterpret_cast<ExternalTextureBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeExternalTextureReference(WGPUExternalTexture cSelf) {
             auto self = reinterpret_cast<ExternalTextureBase*>(cSelf);
 
@@ -638,6 +680,13 @@ namespace dawn_native {
             self->APIRelease();
         }
 
+        void NativePipelineLayoutSetLabel(WGPUPipelineLayout cSelf, char const * label) {
+            auto self = reinterpret_cast<PipelineLayoutBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativePipelineLayoutReference(WGPUPipelineLayout cSelf) {
             auto self = reinterpret_cast<PipelineLayoutBase*>(cSelf);
 
@@ -654,6 +703,13 @@ namespace dawn_native {
             auto self = reinterpret_cast<QuerySetBase*>(cSelf);
 
             self->APIDestroy();
+        }
+
+        void NativeQuerySetSetLabel(WGPUQuerySet cSelf, char const * label) {
+            auto self = reinterpret_cast<QuerySetBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
         }
 
         void NativeQuerySetReference(WGPUQuerySet cSelf) {
@@ -825,6 +881,13 @@ namespace dawn_native {
             self->APISetIndexBuffer(buffer_, format_, offset_, size_);
         }
 
+        void NativeRenderBundleEncoderSetLabel(WGPURenderBundleEncoder cSelf, char const * label) {
+            auto self = reinterpret_cast<RenderBundleEncoderBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder cSelf, WGPURenderPipeline pipeline) {
             auto self = reinterpret_cast<RenderBundleEncoderBase*>(cSelf);
 
@@ -965,6 +1028,13 @@ namespace dawn_native {
             self->APISetIndexBuffer(buffer_, format_, offset_, size_);
         }
 
+        void NativeRenderPassEncoderSetLabel(WGPURenderPassEncoder cSelf, char const * label) {
+            auto self = reinterpret_cast<RenderPassEncoderBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeRenderPassEncoderSetPipeline(WGPURenderPassEncoder cSelf, WGPURenderPipeline pipeline) {
             auto self = reinterpret_cast<RenderPassEncoderBase*>(cSelf);
 
@@ -1056,6 +1126,13 @@ namespace dawn_native {
             auto self = reinterpret_cast<RenderPipelineBase*>(cSelf);
 
             self->APIRelease();
+        }
+
+        void NativeSamplerSetLabel(WGPUSampler cSelf, char const * label) {
+            auto self = reinterpret_cast<SamplerBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
         }
 
         void NativeSamplerReference(WGPUSampler cSelf) {
@@ -1177,6 +1254,13 @@ namespace dawn_native {
             self->APIRelease();
         }
 
+        void NativeTextureViewSetLabel(WGPUTextureView cSelf, char const * label) {
+            auto self = reinterpret_cast<TextureViewBase*>(cSelf);
+
+            auto label_ = reinterpret_cast<char const * >(label);
+            self->APISetLabel(label_);
+        }
+
         void NativeTextureViewReference(WGPUTextureView cSelf) {
             auto self = reinterpret_cast<TextureViewBase*>(cSelf);
 
@@ -1196,8 +1280,10 @@ namespace dawn_native {
         static const ProcEntry sProcMap[] = {
             { reinterpret_cast<WGPUProc>(NativeBindGroupLayoutReference), "wgpuBindGroupLayoutReference" },
             { reinterpret_cast<WGPUProc>(NativeBindGroupLayoutRelease), "wgpuBindGroupLayoutRelease" },
+            { reinterpret_cast<WGPUProc>(NativeBindGroupLayoutSetLabel), "wgpuBindGroupLayoutSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeBindGroupReference), "wgpuBindGroupReference" },
             { reinterpret_cast<WGPUProc>(NativeBindGroupRelease), "wgpuBindGroupRelease" },
+            { reinterpret_cast<WGPUProc>(NativeBindGroupSetLabel), "wgpuBindGroupSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeBufferDestroy), "wgpuBufferDestroy" },
             { reinterpret_cast<WGPUProc>(NativeBufferGetConstMappedRange), "wgpuBufferGetConstMappedRange" },
             { reinterpret_cast<WGPUProc>(NativeBufferGetMappedRange), "wgpuBufferGetMappedRange" },
@@ -1208,6 +1294,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeBufferUnmap), "wgpuBufferUnmap" },
             { reinterpret_cast<WGPUProc>(NativeCommandBufferReference), "wgpuCommandBufferReference" },
             { reinterpret_cast<WGPUProc>(NativeCommandBufferRelease), "wgpuCommandBufferRelease" },
+            { reinterpret_cast<WGPUProc>(NativeCommandBufferSetLabel), "wgpuCommandBufferSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderBeginComputePass), "wgpuCommandEncoderBeginComputePass" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderBeginRenderPass), "wgpuCommandEncoderBeginRenderPass" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderCopyBufferToBuffer), "wgpuCommandEncoderCopyBufferToBuffer" },
@@ -1223,6 +1310,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderReference), "wgpuCommandEncoderReference" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderRelease), "wgpuCommandEncoderRelease" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderResolveQuerySet), "wgpuCommandEncoderResolveQuerySet" },
+            { reinterpret_cast<WGPUProc>(NativeCommandEncoderSetLabel), "wgpuCommandEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderWriteBuffer), "wgpuCommandEncoderWriteBuffer" },
             { reinterpret_cast<WGPUProc>(NativeCommandEncoderWriteTimestamp), "wgpuCommandEncoderWriteTimestamp" },
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderDispatch), "wgpuComputePassEncoderDispatch" },
@@ -1234,6 +1322,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderReference), "wgpuComputePassEncoderReference" },
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderRelease), "wgpuComputePassEncoderRelease" },
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderSetBindGroup), "wgpuComputePassEncoderSetBindGroup" },
+            { reinterpret_cast<WGPUProc>(NativeComputePassEncoderSetLabel), "wgpuComputePassEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderSetPipeline), "wgpuComputePassEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(NativeComputePassEncoderWriteTimestamp), "wgpuComputePassEncoderWriteTimestamp" },
             { reinterpret_cast<WGPUProc>(NativeComputePipelineGetBindGroupLayout), "wgpuComputePipelineGetBindGroupLayout" },
@@ -1272,14 +1361,17 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeExternalTextureDestroy), "wgpuExternalTextureDestroy" },
             { reinterpret_cast<WGPUProc>(NativeExternalTextureReference), "wgpuExternalTextureReference" },
             { reinterpret_cast<WGPUProc>(NativeExternalTextureRelease), "wgpuExternalTextureRelease" },
+            { reinterpret_cast<WGPUProc>(NativeExternalTextureSetLabel), "wgpuExternalTextureSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeInstanceCreateSurface), "wgpuInstanceCreateSurface" },
             { reinterpret_cast<WGPUProc>(NativeInstanceReference), "wgpuInstanceReference" },
             { reinterpret_cast<WGPUProc>(NativeInstanceRelease), "wgpuInstanceRelease" },
             { reinterpret_cast<WGPUProc>(NativePipelineLayoutReference), "wgpuPipelineLayoutReference" },
             { reinterpret_cast<WGPUProc>(NativePipelineLayoutRelease), "wgpuPipelineLayoutRelease" },
+            { reinterpret_cast<WGPUProc>(NativePipelineLayoutSetLabel), "wgpuPipelineLayoutSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeQuerySetDestroy), "wgpuQuerySetDestroy" },
             { reinterpret_cast<WGPUProc>(NativeQuerySetReference), "wgpuQuerySetReference" },
             { reinterpret_cast<WGPUProc>(NativeQuerySetRelease), "wgpuQuerySetRelease" },
+            { reinterpret_cast<WGPUProc>(NativeQuerySetSetLabel), "wgpuQuerySetSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeQueueCopyTextureForBrowser), "wgpuQueueCopyTextureForBrowser" },
             { reinterpret_cast<WGPUProc>(NativeQueueOnSubmittedWorkDone), "wgpuQueueOnSubmittedWorkDone" },
             { reinterpret_cast<WGPUProc>(NativeQueueReference), "wgpuQueueReference" },
@@ -1299,6 +1391,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderRelease), "wgpuRenderBundleEncoderRelease" },
             { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderSetBindGroup), "wgpuRenderBundleEncoderSetBindGroup" },
             { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderSetIndexBuffer), "wgpuRenderBundleEncoderSetIndexBuffer" },
+            { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderSetLabel), "wgpuRenderBundleEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderSetPipeline), "wgpuRenderBundleEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(NativeRenderBundleEncoderSetVertexBuffer), "wgpuRenderBundleEncoderSetVertexBuffer" },
             { reinterpret_cast<WGPUProc>(NativeRenderBundleReference), "wgpuRenderBundleReference" },
@@ -1319,6 +1412,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetBindGroup), "wgpuRenderPassEncoderSetBindGroup" },
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetBlendConstant), "wgpuRenderPassEncoderSetBlendConstant" },
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetIndexBuffer), "wgpuRenderPassEncoderSetIndexBuffer" },
+            { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetLabel), "wgpuRenderPassEncoderSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetPipeline), "wgpuRenderPassEncoderSetPipeline" },
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetScissorRect), "wgpuRenderPassEncoderSetScissorRect" },
             { reinterpret_cast<WGPUProc>(NativeRenderPassEncoderSetStencilReference), "wgpuRenderPassEncoderSetStencilReference" },
@@ -1331,6 +1425,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeRenderPipelineSetLabel), "wgpuRenderPipelineSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeSamplerReference), "wgpuSamplerReference" },
             { reinterpret_cast<WGPUProc>(NativeSamplerRelease), "wgpuSamplerRelease" },
+            { reinterpret_cast<WGPUProc>(NativeSamplerSetLabel), "wgpuSamplerSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeShaderModuleGetCompilationInfo), "wgpuShaderModuleGetCompilationInfo" },
             { reinterpret_cast<WGPUProc>(NativeShaderModuleReference), "wgpuShaderModuleReference" },
             { reinterpret_cast<WGPUProc>(NativeShaderModuleRelease), "wgpuShaderModuleRelease" },
@@ -1349,6 +1444,7 @@ namespace dawn_native {
             { reinterpret_cast<WGPUProc>(NativeTextureSetLabel), "wgpuTextureSetLabel" },
             { reinterpret_cast<WGPUProc>(NativeTextureViewReference), "wgpuTextureViewReference" },
             { reinterpret_cast<WGPUProc>(NativeTextureViewRelease), "wgpuTextureViewRelease" },
+            { reinterpret_cast<WGPUProc>(NativeTextureViewSetLabel), "wgpuTextureViewSetLabel" },
         };
         static constexpr size_t sProcMapSize = sizeof(sProcMap) / sizeof(sProcMap[0]);
     }
@@ -1398,8 +1494,10 @@ namespace dawn_native {
     static DawnProcTable gProcTable = {
         NativeGetProcAddress,
         NativeCreateInstance,
+        NativeBindGroupSetLabel,
         NativeBindGroupReference,
         NativeBindGroupRelease,
+        NativeBindGroupLayoutSetLabel,
         NativeBindGroupLayoutReference,
         NativeBindGroupLayoutRelease,
         NativeBufferDestroy,
@@ -1410,6 +1508,7 @@ namespace dawn_native {
         NativeBufferUnmap,
         NativeBufferReference,
         NativeBufferRelease,
+        NativeCommandBufferSetLabel,
         NativeCommandBufferReference,
         NativeCommandBufferRelease,
         NativeCommandEncoderBeginComputePass,
@@ -1425,6 +1524,7 @@ namespace dawn_native {
         NativeCommandEncoderPopDebugGroup,
         NativeCommandEncoderPushDebugGroup,
         NativeCommandEncoderResolveQuerySet,
+        NativeCommandEncoderSetLabel,
         NativeCommandEncoderWriteBuffer,
         NativeCommandEncoderWriteTimestamp,
         NativeCommandEncoderReference,
@@ -1436,6 +1536,7 @@ namespace dawn_native {
         NativeComputePassEncoderPopDebugGroup,
         NativeComputePassEncoderPushDebugGroup,
         NativeComputePassEncoderSetBindGroup,
+        NativeComputePassEncoderSetLabel,
         NativeComputePassEncoderSetPipeline,
         NativeComputePassEncoderWriteTimestamp,
         NativeComputePassEncoderReference,
@@ -1474,14 +1575,17 @@ namespace dawn_native {
         NativeDeviceReference,
         NativeDeviceRelease,
         NativeExternalTextureDestroy,
+        NativeExternalTextureSetLabel,
         NativeExternalTextureReference,
         NativeExternalTextureRelease,
         NativeInstanceCreateSurface,
         NativeInstanceReference,
         NativeInstanceRelease,
+        NativePipelineLayoutSetLabel,
         NativePipelineLayoutReference,
         NativePipelineLayoutRelease,
         NativeQuerySetDestroy,
+        NativeQuerySetSetLabel,
         NativeQuerySetReference,
         NativeQuerySetRelease,
         NativeQueueCopyTextureForBrowser,
@@ -1503,6 +1607,7 @@ namespace dawn_native {
         NativeRenderBundleEncoderPushDebugGroup,
         NativeRenderBundleEncoderSetBindGroup,
         NativeRenderBundleEncoderSetIndexBuffer,
+        NativeRenderBundleEncoderSetLabel,
         NativeRenderBundleEncoderSetPipeline,
         NativeRenderBundleEncoderSetVertexBuffer,
         NativeRenderBundleEncoderReference,
@@ -1521,6 +1626,7 @@ namespace dawn_native {
         NativeRenderPassEncoderSetBindGroup,
         NativeRenderPassEncoderSetBlendConstant,
         NativeRenderPassEncoderSetIndexBuffer,
+        NativeRenderPassEncoderSetLabel,
         NativeRenderPassEncoderSetPipeline,
         NativeRenderPassEncoderSetScissorRect,
         NativeRenderPassEncoderSetStencilReference,
@@ -1533,6 +1639,7 @@ namespace dawn_native {
         NativeRenderPipelineSetLabel,
         NativeRenderPipelineReference,
         NativeRenderPipelineRelease,
+        NativeSamplerSetLabel,
         NativeSamplerReference,
         NativeSamplerRelease,
         NativeShaderModuleGetCompilationInfo,
@@ -1551,6 +1658,7 @@ namespace dawn_native {
         NativeTextureSetLabel,
         NativeTextureReference,
         NativeTextureRelease,
+        NativeTextureViewSetLabel,
         NativeTextureViewReference,
         NativeTextureViewRelease,
     };

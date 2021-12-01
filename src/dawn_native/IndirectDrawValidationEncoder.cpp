@@ -24,6 +24,7 @@
 #include "dawn_native/Device.h"
 #include "dawn_native/InternalPipelineStore.h"
 #include "dawn_native/Queue.h"
+#include "dawn_native/utils/WGPUHelpers.h"
 
 #include <cstdlib>
 #include <limits>
@@ -138,37 +139,27 @@ namespace dawn_native {
             if (store->renderValidationPipeline == nullptr) {
                 // Create compute shader module if not cached before.
                 if (store->renderValidationShader == nullptr) {
-                    ShaderModuleDescriptor descriptor;
-                    ShaderModuleWGSLDescriptor wgslDesc;
-                    wgslDesc.source = sRenderValidationShaderSource;
-                    descriptor.nextInChain = reinterpret_cast<ChainedStruct*>(&wgslDesc);
-                    DAWN_TRY_ASSIGN(store->renderValidationShader,
-                                    device->CreateShaderModule(&descriptor));
+                    DAWN_TRY_ASSIGN(
+                        store->renderValidationShader,
+                        utils::CreateShaderModule(device, sRenderValidationShaderSource));
                 }
 
-                BindGroupLayoutEntry entries[3];
-                entries[0].binding = 0;
-                entries[0].visibility = wgpu::ShaderStage::Compute;
-                entries[0].buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
-                entries[1].binding = 1;
-                entries[1].visibility = wgpu::ShaderStage::Compute;
-                entries[1].buffer.type = kInternalStorageBufferBinding;
-                entries[2].binding = 2;
-                entries[2].visibility = wgpu::ShaderStage::Compute;
-                entries[2].buffer.type = wgpu::BufferBindingType::Storage;
-
-                BindGroupLayoutDescriptor bindGroupLayoutDescriptor;
-                bindGroupLayoutDescriptor.entryCount = 3;
-                bindGroupLayoutDescriptor.entries = entries;
                 Ref<BindGroupLayoutBase> bindGroupLayout;
-                DAWN_TRY_ASSIGN(bindGroupLayout,
-                                device->CreateBindGroupLayout(&bindGroupLayoutDescriptor, true));
+                DAWN_TRY_ASSIGN(
+                    bindGroupLayout,
+                    utils::MakeBindGroupLayout(
+                        device,
+                        {
+                            {0, wgpu::ShaderStage::Compute,
+                             wgpu::BufferBindingType::ReadOnlyStorage},
+                            {1, wgpu::ShaderStage::Compute, kInternalStorageBufferBinding},
+                            {2, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::Storage},
+                        },
+                        /* allowInternalBinding */ true));
 
-                PipelineLayoutDescriptor pipelineDescriptor;
-                pipelineDescriptor.bindGroupLayoutCount = 1;
-                pipelineDescriptor.bindGroupLayouts = &bindGroupLayout.Get();
                 Ref<PipelineLayoutBase> pipelineLayout;
-                DAWN_TRY_ASSIGN(pipelineLayout, device->CreatePipelineLayout(&pipelineDescriptor));
+                DAWN_TRY_ASSIGN(pipelineLayout,
+                                utils::MakeBasicPipelineLayout(device, bindGroupLayout));
 
                 ComputePipelineDescriptor computePipelineDescriptor = {};
                 computePipelineDescriptor.layout = pipelineLayout.Get();
@@ -188,12 +179,15 @@ namespace dawn_native {
 
     }  // namespace
 
-    const uint32_t kBatchDrawCallLimitByDispatchSize =
-        kMaxComputePerDimensionDispatchSize * kWorkgroupSize;
-    const uint32_t kBatchDrawCallLimitByStorageBindingSize =
-        (kMaxStorageBufferBindingSize - sizeof(BatchInfo)) / sizeof(uint32_t);
-    const uint32_t kMaxDrawCallsPerIndirectValidationBatch =
-        std::min(kBatchDrawCallLimitByDispatchSize, kBatchDrawCallLimitByStorageBindingSize);
+    uint32_t ComputeMaxDrawCallsPerIndirectValidationBatch(const CombinedLimits& limits) {
+        const uint64_t batchDrawCallLimitByDispatchSize =
+            static_cast<uint64_t>(limits.v1.maxComputeWorkgroupsPerDimension) * kWorkgroupSize;
+        const uint64_t batchDrawCallLimitByStorageBindingSize =
+            (limits.v1.maxStorageBufferBindingSize - sizeof(BatchInfo)) / sizeof(uint32_t);
+        return static_cast<uint32_t>(
+            std::min({batchDrawCallLimitByDispatchSize, batchDrawCallLimitByStorageBindingSize,
+                      uint64_t(std::numeric_limits<uint32_t>::max())}));
+    }
 
     MaybeError EncodeIndirectDrawValidationCommands(DeviceBase* device,
                                                     CommandEncoder* commandEncoder,
@@ -223,7 +217,6 @@ namespace dawn_native {
         // single pass as possible. Batches can be grouped together as long as they're validating
         // data from the same indirect buffer, but they may still be split into multiple passes if
         // the number of draw calls in a pass would exceed some (very high) upper bound.
-        uint64_t numTotalDrawCalls = 0;
         size_t validatedParamsSize = 0;
         std::vector<Pass> passes;
         IndirectDrawMetadata::IndexedIndirectBufferValidationInfoMap& bufferInfoMap =
@@ -232,13 +225,18 @@ namespace dawn_native {
             return {};
         }
 
+        const uint32_t maxStorageBufferBindingSize =
+            device->GetLimits().v1.maxStorageBufferBindingSize;
+        const uint32_t minStorageBufferOffsetAlignment =
+            device->GetLimits().v1.minStorageBufferOffsetAlignment;
+
         for (auto& entry : bufferInfoMap) {
             const IndirectDrawMetadata::IndexedIndirectConfig& config = entry.first;
             BufferBase* clientIndirectBuffer = config.first;
             for (const IndirectDrawMetadata::IndexedIndirectValidationBatch& batch :
                  entry.second.GetBatches()) {
                 const uint64_t minOffsetFromAlignedBoundary =
-                    batch.minOffset % kMinStorageBufferOffsetAlignment;
+                    batch.minOffset % minStorageBufferOffsetAlignment;
                 const uint64_t minOffsetAlignedDown =
                     batch.minOffset - minOffsetFromAlignedBoundary;
 
@@ -249,22 +247,21 @@ namespace dawn_native {
                 newBatch.clientIndirectOffset = minOffsetAlignedDown;
                 newBatch.clientIndirectSize =
                     batch.maxOffset + kDrawIndexedIndirectSize - minOffsetAlignedDown;
-                numTotalDrawCalls += batch.draws.size();
 
                 newBatch.validatedParamsSize = batch.draws.size() * kDrawIndexedIndirectSize;
                 newBatch.validatedParamsOffset =
-                    Align(validatedParamsSize, kMinStorageBufferOffsetAlignment);
+                    Align(validatedParamsSize, minStorageBufferOffsetAlignment);
                 validatedParamsSize = newBatch.validatedParamsOffset + newBatch.validatedParamsSize;
-                if (validatedParamsSize > kMaxStorageBufferBindingSize) {
+                if (validatedParamsSize > maxStorageBufferBindingSize) {
                     return DAWN_INTERNAL_ERROR("Too many drawIndexedIndirect calls to validate");
                 }
 
                 Pass* currentPass = passes.empty() ? nullptr : &passes.back();
                 if (currentPass && currentPass->clientIndirectBuffer == clientIndirectBuffer) {
                     uint64_t nextBatchDataOffset =
-                        Align(currentPass->batchDataSize, kMinStorageBufferOffsetAlignment);
+                        Align(currentPass->batchDataSize, minStorageBufferOffsetAlignment);
                     uint64_t newPassBatchDataSize = nextBatchDataOffset + newBatch.dataSize;
-                    if (newPassBatchDataSize <= kMaxStorageBufferBindingSize) {
+                    if (newPassBatchDataSize <= maxStorageBufferBindingSize) {
                         // We can fit this batch in the current pass.
                         newBatch.dataBufferOffset = nextBatchDataOffset;
                         currentPass->batchDataSize = newPassBatchDataSize;
@@ -298,10 +295,7 @@ namespace dawn_native {
         DAWN_TRY(validatedParamsBuffer.EnsureCapacity(validatedParamsSize));
         usageTracker->BufferUsedAs(validatedParamsBuffer.GetBuffer(), wgpu::BufferUsage::Indirect);
 
-        // Now we allocate and populate host-side batch data to be copied to the GPU, and prepare to
-        // update all DrawIndexedIndirectCmd buffer references.
-        std::vector<DeferredBufferLocationUpdate> deferredBufferLocationUpdates;
-        deferredBufferLocationUpdates.reserve(numTotalDrawCalls);
+        // Now we allocate and populate host-side batch data to be copied to the GPU.
         for (Pass& pass : passes) {
             // We use std::malloc here because it guarantees maximal scalar alignment.
             pass.batchData = {std::malloc(pass.batchDataSize), std::free};
@@ -314,16 +308,13 @@ namespace dawn_native {
 
                 uint32_t* indirectOffsets = reinterpret_cast<uint32_t*>(batch.batchInfo + 1);
                 uint64_t validatedParamsOffset = batch.validatedParamsOffset;
-                for (const auto& draw : batch.metadata->draws) {
+                for (auto& draw : batch.metadata->draws) {
                     // The shader uses this to index an array of u32, hence the division by 4 bytes.
                     *indirectOffsets++ = static_cast<uint32_t>(
                         (draw.clientBufferOffset - batch.clientIndirectOffset) / 4);
 
-                    DeferredBufferLocationUpdate deferredUpdate;
-                    deferredUpdate.location = draw.bufferLocation;
-                    deferredUpdate.buffer = validatedParamsBuffer.GetBuffer();
-                    deferredUpdate.offset = validatedParamsOffset;
-                    deferredBufferLocationUpdates.push_back(std::move(deferredUpdate));
+                    draw.cmd->indirectBuffer = validatedParamsBuffer.GetBuffer();
+                    draw.cmd->indirectOffset = validatedParamsOffset;
 
                     validatedParamsOffset += kDrawIndexedIndirectSize;
                 }
@@ -356,8 +347,6 @@ namespace dawn_native {
         // Finally, we can now encode our validation passes. Each pass first does a single
         // WriteBuffer to get batch data over to the GPU, followed by a single compute pass. The
         // compute pass encodes a separate SetBindGroup and Dispatch command for each batch.
-        commandEncoder->EncodeSetValidatedBufferLocationsInternal(
-            std::move(deferredBufferLocationUpdates));
         for (const Pass& pass : passes) {
             commandEncoder->APIWriteBuffer(batchDataBuffer.GetBuffer(), 0,
                                            static_cast<const uint8_t*>(pass.batchData.get()),

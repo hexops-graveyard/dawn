@@ -42,12 +42,12 @@ void SingleEntryPoint::Run(CloneContext& ctx, const DataMap& inputs, DataMap&) {
   }
 
   // Find the target entry point.
-  ast::Function* entry_point = nullptr;
+  const ast::Function* entry_point = nullptr;
   for (auto* f : ctx.src->AST().Functions()) {
     if (!f->IsEntryPoint()) {
       continue;
     }
-    if (ctx.src->Symbols().NameFor(f->symbol()) == cfg->entry_point_name) {
+    if (ctx.src->Symbols().NameFor(f->symbol) == cfg->entry_point_name) {
       entry_point = f;
       break;
     }
@@ -63,7 +63,7 @@ void SingleEntryPoint::Run(CloneContext& ctx, const DataMap& inputs, DataMap&) {
 
   // Build set of referenced module-scope variables for faster lookups later.
   std::unordered_set<const ast::Variable*> referenced_vars;
-  for (auto* var : sem.Get(entry_point)->ReferencedModuleVariables()) {
+  for (auto* var : sem.Get(entry_point)->TransitivelyReferencedGlobals()) {
     referenced_vars.emplace(var->Declaration());
   }
 
@@ -74,11 +74,26 @@ void SingleEntryPoint::Run(CloneContext& ctx, const DataMap& inputs, DataMap&) {
       // TODO(jrprice): Strip unused types.
       ctx.dst->AST().AddTypeDecl(ctx.Clone(ty));
     } else if (auto* var = decl->As<ast::Variable>()) {
-      if (var->is_const() || referenced_vars.count(var)) {
+      if (referenced_vars.count(var)) {
+        if (var->is_const) {
+          if (auto* deco = ast::GetDecoration<ast::OverrideDecoration>(
+                  var->decorations)) {
+            // It is an overridable constant
+            if (!deco->has_value) {
+              // If the decoration doesn't have numeric ID specified explicitly
+              // Make their ids explicitly assigned in the decoration so that
+              // they won't be affected by other stripped away constants
+              auto* global = sem.Get(var)->As<sem::GlobalVariable>();
+              const auto* new_deco =
+                  ctx.dst->Override(deco->source, global->ConstantId());
+              ctx.Replace(deco, new_deco);
+            }
+          }
+        }
         ctx.dst->AST().AddGlobalVariable(ctx.Clone(var));
       }
     } else if (auto* func = decl->As<ast::Function>()) {
-      if (sem.Get(func)->HasAncestorEntryPoint(entry_point->symbol())) {
+      if (sem.Get(func)->HasAncestorEntryPoint(entry_point->symbol)) {
         ctx.dst->AST().AddFunction(ctx.Clone(func));
       }
     } else {

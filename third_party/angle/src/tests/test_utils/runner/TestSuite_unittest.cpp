@@ -37,7 +37,7 @@ class TestSuiteTest : public testing::Test
     {
         if (!mTempFileName.empty())
         {
-            angle::DeleteFile(mTempFileName.c_str());
+            angle::DeleteSystemFile(mTempFileName.c_str());
         }
     }
 
@@ -109,11 +109,8 @@ TEST_F(TestSuiteTest, RunMockTests)
 {
     std::vector<std::string> extraArgs = {"--gtest_filter=MockTestSuiteTest.DISABLED_*"};
 
-    // TODO(crbug.com/1234124): Clang's profile runtime currently emits warnings to stderr, so we
-    // can't validate the stderr output in those builds. Remove this when that is fixed.
-    bool validateStderr = false;
     TestResults actual;
-    ASSERT_TRUE(runTestSuite(extraArgs, &actual, validateStderr));
+    ASSERT_TRUE(runTestSuite(extraArgs, &actual, true));
 
     std::map<TestIdentifier, TestResult> expectedResults = {
         {{"MockTestSuiteTest", "DISABLED_Pass"}, {TestResultType::Pass, 0.0}},
@@ -212,7 +209,7 @@ TEST(MockFlakyTestSuiteTest, DISABLED_Flaky)
 
     if (fails >= kFlakyRetries - 1)
     {
-        angle::DeleteFile(tempFileName.c_str());
+        angle::DeleteSystemFile(tempFileName.c_str());
     }
     else
     {

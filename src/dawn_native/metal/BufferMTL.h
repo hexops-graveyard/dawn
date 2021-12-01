@@ -26,7 +26,7 @@ namespace dawn_native { namespace metal {
     class CommandRecordingContext;
     class Device;
 
-    class Buffer : public BufferBase {
+    class Buffer final : public BufferBase {
       public:
         static ResultOrError<Ref<Buffer>> Create(Device* device,
                                                  const BufferDescriptor* descriptor);
@@ -38,6 +38,8 @@ namespace dawn_native { namespace metal {
                                                 uint64_t size);
         void EnsureDataInitializedAsDestination(CommandRecordingContext* commandContext,
                                                 const CopyTextureToBufferCmd* copy);
+
+        static uint64_t QueryMaxBufferLength(id<MTLDevice> mtlDevice);
 
       private:
         using BufferBase::BufferBase;

@@ -36,8 +36,14 @@ def src_trace_path(trace):
 
 def context_header(trace, trace_path):
     context_id = get_context(trace_path)
-    header = '%s_capture_context%s.h' % (trace, context_id)
-    return os.path.join(trace_path, header)
+    # TODO(jmadill): Remove after retrace. http://anglebug.com/5133
+    for try_path_expr in ['%s_capture_context%s.h', '%s_context%s.h']:
+        header = try_path_expr % (trace, context_id)
+        try_path = os.path.join(trace_path, header)
+        if os.path.isfile(try_path):
+            return try_path
+    logging.fatal('Could not find context header for %s' % trace)
+    return None
 
 
 def get_num_frames(trace):
@@ -47,7 +53,7 @@ def get_num_frames(trace):
     hi = 0
 
     for file in os.listdir(trace_path):
-        match = re.match(r'.+_capture_context\d_frame(\d+)\.cpp', file)
+        match = re.match(r'.+_context\d_frame(\d+)\.cpp', file)
         if match:
             frame = int(match.group(1))
             if frame < lo:
@@ -115,6 +121,16 @@ def main():
         '--no-overwrite',
         help='Skip traces which already exist in the out directory.',
         action='store_true')
+    parser.add_argument(
+        '--validation', help='Enable state serialization validation calls.', action='store_true')
+    parser.add_argument(
+        '--validation-expr',
+        help='Validation expression, used to add more validation checkpoints.')
+    parser.add_argument(
+        '--limit',
+        '--frame-limit',
+        type=int,
+        help='Limits the number of captured frames to produce a shorter trace than the original.')
     args, extra_flags = parser.parse_known_args()
 
     logging.basicConfig(level=args.log.upper())
@@ -148,10 +164,25 @@ def main():
 
         logging.debug('Read metadata: %s' % str(metadata))
 
-        env = os.environ.copy()
-        env['ANGLE_CAPTURE_OUT_DIR'] = trace_path
-        env['ANGLE_CAPTURE_LABEL'] = trace
-        env['ANGLE_CAPTURE_TRIGGER'] = str(num_frames)
+        max_steps = min(args.limit, num_frames) if args.limit else num_frames
+
+        # We start tracing from frame 2. --retrace-mode issues a Swap() after Setup() so we can
+        # accurately re-trace the MEC.
+        additional_env = {
+            'ANGLE_CAPTURE_LABEL': trace,
+            'ANGLE_CAPTURE_OUT_DIR': trace_path,
+            'ANGLE_CAPTURE_FRAME_START': '2',
+            'ANGLE_CAPTURE_FRAME_END': str(num_frames + 1),
+        }
+        if args.validation:
+            additional_env['ANGLE_CAPTURE_VALIDATION'] = '1'
+            # Also turn on shader output init to ensure we have no undefined values.
+            # This feature is also enabled in replay when using --validation.
+            additional_env['ANGLE_FEATURE_OVERRIDES_ENABLED'] = 'forceInitShaderOutputVariables'
+        if args.validation_expr:
+            additional_env['ANGLE_CAPTURE_VALIDATION_EXPR'] = args.validation_expr
+
+        env = {**os.environ.copy(), **additional_env}
 
         renderer = 'vulkan' if args.no_swiftshader else 'vulkan_swiftshader'
 
@@ -161,12 +192,13 @@ def main():
             trace_filter,
             '--retrace-mode',
             '--max-steps-performed',
-            str(num_frames),
+            str(max_steps),
             '--enable-all-trace-tests',
         ]
 
         print('Capturing "%s" (%d frames)...' % (trace, num_frames))
-        logging.debug('Running "%s" with capture environment' % ' '.join(run_args))
+        logging.debug('Running "%s" with environment: %s' %
+                      (' '.join(run_args), str(additional_env)))
         try:
             subprocess.check_call(run_args, env=env)
 

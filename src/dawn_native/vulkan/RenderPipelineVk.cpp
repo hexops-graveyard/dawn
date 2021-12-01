@@ -339,7 +339,7 @@ namespace dawn_native { namespace vulkan {
 
         // There are at most 2 shader stages in render pipeline, i.e. vertex and fragment
         std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
-        std::array<std::vector<SpecializationDataEntry>, 2> specializationDataEntriesPerStages;
+        std::array<std::vector<OverridableConstantScalar>, 2> specializationDataEntriesPerStages;
         std::array<std::vector<VkSpecializationMapEntry>, 2> specializationMapEntriesPerStages;
         std::array<VkSpecializationInfo, 2> specializationInfoPerStages;
         uint32_t stageCount = 0;
@@ -496,19 +496,21 @@ namespace dawn_native { namespace vulkan {
         dynamic.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
         dynamic.pDynamicStates = dynamicStates;
 
-        // Get a VkRenderPass that matches the attachment formats for this pipeline, load ops don't
-        // matter so set them all to LoadOp::Load
+        // Get a VkRenderPass that matches the attachment formats for this pipeline, load/store ops
+        // don't matter so set them all to LoadOp::Load / StoreOp::Store
         VkRenderPass renderPass = VK_NULL_HANDLE;
         {
             RenderPassCacheQuery query;
 
             for (ColorAttachmentIndex i : IterateBitSet(GetColorAttachmentsMask())) {
-                query.SetColor(i, GetColorAttachmentFormat(i), wgpu::LoadOp::Load, false);
+                query.SetColor(i, GetColorAttachmentFormat(i), wgpu::LoadOp::Load,
+                               wgpu::StoreOp::Store, false);
             }
 
             if (HasDepthStencilAttachment()) {
                 query.SetDepthStencil(GetDepthStencilFormat(), wgpu::LoadOp::Load,
-                                      wgpu::LoadOp::Load);
+                                      wgpu::StoreOp::Store, wgpu::LoadOp::Load,
+                                      wgpu::StoreOp::Store);
             }
 
             query.SetSampleCount(GetSampleCount());
@@ -597,7 +599,9 @@ namespace dawn_native { namespace vulkan {
         return createInfo;
     }
 
-    RenderPipeline::~RenderPipeline() {
+    RenderPipeline::~RenderPipeline() = default;
+
+    void RenderPipeline::DestroyImpl() {
         if (mHandle != VK_NULL_HANDLE) {
             ToBackend(GetDevice())->GetFencedDeleter()->DeleteWhenUnused(mHandle);
             mHandle = VK_NULL_HANDLE;

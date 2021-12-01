@@ -145,6 +145,10 @@ namespace wgpu { namespace binding {
         [[nodiscard]] bool Convert(wgpu::ProgrammableStageDescriptor& out,
                                    const interop::GPUProgrammableStage& in);
 
+        [[nodiscard]] bool Convert(wgpu::ConstantEntry& out,
+                                   const std::string& in_name,
+                                   wgpu::interop::GPUPipelineConstantValue in_value);
+
         [[nodiscard]] bool Convert(wgpu::BlendComponent& out, const interop::GPUBlendComponent& in);
 
         [[nodiscard]] bool Convert(wgpu::BlendFactor& out, const interop::GPUBlendFactor& in);
@@ -328,6 +332,11 @@ namespace wgpu { namespace binding {
         // vector -> raw pointer + count
         template <typename OUT, typename IN>
         inline bool Convert(OUT*& out_els, uint32_t& out_count, const std::vector<IN>& in) {
+            if (in.size() == 0) {
+                out_els = nullptr;
+                out_count = 0;
+                return true;
+            }
             auto* els = Allocate<std::remove_const_t<OUT>>(in.size());
             for (size_t i = 0; i < in.size(); i++) {
                 if (!Convert(els[i], in[i])) {
@@ -336,6 +345,38 @@ namespace wgpu { namespace binding {
             }
             out_els = els;
             return Convert(out_count, in.size());
+        }
+
+        // unordered_map -> raw pointer + count
+        template <typename OUT, typename IN_KEY, typename IN_VALUE>
+        inline bool Convert(OUT*& out_els,
+                            uint32_t& out_count,
+                            const std::unordered_map<IN_KEY, IN_VALUE>& in) {
+            if (in.size() == 0) {
+                out_els = nullptr;
+                out_count = 0;
+                return true;
+            }
+            auto* els = Allocate<std::remove_const_t<OUT>>(in.size());
+            size_t i = 0;
+            for (auto& it : in) {
+                if (!Convert(els[i++], it.first, it.second)) {
+                    return false;
+                }
+            }
+            out_els = els;
+            return Convert(out_count, in.size());
+        }
+
+        // std::optional<T> -> raw pointer + count
+        template <typename OUT, typename IN>
+        inline bool Convert(OUT*& out_els, uint32_t& out_count, const std::optional<IN>& in) {
+            if (!in.has_value()) {
+                out_els = nullptr;
+                out_count = 0;
+                return true;
+            }
+            return Convert(out_els, out_count, in.value());
         }
 
         Napi::Env env;

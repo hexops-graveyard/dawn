@@ -23,7 +23,7 @@ namespace {
 using MslGeneratorImplTest = TestHelper;
 
 TEST_F(MslGeneratorImplTest, Emit_Case) {
-  auto* s = Switch(1, Case(Literal(5), Block(create<ast::BreakStatement>())),
+  auto* s = Switch(1, Case(Expr(5), Block(create<ast::BreakStatement>())),
                    DefaultCase());
   WrapInFunction(s);
 
@@ -31,7 +31,7 @@ TEST_F(MslGeneratorImplTest, Emit_Case) {
 
   gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitCase(s->body()[0])) << gen.error();
+  ASSERT_TRUE(gen.EmitCase(s->body[0])) << gen.error();
   EXPECT_EQ(gen.result(), R"(  case 5: {
     break;
   }
@@ -39,14 +39,14 @@ TEST_F(MslGeneratorImplTest, Emit_Case) {
 }
 
 TEST_F(MslGeneratorImplTest, Emit_Case_BreaksByDefault) {
-  auto* s = Switch(1, Case(Literal(5), Block()), DefaultCase());
+  auto* s = Switch(1, Case(Expr(5), Block()), DefaultCase());
   WrapInFunction(s);
 
   GeneratorImpl& gen = Build();
 
   gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitCase(s->body()[0])) << gen.error();
+  ASSERT_TRUE(gen.EmitCase(s->body[0])) << gen.error();
   EXPECT_EQ(gen.result(), R"(  case 5: {
     break;
   }
@@ -54,16 +54,15 @@ TEST_F(MslGeneratorImplTest, Emit_Case_BreaksByDefault) {
 }
 
 TEST_F(MslGeneratorImplTest, Emit_Case_WithFallthrough) {
-  auto* s =
-      Switch(1, Case(Literal(5), Block(create<ast::FallthroughStatement>())),
-             DefaultCase());
+  auto* s = Switch(1, Case(Expr(5), Block(create<ast::FallthroughStatement>())),
+                   DefaultCase());
   WrapInFunction(s);
 
   GeneratorImpl& gen = Build();
 
   gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitCase(s->body()[0])) << gen.error();
+  ASSERT_TRUE(gen.EmitCase(s->body[0])) << gen.error();
   EXPECT_EQ(gen.result(), R"(  case 5: {
     /* fallthrough */
   }
@@ -71,16 +70,16 @@ TEST_F(MslGeneratorImplTest, Emit_Case_WithFallthrough) {
 }
 
 TEST_F(MslGeneratorImplTest, Emit_Case_MultipleSelectors) {
-  auto* s = Switch(
-      1, Case({Literal(5), Literal(6)}, Block(create<ast::BreakStatement>())),
-      DefaultCase());
+  auto* s =
+      Switch(1, Case({Expr(5), Expr(6)}, Block(create<ast::BreakStatement>())),
+             DefaultCase());
   WrapInFunction(s);
 
   GeneratorImpl& gen = Build();
 
   gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitCase(s->body()[0])) << gen.error();
+  ASSERT_TRUE(gen.EmitCase(s->body[0])) << gen.error();
   EXPECT_EQ(gen.result(), R"(  case 5:
   case 6: {
     break;
@@ -96,7 +95,7 @@ TEST_F(MslGeneratorImplTest, Emit_Case_Default) {
 
   gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitCase(s->body()[0])) << gen.error();
+  ASSERT_TRUE(gen.EmitCase(s->body[0])) << gen.error();
   EXPECT_EQ(gen.result(), R"(  default: {
     break;
   }

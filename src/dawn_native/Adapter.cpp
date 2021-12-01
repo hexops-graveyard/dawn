@@ -14,14 +14,59 @@
 
 #include "dawn_native/Adapter.h"
 
+#include "common/Constants.h"
 #include "dawn_native/Instance.h"
 
 namespace dawn_native {
 
     AdapterBase::AdapterBase(InstanceBase* instance, wgpu::BackendType backend)
         : mInstance(instance), mBackend(backend) {
-        GetDefaultLimits(&mLimits.v1);
-        mSupportedExtensions.EnableExtension(Extension::DawnInternalUsages);
+        mSupportedFeatures.EnableFeature(Feature::DawnInternalUsages);
+    }
+
+    MaybeError AdapterBase::Initialize() {
+        DAWN_TRY_CONTEXT(InitializeImpl(), "initializing adapter (backend=%s)", mBackend);
+        DAWN_TRY_CONTEXT(
+            InitializeSupportedFeaturesImpl(),
+            "gathering supported features for \"%s\" - \"%s\" (vendorId=%#06x deviceId=%#06x "
+            "backend=%s type=%s)",
+            mPCIInfo.name, mDriverDescription, mPCIInfo.vendorId, mPCIInfo.deviceId, mBackend,
+            mAdapterType);
+        DAWN_TRY_CONTEXT(
+            InitializeSupportedLimitsImpl(&mLimits),
+            "gathering supported limits for \"%s\" - \"%s\" (vendorId=%#06x deviceId=%#06x "
+            "backend=%s type=%s)",
+            mPCIInfo.name, mDriverDescription, mPCIInfo.vendorId, mPCIInfo.deviceId, mBackend,
+            mAdapterType);
+
+        // Enforce internal Dawn constants.
+        mLimits.v1.maxVertexBufferArrayStride =
+            std::min(mLimits.v1.maxVertexBufferArrayStride, kMaxVertexBufferArrayStride);
+        mLimits.v1.maxBindGroups = std::min(mLimits.v1.maxBindGroups, kMaxBindGroups);
+        mLimits.v1.maxVertexAttributes =
+            std::min(mLimits.v1.maxVertexAttributes, uint32_t(kMaxVertexAttributes));
+        mLimits.v1.maxVertexBuffers =
+            std::min(mLimits.v1.maxVertexBuffers, uint32_t(kMaxVertexBuffers));
+        mLimits.v1.maxInterStageShaderComponents =
+            std::min(mLimits.v1.maxInterStageShaderComponents, kMaxInterStageShaderComponents);
+        mLimits.v1.maxSampledTexturesPerShaderStage = std::min(
+            mLimits.v1.maxSampledTexturesPerShaderStage, kMaxSampledTexturesPerShaderStage);
+        mLimits.v1.maxSamplersPerShaderStage =
+            std::min(mLimits.v1.maxSamplersPerShaderStage, kMaxSamplersPerShaderStage);
+        mLimits.v1.maxStorageBuffersPerShaderStage =
+            std::min(mLimits.v1.maxStorageBuffersPerShaderStage, kMaxStorageBuffersPerShaderStage);
+        mLimits.v1.maxStorageTexturesPerShaderStage = std::min(
+            mLimits.v1.maxStorageTexturesPerShaderStage, kMaxStorageTexturesPerShaderStage);
+        mLimits.v1.maxUniformBuffersPerShaderStage =
+            std::min(mLimits.v1.maxUniformBuffersPerShaderStage, kMaxUniformBuffersPerShaderStage);
+        mLimits.v1.maxDynamicUniformBuffersPerPipelineLayout =
+            std::min(mLimits.v1.maxDynamicUniformBuffersPerPipelineLayout,
+                     kMaxDynamicUniformBuffersPerPipelineLayout);
+        mLimits.v1.maxDynamicStorageBuffersPerPipelineLayout =
+            std::min(mLimits.v1.maxDynamicStorageBuffersPerPipelineLayout,
+                     kMaxDynamicStorageBuffersPerPipelineLayout);
+
+        return {};
     }
 
     wgpu::BackendType AdapterBase::GetBackendType() const {
@@ -44,18 +89,18 @@ namespace dawn_native {
         return mInstance;
     }
 
-    ExtensionsSet AdapterBase::GetSupportedExtensions() const {
-        return mSupportedExtensions;
+    FeaturesSet AdapterBase::GetSupportedFeatures() const {
+        return mSupportedFeatures;
     }
 
-    bool AdapterBase::SupportsAllRequestedExtensions(
-        const std::vector<const char*>& requestedExtensions) const {
-        for (const char* extensionStr : requestedExtensions) {
-            Extension extensionEnum = mInstance->ExtensionNameToEnum(extensionStr);
-            if (extensionEnum == Extension::InvalidEnum) {
+    bool AdapterBase::SupportsAllRequestedFeatures(
+        const std::vector<const char*>& requestedFeatures) const {
+        for (const char* featureStr : requestedFeatures) {
+            Feature featureEnum = mInstance->FeatureNameToEnum(featureStr);
+            if (featureEnum == Feature::InvalidEnum) {
                 return false;
             }
-            if (!mSupportedExtensions.IsEnabled(extensionEnum)) {
+            if (!mSupportedFeatures.IsEnabled(featureEnum)) {
                 return false;
             }
         }
@@ -66,9 +111,10 @@ namespace dawn_native {
         WGPUDeviceProperties adapterProperties = {};
         adapterProperties.deviceID = mPCIInfo.deviceId;
         adapterProperties.vendorID = mPCIInfo.vendorId;
+        adapterProperties.adapterType = static_cast<WGPUAdapterType>(mAdapterType);
 
-        mSupportedExtensions.InitializeDeviceProperties(&adapterProperties);
-        // This is OK for now because there are no limit extension structs.
+        mSupportedFeatures.InitializeDeviceProperties(&adapterProperties);
+        // This is OK for now because there are no limit feature structs.
         // If we add additional structs, the caller will need to provide memory
         // to store them (ex. by calling GetLimits directly instead). Currently,
         // we keep this function as it's only used internally in Chromium to
@@ -90,7 +136,7 @@ namespace dawn_native {
         return true;
     }
 
-    DeviceBase* AdapterBase::CreateDevice(const DeviceDescriptor* descriptor) {
+    DeviceBase* AdapterBase::CreateDevice(const DawnDeviceDescriptor* descriptor) {
         DeviceBase* result = nullptr;
 
         if (mInstance->ConsumedError(CreateDeviceInternal(&result, descriptor))) {
@@ -100,7 +146,7 @@ namespace dawn_native {
         return result;
     }
 
-    void AdapterBase::RequestDevice(const DeviceDescriptor* descriptor,
+    void AdapterBase::RequestDevice(const DawnDeviceDescriptor* descriptor,
                                     WGPURequestDeviceCallback callback,
                                     void* userdata) {
         DeviceBase* result = nullptr;
@@ -109,8 +155,8 @@ namespace dawn_native {
 
         if (err.IsError()) {
             std::unique_ptr<ErrorData> errorData = err.AcquireError();
-            callback(WGPURequestDeviceStatus_Error, device, errorData->GetMessage().c_str(),
-                     userdata);
+            callback(WGPURequestDeviceStatus_Error, device,
+                     errorData->GetFormattedMessage().c_str(), userdata);
             return;
         }
         WGPURequestDeviceStatus status =
@@ -119,21 +165,23 @@ namespace dawn_native {
     }
 
     MaybeError AdapterBase::CreateDeviceInternal(DeviceBase** result,
-                                                 const DeviceDescriptor* descriptor) {
+                                                 const DawnDeviceDescriptor* descriptor) {
         if (descriptor != nullptr) {
-            for (const char* extensionStr : descriptor->requiredExtensions) {
-                Extension extensionEnum = mInstance->ExtensionNameToEnum(extensionStr);
-                DAWN_INVALID_IF(extensionEnum == Extension::InvalidEnum,
-                                "Requested feature %s is unknown.", extensionStr);
-                DAWN_INVALID_IF(!mSupportedExtensions.IsEnabled(extensionEnum),
-                                "Requested feature %s is disabled.", extensionStr);
+            for (const char* featureStr : descriptor->requiredFeatures) {
+                Feature featureEnum = mInstance->FeatureNameToEnum(featureStr);
+                DAWN_INVALID_IF(featureEnum == Feature::InvalidEnum,
+                                "Requested feature %s is unknown.", featureStr);
+                DAWN_INVALID_IF(!mSupportedFeatures.IsEnabled(featureEnum),
+                                "Requested feature %s is disabled.", featureStr);
             }
         }
 
         if (descriptor != nullptr && descriptor->requiredLimits != nullptr) {
-            DAWN_TRY(ValidateLimits(
-                mUseTieredLimits ? ApplyLimitTiers(mLimits.v1) : mLimits.v1,
-                reinterpret_cast<const RequiredLimits*>(descriptor->requiredLimits)->limits));
+            DAWN_TRY_CONTEXT(
+                ValidateLimits(
+                    mUseTieredLimits ? ApplyLimitTiers(mLimits.v1) : mLimits.v1,
+                    reinterpret_cast<const RequiredLimits*>(descriptor->requiredLimits)->limits),
+                "validating required limits");
 
             DAWN_INVALID_IF(descriptor->requiredLimits->nextInChain != nullptr,
                             "nextInChain is not nullptr.");

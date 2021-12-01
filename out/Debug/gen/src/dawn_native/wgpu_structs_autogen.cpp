@@ -235,6 +235,8 @@ namespace dawn_native {
     static_assert(sizeof(CompilationMessage) == sizeof(WGPUCompilationMessage), "sizeof mismatch for CompilationMessage");
     static_assert(alignof(CompilationMessage) == alignof(WGPUCompilationMessage), "alignof mismatch for CompilationMessage");
 
+    static_assert(offsetof(CompilationMessage, nextInChain) == offsetof(WGPUCompilationMessage, nextInChain),
+            "offsetof mismatch for CompilationMessage::nextInChain");
     static_assert(offsetof(CompilationMessage, message) == offsetof(WGPUCompilationMessage, message),
             "offsetof mismatch for CompilationMessage::message");
     static_assert(offsetof(CompilationMessage, type) == offsetof(WGPUCompilationMessage, type),
@@ -249,7 +251,7 @@ namespace dawn_native {
             "offsetof mismatch for CompilationMessage::length");
 
     bool CompilationMessage::operator==(const CompilationMessage& rhs) const {
-        return  std::tie(
+        return (nextInChain == rhs.nextInChain) && std::tie(
             message,
             type,
             lineNum,
@@ -725,6 +727,10 @@ namespace dawn_native {
             "offsetof mismatch for RenderBundleEncoderDescriptor::depthStencilFormat");
     static_assert(offsetof(RenderBundleEncoderDescriptor, sampleCount) == offsetof(WGPURenderBundleEncoderDescriptor, sampleCount),
             "offsetof mismatch for RenderBundleEncoderDescriptor::sampleCount");
+    static_assert(offsetof(RenderBundleEncoderDescriptor, depthReadOnly) == offsetof(WGPURenderBundleEncoderDescriptor, depthReadOnly),
+            "offsetof mismatch for RenderBundleEncoderDescriptor::depthReadOnly");
+    static_assert(offsetof(RenderBundleEncoderDescriptor, stencilReadOnly) == offsetof(WGPURenderBundleEncoderDescriptor, stencilReadOnly),
+            "offsetof mismatch for RenderBundleEncoderDescriptor::stencilReadOnly");
 
     bool RenderBundleEncoderDescriptor::operator==(const RenderBundleEncoderDescriptor& rhs) const {
         return (nextInChain == rhs.nextInChain) && std::tie(
@@ -732,13 +738,17 @@ namespace dawn_native {
             colorFormatsCount,
             colorFormats,
             depthStencilFormat,
-            sampleCount
+            sampleCount,
+            depthReadOnly,
+            stencilReadOnly
         ) == std::tie(
             rhs.label,
             rhs.colorFormatsCount,
             rhs.colorFormats,
             rhs.depthStencilFormat,
-            rhs.sampleCount
+            rhs.sampleCount,
+            rhs.depthReadOnly,
+            rhs.stencilReadOnly
         );
     }
 
@@ -1329,13 +1339,15 @@ namespace dawn_native {
     static_assert(sizeof(CompilationInfo) == sizeof(WGPUCompilationInfo), "sizeof mismatch for CompilationInfo");
     static_assert(alignof(CompilationInfo) == alignof(WGPUCompilationInfo), "alignof mismatch for CompilationInfo");
 
+    static_assert(offsetof(CompilationInfo, nextInChain) == offsetof(WGPUCompilationInfo, nextInChain),
+            "offsetof mismatch for CompilationInfo::nextInChain");
     static_assert(offsetof(CompilationInfo, messageCount) == offsetof(WGPUCompilationInfo, messageCount),
             "offsetof mismatch for CompilationInfo::messageCount");
     static_assert(offsetof(CompilationInfo, messages) == offsetof(WGPUCompilationInfo, messages),
             "offsetof mismatch for CompilationInfo::messages");
 
     bool CompilationInfo::operator==(const CompilationInfo& rhs) const {
-        return  std::tie(
+        return (nextInChain == rhs.nextInChain) && std::tie(
             messageCount,
             messages
         ) == std::tie(
@@ -1692,6 +1704,8 @@ namespace dawn_native {
             "offsetof mismatch for DeviceProperties::deviceID");
     static_assert(offsetof(DeviceProperties, vendorID) == offsetof(WGPUDeviceProperties, vendorID),
             "offsetof mismatch for DeviceProperties::vendorID");
+    static_assert(offsetof(DeviceProperties, adapterType) == offsetof(WGPUDeviceProperties, adapterType),
+            "offsetof mismatch for DeviceProperties::adapterType");
     static_assert(offsetof(DeviceProperties, textureCompressionBC) == offsetof(WGPUDeviceProperties, textureCompressionBC),
             "offsetof mismatch for DeviceProperties::textureCompressionBC");
     static_assert(offsetof(DeviceProperties, textureCompressionETC2) == offsetof(WGPUDeviceProperties, textureCompressionETC2),
@@ -1708,8 +1722,12 @@ namespace dawn_native {
             "offsetof mismatch for DeviceProperties::multiPlanarFormats");
     static_assert(offsetof(DeviceProperties, depthClamping) == offsetof(WGPUDeviceProperties, depthClamping),
             "offsetof mismatch for DeviceProperties::depthClamping");
-    static_assert(offsetof(DeviceProperties, invalidExtension) == offsetof(WGPUDeviceProperties, invalidExtension),
-            "offsetof mismatch for DeviceProperties::invalidExtension");
+    static_assert(offsetof(DeviceProperties, depth24UnormStencil8) == offsetof(WGPUDeviceProperties, depth24UnormStencil8),
+            "offsetof mismatch for DeviceProperties::depth24UnormStencil8");
+    static_assert(offsetof(DeviceProperties, depth32FloatStencil8) == offsetof(WGPUDeviceProperties, depth32FloatStencil8),
+            "offsetof mismatch for DeviceProperties::depth32FloatStencil8");
+    static_assert(offsetof(DeviceProperties, invalidFeature) == offsetof(WGPUDeviceProperties, invalidFeature),
+            "offsetof mismatch for DeviceProperties::invalidFeature");
     static_assert(offsetof(DeviceProperties, dawnInternalUsages) == offsetof(WGPUDeviceProperties, dawnInternalUsages),
             "offsetof mismatch for DeviceProperties::dawnInternalUsages");
     static_assert(offsetof(DeviceProperties, limits) == offsetof(WGPUDeviceProperties, limits),
@@ -1719,6 +1737,7 @@ namespace dawn_native {
         return  std::tie(
             deviceID,
             vendorID,
+            adapterType,
             textureCompressionBC,
             textureCompressionETC2,
             textureCompressionASTC,
@@ -1727,12 +1746,15 @@ namespace dawn_native {
             timestampQuery,
             multiPlanarFormats,
             depthClamping,
-            invalidExtension,
+            depth24UnormStencil8,
+            depth32FloatStencil8,
+            invalidFeature,
             dawnInternalUsages,
             limits
         ) == std::tie(
             rhs.deviceID,
             rhs.vendorID,
+            rhs.adapterType,
             rhs.textureCompressionBC,
             rhs.textureCompressionETC2,
             rhs.textureCompressionASTC,
@@ -1741,7 +1763,9 @@ namespace dawn_native {
             rhs.timestampQuery,
             rhs.multiPlanarFormats,
             rhs.depthClamping,
-            rhs.invalidExtension,
+            rhs.depth24UnormStencil8,
+            rhs.depth32FloatStencil8,
+            rhs.invalidFeature,
             rhs.dawnInternalUsages,
             rhs.limits
         );

@@ -37,7 +37,9 @@ namespace dawn_native {
                                          const PipelineLayoutBase* layout,
                                          SingleShaderStage stage);
 
-    using PipelineConstantEntry = std::pair<std::string, double>;
+    // Use map to make sure constant keys are sorted for creating shader cache keys
+    using PipelineConstantEntries = std::map<std::string, double>;
+
     struct ProgrammableStage {
         Ref<ShaderModuleBase> module;
         std::string entryPoint;
@@ -45,11 +47,13 @@ namespace dawn_native {
         // The metadata lives as long as module, that's ref-ed in the same structure.
         const EntryPointMetadata* metadata = nullptr;
 
-        std::vector<PipelineConstantEntry> constants;
+        PipelineConstantEntries constants;
     };
 
     class PipelineBase : public ApiObjectBase, public CachedObject {
       public:
+        ~PipelineBase() override;
+
         PipelineLayoutBase* GetLayout();
         const PipelineLayoutBase* GetLayout() const;
         const RequiredBufferSizes& GetMinBufferSizes() const;
@@ -66,12 +70,18 @@ namespace dawn_native {
         // Implementation of the API entrypoint. Do not use in a reentrant manner.
         BindGroupLayoutBase* APIGetBindGroupLayout(uint32_t groupIndex);
 
+        // Initialize() should only be called once by the frontend.
+        virtual MaybeError Initialize() = 0;
+
       protected:
         PipelineBase(DeviceBase* device,
                      PipelineLayoutBase* layout,
                      const char* label,
                      std::vector<StageAndDescriptor> stages);
         PipelineBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+
+        // Constructor used only for mocking and testing.
+        PipelineBase(DeviceBase* device);
 
       private:
         MaybeError ValidateGetBindGroupLayout(uint32_t group);

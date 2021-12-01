@@ -38,6 +38,19 @@ namespace dawn_native {
         return {true};
     }
 
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(const Origin3D* value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s) {
+        if (value == nullptr) {
+            s->Append("[null]");
+            return {true};
+        }
+        s->Append(absl::StrFormat("[Origin3D x:%u, y:%u, z:%u]",
+            value->x, value->y, value->z));
+        return {true};
+    }
+
     //
     // Objects
     //
@@ -68,6 +81,9 @@ namespace dawn_native {
             return {true};
         }
         s->Append("[");
+        if (value->IsError()) {
+            s->Append("Invalid ");
+        }
         s->Append(ObjectTypeAsString(value->GetType()));
         const std::string& label = value->GetLabel();
         if (!label.empty()) {
@@ -86,6 +102,9 @@ namespace dawn_native {
             return {true};
         }
         s->Append("[");
+        if (value->IsError()) {
+            s->Append("Invalid ");
+        }
         s->Append(ObjectTypeAsString(value->GetType()));
         const std::string& label = value->GetLabel();
         if (!label.empty()) {
@@ -1084,9 +1103,6 @@ namespace wgpu {
         case SType::ShaderModuleWGSLDescriptor:
         s->Append("ShaderModuleWGSLDescriptor");
         break;
-        case SType::PrimitiveDepthClampingState:
-        s->Append("PrimitiveDepthClampingState");
-        break;
         case SType::SurfaceDescriptorFromWindowsCoreWindow:
         s->Append("SurfaceDescriptorFromWindowsCoreWindow");
         break;
@@ -1101,6 +1117,9 @@ namespace wgpu {
         break;
         case SType::DawnTextureInternalUsageDescriptor:
         s->Append("DawnTextureInternalUsageDescriptor");
+        break;
+        case SType::PrimitiveDepthClampingState:
+        s->Append("PrimitiveDepthClampingState");
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<SType>::type>(value)));
@@ -1397,8 +1416,14 @@ namespace wgpu {
         case TextureFormat::Depth24PlusStencil8:
         s->Append("Depth24PlusStencil8");
         break;
+        case TextureFormat::Depth24UnormStencil8:
+        s->Append("Depth24UnormStencil8");
+        break;
         case TextureFormat::Depth32Float:
         s->Append("Depth32Float");
+        break;
+        case TextureFormat::Depth32FloatStencil8:
+        s->Append("Depth32FloatStencil8");
         break;
         case TextureFormat::BC1RGBAUnorm:
         s->Append("BC1RGBAUnorm");
