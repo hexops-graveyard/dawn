@@ -1,5 +1,11 @@
 
 // Command handlers & doers
+bool HandleBindGroupLayoutSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoBindGroupLayoutSetLabel(WGPUBindGroupLayout self, char const * label);
+bool HandleBindGroupSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoBindGroupSetLabel(WGPUBindGroup self, char const * label);
 bool HandleBufferDestroy(DeserializeBuffer* deserializeBuffer);
 
 bool DoBufferDestroy(WGPUBuffer self);
@@ -15,6 +21,9 @@ bool DoBufferUnmap(WGPUBuffer self);
 bool HandleBufferUpdateMappedData(DeserializeBuffer* deserializeBuffer);
 
 bool DoBufferUpdateMappedData(ObjectId bufferId, uint64_t writeDataUpdateInfoLength, uint8_t const * writeDataUpdateInfo, uint64_t offset, uint64_t size);
+bool HandleCommandBufferSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoCommandBufferSetLabel(WGPUCommandBuffer self, char const * label);
 bool HandleCommandEncoderBeginComputePass(DeserializeBuffer* deserializeBuffer);
 
 bool DoCommandEncoderBeginComputePass(WGPUCommandEncoder self, WGPUComputePassDescriptor const * descriptor, WGPUComputePassEncoder* result);
@@ -54,6 +63,9 @@ bool DoCommandEncoderPushDebugGroup(WGPUCommandEncoder self, char const * groupL
 bool HandleCommandEncoderResolveQuerySet(DeserializeBuffer* deserializeBuffer);
 
 bool DoCommandEncoderResolveQuerySet(WGPUCommandEncoder self, WGPUQuerySet querySet, uint32_t firstQuery, uint32_t queryCount, WGPUBuffer destination, uint64_t destinationOffset);
+bool HandleCommandEncoderSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoCommandEncoderSetLabel(WGPUCommandEncoder self, char const * label);
 bool HandleCommandEncoderWriteBuffer(DeserializeBuffer* deserializeBuffer);
 
 bool DoCommandEncoderWriteBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size);
@@ -81,6 +93,9 @@ bool DoComputePassEncoderPushDebugGroup(WGPUComputePassEncoder self, char const 
 bool HandleComputePassEncoderSetBindGroup(DeserializeBuffer* deserializeBuffer);
 
 bool DoComputePassEncoderSetBindGroup(WGPUComputePassEncoder self, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets);
+bool HandleComputePassEncoderSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoComputePassEncoderSetLabel(WGPUComputePassEncoder self, char const * label);
 bool HandleComputePassEncoderSetPipeline(DeserializeBuffer* deserializeBuffer);
 
 bool DoComputePassEncoderSetPipeline(WGPUComputePassEncoder self, WGPUComputePipeline pipeline);
@@ -168,12 +183,21 @@ bool DoDeviceTick(WGPUDevice self);
 bool HandleExternalTextureDestroy(DeserializeBuffer* deserializeBuffer);
 
 bool DoExternalTextureDestroy(WGPUExternalTexture self);
+bool HandleExternalTextureSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoExternalTextureSetLabel(WGPUExternalTexture self, char const * label);
 bool HandleInstanceCreateSurface(DeserializeBuffer* deserializeBuffer);
 
 bool DoInstanceCreateSurface(WGPUInstance self, WGPUSurfaceDescriptor const * descriptor, WGPUSurface* result);
+bool HandlePipelineLayoutSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoPipelineLayoutSetLabel(WGPUPipelineLayout self, char const * label);
 bool HandleQuerySetDestroy(DeserializeBuffer* deserializeBuffer);
 
 bool DoQuerySetDestroy(WGPUQuerySet self);
+bool HandleQuerySetSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoQuerySetSetLabel(WGPUQuerySet self, char const * label);
 bool HandleQueueCopyTextureForBrowser(DeserializeBuffer* deserializeBuffer);
 
 bool DoQueueCopyTextureForBrowser(WGPUQueue self, WGPUImageCopyTexture const * source, WGPUImageCopyTexture const * destination, WGPUExtent3D const * copySize, WGPUCopyTextureForBrowserOptions const * options);
@@ -219,6 +243,9 @@ bool DoRenderBundleEncoderSetBindGroup(WGPURenderBundleEncoder self, uint32_t gr
 bool HandleRenderBundleEncoderSetIndexBuffer(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderBundleEncoderSetIndexBuffer(WGPURenderBundleEncoder self, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size);
+bool HandleRenderBundleEncoderSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoRenderBundleEncoderSetLabel(WGPURenderBundleEncoder self, char const * label);
 bool HandleRenderBundleEncoderSetPipeline(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder self, WGPURenderPipeline pipeline);
@@ -267,6 +294,9 @@ bool DoRenderPassEncoderSetBlendConstant(WGPURenderPassEncoder self, WGPUColor c
 bool HandleRenderPassEncoderSetIndexBuffer(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderPassEncoderSetIndexBuffer(WGPURenderPassEncoder self, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size);
+bool HandleRenderPassEncoderSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoRenderPassEncoderSetLabel(WGPURenderPassEncoder self, char const * label);
 bool HandleRenderPassEncoderSetPipeline(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderPassEncoderSetPipeline(WGPURenderPassEncoder self, WGPURenderPipeline pipeline);
@@ -291,6 +321,9 @@ bool DoRenderPipelineGetBindGroupLayout(WGPURenderPipeline self, uint32_t groupI
 bool HandleRenderPipelineSetLabel(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderPipelineSetLabel(WGPURenderPipeline self, char const * label);
+bool HandleSamplerSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoSamplerSetLabel(WGPUSampler self, char const * label);
 bool HandleShaderModuleGetCompilationInfo(DeserializeBuffer* deserializeBuffer);
 
 bool DoShaderModuleGetCompilationInfo(ObjectId shaderModuleId, uint64_t requestSerial);
@@ -315,6 +348,9 @@ bool DoTextureDestroy(WGPUTexture self);
 bool HandleTextureSetLabel(DeserializeBuffer* deserializeBuffer);
 
 bool DoTextureSetLabel(WGPUTexture self, char const * label);
+bool HandleTextureViewSetLabel(DeserializeBuffer* deserializeBuffer);
+
+bool DoTextureViewSetLabel(WGPUTextureView self, char const * label);
 
 bool PreHandleBufferDestroy(const BufferDestroyCmd& cmd);
 bool PreHandleBufferUnmap(const BufferUnmapCmd& cmd);

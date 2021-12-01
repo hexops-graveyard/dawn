@@ -21,6 +21,9 @@ WGPUProc wgpuGetProcAddress(WGPUDevice device, const char* procName) {
     return procs.getProcAddress(device, procName);
 }
 
+void wgpuBindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) {
+    procs.bindGroupSetLabel(bindGroup, label);
+}
 void wgpuBindGroupReference(WGPUBindGroup bindGroup) {
     procs.bindGroupReference(bindGroup);
 }
@@ -28,6 +31,9 @@ void wgpuBindGroupRelease(WGPUBindGroup bindGroup) {
     procs.bindGroupRelease(bindGroup);
 }
 
+void wgpuBindGroupLayoutSetLabel(WGPUBindGroupLayout bindGroupLayout, char const * label) {
+    procs.bindGroupLayoutSetLabel(bindGroupLayout, label);
+}
 void wgpuBindGroupLayoutReference(WGPUBindGroupLayout bindGroupLayout) {
     procs.bindGroupLayoutReference(bindGroupLayout);
 }
@@ -60,6 +66,9 @@ void wgpuBufferRelease(WGPUBuffer buffer) {
     procs.bufferRelease(buffer);
 }
 
+void wgpuCommandBufferSetLabel(WGPUCommandBuffer commandBuffer, char const * label) {
+    procs.commandBufferSetLabel(commandBuffer, label);
+}
 void wgpuCommandBufferReference(WGPUCommandBuffer commandBuffer) {
     procs.commandBufferReference(commandBuffer);
 }
@@ -106,6 +115,9 @@ void wgpuCommandEncoderPushDebugGroup(WGPUCommandEncoder commandEncoder, char co
 void wgpuCommandEncoderResolveQuerySet(WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t firstQuery, uint32_t queryCount, WGPUBuffer destination, uint64_t destinationOffset) {
     procs.commandEncoderResolveQuerySet(commandEncoder, querySet, firstQuery, queryCount, destination, destinationOffset);
 }
+void wgpuCommandEncoderSetLabel(WGPUCommandEncoder commandEncoder, char const * label) {
+    procs.commandEncoderSetLabel(commandEncoder, label);
+}
 void wgpuCommandEncoderWriteBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
     procs.commandEncoderWriteBuffer(commandEncoder, buffer, bufferOffset, data, size);
 }
@@ -139,6 +151,9 @@ void wgpuComputePassEncoderPushDebugGroup(WGPUComputePassEncoder computePassEnco
 }
 void wgpuComputePassEncoderSetBindGroup(WGPUComputePassEncoder computePassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) {
     procs.computePassEncoderSetBindGroup(computePassEncoder, groupIndex, group, dynamicOffsetCount, dynamicOffsets);
+}
+void wgpuComputePassEncoderSetLabel(WGPUComputePassEncoder computePassEncoder, char const * label) {
+    procs.computePassEncoderSetLabel(computePassEncoder, label);
 }
 void wgpuComputePassEncoderSetPipeline(WGPUComputePassEncoder computePassEncoder, WGPUComputePipeline pipeline) {
     procs.computePassEncoderSetPipeline(computePassEncoder, pipeline);
@@ -257,6 +272,9 @@ void wgpuDeviceRelease(WGPUDevice device) {
 void wgpuExternalTextureDestroy(WGPUExternalTexture externalTexture) {
     procs.externalTextureDestroy(externalTexture);
 }
+void wgpuExternalTextureSetLabel(WGPUExternalTexture externalTexture, char const * label) {
+    procs.externalTextureSetLabel(externalTexture, label);
+}
 void wgpuExternalTextureReference(WGPUExternalTexture externalTexture) {
     procs.externalTextureReference(externalTexture);
 }
@@ -274,6 +292,9 @@ void wgpuInstanceRelease(WGPUInstance instance) {
     procs.instanceRelease(instance);
 }
 
+void wgpuPipelineLayoutSetLabel(WGPUPipelineLayout pipelineLayout, char const * label) {
+    procs.pipelineLayoutSetLabel(pipelineLayout, label);
+}
 void wgpuPipelineLayoutReference(WGPUPipelineLayout pipelineLayout) {
     procs.pipelineLayoutReference(pipelineLayout);
 }
@@ -283,6 +304,9 @@ void wgpuPipelineLayoutRelease(WGPUPipelineLayout pipelineLayout) {
 
 void wgpuQuerySetDestroy(WGPUQuerySet querySet) {
     procs.querySetDestroy(querySet);
+}
+void wgpuQuerySetSetLabel(WGPUQuerySet querySet, char const * label) {
+    procs.querySetSetLabel(querySet, label);
 }
 void wgpuQuerySetReference(WGPUQuerySet querySet) {
     procs.querySetReference(querySet);
@@ -350,6 +374,9 @@ void wgpuRenderBundleEncoderSetBindGroup(WGPURenderBundleEncoder renderBundleEnc
 void wgpuRenderBundleEncoderSetIndexBuffer(WGPURenderBundleEncoder renderBundleEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) {
     procs.renderBundleEncoderSetIndexBuffer(renderBundleEncoder, buffer, format, offset, size);
 }
+void wgpuRenderBundleEncoderSetLabel(WGPURenderBundleEncoder renderBundleEncoder, char const * label) {
+    procs.renderBundleEncoderSetLabel(renderBundleEncoder, label);
+}
 void wgpuRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder renderBundleEncoder, WGPURenderPipeline pipeline) {
     procs.renderBundleEncoderSetPipeline(renderBundleEncoder, pipeline);
 }
@@ -405,6 +432,9 @@ void wgpuRenderPassEncoderSetBlendConstant(WGPURenderPassEncoder renderPassEncod
 void wgpuRenderPassEncoderSetIndexBuffer(WGPURenderPassEncoder renderPassEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) {
     procs.renderPassEncoderSetIndexBuffer(renderPassEncoder, buffer, format, offset, size);
 }
+void wgpuRenderPassEncoderSetLabel(WGPURenderPassEncoder renderPassEncoder, char const * label) {
+    procs.renderPassEncoderSetLabel(renderPassEncoder, label);
+}
 void wgpuRenderPassEncoderSetPipeline(WGPURenderPassEncoder renderPassEncoder, WGPURenderPipeline pipeline) {
     procs.renderPassEncoderSetPipeline(renderPassEncoder, pipeline);
 }
@@ -443,6 +473,9 @@ void wgpuRenderPipelineRelease(WGPURenderPipeline renderPipeline) {
     procs.renderPipelineRelease(renderPipeline);
 }
 
+void wgpuSamplerSetLabel(WGPUSampler sampler, char const * label) {
+    procs.samplerSetLabel(sampler, label);
+}
 void wgpuSamplerReference(WGPUSampler sampler) {
     procs.samplerReference(sampler);
 }
@@ -502,6 +535,9 @@ void wgpuTextureRelease(WGPUTexture texture) {
     procs.textureRelease(texture);
 }
 
+void wgpuTextureViewSetLabel(WGPUTextureView textureView, char const * label) {
+    procs.textureViewSetLabel(textureView, label);
+}
 void wgpuTextureViewReference(WGPUTextureView textureView) {
     procs.textureViewReference(textureView);
 }

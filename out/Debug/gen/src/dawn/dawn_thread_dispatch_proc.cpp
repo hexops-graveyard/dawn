@@ -21,11 +21,17 @@ static WGPUInstance ThreadDispatchCreateInstance(WGPUInstanceDescriptor const * 
     return perThreadProcs.createInstance(descriptor);
 }
 
+static void ThreadDispatchBindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) {
+    perThreadProcs.bindGroupSetLabel(bindGroup, label);
+}
 static void ThreadDispatchBindGroupReference(WGPUBindGroup bindGroup) {
     perThreadProcs.bindGroupReference(bindGroup);
 }
 static void ThreadDispatchBindGroupRelease(WGPUBindGroup bindGroup) {
     perThreadProcs.bindGroupRelease(bindGroup);
+}
+static void ThreadDispatchBindGroupLayoutSetLabel(WGPUBindGroupLayout bindGroupLayout, char const * label) {
+    perThreadProcs.bindGroupLayoutSetLabel(bindGroupLayout, label);
 }
 static void ThreadDispatchBindGroupLayoutReference(WGPUBindGroupLayout bindGroupLayout) {
     perThreadProcs.bindGroupLayoutReference(bindGroupLayout);
@@ -56,6 +62,9 @@ static void ThreadDispatchBufferReference(WGPUBuffer buffer) {
 }
 static void ThreadDispatchBufferRelease(WGPUBuffer buffer) {
     perThreadProcs.bufferRelease(buffer);
+}
+static void ThreadDispatchCommandBufferSetLabel(WGPUCommandBuffer commandBuffer, char const * label) {
+    perThreadProcs.commandBufferSetLabel(commandBuffer, label);
 }
 static void ThreadDispatchCommandBufferReference(WGPUCommandBuffer commandBuffer) {
     perThreadProcs.commandBufferReference(commandBuffer);
@@ -102,6 +111,9 @@ static void ThreadDispatchCommandEncoderPushDebugGroup(WGPUCommandEncoder comman
 static void ThreadDispatchCommandEncoderResolveQuerySet(WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t firstQuery, uint32_t queryCount, WGPUBuffer destination, uint64_t destinationOffset) {
     perThreadProcs.commandEncoderResolveQuerySet(commandEncoder, querySet, firstQuery, queryCount, destination, destinationOffset);
 }
+static void ThreadDispatchCommandEncoderSetLabel(WGPUCommandEncoder commandEncoder, char const * label) {
+    perThreadProcs.commandEncoderSetLabel(commandEncoder, label);
+}
 static void ThreadDispatchCommandEncoderWriteBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) {
     perThreadProcs.commandEncoderWriteBuffer(commandEncoder, buffer, bufferOffset, data, size);
 }
@@ -134,6 +146,9 @@ static void ThreadDispatchComputePassEncoderPushDebugGroup(WGPUComputePassEncode
 }
 static void ThreadDispatchComputePassEncoderSetBindGroup(WGPUComputePassEncoder computePassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) {
     perThreadProcs.computePassEncoderSetBindGroup(computePassEncoder, groupIndex, group, dynamicOffsetCount, dynamicOffsets);
+}
+static void ThreadDispatchComputePassEncoderSetLabel(WGPUComputePassEncoder computePassEncoder, char const * label) {
+    perThreadProcs.computePassEncoderSetLabel(computePassEncoder, label);
 }
 static void ThreadDispatchComputePassEncoderSetPipeline(WGPUComputePassEncoder computePassEncoder, WGPUComputePipeline pipeline) {
     perThreadProcs.computePassEncoderSetPipeline(computePassEncoder, pipeline);
@@ -249,6 +264,9 @@ static void ThreadDispatchDeviceRelease(WGPUDevice device) {
 static void ThreadDispatchExternalTextureDestroy(WGPUExternalTexture externalTexture) {
     perThreadProcs.externalTextureDestroy(externalTexture);
 }
+static void ThreadDispatchExternalTextureSetLabel(WGPUExternalTexture externalTexture, char const * label) {
+    perThreadProcs.externalTextureSetLabel(externalTexture, label);
+}
 static void ThreadDispatchExternalTextureReference(WGPUExternalTexture externalTexture) {
     perThreadProcs.externalTextureReference(externalTexture);
 }
@@ -264,6 +282,9 @@ static void ThreadDispatchInstanceReference(WGPUInstance instance) {
 static void ThreadDispatchInstanceRelease(WGPUInstance instance) {
     perThreadProcs.instanceRelease(instance);
 }
+static void ThreadDispatchPipelineLayoutSetLabel(WGPUPipelineLayout pipelineLayout, char const * label) {
+    perThreadProcs.pipelineLayoutSetLabel(pipelineLayout, label);
+}
 static void ThreadDispatchPipelineLayoutReference(WGPUPipelineLayout pipelineLayout) {
     perThreadProcs.pipelineLayoutReference(pipelineLayout);
 }
@@ -272,6 +293,9 @@ static void ThreadDispatchPipelineLayoutRelease(WGPUPipelineLayout pipelineLayou
 }
 static void ThreadDispatchQuerySetDestroy(WGPUQuerySet querySet) {
     perThreadProcs.querySetDestroy(querySet);
+}
+static void ThreadDispatchQuerySetSetLabel(WGPUQuerySet querySet, char const * label) {
+    perThreadProcs.querySetSetLabel(querySet, label);
 }
 static void ThreadDispatchQuerySetReference(WGPUQuerySet querySet) {
     perThreadProcs.querySetReference(querySet);
@@ -336,6 +360,9 @@ static void ThreadDispatchRenderBundleEncoderSetBindGroup(WGPURenderBundleEncode
 static void ThreadDispatchRenderBundleEncoderSetIndexBuffer(WGPURenderBundleEncoder renderBundleEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) {
     perThreadProcs.renderBundleEncoderSetIndexBuffer(renderBundleEncoder, buffer, format, offset, size);
 }
+static void ThreadDispatchRenderBundleEncoderSetLabel(WGPURenderBundleEncoder renderBundleEncoder, char const * label) {
+    perThreadProcs.renderBundleEncoderSetLabel(renderBundleEncoder, label);
+}
 static void ThreadDispatchRenderBundleEncoderSetPipeline(WGPURenderBundleEncoder renderBundleEncoder, WGPURenderPipeline pipeline) {
     perThreadProcs.renderBundleEncoderSetPipeline(renderBundleEncoder, pipeline);
 }
@@ -390,6 +417,9 @@ static void ThreadDispatchRenderPassEncoderSetBlendConstant(WGPURenderPassEncode
 static void ThreadDispatchRenderPassEncoderSetIndexBuffer(WGPURenderPassEncoder renderPassEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) {
     perThreadProcs.renderPassEncoderSetIndexBuffer(renderPassEncoder, buffer, format, offset, size);
 }
+static void ThreadDispatchRenderPassEncoderSetLabel(WGPURenderPassEncoder renderPassEncoder, char const * label) {
+    perThreadProcs.renderPassEncoderSetLabel(renderPassEncoder, label);
+}
 static void ThreadDispatchRenderPassEncoderSetPipeline(WGPURenderPassEncoder renderPassEncoder, WGPURenderPipeline pipeline) {
     perThreadProcs.renderPassEncoderSetPipeline(renderPassEncoder, pipeline);
 }
@@ -425,6 +455,9 @@ static void ThreadDispatchRenderPipelineReference(WGPURenderPipeline renderPipel
 }
 static void ThreadDispatchRenderPipelineRelease(WGPURenderPipeline renderPipeline) {
     perThreadProcs.renderPipelineRelease(renderPipeline);
+}
+static void ThreadDispatchSamplerSetLabel(WGPUSampler sampler, char const * label) {
+    perThreadProcs.samplerSetLabel(sampler, label);
 }
 static void ThreadDispatchSamplerReference(WGPUSampler sampler) {
     perThreadProcs.samplerReference(sampler);
@@ -480,6 +513,9 @@ static void ThreadDispatchTextureReference(WGPUTexture texture) {
 static void ThreadDispatchTextureRelease(WGPUTexture texture) {
     perThreadProcs.textureRelease(texture);
 }
+static void ThreadDispatchTextureViewSetLabel(WGPUTextureView textureView, char const * label) {
+    perThreadProcs.textureViewSetLabel(textureView, label);
+}
 static void ThreadDispatchTextureViewReference(WGPUTextureView textureView) {
     perThreadProcs.textureViewReference(textureView);
 }
@@ -491,8 +527,10 @@ extern "C" {
     DawnProcTable dawnThreadDispatchProcTable = {
         ThreadDispatchGetProcAddress,
         ThreadDispatchCreateInstance,
+ThreadDispatchBindGroupSetLabel,
 ThreadDispatchBindGroupReference,
 ThreadDispatchBindGroupRelease,
+ThreadDispatchBindGroupLayoutSetLabel,
 ThreadDispatchBindGroupLayoutReference,
 ThreadDispatchBindGroupLayoutRelease,
 ThreadDispatchBufferDestroy,
@@ -503,6 +541,7 @@ ThreadDispatchBufferSetLabel,
 ThreadDispatchBufferUnmap,
 ThreadDispatchBufferReference,
 ThreadDispatchBufferRelease,
+ThreadDispatchCommandBufferSetLabel,
 ThreadDispatchCommandBufferReference,
 ThreadDispatchCommandBufferRelease,
 ThreadDispatchCommandEncoderBeginComputePass,
@@ -518,6 +557,7 @@ ThreadDispatchCommandEncoderInsertDebugMarker,
 ThreadDispatchCommandEncoderPopDebugGroup,
 ThreadDispatchCommandEncoderPushDebugGroup,
 ThreadDispatchCommandEncoderResolveQuerySet,
+ThreadDispatchCommandEncoderSetLabel,
 ThreadDispatchCommandEncoderWriteBuffer,
 ThreadDispatchCommandEncoderWriteTimestamp,
 ThreadDispatchCommandEncoderReference,
@@ -529,6 +569,7 @@ ThreadDispatchComputePassEncoderInsertDebugMarker,
 ThreadDispatchComputePassEncoderPopDebugGroup,
 ThreadDispatchComputePassEncoderPushDebugGroup,
 ThreadDispatchComputePassEncoderSetBindGroup,
+ThreadDispatchComputePassEncoderSetLabel,
 ThreadDispatchComputePassEncoderSetPipeline,
 ThreadDispatchComputePassEncoderWriteTimestamp,
 ThreadDispatchComputePassEncoderReference,
@@ -567,14 +608,17 @@ ThreadDispatchDeviceTick,
 ThreadDispatchDeviceReference,
 ThreadDispatchDeviceRelease,
 ThreadDispatchExternalTextureDestroy,
+ThreadDispatchExternalTextureSetLabel,
 ThreadDispatchExternalTextureReference,
 ThreadDispatchExternalTextureRelease,
 ThreadDispatchInstanceCreateSurface,
 ThreadDispatchInstanceReference,
 ThreadDispatchInstanceRelease,
+ThreadDispatchPipelineLayoutSetLabel,
 ThreadDispatchPipelineLayoutReference,
 ThreadDispatchPipelineLayoutRelease,
 ThreadDispatchQuerySetDestroy,
+ThreadDispatchQuerySetSetLabel,
 ThreadDispatchQuerySetReference,
 ThreadDispatchQuerySetRelease,
 ThreadDispatchQueueCopyTextureForBrowser,
@@ -596,6 +640,7 @@ ThreadDispatchRenderBundleEncoderPopDebugGroup,
 ThreadDispatchRenderBundleEncoderPushDebugGroup,
 ThreadDispatchRenderBundleEncoderSetBindGroup,
 ThreadDispatchRenderBundleEncoderSetIndexBuffer,
+ThreadDispatchRenderBundleEncoderSetLabel,
 ThreadDispatchRenderBundleEncoderSetPipeline,
 ThreadDispatchRenderBundleEncoderSetVertexBuffer,
 ThreadDispatchRenderBundleEncoderReference,
@@ -614,6 +659,7 @@ ThreadDispatchRenderPassEncoderPushDebugGroup,
 ThreadDispatchRenderPassEncoderSetBindGroup,
 ThreadDispatchRenderPassEncoderSetBlendConstant,
 ThreadDispatchRenderPassEncoderSetIndexBuffer,
+ThreadDispatchRenderPassEncoderSetLabel,
 ThreadDispatchRenderPassEncoderSetPipeline,
 ThreadDispatchRenderPassEncoderSetScissorRect,
 ThreadDispatchRenderPassEncoderSetStencilReference,
@@ -626,6 +672,7 @@ ThreadDispatchRenderPipelineGetBindGroupLayout,
 ThreadDispatchRenderPipelineSetLabel,
 ThreadDispatchRenderPipelineReference,
 ThreadDispatchRenderPipelineRelease,
+ThreadDispatchSamplerSetLabel,
 ThreadDispatchSamplerReference,
 ThreadDispatchSamplerRelease,
 ThreadDispatchShaderModuleGetCompilationInfo,
@@ -644,6 +691,7 @@ ThreadDispatchTextureDestroy,
 ThreadDispatchTextureSetLabel,
 ThreadDispatchTextureReference,
 ThreadDispatchTextureRelease,
+ThreadDispatchTextureViewSetLabel,
 ThreadDispatchTextureViewReference,
 ThreadDispatchTextureViewRelease,
     };

@@ -21,14 +21,6 @@
 
 
 
-namespace {
-
-    struct WGPUChainedStructTransfer {
-        WGPUSType sType;
-        bool hasNext;
-    };
-
-}  // anonymous namespace
 
 
 
@@ -79,6 +71,11 @@ namespace dawn_wire {
             return WireResult::Success;
         }
 
+        struct WGPUChainedStructTransfer {
+            WGPUSType sType;
+            bool hasNext;
+        };
+
         size_t GetChainedStructExtraRequiredSize(const WGPUChainedStruct* chainedStruct);
         DAWN_NO_DISCARD WireResult SerializeChainedStruct(const WGPUChainedStruct* chainedStruct,
                                                           SerializeBuffer* buffer,
@@ -97,7 +94,7 @@ namespace dawn_wire {
                                             DeserializeAllocator* allocator,
                                             const ObjectIdResolver& resolver);
 
-        
+                
 struct WGPUAdapterPropertiesTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -152,8 +149,10 @@ char);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUAdapterPropertiesGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUAdapterPropertiesSerialize(const WGPUAdapterProperties& record, WGPUAdapterPropertiesTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUAdapterPropertiesSerialize(
+    const WGPUAdapterProperties& record,
+    WGPUAdapterPropertiesTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -199,8 +198,11 @@ char* memberBuffer;
 }
 DAWN_UNUSED_FUNC(WGPUAdapterPropertiesSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUAdapterPropertiesDeserialize(WGPUAdapterProperties* record, const volatile WGPUAdapterPropertiesTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUAdapterPropertiesDeserialize(
+    WGPUAdapterProperties* record,
+    const volatile WGPUAdapterPropertiesTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -258,7 +260,7 @@ copiedMembers[i] = memberBuffer[i];
 }
 DAWN_UNUSED_FUNC(WGPUAdapterPropertiesDeserialize);
 
-        
+                
 struct WGPUBindGroupEntryTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -308,8 +310,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBindGroupEntryGetExtraRequiredSize(const WGPUBind
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBindGroupEntryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupEntrySerialize(const WGPUBindGroupEntry& record, WGPUBindGroupEntryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupEntrySerialize(
+    const WGPUBindGroupEntry& record,
+    WGPUBindGroupEntryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -336,8 +340,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBindGroupEntrySerialize(const WGPUBindGroupEn
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupEntrySerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupEntryDeserialize(WGPUBindGroupEntry* record, const volatile WGPUBindGroupEntryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupEntryDeserialize(
+    WGPUBindGroupEntry* record,
+    const volatile WGPUBindGroupEntryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -364,7 +371,7 @@ record->size = transfer->size;
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupEntryDeserialize);
 
-        
+                
 struct WGPUBlendComponentTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -401,8 +408,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBlendComponentGetExtraRequiredSize(const WGPUBlen
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBlendComponentGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBlendComponentSerialize(const WGPUBlendComponent& record, WGPUBlendComponentTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUBlendComponentSerialize(
+    const WGPUBlendComponent& record,
+    WGPUBlendComponentTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -417,8 +426,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBlendComponentSerialize(const WGPUBlendCompon
 }
 DAWN_UNUSED_FUNC(WGPUBlendComponentSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBlendComponentDeserialize(WGPUBlendComponent* record, const volatile WGPUBlendComponentTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUBlendComponentDeserialize(
+    WGPUBlendComponent* record,
+    const volatile WGPUBlendComponentTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -438,7 +450,7 @@ record->dstFactor = transfer->dstFactor;
 }
 DAWN_UNUSED_FUNC(WGPUBlendComponentDeserialize);
 
-        
+                
 struct WGPUBufferBindingLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -479,8 +491,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBufferBindingLayoutGetExtraRequiredSize(const WGP
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBufferBindingLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBufferBindingLayoutSerialize(const WGPUBufferBindingLayout& record, WGPUBufferBindingLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBufferBindingLayoutSerialize(
+    const WGPUBufferBindingLayout& record,
+    WGPUBufferBindingLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -501,8 +515,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBufferBindingLayoutSerialize(const WGPUBuffer
 }
 DAWN_UNUSED_FUNC(WGPUBufferBindingLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBufferBindingLayoutDeserialize(WGPUBufferBindingLayout* record, const volatile WGPUBufferBindingLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBufferBindingLayoutDeserialize(
+    WGPUBufferBindingLayout* record,
+    const volatile WGPUBufferBindingLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -526,7 +543,7 @@ record->minBindingSize = transfer->minBindingSize;
 }
 DAWN_UNUSED_FUNC(WGPUBufferBindingLayoutDeserialize);
 
-        
+                
 struct WGPUBufferDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -574,8 +591,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBufferDescriptorGetExtraRequiredSize(const WGPUBu
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBufferDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBufferDescriptorSerialize(const WGPUBufferDescriptor& record, WGPUBufferDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBufferDescriptorSerialize(
+    const WGPUBufferDescriptor& record,
+    WGPUBufferDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -607,8 +626,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBufferDescriptorSerialize(const WGPUBufferDes
 }
 DAWN_UNUSED_FUNC(WGPUBufferDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBufferDescriptorDeserialize(WGPUBufferDescriptor* record, const volatile WGPUBufferDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBufferDescriptorDeserialize(
+    WGPUBufferDescriptor* record,
+    const volatile WGPUBufferDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -652,7 +674,7 @@ record->mappedAtCreation = transfer->mappedAtCreation;
 }
 DAWN_UNUSED_FUNC(WGPUBufferDescriptorDeserialize);
 
-        
+                
 struct WGPUColorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -693,8 +715,10 @@ DAWN_DECLARE_UNUSED size_t WGPUColorGetExtraRequiredSize(const WGPUColor& record
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUColorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUColorSerialize(const WGPUColor& record, WGPUColorTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUColorSerialize(
+    const WGPUColor& record,
+    WGPUColorTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -710,8 +734,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUColorSerialize(const WGPUColor& record, WGPUC
 }
 DAWN_UNUSED_FUNC(WGPUColorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUColorDeserialize(WGPUColor* record, const volatile WGPUColorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUColorDeserialize(
+    WGPUColor* record,
+    const volatile WGPUColorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -733,7 +760,7 @@ record->a = transfer->a;
 }
 DAWN_UNUSED_FUNC(WGPUColorDeserialize);
 
-        
+                
 struct WGPUCommandBufferDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -770,8 +797,10 @@ DAWN_DECLARE_UNUSED size_t WGPUCommandBufferDescriptorGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUCommandBufferDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorSerialize(const WGPUCommandBufferDescriptor& record, WGPUCommandBufferDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorSerialize(
+    const WGPUCommandBufferDescriptor& record,
+    WGPUCommandBufferDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -800,8 +829,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorSerialize(const WGPUCo
 }
 DAWN_UNUSED_FUNC(WGPUCommandBufferDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorDeserialize(WGPUCommandBufferDescriptor* record, const volatile WGPUCommandBufferDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorDeserialize(
+    WGPUCommandBufferDescriptor* record,
+    const volatile WGPUCommandBufferDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -839,7 +871,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUCommandBufferDescriptorDeserialize(WGPUComman
 }
 DAWN_UNUSED_FUNC(WGPUCommandBufferDescriptorDeserialize);
 
-        
+                
 struct WGPUCommandEncoderDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -876,8 +908,10 @@ DAWN_DECLARE_UNUSED size_t WGPUCommandEncoderDescriptorGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUCommandEncoderDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorSerialize(const WGPUCommandEncoderDescriptor& record, WGPUCommandEncoderDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorSerialize(
+    const WGPUCommandEncoderDescriptor& record,
+    WGPUCommandEncoderDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -906,8 +940,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorSerialize(const WGPUC
 }
 DAWN_UNUSED_FUNC(WGPUCommandEncoderDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorDeserialize(WGPUCommandEncoderDescriptor* record, const volatile WGPUCommandEncoderDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorDeserialize(
+    WGPUCommandEncoderDescriptor* record,
+    const volatile WGPUCommandEncoderDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -945,10 +982,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCommandEncoderDescriptorDeserialize(WGPUComma
 }
 DAWN_UNUSED_FUNC(WGPUCommandEncoderDescriptorDeserialize);
 
-        
+                
 struct WGPUCompilationMessageTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
+    bool hasNextInChain;
 
     
 WGPUCompilationMessageType type;
@@ -973,6 +1011,9 @@ DAWN_DECLARE_UNUSED size_t WGPUCompilationMessageGetExtraRequiredSize(const WGPU
 
     size_t result = 0;
 
+    if (record.nextInChain != nullptr) {
+        result += GetChainedStructExtraRequiredSize(record.nextInChain);
+    }
 
 
     bool has_message = record.message != nullptr;
@@ -998,8 +1039,10 @@ DAWN_DECLARE_UNUSED size_t WGPUCompilationMessageGetExtraRequiredSize(const WGPU
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUCompilationMessageGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageSerialize(const WGPUCompilationMessage& record, WGPUCompilationMessageTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageSerialize(
+    const WGPUCompilationMessage& record,
+    WGPUCompilationMessageTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1009,6 +1052,12 @@ DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageSerialize(const WGPUCompila
     transfer->offset = record.offset;
     transfer->length = record.length;
 
+    if (record.nextInChain != nullptr) {
+        transfer->hasNextInChain = true;
+        WIRE_TRY(SerializeChainedStruct(record.nextInChain, buffer, provider));
+    } else {
+        transfer->hasNextInChain = false;
+    }
 
 
 
@@ -1027,8 +1076,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageSerialize(const WGPUCompila
 }
 DAWN_UNUSED_FUNC(WGPUCompilationMessageSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageDeserialize(WGPUCompilationMessage* record, const volatile WGPUCompilationMessageTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUCompilationMessageDeserialize(
+    WGPUCompilationMessage* record,
+    const volatile WGPUCompilationMessageTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1044,6 +1096,10 @@ record->offset = transfer->offset;
     static_assert(sizeof(record->length) >= sizeof(transfer->length), "Deserialize assignment may not narrow.");
 record->length = transfer->length;
 
+    record->nextInChain = nullptr;
+    if (transfer->hasNextInChain) {
+        WIRE_TRY(DeserializeChainedStruct(&record->nextInChain, deserializeBuffer, allocator, resolver));
+    }
 
 
 
@@ -1072,7 +1128,7 @@ record->length = transfer->length;
 }
 DAWN_UNUSED_FUNC(WGPUCompilationMessageDeserialize);
 
-        
+                
 struct WGPUComputePassDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1109,8 +1165,10 @@ DAWN_DECLARE_UNUSED size_t WGPUComputePassDescriptorGetExtraRequiredSize(const W
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUComputePassDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorSerialize(const WGPUComputePassDescriptor& record, WGPUComputePassDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorSerialize(
+    const WGPUComputePassDescriptor& record,
+    WGPUComputePassDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1139,8 +1197,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorSerialize(const WGPUComp
 }
 DAWN_UNUSED_FUNC(WGPUComputePassDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorDeserialize(WGPUComputePassDescriptor* record, const volatile WGPUComputePassDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorDeserialize(
+    WGPUComputePassDescriptor* record,
+    const volatile WGPUComputePassDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1178,7 +1239,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUComputePassDescriptorDeserialize(WGPUComputeP
 }
 DAWN_UNUSED_FUNC(WGPUComputePassDescriptorDeserialize);
 
-        
+                
 struct WGPUConstantEntryTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1216,8 +1277,10 @@ DAWN_DECLARE_UNUSED size_t WGPUConstantEntryGetExtraRequiredSize(const WGPUConst
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUConstantEntryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUConstantEntrySerialize(const WGPUConstantEntry& record, WGPUConstantEntryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUConstantEntrySerialize(
+    const WGPUConstantEntry& record,
+    WGPUConstantEntryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1244,8 +1307,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUConstantEntrySerialize(const WGPUConstantEntr
 }
 DAWN_UNUSED_FUNC(WGPUConstantEntrySerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUConstantEntryDeserialize(WGPUConstantEntry* record, const volatile WGPUConstantEntryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUConstantEntryDeserialize(
+    WGPUConstantEntry* record,
+    const volatile WGPUConstantEntryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1282,7 +1348,7 @@ record->value = transfer->value;
 }
 DAWN_UNUSED_FUNC(WGPUConstantEntryDeserialize);
 
-        
+                
 struct WGPUCopyTextureForBrowserOptionsTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1319,8 +1385,10 @@ DAWN_DECLARE_UNUSED size_t WGPUCopyTextureForBrowserOptionsGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUCopyTextureForBrowserOptionsGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCopyTextureForBrowserOptionsSerialize(const WGPUCopyTextureForBrowserOptions& record, WGPUCopyTextureForBrowserOptionsTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUCopyTextureForBrowserOptionsSerialize(
+    const WGPUCopyTextureForBrowserOptions& record,
+    WGPUCopyTextureForBrowserOptionsTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1340,8 +1408,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCopyTextureForBrowserOptionsSerialize(const W
 }
 DAWN_UNUSED_FUNC(WGPUCopyTextureForBrowserOptionsSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCopyTextureForBrowserOptionsDeserialize(WGPUCopyTextureForBrowserOptions* record, const volatile WGPUCopyTextureForBrowserOptionsTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUCopyTextureForBrowserOptionsDeserialize(
+    WGPUCopyTextureForBrowserOptions* record,
+    const volatile WGPUCopyTextureForBrowserOptionsTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1363,7 +1434,7 @@ record->alphaOp = transfer->alphaOp;
 }
 DAWN_UNUSED_FUNC(WGPUCopyTextureForBrowserOptionsDeserialize);
 
-        
+                
 struct WGPUDawnTextureInternalUsageDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1393,8 +1464,10 @@ DAWN_DECLARE_UNUSED size_t WGPUDawnTextureInternalUsageDescriptorGetExtraRequire
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUDawnTextureInternalUsageDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDawnTextureInternalUsageDescriptorSerialize(const WGPUDawnTextureInternalUsageDescriptor& record, WGPUDawnTextureInternalUsageDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUDawnTextureInternalUsageDescriptorSerialize(
+    const WGPUDawnTextureInternalUsageDescriptor& record,
+    WGPUDawnTextureInternalUsageDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1409,8 +1482,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUDawnTextureInternalUsageDescriptorSerialize(c
 }
 DAWN_UNUSED_FUNC(WGPUDawnTextureInternalUsageDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDawnTextureInternalUsageDescriptorDeserialize(WGPUDawnTextureInternalUsageDescriptor* record, const volatile WGPUDawnTextureInternalUsageDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUDawnTextureInternalUsageDescriptorDeserialize(
+    WGPUDawnTextureInternalUsageDescriptor* record,
+    const volatile WGPUDawnTextureInternalUsageDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1428,7 +1504,7 @@ record->internalUsage = transfer->internalUsage;
 }
 DAWN_UNUSED_FUNC(WGPUDawnTextureInternalUsageDescriptorDeserialize);
 
-        
+                
 struct WGPUExtent3DTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1465,8 +1541,10 @@ DAWN_DECLARE_UNUSED size_t WGPUExtent3DGetExtraRequiredSize(const WGPUExtent3D& 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUExtent3DGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExtent3DSerialize(const WGPUExtent3D& record, WGPUExtent3DTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUExtent3DSerialize(
+    const WGPUExtent3D& record,
+    WGPUExtent3DTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -1481,8 +1559,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUExtent3DSerialize(const WGPUExtent3D& record,
 }
 DAWN_UNUSED_FUNC(WGPUExtent3DSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExtent3DDeserialize(WGPUExtent3D* record, const volatile WGPUExtent3DTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUExtent3DDeserialize(
+    WGPUExtent3D* record,
+    const volatile WGPUExtent3DTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -1502,7 +1583,7 @@ record->depthOrArrayLayers = transfer->depthOrArrayLayers;
 }
 DAWN_UNUSED_FUNC(WGPUExtent3DDeserialize);
 
-        
+                
 struct WGPUExternalTextureBindingEntryTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1532,8 +1613,10 @@ DAWN_DECLARE_UNUSED size_t WGPUExternalTextureBindingEntryGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingEntryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntrySerialize(const WGPUExternalTextureBindingEntry& record, WGPUExternalTextureBindingEntryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntrySerialize(
+    const WGPUExternalTextureBindingEntry& record,
+    WGPUExternalTextureBindingEntryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1549,8 +1632,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntrySerialize(const WG
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingEntrySerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntryDeserialize(WGPUExternalTextureBindingEntry* record, const volatile WGPUExternalTextureBindingEntryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntryDeserialize(
+    WGPUExternalTextureBindingEntry* record,
+    const volatile WGPUExternalTextureBindingEntryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1567,7 +1653,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingEntryDeserialize(WGPUEx
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingEntryDeserialize);
 
-        
+                
 struct WGPUExternalTextureBindingLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1594,8 +1680,10 @@ DAWN_DECLARE_UNUSED size_t WGPUExternalTextureBindingLayoutGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutSerialize(const WGPUExternalTextureBindingLayout& record, WGPUExternalTextureBindingLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutSerialize(
+    const WGPUExternalTextureBindingLayout& record,
+    WGPUExternalTextureBindingLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1609,8 +1697,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutSerialize(const W
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutDeserialize(WGPUExternalTextureBindingLayout* record, const volatile WGPUExternalTextureBindingLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutDeserialize(
+    WGPUExternalTextureBindingLayout* record,
+    const volatile WGPUExternalTextureBindingLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1626,7 +1717,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureBindingLayoutDeserialize(WGPUE
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureBindingLayoutDeserialize);
 
-        
+                
 struct WGPUExternalTextureDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1670,8 +1761,10 @@ DAWN_DECLARE_UNUSED size_t WGPUExternalTextureDescriptorGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUExternalTextureDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureDescriptorSerialize(const WGPUExternalTextureDescriptor& record, WGPUExternalTextureDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureDescriptorSerialize(
+    const WGPUExternalTextureDescriptor& record,
+    WGPUExternalTextureDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1703,8 +1796,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureDescriptorSerialize(const WGPU
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureDescriptorDeserialize(WGPUExternalTextureDescriptor* record, const volatile WGPUExternalTextureDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUExternalTextureDescriptorDeserialize(
+    WGPUExternalTextureDescriptor* record,
+    const volatile WGPUExternalTextureDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1745,7 +1841,7 @@ record->format = transfer->format;
 }
 DAWN_UNUSED_FUNC(WGPUExternalTextureDescriptorDeserialize);
 
-        
+                
 struct WGPUInstanceDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1774,8 +1870,10 @@ DAWN_DECLARE_UNUSED size_t WGPUInstanceDescriptorGetExtraRequiredSize(const WGPU
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUInstanceDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorSerialize(const WGPUInstanceDescriptor& record, WGPUInstanceDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorSerialize(
+    const WGPUInstanceDescriptor& record,
+    WGPUInstanceDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -1793,8 +1891,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorSerialize(const WGPUInstanc
 }
 DAWN_UNUSED_FUNC(WGPUInstanceDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorDeserialize(WGPUInstanceDescriptor* record, const volatile WGPUInstanceDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorDeserialize(
+    WGPUInstanceDescriptor* record,
+    const volatile WGPUInstanceDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -1812,7 +1913,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUInstanceDescriptorDeserialize(WGPUInstanceDes
 }
 DAWN_UNUSED_FUNC(WGPUInstanceDescriptorDeserialize);
 
-        
+                
 struct WGPULimitsTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -1941,8 +2042,10 @@ DAWN_DECLARE_UNUSED size_t WGPULimitsGetExtraRequiredSize(const WGPULimits& reco
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPULimitsGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPULimitsSerialize(const WGPULimits& record, WGPULimitsTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPULimitsSerialize(
+    const WGPULimits& record,
+    WGPULimitsTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -1980,8 +2083,11 @@ DAWN_DECLARE_UNUSED WireResult WGPULimitsSerialize(const WGPULimits& record, WGP
 }
 DAWN_UNUSED_FUNC(WGPULimitsSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPULimitsDeserialize(WGPULimits* record, const volatile WGPULimitsTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPULimitsDeserialize(
+    WGPULimits* record,
+    const volatile WGPULimitsTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -2047,7 +2153,7 @@ record->maxComputeWorkgroupsPerDimension = transfer->maxComputeWorkgroupsPerDime
 }
 DAWN_UNUSED_FUNC(WGPULimitsDeserialize);
 
-        
+                
 struct WGPUMultisampleStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2088,8 +2194,10 @@ DAWN_DECLARE_UNUSED size_t WGPUMultisampleStateGetExtraRequiredSize(const WGPUMu
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUMultisampleStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUMultisampleStateSerialize(const WGPUMultisampleState& record, WGPUMultisampleStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUMultisampleStateSerialize(
+    const WGPUMultisampleState& record,
+    WGPUMultisampleStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2110,8 +2218,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUMultisampleStateSerialize(const WGPUMultisamp
 }
 DAWN_UNUSED_FUNC(WGPUMultisampleStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUMultisampleStateDeserialize(WGPUMultisampleState* record, const volatile WGPUMultisampleStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUMultisampleStateDeserialize(
+    WGPUMultisampleState* record,
+    const volatile WGPUMultisampleStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2135,7 +2246,7 @@ record->alphaToCoverageEnabled = transfer->alphaToCoverageEnabled;
 }
 DAWN_UNUSED_FUNC(WGPUMultisampleStateDeserialize);
 
-        
+                
 struct WGPUOrigin3DTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2172,8 +2283,10 @@ DAWN_DECLARE_UNUSED size_t WGPUOrigin3DGetExtraRequiredSize(const WGPUOrigin3D& 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUOrigin3DGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUOrigin3DSerialize(const WGPUOrigin3D& record, WGPUOrigin3DTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUOrigin3DSerialize(
+    const WGPUOrigin3D& record,
+    WGPUOrigin3DTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -2188,8 +2301,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUOrigin3DSerialize(const WGPUOrigin3D& record,
 }
 DAWN_UNUSED_FUNC(WGPUOrigin3DSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUOrigin3DDeserialize(WGPUOrigin3D* record, const volatile WGPUOrigin3DTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUOrigin3DDeserialize(
+    WGPUOrigin3D* record,
+    const volatile WGPUOrigin3DTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -2209,7 +2325,7 @@ record->z = transfer->z;
 }
 DAWN_UNUSED_FUNC(WGPUOrigin3DDeserialize);
 
-        
+                
 struct WGPUPipelineLayoutDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2254,8 +2370,10 @@ DAWN_DECLARE_UNUSED size_t WGPUPipelineLayoutDescriptorGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUPipelineLayoutDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPipelineLayoutDescriptorSerialize(const WGPUPipelineLayoutDescriptor& record, WGPUPipelineLayoutDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUPipelineLayoutDescriptorSerialize(
+    const WGPUPipelineLayoutDescriptor& record,
+    WGPUPipelineLayoutDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2297,8 +2415,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUPipelineLayoutDescriptorSerialize(const WGPUP
 }
 DAWN_UNUSED_FUNC(WGPUPipelineLayoutDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPipelineLayoutDescriptorDeserialize(WGPUPipelineLayoutDescriptor* record, const volatile WGPUPipelineLayoutDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUPipelineLayoutDescriptorDeserialize(
+    WGPUPipelineLayoutDescriptor* record,
+    const volatile WGPUPipelineLayoutDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2352,7 +2473,7 @@ record->bindGroupLayoutCount = transfer->bindGroupLayoutCount;
 }
 DAWN_UNUSED_FUNC(WGPUPipelineLayoutDescriptorDeserialize);
 
-        
+                
 struct WGPUPrimitiveDepthClampingStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2383,8 +2504,10 @@ DAWN_DECLARE_UNUSED size_t WGPUPrimitiveDepthClampingStateGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUPrimitiveDepthClampingStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveDepthClampingStateSerialize(const WGPUPrimitiveDepthClampingState& record, WGPUPrimitiveDepthClampingStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveDepthClampingStateSerialize(
+    const WGPUPrimitiveDepthClampingState& record,
+    WGPUPrimitiveDepthClampingStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2399,8 +2522,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveDepthClampingStateSerialize(const WG
 }
 DAWN_UNUSED_FUNC(WGPUPrimitiveDepthClampingStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveDepthClampingStateDeserialize(WGPUPrimitiveDepthClampingState* record, const volatile WGPUPrimitiveDepthClampingStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveDepthClampingStateDeserialize(
+    WGPUPrimitiveDepthClampingState* record,
+    const volatile WGPUPrimitiveDepthClampingStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2418,7 +2544,7 @@ record->clampDepth = transfer->clampDepth;
 }
 DAWN_UNUSED_FUNC(WGPUPrimitiveDepthClampingStateDeserialize);
 
-        
+                
 struct WGPUPrimitiveStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2463,8 +2589,10 @@ DAWN_DECLARE_UNUSED size_t WGPUPrimitiveStateGetExtraRequiredSize(const WGPUPrim
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUPrimitiveStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveStateSerialize(const WGPUPrimitiveState& record, WGPUPrimitiveStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveStateSerialize(
+    const WGPUPrimitiveState& record,
+    WGPUPrimitiveStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2486,8 +2614,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveStateSerialize(const WGPUPrimitiveSt
 }
 DAWN_UNUSED_FUNC(WGPUPrimitiveStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveStateDeserialize(WGPUPrimitiveState* record, const volatile WGPUPrimitiveStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUPrimitiveStateDeserialize(
+    WGPUPrimitiveState* record,
+    const volatile WGPUPrimitiveStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2513,7 +2644,7 @@ record->cullMode = transfer->cullMode;
 }
 DAWN_UNUSED_FUNC(WGPUPrimitiveStateDeserialize);
 
-        
+                
 struct WGPUQuerySetDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2567,8 +2698,10 @@ WGPUPipelineStatisticName);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUQuerySetDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUQuerySetDescriptorSerialize(const WGPUQuerySetDescriptor& record, WGPUQuerySetDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUQuerySetDescriptorSerialize(
+    const WGPUQuerySetDescriptor& record,
+    WGPUQuerySetDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2612,8 +2745,11 @@ WGPUPipelineStatisticName* memberBuffer;
 }
 DAWN_UNUSED_FUNC(WGPUQuerySetDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUQuerySetDescriptorDeserialize(WGPUQuerySetDescriptor* record, const volatile WGPUQuerySetDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUQuerySetDescriptorDeserialize(
+    WGPUQuerySetDescriptor* record,
+    const volatile WGPUQuerySetDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2673,7 +2809,7 @@ copiedMembers[i] = memberBuffer[i];
 }
 DAWN_UNUSED_FUNC(WGPUQuerySetDescriptorDeserialize);
 
-        
+                
 struct WGPURenderBundleDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2710,8 +2846,10 @@ DAWN_DECLARE_UNUSED size_t WGPURenderBundleDescriptorGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderBundleDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorSerialize(const WGPURenderBundleDescriptor& record, WGPURenderBundleDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorSerialize(
+    const WGPURenderBundleDescriptor& record,
+    WGPURenderBundleDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -2740,8 +2878,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorSerialize(const WGPURen
 }
 DAWN_UNUSED_FUNC(WGPURenderBundleDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorDeserialize(WGPURenderBundleDescriptor* record, const volatile WGPURenderBundleDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorDeserialize(
+    WGPURenderBundleDescriptor* record,
+    const volatile WGPURenderBundleDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2779,7 +2920,7 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderBundleDescriptorDeserialize(WGPURenderB
 }
 DAWN_UNUSED_FUNC(WGPURenderBundleDescriptorDeserialize);
 
-        
+                
 struct WGPURenderBundleEncoderDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2791,6 +2932,10 @@ uint32_t colorFormatsCount;
 WGPUTextureFormat depthStencilFormat;
     
 uint32_t sampleCount;
+    
+bool depthReadOnly;
+    
+bool stencilReadOnly;
 
     uint64_t labelStrlen;
 
@@ -2826,6 +2971,10 @@ WGPUTextureFormat);
     }
     {
     }
+    {
+    }
+    {
+    }
 
     return result;
 }
@@ -2833,14 +2982,18 @@ WGPUTextureFormat);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderBundleEncoderDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderBundleEncoderDescriptorSerialize(const WGPURenderBundleEncoderDescriptor& record, WGPURenderBundleEncoderDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderBundleEncoderDescriptorSerialize(
+    const WGPURenderBundleEncoderDescriptor& record,
+    WGPURenderBundleEncoderDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
     transfer->colorFormatsCount = record.colorFormatsCount;
     transfer->depthStencilFormat = record.depthStencilFormat;
     transfer->sampleCount = record.sampleCount;
+    transfer->depthReadOnly = record.depthReadOnly;
+    transfer->stencilReadOnly = record.stencilReadOnly;
 
     if (record.nextInChain != nullptr) {
         transfer->hasNextInChain = true;
@@ -2878,8 +3031,11 @@ WGPUTextureFormat* memberBuffer;
 }
 DAWN_UNUSED_FUNC(WGPURenderBundleEncoderDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderBundleEncoderDescriptorDeserialize(WGPURenderBundleEncoderDescriptor* record, const volatile WGPURenderBundleEncoderDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderBundleEncoderDescriptorDeserialize(
+    WGPURenderBundleEncoderDescriptor* record,
+    const volatile WGPURenderBundleEncoderDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -2890,6 +3046,10 @@ record->colorFormatsCount = transfer->colorFormatsCount;
 record->depthStencilFormat = transfer->depthStencilFormat;
     static_assert(sizeof(record->sampleCount) >= sizeof(transfer->sampleCount), "Deserialize assignment may not narrow.");
 record->sampleCount = transfer->sampleCount;
+    static_assert(sizeof(record->depthReadOnly) >= sizeof(transfer->depthReadOnly), "Deserialize assignment may not narrow.");
+record->depthReadOnly = transfer->depthReadOnly;
+    static_assert(sizeof(record->stencilReadOnly) >= sizeof(transfer->stencilReadOnly), "Deserialize assignment may not narrow.");
+record->stencilReadOnly = transfer->stencilReadOnly;
 
     record->nextInChain = nullptr;
     if (transfer->hasNextInChain) {
@@ -2939,7 +3099,7 @@ copiedMembers[i] = memberBuffer[i];
 }
 DAWN_UNUSED_FUNC(WGPURenderBundleEncoderDescriptorDeserialize);
 
-        
+                
 struct WGPURenderPassDepthStencilAttachmentTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -2999,8 +3159,10 @@ DAWN_DECLARE_UNUSED size_t WGPURenderPassDepthStencilAttachmentGetExtraRequiredS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderPassDepthStencilAttachmentGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassDepthStencilAttachmentSerialize(const WGPURenderPassDepthStencilAttachment& record, WGPURenderPassDepthStencilAttachmentTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassDepthStencilAttachmentSerialize(
+    const WGPURenderPassDepthStencilAttachment& record,
+    WGPURenderPassDepthStencilAttachmentTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3022,8 +3184,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderPassDepthStencilAttachmentSerialize(con
 }
 DAWN_UNUSED_FUNC(WGPURenderPassDepthStencilAttachmentSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassDepthStencilAttachmentDeserialize(WGPURenderPassDepthStencilAttachment* record, const volatile WGPURenderPassDepthStencilAttachmentTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassDepthStencilAttachmentDeserialize(
+    WGPURenderPassDepthStencilAttachment* record,
+    const volatile WGPURenderPassDepthStencilAttachmentTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3054,7 +3219,7 @@ record->stencilReadOnly = transfer->stencilReadOnly;
 }
 DAWN_UNUSED_FUNC(WGPURenderPassDepthStencilAttachmentDeserialize);
 
-        
+                
 struct WGPUSamplerBindingLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3087,8 +3252,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSamplerBindingLayoutGetExtraRequiredSize(const WG
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSamplerBindingLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSamplerBindingLayoutSerialize(const WGPUSamplerBindingLayout& record, WGPUSamplerBindingLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSamplerBindingLayoutSerialize(
+    const WGPUSamplerBindingLayout& record,
+    WGPUSamplerBindingLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3107,8 +3274,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSamplerBindingLayoutSerialize(const WGPUSampl
 }
 DAWN_UNUSED_FUNC(WGPUSamplerBindingLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSamplerBindingLayoutDeserialize(WGPUSamplerBindingLayout* record, const volatile WGPUSamplerBindingLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSamplerBindingLayoutDeserialize(
+    WGPUSamplerBindingLayout* record,
+    const volatile WGPUSamplerBindingLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3128,7 +3298,7 @@ record->type = transfer->type;
 }
 DAWN_UNUSED_FUNC(WGPUSamplerBindingLayoutDeserialize);
 
-        
+                
 struct WGPUSamplerDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3205,8 +3375,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSamplerDescriptorGetExtraRequiredSize(const WGPUS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSamplerDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSamplerDescriptorSerialize(const WGPUSamplerDescriptor& record, WGPUSamplerDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSamplerDescriptorSerialize(
+    const WGPUSamplerDescriptor& record,
+    WGPUSamplerDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3245,8 +3417,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSamplerDescriptorSerialize(const WGPUSamplerD
 }
 DAWN_UNUSED_FUNC(WGPUSamplerDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSamplerDescriptorDeserialize(WGPUSamplerDescriptor* record, const volatile WGPUSamplerDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSamplerDescriptorDeserialize(
+    WGPUSamplerDescriptor* record,
+    const volatile WGPUSamplerDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3304,7 +3479,7 @@ record->maxAnisotropy = transfer->maxAnisotropy;
 }
 DAWN_UNUSED_FUNC(WGPUSamplerDescriptorDeserialize);
 
-        
+                
 struct WGPUShaderModuleDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3341,8 +3516,10 @@ DAWN_DECLARE_UNUSED size_t WGPUShaderModuleDescriptorGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUShaderModuleDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorSerialize(const WGPUShaderModuleDescriptor& record, WGPUShaderModuleDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorSerialize(
+    const WGPUShaderModuleDescriptor& record,
+    WGPUShaderModuleDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3371,8 +3548,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorSerialize(const WGPUSha
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorDeserialize(WGPUShaderModuleDescriptor* record, const volatile WGPUShaderModuleDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorDeserialize(
+    WGPUShaderModuleDescriptor* record,
+    const volatile WGPUShaderModuleDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3410,7 +3590,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleDescriptorDeserialize(WGPUShaderM
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleDescriptorDeserialize);
 
-        
+                
 struct WGPUShaderModuleSPIRVDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3446,8 +3626,10 @@ uint32_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUShaderModuleSPIRVDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleSPIRVDescriptorSerialize(const WGPUShaderModuleSPIRVDescriptor& record, WGPUShaderModuleSPIRVDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleSPIRVDescriptorSerialize(
+    const WGPUShaderModuleSPIRVDescriptor& record,
+    WGPUShaderModuleSPIRVDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3474,8 +3656,11 @@ uint32_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleSPIRVDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleSPIRVDescriptorDeserialize(WGPUShaderModuleSPIRVDescriptor* record, const volatile WGPUShaderModuleSPIRVDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleSPIRVDescriptorDeserialize(
+    WGPUShaderModuleSPIRVDescriptor* record,
+    const volatile WGPUShaderModuleSPIRVDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3509,7 +3694,7 @@ copiedMembers[i] = memberBuffer[i];
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleSPIRVDescriptorDeserialize);
 
-        
+                
 struct WGPUShaderModuleWGSLDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3541,8 +3726,10 @@ DAWN_DECLARE_UNUSED size_t WGPUShaderModuleWGSLDescriptorGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUShaderModuleWGSLDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorSerialize(const WGPUShaderModuleWGSLDescriptor& record, WGPUShaderModuleWGSLDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorSerialize(
+    const WGPUShaderModuleWGSLDescriptor& record,
+    WGPUShaderModuleWGSLDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3564,8 +3751,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorSerialize(const WGP
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleWGSLDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorDeserialize(WGPUShaderModuleWGSLDescriptor* record, const volatile WGPUShaderModuleWGSLDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorDeserialize(
+    WGPUShaderModuleWGSLDescriptor* record,
+    const volatile WGPUShaderModuleWGSLDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3598,7 +3788,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUShaderModuleWGSLDescriptorDeserialize(WGPUSha
 }
 DAWN_UNUSED_FUNC(WGPUShaderModuleWGSLDescriptorDeserialize);
 
-        
+                
 struct WGPUStencilFaceStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3639,8 +3829,10 @@ DAWN_DECLARE_UNUSED size_t WGPUStencilFaceStateGetExtraRequiredSize(const WGPUSt
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUStencilFaceStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUStencilFaceStateSerialize(const WGPUStencilFaceState& record, WGPUStencilFaceStateTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUStencilFaceStateSerialize(
+    const WGPUStencilFaceState& record,
+    WGPUStencilFaceStateTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -3656,8 +3848,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUStencilFaceStateSerialize(const WGPUStencilFa
 }
 DAWN_UNUSED_FUNC(WGPUStencilFaceStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUStencilFaceStateDeserialize(WGPUStencilFaceState* record, const volatile WGPUStencilFaceStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUStencilFaceStateDeserialize(
+    WGPUStencilFaceState* record,
+    const volatile WGPUStencilFaceStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -3679,7 +3874,7 @@ record->passOp = transfer->passOp;
 }
 DAWN_UNUSED_FUNC(WGPUStencilFaceStateDeserialize);
 
-        
+                
 struct WGPUStorageTextureBindingLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3720,8 +3915,10 @@ DAWN_DECLARE_UNUSED size_t WGPUStorageTextureBindingLayoutGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUStorageTextureBindingLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUStorageTextureBindingLayoutSerialize(const WGPUStorageTextureBindingLayout& record, WGPUStorageTextureBindingLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUStorageTextureBindingLayoutSerialize(
+    const WGPUStorageTextureBindingLayout& record,
+    WGPUStorageTextureBindingLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3742,8 +3939,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUStorageTextureBindingLayoutSerialize(const WG
 }
 DAWN_UNUSED_FUNC(WGPUStorageTextureBindingLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUStorageTextureBindingLayoutDeserialize(WGPUStorageTextureBindingLayout* record, const volatile WGPUStorageTextureBindingLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUStorageTextureBindingLayoutDeserialize(
+    WGPUStorageTextureBindingLayout* record,
+    const volatile WGPUStorageTextureBindingLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3767,7 +3967,7 @@ record->viewDimension = transfer->viewDimension;
 }
 DAWN_UNUSED_FUNC(WGPUStorageTextureBindingLayoutDeserialize);
 
-        
+                
 struct WGPUSurfaceDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3804,8 +4004,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSurfaceDescriptorGetExtraRequiredSize(const WGPUS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorSerialize(const WGPUSurfaceDescriptor& record, WGPUSurfaceDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorSerialize(
+    const WGPUSurfaceDescriptor& record,
+    WGPUSurfaceDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3834,8 +4036,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorSerialize(const WGPUSurfaceD
 }
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorDeserialize(WGPUSurfaceDescriptor* record, const volatile WGPUSurfaceDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorDeserialize(
+    WGPUSurfaceDescriptor* record,
+    const volatile WGPUSurfaceDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3873,7 +4078,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorDeserialize(WGPUSurfaceDescr
 }
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorDeserialize);
 
-        
+                
 struct WGPUSurfaceDescriptorFromCanvasHTMLSelectorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -3905,8 +4110,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSurfaceDescriptorFromCanvasHTMLSelectorGetExtraRe
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorFromCanvasHTMLSelectorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorSerialize(const WGPUSurfaceDescriptorFromCanvasHTMLSelector& record, WGPUSurfaceDescriptorFromCanvasHTMLSelectorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorSerialize(
+    const WGPUSurfaceDescriptorFromCanvasHTMLSelector& record,
+    WGPUSurfaceDescriptorFromCanvasHTMLSelectorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -3928,8 +4135,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorSerial
 }
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorFromCanvasHTMLSelectorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorDeserialize(WGPUSurfaceDescriptorFromCanvasHTMLSelector* record, const volatile WGPUSurfaceDescriptorFromCanvasHTMLSelectorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorDeserialize(
+    WGPUSurfaceDescriptorFromCanvasHTMLSelector* record,
+    const volatile WGPUSurfaceDescriptorFromCanvasHTMLSelectorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -3962,7 +4172,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUSurfaceDescriptorFromCanvasHTMLSelectorDeseri
 }
 DAWN_UNUSED_FUNC(WGPUSurfaceDescriptorFromCanvasHTMLSelectorDeserialize);
 
-        
+                
 struct WGPUSwapChainDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4022,8 +4232,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSwapChainDescriptorGetExtraRequiredSize(const WGP
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSwapChainDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSwapChainDescriptorSerialize(const WGPUSwapChainDescriptor& record, WGPUSwapChainDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSwapChainDescriptorSerialize(
+    const WGPUSwapChainDescriptor& record,
+    WGPUSwapChainDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4058,8 +4270,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSwapChainDescriptorSerialize(const WGPUSwapCh
 }
 DAWN_UNUSED_FUNC(WGPUSwapChainDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSwapChainDescriptorDeserialize(WGPUSwapChainDescriptor* record, const volatile WGPUSwapChainDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSwapChainDescriptorDeserialize(
+    WGPUSwapChainDescriptor* record,
+    const volatile WGPUSwapChainDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4109,7 +4324,7 @@ record->implementation = transfer->implementation;
 }
 DAWN_UNUSED_FUNC(WGPUSwapChainDescriptorDeserialize);
 
-        
+                
 struct WGPUTextureBindingLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4150,8 +4365,10 @@ DAWN_DECLARE_UNUSED size_t WGPUTextureBindingLayoutGetExtraRequiredSize(const WG
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUTextureBindingLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureBindingLayoutSerialize(const WGPUTextureBindingLayout& record, WGPUTextureBindingLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureBindingLayoutSerialize(
+    const WGPUTextureBindingLayout& record,
+    WGPUTextureBindingLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4172,8 +4389,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUTextureBindingLayoutSerialize(const WGPUTextu
 }
 DAWN_UNUSED_FUNC(WGPUTextureBindingLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureBindingLayoutDeserialize(WGPUTextureBindingLayout* record, const volatile WGPUTextureBindingLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureBindingLayoutDeserialize(
+    WGPUTextureBindingLayout* record,
+    const volatile WGPUTextureBindingLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4197,7 +4417,7 @@ record->multisampled = transfer->multisampled;
 }
 DAWN_UNUSED_FUNC(WGPUTextureBindingLayoutDeserialize);
 
-        
+                
 struct WGPUTextureDataLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4238,8 +4458,10 @@ DAWN_DECLARE_UNUSED size_t WGPUTextureDataLayoutGetExtraRequiredSize(const WGPUT
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUTextureDataLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureDataLayoutSerialize(const WGPUTextureDataLayout& record, WGPUTextureDataLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureDataLayoutSerialize(
+    const WGPUTextureDataLayout& record,
+    WGPUTextureDataLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4260,8 +4482,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUTextureDataLayoutSerialize(const WGPUTextureD
 }
 DAWN_UNUSED_FUNC(WGPUTextureDataLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureDataLayoutDeserialize(WGPUTextureDataLayout* record, const volatile WGPUTextureDataLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureDataLayoutDeserialize(
+    WGPUTextureDataLayout* record,
+    const volatile WGPUTextureDataLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4285,7 +4510,7 @@ record->rowsPerImage = transfer->rowsPerImage;
 }
 DAWN_UNUSED_FUNC(WGPUTextureDataLayoutDeserialize);
 
-        
+                
 struct WGPUTextureViewDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4350,8 +4575,10 @@ DAWN_DECLARE_UNUSED size_t WGPUTextureViewDescriptorGetExtraRequiredSize(const W
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUTextureViewDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureViewDescriptorSerialize(const WGPUTextureViewDescriptor& record, WGPUTextureViewDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureViewDescriptorSerialize(
+    const WGPUTextureViewDescriptor& record,
+    WGPUTextureViewDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4387,8 +4614,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUTextureViewDescriptorSerialize(const WGPUText
 }
 DAWN_UNUSED_FUNC(WGPUTextureViewDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureViewDescriptorDeserialize(WGPUTextureViewDescriptor* record, const volatile WGPUTextureViewDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureViewDescriptorDeserialize(
+    WGPUTextureViewDescriptor* record,
+    const volatile WGPUTextureViewDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4440,7 +4670,7 @@ record->aspect = transfer->aspect;
 }
 DAWN_UNUSED_FUNC(WGPUTextureViewDescriptorDeserialize);
 
-        
+                
 struct WGPUVertexAttributeTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4477,8 +4707,10 @@ DAWN_DECLARE_UNUSED size_t WGPUVertexAttributeGetExtraRequiredSize(const WGPUVer
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUVertexAttributeGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexAttributeSerialize(const WGPUVertexAttribute& record, WGPUVertexAttributeTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexAttributeSerialize(
+    const WGPUVertexAttribute& record,
+    WGPUVertexAttributeTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -4493,8 +4725,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUVertexAttributeSerialize(const WGPUVertexAttr
 }
 DAWN_UNUSED_FUNC(WGPUVertexAttributeSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexAttributeDeserialize(WGPUVertexAttribute* record, const volatile WGPUVertexAttributeTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexAttributeDeserialize(
+    WGPUVertexAttribute* record,
+    const volatile WGPUVertexAttributeTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -4514,7 +4749,7 @@ record->shaderLocation = transfer->shaderLocation;
 }
 DAWN_UNUSED_FUNC(WGPUVertexAttributeDeserialize);
 
-        
+                
 struct WGPUBindGroupDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4566,8 +4801,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBindGroupDescriptorGetExtraRequiredSize(const WGP
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBindGroupDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupDescriptorSerialize(const WGPUBindGroupDescriptor& record, WGPUBindGroupDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupDescriptorSerialize(
+    const WGPUBindGroupDescriptor& record,
+    WGPUBindGroupDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4611,8 +4848,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBindGroupDescriptorSerialize(const WGPUBindGr
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupDescriptorDeserialize(WGPUBindGroupDescriptor* record, const volatile WGPUBindGroupDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupDescriptorDeserialize(
+    WGPUBindGroupDescriptor* record,
+    const volatile WGPUBindGroupDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4667,7 +4907,7 @@ record->entryCount = transfer->entryCount;
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupDescriptorDeserialize);
 
-        
+                
 struct WGPUBindGroupLayoutEntryTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4719,8 +4959,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBindGroupLayoutEntryGetExtraRequiredSize(const WG
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutEntryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutEntrySerialize(const WGPUBindGroupLayoutEntry& record, WGPUBindGroupLayoutEntryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutEntrySerialize(
+    const WGPUBindGroupLayoutEntry& record,
+    WGPUBindGroupLayoutEntryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -4748,8 +4990,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutEntrySerialize(const WGPUBindG
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutEntrySerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutEntryDeserialize(WGPUBindGroupLayoutEntry* record, const volatile WGPUBindGroupLayoutEntryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutEntryDeserialize(
+    WGPUBindGroupLayoutEntry* record,
+    const volatile WGPUBindGroupLayoutEntryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4775,7 +5020,7 @@ record->visibility = transfer->visibility;
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutEntryDeserialize);
 
-        
+                
 struct WGPUBlendStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -4808,8 +5053,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBlendStateGetExtraRequiredSize(const WGPUBlendSta
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBlendStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBlendStateSerialize(const WGPUBlendState& record, WGPUBlendStateTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUBlendStateSerialize(
+    const WGPUBlendState& record,
+    WGPUBlendStateTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -4825,8 +5072,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBlendStateSerialize(const WGPUBlendState& rec
 }
 DAWN_UNUSED_FUNC(WGPUBlendStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBlendStateDeserialize(WGPUBlendState* record, const volatile WGPUBlendStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUBlendStateDeserialize(
+    WGPUBlendState* record,
+    const volatile WGPUBlendStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -4842,10 +5092,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBlendStateDeserialize(WGPUBlendState* record,
 }
 DAWN_UNUSED_FUNC(WGPUBlendStateDeserialize);
 
-        
+                
 struct WGPUCompilationInfoTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
+    bool hasNextInChain;
 
     
 uint32_t messageCount;
@@ -4860,6 +5111,9 @@ DAWN_DECLARE_UNUSED size_t WGPUCompilationInfoGetExtraRequiredSize(const WGPUCom
 
     size_t result = 0;
 
+    if (record.nextInChain != nullptr) {
+        result += GetChainedStructExtraRequiredSize(record.nextInChain);
+    }
 
 
     {
@@ -4879,13 +5133,21 @@ DAWN_DECLARE_UNUSED size_t WGPUCompilationInfoGetExtraRequiredSize(const WGPUCom
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUCompilationInfoGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoSerialize(const WGPUCompilationInfo& record, WGPUCompilationInfoTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoSerialize(
+    const WGPUCompilationInfo& record,
+    WGPUCompilationInfoTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
     transfer->messageCount = record.messageCount;
 
+    if (record.nextInChain != nullptr) {
+        transfer->hasNextInChain = true;
+        WIRE_TRY(SerializeChainedStruct(record.nextInChain, buffer, provider));
+    } else {
+        transfer->hasNextInChain = false;
+    }
 
 
 
@@ -4897,7 +5159,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoSerialize(const WGPUCompilatio
         WIRE_TRY(buffer->NextN(memberLength, &memberBuffer));
 
         for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-            WIRE_TRY(WGPUCompilationMessageSerialize(record.messages[i], &memberBuffer[i], buffer));
+            WIRE_TRY(WGPUCompilationMessageSerialize(record.messages[i], &memberBuffer[i], buffer, provider));
 
         }
     }
@@ -4905,8 +5167,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoSerialize(const WGPUCompilatio
 }
 DAWN_UNUSED_FUNC(WGPUCompilationInfoSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoDeserialize(WGPUCompilationInfo* record, const volatile WGPUCompilationInfoTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoDeserialize(
+    WGPUCompilationInfo* record,
+    const volatile WGPUCompilationInfoTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -4914,6 +5179,10 @@ DAWN_DECLARE_UNUSED WireResult WGPUCompilationInfoDeserialize(WGPUCompilationInf
     static_assert(sizeof(record->messageCount) >= sizeof(transfer->messageCount), "Deserialize assignment may not narrow.");
 record->messageCount = transfer->messageCount;
 
+    record->nextInChain = nullptr;
+    if (transfer->hasNextInChain) {
+        WIRE_TRY(DeserializeChainedStruct(&record->nextInChain, deserializeBuffer, allocator, resolver));
+    }
 
 
 
@@ -4928,7 +5197,7 @@ record->messageCount = transfer->messageCount;
         record->messages = copiedMembers;
 
         for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-            WIRE_TRY(WGPUCompilationMessageDeserialize(&copiedMembers[i], &memberBuffer[i], deserializeBuffer, allocator));
+            WIRE_TRY(WGPUCompilationMessageDeserialize(&copiedMembers[i], &memberBuffer[i], deserializeBuffer, allocator, resolver));
         }
     }
 
@@ -4936,7 +5205,7 @@ record->messageCount = transfer->messageCount;
 }
 DAWN_UNUSED_FUNC(WGPUCompilationInfoDeserialize);
 
-        
+                
 struct WGPUDepthStencilStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5005,8 +5274,10 @@ DAWN_DECLARE_UNUSED size_t WGPUDepthStencilStateGetExtraRequiredSize(const WGPUD
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUDepthStencilStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDepthStencilStateSerialize(const WGPUDepthStencilState& record, WGPUDepthStencilStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUDepthStencilStateSerialize(
+    const WGPUDepthStencilState& record,
+    WGPUDepthStencilStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5036,8 +5307,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUDepthStencilStateSerialize(const WGPUDepthSte
 }
 DAWN_UNUSED_FUNC(WGPUDepthStencilStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDepthStencilStateDeserialize(WGPUDepthStencilState* record, const volatile WGPUDepthStencilStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUDepthStencilStateDeserialize(
+    WGPUDepthStencilState* record,
+    const volatile WGPUDepthStencilStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5073,7 +5347,7 @@ record->depthBiasClamp = transfer->depthBiasClamp;
 }
 DAWN_UNUSED_FUNC(WGPUDepthStencilStateDeserialize);
 
-        
+                
 struct WGPUImageCopyBufferTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5109,8 +5383,10 @@ DAWN_DECLARE_UNUSED size_t WGPUImageCopyBufferGetExtraRequiredSize(const WGPUIma
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUImageCopyBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferSerialize(const WGPUImageCopyBuffer& record, WGPUImageCopyBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferSerialize(
+    const WGPUImageCopyBuffer& record,
+    WGPUImageCopyBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5132,8 +5408,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferSerialize(const WGPUImageCopyB
 }
 DAWN_UNUSED_FUNC(WGPUImageCopyBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferDeserialize(WGPUImageCopyBuffer* record, const volatile WGPUImageCopyBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferDeserialize(
+    WGPUImageCopyBuffer* record,
+    const volatile WGPUImageCopyBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5153,7 +5432,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUImageCopyBufferDeserialize(WGPUImageCopyBuffe
 }
 DAWN_UNUSED_FUNC(WGPUImageCopyBufferDeserialize);
 
-        
+                
 struct WGPUImageCopyTextureTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5197,8 +5476,10 @@ DAWN_DECLARE_UNUSED size_t WGPUImageCopyTextureGetExtraRequiredSize(const WGPUIm
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUImageCopyTextureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUImageCopyTextureSerialize(const WGPUImageCopyTexture& record, WGPUImageCopyTextureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUImageCopyTextureSerialize(
+    const WGPUImageCopyTexture& record,
+    WGPUImageCopyTextureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5222,8 +5503,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUImageCopyTextureSerialize(const WGPUImageCopy
 }
 DAWN_UNUSED_FUNC(WGPUImageCopyTextureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUImageCopyTextureDeserialize(WGPUImageCopyTexture* record, const volatile WGPUImageCopyTextureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUImageCopyTextureDeserialize(
+    WGPUImageCopyTexture* record,
+    const volatile WGPUImageCopyTextureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5247,7 +5531,7 @@ record->aspect = transfer->aspect;
 }
 DAWN_UNUSED_FUNC(WGPUImageCopyTextureDeserialize);
 
-        
+                
 struct WGPUProgrammableStageDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5296,8 +5580,10 @@ DAWN_DECLARE_UNUSED size_t WGPUProgrammableStageDescriptorGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUProgrammableStageDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUProgrammableStageDescriptorSerialize(const WGPUProgrammableStageDescriptor& record, WGPUProgrammableStageDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUProgrammableStageDescriptorSerialize(
+    const WGPUProgrammableStageDescriptor& record,
+    WGPUProgrammableStageDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5338,8 +5624,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUProgrammableStageDescriptorSerialize(const WG
 }
 DAWN_UNUSED_FUNC(WGPUProgrammableStageDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUProgrammableStageDescriptorDeserialize(WGPUProgrammableStageDescriptor* record, const volatile WGPUProgrammableStageDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUProgrammableStageDescriptorDeserialize(
+    WGPUProgrammableStageDescriptor* record,
+    const volatile WGPUProgrammableStageDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5391,7 +5680,7 @@ record->constantCount = transfer->constantCount;
 }
 DAWN_UNUSED_FUNC(WGPUProgrammableStageDescriptorDeserialize);
 
-        
+                
 struct WGPURenderPassColorAttachmentTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5434,8 +5723,10 @@ DAWN_DECLARE_UNUSED size_t WGPURenderPassColorAttachmentGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderPassColorAttachmentGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassColorAttachmentSerialize(const WGPURenderPassColorAttachment& record, WGPURenderPassColorAttachmentTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassColorAttachmentSerialize(
+    const WGPURenderPassColorAttachment& record,
+    WGPURenderPassColorAttachmentTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5455,8 +5746,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderPassColorAttachmentSerialize(const WGPU
 }
 DAWN_UNUSED_FUNC(WGPURenderPassColorAttachmentSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassColorAttachmentDeserialize(WGPURenderPassColorAttachment* record, const volatile WGPURenderPassColorAttachmentTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassColorAttachmentDeserialize(
+    WGPURenderPassColorAttachment* record,
+    const volatile WGPURenderPassColorAttachmentTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5477,7 +5771,7 @@ record->storeOp = transfer->storeOp;
 }
 DAWN_UNUSED_FUNC(WGPURenderPassColorAttachmentDeserialize);
 
-        
+                
 struct WGPURequiredLimitsTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5510,8 +5804,10 @@ DAWN_DECLARE_UNUSED size_t WGPURequiredLimitsGetExtraRequiredSize(const WGPURequ
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURequiredLimitsGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsSerialize(const WGPURequiredLimits& record, WGPURequiredLimitsTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsSerialize(
+    const WGPURequiredLimits& record,
+    WGPURequiredLimitsTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5531,8 +5827,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsSerialize(const WGPURequiredLim
 }
 DAWN_UNUSED_FUNC(WGPURequiredLimitsSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsDeserialize(WGPURequiredLimits* record, const volatile WGPURequiredLimitsTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsDeserialize(
+    WGPURequiredLimits* record,
+    const volatile WGPURequiredLimitsTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5551,7 +5850,7 @@ DAWN_DECLARE_UNUSED WireResult WGPURequiredLimitsDeserialize(WGPURequiredLimits*
 }
 DAWN_UNUSED_FUNC(WGPURequiredLimitsDeserialize);
 
-        
+                
 struct WGPUSupportedLimitsTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5584,8 +5883,10 @@ DAWN_DECLARE_UNUSED size_t WGPUSupportedLimitsGetExtraRequiredSize(const WGPUSup
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUSupportedLimitsGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsSerialize(const WGPUSupportedLimits& record, WGPUSupportedLimitsTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsSerialize(
+    const WGPUSupportedLimits& record,
+    WGPUSupportedLimitsTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5605,8 +5906,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsSerialize(const WGPUSupportedL
 }
 DAWN_UNUSED_FUNC(WGPUSupportedLimitsSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsDeserialize(WGPUSupportedLimits* record, const volatile WGPUSupportedLimitsTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsDeserialize(
+    WGPUSupportedLimits* record,
+    const volatile WGPUSupportedLimitsTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5625,7 +5929,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUSupportedLimitsDeserialize(WGPUSupportedLimit
 }
 DAWN_UNUSED_FUNC(WGPUSupportedLimitsDeserialize);
 
-        
+                
 struct WGPUTextureDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5685,8 +5989,10 @@ DAWN_DECLARE_UNUSED size_t WGPUTextureDescriptorGetExtraRequiredSize(const WGPUT
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUTextureDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureDescriptorSerialize(const WGPUTextureDescriptor& record, WGPUTextureDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureDescriptorSerialize(
+    const WGPUTextureDescriptor& record,
+    WGPUTextureDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5722,8 +6028,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUTextureDescriptorSerialize(const WGPUTextureD
 }
 DAWN_UNUSED_FUNC(WGPUTextureDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUTextureDescriptorDeserialize(WGPUTextureDescriptor* record, const volatile WGPUTextureDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUTextureDescriptorDeserialize(
+    WGPUTextureDescriptor* record,
+    const volatile WGPUTextureDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -5772,7 +6081,7 @@ record->sampleCount = transfer->sampleCount;
 }
 DAWN_UNUSED_FUNC(WGPUTextureDescriptorDeserialize);
 
-        
+                
 struct WGPUVertexBufferLayoutTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5817,8 +6126,10 @@ DAWN_DECLARE_UNUSED size_t WGPUVertexBufferLayoutGetExtraRequiredSize(const WGPU
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUVertexBufferLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexBufferLayoutSerialize(const WGPUVertexBufferLayout& record, WGPUVertexBufferLayoutTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexBufferLayoutSerialize(
+    const WGPUVertexBufferLayout& record,
+    WGPUVertexBufferLayoutTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
 
@@ -5845,8 +6156,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUVertexBufferLayoutSerialize(const WGPUVertexB
 }
 DAWN_UNUSED_FUNC(WGPUVertexBufferLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexBufferLayoutDeserialize(WGPUVertexBufferLayout* record, const volatile WGPUVertexBufferLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexBufferLayoutDeserialize(
+    WGPUVertexBufferLayout* record,
+    const volatile WGPUVertexBufferLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
 
@@ -5880,7 +6194,7 @@ record->attributeCount = transfer->attributeCount;
 }
 DAWN_UNUSED_FUNC(WGPUVertexBufferLayoutDeserialize);
 
-        
+                
 struct WGPUBindGroupLayoutDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -5929,8 +6243,10 @@ DAWN_DECLARE_UNUSED size_t WGPUBindGroupLayoutDescriptorGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutDescriptorSerialize(const WGPUBindGroupLayoutDescriptor& record, WGPUBindGroupLayoutDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutDescriptorSerialize(
+    const WGPUBindGroupLayoutDescriptor& record,
+    WGPUBindGroupLayoutDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -5972,8 +6288,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutDescriptorSerialize(const WGPU
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutDescriptorDeserialize(WGPUBindGroupLayoutDescriptor* record, const volatile WGPUBindGroupLayoutDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUBindGroupLayoutDescriptorDeserialize(
+    WGPUBindGroupLayoutDescriptor* record,
+    const volatile WGPUBindGroupLayoutDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6027,7 +6346,7 @@ record->entryCount = transfer->entryCount;
 }
 DAWN_UNUSED_FUNC(WGPUBindGroupLayoutDescriptorDeserialize);
 
-        
+                
 struct WGPUColorTargetStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6073,8 +6392,10 @@ DAWN_DECLARE_UNUSED size_t WGPUColorTargetStateGetExtraRequiredSize(const WGPUCo
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUColorTargetStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUColorTargetStateSerialize(const WGPUColorTargetState& record, WGPUColorTargetStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUColorTargetStateSerialize(
+    const WGPUColorTargetState& record,
+    WGPUColorTargetStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -6109,8 +6430,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUColorTargetStateSerialize(const WGPUColorTarg
 }
 DAWN_UNUSED_FUNC(WGPUColorTargetStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUColorTargetStateDeserialize(WGPUColorTargetState* record, const volatile WGPUColorTargetStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUColorTargetStateDeserialize(
+    WGPUColorTargetState* record,
+    const volatile WGPUColorTargetStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6150,7 +6474,7 @@ record->writeMask = transfer->writeMask;
 }
 DAWN_UNUSED_FUNC(WGPUColorTargetStateDeserialize);
 
-        
+                
 struct WGPUComputePipelineDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6194,8 +6518,10 @@ DAWN_DECLARE_UNUSED size_t WGPUComputePipelineDescriptorGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUComputePipelineDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorSerialize(const WGPUComputePipelineDescriptor& record, WGPUComputePipelineDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorSerialize(
+    const WGPUComputePipelineDescriptor& record,
+    WGPUComputePipelineDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -6228,8 +6554,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorSerialize(const WGPU
 }
 DAWN_UNUSED_FUNC(WGPUComputePipelineDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorDeserialize(WGPUComputePipelineDescriptor* record, const volatile WGPUComputePipelineDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorDeserialize(
+    WGPUComputePipelineDescriptor* record,
+    const volatile WGPUComputePipelineDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6269,7 +6598,7 @@ DAWN_DECLARE_UNUSED WireResult WGPUComputePipelineDescriptorDeserialize(WGPUComp
 }
 DAWN_UNUSED_FUNC(WGPUComputePipelineDescriptorDeserialize);
 
-        
+                
 struct WGPUDevicePropertiesTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6278,6 +6607,8 @@ struct WGPUDevicePropertiesTransfer {
 uint32_t deviceID;
     
 uint32_t vendorID;
+    
+WGPUAdapterType adapterType;
     
 bool textureCompressionBC;
     
@@ -6295,7 +6626,11 @@ bool multiPlanarFormats;
     
 bool depthClamping;
     
-bool invalidExtension;
+bool depth24UnormStencil8;
+    
+bool depth32FloatStencil8;
+    
+bool invalidFeature;
     
 bool dawnInternalUsages;
     WGPUSupportedLimitsTransfer limits;
@@ -6337,6 +6672,12 @@ DAWN_DECLARE_UNUSED size_t WGPUDevicePropertiesGetExtraRequiredSize(const WGPUDe
     {
     }
     {
+    }
+    {
+    }
+    {
+    }
+    {
         result += WGPUSupportedLimitsGetExtraRequiredSize(record.limits);
     }
 
@@ -6346,13 +6687,16 @@ DAWN_DECLARE_UNUSED size_t WGPUDevicePropertiesGetExtraRequiredSize(const WGPUDe
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUDevicePropertiesGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesSerialize(const WGPUDeviceProperties& record, WGPUDevicePropertiesTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesSerialize(
+    const WGPUDeviceProperties& record,
+    WGPUDevicePropertiesTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
     transfer->deviceID = record.deviceID;
     transfer->vendorID = record.vendorID;
+    transfer->adapterType = record.adapterType;
     transfer->textureCompressionBC = record.textureCompressionBC;
     transfer->textureCompressionETC2 = record.textureCompressionETC2;
     transfer->textureCompressionASTC = record.textureCompressionASTC;
@@ -6361,7 +6705,9 @@ DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesSerialize(const WGPUDevicePro
     transfer->timestampQuery = record.timestampQuery;
     transfer->multiPlanarFormats = record.multiPlanarFormats;
     transfer->depthClamping = record.depthClamping;
-    transfer->invalidExtension = record.invalidExtension;
+    transfer->depth24UnormStencil8 = record.depth24UnormStencil8;
+    transfer->depth32FloatStencil8 = record.depth32FloatStencil8;
+    transfer->invalidFeature = record.invalidFeature;
     transfer->dawnInternalUsages = record.dawnInternalUsages;
     WIRE_TRY(WGPUSupportedLimitsSerialize(record.limits, &transfer->limits, buffer, provider));
 
@@ -6373,8 +6719,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesSerialize(const WGPUDevicePro
 }
 DAWN_UNUSED_FUNC(WGPUDevicePropertiesSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesDeserialize(WGPUDeviceProperties* record, const volatile WGPUDevicePropertiesTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesDeserialize(
+    WGPUDeviceProperties* record,
+    const volatile WGPUDevicePropertiesTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6383,6 +6732,8 @@ DAWN_DECLARE_UNUSED WireResult WGPUDevicePropertiesDeserialize(WGPUDevicePropert
 record->deviceID = transfer->deviceID;
     static_assert(sizeof(record->vendorID) >= sizeof(transfer->vendorID), "Deserialize assignment may not narrow.");
 record->vendorID = transfer->vendorID;
+    static_assert(sizeof(record->adapterType) >= sizeof(transfer->adapterType), "Deserialize assignment may not narrow.");
+record->adapterType = transfer->adapterType;
     static_assert(sizeof(record->textureCompressionBC) >= sizeof(transfer->textureCompressionBC), "Deserialize assignment may not narrow.");
 record->textureCompressionBC = transfer->textureCompressionBC;
     static_assert(sizeof(record->textureCompressionETC2) >= sizeof(transfer->textureCompressionETC2), "Deserialize assignment may not narrow.");
@@ -6399,8 +6750,12 @@ record->timestampQuery = transfer->timestampQuery;
 record->multiPlanarFormats = transfer->multiPlanarFormats;
     static_assert(sizeof(record->depthClamping) >= sizeof(transfer->depthClamping), "Deserialize assignment may not narrow.");
 record->depthClamping = transfer->depthClamping;
-    static_assert(sizeof(record->invalidExtension) >= sizeof(transfer->invalidExtension), "Deserialize assignment may not narrow.");
-record->invalidExtension = transfer->invalidExtension;
+    static_assert(sizeof(record->depth24UnormStencil8) >= sizeof(transfer->depth24UnormStencil8), "Deserialize assignment may not narrow.");
+record->depth24UnormStencil8 = transfer->depth24UnormStencil8;
+    static_assert(sizeof(record->depth32FloatStencil8) >= sizeof(transfer->depth32FloatStencil8), "Deserialize assignment may not narrow.");
+record->depth32FloatStencil8 = transfer->depth32FloatStencil8;
+    static_assert(sizeof(record->invalidFeature) >= sizeof(transfer->invalidFeature), "Deserialize assignment may not narrow.");
+record->invalidFeature = transfer->invalidFeature;
     static_assert(sizeof(record->dawnInternalUsages) >= sizeof(transfer->dawnInternalUsages), "Deserialize assignment may not narrow.");
 record->dawnInternalUsages = transfer->dawnInternalUsages;
     WIRE_TRY(WGPUSupportedLimitsDeserialize(&record->limits, &transfer->limits, deserializeBuffer, allocator, resolver));
@@ -6413,7 +6768,7 @@ record->dawnInternalUsages = transfer->dawnInternalUsages;
 }
 DAWN_UNUSED_FUNC(WGPUDevicePropertiesDeserialize);
 
-        
+                
 struct WGPURenderPassDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6475,8 +6830,10 @@ DAWN_DECLARE_UNUSED size_t WGPURenderPassDescriptorGetExtraRequiredSize(const WG
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderPassDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassDescriptorSerialize(const WGPURenderPassDescriptor& record, WGPURenderPassDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassDescriptorSerialize(
+    const WGPURenderPassDescriptor& record,
+    WGPURenderPassDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -6535,8 +6892,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderPassDescriptorSerialize(const WGPURende
 }
 DAWN_UNUSED_FUNC(WGPURenderPassDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPassDescriptorDeserialize(WGPURenderPassDescriptor* record, const volatile WGPURenderPassDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPassDescriptorDeserialize(
+    WGPURenderPassDescriptor* record,
+    const volatile WGPURenderPassDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6609,7 +6969,7 @@ record->colorAttachmentCount = transfer->colorAttachmentCount;
 }
 DAWN_UNUSED_FUNC(WGPURenderPassDescriptorDeserialize);
 
-        
+                
 struct WGPUVertexStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6670,8 +7030,10 @@ DAWN_DECLARE_UNUSED size_t WGPUVertexStateGetExtraRequiredSize(const WGPUVertexS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUVertexStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexStateSerialize(const WGPUVertexState& record, WGPUVertexStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexStateSerialize(
+    const WGPUVertexState& record,
+    WGPUVertexStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -6725,8 +7087,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUVertexStateSerialize(const WGPUVertexState& r
 }
 DAWN_UNUSED_FUNC(WGPUVertexStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUVertexStateDeserialize(WGPUVertexState* record, const volatile WGPUVertexStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUVertexStateDeserialize(
+    WGPUVertexState* record,
+    const volatile WGPUVertexStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6794,7 +7159,7 @@ record->bufferCount = transfer->bufferCount;
 }
 DAWN_UNUSED_FUNC(WGPUVertexStateDeserialize);
 
-        
+                
 struct WGPUFragmentStateTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -6855,8 +7220,10 @@ DAWN_DECLARE_UNUSED size_t WGPUFragmentStateGetExtraRequiredSize(const WGPUFragm
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPUFragmentStateGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUFragmentStateSerialize(const WGPUFragmentState& record, WGPUFragmentStateTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPUFragmentStateSerialize(
+    const WGPUFragmentState& record,
+    WGPUFragmentStateTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -6910,8 +7277,11 @@ DAWN_DECLARE_UNUSED WireResult WGPUFragmentStateSerialize(const WGPUFragmentStat
 }
 DAWN_UNUSED_FUNC(WGPUFragmentStateSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPUFragmentStateDeserialize(WGPUFragmentState* record, const volatile WGPUFragmentStateTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPUFragmentStateDeserialize(
+    WGPUFragmentState* record,
+    const volatile WGPUFragmentStateTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -6979,7 +7349,7 @@ record->targetCount = transfer->targetCount;
 }
 DAWN_UNUSED_FUNC(WGPUFragmentStateDeserialize);
 
-        
+                
 struct WGPURenderPipelineDescriptorTransfer {
     static_assert(0 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -7051,8 +7421,10 @@ DAWN_DECLARE_UNUSED size_t WGPURenderPipelineDescriptorGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPipelineDescriptorSerialize(const WGPURenderPipelineDescriptor& record, WGPURenderPipelineDescriptorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPipelineDescriptorSerialize(
+    const WGPURenderPipelineDescriptor& record,
+    WGPURenderPipelineDescriptorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
 
@@ -7119,8 +7491,11 @@ DAWN_DECLARE_UNUSED WireResult WGPURenderPipelineDescriptorSerialize(const WGPUR
 }
 DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult WGPURenderPipelineDescriptorDeserialize(WGPURenderPipelineDescriptor* record, const volatile WGPURenderPipelineDescriptorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult WGPURenderPipelineDescriptorDeserialize(
+    WGPURenderPipelineDescriptor* record,
+    const volatile WGPURenderPipelineDescriptorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
 
@@ -7200,7 +7575,7 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
 
 
 
-    size_t GetChainedStructExtraRequiredSize(const WGPUChainedStruct* chainedStruct) {
+            size_t GetChainedStructExtraRequiredSize(const WGPUChainedStruct* chainedStruct) {
         ASSERT(chainedStruct != nullptr);
         size_t result = 0;
         while (chainedStruct != nullptr) {
@@ -7226,13 +7601,6 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
                         chainedStruct = typedStruct.chain.next;
                         break;
                     }
-                    case WGPUSType_PrimitiveDepthClampingState: {
-                        const auto& typedStruct = *reinterpret_cast<WGPUPrimitiveDepthClampingState const *>(chainedStruct);
-                        result += sizeof(WGPUPrimitiveDepthClampingStateTransfer);
-                        result += WGPUPrimitiveDepthClampingStateGetExtraRequiredSize(typedStruct);
-                        chainedStruct = typedStruct.chain.next;
-                        break;
-                    }
                     case WGPUSType_ExternalTextureBindingEntry: {
                         const auto& typedStruct = *reinterpret_cast<WGPUExternalTextureBindingEntry const *>(chainedStruct);
                         result += sizeof(WGPUExternalTextureBindingEntryTransfer);
@@ -7251,6 +7619,13 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
                         const auto& typedStruct = *reinterpret_cast<WGPUDawnTextureInternalUsageDescriptor const *>(chainedStruct);
                         result += sizeof(WGPUDawnTextureInternalUsageDescriptorTransfer);
                         result += WGPUDawnTextureInternalUsageDescriptorGetExtraRequiredSize(typedStruct);
+                        chainedStruct = typedStruct.chain.next;
+                        break;
+                    }
+                    case WGPUSType_PrimitiveDepthClampingState: {
+                        const auto& typedStruct = *reinterpret_cast<WGPUPrimitiveDepthClampingState const *>(chainedStruct);
+                        result += sizeof(WGPUPrimitiveDepthClampingStateTransfer);
+                        result += WGPUPrimitiveDepthClampingStateGetExtraRequiredSize(typedStruct);
                         chainedStruct = typedStruct.chain.next;
                         break;
                     }
@@ -7306,17 +7681,6 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
 
                             chainedStruct = chainedStruct->next;
                         } break;
-                        case WGPUSType_PrimitiveDepthClampingState: {
-
-                            WGPUPrimitiveDepthClampingStateTransfer* transfer;
-                            WIRE_TRY(buffer->Next(&transfer));
-                            transfer->chain.sType = chainedStruct->sType;
-                            transfer->chain.hasNext = chainedStruct->next != nullptr;
-
-                            WIRE_TRY(WGPUPrimitiveDepthClampingStateSerialize(*reinterpret_cast<WGPUPrimitiveDepthClampingState const*>(chainedStruct), transfer, buffer, provider));
-
-                            chainedStruct = chainedStruct->next;
-                        } break;
                         case WGPUSType_ExternalTextureBindingEntry: {
 
                             WGPUExternalTextureBindingEntryTransfer* transfer;
@@ -7347,6 +7711,17 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
                             transfer->chain.hasNext = chainedStruct->next != nullptr;
 
                             WIRE_TRY(WGPUDawnTextureInternalUsageDescriptorSerialize(*reinterpret_cast<WGPUDawnTextureInternalUsageDescriptor const*>(chainedStruct), transfer, buffer, provider));
+
+                            chainedStruct = chainedStruct->next;
+                        } break;
+                        case WGPUSType_PrimitiveDepthClampingState: {
+
+                            WGPUPrimitiveDepthClampingStateTransfer* transfer;
+                            WIRE_TRY(buffer->Next(&transfer));
+                            transfer->chain.sType = chainedStruct->sType;
+                            transfer->chain.hasNext = chainedStruct->next != nullptr;
+
+                            WIRE_TRY(WGPUPrimitiveDepthClampingStateSerialize(*reinterpret_cast<WGPUPrimitiveDepthClampingState const*>(chainedStruct), transfer, buffer, provider));
 
                             chainedStruct = chainedStruct->next;
                         } break;
@@ -7431,22 +7806,6 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
 
                             hasNext = transfer->chain.hasNext;
                         } break;
-                        case WGPUSType_PrimitiveDepthClampingState: {
-                            const volatile WGPUPrimitiveDepthClampingStateTransfer* transfer;
-                            WIRE_TRY(deserializeBuffer->Read(&transfer));
-
-                            WGPUPrimitiveDepthClampingState* outStruct;
-                            WIRE_TRY(GetSpace(allocator, sizeof(WGPUPrimitiveDepthClampingState), &outStruct));
-                            outStruct->chain.sType = sType;
-                            outStruct->chain.next = nullptr;
-
-                            *outChainNext = &outStruct->chain;
-                            outChainNext = &outStruct->chain.next;
-
-                            WIRE_TRY(WGPUPrimitiveDepthClampingStateDeserialize(outStruct, transfer, deserializeBuffer, allocator, resolver));
-
-                            hasNext = transfer->chain.hasNext;
-                        } break;
                         case WGPUSType_ExternalTextureBindingEntry: {
                             const volatile WGPUExternalTextureBindingEntryTransfer* transfer;
                             WIRE_TRY(deserializeBuffer->Read(&transfer));
@@ -7495,6 +7854,22 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
 
                             hasNext = transfer->chain.hasNext;
                         } break;
+                        case WGPUSType_PrimitiveDepthClampingState: {
+                            const volatile WGPUPrimitiveDepthClampingStateTransfer* transfer;
+                            WIRE_TRY(deserializeBuffer->Read(&transfer));
+
+                            WGPUPrimitiveDepthClampingState* outStruct;
+                            WIRE_TRY(GetSpace(allocator, sizeof(WGPUPrimitiveDepthClampingState), &outStruct));
+                            outStruct->chain.sType = sType;
+                            outStruct->chain.next = nullptr;
+
+                            *outChainNext = &outStruct->chain;
+                            outChainNext = &outStruct->chain.next;
+
+                            WIRE_TRY(WGPUPrimitiveDepthClampingStateDeserialize(outStruct, transfer, deserializeBuffer, allocator, resolver));
+
+                            hasNext = transfer->chain.hasNext;
+                        } break;
                     // Explicitly list the Invalid enum. MSVC complains about no case labels.
                     case WGPUSType_Invalid:
                     default: {
@@ -7524,7 +7899,7 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
             return WireResult::Success;
         }
 
-    size_t GetChainedStructExtraRequiredSize(WGPUChainedStructOut* chainedStruct) {
+            size_t GetChainedStructExtraRequiredSize(WGPUChainedStructOut* chainedStruct) {
         ASSERT(chainedStruct != nullptr);
         size_t result = 0;
         while (chainedStruct != nullptr) {
@@ -7612,6 +7987,206 @@ DAWN_UNUSED_FUNC(WGPURenderPipelineDescriptorDeserialize);
 
 
             
+struct BindGroupLayoutSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(BindGroupLayoutSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(BindGroupLayoutSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t BindGroupLayoutSetLabelGetExtraRequiredSize(const BindGroupLayoutSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(BindGroupLayoutSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult BindGroupLayoutSetLabelSerialize(
+    const BindGroupLayoutSetLabelCmd& record,
+    BindGroupLayoutSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::BindGroupLayoutSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(BindGroupLayoutSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult BindGroupLayoutSetLabelDeserialize(
+    BindGroupLayoutSetLabelCmd* record,
+    const volatile BindGroupLayoutSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::BindGroupLayoutSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(BindGroupLayoutSetLabelDeserialize);
+
+            
+struct BindGroupSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(BindGroupSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(BindGroupSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t BindGroupSetLabelGetExtraRequiredSize(const BindGroupSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(BindGroupSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult BindGroupSetLabelSerialize(
+    const BindGroupSetLabelCmd& record,
+    BindGroupSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::BindGroupSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(BindGroupSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult BindGroupSetLabelDeserialize(
+    BindGroupSetLabelCmd* record,
+    const volatile BindGroupSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::BindGroupSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(BindGroupSetLabelDeserialize);
+
+            
 struct BufferDestroyTransfer : CmdHeader {
     static_assert(1 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -7642,8 +8217,10 @@ DAWN_DECLARE_UNUSED size_t BufferDestroyGetExtraRequiredSize(const BufferDestroy
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(BufferDestroyGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult BufferDestroySerialize(const BufferDestroyCmd& record, BufferDestroyTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult BufferDestroySerialize(
+    const BufferDestroyCmd& record,
+    BufferDestroyTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::BufferDestroy;
@@ -7658,8 +8235,11 @@ DAWN_DECLARE_UNUSED WireResult BufferDestroySerialize(const BufferDestroyCmd& re
 }
 DAWN_UNUSED_FUNC(BufferDestroySerialize);
 
-DAWN_DECLARE_UNUSED WireResult BufferDestroyDeserialize(BufferDestroyCmd* record, const volatile BufferDestroyTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult BufferDestroyDeserialize(
+    BufferDestroyCmd* record,
+    const volatile BufferDestroyTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::BufferDestroy);
@@ -7723,8 +8303,10 @@ DAWN_DECLARE_UNUSED size_t BufferMapAsyncGetExtraRequiredSize(const BufferMapAsy
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(BufferMapAsyncGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult BufferMapAsyncSerialize(const BufferMapAsyncCmd& record, BufferMapAsyncTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult BufferMapAsyncSerialize(
+    const BufferMapAsyncCmd& record,
+    BufferMapAsyncTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::BufferMapAsync;
@@ -7742,8 +8324,11 @@ DAWN_DECLARE_UNUSED WireResult BufferMapAsyncSerialize(const BufferMapAsyncCmd& 
 }
 DAWN_UNUSED_FUNC(BufferMapAsyncSerialize);
 
-DAWN_DECLARE_UNUSED WireResult BufferMapAsyncDeserialize(BufferMapAsyncCmd* record, const volatile BufferMapAsyncTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult BufferMapAsyncDeserialize(
+    BufferMapAsyncCmd* record,
+    const volatile BufferMapAsyncTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::BufferMapAsync);
@@ -7804,8 +8389,10 @@ DAWN_DECLARE_UNUSED size_t BufferSetLabelGetExtraRequiredSize(const BufferSetLab
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(BufferSetLabelGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult BufferSetLabelSerialize(const BufferSetLabelCmd& record, BufferSetLabelTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult BufferSetLabelSerialize(
+    const BufferSetLabelCmd& record,
+    BufferSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::BufferSetLabel;
@@ -7828,8 +8415,11 @@ DAWN_DECLARE_UNUSED WireResult BufferSetLabelSerialize(const BufferSetLabelCmd& 
 }
 DAWN_UNUSED_FUNC(BufferSetLabelSerialize);
 
-DAWN_DECLARE_UNUSED WireResult BufferSetLabelDeserialize(BufferSetLabelCmd* record, const volatile BufferSetLabelTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult BufferSetLabelDeserialize(
+    BufferSetLabelCmd* record,
+    const volatile BufferSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::BufferSetLabel);
@@ -7894,8 +8484,10 @@ DAWN_DECLARE_UNUSED size_t BufferUnmapGetExtraRequiredSize(const BufferUnmapCmd&
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(BufferUnmapGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult BufferUnmapSerialize(const BufferUnmapCmd& record, BufferUnmapTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult BufferUnmapSerialize(
+    const BufferUnmapCmd& record,
+    BufferUnmapTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::BufferUnmap;
@@ -7910,8 +8502,11 @@ DAWN_DECLARE_UNUSED WireResult BufferUnmapSerialize(const BufferUnmapCmd& record
 }
 DAWN_UNUSED_FUNC(BufferUnmapSerialize);
 
-DAWN_DECLARE_UNUSED WireResult BufferUnmapDeserialize(BufferUnmapCmd* record, const volatile BufferUnmapTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult BufferUnmapDeserialize(
+    BufferUnmapCmd* record,
+    const volatile BufferUnmapTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::BufferUnmap);
@@ -7972,8 +8567,10 @@ DAWN_DECLARE_UNUSED size_t BufferUpdateMappedDataGetExtraRequiredSize(const Buff
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(BufferUpdateMappedDataGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult BufferUpdateMappedDataSerialize(const BufferUpdateMappedDataCmd& record, BufferUpdateMappedDataTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult BufferUpdateMappedDataSerialize(
+    const BufferUpdateMappedDataCmd& record,
+    BufferUpdateMappedDataTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::BufferUpdateMappedData;
@@ -7990,8 +8587,11 @@ DAWN_DECLARE_UNUSED WireResult BufferUpdateMappedDataSerialize(const BufferUpdat
 }
 DAWN_UNUSED_FUNC(BufferUpdateMappedDataSerialize);
 
-DAWN_DECLARE_UNUSED WireResult BufferUpdateMappedDataDeserialize(BufferUpdateMappedDataCmd* record, const volatile BufferUpdateMappedDataTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult BufferUpdateMappedDataDeserialize(
+    BufferUpdateMappedDataCmd* record,
+    const volatile BufferUpdateMappedDataTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::BufferUpdateMappedData);
@@ -8029,6 +8629,106 @@ copiedMembers[i] = memberBuffer[i];
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(BufferUpdateMappedDataDeserialize);
+
+            
+struct CommandBufferSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(CommandBufferSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(CommandBufferSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t CommandBufferSetLabelGetExtraRequiredSize(const CommandBufferSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(CommandBufferSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult CommandBufferSetLabelSerialize(
+    const CommandBufferSetLabelCmd& record,
+    CommandBufferSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::CommandBufferSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(CommandBufferSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult CommandBufferSetLabelDeserialize(
+    CommandBufferSetLabelCmd* record,
+    const volatile CommandBufferSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::CommandBufferSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(CommandBufferSetLabelDeserialize);
 
             
 struct CommandEncoderBeginComputePassTransfer : CmdHeader {
@@ -8075,8 +8775,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderBeginComputePassGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderBeginComputePassGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginComputePassSerialize(const CommandEncoderBeginComputePassCmd& record, CommandEncoderBeginComputePassTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginComputePassSerialize(
+    const CommandEncoderBeginComputePassCmd& record,
+    CommandEncoderBeginComputePassTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderBeginComputePass;
@@ -8107,8 +8809,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginComputePassSerialize(const Com
 }
 DAWN_UNUSED_FUNC(CommandEncoderBeginComputePassSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginComputePassDeserialize(CommandEncoderBeginComputePassCmd* record, const volatile CommandEncoderBeginComputePassTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginComputePassDeserialize(
+    CommandEncoderBeginComputePassCmd* record,
+    const volatile CommandEncoderBeginComputePassTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderBeginComputePass);
@@ -8188,8 +8893,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderBeginRenderPassGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderBeginRenderPassGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginRenderPassSerialize(const CommandEncoderBeginRenderPassCmd& record, CommandEncoderBeginRenderPassTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginRenderPassSerialize(
+    const CommandEncoderBeginRenderPassCmd& record,
+    CommandEncoderBeginRenderPassTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderBeginRenderPass;
@@ -8217,8 +8924,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginRenderPassSerialize(const Comm
 }
 DAWN_UNUSED_FUNC(CommandEncoderBeginRenderPassSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginRenderPassDeserialize(CommandEncoderBeginRenderPassCmd* record, const volatile CommandEncoderBeginRenderPassTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderBeginRenderPassDeserialize(
+    CommandEncoderBeginRenderPassCmd* record,
+    const volatile CommandEncoderBeginRenderPassTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderBeginRenderPass);
@@ -8300,8 +9010,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderCopyBufferToBufferGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderCopyBufferToBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToBufferSerialize(const CommandEncoderCopyBufferToBufferCmd& record, CommandEncoderCopyBufferToBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToBufferSerialize(
+    const CommandEncoderCopyBufferToBufferCmd& record,
+    CommandEncoderCopyBufferToBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderCopyBufferToBuffer;
@@ -8323,8 +9035,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToBufferSerialize(const C
 }
 DAWN_UNUSED_FUNC(CommandEncoderCopyBufferToBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToBufferDeserialize(CommandEncoderCopyBufferToBufferCmd* record, const volatile CommandEncoderCopyBufferToBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToBufferDeserialize(
+    CommandEncoderCopyBufferToBufferCmd* record,
+    const volatile CommandEncoderCopyBufferToBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderCopyBufferToBuffer);
@@ -8404,8 +9119,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderCopyBufferToTextureGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderCopyBufferToTextureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToTextureSerialize(const CommandEncoderCopyBufferToTextureCmd& record, CommandEncoderCopyBufferToTextureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToTextureSerialize(
+    const CommandEncoderCopyBufferToTextureCmd& record,
+    CommandEncoderCopyBufferToTextureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderCopyBufferToTexture;
@@ -8456,8 +9173,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToTextureSerialize(const 
 }
 DAWN_UNUSED_FUNC(CommandEncoderCopyBufferToTextureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToTextureDeserialize(CommandEncoderCopyBufferToTextureCmd* record, const volatile CommandEncoderCopyBufferToTextureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyBufferToTextureDeserialize(
+    CommandEncoderCopyBufferToTextureCmd* record,
+    const volatile CommandEncoderCopyBufferToTextureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderCopyBufferToTexture);
@@ -8571,8 +9291,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderCopyTextureToBufferGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToBufferSerialize(const CommandEncoderCopyTextureToBufferCmd& record, CommandEncoderCopyTextureToBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToBufferSerialize(
+    const CommandEncoderCopyTextureToBufferCmd& record,
+    CommandEncoderCopyTextureToBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderCopyTextureToBuffer;
@@ -8623,8 +9345,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToBufferSerialize(const 
 }
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToBufferDeserialize(CommandEncoderCopyTextureToBufferCmd* record, const volatile CommandEncoderCopyTextureToBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToBufferDeserialize(
+    CommandEncoderCopyTextureToBufferCmd* record,
+    const volatile CommandEncoderCopyTextureToBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderCopyTextureToBuffer);
@@ -8738,8 +9463,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderCopyTextureToTextureGetExtraRequiredSiz
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToTextureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureSerialize(const CommandEncoderCopyTextureToTextureCmd& record, CommandEncoderCopyTextureToTextureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureSerialize(
+    const CommandEncoderCopyTextureToTextureCmd& record,
+    CommandEncoderCopyTextureToTextureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderCopyTextureToTexture;
@@ -8790,8 +9517,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureSerialize(const
 }
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToTextureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureDeserialize(CommandEncoderCopyTextureToTextureCmd* record, const volatile CommandEncoderCopyTextureToTextureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureDeserialize(
+    CommandEncoderCopyTextureToTextureCmd* record,
+    const volatile CommandEncoderCopyTextureToTextureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderCopyTextureToTexture);
@@ -8905,8 +9635,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderCopyTextureToTextureInternalGetExtraReq
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToTextureInternalGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureInternalSerialize(const CommandEncoderCopyTextureToTextureInternalCmd& record, CommandEncoderCopyTextureToTextureInternalTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureInternalSerialize(
+    const CommandEncoderCopyTextureToTextureInternalCmd& record,
+    CommandEncoderCopyTextureToTextureInternalTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderCopyTextureToTextureInternal;
@@ -8957,8 +9689,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureInternalSeriali
 }
 DAWN_UNUSED_FUNC(CommandEncoderCopyTextureToTextureInternalSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureInternalDeserialize(CommandEncoderCopyTextureToTextureInternalCmd* record, const volatile CommandEncoderCopyTextureToTextureInternalTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderCopyTextureToTextureInternalDeserialize(
+    CommandEncoderCopyTextureToTextureInternalCmd* record,
+    const volatile CommandEncoderCopyTextureToTextureInternalTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderCopyTextureToTextureInternal);
@@ -9062,8 +9797,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderFinishGetExtraRequiredSize(const Comman
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderFinishGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderFinishSerialize(const CommandEncoderFinishCmd& record, CommandEncoderFinishTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderFinishSerialize(
+    const CommandEncoderFinishCmd& record,
+    CommandEncoderFinishTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderFinish;
@@ -9094,8 +9831,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderFinishSerialize(const CommandEncode
 }
 DAWN_UNUSED_FUNC(CommandEncoderFinishSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderFinishDeserialize(CommandEncoderFinishCmd* record, const volatile CommandEncoderFinishTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderFinishDeserialize(
+    CommandEncoderFinishCmd* record,
+    const volatile CommandEncoderFinishTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderFinish);
@@ -9168,8 +9908,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderInjectValidationErrorGetExtraRequiredSi
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderInjectValidationErrorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderInjectValidationErrorSerialize(const CommandEncoderInjectValidationErrorCmd& record, CommandEncoderInjectValidationErrorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderInjectValidationErrorSerialize(
+    const CommandEncoderInjectValidationErrorCmd& record,
+    CommandEncoderInjectValidationErrorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderInjectValidationError;
@@ -9192,8 +9934,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderInjectValidationErrorSerialize(cons
 }
 DAWN_UNUSED_FUNC(CommandEncoderInjectValidationErrorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderInjectValidationErrorDeserialize(CommandEncoderInjectValidationErrorCmd* record, const volatile CommandEncoderInjectValidationErrorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderInjectValidationErrorDeserialize(
+    CommandEncoderInjectValidationErrorCmd* record,
+    const volatile CommandEncoderInjectValidationErrorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderInjectValidationError);
@@ -9263,8 +10008,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderInsertDebugMarkerGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderInsertDebugMarkerGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderInsertDebugMarkerSerialize(const CommandEncoderInsertDebugMarkerCmd& record, CommandEncoderInsertDebugMarkerTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderInsertDebugMarkerSerialize(
+    const CommandEncoderInsertDebugMarkerCmd& record,
+    CommandEncoderInsertDebugMarkerTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderInsertDebugMarker;
@@ -9287,8 +10034,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderInsertDebugMarkerSerialize(const Co
 }
 DAWN_UNUSED_FUNC(CommandEncoderInsertDebugMarkerSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderInsertDebugMarkerDeserialize(CommandEncoderInsertDebugMarkerCmd* record, const volatile CommandEncoderInsertDebugMarkerTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderInsertDebugMarkerDeserialize(
+    CommandEncoderInsertDebugMarkerCmd* record,
+    const volatile CommandEncoderInsertDebugMarkerTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderInsertDebugMarker);
@@ -9353,8 +10103,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderPopDebugGroupGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderPopDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderPopDebugGroupSerialize(const CommandEncoderPopDebugGroupCmd& record, CommandEncoderPopDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderPopDebugGroupSerialize(
+    const CommandEncoderPopDebugGroupCmd& record,
+    CommandEncoderPopDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderPopDebugGroup;
@@ -9369,8 +10121,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderPopDebugGroupSerialize(const Comman
 }
 DAWN_UNUSED_FUNC(CommandEncoderPopDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderPopDebugGroupDeserialize(CommandEncoderPopDebugGroupCmd* record, const volatile CommandEncoderPopDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderPopDebugGroupDeserialize(
+    CommandEncoderPopDebugGroupCmd* record,
+    const volatile CommandEncoderPopDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderPopDebugGroup);
@@ -9423,8 +10178,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderPushDebugGroupGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderPushDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderPushDebugGroupSerialize(const CommandEncoderPushDebugGroupCmd& record, CommandEncoderPushDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderPushDebugGroupSerialize(
+    const CommandEncoderPushDebugGroupCmd& record,
+    CommandEncoderPushDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderPushDebugGroup;
@@ -9447,8 +10204,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderPushDebugGroupSerialize(const Comma
 }
 DAWN_UNUSED_FUNC(CommandEncoderPushDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderPushDebugGroupDeserialize(CommandEncoderPushDebugGroupCmd* record, const volatile CommandEncoderPushDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderPushDebugGroupDeserialize(
+    CommandEncoderPushDebugGroupCmd* record,
+    const volatile CommandEncoderPushDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderPushDebugGroup);
@@ -9531,8 +10291,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderResolveQuerySetGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderResolveQuerySetGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderResolveQuerySetSerialize(const CommandEncoderResolveQuerySetCmd& record, CommandEncoderResolveQuerySetTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderResolveQuerySetSerialize(
+    const CommandEncoderResolveQuerySetCmd& record,
+    CommandEncoderResolveQuerySetTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderResolveQuerySet;
@@ -9554,8 +10316,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderResolveQuerySetSerialize(const Comm
 }
 DAWN_UNUSED_FUNC(CommandEncoderResolveQuerySetSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderResolveQuerySetDeserialize(CommandEncoderResolveQuerySetCmd* record, const volatile CommandEncoderResolveQuerySetTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderResolveQuerySetDeserialize(
+    CommandEncoderResolveQuerySetCmd* record,
+    const volatile CommandEncoderResolveQuerySetTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderResolveQuerySet);
@@ -9579,6 +10344,106 @@ record->destinationOffset = transfer->destinationOffset;
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(CommandEncoderResolveQuerySetDeserialize);
+
+            
+struct CommandEncoderSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(CommandEncoderSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(CommandEncoderSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t CommandEncoderSetLabelGetExtraRequiredSize(const CommandEncoderSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(CommandEncoderSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult CommandEncoderSetLabelSerialize(
+    const CommandEncoderSetLabelCmd& record,
+    CommandEncoderSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::CommandEncoderSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(CommandEncoderSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult CommandEncoderSetLabelDeserialize(
+    CommandEncoderSetLabelCmd* record,
+    const volatile CommandEncoderSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::CommandEncoderSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(CommandEncoderSetLabelDeserialize);
 
             
 struct CommandEncoderWriteBufferTransfer : CmdHeader {
@@ -9627,8 +10492,10 @@ uint8_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderWriteBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteBufferSerialize(const CommandEncoderWriteBufferCmd& record, CommandEncoderWriteBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteBufferSerialize(
+    const CommandEncoderWriteBufferCmd& record,
+    CommandEncoderWriteBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderWriteBuffer;
@@ -9659,8 +10526,11 @@ uint8_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(CommandEncoderWriteBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteBufferDeserialize(CommandEncoderWriteBufferCmd* record, const volatile CommandEncoderWriteBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteBufferDeserialize(
+    CommandEncoderWriteBufferCmd* record,
+    const volatile CommandEncoderWriteBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderWriteBuffer);
@@ -9736,8 +10606,10 @@ DAWN_DECLARE_UNUSED size_t CommandEncoderWriteTimestampGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(CommandEncoderWriteTimestampGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteTimestampSerialize(const CommandEncoderWriteTimestampCmd& record, CommandEncoderWriteTimestampTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteTimestampSerialize(
+    const CommandEncoderWriteTimestampCmd& record,
+    CommandEncoderWriteTimestampTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::CommandEncoderWriteTimestamp;
@@ -9755,8 +10627,11 @@ DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteTimestampSerialize(const Comma
 }
 DAWN_UNUSED_FUNC(CommandEncoderWriteTimestampSerialize);
 
-DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteTimestampDeserialize(CommandEncoderWriteTimestampCmd* record, const volatile CommandEncoderWriteTimestampTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult CommandEncoderWriteTimestampDeserialize(
+    CommandEncoderWriteTimestampCmd* record,
+    const volatile CommandEncoderWriteTimestampTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::CommandEncoderWriteTimestamp);
@@ -9819,8 +10694,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderDispatchGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderDispatchGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchSerialize(const ComputePassEncoderDispatchCmd& record, ComputePassEncoderDispatchTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchSerialize(
+    const ComputePassEncoderDispatchCmd& record,
+    ComputePassEncoderDispatchTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderDispatch;
@@ -9838,8 +10715,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchSerialize(const Compute
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderDispatchSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchDeserialize(ComputePassEncoderDispatchCmd* record, const volatile ComputePassEncoderDispatchTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchDeserialize(
+    ComputePassEncoderDispatchCmd* record,
+    const volatile ComputePassEncoderDispatchTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderDispatch);
@@ -9900,8 +10780,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderDispatchIndirectGetExtraRequiredSiz
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderDispatchIndirectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchIndirectSerialize(const ComputePassEncoderDispatchIndirectCmd& record, ComputePassEncoderDispatchIndirectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchIndirectSerialize(
+    const ComputePassEncoderDispatchIndirectCmd& record,
+    ComputePassEncoderDispatchIndirectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderDispatchIndirect;
@@ -9919,8 +10801,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchIndirectSerialize(const
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderDispatchIndirectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchIndirectDeserialize(ComputePassEncoderDispatchIndirectCmd* record, const volatile ComputePassEncoderDispatchIndirectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderDispatchIndirectDeserialize(
+    ComputePassEncoderDispatchIndirectCmd* record,
+    const volatile ComputePassEncoderDispatchIndirectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderDispatchIndirect);
@@ -9971,8 +10856,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderEndPassGetExtraRequiredSize(const C
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderEndPassGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderEndPassSerialize(const ComputePassEncoderEndPassCmd& record, ComputePassEncoderEndPassTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderEndPassSerialize(
+    const ComputePassEncoderEndPassCmd& record,
+    ComputePassEncoderEndPassTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderEndPass;
@@ -9987,8 +10874,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderEndPassSerialize(const ComputeP
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderEndPassSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderEndPassDeserialize(ComputePassEncoderEndPassCmd* record, const volatile ComputePassEncoderEndPassTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderEndPassDeserialize(
+    ComputePassEncoderEndPassCmd* record,
+    const volatile ComputePassEncoderEndPassTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderEndPass);
@@ -10041,8 +10931,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderInsertDebugMarkerGetExtraRequiredSi
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderInsertDebugMarkerGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderInsertDebugMarkerSerialize(const ComputePassEncoderInsertDebugMarkerCmd& record, ComputePassEncoderInsertDebugMarkerTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderInsertDebugMarkerSerialize(
+    const ComputePassEncoderInsertDebugMarkerCmd& record,
+    ComputePassEncoderInsertDebugMarkerTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderInsertDebugMarker;
@@ -10065,8 +10957,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderInsertDebugMarkerSerialize(cons
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderInsertDebugMarkerSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderInsertDebugMarkerDeserialize(ComputePassEncoderInsertDebugMarkerCmd* record, const volatile ComputePassEncoderInsertDebugMarkerTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderInsertDebugMarkerDeserialize(
+    ComputePassEncoderInsertDebugMarkerCmd* record,
+    const volatile ComputePassEncoderInsertDebugMarkerTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderInsertDebugMarker);
@@ -10131,8 +11026,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderPopDebugGroupGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderPopDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPopDebugGroupSerialize(const ComputePassEncoderPopDebugGroupCmd& record, ComputePassEncoderPopDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPopDebugGroupSerialize(
+    const ComputePassEncoderPopDebugGroupCmd& record,
+    ComputePassEncoderPopDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderPopDebugGroup;
@@ -10147,8 +11044,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPopDebugGroupSerialize(const Co
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderPopDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPopDebugGroupDeserialize(ComputePassEncoderPopDebugGroupCmd* record, const volatile ComputePassEncoderPopDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPopDebugGroupDeserialize(
+    ComputePassEncoderPopDebugGroupCmd* record,
+    const volatile ComputePassEncoderPopDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderPopDebugGroup);
@@ -10201,8 +11101,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderPushDebugGroupGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderPushDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPushDebugGroupSerialize(const ComputePassEncoderPushDebugGroupCmd& record, ComputePassEncoderPushDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPushDebugGroupSerialize(
+    const ComputePassEncoderPushDebugGroupCmd& record,
+    ComputePassEncoderPushDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderPushDebugGroup;
@@ -10225,8 +11127,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPushDebugGroupSerialize(const C
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderPushDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPushDebugGroupDeserialize(ComputePassEncoderPushDebugGroupCmd* record, const volatile ComputePassEncoderPushDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderPushDebugGroupDeserialize(
+    ComputePassEncoderPushDebugGroupCmd* record,
+    const volatile ComputePassEncoderPushDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderPushDebugGroup);
@@ -10307,8 +11212,10 @@ uint32_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderSetBindGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetBindGroupSerialize(const ComputePassEncoderSetBindGroupCmd& record, ComputePassEncoderSetBindGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetBindGroupSerialize(
+    const ComputePassEncoderSetBindGroupCmd& record,
+    ComputePassEncoderSetBindGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderSetBindGroup;
@@ -10339,8 +11246,11 @@ uint32_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderSetBindGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetBindGroupDeserialize(ComputePassEncoderSetBindGroupCmd* record, const volatile ComputePassEncoderSetBindGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetBindGroupDeserialize(
+    ComputePassEncoderSetBindGroupCmd* record,
+    const volatile ComputePassEncoderSetBindGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderSetBindGroup);
@@ -10379,6 +11289,106 @@ copiedMembers[i] = memberBuffer[i];
 DAWN_UNUSED_FUNC(ComputePassEncoderSetBindGroupDeserialize);
 
             
+struct ComputePassEncoderSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(ComputePassEncoderSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(ComputePassEncoderSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t ComputePassEncoderSetLabelGetExtraRequiredSize(const ComputePassEncoderSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(ComputePassEncoderSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetLabelSerialize(
+    const ComputePassEncoderSetLabelCmd& record,
+    ComputePassEncoderSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::ComputePassEncoderSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(ComputePassEncoderSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetLabelDeserialize(
+    ComputePassEncoderSetLabelCmd* record,
+    const volatile ComputePassEncoderSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::ComputePassEncoderSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(ComputePassEncoderSetLabelDeserialize);
+
+            
 struct ComputePassEncoderSetPipelineTransfer : CmdHeader {
     static_assert(1 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -10412,8 +11422,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderSetPipelineGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderSetPipelineGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetPipelineSerialize(const ComputePassEncoderSetPipelineCmd& record, ComputePassEncoderSetPipelineTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetPipelineSerialize(
+    const ComputePassEncoderSetPipelineCmd& record,
+    ComputePassEncoderSetPipelineTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderSetPipeline;
@@ -10430,8 +11442,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetPipelineSerialize(const Comp
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderSetPipelineSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetPipelineDeserialize(ComputePassEncoderSetPipelineCmd* record, const volatile ComputePassEncoderSetPipelineTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderSetPipelineDeserialize(
+    ComputePassEncoderSetPipelineCmd* record,
+    const volatile ComputePassEncoderSetPipelineTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderSetPipeline);
@@ -10487,8 +11502,10 @@ DAWN_DECLARE_UNUSED size_t ComputePassEncoderWriteTimestampGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePassEncoderWriteTimestampGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderWriteTimestampSerialize(const ComputePassEncoderWriteTimestampCmd& record, ComputePassEncoderWriteTimestampTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderWriteTimestampSerialize(
+    const ComputePassEncoderWriteTimestampCmd& record,
+    ComputePassEncoderWriteTimestampTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePassEncoderWriteTimestamp;
@@ -10506,8 +11523,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePassEncoderWriteTimestampSerialize(const C
 }
 DAWN_UNUSED_FUNC(ComputePassEncoderWriteTimestampSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePassEncoderWriteTimestampDeserialize(ComputePassEncoderWriteTimestampCmd* record, const volatile ComputePassEncoderWriteTimestampTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePassEncoderWriteTimestampDeserialize(
+    ComputePassEncoderWriteTimestampCmd* record,
+    const volatile ComputePassEncoderWriteTimestampTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePassEncoderWriteTimestamp);
@@ -10566,8 +11586,10 @@ DAWN_DECLARE_UNUSED size_t ComputePipelineGetBindGroupLayoutGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePipelineGetBindGroupLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePipelineGetBindGroupLayoutSerialize(const ComputePipelineGetBindGroupLayoutCmd& record, ComputePipelineGetBindGroupLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePipelineGetBindGroupLayoutSerialize(
+    const ComputePipelineGetBindGroupLayoutCmd& record,
+    ComputePipelineGetBindGroupLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePipelineGetBindGroupLayout;
@@ -10584,8 +11606,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePipelineGetBindGroupLayoutSerialize(const 
 }
 DAWN_UNUSED_FUNC(ComputePipelineGetBindGroupLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePipelineGetBindGroupLayoutDeserialize(ComputePipelineGetBindGroupLayoutCmd* record, const volatile ComputePipelineGetBindGroupLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePipelineGetBindGroupLayoutDeserialize(
+    ComputePipelineGetBindGroupLayoutCmd* record,
+    const volatile ComputePipelineGetBindGroupLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePipelineGetBindGroupLayout);
@@ -10642,8 +11667,10 @@ DAWN_DECLARE_UNUSED size_t ComputePipelineSetLabelGetExtraRequiredSize(const Com
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ComputePipelineSetLabelGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePipelineSetLabelSerialize(const ComputePipelineSetLabelCmd& record, ComputePipelineSetLabelTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ComputePipelineSetLabelSerialize(
+    const ComputePipelineSetLabelCmd& record,
+    ComputePipelineSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ComputePipelineSetLabel;
@@ -10666,8 +11693,11 @@ DAWN_DECLARE_UNUSED WireResult ComputePipelineSetLabelSerialize(const ComputePip
 }
 DAWN_UNUSED_FUNC(ComputePipelineSetLabelSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ComputePipelineSetLabelDeserialize(ComputePipelineSetLabelCmd* record, const volatile ComputePipelineSetLabelTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ComputePipelineSetLabelDeserialize(
+    ComputePipelineSetLabelCmd* record,
+    const volatile ComputePipelineSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ComputePipelineSetLabel);
@@ -10737,8 +11767,10 @@ DAWN_DECLARE_UNUSED size_t DestroyObjectGetExtraRequiredSize(const DestroyObject
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DestroyObjectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DestroyObjectSerialize(const DestroyObjectCmd& record, DestroyObjectTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult DestroyObjectSerialize(
+    const DestroyObjectCmd& record,
+    DestroyObjectTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DestroyObject;
@@ -10753,8 +11785,11 @@ DAWN_DECLARE_UNUSED WireResult DestroyObjectSerialize(const DestroyObjectCmd& re
 }
 DAWN_UNUSED_FUNC(DestroyObjectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DestroyObjectDeserialize(DestroyObjectCmd* record, const volatile DestroyObjectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult DestroyObjectDeserialize(
+    DestroyObjectCmd* record,
+    const volatile DestroyObjectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DestroyObject);
@@ -10816,8 +11851,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateBindGroupGetExtraRequiredSize(const Devic
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateBindGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupSerialize(const DeviceCreateBindGroupCmd& record, DeviceCreateBindGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupSerialize(
+    const DeviceCreateBindGroupCmd& record,
+    DeviceCreateBindGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateBindGroup;
@@ -10845,8 +11882,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupSerialize(const DeviceCreate
 }
 DAWN_UNUSED_FUNC(DeviceCreateBindGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupDeserialize(DeviceCreateBindGroupCmd* record, const volatile DeviceCreateBindGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupDeserialize(
+    DeviceCreateBindGroupCmd* record,
+    const volatile DeviceCreateBindGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateBindGroup);
@@ -10922,8 +11962,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateBindGroupLayoutGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateBindGroupLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupLayoutSerialize(const DeviceCreateBindGroupLayoutCmd& record, DeviceCreateBindGroupLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupLayoutSerialize(
+    const DeviceCreateBindGroupLayoutCmd& record,
+    DeviceCreateBindGroupLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateBindGroupLayout;
@@ -10951,8 +11993,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupLayoutSerialize(const Device
 }
 DAWN_UNUSED_FUNC(DeviceCreateBindGroupLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupLayoutDeserialize(DeviceCreateBindGroupLayoutCmd* record, const volatile DeviceCreateBindGroupLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBindGroupLayoutDeserialize(
+    DeviceCreateBindGroupLayoutCmd* record,
+    const volatile DeviceCreateBindGroupLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateBindGroupLayout);
@@ -11037,8 +12082,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateBufferGetExtraRequiredSize(const DeviceCr
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBufferSerialize(const DeviceCreateBufferCmd& record, DeviceCreateBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBufferSerialize(
+    const DeviceCreateBufferCmd& record,
+    DeviceCreateBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateBuffer;
@@ -11067,8 +12114,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateBufferSerialize(const DeviceCreateBuf
 }
 DAWN_UNUSED_FUNC(DeviceCreateBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateBufferDeserialize(DeviceCreateBufferCmd* record, const volatile DeviceCreateBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateBufferDeserialize(
+    DeviceCreateBufferCmd* record,
+    const volatile DeviceCreateBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateBuffer);
@@ -11182,8 +12232,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateCommandEncoderGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateCommandEncoderGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateCommandEncoderSerialize(const DeviceCreateCommandEncoderCmd& record, DeviceCreateCommandEncoderTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateCommandEncoderSerialize(
+    const DeviceCreateCommandEncoderCmd& record,
+    DeviceCreateCommandEncoderTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateCommandEncoder;
@@ -11214,8 +12266,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateCommandEncoderSerialize(const DeviceC
 }
 DAWN_UNUSED_FUNC(DeviceCreateCommandEncoderSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateCommandEncoderDeserialize(DeviceCreateCommandEncoderCmd* record, const volatile DeviceCreateCommandEncoderTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateCommandEncoderDeserialize(
+    DeviceCreateCommandEncoderCmd* record,
+    const volatile DeviceCreateCommandEncoderTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateCommandEncoder);
@@ -11295,8 +12350,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateComputePipelineGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateComputePipelineGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineSerialize(const DeviceCreateComputePipelineCmd& record, DeviceCreateComputePipelineTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineSerialize(
+    const DeviceCreateComputePipelineCmd& record,
+    DeviceCreateComputePipelineTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateComputePipeline;
@@ -11324,8 +12381,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineSerialize(const Device
 }
 DAWN_UNUSED_FUNC(DeviceCreateComputePipelineSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineDeserialize(DeviceCreateComputePipelineCmd* record, const volatile DeviceCreateComputePipelineTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineDeserialize(
+    DeviceCreateComputePipelineCmd* record,
+    const volatile DeviceCreateComputePipelineTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateComputePipeline);
@@ -11406,8 +12466,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateComputePipelineAsyncGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateComputePipelineAsyncGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineAsyncSerialize(const DeviceCreateComputePipelineAsyncCmd& record, DeviceCreateComputePipelineAsyncTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineAsyncSerialize(
+    const DeviceCreateComputePipelineAsyncCmd& record,
+    DeviceCreateComputePipelineAsyncTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateComputePipelineAsync;
@@ -11435,8 +12497,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineAsyncSerialize(const D
 }
 DAWN_UNUSED_FUNC(DeviceCreateComputePipelineAsyncSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineAsyncDeserialize(DeviceCreateComputePipelineAsyncCmd* record, const volatile DeviceCreateComputePipelineAsyncTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateComputePipelineAsyncDeserialize(
+    DeviceCreateComputePipelineAsyncCmd* record,
+    const volatile DeviceCreateComputePipelineAsyncTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateComputePipelineAsync);
@@ -11506,8 +12571,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateErrorBufferGetExtraRequiredSize(const Dev
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateErrorBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateErrorBufferSerialize(const DeviceCreateErrorBufferCmd& record, DeviceCreateErrorBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateErrorBufferSerialize(
+    const DeviceCreateErrorBufferCmd& record,
+    DeviceCreateErrorBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateErrorBuffer;
@@ -11523,8 +12590,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateErrorBufferSerialize(const DeviceCrea
 }
 DAWN_UNUSED_FUNC(DeviceCreateErrorBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateErrorBufferDeserialize(DeviceCreateErrorBufferCmd* record, const volatile DeviceCreateErrorBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateErrorBufferDeserialize(
+    DeviceCreateErrorBufferCmd* record,
+    const volatile DeviceCreateErrorBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateErrorBuffer);
@@ -11586,8 +12656,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateExternalTextureGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateExternalTextureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateExternalTextureSerialize(const DeviceCreateExternalTextureCmd& record, DeviceCreateExternalTextureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateExternalTextureSerialize(
+    const DeviceCreateExternalTextureCmd& record,
+    DeviceCreateExternalTextureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateExternalTexture;
@@ -11615,8 +12687,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateExternalTextureSerialize(const Device
 }
 DAWN_UNUSED_FUNC(DeviceCreateExternalTextureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateExternalTextureDeserialize(DeviceCreateExternalTextureCmd* record, const volatile DeviceCreateExternalTextureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateExternalTextureDeserialize(
+    DeviceCreateExternalTextureCmd* record,
+    const volatile DeviceCreateExternalTextureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateExternalTexture);
@@ -11692,8 +12767,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreatePipelineLayoutGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreatePipelineLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreatePipelineLayoutSerialize(const DeviceCreatePipelineLayoutCmd& record, DeviceCreatePipelineLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreatePipelineLayoutSerialize(
+    const DeviceCreatePipelineLayoutCmd& record,
+    DeviceCreatePipelineLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreatePipelineLayout;
@@ -11721,8 +12798,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreatePipelineLayoutSerialize(const DeviceC
 }
 DAWN_UNUSED_FUNC(DeviceCreatePipelineLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreatePipelineLayoutDeserialize(DeviceCreatePipelineLayoutCmd* record, const volatile DeviceCreatePipelineLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreatePipelineLayoutDeserialize(
+    DeviceCreatePipelineLayoutCmd* record,
+    const volatile DeviceCreatePipelineLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreatePipelineLayout);
@@ -11798,8 +12878,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateQuerySetGetExtraRequiredSize(const Device
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateQuerySetGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateQuerySetSerialize(const DeviceCreateQuerySetCmd& record, DeviceCreateQuerySetTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateQuerySetSerialize(
+    const DeviceCreateQuerySetCmd& record,
+    DeviceCreateQuerySetTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateQuerySet;
@@ -11827,8 +12909,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateQuerySetSerialize(const DeviceCreateQ
 }
 DAWN_UNUSED_FUNC(DeviceCreateQuerySetSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateQuerySetDeserialize(DeviceCreateQuerySetCmd* record, const volatile DeviceCreateQuerySetTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateQuerySetDeserialize(
+    DeviceCreateQuerySetCmd* record,
+    const volatile DeviceCreateQuerySetTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateQuerySet);
@@ -11904,8 +12989,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateRenderBundleEncoderGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateRenderBundleEncoderGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderBundleEncoderSerialize(const DeviceCreateRenderBundleEncoderCmd& record, DeviceCreateRenderBundleEncoderTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderBundleEncoderSerialize(
+    const DeviceCreateRenderBundleEncoderCmd& record,
+    DeviceCreateRenderBundleEncoderTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateRenderBundleEncoder;
@@ -11933,8 +13020,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderBundleEncoderSerialize(const De
 }
 DAWN_UNUSED_FUNC(DeviceCreateRenderBundleEncoderSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderBundleEncoderDeserialize(DeviceCreateRenderBundleEncoderCmd* record, const volatile DeviceCreateRenderBundleEncoderTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderBundleEncoderDeserialize(
+    DeviceCreateRenderBundleEncoderCmd* record,
+    const volatile DeviceCreateRenderBundleEncoderTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateRenderBundleEncoder);
@@ -12010,8 +13100,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateRenderPipelineGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateRenderPipelineGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineSerialize(const DeviceCreateRenderPipelineCmd& record, DeviceCreateRenderPipelineTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineSerialize(
+    const DeviceCreateRenderPipelineCmd& record,
+    DeviceCreateRenderPipelineTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateRenderPipeline;
@@ -12039,8 +13131,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineSerialize(const DeviceC
 }
 DAWN_UNUSED_FUNC(DeviceCreateRenderPipelineSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineDeserialize(DeviceCreateRenderPipelineCmd* record, const volatile DeviceCreateRenderPipelineTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineDeserialize(
+    DeviceCreateRenderPipelineCmd* record,
+    const volatile DeviceCreateRenderPipelineTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateRenderPipeline);
@@ -12121,8 +13216,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateRenderPipelineAsyncGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateRenderPipelineAsyncGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineAsyncSerialize(const DeviceCreateRenderPipelineAsyncCmd& record, DeviceCreateRenderPipelineAsyncTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineAsyncSerialize(
+    const DeviceCreateRenderPipelineAsyncCmd& record,
+    DeviceCreateRenderPipelineAsyncTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateRenderPipelineAsync;
@@ -12150,8 +13247,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineAsyncSerialize(const De
 }
 DAWN_UNUSED_FUNC(DeviceCreateRenderPipelineAsyncSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineAsyncDeserialize(DeviceCreateRenderPipelineAsyncCmd* record, const volatile DeviceCreateRenderPipelineAsyncTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateRenderPipelineAsyncDeserialize(
+    DeviceCreateRenderPipelineAsyncCmd* record,
+    const volatile DeviceCreateRenderPipelineAsyncTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateRenderPipelineAsync);
@@ -12231,8 +13331,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateSamplerGetExtraRequiredSize(const DeviceC
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateSamplerGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateSamplerSerialize(const DeviceCreateSamplerCmd& record, DeviceCreateSamplerTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateSamplerSerialize(
+    const DeviceCreateSamplerCmd& record,
+    DeviceCreateSamplerTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateSampler;
@@ -12263,8 +13365,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateSamplerSerialize(const DeviceCreateSa
 }
 DAWN_UNUSED_FUNC(DeviceCreateSamplerSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateSamplerDeserialize(DeviceCreateSamplerCmd* record, const volatile DeviceCreateSamplerTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateSamplerDeserialize(
+    DeviceCreateSamplerCmd* record,
+    const volatile DeviceCreateSamplerTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateSampler);
@@ -12344,8 +13449,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateShaderModuleGetExtraRequiredSize(const De
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateShaderModuleGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateShaderModuleSerialize(const DeviceCreateShaderModuleCmd& record, DeviceCreateShaderModuleTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateShaderModuleSerialize(
+    const DeviceCreateShaderModuleCmd& record,
+    DeviceCreateShaderModuleTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateShaderModule;
@@ -12373,8 +13480,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateShaderModuleSerialize(const DeviceCre
 }
 DAWN_UNUSED_FUNC(DeviceCreateShaderModuleSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateShaderModuleDeserialize(DeviceCreateShaderModuleCmd* record, const volatile DeviceCreateShaderModuleTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateShaderModuleDeserialize(
+    DeviceCreateShaderModuleCmd* record,
+    const volatile DeviceCreateShaderModuleTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateShaderModule);
@@ -12453,8 +13563,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateSwapChainGetExtraRequiredSize(const Devic
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateSwapChainGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateSwapChainSerialize(const DeviceCreateSwapChainCmd& record, DeviceCreateSwapChainTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateSwapChainSerialize(
+    const DeviceCreateSwapChainCmd& record,
+    DeviceCreateSwapChainTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateSwapChain;
@@ -12484,8 +13596,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateSwapChainSerialize(const DeviceCreate
 }
 DAWN_UNUSED_FUNC(DeviceCreateSwapChainSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateSwapChainDeserialize(DeviceCreateSwapChainCmd* record, const volatile DeviceCreateSwapChainTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateSwapChainDeserialize(
+    DeviceCreateSwapChainCmd* record,
+    const volatile DeviceCreateSwapChainTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateSwapChain);
@@ -12562,8 +13677,10 @@ DAWN_DECLARE_UNUSED size_t DeviceCreateTextureGetExtraRequiredSize(const DeviceC
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceCreateTextureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateTextureSerialize(const DeviceCreateTextureCmd& record, DeviceCreateTextureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateTextureSerialize(
+    const DeviceCreateTextureCmd& record,
+    DeviceCreateTextureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceCreateTexture;
@@ -12591,8 +13708,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceCreateTextureSerialize(const DeviceCreateTe
 }
 DAWN_UNUSED_FUNC(DeviceCreateTextureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceCreateTextureDeserialize(DeviceCreateTextureCmd* record, const volatile DeviceCreateTextureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceCreateTextureDeserialize(
+    DeviceCreateTextureCmd* record,
+    const volatile DeviceCreateTextureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceCreateTexture);
@@ -12660,8 +13780,10 @@ DAWN_DECLARE_UNUSED size_t DeviceGetQueueGetExtraRequiredSize(const DeviceGetQue
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceGetQueueGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceGetQueueSerialize(const DeviceGetQueueCmd& record, DeviceGetQueueTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceGetQueueSerialize(
+    const DeviceGetQueueCmd& record,
+    DeviceGetQueueTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceGetQueue;
@@ -12677,8 +13799,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceGetQueueSerialize(const DeviceGetQueueCmd& 
 }
 DAWN_UNUSED_FUNC(DeviceGetQueueSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceGetQueueDeserialize(DeviceGetQueueCmd* record, const volatile DeviceGetQueueTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceGetQueueDeserialize(
+    DeviceGetQueueCmd* record,
+    const volatile DeviceGetQueueTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceGetQueue);
@@ -12737,8 +13862,10 @@ DAWN_DECLARE_UNUSED size_t DeviceInjectErrorGetExtraRequiredSize(const DeviceInj
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceInjectErrorGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceInjectErrorSerialize(const DeviceInjectErrorCmd& record, DeviceInjectErrorTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceInjectErrorSerialize(
+    const DeviceInjectErrorCmd& record,
+    DeviceInjectErrorTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceInjectError;
@@ -12762,8 +13889,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceInjectErrorSerialize(const DeviceInjectErro
 }
 DAWN_UNUSED_FUNC(DeviceInjectErrorSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceInjectErrorDeserialize(DeviceInjectErrorCmd* record, const volatile DeviceInjectErrorTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceInjectErrorDeserialize(
+    DeviceInjectErrorCmd* record,
+    const volatile DeviceInjectErrorTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceInjectError);
@@ -12830,8 +13960,10 @@ DAWN_DECLARE_UNUSED size_t DeviceLoseForTestingGetExtraRequiredSize(const Device
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceLoseForTestingGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceLoseForTestingSerialize(const DeviceLoseForTestingCmd& record, DeviceLoseForTestingTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceLoseForTestingSerialize(
+    const DeviceLoseForTestingCmd& record,
+    DeviceLoseForTestingTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceLoseForTesting;
@@ -12846,8 +13978,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceLoseForTestingSerialize(const DeviceLoseFor
 }
 DAWN_UNUSED_FUNC(DeviceLoseForTestingSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceLoseForTestingDeserialize(DeviceLoseForTestingCmd* record, const volatile DeviceLoseForTestingTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceLoseForTestingDeserialize(
+    DeviceLoseForTestingCmd* record,
+    const volatile DeviceLoseForTestingTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceLoseForTesting);
@@ -12900,8 +14035,10 @@ DAWN_DECLARE_UNUSED size_t DevicePopErrorScopeGetExtraRequiredSize(const DeviceP
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DevicePopErrorScopeGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DevicePopErrorScopeSerialize(const DevicePopErrorScopeCmd& record, DevicePopErrorScopeTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult DevicePopErrorScopeSerialize(
+    const DevicePopErrorScopeCmd& record,
+    DevicePopErrorScopeTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DevicePopErrorScope;
@@ -12916,8 +14053,11 @@ DAWN_DECLARE_UNUSED WireResult DevicePopErrorScopeSerialize(const DevicePopError
 }
 DAWN_UNUSED_FUNC(DevicePopErrorScopeSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DevicePopErrorScopeDeserialize(DevicePopErrorScopeCmd* record, const volatile DevicePopErrorScopeTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult DevicePopErrorScopeDeserialize(
+    DevicePopErrorScopeCmd* record,
+    const volatile DevicePopErrorScopeTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DevicePopErrorScope);
@@ -12971,8 +14111,10 @@ DAWN_DECLARE_UNUSED size_t DevicePushErrorScopeGetExtraRequiredSize(const Device
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DevicePushErrorScopeGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DevicePushErrorScopeSerialize(const DevicePushErrorScopeCmd& record, DevicePushErrorScopeTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DevicePushErrorScopeSerialize(
+    const DevicePushErrorScopeCmd& record,
+    DevicePushErrorScopeTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DevicePushErrorScope;
@@ -12988,8 +14130,11 @@ DAWN_DECLARE_UNUSED WireResult DevicePushErrorScopeSerialize(const DevicePushErr
 }
 DAWN_UNUSED_FUNC(DevicePushErrorScopeSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DevicePushErrorScopeDeserialize(DevicePushErrorScopeCmd* record, const volatile DevicePushErrorScopeTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DevicePushErrorScopeDeserialize(
+    DevicePushErrorScopeCmd* record,
+    const volatile DevicePushErrorScopeTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DevicePushErrorScope);
@@ -13039,8 +14184,10 @@ DAWN_DECLARE_UNUSED size_t DeviceTickGetExtraRequiredSize(const DeviceTickCmd& r
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(DeviceTickGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceTickSerialize(const DeviceTickCmd& record, DeviceTickTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult DeviceTickSerialize(
+    const DeviceTickCmd& record,
+    DeviceTickTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::DeviceTick;
@@ -13055,8 +14202,11 @@ DAWN_DECLARE_UNUSED WireResult DeviceTickSerialize(const DeviceTickCmd& record, 
 }
 DAWN_UNUSED_FUNC(DeviceTickSerialize);
 
-DAWN_DECLARE_UNUSED WireResult DeviceTickDeserialize(DeviceTickCmd* record, const volatile DeviceTickTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult DeviceTickDeserialize(
+    DeviceTickCmd* record,
+    const volatile DeviceTickTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::DeviceTick);
@@ -13104,8 +14254,10 @@ DAWN_DECLARE_UNUSED size_t ExternalTextureDestroyGetExtraRequiredSize(const Exte
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ExternalTextureDestroyGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroySerialize(const ExternalTextureDestroyCmd& record, ExternalTextureDestroyTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroySerialize(
+    const ExternalTextureDestroyCmd& record,
+    ExternalTextureDestroyTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ExternalTextureDestroy;
@@ -13120,8 +14272,11 @@ DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroySerialize(const ExternalTex
 }
 DAWN_UNUSED_FUNC(ExternalTextureDestroySerialize);
 
-DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroyDeserialize(ExternalTextureDestroyCmd* record, const volatile ExternalTextureDestroyTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroyDeserialize(
+    ExternalTextureDestroyCmd* record,
+    const volatile ExternalTextureDestroyTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ExternalTextureDestroy);
@@ -13137,6 +14292,106 @@ DAWN_DECLARE_UNUSED WireResult ExternalTextureDestroyDeserialize(ExternalTexture
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(ExternalTextureDestroyDeserialize);
+
+            
+struct ExternalTextureSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(ExternalTextureSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(ExternalTextureSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t ExternalTextureSetLabelGetExtraRequiredSize(const ExternalTextureSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(ExternalTextureSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult ExternalTextureSetLabelSerialize(
+    const ExternalTextureSetLabelCmd& record,
+    ExternalTextureSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::ExternalTextureSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(ExternalTextureSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult ExternalTextureSetLabelDeserialize(
+    ExternalTextureSetLabelCmd* record,
+    const volatile ExternalTextureSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::ExternalTextureSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(ExternalTextureSetLabelDeserialize);
 
             
 struct InstanceCreateSurfaceTransfer : CmdHeader {
@@ -13181,8 +14436,10 @@ DAWN_DECLARE_UNUSED size_t InstanceCreateSurfaceGetExtraRequiredSize(const Insta
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(InstanceCreateSurfaceGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult InstanceCreateSurfaceSerialize(const InstanceCreateSurfaceCmd& record, InstanceCreateSurfaceTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult InstanceCreateSurfaceSerialize(
+    const InstanceCreateSurfaceCmd& record,
+    InstanceCreateSurfaceTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::InstanceCreateSurface;
@@ -13210,8 +14467,11 @@ DAWN_DECLARE_UNUSED WireResult InstanceCreateSurfaceSerialize(const InstanceCrea
 }
 DAWN_UNUSED_FUNC(InstanceCreateSurfaceSerialize);
 
-DAWN_DECLARE_UNUSED WireResult InstanceCreateSurfaceDeserialize(InstanceCreateSurfaceCmd* record, const volatile InstanceCreateSurfaceTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult InstanceCreateSurfaceDeserialize(
+    InstanceCreateSurfaceCmd* record,
+    const volatile InstanceCreateSurfaceTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::InstanceCreateSurface);
@@ -13245,6 +14505,106 @@ record->result = transfer->result;
 DAWN_UNUSED_FUNC(InstanceCreateSurfaceDeserialize);
 
             
+struct PipelineLayoutSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(PipelineLayoutSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(PipelineLayoutSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t PipelineLayoutSetLabelGetExtraRequiredSize(const PipelineLayoutSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(PipelineLayoutSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult PipelineLayoutSetLabelSerialize(
+    const PipelineLayoutSetLabelCmd& record,
+    PipelineLayoutSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::PipelineLayoutSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(PipelineLayoutSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult PipelineLayoutSetLabelDeserialize(
+    PipelineLayoutSetLabelCmd* record,
+    const volatile PipelineLayoutSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::PipelineLayoutSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(PipelineLayoutSetLabelDeserialize);
+
+            
 struct QuerySetDestroyTransfer : CmdHeader {
     static_assert(1 <= 1,
                   "Record must be at most one of is_cmd, extensible, and chained.");
@@ -13275,8 +14635,10 @@ DAWN_DECLARE_UNUSED size_t QuerySetDestroyGetExtraRequiredSize(const QuerySetDes
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QuerySetDestroyGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QuerySetDestroySerialize(const QuerySetDestroyCmd& record, QuerySetDestroyTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult QuerySetDestroySerialize(
+    const QuerySetDestroyCmd& record,
+    QuerySetDestroyTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QuerySetDestroy;
@@ -13291,8 +14653,11 @@ DAWN_DECLARE_UNUSED WireResult QuerySetDestroySerialize(const QuerySetDestroyCmd
 }
 DAWN_UNUSED_FUNC(QuerySetDestroySerialize);
 
-DAWN_DECLARE_UNUSED WireResult QuerySetDestroyDeserialize(QuerySetDestroyCmd* record, const volatile QuerySetDestroyTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult QuerySetDestroyDeserialize(
+    QuerySetDestroyCmd* record,
+    const volatile QuerySetDestroyTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QuerySetDestroy);
@@ -13308,6 +14673,106 @@ DAWN_DECLARE_UNUSED WireResult QuerySetDestroyDeserialize(QuerySetDestroyCmd* re
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(QuerySetDestroyDeserialize);
+
+            
+struct QuerySetSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(QuerySetSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(QuerySetSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t QuerySetSetLabelGetExtraRequiredSize(const QuerySetSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(QuerySetSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult QuerySetSetLabelSerialize(
+    const QuerySetSetLabelCmd& record,
+    QuerySetSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::QuerySetSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(QuerySetSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult QuerySetSetLabelDeserialize(
+    QuerySetSetLabelCmd* record,
+    const volatile QuerySetSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::QuerySetSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(QuerySetSetLabelDeserialize);
 
             
 struct QueueCopyTextureForBrowserTransfer : CmdHeader {
@@ -13372,8 +14837,10 @@ DAWN_DECLARE_UNUSED size_t QueueCopyTextureForBrowserGetExtraRequiredSize(const 
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QueueCopyTextureForBrowserGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QueueCopyTextureForBrowserSerialize(const QueueCopyTextureForBrowserCmd& record, QueueCopyTextureForBrowserTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult QueueCopyTextureForBrowserSerialize(
+    const QueueCopyTextureForBrowserCmd& record,
+    QueueCopyTextureForBrowserTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QueueCopyTextureForBrowser;
@@ -13436,8 +14903,11 @@ DAWN_DECLARE_UNUSED WireResult QueueCopyTextureForBrowserSerialize(const QueueCo
 }
 DAWN_UNUSED_FUNC(QueueCopyTextureForBrowserSerialize);
 
-DAWN_DECLARE_UNUSED WireResult QueueCopyTextureForBrowserDeserialize(QueueCopyTextureForBrowserCmd* record, const volatile QueueCopyTextureForBrowserTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult QueueCopyTextureForBrowserDeserialize(
+    QueueCopyTextureForBrowserCmd* record,
+    const volatile QueueCopyTextureForBrowserTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QueueCopyTextureForBrowser);
@@ -13550,8 +15020,10 @@ DAWN_DECLARE_UNUSED size_t QueueOnSubmittedWorkDoneGetExtraRequiredSize(const Qu
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QueueOnSubmittedWorkDoneGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QueueOnSubmittedWorkDoneSerialize(const QueueOnSubmittedWorkDoneCmd& record, QueueOnSubmittedWorkDoneTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult QueueOnSubmittedWorkDoneSerialize(
+    const QueueOnSubmittedWorkDoneCmd& record,
+    QueueOnSubmittedWorkDoneTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QueueOnSubmittedWorkDone;
@@ -13567,8 +15039,11 @@ DAWN_DECLARE_UNUSED WireResult QueueOnSubmittedWorkDoneSerialize(const QueueOnSu
 }
 DAWN_UNUSED_FUNC(QueueOnSubmittedWorkDoneSerialize);
 
-DAWN_DECLARE_UNUSED WireResult QueueOnSubmittedWorkDoneDeserialize(QueueOnSubmittedWorkDoneCmd* record, const volatile QueueOnSubmittedWorkDoneTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult QueueOnSubmittedWorkDoneDeserialize(
+    QueueOnSubmittedWorkDoneCmd* record,
+    const volatile QueueOnSubmittedWorkDoneTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QueueOnSubmittedWorkDone);
@@ -13628,8 +15103,10 @@ DAWN_DECLARE_UNUSED size_t QueueSubmitGetExtraRequiredSize(const QueueSubmitCmd&
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QueueSubmitGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QueueSubmitSerialize(const QueueSubmitCmd& record, QueueSubmitTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult QueueSubmitSerialize(
+    const QueueSubmitCmd& record,
+    QueueSubmitTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QueueSubmit;
@@ -13657,8 +15134,11 @@ DAWN_DECLARE_UNUSED WireResult QueueSubmitSerialize(const QueueSubmitCmd& record
 }
 DAWN_UNUSED_FUNC(QueueSubmitSerialize);
 
-DAWN_DECLARE_UNUSED WireResult QueueSubmitDeserialize(QueueSubmitCmd* record, const volatile QueueSubmitTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult QueueSubmitDeserialize(
+    QueueSubmitCmd* record,
+    const volatile QueueSubmitTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QueueSubmit);
@@ -13740,8 +15220,10 @@ uint8_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QueueWriteBufferInternalGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QueueWriteBufferInternalSerialize(const QueueWriteBufferInternalCmd& record, QueueWriteBufferInternalTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult QueueWriteBufferInternalSerialize(
+    const QueueWriteBufferInternalCmd& record,
+    QueueWriteBufferInternalTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QueueWriteBufferInternal;
@@ -13770,8 +15252,11 @@ uint8_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(QueueWriteBufferInternalSerialize);
 
-DAWN_DECLARE_UNUSED WireResult QueueWriteBufferInternalDeserialize(QueueWriteBufferInternalCmd* record, const volatile QueueWriteBufferInternalTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult QueueWriteBufferInternalDeserialize(
+    QueueWriteBufferInternalCmd* record,
+    const volatile QueueWriteBufferInternalTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QueueWriteBufferInternal);
@@ -13875,8 +15360,10 @@ uint8_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(QueueWriteTextureInternalGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult QueueWriteTextureInternalSerialize(const QueueWriteTextureInternalCmd& record, QueueWriteTextureInternalTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult QueueWriteTextureInternalSerialize(
+    const QueueWriteTextureInternalCmd& record,
+    QueueWriteTextureInternalTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::QueueWriteTextureInternal;
@@ -13939,8 +15426,11 @@ uint8_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(QueueWriteTextureInternalSerialize);
 
-DAWN_DECLARE_UNUSED WireResult QueueWriteTextureInternalDeserialize(QueueWriteTextureInternalCmd* record, const volatile QueueWriteTextureInternalTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult QueueWriteTextureInternalDeserialize(
+    QueueWriteTextureInternalCmd* record,
+    const volatile QueueWriteTextureInternalTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::QueueWriteTextureInternal);
@@ -14064,8 +15554,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderDrawGetExtraRequiredSize(const Ren
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawSerialize(const RenderBundleEncoderDrawCmd& record, RenderBundleEncoderDrawTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawSerialize(
+    const RenderBundleEncoderDrawCmd& record,
+    RenderBundleEncoderDrawTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderDraw;
@@ -14084,8 +15576,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawSerialize(const RenderBund
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawDeserialize(RenderBundleEncoderDrawCmd* record, const volatile RenderBundleEncoderDrawTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawDeserialize(
+    RenderBundleEncoderDrawCmd* record,
+    const volatile RenderBundleEncoderDrawTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderDraw);
@@ -14161,8 +15656,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderDrawIndexedGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndexedGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedSerialize(const RenderBundleEncoderDrawIndexedCmd& record, RenderBundleEncoderDrawIndexedTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedSerialize(
+    const RenderBundleEncoderDrawIndexedCmd& record,
+    RenderBundleEncoderDrawIndexedTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderDrawIndexed;
@@ -14182,8 +15679,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedSerialize(const Ren
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndexedSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedDeserialize(RenderBundleEncoderDrawIndexedCmd* record, const volatile RenderBundleEncoderDrawIndexedTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedDeserialize(
+    RenderBundleEncoderDrawIndexedCmd* record,
+    const volatile RenderBundleEncoderDrawIndexedTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderDrawIndexed);
@@ -14248,8 +15748,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderDrawIndexedIndirectGetExtraRequire
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndexedIndirectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedIndirectSerialize(const RenderBundleEncoderDrawIndexedIndirectCmd& record, RenderBundleEncoderDrawIndexedIndirectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedIndirectSerialize(
+    const RenderBundleEncoderDrawIndexedIndirectCmd& record,
+    RenderBundleEncoderDrawIndexedIndirectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderDrawIndexedIndirect;
@@ -14267,8 +15769,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedIndirectSerialize(c
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndexedIndirectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedIndirectDeserialize(RenderBundleEncoderDrawIndexedIndirectCmd* record, const volatile RenderBundleEncoderDrawIndexedIndirectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndexedIndirectDeserialize(
+    RenderBundleEncoderDrawIndexedIndirectCmd* record,
+    const volatile RenderBundleEncoderDrawIndexedIndirectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderDrawIndexedIndirect);
@@ -14326,8 +15831,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderDrawIndirectGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndirectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndirectSerialize(const RenderBundleEncoderDrawIndirectCmd& record, RenderBundleEncoderDrawIndirectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndirectSerialize(
+    const RenderBundleEncoderDrawIndirectCmd& record,
+    RenderBundleEncoderDrawIndirectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderDrawIndirect;
@@ -14345,8 +15852,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndirectSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderDrawIndirectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndirectDeserialize(RenderBundleEncoderDrawIndirectCmd* record, const volatile RenderBundleEncoderDrawIndirectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderDrawIndirectDeserialize(
+    RenderBundleEncoderDrawIndirectCmd* record,
+    const volatile RenderBundleEncoderDrawIndirectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderDrawIndirect);
@@ -14411,8 +15921,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderFinishGetExtraRequiredSize(const R
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderFinishGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderFinishSerialize(const RenderBundleEncoderFinishCmd& record, RenderBundleEncoderFinishTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderFinishSerialize(
+    const RenderBundleEncoderFinishCmd& record,
+    RenderBundleEncoderFinishTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderFinish;
@@ -14443,8 +15955,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderFinishSerialize(const RenderBu
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderFinishSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderFinishDeserialize(RenderBundleEncoderFinishCmd* record, const volatile RenderBundleEncoderFinishTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderFinishDeserialize(
+    RenderBundleEncoderFinishCmd* record,
+    const volatile RenderBundleEncoderFinishTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderFinish);
@@ -14517,8 +16032,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderInsertDebugMarkerGetExtraRequiredS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderInsertDebugMarkerGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderInsertDebugMarkerSerialize(const RenderBundleEncoderInsertDebugMarkerCmd& record, RenderBundleEncoderInsertDebugMarkerTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderInsertDebugMarkerSerialize(
+    const RenderBundleEncoderInsertDebugMarkerCmd& record,
+    RenderBundleEncoderInsertDebugMarkerTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderInsertDebugMarker;
@@ -14541,8 +16058,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderInsertDebugMarkerSerialize(con
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderInsertDebugMarkerSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderInsertDebugMarkerDeserialize(RenderBundleEncoderInsertDebugMarkerCmd* record, const volatile RenderBundleEncoderInsertDebugMarkerTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderInsertDebugMarkerDeserialize(
+    RenderBundleEncoderInsertDebugMarkerCmd* record,
+    const volatile RenderBundleEncoderInsertDebugMarkerTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderInsertDebugMarker);
@@ -14607,8 +16127,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderPopDebugGroupGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderPopDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPopDebugGroupSerialize(const RenderBundleEncoderPopDebugGroupCmd& record, RenderBundleEncoderPopDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPopDebugGroupSerialize(
+    const RenderBundleEncoderPopDebugGroupCmd& record,
+    RenderBundleEncoderPopDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderPopDebugGroup;
@@ -14623,8 +16145,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPopDebugGroupSerialize(const R
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderPopDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPopDebugGroupDeserialize(RenderBundleEncoderPopDebugGroupCmd* record, const volatile RenderBundleEncoderPopDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPopDebugGroupDeserialize(
+    RenderBundleEncoderPopDebugGroupCmd* record,
+    const volatile RenderBundleEncoderPopDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderPopDebugGroup);
@@ -14677,8 +16202,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderPushDebugGroupGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderPushDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPushDebugGroupSerialize(const RenderBundleEncoderPushDebugGroupCmd& record, RenderBundleEncoderPushDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPushDebugGroupSerialize(
+    const RenderBundleEncoderPushDebugGroupCmd& record,
+    RenderBundleEncoderPushDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderPushDebugGroup;
@@ -14701,8 +16228,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPushDebugGroupSerialize(const 
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderPushDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPushDebugGroupDeserialize(RenderBundleEncoderPushDebugGroupCmd* record, const volatile RenderBundleEncoderPushDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderPushDebugGroupDeserialize(
+    RenderBundleEncoderPushDebugGroupCmd* record,
+    const volatile RenderBundleEncoderPushDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderPushDebugGroup);
@@ -14783,8 +16313,10 @@ uint32_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetBindGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetBindGroupSerialize(const RenderBundleEncoderSetBindGroupCmd& record, RenderBundleEncoderSetBindGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetBindGroupSerialize(
+    const RenderBundleEncoderSetBindGroupCmd& record,
+    RenderBundleEncoderSetBindGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderSetBindGroup;
@@ -14815,8 +16347,11 @@ uint32_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetBindGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetBindGroupDeserialize(RenderBundleEncoderSetBindGroupCmd* record, const volatile RenderBundleEncoderSetBindGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetBindGroupDeserialize(
+    RenderBundleEncoderSetBindGroupCmd* record,
+    const volatile RenderBundleEncoderSetBindGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderSetBindGroup);
@@ -14900,8 +16435,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderSetIndexBufferGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetIndexBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetIndexBufferSerialize(const RenderBundleEncoderSetIndexBufferCmd& record, RenderBundleEncoderSetIndexBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetIndexBufferSerialize(
+    const RenderBundleEncoderSetIndexBufferCmd& record,
+    RenderBundleEncoderSetIndexBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderSetIndexBuffer;
@@ -14921,8 +16458,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetIndexBufferSerialize(const 
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetIndexBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetIndexBufferDeserialize(RenderBundleEncoderSetIndexBufferCmd* record, const volatile RenderBundleEncoderSetIndexBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetIndexBufferDeserialize(
+    RenderBundleEncoderSetIndexBufferCmd* record,
+    const volatile RenderBundleEncoderSetIndexBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderSetIndexBuffer);
@@ -14945,6 +16485,106 @@ record->size = transfer->size;
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetIndexBufferDeserialize);
+
+            
+struct RenderBundleEncoderSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(RenderBundleEncoderSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(RenderBundleEncoderSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t RenderBundleEncoderSetLabelGetExtraRequiredSize(const RenderBundleEncoderSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(RenderBundleEncoderSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetLabelSerialize(
+    const RenderBundleEncoderSetLabelCmd& record,
+    RenderBundleEncoderSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::RenderBundleEncoderSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(RenderBundleEncoderSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetLabelDeserialize(
+    RenderBundleEncoderSetLabelCmd* record,
+    const volatile RenderBundleEncoderSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(RenderBundleEncoderSetLabelDeserialize);
 
             
 struct RenderBundleEncoderSetPipelineTransfer : CmdHeader {
@@ -14980,8 +16620,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderSetPipelineGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetPipelineGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetPipelineSerialize(const RenderBundleEncoderSetPipelineCmd& record, RenderBundleEncoderSetPipelineTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetPipelineSerialize(
+    const RenderBundleEncoderSetPipelineCmd& record,
+    RenderBundleEncoderSetPipelineTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderSetPipeline;
@@ -14998,8 +16640,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetPipelineSerialize(const Ren
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetPipelineSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetPipelineDeserialize(RenderBundleEncoderSetPipelineCmd* record, const volatile RenderBundleEncoderSetPipelineTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetPipelineDeserialize(
+    RenderBundleEncoderSetPipelineCmd* record,
+    const volatile RenderBundleEncoderSetPipelineTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderSetPipeline);
@@ -15063,8 +16708,10 @@ DAWN_DECLARE_UNUSED size_t RenderBundleEncoderSetVertexBufferGetExtraRequiredSiz
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetVertexBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetVertexBufferSerialize(const RenderBundleEncoderSetVertexBufferCmd& record, RenderBundleEncoderSetVertexBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetVertexBufferSerialize(
+    const RenderBundleEncoderSetVertexBufferCmd& record,
+    RenderBundleEncoderSetVertexBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderBundleEncoderSetVertexBuffer;
@@ -15084,8 +16731,11 @@ DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetVertexBufferSerialize(const
 }
 DAWN_UNUSED_FUNC(RenderBundleEncoderSetVertexBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetVertexBufferDeserialize(RenderBundleEncoderSetVertexBufferCmd* record, const volatile RenderBundleEncoderSetVertexBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderBundleEncoderSetVertexBufferDeserialize(
+    RenderBundleEncoderSetVertexBufferCmd* record,
+    const volatile RenderBundleEncoderSetVertexBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderBundleEncoderSetVertexBuffer);
@@ -15144,8 +16794,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderBeginOcclusionQueryGetExtraRequiredS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderBeginOcclusionQueryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderBeginOcclusionQuerySerialize(const RenderPassEncoderBeginOcclusionQueryCmd& record, RenderPassEncoderBeginOcclusionQueryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderBeginOcclusionQuerySerialize(
+    const RenderPassEncoderBeginOcclusionQueryCmd& record,
+    RenderPassEncoderBeginOcclusionQueryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderBeginOcclusionQuery;
@@ -15161,8 +16813,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderBeginOcclusionQuerySerialize(con
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderBeginOcclusionQuerySerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderBeginOcclusionQueryDeserialize(RenderPassEncoderBeginOcclusionQueryCmd* record, const volatile RenderPassEncoderBeginOcclusionQueryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderBeginOcclusionQueryDeserialize(
+    RenderPassEncoderBeginOcclusionQueryCmd* record,
+    const volatile RenderPassEncoderBeginOcclusionQueryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderBeginOcclusionQuery);
@@ -15228,8 +16883,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderDrawGetExtraRequiredSize(const Rende
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawSerialize(const RenderPassEncoderDrawCmd& record, RenderPassEncoderDrawTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawSerialize(
+    const RenderPassEncoderDrawCmd& record,
+    RenderPassEncoderDrawTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderDraw;
@@ -15248,8 +16905,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawSerialize(const RenderPassEn
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawDeserialize(RenderPassEncoderDrawCmd* record, const volatile RenderPassEncoderDrawTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawDeserialize(
+    RenderPassEncoderDrawCmd* record,
+    const volatile RenderPassEncoderDrawTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderDraw);
@@ -15325,8 +16985,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderDrawIndexedGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndexedGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedSerialize(const RenderPassEncoderDrawIndexedCmd& record, RenderPassEncoderDrawIndexedTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedSerialize(
+    const RenderPassEncoderDrawIndexedCmd& record,
+    RenderPassEncoderDrawIndexedTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderDrawIndexed;
@@ -15346,8 +17008,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedSerialize(const Rende
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndexedSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedDeserialize(RenderPassEncoderDrawIndexedCmd* record, const volatile RenderPassEncoderDrawIndexedTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedDeserialize(
+    RenderPassEncoderDrawIndexedCmd* record,
+    const volatile RenderPassEncoderDrawIndexedTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderDrawIndexed);
@@ -15412,8 +17077,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderDrawIndexedIndirectGetExtraRequiredS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndexedIndirectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedIndirectSerialize(const RenderPassEncoderDrawIndexedIndirectCmd& record, RenderPassEncoderDrawIndexedIndirectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedIndirectSerialize(
+    const RenderPassEncoderDrawIndexedIndirectCmd& record,
+    RenderPassEncoderDrawIndexedIndirectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderDrawIndexedIndirect;
@@ -15431,8 +17098,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedIndirectSerialize(con
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndexedIndirectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedIndirectDeserialize(RenderPassEncoderDrawIndexedIndirectCmd* record, const volatile RenderPassEncoderDrawIndexedIndirectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndexedIndirectDeserialize(
+    RenderPassEncoderDrawIndexedIndirectCmd* record,
+    const volatile RenderPassEncoderDrawIndexedIndirectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderDrawIndexedIndirect);
@@ -15490,8 +17160,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderDrawIndirectGetExtraRequiredSize(con
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndirectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndirectSerialize(const RenderPassEncoderDrawIndirectCmd& record, RenderPassEncoderDrawIndirectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndirectSerialize(
+    const RenderPassEncoderDrawIndirectCmd& record,
+    RenderPassEncoderDrawIndirectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderDrawIndirect;
@@ -15509,8 +17181,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndirectSerialize(const Rend
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderDrawIndirectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndirectDeserialize(RenderPassEncoderDrawIndirectCmd* record, const volatile RenderPassEncoderDrawIndirectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderDrawIndirectDeserialize(
+    RenderPassEncoderDrawIndirectCmd* record,
+    const volatile RenderPassEncoderDrawIndirectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderDrawIndirect);
@@ -15561,8 +17236,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderEndOcclusionQueryGetExtraRequiredSiz
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderEndOcclusionQueryGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndOcclusionQuerySerialize(const RenderPassEncoderEndOcclusionQueryCmd& record, RenderPassEncoderEndOcclusionQueryTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndOcclusionQuerySerialize(
+    const RenderPassEncoderEndOcclusionQueryCmd& record,
+    RenderPassEncoderEndOcclusionQueryTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderEndOcclusionQuery;
@@ -15577,8 +17254,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndOcclusionQuerySerialize(const
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderEndOcclusionQuerySerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndOcclusionQueryDeserialize(RenderPassEncoderEndOcclusionQueryCmd* record, const volatile RenderPassEncoderEndOcclusionQueryTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndOcclusionQueryDeserialize(
+    RenderPassEncoderEndOcclusionQueryCmd* record,
+    const volatile RenderPassEncoderEndOcclusionQueryTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderEndOcclusionQuery);
@@ -15626,8 +17306,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderEndPassGetExtraRequiredSize(const Re
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderEndPassGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndPassSerialize(const RenderPassEncoderEndPassCmd& record, RenderPassEncoderEndPassTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndPassSerialize(
+    const RenderPassEncoderEndPassCmd& record,
+    RenderPassEncoderEndPassTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderEndPass;
@@ -15642,8 +17324,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndPassSerialize(const RenderPas
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderEndPassSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndPassDeserialize(RenderPassEncoderEndPassCmd* record, const volatile RenderPassEncoderEndPassTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderEndPassDeserialize(
+    RenderPassEncoderEndPassCmd* record,
+    const volatile RenderPassEncoderEndPassTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderEndPass);
@@ -15699,8 +17384,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderExecuteBundlesGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderExecuteBundlesGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderExecuteBundlesSerialize(const RenderPassEncoderExecuteBundlesCmd& record, RenderPassEncoderExecuteBundlesTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderExecuteBundlesSerialize(
+    const RenderPassEncoderExecuteBundlesCmd& record,
+    RenderPassEncoderExecuteBundlesTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderExecuteBundles;
@@ -15728,8 +17415,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderExecuteBundlesSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderExecuteBundlesSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderExecuteBundlesDeserialize(RenderPassEncoderExecuteBundlesCmd* record, const volatile RenderPassEncoderExecuteBundlesTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderExecuteBundlesDeserialize(
+    RenderPassEncoderExecuteBundlesCmd* record,
+    const volatile RenderPassEncoderExecuteBundlesTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderExecuteBundles);
@@ -15798,8 +17488,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderInsertDebugMarkerGetExtraRequiredSiz
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderInsertDebugMarkerGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderInsertDebugMarkerSerialize(const RenderPassEncoderInsertDebugMarkerCmd& record, RenderPassEncoderInsertDebugMarkerTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderInsertDebugMarkerSerialize(
+    const RenderPassEncoderInsertDebugMarkerCmd& record,
+    RenderPassEncoderInsertDebugMarkerTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderInsertDebugMarker;
@@ -15822,8 +17514,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderInsertDebugMarkerSerialize(const
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderInsertDebugMarkerSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderInsertDebugMarkerDeserialize(RenderPassEncoderInsertDebugMarkerCmd* record, const volatile RenderPassEncoderInsertDebugMarkerTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderInsertDebugMarkerDeserialize(
+    RenderPassEncoderInsertDebugMarkerCmd* record,
+    const volatile RenderPassEncoderInsertDebugMarkerTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderInsertDebugMarker);
@@ -15888,8 +17583,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderPopDebugGroupGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderPopDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPopDebugGroupSerialize(const RenderPassEncoderPopDebugGroupCmd& record, RenderPassEncoderPopDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPopDebugGroupSerialize(
+    const RenderPassEncoderPopDebugGroupCmd& record,
+    RenderPassEncoderPopDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderPopDebugGroup;
@@ -15904,8 +17601,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPopDebugGroupSerialize(const Ren
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderPopDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPopDebugGroupDeserialize(RenderPassEncoderPopDebugGroupCmd* record, const volatile RenderPassEncoderPopDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPopDebugGroupDeserialize(
+    RenderPassEncoderPopDebugGroupCmd* record,
+    const volatile RenderPassEncoderPopDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderPopDebugGroup);
@@ -15958,8 +17658,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderPushDebugGroupGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderPushDebugGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPushDebugGroupSerialize(const RenderPassEncoderPushDebugGroupCmd& record, RenderPassEncoderPushDebugGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPushDebugGroupSerialize(
+    const RenderPassEncoderPushDebugGroupCmd& record,
+    RenderPassEncoderPushDebugGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderPushDebugGroup;
@@ -15982,8 +17684,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPushDebugGroupSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderPushDebugGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPushDebugGroupDeserialize(RenderPassEncoderPushDebugGroupCmd* record, const volatile RenderPassEncoderPushDebugGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderPushDebugGroupDeserialize(
+    RenderPassEncoderPushDebugGroupCmd* record,
+    const volatile RenderPassEncoderPushDebugGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderPushDebugGroup);
@@ -16064,8 +17769,10 @@ uint32_t);
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetBindGroupGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBindGroupSerialize(const RenderPassEncoderSetBindGroupCmd& record, RenderPassEncoderSetBindGroupTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBindGroupSerialize(
+    const RenderPassEncoderSetBindGroupCmd& record,
+    RenderPassEncoderSetBindGroupTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetBindGroup;
@@ -16096,8 +17803,11 @@ uint32_t* memberBuffer;
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetBindGroupSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBindGroupDeserialize(RenderPassEncoderSetBindGroupCmd* record, const volatile RenderPassEncoderSetBindGroupTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBindGroupDeserialize(
+    RenderPassEncoderSetBindGroupCmd* record,
+    const volatile RenderPassEncoderSetBindGroupTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetBindGroup);
@@ -16174,8 +17884,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetBlendConstantGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetBlendConstantGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBlendConstantSerialize(const RenderPassEncoderSetBlendConstantCmd& record, RenderPassEncoderSetBlendConstantTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBlendConstantSerialize(
+    const RenderPassEncoderSetBlendConstantCmd& record,
+    RenderPassEncoderSetBlendConstantTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetBlendConstant;
@@ -16202,8 +17914,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBlendConstantSerialize(const 
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetBlendConstantSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBlendConstantDeserialize(RenderPassEncoderSetBlendConstantCmd* record, const volatile RenderPassEncoderSetBlendConstantTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetBlendConstantDeserialize(
+    RenderPassEncoderSetBlendConstantCmd* record,
+    const volatile RenderPassEncoderSetBlendConstantTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetBlendConstant);
@@ -16280,8 +17995,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetIndexBufferGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetIndexBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetIndexBufferSerialize(const RenderPassEncoderSetIndexBufferCmd& record, RenderPassEncoderSetIndexBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetIndexBufferSerialize(
+    const RenderPassEncoderSetIndexBufferCmd& record,
+    RenderPassEncoderSetIndexBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetIndexBuffer;
@@ -16301,8 +18018,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetIndexBufferSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetIndexBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetIndexBufferDeserialize(RenderPassEncoderSetIndexBufferCmd* record, const volatile RenderPassEncoderSetIndexBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetIndexBufferDeserialize(
+    RenderPassEncoderSetIndexBufferCmd* record,
+    const volatile RenderPassEncoderSetIndexBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetIndexBuffer);
@@ -16325,6 +18045,106 @@ record->size = transfer->size;
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetIndexBufferDeserialize);
+
+            
+struct RenderPassEncoderSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(RenderPassEncoderSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(RenderPassEncoderSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetLabelGetExtraRequiredSize(const RenderPassEncoderSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(RenderPassEncoderSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetLabelSerialize(
+    const RenderPassEncoderSetLabelCmd& record,
+    RenderPassEncoderSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::RenderPassEncoderSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(RenderPassEncoderSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetLabelDeserialize(
+    RenderPassEncoderSetLabelCmd* record,
+    const volatile RenderPassEncoderSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(RenderPassEncoderSetLabelDeserialize);
 
             
 struct RenderPassEncoderSetPipelineTransfer : CmdHeader {
@@ -16360,8 +18180,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetPipelineGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetPipelineGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetPipelineSerialize(const RenderPassEncoderSetPipelineCmd& record, RenderPassEncoderSetPipelineTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetPipelineSerialize(
+    const RenderPassEncoderSetPipelineCmd& record,
+    RenderPassEncoderSetPipelineTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetPipeline;
@@ -16378,8 +18200,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetPipelineSerialize(const Rende
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetPipelineSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetPipelineDeserialize(RenderPassEncoderSetPipelineCmd* record, const volatile RenderPassEncoderSetPipelineTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetPipelineDeserialize(
+    RenderPassEncoderSetPipelineCmd* record,
+    const volatile RenderPassEncoderSetPipelineTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetPipeline);
@@ -16444,8 +18269,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetScissorRectGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetScissorRectGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetScissorRectSerialize(const RenderPassEncoderSetScissorRectCmd& record, RenderPassEncoderSetScissorRectTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetScissorRectSerialize(
+    const RenderPassEncoderSetScissorRectCmd& record,
+    RenderPassEncoderSetScissorRectTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetScissorRect;
@@ -16464,8 +18291,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetScissorRectSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetScissorRectSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetScissorRectDeserialize(RenderPassEncoderSetScissorRectCmd* record, const volatile RenderPassEncoderSetScissorRectTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetScissorRectDeserialize(
+    RenderPassEncoderSetScissorRectCmd* record,
+    const volatile RenderPassEncoderSetScissorRectTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetScissorRect);
@@ -16525,8 +18355,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetStencilReferenceGetExtraRequiredS
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetStencilReferenceGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetStencilReferenceSerialize(const RenderPassEncoderSetStencilReferenceCmd& record, RenderPassEncoderSetStencilReferenceTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetStencilReferenceSerialize(
+    const RenderPassEncoderSetStencilReferenceCmd& record,
+    RenderPassEncoderSetStencilReferenceTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetStencilReference;
@@ -16542,8 +18374,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetStencilReferenceSerialize(con
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetStencilReferenceSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetStencilReferenceDeserialize(RenderPassEncoderSetStencilReferenceCmd* record, const volatile RenderPassEncoderSetStencilReferenceTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetStencilReferenceDeserialize(
+    RenderPassEncoderSetStencilReferenceCmd* record,
+    const volatile RenderPassEncoderSetStencilReferenceTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetStencilReference);
@@ -16608,8 +18443,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetVertexBufferGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetVertexBufferGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetVertexBufferSerialize(const RenderPassEncoderSetVertexBufferCmd& record, RenderPassEncoderSetVertexBufferTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetVertexBufferSerialize(
+    const RenderPassEncoderSetVertexBufferCmd& record,
+    RenderPassEncoderSetVertexBufferTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetVertexBuffer;
@@ -16629,8 +18466,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetVertexBufferSerialize(const R
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetVertexBufferSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetVertexBufferDeserialize(RenderPassEncoderSetVertexBufferCmd* record, const volatile RenderPassEncoderSetVertexBufferTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetVertexBufferDeserialize(
+    RenderPassEncoderSetVertexBufferCmd* record,
+    const volatile RenderPassEncoderSetVertexBufferTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetVertexBuffer);
@@ -16709,8 +18549,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderSetViewportGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderSetViewportGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetViewportSerialize(const RenderPassEncoderSetViewportCmd& record, RenderPassEncoderSetViewportTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetViewportSerialize(
+    const RenderPassEncoderSetViewportCmd& record,
+    RenderPassEncoderSetViewportTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderSetViewport;
@@ -16731,8 +18573,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetViewportSerialize(const Rende
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderSetViewportSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetViewportDeserialize(RenderPassEncoderSetViewportCmd* record, const volatile RenderPassEncoderSetViewportTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderSetViewportDeserialize(
+    RenderPassEncoderSetViewportCmd* record,
+    const volatile RenderPassEncoderSetViewportTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderSetViewport);
@@ -16799,8 +18644,10 @@ DAWN_DECLARE_UNUSED size_t RenderPassEncoderWriteTimestampGetExtraRequiredSize(c
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPassEncoderWriteTimestampGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderWriteTimestampSerialize(const RenderPassEncoderWriteTimestampCmd& record, RenderPassEncoderWriteTimestampTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderWriteTimestampSerialize(
+    const RenderPassEncoderWriteTimestampCmd& record,
+    RenderPassEncoderWriteTimestampTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPassEncoderWriteTimestamp;
@@ -16818,8 +18665,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPassEncoderWriteTimestampSerialize(const Re
 }
 DAWN_UNUSED_FUNC(RenderPassEncoderWriteTimestampSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPassEncoderWriteTimestampDeserialize(RenderPassEncoderWriteTimestampCmd* record, const volatile RenderPassEncoderWriteTimestampTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPassEncoderWriteTimestampDeserialize(
+    RenderPassEncoderWriteTimestampCmd* record,
+    const volatile RenderPassEncoderWriteTimestampTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPassEncoderWriteTimestamp);
@@ -16878,8 +18728,10 @@ DAWN_DECLARE_UNUSED size_t RenderPipelineGetBindGroupLayoutGetExtraRequiredSize(
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPipelineGetBindGroupLayoutGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPipelineGetBindGroupLayoutSerialize(const RenderPipelineGetBindGroupLayoutCmd& record, RenderPipelineGetBindGroupLayoutTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPipelineGetBindGroupLayoutSerialize(
+    const RenderPipelineGetBindGroupLayoutCmd& record,
+    RenderPipelineGetBindGroupLayoutTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPipelineGetBindGroupLayout;
@@ -16896,8 +18748,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPipelineGetBindGroupLayoutSerialize(const R
 }
 DAWN_UNUSED_FUNC(RenderPipelineGetBindGroupLayoutSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPipelineGetBindGroupLayoutDeserialize(RenderPipelineGetBindGroupLayoutCmd* record, const volatile RenderPipelineGetBindGroupLayoutTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPipelineGetBindGroupLayoutDeserialize(
+    RenderPipelineGetBindGroupLayoutCmd* record,
+    const volatile RenderPipelineGetBindGroupLayoutTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPipelineGetBindGroupLayout);
@@ -16954,8 +18809,10 @@ DAWN_DECLARE_UNUSED size_t RenderPipelineSetLabelGetExtraRequiredSize(const Rend
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(RenderPipelineSetLabelGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelSerialize(const RenderPipelineSetLabelCmd& record, RenderPipelineSetLabelTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelSerialize(
+    const RenderPipelineSetLabelCmd& record,
+    RenderPipelineSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::RenderPipelineSetLabel;
@@ -16978,8 +18835,11 @@ DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelSerialize(const RenderPipel
 }
 DAWN_UNUSED_FUNC(RenderPipelineSetLabelSerialize);
 
-DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelDeserialize(RenderPipelineSetLabelCmd* record, const volatile RenderPipelineSetLabelTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelDeserialize(
+    RenderPipelineSetLabelCmd* record,
+    const volatile RenderPipelineSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::RenderPipelineSetLabel);
@@ -17012,6 +18872,106 @@ DAWN_DECLARE_UNUSED WireResult RenderPipelineSetLabelDeserialize(RenderPipelineS
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(RenderPipelineSetLabelDeserialize);
+
+            
+struct SamplerSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(SamplerSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(SamplerSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t SamplerSetLabelGetExtraRequiredSize(const SamplerSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(SamplerSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult SamplerSetLabelSerialize(
+    const SamplerSetLabelCmd& record,
+    SamplerSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::SamplerSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(SamplerSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult SamplerSetLabelDeserialize(
+    SamplerSetLabelCmd* record,
+    const volatile SamplerSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::SamplerSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(SamplerSetLabelDeserialize);
 
             
 struct ShaderModuleGetCompilationInfoTransfer : CmdHeader {
@@ -17049,8 +19009,10 @@ DAWN_DECLARE_UNUSED size_t ShaderModuleGetCompilationInfoGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ShaderModuleGetCompilationInfoGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ShaderModuleGetCompilationInfoSerialize(const ShaderModuleGetCompilationInfoCmd& record, ShaderModuleGetCompilationInfoTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ShaderModuleGetCompilationInfoSerialize(
+    const ShaderModuleGetCompilationInfoCmd& record,
+    ShaderModuleGetCompilationInfoTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ShaderModuleGetCompilationInfo;
@@ -17065,8 +19027,11 @@ DAWN_DECLARE_UNUSED WireResult ShaderModuleGetCompilationInfoSerialize(const Sha
 }
 DAWN_UNUSED_FUNC(ShaderModuleGetCompilationInfoSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ShaderModuleGetCompilationInfoDeserialize(ShaderModuleGetCompilationInfoCmd* record, const volatile ShaderModuleGetCompilationInfoTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ShaderModuleGetCompilationInfoDeserialize(
+    ShaderModuleGetCompilationInfoCmd* record,
+    const volatile ShaderModuleGetCompilationInfoTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ShaderModuleGetCompilationInfo);
@@ -17121,8 +19086,10 @@ DAWN_DECLARE_UNUSED size_t ShaderModuleSetLabelGetExtraRequiredSize(const Shader
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ShaderModuleSetLabelGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ShaderModuleSetLabelSerialize(const ShaderModuleSetLabelCmd& record, ShaderModuleSetLabelTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult ShaderModuleSetLabelSerialize(
+    const ShaderModuleSetLabelCmd& record,
+    ShaderModuleSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::ShaderModuleSetLabel;
@@ -17145,8 +19112,11 @@ DAWN_DECLARE_UNUSED WireResult ShaderModuleSetLabelSerialize(const ShaderModuleS
 }
 DAWN_UNUSED_FUNC(ShaderModuleSetLabelSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ShaderModuleSetLabelDeserialize(ShaderModuleSetLabelCmd* record, const volatile ShaderModuleSetLabelTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult ShaderModuleSetLabelDeserialize(
+    ShaderModuleSetLabelCmd* record,
+    const volatile ShaderModuleSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::ShaderModuleSetLabel);
@@ -17226,8 +19196,10 @@ DAWN_DECLARE_UNUSED size_t SwapChainConfigureGetExtraRequiredSize(const SwapChai
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(SwapChainConfigureGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainConfigureSerialize(const SwapChainConfigureCmd& record, SwapChainConfigureTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult SwapChainConfigureSerialize(
+    const SwapChainConfigureCmd& record,
+    SwapChainConfigureTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::SwapChainConfigure;
@@ -17246,8 +19218,11 @@ DAWN_DECLARE_UNUSED WireResult SwapChainConfigureSerialize(const SwapChainConfig
 }
 DAWN_UNUSED_FUNC(SwapChainConfigureSerialize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainConfigureDeserialize(SwapChainConfigureCmd* record, const volatile SwapChainConfigureTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult SwapChainConfigureDeserialize(
+    SwapChainConfigureCmd* record,
+    const volatile SwapChainConfigureTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::SwapChainConfigure);
@@ -17307,8 +19282,10 @@ DAWN_DECLARE_UNUSED size_t SwapChainGetCurrentTextureViewGetExtraRequiredSize(co
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(SwapChainGetCurrentTextureViewGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainGetCurrentTextureViewSerialize(const SwapChainGetCurrentTextureViewCmd& record, SwapChainGetCurrentTextureViewTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult SwapChainGetCurrentTextureViewSerialize(
+    const SwapChainGetCurrentTextureViewCmd& record,
+    SwapChainGetCurrentTextureViewTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::SwapChainGetCurrentTextureView;
@@ -17324,8 +19301,11 @@ DAWN_DECLARE_UNUSED WireResult SwapChainGetCurrentTextureViewSerialize(const Swa
 }
 DAWN_UNUSED_FUNC(SwapChainGetCurrentTextureViewSerialize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainGetCurrentTextureViewDeserialize(SwapChainGetCurrentTextureViewCmd* record, const volatile SwapChainGetCurrentTextureViewTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult SwapChainGetCurrentTextureViewDeserialize(
+    SwapChainGetCurrentTextureViewCmd* record,
+    const volatile SwapChainGetCurrentTextureViewTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::SwapChainGetCurrentTextureView);
@@ -17375,8 +19355,10 @@ DAWN_DECLARE_UNUSED size_t SwapChainPresentGetExtraRequiredSize(const SwapChainP
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(SwapChainPresentGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainPresentSerialize(const SwapChainPresentCmd& record, SwapChainPresentTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult SwapChainPresentSerialize(
+    const SwapChainPresentCmd& record,
+    SwapChainPresentTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::SwapChainPresent;
@@ -17391,8 +19373,11 @@ DAWN_DECLARE_UNUSED WireResult SwapChainPresentSerialize(const SwapChainPresentC
 }
 DAWN_UNUSED_FUNC(SwapChainPresentSerialize);
 
-DAWN_DECLARE_UNUSED WireResult SwapChainPresentDeserialize(SwapChainPresentCmd* record, const volatile SwapChainPresentTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult SwapChainPresentDeserialize(
+    SwapChainPresentCmd* record,
+    const volatile SwapChainPresentTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::SwapChainPresent);
@@ -17454,8 +19439,10 @@ DAWN_DECLARE_UNUSED size_t TextureCreateViewGetExtraRequiredSize(const TextureCr
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(TextureCreateViewGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult TextureCreateViewSerialize(const TextureCreateViewCmd& record, TextureCreateViewTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult TextureCreateViewSerialize(
+    const TextureCreateViewCmd& record,
+    TextureCreateViewTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::TextureCreateView;
@@ -17486,8 +19473,11 @@ DAWN_DECLARE_UNUSED WireResult TextureCreateViewSerialize(const TextureCreateVie
 }
 DAWN_UNUSED_FUNC(TextureCreateViewSerialize);
 
-DAWN_DECLARE_UNUSED WireResult TextureCreateViewDeserialize(TextureCreateViewCmd* record, const volatile TextureCreateViewTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult TextureCreateViewDeserialize(
+    TextureCreateViewCmd* record,
+    const volatile TextureCreateViewTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::TextureCreateView);
@@ -17555,8 +19545,10 @@ DAWN_DECLARE_UNUSED size_t TextureDestroyGetExtraRequiredSize(const TextureDestr
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(TextureDestroyGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult TextureDestroySerialize(const TextureDestroyCmd& record, TextureDestroyTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult TextureDestroySerialize(
+    const TextureDestroyCmd& record,
+    TextureDestroyTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::TextureDestroy;
@@ -17571,8 +19563,11 @@ DAWN_DECLARE_UNUSED WireResult TextureDestroySerialize(const TextureDestroyCmd& 
 }
 DAWN_UNUSED_FUNC(TextureDestroySerialize);
 
-DAWN_DECLARE_UNUSED WireResult TextureDestroyDeserialize(TextureDestroyCmd* record, const volatile TextureDestroyTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult TextureDestroyDeserialize(
+    TextureDestroyCmd* record,
+    const volatile TextureDestroyTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::TextureDestroy);
@@ -17625,8 +19620,10 @@ DAWN_DECLARE_UNUSED size_t TextureSetLabelGetExtraRequiredSize(const TextureSetL
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(TextureSetLabelGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult TextureSetLabelSerialize(const TextureSetLabelCmd& record, TextureSetLabelTransfer* transfer,
-                       SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+DAWN_DECLARE_UNUSED WireResult TextureSetLabelSerialize(
+    const TextureSetLabelCmd& record,
+    TextureSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = WireCmd::TextureSetLabel;
@@ -17649,8 +19646,11 @@ DAWN_DECLARE_UNUSED WireResult TextureSetLabelSerialize(const TextureSetLabelCmd
 }
 DAWN_UNUSED_FUNC(TextureSetLabelSerialize);
 
-DAWN_DECLARE_UNUSED WireResult TextureSetLabelDeserialize(TextureSetLabelCmd* record, const volatile TextureSetLabelTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+DAWN_DECLARE_UNUSED WireResult TextureSetLabelDeserialize(
+    TextureSetLabelCmd* record,
+    const volatile TextureSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == WireCmd::TextureSetLabel);
@@ -17683,6 +19683,106 @@ DAWN_DECLARE_UNUSED WireResult TextureSetLabelDeserialize(TextureSetLabelCmd* re
     return WireResult::Success;
 }
 DAWN_UNUSED_FUNC(TextureSetLabelDeserialize);
+
+            
+struct TextureViewSetLabelTransfer : CmdHeader {
+    static_assert(1 <= 1,
+                  "Record must be at most one of is_cmd, extensible, and chained.");
+    WireCmd commandId;
+
+    ObjectId self;
+
+    uint64_t labelStrlen;
+
+};
+
+static_assert(offsetof(TextureViewSetLabelTransfer, commandSize) == 0, "");
+static_assert(offsetof(TextureViewSetLabelTransfer, commandId) == sizeof(CmdHeader), "");
+
+
+DAWN_DECLARE_UNUSED size_t TextureViewSetLabelGetExtraRequiredSize(const TextureViewSetLabelCmd& record) {
+    DAWN_UNUSED(record);
+
+    size_t result = 0;
+
+
+
+    {
+    result += std::strlen(record.label);
+    }
+
+    {
+    }
+
+    return result;
+}
+// GetExtraRequiredSize isn't used for structures that are value members of other structures
+// because we assume they cannot contain pointers themselves.
+DAWN_UNUSED_FUNC(TextureViewSetLabelGetExtraRequiredSize);
+
+DAWN_DECLARE_UNUSED WireResult TextureViewSetLabelSerialize(
+    const TextureViewSetLabelCmd& record,
+    TextureViewSetLabelTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
+    DAWN_UNUSED(buffer);
+
+    transfer->commandId = WireCmd::TextureViewSetLabel;
+
+    WIRE_TRY(provider.GetId(record.self, &transfer->self));
+
+
+
+
+
+    {
+        transfer->labelStrlen = std::strlen(record.label);
+
+        char* stringInBuffer;
+        WIRE_TRY(buffer->NextN(transfer->labelStrlen, &stringInBuffer));
+        memcpy(stringInBuffer, record.label, transfer->labelStrlen);
+    }
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(TextureViewSetLabelSerialize);
+
+DAWN_DECLARE_UNUSED WireResult TextureViewSetLabelDeserialize(
+    TextureViewSetLabelCmd* record,
+    const volatile TextureViewSetLabelTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+    DAWN_UNUSED(allocator);
+
+    ASSERT(transfer->commandId == WireCmd::TextureViewSetLabel);
+
+    record->selfId = transfer->self;
+
+    WIRE_TRY(resolver.GetFromId(transfer->self, &record->self));
+
+
+
+
+    {
+        uint64_t stringLength64 = transfer->labelStrlen;
+        if (stringLength64 >= std::numeric_limits<size_t>::max()) {
+            return WireResult::FatalError;
+        }
+        size_t stringLength = static_cast<size_t>(stringLength64);
+
+        const volatile char* stringInBuffer;
+        WIRE_TRY(deserializeBuffer->ReadN(stringLength, &stringInBuffer));
+
+        char* copiedString;
+        WIRE_TRY(GetSpace(allocator, stringLength + 1, &copiedString));
+        memcpy(copiedString, const_cast<const char*>(stringInBuffer), stringLength);
+        copiedString[stringLength] = '\0';
+        record->label = copiedString;
+    }
+
+
+    return WireResult::Success;
+}
+DAWN_UNUSED_FUNC(TextureViewSetLabelDeserialize);
 
 
             
@@ -17729,8 +19829,10 @@ DAWN_DECLARE_UNUSED size_t ReturnBufferMapAsyncCallbackGetExtraRequiredSize(cons
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnBufferMapAsyncCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnBufferMapAsyncCallbackSerialize(const ReturnBufferMapAsyncCallbackCmd& record, ReturnBufferMapAsyncCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnBufferMapAsyncCallbackSerialize(
+    const ReturnBufferMapAsyncCallbackCmd& record,
+    ReturnBufferMapAsyncCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::BufferMapAsyncCallback;
@@ -17747,8 +19849,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnBufferMapAsyncCallbackSerialize(const Retur
 }
 DAWN_UNUSED_FUNC(ReturnBufferMapAsyncCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnBufferMapAsyncCallbackDeserialize(ReturnBufferMapAsyncCallbackCmd* record, const volatile ReturnBufferMapAsyncCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnBufferMapAsyncCallbackDeserialize(
+    ReturnBufferMapAsyncCallbackCmd* record,
+    const volatile ReturnBufferMapAsyncCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::BufferMapAsyncCallback);
@@ -17832,8 +19937,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDeviceCreateComputePipelineAsyncCallbackGetExtr
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDeviceCreateComputePipelineAsyncCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateComputePipelineAsyncCallbackSerialize(const ReturnDeviceCreateComputePipelineAsyncCallbackCmd& record, ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateComputePipelineAsyncCallbackSerialize(
+    const ReturnDeviceCreateComputePipelineAsyncCallbackCmd& record,
+    ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DeviceCreateComputePipelineAsyncCallback;
@@ -17857,8 +19964,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateComputePipelineAsyncCallbackSer
 }
 DAWN_UNUSED_FUNC(ReturnDeviceCreateComputePipelineAsyncCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateComputePipelineAsyncCallbackDeserialize(ReturnDeviceCreateComputePipelineAsyncCallbackCmd* record, const volatile ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateComputePipelineAsyncCallbackDeserialize(
+    ReturnDeviceCreateComputePipelineAsyncCallbackCmd* record,
+    const volatile ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DeviceCreateComputePipelineAsyncCallback);
@@ -17941,8 +20051,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDeviceCreateRenderPipelineAsyncCallbackGetExtra
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDeviceCreateRenderPipelineAsyncCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackSerialize(const ReturnDeviceCreateRenderPipelineAsyncCallbackCmd& record, ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackSerialize(
+    const ReturnDeviceCreateRenderPipelineAsyncCallbackCmd& record,
+    ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DeviceCreateRenderPipelineAsyncCallback;
@@ -17966,8 +20078,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackSeri
 }
 DAWN_UNUSED_FUNC(ReturnDeviceCreateRenderPipelineAsyncCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackDeserialize(ReturnDeviceCreateRenderPipelineAsyncCallbackCmd* record, const volatile ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackDeserialize(
+    ReturnDeviceCreateRenderPipelineAsyncCallbackCmd* record,
+    const volatile ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DeviceCreateRenderPipelineAsyncCallback);
@@ -18046,8 +20161,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDeviceLoggingCallbackGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDeviceLoggingCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceLoggingCallbackSerialize(const ReturnDeviceLoggingCallbackCmd& record, ReturnDeviceLoggingCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceLoggingCallbackSerialize(
+    const ReturnDeviceLoggingCallbackCmd& record,
+    ReturnDeviceLoggingCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DeviceLoggingCallback;
@@ -18070,8 +20187,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDeviceLoggingCallbackSerialize(const Return
 }
 DAWN_UNUSED_FUNC(ReturnDeviceLoggingCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceLoggingCallbackDeserialize(ReturnDeviceLoggingCallbackCmd* record, const volatile ReturnDeviceLoggingCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceLoggingCallbackDeserialize(
+    ReturnDeviceLoggingCallbackCmd* record,
+    const volatile ReturnDeviceLoggingCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DeviceLoggingCallback);
@@ -18148,8 +20268,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDeviceLostCallbackGetExtraRequiredSize(const Re
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDeviceLostCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceLostCallbackSerialize(const ReturnDeviceLostCallbackCmd& record, ReturnDeviceLostCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceLostCallbackSerialize(
+    const ReturnDeviceLostCallbackCmd& record,
+    ReturnDeviceLostCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DeviceLostCallback;
@@ -18172,8 +20294,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDeviceLostCallbackSerialize(const ReturnDev
 }
 DAWN_UNUSED_FUNC(ReturnDeviceLostCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceLostCallbackDeserialize(ReturnDeviceLostCallbackCmd* record, const volatile ReturnDeviceLostCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceLostCallbackDeserialize(
+    ReturnDeviceLostCallbackCmd* record,
+    const volatile ReturnDeviceLostCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DeviceLostCallback);
@@ -18254,8 +20379,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDevicePopErrorScopeCallbackGetExtraRequiredSize
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDevicePopErrorScopeCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDevicePopErrorScopeCallbackSerialize(const ReturnDevicePopErrorScopeCallbackCmd& record, ReturnDevicePopErrorScopeCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDevicePopErrorScopeCallbackSerialize(
+    const ReturnDevicePopErrorScopeCallbackCmd& record,
+    ReturnDevicePopErrorScopeCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DevicePopErrorScopeCallback;
@@ -18279,8 +20406,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDevicePopErrorScopeCallbackSerialize(const 
 }
 DAWN_UNUSED_FUNC(ReturnDevicePopErrorScopeCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDevicePopErrorScopeCallbackDeserialize(ReturnDevicePopErrorScopeCallbackCmd* record, const volatile ReturnDevicePopErrorScopeCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDevicePopErrorScopeCallbackDeserialize(
+    ReturnDevicePopErrorScopeCallbackCmd* record,
+    const volatile ReturnDevicePopErrorScopeCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DevicePopErrorScopeCallback);
@@ -18359,8 +20489,10 @@ DAWN_DECLARE_UNUSED size_t ReturnDeviceUncapturedErrorCallbackGetExtraRequiredSi
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnDeviceUncapturedErrorCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceUncapturedErrorCallbackSerialize(const ReturnDeviceUncapturedErrorCallbackCmd& record, ReturnDeviceUncapturedErrorCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceUncapturedErrorCallbackSerialize(
+    const ReturnDeviceUncapturedErrorCallbackCmd& record,
+    ReturnDeviceUncapturedErrorCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::DeviceUncapturedErrorCallback;
@@ -18383,8 +20515,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnDeviceUncapturedErrorCallbackSerialize(cons
 }
 DAWN_UNUSED_FUNC(ReturnDeviceUncapturedErrorCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnDeviceUncapturedErrorCallbackDeserialize(ReturnDeviceUncapturedErrorCallbackCmd* record, const volatile ReturnDeviceUncapturedErrorCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnDeviceUncapturedErrorCallbackDeserialize(
+    ReturnDeviceUncapturedErrorCallbackCmd* record,
+    const volatile ReturnDeviceUncapturedErrorCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::DeviceUncapturedErrorCallback);
@@ -18460,8 +20595,10 @@ DAWN_DECLARE_UNUSED size_t ReturnQueueWorkDoneCallbackGetExtraRequiredSize(const
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnQueueWorkDoneCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnQueueWorkDoneCallbackSerialize(const ReturnQueueWorkDoneCallbackCmd& record, ReturnQueueWorkDoneCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnQueueWorkDoneCallbackSerialize(
+    const ReturnQueueWorkDoneCallbackCmd& record,
+    ReturnQueueWorkDoneCallbackTransfer* transfer,
+    SerializeBuffer* buffer) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::QueueWorkDoneCallback;
@@ -18477,8 +20614,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnQueueWorkDoneCallbackSerialize(const Return
 }
 DAWN_UNUSED_FUNC(ReturnQueueWorkDoneCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnQueueWorkDoneCallbackDeserialize(ReturnQueueWorkDoneCallbackCmd* record, const volatile ReturnQueueWorkDoneCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnQueueWorkDoneCallbackDeserialize(
+    ReturnQueueWorkDoneCallbackCmd* record,
+    const volatile ReturnQueueWorkDoneCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::QueueWorkDoneCallback);
@@ -18549,8 +20689,10 @@ DAWN_DECLARE_UNUSED size_t ReturnShaderModuleGetCompilationInfoCallbackGetExtraR
 // because we assume they cannot contain pointers themselves.
 DAWN_UNUSED_FUNC(ReturnShaderModuleGetCompilationInfoCallbackGetExtraRequiredSize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackSerialize(const ReturnShaderModuleGetCompilationInfoCallbackCmd& record, ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer,
-                       SerializeBuffer* buffer) {
+DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackSerialize(
+    const ReturnShaderModuleGetCompilationInfoCallbackCmd& record,
+    ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer,
+    SerializeBuffer* buffer, const ObjectIdProvider& provider) {
     DAWN_UNUSED(buffer);
 
     transfer->commandId = ReturnWireCmd::ShaderModuleGetCompilationInfoCallback;
@@ -18573,7 +20715,7 @@ DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackSeria
         WIRE_TRY(buffer->NextN(memberLength, &memberBuffer));
 
         for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-            WIRE_TRY(WGPUCompilationInfoSerialize(record.info[i], &memberBuffer[i], buffer));
+            WIRE_TRY(WGPUCompilationInfoSerialize(record.info[i], &memberBuffer[i], buffer, provider));
 
         }
     }
@@ -18581,8 +20723,11 @@ DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackSeria
 }
 DAWN_UNUSED_FUNC(ReturnShaderModuleGetCompilationInfoCallbackSerialize);
 
-DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackDeserialize(ReturnShaderModuleGetCompilationInfoCallbackCmd* record, const volatile ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer,
-                                      DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+DAWN_DECLARE_UNUSED WireResult ReturnShaderModuleGetCompilationInfoCallbackDeserialize(
+    ReturnShaderModuleGetCompilationInfoCallbackCmd* record,
+    const volatile ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer,
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
     DAWN_UNUSED(allocator);
 
     ASSERT(transfer->commandId == ReturnWireCmd::ShaderModuleGetCompilationInfoCallback);
@@ -18613,7 +20758,7 @@ record->status = transfer->status;
         record->info = copiedMembers;
 
         for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-            WIRE_TRY(WGPUCompilationInfoDeserialize(&copiedMembers[i], &memberBuffer[i], deserializeBuffer, allocator));
+            WIRE_TRY(WGPUCompilationInfoDeserialize(&copiedMembers[i], &memberBuffer[i], deserializeBuffer, allocator, resolver));
         }
     }
 
@@ -18621,7 +20766,368 @@ record->status = transfer->status;
 }
 DAWN_UNUSED_FUNC(ReturnShaderModuleGetCompilationInfoCallbackDeserialize);
 
+
+        // Implementation of ObjectIdResolver that always errors.
+        // Used when the generator adds a provider argument because of a chained
+        // struct, but in practice, a chained struct in that location is invalid.
+        class ErrorObjectIdResolver final : public ObjectIdResolver {
+            public:
+                    WireResult GetFromId(ObjectId id, WGPUBindGroup* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUBindGroup* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUBindGroupLayout* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUBindGroupLayout* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUBuffer* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUBuffer* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUCommandBuffer* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUCommandBuffer* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUCommandEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUCommandEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUComputePassEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUComputePassEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUComputePipeline* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUComputePipeline* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUDevice* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUDevice* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUExternalTexture* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUExternalTexture* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUInstance* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUInstance* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUPipelineLayout* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUPipelineLayout* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUQuerySet* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUQuerySet* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUQueue* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUQueue* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPURenderBundle* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPURenderBundle* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPURenderBundleEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPURenderBundleEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPURenderPassEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPURenderPassEncoder* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPURenderPipeline* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPURenderPipeline* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUSampler* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUSampler* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUShaderModule* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUShaderModule* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUSurface* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUSurface* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUSwapChain* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUSwapChain* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUTexture* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUTexture* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetFromId(ObjectId id, WGPUTextureView* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalFromId(ObjectId id, WGPUTextureView* out) const override {
+                        return WireResult::FatalError;
+                    }
+        };
+
+        // Implementation of ObjectIdProvider that always errors.
+        // Used when the generator adds a provider argument because of a chained
+        // struct, but in practice, a chained struct in that location is invalid.
+        class ErrorObjectIdProvider final : public ObjectIdProvider {
+            public:
+                    WireResult GetId(WGPUBindGroup object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUBindGroup object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUBindGroupLayout object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUBindGroupLayout object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUBuffer object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUBuffer object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUCommandBuffer object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUCommandBuffer object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUCommandEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUCommandEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUComputePassEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUComputePassEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUComputePipeline object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUComputePipeline object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUDevice object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUDevice object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUExternalTexture object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUExternalTexture object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUInstance object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUInstance object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUPipelineLayout object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUPipelineLayout object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUQuerySet object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUQuerySet object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUQueue object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUQueue object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPURenderBundle object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPURenderBundle object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPURenderBundleEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPURenderBundleEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPURenderPassEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPURenderPassEncoder object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPURenderPipeline object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPURenderPipeline object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUSampler object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUSampler object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUShaderModule object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUShaderModule object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUSurface object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUSurface object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUSwapChain object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUSwapChain object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUTexture object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUTexture object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetId(WGPUTextureView object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+                    WireResult GetOptionalId(WGPUTextureView object, ObjectId* out) const override {
+                        return WireResult::FatalError;
+                    }
+        };
+
     }  // anonymous namespace
+
+        
+size_t BindGroupLayoutSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(BindGroupLayoutSetLabelTransfer) + BindGroupLayoutSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult BindGroupLayoutSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    BindGroupLayoutSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (BindGroupLayoutSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult BindGroupLayoutSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult BindGroupLayoutSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile BindGroupLayoutSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return BindGroupLayoutSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult BindGroupLayoutSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t BindGroupSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(BindGroupSetLabelTransfer) + BindGroupSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult BindGroupSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    BindGroupSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (BindGroupSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult BindGroupSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult BindGroupSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile BindGroupSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return BindGroupSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult BindGroupSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
 
         
 size_t BufferDestroyCmd::GetRequiredSize() const {
@@ -18629,20 +21135,33 @@ size_t BufferDestroyCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult BufferDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult BufferDestroyCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     BufferDestroyTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(BufferDestroySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (BufferDestroySerialize(*this, transfer, buffer, provider));
+}
+WireResult BufferDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult BufferDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult BufferDestroyCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile BufferDestroyTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return BufferDestroyDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult BufferDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18655,16 +21174,27 @@ WireResult BufferMapAsyncCmd::Serialize(size_t commandSize, SerializeBuffer* buf
     BufferMapAsyncTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(BufferMapAsyncSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (BufferMapAsyncSerialize(*this, transfer, buffer));
+}
+WireResult BufferMapAsyncCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult BufferMapAsyncCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile BufferMapAsyncTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return BufferMapAsyncDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult BufferMapAsyncCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -18673,20 +21203,33 @@ size_t BufferSetLabelCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult BufferSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult BufferSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     BufferSetLabelTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(BufferSetLabelSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (BufferSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult BufferSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult BufferSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult BufferSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile BufferSetLabelTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return BufferSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult BufferSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18695,20 +21238,33 @@ size_t BufferUnmapCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult BufferUnmapCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult BufferUnmapCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     BufferUnmapTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(BufferUnmapSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (BufferUnmapSerialize(*this, transfer, buffer, provider));
+}
+WireResult BufferUnmapCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult BufferUnmapCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult BufferUnmapCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile BufferUnmapTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return BufferUnmapDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult BufferUnmapCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18721,16 +21277,62 @@ WireResult BufferUpdateMappedDataCmd::Serialize(size_t commandSize, SerializeBuf
     BufferUpdateMappedDataTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(BufferUpdateMappedDataSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (BufferUpdateMappedDataSerialize(*this, transfer, buffer));
+}
+WireResult BufferUpdateMappedDataCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult BufferUpdateMappedDataCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile BufferUpdateMappedDataTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return BufferUpdateMappedDataDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult BufferUpdateMappedDataCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
+}
+
+        
+size_t CommandBufferSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(CommandBufferSetLabelTransfer) + CommandBufferSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult CommandBufferSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    CommandBufferSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (CommandBufferSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandBufferSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult CommandBufferSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile CommandBufferSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return CommandBufferSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandBufferSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18739,20 +21341,33 @@ size_t CommandEncoderBeginComputePassCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderBeginComputePassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderBeginComputePassCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderBeginComputePassTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderBeginComputePassSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderBeginComputePassSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderBeginComputePassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderBeginComputePassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderBeginComputePassCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderBeginComputePassTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderBeginComputePassDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderBeginComputePassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18761,20 +21376,33 @@ size_t CommandEncoderBeginRenderPassCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderBeginRenderPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderBeginRenderPassCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderBeginRenderPassTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderBeginRenderPassSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderBeginRenderPassSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderBeginRenderPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderBeginRenderPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderBeginRenderPassCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderBeginRenderPassTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderBeginRenderPassDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderBeginRenderPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18783,20 +21411,33 @@ size_t CommandEncoderCopyBufferToBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderCopyBufferToBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderCopyBufferToBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderCopyBufferToBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderCopyBufferToBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderCopyBufferToBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderCopyBufferToBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderCopyBufferToBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderCopyBufferToBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderCopyBufferToBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderCopyBufferToBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderCopyBufferToBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18805,20 +21446,33 @@ size_t CommandEncoderCopyBufferToTextureCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderCopyBufferToTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderCopyBufferToTextureCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderCopyBufferToTextureTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderCopyBufferToTextureSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderCopyBufferToTextureSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderCopyBufferToTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderCopyBufferToTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderCopyBufferToTextureCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderCopyBufferToTextureTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderCopyBufferToTextureDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderCopyBufferToTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18827,20 +21481,33 @@ size_t CommandEncoderCopyTextureToBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderCopyTextureToBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderCopyTextureToBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderCopyTextureToBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderCopyTextureToBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderCopyTextureToBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderCopyTextureToBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderCopyTextureToBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderCopyTextureToBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderCopyTextureToBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderCopyTextureToBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderCopyTextureToBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18849,20 +21516,33 @@ size_t CommandEncoderCopyTextureToTextureCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderCopyTextureToTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderCopyTextureToTextureCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderCopyTextureToTextureTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderCopyTextureToTextureSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderCopyTextureToTextureSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderCopyTextureToTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderCopyTextureToTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderCopyTextureToTextureCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderCopyTextureToTextureTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderCopyTextureToTextureDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderCopyTextureToTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18871,20 +21551,33 @@ size_t CommandEncoderCopyTextureToTextureInternalCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderCopyTextureToTextureInternalCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderCopyTextureToTextureInternalCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderCopyTextureToTextureInternalTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderCopyTextureToTextureInternalSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderCopyTextureToTextureInternalSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderCopyTextureToTextureInternalCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderCopyTextureToTextureInternalCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderCopyTextureToTextureInternalCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderCopyTextureToTextureInternalTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderCopyTextureToTextureInternalDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderCopyTextureToTextureInternalCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18893,20 +21586,33 @@ size_t CommandEncoderFinishCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderFinishCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderFinishCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderFinishTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderFinishSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderFinishSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderFinishCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderFinishCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderFinishCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderFinishTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderFinishDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderFinishCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18915,20 +21621,33 @@ size_t CommandEncoderInjectValidationErrorCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderInjectValidationErrorCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderInjectValidationErrorCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderInjectValidationErrorTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderInjectValidationErrorSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderInjectValidationErrorSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderInjectValidationErrorCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderInjectValidationErrorCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderInjectValidationErrorCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderInjectValidationErrorTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderInjectValidationErrorDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderInjectValidationErrorCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18937,20 +21656,33 @@ size_t CommandEncoderInsertDebugMarkerCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderInsertDebugMarkerCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderInsertDebugMarkerCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderInsertDebugMarkerDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18959,20 +21691,33 @@ size_t CommandEncoderPopDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderPopDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderPopDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderPopDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -18981,20 +21726,33 @@ size_t CommandEncoderPushDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderPushDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderPushDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderPushDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19003,20 +21761,68 @@ size_t CommandEncoderResolveQuerySetCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderResolveQuerySetCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderResolveQuerySetCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderResolveQuerySetTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderResolveQuerySetSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderResolveQuerySetSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderResolveQuerySetCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderResolveQuerySetCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderResolveQuerySetCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderResolveQuerySetTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderResolveQuerySetDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderResolveQuerySetCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t CommandEncoderSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(CommandEncoderSetLabelTransfer) + CommandEncoderSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult CommandEncoderSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    CommandEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (CommandEncoderSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult CommandEncoderSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile CommandEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return CommandEncoderSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19025,20 +21831,33 @@ size_t CommandEncoderWriteBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderWriteBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderWriteBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderWriteBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderWriteBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderWriteBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderWriteBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderWriteBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderWriteBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderWriteBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderWriteBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderWriteBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19047,20 +21866,33 @@ size_t CommandEncoderWriteTimestampCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult CommandEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult CommandEncoderWriteTimestampCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     CommandEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(CommandEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (CommandEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
+}
+WireResult CommandEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult CommandEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult CommandEncoderWriteTimestampCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile CommandEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return CommandEncoderWriteTimestampDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult CommandEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19069,20 +21901,33 @@ size_t ComputePassEncoderDispatchCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderDispatchCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderDispatchCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderDispatchTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderDispatchSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderDispatchSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderDispatchCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderDispatchCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderDispatchCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderDispatchTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderDispatchDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderDispatchCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19091,20 +21936,33 @@ size_t ComputePassEncoderDispatchIndirectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderDispatchIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderDispatchIndirectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderDispatchIndirectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderDispatchIndirectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderDispatchIndirectSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderDispatchIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderDispatchIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderDispatchIndirectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderDispatchIndirectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderDispatchIndirectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderDispatchIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19113,20 +21971,33 @@ size_t ComputePassEncoderEndPassCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderEndPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderEndPassCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderEndPassTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderEndPassSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderEndPassSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderEndPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderEndPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderEndPassCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderEndPassTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderEndPassDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderEndPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19135,20 +22006,33 @@ size_t ComputePassEncoderInsertDebugMarkerCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderInsertDebugMarkerCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderInsertDebugMarkerCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderInsertDebugMarkerDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19157,20 +22041,33 @@ size_t ComputePassEncoderPopDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderPopDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderPopDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderPopDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19179,20 +22076,33 @@ size_t ComputePassEncoderPushDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderPushDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderPushDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderPushDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19201,20 +22111,68 @@ size_t ComputePassEncoderSetBindGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderSetBindGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderSetBindGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderSetBindGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t ComputePassEncoderSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(ComputePassEncoderSetLabelTransfer) + ComputePassEncoderSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult ComputePassEncoderSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    ComputePassEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (ComputePassEncoderSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult ComputePassEncoderSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile ComputePassEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return ComputePassEncoderSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19223,20 +22181,33 @@ size_t ComputePassEncoderSetPipelineCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderSetPipelineCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderSetPipelineCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderSetPipelineDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19245,20 +22216,33 @@ size_t ComputePassEncoderWriteTimestampCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePassEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePassEncoderWriteTimestampCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePassEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePassEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePassEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePassEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePassEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePassEncoderWriteTimestampCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePassEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePassEncoderWriteTimestampDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePassEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19267,20 +22251,33 @@ size_t ComputePipelineGetBindGroupLayoutCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePipelineGetBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePipelineGetBindGroupLayoutCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePipelineGetBindGroupLayoutTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePipelineGetBindGroupLayoutSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePipelineGetBindGroupLayoutSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePipelineGetBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePipelineGetBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePipelineGetBindGroupLayoutCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePipelineGetBindGroupLayoutTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePipelineGetBindGroupLayoutDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePipelineGetBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19289,20 +22286,33 @@ size_t ComputePipelineSetLabelCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ComputePipelineSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ComputePipelineSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ComputePipelineSetLabelTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ComputePipelineSetLabelSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ComputePipelineSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult ComputePipelineSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ComputePipelineSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ComputePipelineSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ComputePipelineSetLabelTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ComputePipelineSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ComputePipelineSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19315,16 +22325,27 @@ WireResult DestroyObjectCmd::Serialize(size_t commandSize, SerializeBuffer* buff
     DestroyObjectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DestroyObjectSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (DestroyObjectSerialize(*this, transfer, buffer));
+}
+WireResult DestroyObjectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult DestroyObjectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile DestroyObjectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DestroyObjectDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult DestroyObjectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -19333,20 +22354,33 @@ size_t DeviceCreateBindGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateBindGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateBindGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateBindGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateBindGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateBindGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateBindGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateBindGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19355,20 +22389,33 @@ size_t DeviceCreateBindGroupLayoutCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateBindGroupLayoutCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateBindGroupLayoutTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateBindGroupLayoutSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateBindGroupLayoutSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateBindGroupLayoutCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateBindGroupLayoutTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateBindGroupLayoutDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19377,20 +22424,33 @@ size_t DeviceCreateBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19399,20 +22459,33 @@ size_t DeviceCreateCommandEncoderCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateCommandEncoderCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateCommandEncoderCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateCommandEncoderTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateCommandEncoderSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateCommandEncoderSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateCommandEncoderCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateCommandEncoderCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateCommandEncoderCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateCommandEncoderTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateCommandEncoderDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateCommandEncoderCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19421,20 +22494,33 @@ size_t DeviceCreateComputePipelineCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateComputePipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateComputePipelineCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateComputePipelineTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateComputePipelineSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateComputePipelineSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateComputePipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateComputePipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateComputePipelineCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateComputePipelineTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateComputePipelineDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateComputePipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19443,20 +22529,33 @@ size_t DeviceCreateComputePipelineAsyncCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateComputePipelineAsyncCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateComputePipelineAsyncCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateComputePipelineAsyncTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateComputePipelineAsyncSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateComputePipelineAsyncSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateComputePipelineAsyncCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateComputePipelineAsyncCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateComputePipelineAsyncCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateComputePipelineAsyncTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateComputePipelineAsyncDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateComputePipelineAsyncCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19465,20 +22564,33 @@ size_t DeviceCreateErrorBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateErrorBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateErrorBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateErrorBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateErrorBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateErrorBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateErrorBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateErrorBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateErrorBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateErrorBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateErrorBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateErrorBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19487,20 +22599,33 @@ size_t DeviceCreateExternalTextureCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateExternalTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateExternalTextureCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateExternalTextureTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateExternalTextureSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateExternalTextureSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateExternalTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateExternalTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateExternalTextureCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateExternalTextureTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateExternalTextureDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateExternalTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19509,20 +22634,33 @@ size_t DeviceCreatePipelineLayoutCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreatePipelineLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreatePipelineLayoutCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreatePipelineLayoutTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreatePipelineLayoutSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreatePipelineLayoutSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreatePipelineLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreatePipelineLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreatePipelineLayoutCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreatePipelineLayoutTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreatePipelineLayoutDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreatePipelineLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19531,20 +22669,33 @@ size_t DeviceCreateQuerySetCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateQuerySetCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateQuerySetCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateQuerySetTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateQuerySetSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateQuerySetSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateQuerySetCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateQuerySetCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateQuerySetCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateQuerySetTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateQuerySetDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateQuerySetCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19553,20 +22704,33 @@ size_t DeviceCreateRenderBundleEncoderCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateRenderBundleEncoderCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateRenderBundleEncoderCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateRenderBundleEncoderTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateRenderBundleEncoderSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateRenderBundleEncoderSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateRenderBundleEncoderCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateRenderBundleEncoderCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateRenderBundleEncoderCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateRenderBundleEncoderTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateRenderBundleEncoderDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateRenderBundleEncoderCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19575,20 +22739,33 @@ size_t DeviceCreateRenderPipelineCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateRenderPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateRenderPipelineCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateRenderPipelineTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateRenderPipelineSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateRenderPipelineSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateRenderPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateRenderPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateRenderPipelineCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateRenderPipelineTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateRenderPipelineDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateRenderPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19597,20 +22774,33 @@ size_t DeviceCreateRenderPipelineAsyncCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateRenderPipelineAsyncCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateRenderPipelineAsyncCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateRenderPipelineAsyncTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateRenderPipelineAsyncSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateRenderPipelineAsyncSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateRenderPipelineAsyncCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateRenderPipelineAsyncCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateRenderPipelineAsyncCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateRenderPipelineAsyncTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateRenderPipelineAsyncDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateRenderPipelineAsyncCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19619,20 +22809,33 @@ size_t DeviceCreateSamplerCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateSamplerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateSamplerCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateSamplerTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateSamplerSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateSamplerSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateSamplerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateSamplerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateSamplerCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateSamplerTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateSamplerDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateSamplerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19641,20 +22844,33 @@ size_t DeviceCreateShaderModuleCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateShaderModuleCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateShaderModuleCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateShaderModuleTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateShaderModuleSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateShaderModuleSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateShaderModuleCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateShaderModuleCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateShaderModuleCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateShaderModuleTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateShaderModuleDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateShaderModuleCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19663,20 +22879,33 @@ size_t DeviceCreateSwapChainCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateSwapChainCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateSwapChainCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateSwapChainTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateSwapChainSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateSwapChainSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateSwapChainCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateSwapChainCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateSwapChainCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateSwapChainTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateSwapChainDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateSwapChainCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19685,20 +22914,33 @@ size_t DeviceCreateTextureCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceCreateTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceCreateTextureCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceCreateTextureTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceCreateTextureSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceCreateTextureSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceCreateTextureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceCreateTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceCreateTextureCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceCreateTextureTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceCreateTextureDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceCreateTextureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19707,20 +22949,33 @@ size_t DeviceGetQueueCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceGetQueueCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceGetQueueCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceGetQueueTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceGetQueueSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceGetQueueSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceGetQueueCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceGetQueueCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceGetQueueCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceGetQueueTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceGetQueueDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceGetQueueCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19729,20 +22984,33 @@ size_t DeviceInjectErrorCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceInjectErrorCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceInjectErrorCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceInjectErrorTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceInjectErrorSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceInjectErrorSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceInjectErrorCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceInjectErrorCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceInjectErrorCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceInjectErrorTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceInjectErrorDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceInjectErrorCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19751,20 +23019,33 @@ size_t DeviceLoseForTestingCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceLoseForTestingCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceLoseForTestingCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceLoseForTestingTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceLoseForTestingSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceLoseForTestingSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceLoseForTestingCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceLoseForTestingCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceLoseForTestingCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceLoseForTestingTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceLoseForTestingDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceLoseForTestingCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19777,16 +23058,27 @@ WireResult DevicePopErrorScopeCmd::Serialize(size_t commandSize, SerializeBuffer
     DevicePopErrorScopeTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DevicePopErrorScopeSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (DevicePopErrorScopeSerialize(*this, transfer, buffer));
+}
+WireResult DevicePopErrorScopeCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult DevicePopErrorScopeCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile DevicePopErrorScopeTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DevicePopErrorScopeDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult DevicePopErrorScopeCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -19795,20 +23087,33 @@ size_t DevicePushErrorScopeCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DevicePushErrorScopeCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DevicePushErrorScopeCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DevicePushErrorScopeTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DevicePushErrorScopeSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DevicePushErrorScopeSerialize(*this, transfer, buffer, provider));
+}
+WireResult DevicePushErrorScopeCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DevicePushErrorScopeCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DevicePushErrorScopeCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DevicePushErrorScopeTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DevicePushErrorScopeDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DevicePushErrorScopeCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19817,20 +23122,33 @@ size_t DeviceTickCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult DeviceTickCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult DeviceTickCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     DeviceTickTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(DeviceTickSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (DeviceTickSerialize(*this, transfer, buffer, provider));
+}
+WireResult DeviceTickCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult DeviceTickCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult DeviceTickCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile DeviceTickTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return DeviceTickDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult DeviceTickCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19839,20 +23157,68 @@ size_t ExternalTextureDestroyCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ExternalTextureDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ExternalTextureDestroyCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ExternalTextureDestroyTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ExternalTextureDestroySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ExternalTextureDestroySerialize(*this, transfer, buffer, provider));
+}
+WireResult ExternalTextureDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ExternalTextureDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ExternalTextureDestroyCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ExternalTextureDestroyTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ExternalTextureDestroyDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ExternalTextureDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t ExternalTextureSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(ExternalTextureSetLabelTransfer) + ExternalTextureSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult ExternalTextureSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    ExternalTextureSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (ExternalTextureSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult ExternalTextureSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult ExternalTextureSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile ExternalTextureSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return ExternalTextureSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ExternalTextureSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19861,20 +23227,68 @@ size_t InstanceCreateSurfaceCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult InstanceCreateSurfaceCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult InstanceCreateSurfaceCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     InstanceCreateSurfaceTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(InstanceCreateSurfaceSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (InstanceCreateSurfaceSerialize(*this, transfer, buffer, provider));
+}
+WireResult InstanceCreateSurfaceCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult InstanceCreateSurfaceCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult InstanceCreateSurfaceCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile InstanceCreateSurfaceTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return InstanceCreateSurfaceDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult InstanceCreateSurfaceCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t PipelineLayoutSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(PipelineLayoutSetLabelTransfer) + PipelineLayoutSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult PipelineLayoutSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    PipelineLayoutSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (PipelineLayoutSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult PipelineLayoutSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult PipelineLayoutSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile PipelineLayoutSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return PipelineLayoutSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult PipelineLayoutSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19883,20 +23297,68 @@ size_t QuerySetDestroyCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult QuerySetDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult QuerySetDestroyCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     QuerySetDestroyTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QuerySetDestroySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (QuerySetDestroySerialize(*this, transfer, buffer, provider));
+}
+WireResult QuerySetDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult QuerySetDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult QuerySetDestroyCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile QuerySetDestroyTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QuerySetDestroyDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult QuerySetDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t QuerySetSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(QuerySetSetLabelTransfer) + QuerySetSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult QuerySetSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    QuerySetSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (QuerySetSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult QuerySetSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult QuerySetSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile QuerySetSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return QuerySetSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult QuerySetSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19905,20 +23367,33 @@ size_t QueueCopyTextureForBrowserCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult QueueCopyTextureForBrowserCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult QueueCopyTextureForBrowserCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     QueueCopyTextureForBrowserTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QueueCopyTextureForBrowserSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (QueueCopyTextureForBrowserSerialize(*this, transfer, buffer, provider));
+}
+WireResult QueueCopyTextureForBrowserCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult QueueCopyTextureForBrowserCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult QueueCopyTextureForBrowserCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile QueueCopyTextureForBrowserTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QueueCopyTextureForBrowserDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult QueueCopyTextureForBrowserCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19931,16 +23406,27 @@ WireResult QueueOnSubmittedWorkDoneCmd::Serialize(size_t commandSize, SerializeB
     QueueOnSubmittedWorkDoneTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QueueOnSubmittedWorkDoneSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (QueueOnSubmittedWorkDoneSerialize(*this, transfer, buffer));
+}
+WireResult QueueOnSubmittedWorkDoneCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult QueueOnSubmittedWorkDoneCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile QueueOnSubmittedWorkDoneTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QueueOnSubmittedWorkDoneDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult QueueOnSubmittedWorkDoneCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -19949,20 +23435,33 @@ size_t QueueSubmitCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult QueueSubmitCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult QueueSubmitCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     QueueSubmitTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QueueSubmitSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (QueueSubmitSerialize(*this, transfer, buffer, provider));
+}
+WireResult QueueSubmitCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult QueueSubmitCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult QueueSubmitCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile QueueSubmitTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QueueSubmitDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult QueueSubmitCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -19975,16 +23474,27 @@ WireResult QueueWriteBufferInternalCmd::Serialize(size_t commandSize, SerializeB
     QueueWriteBufferInternalTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QueueWriteBufferInternalSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (QueueWriteBufferInternalSerialize(*this, transfer, buffer));
+}
+WireResult QueueWriteBufferInternalCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult QueueWriteBufferInternalCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile QueueWriteBufferInternalTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QueueWriteBufferInternalDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult QueueWriteBufferInternalCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -19993,20 +23503,33 @@ size_t QueueWriteTextureInternalCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult QueueWriteTextureInternalCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult QueueWriteTextureInternalCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     QueueWriteTextureInternalTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(QueueWriteTextureInternalSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (QueueWriteTextureInternalSerialize(*this, transfer, buffer, provider));
+}
+WireResult QueueWriteTextureInternalCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult QueueWriteTextureInternalCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult QueueWriteTextureInternalCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile QueueWriteTextureInternalTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return QueueWriteTextureInternalDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult QueueWriteTextureInternalCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20015,20 +23538,33 @@ size_t RenderBundleEncoderDrawCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderDrawCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderDrawCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderDrawTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderDrawSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderDrawSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderDrawCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderDrawCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderDrawCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderDrawTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderDrawDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderDrawCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20037,20 +23573,33 @@ size_t RenderBundleEncoderDrawIndexedCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderDrawIndexedCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderDrawIndexedCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderDrawIndexedTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderDrawIndexedSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderDrawIndexedSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderDrawIndexedCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderDrawIndexedCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderDrawIndexedCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderDrawIndexedTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderDrawIndexedDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderDrawIndexedCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20059,20 +23608,33 @@ size_t RenderBundleEncoderDrawIndexedIndirectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderDrawIndexedIndirectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderDrawIndexedIndirectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderDrawIndexedIndirectSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderDrawIndexedIndirectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderDrawIndexedIndirectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderDrawIndexedIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20081,20 +23643,33 @@ size_t RenderBundleEncoderDrawIndirectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderDrawIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderDrawIndirectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderDrawIndirectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderDrawIndirectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderDrawIndirectSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderDrawIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderDrawIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderDrawIndirectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderDrawIndirectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderDrawIndirectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderDrawIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20103,20 +23678,33 @@ size_t RenderBundleEncoderFinishCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderFinishCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderFinishCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderFinishTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderFinishSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderFinishSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderFinishCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderFinishCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderFinishCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderFinishTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderFinishDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderFinishCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20125,20 +23713,33 @@ size_t RenderBundleEncoderInsertDebugMarkerCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderInsertDebugMarkerCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderInsertDebugMarkerCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderInsertDebugMarkerDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20147,20 +23748,33 @@ size_t RenderBundleEncoderPopDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderPopDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderPopDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderPopDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20169,20 +23783,33 @@ size_t RenderBundleEncoderPushDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderPushDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderPushDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderPushDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20191,20 +23818,33 @@ size_t RenderBundleEncoderSetBindGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderSetBindGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderSetBindGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderSetBindGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20213,20 +23853,68 @@ size_t RenderBundleEncoderSetIndexBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderSetIndexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderSetIndexBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderSetIndexBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderSetIndexBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderSetIndexBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderSetIndexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderSetIndexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderSetIndexBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderSetIndexBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderSetIndexBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderSetIndexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t RenderBundleEncoderSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(RenderBundleEncoderSetLabelTransfer) + RenderBundleEncoderSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult RenderBundleEncoderSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    RenderBundleEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (RenderBundleEncoderSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult RenderBundleEncoderSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile RenderBundleEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return RenderBundleEncoderSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20235,20 +23923,33 @@ size_t RenderBundleEncoderSetPipelineCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderSetPipelineCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderSetPipelineCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderSetPipelineDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20257,20 +23958,33 @@ size_t RenderBundleEncoderSetVertexBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderBundleEncoderSetVertexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderBundleEncoderSetVertexBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderBundleEncoderSetVertexBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderBundleEncoderSetVertexBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderBundleEncoderSetVertexBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderBundleEncoderSetVertexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderBundleEncoderSetVertexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderBundleEncoderSetVertexBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderBundleEncoderSetVertexBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderBundleEncoderSetVertexBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderBundleEncoderSetVertexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20279,20 +23993,33 @@ size_t RenderPassEncoderBeginOcclusionQueryCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderBeginOcclusionQueryCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderBeginOcclusionQueryCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderBeginOcclusionQueryTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderBeginOcclusionQuerySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderBeginOcclusionQuerySerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderBeginOcclusionQueryCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderBeginOcclusionQueryCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderBeginOcclusionQueryCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderBeginOcclusionQueryTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderBeginOcclusionQueryDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderBeginOcclusionQueryCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20301,20 +24028,33 @@ size_t RenderPassEncoderDrawCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderDrawCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderDrawCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderDrawTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderDrawSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderDrawSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderDrawCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderDrawCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderDrawCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderDrawTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderDrawDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderDrawCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20323,20 +24063,33 @@ size_t RenderPassEncoderDrawIndexedCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderDrawIndexedCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderDrawIndexedCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderDrawIndexedTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderDrawIndexedSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderDrawIndexedSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderDrawIndexedCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderDrawIndexedCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderDrawIndexedCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderDrawIndexedTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderDrawIndexedDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderDrawIndexedCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20345,20 +24098,33 @@ size_t RenderPassEncoderDrawIndexedIndirectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderDrawIndexedIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderDrawIndexedIndirectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderDrawIndexedIndirectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderDrawIndexedIndirectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderDrawIndexedIndirectSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderDrawIndexedIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderDrawIndexedIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderDrawIndexedIndirectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderDrawIndexedIndirectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderDrawIndexedIndirectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderDrawIndexedIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20367,20 +24133,33 @@ size_t RenderPassEncoderDrawIndirectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderDrawIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderDrawIndirectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderDrawIndirectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderDrawIndirectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderDrawIndirectSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderDrawIndirectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderDrawIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderDrawIndirectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderDrawIndirectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderDrawIndirectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderDrawIndirectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20389,20 +24168,33 @@ size_t RenderPassEncoderEndOcclusionQueryCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderEndOcclusionQueryCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderEndOcclusionQueryCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderEndOcclusionQueryTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderEndOcclusionQuerySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderEndOcclusionQuerySerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderEndOcclusionQueryCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderEndOcclusionQueryCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderEndOcclusionQueryCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderEndOcclusionQueryTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderEndOcclusionQueryDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderEndOcclusionQueryCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20411,20 +24203,33 @@ size_t RenderPassEncoderEndPassCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderEndPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderEndPassCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderEndPassTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderEndPassSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderEndPassSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderEndPassCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderEndPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderEndPassCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderEndPassTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderEndPassDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderEndPassCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20433,20 +24238,33 @@ size_t RenderPassEncoderExecuteBundlesCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderExecuteBundlesCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderExecuteBundlesCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderExecuteBundlesTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderExecuteBundlesSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderExecuteBundlesSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderExecuteBundlesCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderExecuteBundlesCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderExecuteBundlesCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderExecuteBundlesTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderExecuteBundlesDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderExecuteBundlesCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20455,20 +24273,33 @@ size_t RenderPassEncoderInsertDebugMarkerCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderInsertDebugMarkerCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderInsertDebugMarkerSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderInsertDebugMarkerCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderInsertDebugMarkerCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderInsertDebugMarkerTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderInsertDebugMarkerDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderInsertDebugMarkerCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20477,20 +24308,33 @@ size_t RenderPassEncoderPopDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderPopDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderPopDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderPopDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderPopDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderPopDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderPopDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderPopDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20499,20 +24343,33 @@ size_t RenderPassEncoderPushDebugGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderPushDebugGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderPushDebugGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderPushDebugGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderPushDebugGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderPushDebugGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderPushDebugGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderPushDebugGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20521,20 +24378,33 @@ size_t RenderPassEncoderSetBindGroupCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetBindGroupCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetBindGroupSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetBindGroupCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetBindGroupCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetBindGroupTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetBindGroupDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetBindGroupCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20543,20 +24413,33 @@ size_t RenderPassEncoderSetBlendConstantCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetBlendConstantCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetBlendConstantCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetBlendConstantTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetBlendConstantSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetBlendConstantSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetBlendConstantCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetBlendConstantCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetBlendConstantCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetBlendConstantTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetBlendConstantDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetBlendConstantCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20565,20 +24448,68 @@ size_t RenderPassEncoderSetIndexBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetIndexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetIndexBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetIndexBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetIndexBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetIndexBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetIndexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetIndexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetIndexBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetIndexBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetIndexBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetIndexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t RenderPassEncoderSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(RenderPassEncoderSetLabelTransfer) + RenderPassEncoderSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult RenderPassEncoderSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    RenderPassEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (RenderPassEncoderSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult RenderPassEncoderSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile RenderPassEncoderSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return RenderPassEncoderSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20587,20 +24518,33 @@ size_t RenderPassEncoderSetPipelineCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetPipelineCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetPipelineSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetPipelineCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetPipelineCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetPipelineTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetPipelineDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetPipelineCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20609,20 +24553,33 @@ size_t RenderPassEncoderSetScissorRectCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetScissorRectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetScissorRectCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetScissorRectTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetScissorRectSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetScissorRectSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetScissorRectCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetScissorRectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetScissorRectCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetScissorRectTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetScissorRectDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetScissorRectCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20631,20 +24588,33 @@ size_t RenderPassEncoderSetStencilReferenceCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetStencilReferenceCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetStencilReferenceCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetStencilReferenceTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetStencilReferenceSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetStencilReferenceSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetStencilReferenceCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetStencilReferenceCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetStencilReferenceCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetStencilReferenceTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetStencilReferenceDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetStencilReferenceCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20653,20 +24623,33 @@ size_t RenderPassEncoderSetVertexBufferCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetVertexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetVertexBufferCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetVertexBufferTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetVertexBufferSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetVertexBufferSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetVertexBufferCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetVertexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetVertexBufferCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetVertexBufferTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetVertexBufferDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetVertexBufferCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20675,20 +24658,33 @@ size_t RenderPassEncoderSetViewportCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderSetViewportCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderSetViewportCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderSetViewportTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderSetViewportSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderSetViewportSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderSetViewportCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderSetViewportCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderSetViewportCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderSetViewportTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderSetViewportDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderSetViewportCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20697,20 +24693,33 @@ size_t RenderPassEncoderWriteTimestampCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPassEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPassEncoderWriteTimestampCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPassEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPassEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPassEncoderWriteTimestampSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPassEncoderWriteTimestampCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPassEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPassEncoderWriteTimestampCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPassEncoderWriteTimestampTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPassEncoderWriteTimestampDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPassEncoderWriteTimestampCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20719,20 +24728,33 @@ size_t RenderPipelineGetBindGroupLayoutCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPipelineGetBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPipelineGetBindGroupLayoutCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPipelineGetBindGroupLayoutTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPipelineGetBindGroupLayoutSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPipelineGetBindGroupLayoutSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPipelineGetBindGroupLayoutCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPipelineGetBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPipelineGetBindGroupLayoutCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPipelineGetBindGroupLayoutTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPipelineGetBindGroupLayoutDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPipelineGetBindGroupLayoutCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20741,20 +24763,68 @@ size_t RenderPipelineSetLabelCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult RenderPipelineSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult RenderPipelineSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     RenderPipelineSetLabelTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(RenderPipelineSetLabelSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (RenderPipelineSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult RenderPipelineSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult RenderPipelineSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult RenderPipelineSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile RenderPipelineSetLabelTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return RenderPipelineSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult RenderPipelineSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t SamplerSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(SamplerSetLabelTransfer) + SamplerSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult SamplerSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    SamplerSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (SamplerSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult SamplerSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult SamplerSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile SamplerSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return SamplerSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult SamplerSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20767,16 +24837,27 @@ WireResult ShaderModuleGetCompilationInfoCmd::Serialize(size_t commandSize, Seri
     ShaderModuleGetCompilationInfoTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ShaderModuleGetCompilationInfoSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ShaderModuleGetCompilationInfoSerialize(*this, transfer, buffer));
+}
+WireResult ShaderModuleGetCompilationInfoCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ShaderModuleGetCompilationInfoCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ShaderModuleGetCompilationInfoTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ShaderModuleGetCompilationInfoDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ShaderModuleGetCompilationInfoCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -20785,20 +24866,33 @@ size_t ShaderModuleSetLabelCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult ShaderModuleSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult ShaderModuleSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ShaderModuleSetLabelTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ShaderModuleSetLabelSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (ShaderModuleSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult ShaderModuleSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ShaderModuleSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult ShaderModuleSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ShaderModuleSetLabelTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ShaderModuleSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ShaderModuleSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20807,20 +24901,33 @@ size_t SwapChainConfigureCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult SwapChainConfigureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult SwapChainConfigureCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     SwapChainConfigureTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(SwapChainConfigureSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (SwapChainConfigureSerialize(*this, transfer, buffer, provider));
+}
+WireResult SwapChainConfigureCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult SwapChainConfigureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult SwapChainConfigureCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile SwapChainConfigureTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return SwapChainConfigureDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult SwapChainConfigureCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20829,20 +24936,33 @@ size_t SwapChainGetCurrentTextureViewCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult SwapChainGetCurrentTextureViewCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult SwapChainGetCurrentTextureViewCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     SwapChainGetCurrentTextureViewTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(SwapChainGetCurrentTextureViewSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (SwapChainGetCurrentTextureViewSerialize(*this, transfer, buffer, provider));
+}
+WireResult SwapChainGetCurrentTextureViewCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult SwapChainGetCurrentTextureViewCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult SwapChainGetCurrentTextureViewCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile SwapChainGetCurrentTextureViewTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return SwapChainGetCurrentTextureViewDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult SwapChainGetCurrentTextureViewCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20851,20 +24971,33 @@ size_t SwapChainPresentCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult SwapChainPresentCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult SwapChainPresentCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     SwapChainPresentTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(SwapChainPresentSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (SwapChainPresentSerialize(*this, transfer, buffer, provider));
+}
+WireResult SwapChainPresentCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult SwapChainPresentCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult SwapChainPresentCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile SwapChainPresentTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return SwapChainPresentDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult SwapChainPresentCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20873,20 +25006,33 @@ size_t TextureCreateViewCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult TextureCreateViewCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult TextureCreateViewCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     TextureCreateViewTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(TextureCreateViewSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (TextureCreateViewSerialize(*this, transfer, buffer, provider));
+}
+WireResult TextureCreateViewCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult TextureCreateViewCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult TextureCreateViewCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile TextureCreateViewTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return TextureCreateViewDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult TextureCreateViewCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20895,20 +25041,33 @@ size_t TextureDestroyCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult TextureDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult TextureDestroyCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     TextureDestroyTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(TextureDestroySerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (TextureDestroySerialize(*this, transfer, buffer, provider));
+}
+WireResult TextureDestroyCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult TextureDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult TextureDestroyCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile TextureDestroyTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return TextureDestroyDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult TextureDestroyCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
         
@@ -20917,20 +25076,68 @@ size_t TextureSetLabelCmd::GetRequiredSize() const {
     return size;
 }
 
-WireResult TextureSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer, const ObjectIdProvider& provider) const {
+WireResult TextureSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     TextureSetLabelTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(TextureSetLabelSerialize(*this, transfer, buffer, provider));
-    return WireResult::Success;
+    return (TextureSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult TextureSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult TextureSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver) {
+WireResult TextureSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile TextureSetLabelTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return TextureSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult TextureSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
+}
+
+        
+size_t TextureViewSetLabelCmd::GetRequiredSize() const {
+    size_t size = sizeof(TextureViewSetLabelTransfer) + TextureViewSetLabelGetExtraRequiredSize(*this);
+    return size;
+}
+
+WireResult TextureViewSetLabelCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
+    TextureViewSetLabelTransfer* transfer;
+    WIRE_TRY(buffer->Next(&transfer));
+    transfer->commandSize = commandSize;
+    return (TextureViewSetLabelSerialize(*this, transfer, buffer, provider));
+}
+WireResult TextureViewSetLabelCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
+}
+
+WireResult TextureViewSetLabelCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
+    const volatile TextureViewSetLabelTransfer* transfer;
+    WIRE_TRY(deserializeBuffer->Read(&transfer));
+    return TextureViewSetLabelDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult TextureViewSetLabelCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
 
@@ -20944,16 +25151,27 @@ WireResult ReturnBufferMapAsyncCallbackCmd::Serialize(size_t commandSize, Serial
     ReturnBufferMapAsyncCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnBufferMapAsyncCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnBufferMapAsyncCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnBufferMapAsyncCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnBufferMapAsyncCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnBufferMapAsyncCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnBufferMapAsyncCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnBufferMapAsyncCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -20966,16 +25184,27 @@ WireResult ReturnDeviceCreateComputePipelineAsyncCallbackCmd::Serialize(size_t c
     ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDeviceCreateComputePipelineAsyncCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDeviceCreateComputePipelineAsyncCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDeviceCreateComputePipelineAsyncCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDeviceCreateComputePipelineAsyncCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDeviceCreateComputePipelineAsyncCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDeviceCreateComputePipelineAsyncCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDeviceCreateComputePipelineAsyncCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -20988,16 +25217,27 @@ WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackCmd::Serialize(size_t co
     ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDeviceCreateRenderPipelineAsyncCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDeviceCreateRenderPipelineAsyncCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDeviceCreateRenderPipelineAsyncCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDeviceCreateRenderPipelineAsyncCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDeviceCreateRenderPipelineAsyncCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21010,16 +25250,27 @@ WireResult ReturnDeviceLoggingCallbackCmd::Serialize(size_t commandSize, Seriali
     ReturnDeviceLoggingCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDeviceLoggingCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDeviceLoggingCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDeviceLoggingCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDeviceLoggingCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDeviceLoggingCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDeviceLoggingCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDeviceLoggingCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21032,16 +25283,27 @@ WireResult ReturnDeviceLostCallbackCmd::Serialize(size_t commandSize, SerializeB
     ReturnDeviceLostCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDeviceLostCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDeviceLostCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDeviceLostCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDeviceLostCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDeviceLostCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDeviceLostCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDeviceLostCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21054,16 +25316,27 @@ WireResult ReturnDevicePopErrorScopeCallbackCmd::Serialize(size_t commandSize, S
     ReturnDevicePopErrorScopeCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDevicePopErrorScopeCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDevicePopErrorScopeCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDevicePopErrorScopeCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDevicePopErrorScopeCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDevicePopErrorScopeCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDevicePopErrorScopeCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDevicePopErrorScopeCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21076,16 +25349,27 @@ WireResult ReturnDeviceUncapturedErrorCallbackCmd::Serialize(size_t commandSize,
     ReturnDeviceUncapturedErrorCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnDeviceUncapturedErrorCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnDeviceUncapturedErrorCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnDeviceUncapturedErrorCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnDeviceUncapturedErrorCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnDeviceUncapturedErrorCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnDeviceUncapturedErrorCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnDeviceUncapturedErrorCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21098,16 +25382,27 @@ WireResult ReturnQueueWorkDoneCallbackCmd::Serialize(size_t commandSize, Seriali
     ReturnQueueWorkDoneCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnQueueWorkDoneCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnQueueWorkDoneCallbackSerialize(*this, transfer, buffer));
+}
+WireResult ReturnQueueWorkDoneCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider&
+) const {
+    return Serialize(commandSize, buffer);
 }
 
 WireResult ReturnQueueWorkDoneCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
     const volatile ReturnQueueWorkDoneCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
     return ReturnQueueWorkDoneCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+}
+WireResult ReturnQueueWorkDoneCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver&
+) {
+    return Deserialize(deserializeBuffer, allocator);
 }
 
         
@@ -21116,379 +25411,102 @@ size_t ReturnShaderModuleGetCompilationInfoCallbackCmd::GetRequiredSize() const 
     return size;
 }
 
-WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Serialize(
+    size_t commandSize,
+    SerializeBuffer* buffer,
+    const ObjectIdProvider& provider
+) const {
     ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer;
     WIRE_TRY(buffer->Next(&transfer));
     transfer->commandSize = commandSize;
-
-    WIRE_TRY(ReturnShaderModuleGetCompilationInfoCallbackSerialize(*this, transfer, buffer));
-    return WireResult::Success;
+    return (ReturnShaderModuleGetCompilationInfoCallbackSerialize(*this, transfer, buffer, provider));
+}
+WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Serialize(size_t commandSize, SerializeBuffer* buffer) const {
+    ErrorObjectIdProvider provider;
+    return Serialize(commandSize, buffer, provider);
 }
 
-WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Deserialize(
+    DeserializeBuffer* deserializeBuffer,
+    DeserializeAllocator* allocator,
+    const ObjectIdResolver& resolver
+) {
     const volatile ReturnShaderModuleGetCompilationInfoCallbackTransfer* transfer;
     WIRE_TRY(deserializeBuffer->Read(&transfer));
-
-    return ReturnShaderModuleGetCompilationInfoCallbackDeserialize(this, transfer, deserializeBuffer, allocator);
+    return ReturnShaderModuleGetCompilationInfoCallbackDeserialize(this, transfer, deserializeBuffer, allocator, resolver);
+}
+WireResult ReturnShaderModuleGetCompilationInfoCallbackCmd::Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator) {
+    ErrorObjectIdResolver resolver;
+    return Deserialize(deserializeBuffer, allocator, resolver);
 }
 
 
-    // Implementation of ObjectIdResolver that always errors.
-    // Used when the generator adds a provider argument because of a chained
-    // struct, but in practice, a chained struct in that location is invalid.
-    class ErrorObjectIdResolver final : public ObjectIdResolver {
-        public:
-                WireResult GetFromId(ObjectId id, WGPUBindGroup* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUBindGroup* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUBindGroupLayout* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUBindGroupLayout* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUBuffer* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUBuffer* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUCommandBuffer* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUCommandBuffer* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUCommandEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUCommandEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUComputePassEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUComputePassEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUComputePipeline* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUComputePipeline* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUDevice* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUDevice* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUExternalTexture* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUExternalTexture* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUInstance* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUInstance* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUPipelineLayout* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUPipelineLayout* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUQuerySet* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUQuerySet* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUQueue* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUQueue* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPURenderBundle* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPURenderBundle* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPURenderBundleEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPURenderBundleEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPURenderPassEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPURenderPassEncoder* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPURenderPipeline* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPURenderPipeline* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUSampler* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUSampler* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUShaderModule* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUShaderModule* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUSurface* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUSurface* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUSwapChain* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUSwapChain* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUTexture* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUTexture* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetFromId(ObjectId id, WGPUTextureView* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalFromId(ObjectId id, WGPUTextureView* out) const override {
-                    return WireResult::FatalError;
-                }
-    };
+    // Implementations of serialization/deserialization of WPGUDeviceProperties.
+    size_t SerializedWGPUDevicePropertiesSize(const WGPUDeviceProperties* deviceProperties) {
+        return sizeof(WGPUDeviceProperties) +
+               WGPUDevicePropertiesGetExtraRequiredSize(*deviceProperties);
+    }
 
-    // Implementation of ObjectIdProvider that always errors.
-    // Used when the generator adds a provider argument because of a chained
-    // struct, but in practice, a chained struct in that location is invalid.
-    class ErrorObjectIdProvider final : public ObjectIdProvider {
-        public:
-                WireResult GetId(WGPUBindGroup object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUBindGroup object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUBindGroupLayout object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUBindGroupLayout object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUBuffer object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUBuffer object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUCommandBuffer object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUCommandBuffer object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUCommandEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUCommandEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUComputePassEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUComputePassEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUComputePipeline object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUComputePipeline object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUDevice object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUDevice object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUExternalTexture object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUExternalTexture object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUInstance object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUInstance object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUPipelineLayout object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUPipelineLayout object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUQuerySet object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUQuerySet object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUQueue object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUQueue object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPURenderBundle object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPURenderBundle object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPURenderBundleEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPURenderBundleEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPURenderPassEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPURenderPassEncoder object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPURenderPipeline object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPURenderPipeline object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUSampler object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUSampler object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUShaderModule object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUShaderModule object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUSurface object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUSurface object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUSwapChain object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUSwapChain object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUTexture object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUTexture object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetId(WGPUTextureView object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-                WireResult GetOptionalId(WGPUTextureView object, ObjectId* out) const override {
-                    return WireResult::FatalError;
-                }
-    };
+    void SerializeWGPUDeviceProperties(const WGPUDeviceProperties* deviceProperties,
+                                       char* buffer) {
+        SerializeBuffer serializeBuffer(buffer, SerializedWGPUDevicePropertiesSize(deviceProperties));
 
-        // Implementations of serialization/deserialization of WPGUDeviceProperties.
-        size_t SerializedWGPUDevicePropertiesSize(const WGPUDeviceProperties* deviceProperties) {
-            return sizeof(WGPUDeviceProperties) +
-                   WGPUDevicePropertiesGetExtraRequiredSize(*deviceProperties);
+        WGPUDevicePropertiesTransfer* transfer;
+
+        WireResult result = serializeBuffer.Next(&transfer);
+        ASSERT(result == WireResult::Success);
+
+        ErrorObjectIdProvider provider;
+        result = WGPUDevicePropertiesSerialize(*deviceProperties, transfer, &serializeBuffer, provider);
+        ASSERT(result == WireResult::Success);
+    }
+
+    bool DeserializeWGPUDeviceProperties(WGPUDeviceProperties* deviceProperties,
+                                         const volatile char* buffer,
+                                         size_t size) {
+        const volatile WGPUDevicePropertiesTransfer* transfer;
+        DeserializeBuffer deserializeBuffer(buffer, size);
+        if (deserializeBuffer.Read(&transfer) != WireResult::Success) {
+            return false;
         }
 
-        void SerializeWGPUDeviceProperties(const WGPUDeviceProperties* deviceProperties,
-                                           char* buffer) {
-            SerializeBuffer serializeBuffer(buffer, SerializedWGPUDevicePropertiesSize(deviceProperties));
+        ErrorObjectIdResolver resolver;
+        return WGPUDevicePropertiesDeserialize(deviceProperties, transfer, &deserializeBuffer,
+                                               nullptr, resolver) == WireResult::Success;
+    }
 
-            WGPUDevicePropertiesTransfer* transfer;
+    size_t SerializedWGPUSupportedLimitsSize(const WGPUSupportedLimits* supportedLimits) {
+        return sizeof(WGPUSupportedLimits) +
+               WGPUSupportedLimitsGetExtraRequiredSize(*supportedLimits);
+    }
 
-            WireResult result = serializeBuffer.Next(&transfer);
-            ASSERT(result == WireResult::Success);
+    void SerializeWGPUSupportedLimits(
+        const WGPUSupportedLimits* supportedLimits,
+        char* buffer) {
+        SerializeBuffer serializeBuffer(buffer, SerializedWGPUSupportedLimitsSize(supportedLimits));
 
-            ErrorObjectIdProvider provider;
-            result = WGPUDevicePropertiesSerialize(*deviceProperties, transfer, &serializeBuffer, provider);
-            ASSERT(result == WireResult::Success);
+        WGPUSupportedLimitsTransfer* transfer;
+
+        WireResult result = serializeBuffer.Next(&transfer);
+        ASSERT(result == WireResult::Success);
+
+        ErrorObjectIdProvider provider;
+        result = WGPUSupportedLimitsSerialize(*supportedLimits, transfer, &serializeBuffer, provider);
+        ASSERT(result == WireResult::Success);
+    }
+
+    bool DeserializeWGPUSupportedLimits(WGPUSupportedLimits* supportedLimits,
+                                        const volatile char* buffer,
+                                        size_t size) {
+        const volatile WGPUSupportedLimitsTransfer* transfer;
+        DeserializeBuffer deserializeBuffer(buffer, size);
+        if (deserializeBuffer.Read(&transfer) != WireResult::Success) {
+            return false;
         }
 
-        bool DeserializeWGPUDeviceProperties(WGPUDeviceProperties* deviceProperties,
-                                             const volatile char* buffer,
-                                             size_t size) {
-            const volatile WGPUDevicePropertiesTransfer* transfer;
-            DeserializeBuffer deserializeBuffer(buffer, size);
-            if (deserializeBuffer.Read(&transfer) != WireResult::Success) {
-                return false;
-            }
-
-            ErrorObjectIdResolver resolver;
-            return WGPUDevicePropertiesDeserialize(deviceProperties, transfer, &deserializeBuffer,
-                                                   nullptr, resolver) == WireResult::Success;
-        }
-
-        size_t SerializedWGPUSupportedLimitsSize(const WGPUSupportedLimits* supportedLimits) {
-            return sizeof(WGPUSupportedLimits) +
-                   WGPUSupportedLimitsGetExtraRequiredSize(*supportedLimits);
-        }
-
-        void SerializeWGPUSupportedLimits(
-            const WGPUSupportedLimits* supportedLimits,
-            char* buffer) {
-            SerializeBuffer serializeBuffer(buffer, SerializedWGPUSupportedLimitsSize(supportedLimits));
-
-            WGPUSupportedLimitsTransfer* transfer;
-
-            WireResult result = serializeBuffer.Next(&transfer);
-            ASSERT(result == WireResult::Success);
-
-            ErrorObjectIdProvider provider;
-            result = WGPUSupportedLimitsSerialize(*supportedLimits, transfer, &serializeBuffer, provider);
-            ASSERT(result == WireResult::Success);
-        }
-
-        bool DeserializeWGPUSupportedLimits(WGPUSupportedLimits* supportedLimits,
-                                            const volatile char* buffer,
-                                            size_t size) {
-            const volatile WGPUSupportedLimitsTransfer* transfer;
-            DeserializeBuffer deserializeBuffer(buffer, size);
-            if (deserializeBuffer.Read(&transfer) != WireResult::Success) {
-                return false;
-            }
-
-            ErrorObjectIdResolver resolver;
-            return WGPUSupportedLimitsDeserialize(supportedLimits, transfer, &deserializeBuffer,
-                                                  nullptr, resolver) == WireResult::Success;
-        }
+        ErrorObjectIdResolver resolver;
+        return WGPUSupportedLimitsDeserialize(supportedLimits, transfer, &deserializeBuffer,
+                                              nullptr, resolver) == WireResult::Success;
+    }
 
 }  // namespace dawn_wire

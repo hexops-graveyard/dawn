@@ -6,14 +6,14 @@
 
 namespace wgpu {
 
-    static constexpr uint64_t kWholeSize = WGPU_WHOLE_SIZE;
-    // TODO(crbug.com/520): Remove kStrideUndefined in favor of kCopyStrideUndefined.
-    static constexpr uint32_t kStrideUndefined = WGPU_STRIDE_UNDEFINED;
+    static constexpr uint32_t kArrayLayerCountUndefined = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
     static constexpr uint32_t kCopyStrideUndefined = WGPU_COPY_STRIDE_UNDEFINED;
     static constexpr uint32_t kLimitU32Undefined = WGPU_LIMIT_U32_UNDEFINED;
     static constexpr uint64_t kLimitU64Undefined = WGPU_LIMIT_U64_UNDEFINED;
-    static constexpr uint32_t kArrayLayerCountUndefined = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
     static constexpr uint32_t kMipLevelCountUndefined = WGPU_MIP_LEVEL_COUNT_UNDEFINED;
+    static constexpr uint32_t kStrideUndefined = WGPU_STRIDE_UNDEFINED;
+    static constexpr size_t kWholeMapSize = WGPU_WHOLE_MAP_SIZE;
+    static constexpr uint64_t kWholeSize = WGPU_WHOLE_SIZE;
 
     enum class AdapterType : uint32_t {
         DiscreteGPU = 0x00000000,
@@ -220,12 +220,12 @@ namespace wgpu {
         SurfaceDescriptorFromCanvasHTMLSelector = 0x00000004,
         ShaderModuleSPIRVDescriptor = 0x00000005,
         ShaderModuleWGSLDescriptor = 0x00000006,
-        PrimitiveDepthClampingState = 0x00000007,
         SurfaceDescriptorFromWindowsCoreWindow = 0x00000008,
         ExternalTextureBindingEntry = 0x00000009,
         ExternalTextureBindingLayout = 0x0000000A,
         SurfaceDescriptorFromWindowsSwapChainPanel = 0x0000000B,
         DawnTextureInternalUsageDescriptor = 0x000003E8,
+        PrimitiveDepthClampingState = 0x000003E9,
     };
 
     enum class SamplerBindingType : uint32_t {
@@ -319,60 +319,62 @@ namespace wgpu {
         Depth16Unorm = 0x00000026,
         Depth24Plus = 0x00000027,
         Depth24PlusStencil8 = 0x00000028,
-        Depth32Float = 0x00000029,
-        BC1RGBAUnorm = 0x0000002A,
-        BC1RGBAUnormSrgb = 0x0000002B,
-        BC2RGBAUnorm = 0x0000002C,
-        BC2RGBAUnormSrgb = 0x0000002D,
-        BC3RGBAUnorm = 0x0000002E,
-        BC3RGBAUnormSrgb = 0x0000002F,
-        BC4RUnorm = 0x00000030,
-        BC4RSnorm = 0x00000031,
-        BC5RGUnorm = 0x00000032,
-        BC5RGSnorm = 0x00000033,
-        BC6HRGBUfloat = 0x00000034,
-        BC6HRGBFloat = 0x00000035,
-        BC7RGBAUnorm = 0x00000036,
-        BC7RGBAUnormSrgb = 0x00000037,
-        ETC2RGB8Unorm = 0x00000038,
-        ETC2RGB8UnormSrgb = 0x00000039,
-        ETC2RGB8A1Unorm = 0x0000003A,
-        ETC2RGB8A1UnormSrgb = 0x0000003B,
-        ETC2RGBA8Unorm = 0x0000003C,
-        ETC2RGBA8UnormSrgb = 0x0000003D,
-        EACR11Unorm = 0x0000003E,
-        EACR11Snorm = 0x0000003F,
-        EACRG11Unorm = 0x00000040,
-        EACRG11Snorm = 0x00000041,
-        ASTC4x4Unorm = 0x00000042,
-        ASTC4x4UnormSrgb = 0x00000043,
-        ASTC5x4Unorm = 0x00000044,
-        ASTC5x4UnormSrgb = 0x00000045,
-        ASTC5x5Unorm = 0x00000046,
-        ASTC5x5UnormSrgb = 0x00000047,
-        ASTC6x5Unorm = 0x00000048,
-        ASTC6x5UnormSrgb = 0x00000049,
-        ASTC6x6Unorm = 0x0000004A,
-        ASTC6x6UnormSrgb = 0x0000004B,
-        ASTC8x5Unorm = 0x0000004C,
-        ASTC8x5UnormSrgb = 0x0000004D,
-        ASTC8x6Unorm = 0x0000004E,
-        ASTC8x6UnormSrgb = 0x0000004F,
-        ASTC8x8Unorm = 0x00000050,
-        ASTC8x8UnormSrgb = 0x00000051,
-        ASTC10x5Unorm = 0x00000052,
-        ASTC10x5UnormSrgb = 0x00000053,
-        ASTC10x6Unorm = 0x00000054,
-        ASTC10x6UnormSrgb = 0x00000055,
-        ASTC10x8Unorm = 0x00000056,
-        ASTC10x8UnormSrgb = 0x00000057,
-        ASTC10x10Unorm = 0x00000058,
-        ASTC10x10UnormSrgb = 0x00000059,
-        ASTC12x10Unorm = 0x0000005A,
-        ASTC12x10UnormSrgb = 0x0000005B,
-        ASTC12x12Unorm = 0x0000005C,
-        ASTC12x12UnormSrgb = 0x0000005D,
-        R8BG8Biplanar420Unorm = 0x0000005E,
+        Depth24UnormStencil8 = 0x00000029,
+        Depth32Float = 0x0000002A,
+        Depth32FloatStencil8 = 0x0000002B,
+        BC1RGBAUnorm = 0x0000002C,
+        BC1RGBAUnormSrgb = 0x0000002D,
+        BC2RGBAUnorm = 0x0000002E,
+        BC2RGBAUnormSrgb = 0x0000002F,
+        BC3RGBAUnorm = 0x00000030,
+        BC3RGBAUnormSrgb = 0x00000031,
+        BC4RUnorm = 0x00000032,
+        BC4RSnorm = 0x00000033,
+        BC5RGUnorm = 0x00000034,
+        BC5RGSnorm = 0x00000035,
+        BC6HRGBUfloat = 0x00000036,
+        BC6HRGBFloat = 0x00000037,
+        BC7RGBAUnorm = 0x00000038,
+        BC7RGBAUnormSrgb = 0x00000039,
+        ETC2RGB8Unorm = 0x0000003A,
+        ETC2RGB8UnormSrgb = 0x0000003B,
+        ETC2RGB8A1Unorm = 0x0000003C,
+        ETC2RGB8A1UnormSrgb = 0x0000003D,
+        ETC2RGBA8Unorm = 0x0000003E,
+        ETC2RGBA8UnormSrgb = 0x0000003F,
+        EACR11Unorm = 0x00000040,
+        EACR11Snorm = 0x00000041,
+        EACRG11Unorm = 0x00000042,
+        EACRG11Snorm = 0x00000043,
+        ASTC4x4Unorm = 0x00000044,
+        ASTC4x4UnormSrgb = 0x00000045,
+        ASTC5x4Unorm = 0x00000046,
+        ASTC5x4UnormSrgb = 0x00000047,
+        ASTC5x5Unorm = 0x00000048,
+        ASTC5x5UnormSrgb = 0x00000049,
+        ASTC6x5Unorm = 0x0000004A,
+        ASTC6x5UnormSrgb = 0x0000004B,
+        ASTC6x6Unorm = 0x0000004C,
+        ASTC6x6UnormSrgb = 0x0000004D,
+        ASTC8x5Unorm = 0x0000004E,
+        ASTC8x5UnormSrgb = 0x0000004F,
+        ASTC8x6Unorm = 0x00000050,
+        ASTC8x6UnormSrgb = 0x00000051,
+        ASTC8x8Unorm = 0x00000052,
+        ASTC8x8UnormSrgb = 0x00000053,
+        ASTC10x5Unorm = 0x00000054,
+        ASTC10x5UnormSrgb = 0x00000055,
+        ASTC10x6Unorm = 0x00000056,
+        ASTC10x6UnormSrgb = 0x00000057,
+        ASTC10x8Unorm = 0x00000058,
+        ASTC10x8UnormSrgb = 0x00000059,
+        ASTC10x10Unorm = 0x0000005A,
+        ASTC10x10UnormSrgb = 0x0000005B,
+        ASTC12x10Unorm = 0x0000005C,
+        ASTC12x10UnormSrgb = 0x0000005D,
+        ASTC12x12Unorm = 0x0000005E,
+        ASTC12x12UnormSrgb = 0x0000005F,
+        R8BG8Biplanar420Unorm = 0x00000060,
     };
 
     enum class TextureSampleType : uint32_t {
@@ -693,6 +695,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<BindGroup, WGPUBindGroup>;
@@ -705,6 +708,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<BindGroupLayout, WGPUBindGroupLayout>;
@@ -735,6 +739,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<CommandBuffer, WGPUCommandBuffer>;
@@ -760,6 +765,7 @@ namespace wgpu {
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
         void ResolveQuerySet(QuerySet const& querySet, uint32_t firstQuery, uint32_t queryCount, Buffer const& destination, uint64_t destinationOffset) const;
+        void SetLabel(char const * label) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) const;
         void WriteTimestamp(QuerySet const& querySet, uint32_t queryIndex) const;
 
@@ -781,6 +787,7 @@ namespace wgpu {
         void PopDebugGroup() const;
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
+        void SetLabel(char const * label) const;
         void SetPipeline(ComputePipeline const& pipeline) const;
         void WriteTimestamp(QuerySet const& querySet, uint32_t queryIndex) const;
 
@@ -849,6 +856,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void Destroy() const;
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<ExternalTexture, WGPUExternalTexture>;
@@ -874,6 +882,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<PipelineLayout, WGPUPipelineLayout>;
@@ -887,6 +896,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void Destroy() const;
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<QuerySet, WGPUQuerySet>;
@@ -938,6 +948,7 @@ namespace wgpu {
         void PushDebugGroup(char const * groupLabel) const;
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
         void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
+        void SetLabel(char const * label) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
         void SetVertexBuffer(uint32_t slot, Buffer const& buffer, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
 
@@ -966,6 +977,7 @@ namespace wgpu {
         void SetBindGroup(uint32_t groupIndex, BindGroup const& group, uint32_t dynamicOffsetCount = 0, uint32_t const * dynamicOffsets = nullptr) const;
         void SetBlendConstant(Color const * color) const;
         void SetIndexBuffer(Buffer const& buffer, IndexFormat format, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
+        void SetLabel(char const * label) const;
         void SetPipeline(RenderPipeline const& pipeline) const;
         void SetScissorRect(uint32_t x, uint32_t y, uint32_t width, uint32_t height) const;
         void SetStencilReference(uint32_t reference) const;
@@ -998,6 +1010,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<Sampler, WGPUSampler>;
@@ -1066,6 +1079,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void SetLabel(char const * label) const;
 
       private:
         friend ObjectBase<TextureView, WGPUTextureView>;
@@ -1146,6 +1160,7 @@ namespace wgpu {
     };
 
     struct CompilationMessage {
+        ChainedStruct const * nextInChain = nullptr;
         char const * message = nullptr;
         CompilationMessageType type;
         uint64_t lineNum;
@@ -1293,6 +1308,8 @@ namespace wgpu {
         TextureFormat const * colorFormats;
         TextureFormat depthStencilFormat = TextureFormat::Undefined;
         uint32_t sampleCount = 1;
+        bool depthReadOnly = false;
+        bool stencilReadOnly = false;
     };
 
     struct RenderPassDepthStencilAttachment {
@@ -1477,6 +1494,7 @@ namespace wgpu {
     };
 
     struct CompilationInfo {
+        ChainedStruct const * nextInChain = nullptr;
         uint32_t messageCount;
         CompilationMessage const * messages;
     };
@@ -1577,6 +1595,7 @@ namespace wgpu {
     struct DeviceProperties {
         uint32_t deviceID;
         uint32_t vendorID;
+        AdapterType adapterType;
         bool textureCompressionBC = false;
         bool textureCompressionETC2 = false;
         bool textureCompressionASTC = false;
@@ -1585,7 +1604,9 @@ namespace wgpu {
         bool timestampQuery = false;
         bool multiPlanarFormats = false;
         bool depthClamping = false;
-        bool invalidExtension = false;
+        bool depth24UnormStencil8 = false;
+        bool depth32FloatStencil8 = false;
+        bool invalidFeature = false;
         bool dawnInternalUsages = false;
         SupportedLimits limits;
     };

@@ -45,10 +45,12 @@ class ProcTableAsClass {
         WGPUTexture GetNewTexture();
         WGPUTextureView GetNewTextureView();
 
+        virtual void BindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) = 0;
 
         virtual void BindGroupReference(WGPUBindGroup self) = 0;
         virtual void BindGroupRelease(WGPUBindGroup self) = 0;
 
+        virtual void BindGroupLayoutSetLabel(WGPUBindGroupLayout bindGroupLayout, char const * label) = 0;
 
         virtual void BindGroupLayoutReference(WGPUBindGroupLayout self) = 0;
         virtual void BindGroupLayoutRelease(WGPUBindGroupLayout self) = 0;
@@ -66,6 +68,7 @@ class ProcTableAsClass {
         virtual void OnBufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata) = 0;
 
         void CallBufferMapAsyncCallback(WGPUBuffer buffer, WGPUBufferMapAsyncStatus status);
+        virtual void CommandBufferSetLabel(WGPUCommandBuffer commandBuffer, char const * label) = 0;
 
         virtual void CommandBufferReference(WGPUCommandBuffer self) = 0;
         virtual void CommandBufferRelease(WGPUCommandBuffer self) = 0;
@@ -83,6 +86,7 @@ class ProcTableAsClass {
         virtual void CommandEncoderPopDebugGroup(WGPUCommandEncoder commandEncoder) = 0;
         virtual void CommandEncoderPushDebugGroup(WGPUCommandEncoder commandEncoder, char const * groupLabel) = 0;
         virtual void CommandEncoderResolveQuerySet(WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t firstQuery, uint32_t queryCount, WGPUBuffer destination, uint64_t destinationOffset) = 0;
+        virtual void CommandEncoderSetLabel(WGPUCommandEncoder commandEncoder, char const * label) = 0;
         virtual void CommandEncoderWriteBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size) = 0;
         virtual void CommandEncoderWriteTimestamp(WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t queryIndex) = 0;
 
@@ -96,6 +100,7 @@ class ProcTableAsClass {
         virtual void ComputePassEncoderPopDebugGroup(WGPUComputePassEncoder computePassEncoder) = 0;
         virtual void ComputePassEncoderPushDebugGroup(WGPUComputePassEncoder computePassEncoder, char const * groupLabel) = 0;
         virtual void ComputePassEncoderSetBindGroup(WGPUComputePassEncoder computePassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) = 0;
+        virtual void ComputePassEncoderSetLabel(WGPUComputePassEncoder computePassEncoder, char const * label) = 0;
         virtual void ComputePassEncoderSetPipeline(WGPUComputePassEncoder computePassEncoder, WGPUComputePipeline pipeline) = 0;
         virtual void ComputePassEncoderWriteTimestamp(WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex) = 0;
 
@@ -158,6 +163,7 @@ class ProcTableAsClass {
 
         void CallDeviceSetUncapturedErrorCallbackCallback(WGPUDevice device, WGPUErrorType type, char const * message);
         virtual void ExternalTextureDestroy(WGPUExternalTexture externalTexture) = 0;
+        virtual void ExternalTextureSetLabel(WGPUExternalTexture externalTexture, char const * label) = 0;
 
         virtual void ExternalTextureReference(WGPUExternalTexture self) = 0;
         virtual void ExternalTextureRelease(WGPUExternalTexture self) = 0;
@@ -167,11 +173,13 @@ class ProcTableAsClass {
         virtual void InstanceReference(WGPUInstance self) = 0;
         virtual void InstanceRelease(WGPUInstance self) = 0;
 
+        virtual void PipelineLayoutSetLabel(WGPUPipelineLayout pipelineLayout, char const * label) = 0;
 
         virtual void PipelineLayoutReference(WGPUPipelineLayout self) = 0;
         virtual void PipelineLayoutRelease(WGPUPipelineLayout self) = 0;
 
         virtual void QuerySetDestroy(WGPUQuerySet querySet) = 0;
+        virtual void QuerySetSetLabel(WGPUQuerySet querySet, char const * label) = 0;
 
         virtual void QuerySetReference(WGPUQuerySet self) = 0;
         virtual void QuerySetRelease(WGPUQuerySet self) = 0;
@@ -202,6 +210,7 @@ class ProcTableAsClass {
         virtual void RenderBundleEncoderPushDebugGroup(WGPURenderBundleEncoder renderBundleEncoder, char const * groupLabel) = 0;
         virtual void RenderBundleEncoderSetBindGroup(WGPURenderBundleEncoder renderBundleEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) = 0;
         virtual void RenderBundleEncoderSetIndexBuffer(WGPURenderBundleEncoder renderBundleEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) = 0;
+        virtual void RenderBundleEncoderSetLabel(WGPURenderBundleEncoder renderBundleEncoder, char const * label) = 0;
         virtual void RenderBundleEncoderSetPipeline(WGPURenderBundleEncoder renderBundleEncoder, WGPURenderPipeline pipeline) = 0;
         virtual void RenderBundleEncoderSetVertexBuffer(WGPURenderBundleEncoder renderBundleEncoder, uint32_t slot, WGPUBuffer buffer, uint64_t offset, uint64_t size) = 0;
 
@@ -222,6 +231,7 @@ class ProcTableAsClass {
         virtual void RenderPassEncoderSetBindGroup(WGPURenderPassEncoder renderPassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets) = 0;
         virtual void RenderPassEncoderSetBlendConstant(WGPURenderPassEncoder renderPassEncoder, WGPUColor const * color) = 0;
         virtual void RenderPassEncoderSetIndexBuffer(WGPURenderPassEncoder renderPassEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size) = 0;
+        virtual void RenderPassEncoderSetLabel(WGPURenderPassEncoder renderPassEncoder, char const * label) = 0;
         virtual void RenderPassEncoderSetPipeline(WGPURenderPassEncoder renderPassEncoder, WGPURenderPipeline pipeline) = 0;
         virtual void RenderPassEncoderSetScissorRect(WGPURenderPassEncoder renderPassEncoder, uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
         virtual void RenderPassEncoderSetStencilReference(WGPURenderPassEncoder renderPassEncoder, uint32_t reference) = 0;
@@ -238,6 +248,7 @@ class ProcTableAsClass {
         virtual void RenderPipelineReference(WGPURenderPipeline self) = 0;
         virtual void RenderPipelineRelease(WGPURenderPipeline self) = 0;
 
+        virtual void SamplerSetLabel(WGPUSampler sampler, char const * label) = 0;
 
         virtual void SamplerReference(WGPUSampler self) = 0;
         virtual void SamplerRelease(WGPUSampler self) = 0;
@@ -269,6 +280,7 @@ class ProcTableAsClass {
         virtual void TextureReference(WGPUTexture self) = 0;
         virtual void TextureRelease(WGPUTexture self) = 0;
 
+        virtual void TextureViewSetLabel(WGPUTextureView textureView, char const * label) = 0;
 
         virtual void TextureViewReference(WGPUTextureView self) = 0;
         virtual void TextureViewRelease(WGPUTextureView self) = 0;
@@ -300,10 +312,12 @@ class MockProcTable : public ProcTableAsClass {
 
         void IgnoreAllReleaseCalls();
 
+        MOCK_METHOD(void, BindGroupSetLabel, (WGPUBindGroup bindGroup, char const * label), (override));
 
         MOCK_METHOD(void, BindGroupReference, (WGPUBindGroup self), (override));
         MOCK_METHOD(void, BindGroupRelease, (WGPUBindGroup self), (override));
 
+        MOCK_METHOD(void, BindGroupLayoutSetLabel, (WGPUBindGroupLayout bindGroupLayout, char const * label), (override));
 
         MOCK_METHOD(void, BindGroupLayoutReference, (WGPUBindGroupLayout self), (override));
         MOCK_METHOD(void, BindGroupLayoutRelease, (WGPUBindGroupLayout self), (override));
@@ -318,6 +332,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, BufferRelease, (WGPUBuffer self), (override));
 
         MOCK_METHOD(void, OnBufferMapAsync, (WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata), (override));
+        MOCK_METHOD(void, CommandBufferSetLabel, (WGPUCommandBuffer commandBuffer, char const * label), (override));
 
         MOCK_METHOD(void, CommandBufferReference, (WGPUCommandBuffer self), (override));
         MOCK_METHOD(void, CommandBufferRelease, (WGPUCommandBuffer self), (override));
@@ -335,6 +350,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, CommandEncoderPopDebugGroup, (WGPUCommandEncoder commandEncoder), (override));
         MOCK_METHOD(void, CommandEncoderPushDebugGroup, (WGPUCommandEncoder commandEncoder, char const * groupLabel), (override));
         MOCK_METHOD(void, CommandEncoderResolveQuerySet, (WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t firstQuery, uint32_t queryCount, WGPUBuffer destination, uint64_t destinationOffset), (override));
+        MOCK_METHOD(void, CommandEncoderSetLabel, (WGPUCommandEncoder commandEncoder, char const * label), (override));
         MOCK_METHOD(void, CommandEncoderWriteBuffer, (WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t bufferOffset, uint8_t const * data, uint64_t size), (override));
         MOCK_METHOD(void, CommandEncoderWriteTimestamp, (WGPUCommandEncoder commandEncoder, WGPUQuerySet querySet, uint32_t queryIndex), (override));
 
@@ -348,6 +364,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, ComputePassEncoderPopDebugGroup, (WGPUComputePassEncoder computePassEncoder), (override));
         MOCK_METHOD(void, ComputePassEncoderPushDebugGroup, (WGPUComputePassEncoder computePassEncoder, char const * groupLabel), (override));
         MOCK_METHOD(void, ComputePassEncoderSetBindGroup, (WGPUComputePassEncoder computePassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets), (override));
+        MOCK_METHOD(void, ComputePassEncoderSetLabel, (WGPUComputePassEncoder computePassEncoder, char const * label), (override));
         MOCK_METHOD(void, ComputePassEncoderSetPipeline, (WGPUComputePassEncoder computePassEncoder, WGPUComputePipeline pipeline), (override));
         MOCK_METHOD(void, ComputePassEncoderWriteTimestamp, (WGPUComputePassEncoder computePassEncoder, WGPUQuerySet querySet, uint32_t queryIndex), (override));
 
@@ -392,6 +409,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, OnDeviceSetLoggingCallback, (WGPUDevice device, WGPULoggingCallback callback, void * userdata), (override));
         MOCK_METHOD(void, OnDeviceSetUncapturedErrorCallback, (WGPUDevice device, WGPUErrorCallback callback, void * userdata), (override));
         MOCK_METHOD(void, ExternalTextureDestroy, (WGPUExternalTexture externalTexture), (override));
+        MOCK_METHOD(void, ExternalTextureSetLabel, (WGPUExternalTexture externalTexture, char const * label), (override));
 
         MOCK_METHOD(void, ExternalTextureReference, (WGPUExternalTexture self), (override));
         MOCK_METHOD(void, ExternalTextureRelease, (WGPUExternalTexture self), (override));
@@ -401,11 +419,13 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, InstanceReference, (WGPUInstance self), (override));
         MOCK_METHOD(void, InstanceRelease, (WGPUInstance self), (override));
 
+        MOCK_METHOD(void, PipelineLayoutSetLabel, (WGPUPipelineLayout pipelineLayout, char const * label), (override));
 
         MOCK_METHOD(void, PipelineLayoutReference, (WGPUPipelineLayout self), (override));
         MOCK_METHOD(void, PipelineLayoutRelease, (WGPUPipelineLayout self), (override));
 
         MOCK_METHOD(void, QuerySetDestroy, (WGPUQuerySet querySet), (override));
+        MOCK_METHOD(void, QuerySetSetLabel, (WGPUQuerySet querySet, char const * label), (override));
 
         MOCK_METHOD(void, QuerySetReference, (WGPUQuerySet self), (override));
         MOCK_METHOD(void, QuerySetRelease, (WGPUQuerySet self), (override));
@@ -433,6 +453,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, RenderBundleEncoderPushDebugGroup, (WGPURenderBundleEncoder renderBundleEncoder, char const * groupLabel), (override));
         MOCK_METHOD(void, RenderBundleEncoderSetBindGroup, (WGPURenderBundleEncoder renderBundleEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets), (override));
         MOCK_METHOD(void, RenderBundleEncoderSetIndexBuffer, (WGPURenderBundleEncoder renderBundleEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size), (override));
+        MOCK_METHOD(void, RenderBundleEncoderSetLabel, (WGPURenderBundleEncoder renderBundleEncoder, char const * label), (override));
         MOCK_METHOD(void, RenderBundleEncoderSetPipeline, (WGPURenderBundleEncoder renderBundleEncoder, WGPURenderPipeline pipeline), (override));
         MOCK_METHOD(void, RenderBundleEncoderSetVertexBuffer, (WGPURenderBundleEncoder renderBundleEncoder, uint32_t slot, WGPUBuffer buffer, uint64_t offset, uint64_t size), (override));
 
@@ -453,6 +474,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, RenderPassEncoderSetBindGroup, (WGPURenderPassEncoder renderPassEncoder, uint32_t groupIndex, WGPUBindGroup group, uint32_t dynamicOffsetCount, uint32_t const * dynamicOffsets), (override));
         MOCK_METHOD(void, RenderPassEncoderSetBlendConstant, (WGPURenderPassEncoder renderPassEncoder, WGPUColor const * color), (override));
         MOCK_METHOD(void, RenderPassEncoderSetIndexBuffer, (WGPURenderPassEncoder renderPassEncoder, WGPUBuffer buffer, WGPUIndexFormat format, uint64_t offset, uint64_t size), (override));
+        MOCK_METHOD(void, RenderPassEncoderSetLabel, (WGPURenderPassEncoder renderPassEncoder, char const * label), (override));
         MOCK_METHOD(void, RenderPassEncoderSetPipeline, (WGPURenderPassEncoder renderPassEncoder, WGPURenderPipeline pipeline), (override));
         MOCK_METHOD(void, RenderPassEncoderSetScissorRect, (WGPURenderPassEncoder renderPassEncoder, uint32_t x, uint32_t y, uint32_t width, uint32_t height), (override));
         MOCK_METHOD(void, RenderPassEncoderSetStencilReference, (WGPURenderPassEncoder renderPassEncoder, uint32_t reference), (override));
@@ -469,6 +491,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, RenderPipelineReference, (WGPURenderPipeline self), (override));
         MOCK_METHOD(void, RenderPipelineRelease, (WGPURenderPipeline self), (override));
 
+        MOCK_METHOD(void, SamplerSetLabel, (WGPUSampler sampler, char const * label), (override));
 
         MOCK_METHOD(void, SamplerReference, (WGPUSampler self), (override));
         MOCK_METHOD(void, SamplerRelease, (WGPUSampler self), (override));
@@ -497,6 +520,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, TextureReference, (WGPUTexture self), (override));
         MOCK_METHOD(void, TextureRelease, (WGPUTexture self), (override));
 
+        MOCK_METHOD(void, TextureViewSetLabel, (WGPUTextureView textureView, char const * label), (override));
 
         MOCK_METHOD(void, TextureViewReference, (WGPUTextureView self), (override));
         MOCK_METHOD(void, TextureViewRelease, (WGPUTextureView self), (override));

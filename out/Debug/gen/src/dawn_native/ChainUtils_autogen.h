@@ -25,12 +25,12 @@ namespace dawn_native {
     void FindInChain(const ChainedStruct* chain, const SurfaceDescriptorFromCanvasHTMLSelector** out);
     void FindInChain(const ChainedStruct* chain, const ShaderModuleSPIRVDescriptor** out);
     void FindInChain(const ChainedStruct* chain, const ShaderModuleWGSLDescriptor** out);
-    void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState** out);
     void FindInChain(const ChainedStruct* chain, const SurfaceDescriptorFromWindowsCoreWindow** out);
     void FindInChain(const ChainedStruct* chain, const ExternalTextureBindingEntry** out);
     void FindInChain(const ChainedStruct* chain, const ExternalTextureBindingLayout** out);
     void FindInChain(const ChainedStruct* chain, const SurfaceDescriptorFromWindowsSwapChainPanel** out);
     void FindInChain(const ChainedStruct* chain, const DawnTextureInternalUsageDescriptor** out);
+    void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState** out);
 
     // Verifies that |chain| only contains ChainedStructs of types enumerated in
     // |oneOfConstraints| and contains no duplicate sTypes. Each vector in
@@ -43,9 +43,8 @@ namespace dawn_native {
 
     template <typename T>
     MaybeError ValidateSingleSTypeInner(const ChainedStruct* chain, T sType) {
-        if (chain->sType != sType) {
-            return DAWN_VALIDATION_ERROR("Unsupported sType");
-        }
+        DAWN_INVALID_IF(chain->sType != sType,
+            "Unsupported sType (%s). Expected (%s)", chain->sType, sType);
         return {};
     }
 
@@ -64,9 +63,8 @@ namespace dawn_native {
         if (chain == nullptr) {
             return {};
         }
-        if (chain->nextInChain != nullptr) {
-            return DAWN_VALIDATION_ERROR("Chain can only contain a single chained struct");
-        }
+        DAWN_INVALID_IF(chain->nextInChain != nullptr,
+            "Chain can only contain a single chained struct.");
         return ValidateSingleSTypeInner(chain, sType);
     }
 
@@ -77,9 +75,8 @@ namespace dawn_native {
         if (chain == nullptr) {
             return {};
         }
-        if (chain->nextInChain != nullptr) {
-            return DAWN_VALIDATION_ERROR("Chain can only contain a single chained struct");
-        }
+        DAWN_INVALID_IF(chain->nextInChain != nullptr,
+            "Chain can only contain a single chained struct.");
         return ValidateSingleSTypeInner(chain, sType, sTypes...);
     }
 

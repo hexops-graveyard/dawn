@@ -104,6 +104,7 @@ namespace dawn_native {
     };
 
     struct CompilationMessage {
+        ChainedStruct const * nextInChain = nullptr;
         char const * message = nullptr;
         wgpu::CompilationMessageType type;
         uint64_t lineNum;
@@ -323,6 +324,8 @@ namespace dawn_native {
         wgpu::TextureFormat const * colorFormats;
         wgpu::TextureFormat depthStencilFormat = wgpu::TextureFormat::Undefined;
         uint32_t sampleCount = 1;
+        bool depthReadOnly = false;
+        bool stencilReadOnly = false;
 
         // Equality operators, mostly for testing. Note that this tests
         // strict pointer-pointer equality if the struct contains member pointers.
@@ -603,6 +606,7 @@ namespace dawn_native {
     };
 
     struct CompilationInfo {
+        ChainedStruct const * nextInChain = nullptr;
         uint32_t messageCount;
         CompilationMessage const * messages;
 
@@ -755,6 +759,7 @@ namespace dawn_native {
     struct DeviceProperties {
         uint32_t deviceID;
         uint32_t vendorID;
+        wgpu::AdapterType adapterType;
         bool textureCompressionBC = false;
         bool textureCompressionETC2 = false;
         bool textureCompressionASTC = false;
@@ -763,7 +768,9 @@ namespace dawn_native {
         bool timestampQuery = false;
         bool multiPlanarFormats = false;
         bool depthClamping = false;
-        bool invalidExtension = false;
+        bool depth24UnormStencil8 = false;
+        bool depth32FloatStencil8 = false;
+        bool invalidFeature = false;
         bool dawnInternalUsages = false;
         SupportedLimits limits;
 

@@ -599,9 +599,6 @@ namespace wgpu {
       case SType::ShaderModuleWGSLDescriptor:
         o << "SType::ShaderModuleWGSLDescriptor";
         break;
-      case SType::PrimitiveDepthClampingState:
-        o << "SType::PrimitiveDepthClampingState";
-        break;
       case SType::SurfaceDescriptorFromWindowsCoreWindow:
         o << "SType::SurfaceDescriptorFromWindowsCoreWindow";
         break;
@@ -616,6 +613,9 @@ namespace wgpu {
         break;
       case SType::DawnTextureInternalUsageDescriptor:
         o << "SType::DawnTextureInternalUsageDescriptor";
+        break;
+      case SType::PrimitiveDepthClampingState:
+        o << "SType::PrimitiveDepthClampingState";
         break;
           default:
             o << "SType::" << std::showbase << std::hex << std::setfill('0') << std::setw(4) << static_cast<typename std::underlying_type<SType>::type>(value);
@@ -888,8 +888,14 @@ namespace wgpu {
       case TextureFormat::Depth24PlusStencil8:
         o << "TextureFormat::Depth24PlusStencil8";
         break;
+      case TextureFormat::Depth24UnormStencil8:
+        o << "TextureFormat::Depth24UnormStencil8";
+        break;
       case TextureFormat::Depth32Float:
         o << "TextureFormat::Depth32Float";
+        break;
+      case TextureFormat::Depth32FloatStencil8:
+        o << "TextureFormat::Depth32FloatStencil8";
         break;
       case TextureFormat::BC1RGBAUnorm:
         o << "TextureFormat::BC1RGBAUnorm";
