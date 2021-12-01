@@ -13,6 +13,7 @@ rm -rf third_party/abseil-cpp/.git
 rm -rf third_party/angle/.git
 rm -rf third_party/swiftshader/.git
 rm -rf third_party/tint/.git
+rm -rf third_party/tint/test/
 rm -rf third_party/vulkan_memory_allocator/.git
 rm -rf third_party/zlib/.git
 rm -rf third_party/vulkan-deps/.git
