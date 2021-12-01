@@ -28,4 +28,4 @@ rm -rf third_party/vulkan-deps/vulkan-tools/src/.git
 rm -rf third_party/vulkan-deps/vulkan-validation-layers/src/.git
 
 git add third_party/
-git commit -s -m 'update dependencies'
+echo "you may now 'git commit -s -m 'update dependencies' if you are happy with the staged changes"
