@@ -89,17 +89,6 @@ namespace dawn_native {
                     buffer.type == kInternalStorageBufferBinding) {
                     allowedStages &= ~wgpu::ShaderStage::Vertex;
                 }
-
-                // Dynamic storage buffers aren't bounds checked properly in D3D12. Disallow them as
-                // unsafe until the bounds checks are implemented.
-                DAWN_INVALID_IF(
-                    device->IsToggleEnabled(Toggle::DisallowUnsafeAPIs) &&
-                        buffer.hasDynamicOffset &&
-                        (buffer.type == wgpu::BufferBindingType::Storage ||
-                         buffer.type == kInternalStorageBufferBinding ||
-                         buffer.type == wgpu::BufferBindingType::ReadOnlyStorage),
-                    "Dynamic storage buffers are disallowed because they aren't secure yet. "
-                    "See https://crbug.com/dawn/429");
             }
             if (entry.sampler.type != wgpu::SamplerBindingType::Undefined) {
                 bindingMemberCount++;
@@ -418,13 +407,11 @@ namespace dawn_native {
 
     BindGroupLayoutBase::~BindGroupLayoutBase() = default;
 
-    bool BindGroupLayoutBase::Destroy() {
-        bool wasDestroyed = ApiObjectBase::Destroy();
-        if (wasDestroyed && IsCachedReference()) {
-            // Do not uncache the actual cached object if we are a blueprint or already destroyed.
+    void BindGroupLayoutBase::DestroyImpl() {
+        if (IsCachedReference()) {
+            // Do not uncache the actual cached object if we are a blueprint.
             GetDevice()->UncacheBindGroupLayout(this);
         }
-        return wasDestroyed;
     }
 
     // static

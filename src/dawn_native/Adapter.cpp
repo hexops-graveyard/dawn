@@ -69,6 +69,33 @@ namespace dawn_native {
         return {};
     }
 
+    bool AdapterBase::APIGetLimits(SupportedLimits* limits) const {
+        return GetLimits(limits);
+    }
+
+    void AdapterBase::APIGetProperties(AdapterProperties* properties) const {
+        properties->vendorID = mPCIInfo.vendorId;
+        properties->deviceID = mPCIInfo.deviceId;
+        properties->name = mPCIInfo.name.c_str();
+        properties->driverDescription = mDriverDescription.c_str();
+        properties->adapterType = mAdapterType;
+        properties->backendType = mBackend;
+    }
+
+    bool AdapterBase::APIHasFeature(wgpu::FeatureName feature) const {
+        return mSupportedFeatures.IsEnabled(feature);
+    }
+
+    uint32_t AdapterBase::APIEnumerateFeatures(wgpu::FeatureName* features) const {
+        return mSupportedFeatures.EnumerateFeatures(features);
+    }
+
+    void AdapterBase::APIRequestDevice(const DeviceDescriptor* descriptor,
+                                       WGPURequestDeviceCallback callback,
+                                       void* userdata) {
+        callback(WGPURequestDeviceStatus_Error, nullptr, "Not implemented", userdata);
+    }
+
     wgpu::BackendType AdapterBase::GetBackendType() const {
         return mBackend;
     }
@@ -119,7 +146,7 @@ namespace dawn_native {
         // to store them (ex. by calling GetLimits directly instead). Currently,
         // we keep this function as it's only used internally in Chromium to
         // send the adapter properties across the wire.
-        GetLimits(reinterpret_cast<SupportedLimits*>(&adapterProperties.limits));
+        GetLimits(FromAPI(&adapterProperties.limits));
         return adapterProperties;
     }
 
@@ -149,19 +176,18 @@ namespace dawn_native {
     void AdapterBase::RequestDevice(const DawnDeviceDescriptor* descriptor,
                                     WGPURequestDeviceCallback callback,
                                     void* userdata) {
-        DeviceBase* result = nullptr;
-        MaybeError err = CreateDeviceInternal(&result, descriptor);
-        WGPUDevice device = reinterpret_cast<WGPUDevice>(result);
+        DeviceBase* device = nullptr;
+        MaybeError err = CreateDeviceInternal(&device, descriptor);
 
         if (err.IsError()) {
             std::unique_ptr<ErrorData> errorData = err.AcquireError();
-            callback(WGPURequestDeviceStatus_Error, device,
+            callback(WGPURequestDeviceStatus_Error, ToAPI(device),
                      errorData->GetFormattedMessage().c_str(), userdata);
             return;
         }
         WGPURequestDeviceStatus status =
             device == nullptr ? WGPURequestDeviceStatus_Unknown : WGPURequestDeviceStatus_Success;
-        callback(status, device, nullptr, userdata);
+        callback(status, ToAPI(device), nullptr, userdata);
     }
 
     MaybeError AdapterBase::CreateDeviceInternal(DeviceBase** result,
@@ -178,9 +204,8 @@ namespace dawn_native {
 
         if (descriptor != nullptr && descriptor->requiredLimits != nullptr) {
             DAWN_TRY_CONTEXT(
-                ValidateLimits(
-                    mUseTieredLimits ? ApplyLimitTiers(mLimits.v1) : mLimits.v1,
-                    reinterpret_cast<const RequiredLimits*>(descriptor->requiredLimits)->limits),
+                ValidateLimits(mUseTieredLimits ? ApplyLimitTiers(mLimits.v1) : mLimits.v1,
+                               FromAPI(descriptor->requiredLimits)->limits),
                 "validating required limits");
 
             DAWN_INVALID_IF(descriptor->requiredLimits->nextInChain != nullptr,

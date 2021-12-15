@@ -1007,15 +1007,25 @@ void DawnTestBase::TearDown() {
         EXPECT_EQ(mLastWarningCount,
                   dawn_native::GetDeprecationWarningCountForTesting(device.Get()));
     }
+
+    // The device will be destroyed soon after, so we want to set the expectation.
+    ExpectDeviceDestruction();
 }
 
-void DawnTestBase::StartExpectDeviceError() {
+void DawnTestBase::StartExpectDeviceError(testing::Matcher<std::string> errorMatcher) {
     mExpectError = true;
     mError = false;
+    mErrorMatcher = errorMatcher;
 }
+
 bool DawnTestBase::EndExpectDeviceError() {
     mExpectError = false;
+    mErrorMatcher = testing::_;
     return mError;
+}
+
+void DawnTestBase::ExpectDeviceDestruction() {
+    mExpectDestruction = true;
 }
 
 // static
@@ -1025,13 +1035,21 @@ void DawnTestBase::OnDeviceError(WGPUErrorType type, const char* message, void* 
 
     ASSERT_TRUE(self->mExpectError) << "Got unexpected device error: " << message;
     ASSERT_FALSE(self->mError) << "Got two errors in expect block";
+    if (self->mExpectError) {
+        ASSERT_THAT(message, self->mErrorMatcher);
+    }
     self->mError = true;
 }
 
 void DawnTestBase::OnDeviceLost(WGPUDeviceLostReason reason, const char* message, void* userdata) {
+    DawnTestBase* self = static_cast<DawnTestBase*>(userdata);
+    if (self->mExpectDestruction) {
+        EXPECT_EQ(reason, WGPUDeviceLostReason_Destroyed);
+        return;
+    }
     // Using ADD_FAILURE + ASSERT instead of FAIL to prevent the current test from continuing with a
     // corrupt state.
-    ADD_FAILURE() << "Device Lost during test: " << message;
+    ADD_FAILURE() << "Device lost during test: " << message;
     ASSERT(false);
 }
 
@@ -1128,7 +1146,7 @@ std::ostringstream& DawnTestBase::ExpectSampledFloatDataImpl(wgpu::TextureView t
     shaderSource << "let width : u32 = " << width << "u;\n";
     shaderSource << "[[group(0), binding(0)]] var tex : " << wgslTextureType << ";\n";
     shaderSource << R"(
-        [[block]] struct Result {
+        struct Result {
             values : array<f32>;
         };
         [[group(0), binding(1)]] var<storage, read_write> result : Result;

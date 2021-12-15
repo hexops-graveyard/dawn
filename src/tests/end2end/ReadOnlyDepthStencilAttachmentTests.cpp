@@ -22,7 +22,7 @@ constexpr static uint32_t kSize = 4;
 
 namespace {
     using TextureFormat = wgpu::TextureFormat;
-    DAWN_TEST_PARAM_STRUCT(ReadOnlyDepthStencilAttachmentTestsParams, TextureFormat)
+    DAWN_TEST_PARAM_STRUCT(ReadOnlyDepthStencilAttachmentTestsParams, TextureFormat);
 }  // namespace
 
 class ReadOnlyDepthStencilAttachmentTests
@@ -254,10 +254,10 @@ TEST_P(ReadOnlyStencilAttachmentTests, Test) {
 }
 
 DAWN_INSTANTIATE_TEST_P(ReadOnlyDepthAttachmentTests,
-                        {D3D12Backend()},
+                        {D3D12Backend(), VulkanBackend()},
                         std::vector<wgpu::TextureFormat>(utils::kDepthFormats.begin(),
                                                          utils::kDepthFormats.end()));
 DAWN_INSTANTIATE_TEST_P(ReadOnlyStencilAttachmentTests,
-                        {D3D12Backend()},
+                        {D3D12Backend(), VulkanBackend()},
                         std::vector<wgpu::TextureFormat>(utils::kStencilFormats.begin(),
                                                          utils::kStencilFormats.end()));

@@ -65,11 +65,7 @@
         WIRE_TRY(provider.Get{{Optional}}Id({{in}}, &{{out}}));
     {% elif member.type.category == "structure"%}
         {%- set Provider = ", provider" if member.type.may_have_dawn_object else "" -%}
-        {% if member.annotation == "const*const*" %}
-            WIRE_TRY({{as_cType(member.type.name)}}Serialize(*{{in}}, &{{out}}, buffer{{Provider}}));
-        {% else %}
-            WIRE_TRY({{as_cType(member.type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
-        {% endif %}
+        WIRE_TRY({{as_cType(member.type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
     {%- else -%}
         {{out}} = {{in}};
     {%- endif -%}
@@ -178,12 +174,8 @@
                     //* Structures might contain more pointers so we need to add their extra size as well.
                     {% if member.type.category == "structure" %}
                         for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-                            {% if member.annotation == "const*const*" %}
-                                result += {{as_cType(member.type.name)}}GetExtraRequiredSize(*record.{{as_varName(member.name)}}[i]);
-                            {% else %}
-                                {{assert(member.annotation == "const*")}}
-                                result += {{as_cType(member.type.name)}}GetExtraRequiredSize(record.{{as_varName(member.name)}}[i]);
-                            {% endif %}
+                            {{assert(member.annotation == "const*")}}
+                            result += {{as_cType(member.type.name)}}GetExtraRequiredSize(record.{{as_varName(member.name)}}[i]);
                         }
                     {% endif %}
                 {% elif member.type.category == "structure" %}
@@ -269,12 +261,18 @@
                 {{member_transfer_type(member)}}* memberBuffer;
                 WIRE_TRY(buffer->NextN(memberLength, &memberBuffer));
 
-                //* This loop cannot overflow because it iterates up to |memberLength|. Even if
-                //* memberLength were the maximum integer value, |i| would become equal to it just before
-                //* exiting the loop, but not increment past or wrap around.
-                for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-                    {{serialize_member(member, "record." + memberName + "[i]", "memberBuffer[i]" )}}
-                }
+                {% if member.type.is_wire_transparent %}
+                    memcpy(
+                        memberBuffer, record.{{memberName}},
+                        {{member_transfer_sizeof(member)}} * memberLength);
+                {% else %}
+                    //* This loop cannot overflow because it iterates up to |memberLength|. Even if
+                    //* memberLength were the maximum integer value, |i| would become equal to it
+                    //* just before exiting the loop, but not increment past or wrap around.
+                    for (decltype(memberLength) i = 0; i < memberLength; ++i) {
+                        {{serialize_member(member, "record." + memberName + "[i]", "memberBuffer[i]" )}}
+                    }
+                {% endif %}
             }
         {% endfor %}
         return WireResult::Success;
@@ -375,29 +373,40 @@
                 const volatile {{member_transfer_type(member)}}* memberBuffer;
                 WIRE_TRY(deserializeBuffer->ReadN(memberLength, &memberBuffer));
 
-                {{as_cType(member.type.name)}}* copiedMembers;
-                WIRE_TRY(GetSpace(allocator, memberLength, &copiedMembers));
-                {% if member.annotation == "const*const*" %}
-                    {{as_cType(member.type.name)}}** pointerArray;
-                    WIRE_TRY(GetSpace(allocator, memberLength, &pointerArray));
+                //* For data-only members (e.g. "data" in WriteBuffer and WriteTexture), they are
+                //* not security sensitive so we can directly refer the data inside the transfer
+                //* buffer in dawn_native. For other members, as prevention of TOCTOU attacks is an
+                //* important feature of the wire, we must make sure every single value returned to
+                //* dawn_native must be a copy of what's in the wire.
+                {% if member.json_data["wire_is_data_only"] %}
+                    record->{{memberName}} =
+                        const_cast<const {{member_transfer_type(member)}}*>(memberBuffer);
 
-                    //* This loop cannot overflow because it iterates up to |memberLength|. Even if
-                    //* memberLength were the maximum integer value, |i| would become equal to it just before
-                    //* exiting the loop, but not increment past or wrap around.
-                    for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-                        pointerArray[i] = &copiedMembers[i];
-                    }
-                    record->{{memberName}} = pointerArray;
                 {% else %}
+                    {{as_cType(member.type.name)}}* copiedMembers;
+                    WIRE_TRY(GetSpace(allocator, memberLength, &copiedMembers));
                     record->{{memberName}} = copiedMembers;
-                {% endif %}
 
-                //* This loop cannot overflow because it iterates up to |memberLength|. Even if
-                //* memberLength were the maximum integer value, |i| would become equal to it just before
-                //* exiting the loop, but not increment past or wrap around.
-                for (decltype(memberLength) i = 0; i < memberLength; ++i) {
-                    {{deserialize_member(member, "memberBuffer[i]", "copiedMembers[i]")}}
-                }
+                    {% if member.type.is_wire_transparent %}
+                        //* memcpy is not allowed to copy from volatile objects. However, these
+                        //* arrays are just used as plain data, and don't impact control flow. So if
+                        //* the underlying data were changed while the copy was still executing, we
+                        //* would get different data - but it wouldn't cause unexpected downstream
+                        //* effects.
+                        memcpy(
+                            copiedMembers,
+                            const_cast<const {{member_transfer_type(member)}}*>(memberBuffer),
+                           {{member_transfer_sizeof(member)}} * memberLength);
+                    {% else %}
+                        //* This loop cannot overflow because it iterates up to |memberLength|. Even
+                        //* if memberLength were the maximum integer value, |i| would become equal
+                        //* to it just before exiting the loop, but not increment past or wrap
+                        //* around.
+                        for (decltype(memberLength) i = 0; i < memberLength; ++i) {
+                            {{deserialize_member(member, "memberBuffer[i]", "copiedMembers[i]")}}
+                        }
+                    {% endif %}
+                {% endif %}
             }
         {% endfor %}
 

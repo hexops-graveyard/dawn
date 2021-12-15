@@ -250,8 +250,9 @@ namespace dawn_native {
                 "The texture usage (%s) includes %s, which is incompatible with the format (%s).",
                 usage, wgpu::TextureUsage::StorageBinding, format->format);
 
+            // Only allows simple readonly texture usages.
             constexpr wgpu::TextureUsage kValidMultiPlanarUsages =
-                wgpu::TextureUsage::TextureBinding;
+                wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc;
             DAWN_INVALID_IF(
                 format->IsMultiPlanar() && !IsSubset(usage, kValidMultiPlanarUsages),
                 "The texture usage (%s) is incompatible with the multi-planar format (%s).", usage,
@@ -483,14 +484,8 @@ namespace dawn_native {
         : ApiObjectBase(device, tag), mFormat(kUnusedFormat) {
     }
 
-    bool TextureBase::Destroy() {
-        // We need to run the destroy operations prior to setting the state to destroyed so that
-        // the state is both consistent, and implementations of the destroy that may check the
-        // state do not skip operations unintentionally. (Example in Vulkan backend, the destroy
-        // implementation will not be ran if we are already in the Destroyed state.)
-        bool wasDestroyed = ApiObjectBase::Destroy();
+    void TextureBase::DestroyImpl() {
         mState = TextureState::Destroyed;
-        return wasDestroyed;
     }
 
     // static
@@ -716,6 +711,9 @@ namespace dawn_native {
 
     TextureViewBase::TextureViewBase(DeviceBase* device, ObjectBase::ErrorTag tag)
         : ApiObjectBase(device, tag), mFormat(kUnusedFormat) {
+    }
+
+    void TextureViewBase::DestroyImpl() {
     }
 
     // static

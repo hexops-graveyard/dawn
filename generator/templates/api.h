@@ -1,3 +1,14 @@
+//* This template itself is part of the Dawn source and follows Dawn's license,
+//* which is Apache 2.0.
+//*
+//* Because the WebGPU native API for which the generator is used is related to
+//* the W3C WebGPU standard. BSD 3-Clause is the license for W3C standards, so
+//* it is desirable to use the same license.
+//*
+//* As a result, the template comments using //* at the top of the file are
+//* removed during generation such that the resulting file starts with the
+//* BSD 3-Clause comment, which is inside BSD_LICENSE as included below.
+//*
 //* Copyright 2020 The Dawn Authors
 //*
 //* Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,42 +24,7 @@
 //* limitations under the License.
 //*
 //*
-//* This template itself is part of the Dawn source and follows Dawn's license
-//* but the generated file is used for "Web API native". The template comments
-//* using //* at the top of the file are removed during generation such that
-//* the resulting file starts with the BSD 3-Clause comment.
-//*
-//*
-// BSD 3-Clause License
-//
-{% set year = metadata.copyright_year if metadata.copyright_year else 2019 %}
-// Copyright (c) {{year}}, "{{metadata.api}} native" developers
-// All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-//
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-//
-// 3. Neither the name of the copyright holder nor the names of its
-//    contributors may be used to endorse or promote products derived from
-//    this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+{% include 'BSD_LICENSE' %}
 #ifndef {{metadata.api.upper()}}_H_
 #define {{metadata.api.upper()}}_H_
 
@@ -134,20 +110,23 @@ typedef struct {{c_prefix}}ChainedStructOut {
 extern "C" {
 #endif
 
-{% for type in by_category["callback"] %}
-    typedef void (*{{as_cType(type.name)}})(
+{% for type in by_category["function pointer"] %}
+    typedef {{as_cType(type.return_type.name)}} (*{{as_cType(type.name)}})(
         {%- for arg in type.arguments -%}
             {% if not loop.first %}, {% endif %}{{as_annotated_cType(arg)}}
         {%- endfor -%}
     );
 {% endfor %}
 
-typedef void (*{{c_prefix}}Proc)(void);
-
 #if !defined({{c_prefix}}_SKIP_PROCS)
 
-typedef WGPUInstance (*WGPUProcCreateInstance)(WGPUInstanceDescriptor const * descriptor);
-typedef WGPUProc (*WGPUProcGetProcAddress)(WGPUDevice device, char const * procName);
+{% for function in by_category["function"] %}
+    typedef {{as_cType(function.return_type.name)}} (*{{as_cProc(None, function.name)}})(
+            {%- for arg in function.arguments -%}
+                {% if not loop.first %}, {% endif %}{{as_annotated_cType(arg)}}
+            {%- endfor -%}
+        );
+{% endfor %}
 
 {% for type in by_category["object"] if len(c_methods(type)) > 0 %}
     // Procs of {{type.name.CamelCase()}}
@@ -165,8 +144,13 @@ typedef WGPUProc (*WGPUProcGetProcAddress)(WGPUDevice device, char const * procN
 
 #if !defined({{c_prefix}}_SKIP_DECLARATIONS)
 
-WGPU_EXPORT WGPUInstance wgpuCreateInstance(WGPUInstanceDescriptor const * descriptor);
-WGPU_EXPORT WGPUProc wgpuGetProcAddress(WGPUDevice device, char const * procName);
+{% for function in by_category["function"] %}
+    {{c_prefix}}_EXPORT {{as_cType(function.return_type.name)}} {{as_cMethod(None, function.name)}}(
+            {%- for arg in function.arguments -%}
+                {% if not loop.first %}, {% endif %}{{as_annotated_cType(arg)}}
+            {%- endfor -%}
+        );
+{% endfor %}
 
 {% for type in by_category["object"] if len(c_methods(type)) > 0 %}
     // Methods of {{type.name.CamelCase()}}

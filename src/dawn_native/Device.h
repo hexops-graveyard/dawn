@@ -257,7 +257,9 @@ namespace dawn_native {
 
         QueueBase* APIGetQueue();
 
-        bool APIGetLimits(SupportedLimits* limits);
+        bool APIGetLimits(SupportedLimits* limits) const;
+        bool APIHasFeature(wgpu::FeatureName feature) const;
+        uint32_t APIEnumerateFeatures(wgpu::FeatureName* features) const;
         void APIInjectError(wgpu::ErrorType type, const char* message);
         bool APITick();
 
@@ -297,11 +299,13 @@ namespace dawn_native {
         //     Disconnected)
         //   - Disconnected: there is no longer work happening on the GPU timeline and the CPU data
         //     structures can be safely destroyed without additional synchronization.
+        //   - Destroyed: the device is disconnected and resources have been reclaimed.
         enum class State {
             BeingCreated,
             Alive,
             BeingDisconnected,
             Disconnected,
+            Destroyed,
         };
         State GetState() const;
         bool IsLost() const;
@@ -365,6 +369,7 @@ namespace dawn_native {
 
         const std::string& GetLabel() const;
         void APISetLabel(const char* label);
+        void APIDestroy();
 
       protected:
         // Constructor used only for mocking and testing.

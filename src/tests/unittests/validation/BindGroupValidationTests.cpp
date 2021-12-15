@@ -218,7 +218,7 @@ TEST_F(BindGroupValidationTest, TextureBindingType) {
     // Setting the sampler as well is an error
     binding.sampler = mSampler;
     ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
-    binding.textureView = nullptr;
+    binding.sampler = nullptr;
 
     // Setting the buffer as well is an error
     binding.buffer = mUBO;
@@ -550,6 +550,71 @@ TEST_F(BindGroupValidationTest, TextureDimension) {
     wgpu::TextureView arrayTextureView = arrayTexture.CreateView();
 
     ASSERT_DEVICE_ERROR(utils::MakeBindGroup(device, layout, {{0, arrayTextureView}}));
+}
+
+// Check that a storage texture binding must have a texture view with a mipLevelCount of 1
+TEST_F(BindGroupValidationTest, StorageTextureViewLayerCount) {
+    wgpu::BindGroupLayout layout = utils::MakeBindGroupLayout(
+        device, {{0, wgpu::ShaderStage::Compute, wgpu::StorageTextureAccess::WriteOnly,
+                  wgpu::TextureFormat::RGBA8Uint}});
+
+    wgpu::TextureDescriptor descriptor;
+    descriptor.dimension = wgpu::TextureDimension::e2D;
+    descriptor.size = {16, 16, 1};
+    descriptor.sampleCount = 1;
+    descriptor.mipLevelCount = 1;
+    descriptor.usage = wgpu::TextureUsage::StorageBinding;
+    descriptor.format = wgpu::TextureFormat::RGBA8Uint;
+
+    wgpu::Texture textureNoMip = device.CreateTexture(&descriptor);
+
+    descriptor.mipLevelCount = 3;
+    wgpu::Texture textureMip = device.CreateTexture(&descriptor);
+
+    // Control case: setting a storage texture view on a texture with only one mip level works
+    {
+        wgpu::TextureView view = textureNoMip.CreateView();
+        utils::MakeBindGroup(device, layout, {{0, view}});
+    }
+
+    // Setting a storage texture view with mipLevelCount=1 on a texture of multiple mip levels is
+    // valid
+    {
+        wgpu::TextureViewDescriptor viewDesc = {};
+        viewDesc.aspect = wgpu::TextureAspect::All;
+        viewDesc.dimension = wgpu::TextureViewDimension::e2D;
+        viewDesc.format = wgpu::TextureFormat::RGBA8Uint;
+        viewDesc.baseMipLevel = 0;
+        viewDesc.mipLevelCount = 1;
+
+        // Setting texture view with lod 0 is valid
+        wgpu::TextureView view = textureMip.CreateView(&viewDesc);
+        utils::MakeBindGroup(device, layout, {{0, view}});
+
+        // Setting texture view with other lod is also valid
+        viewDesc.baseMipLevel = 2;
+        view = textureMip.CreateView(&viewDesc);
+        utils::MakeBindGroup(device, layout, {{0, view}});
+    }
+
+    // Texture view with mipLevelCount > 1 is invalid
+    {
+        wgpu::TextureViewDescriptor viewDesc = {};
+        viewDesc.aspect = wgpu::TextureAspect::All;
+        viewDesc.dimension = wgpu::TextureViewDimension::e2D;
+        viewDesc.format = wgpu::TextureFormat::RGBA8Uint;
+        viewDesc.baseMipLevel = 0;
+        viewDesc.mipLevelCount = 2;
+
+        // Setting texture view with lod 0 and 1 is invalid
+        wgpu::TextureView view = textureMip.CreateView(&viewDesc);
+        ASSERT_DEVICE_ERROR(utils::MakeBindGroup(device, layout, {{0, view}}));
+
+        // Setting texture view with lod 1 and 2 is invalid
+        viewDesc.baseMipLevel = 1;
+        view = textureMip.CreateView(&viewDesc);
+        ASSERT_DEVICE_ERROR(utils::MakeBindGroup(device, layout, {{0, view}}));
+    }
 }
 
 // Check that a UBO must have the correct usage
@@ -1354,7 +1419,7 @@ class SetBindGroupValidationTest : public ValidationTest {
                 })");
 
         wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
-                [[block]] struct S {
+                struct S {
                     value : vec2<f32>;
                 };
 
@@ -1378,7 +1443,7 @@ class SetBindGroupValidationTest : public ValidationTest {
 
     wgpu::ComputePipeline CreateComputePipeline() {
         wgpu::ShaderModule csModule = utils::CreateShaderModule(device, R"(
-                [[block]] struct S {
+                struct S {
                     value : vec2<f32>;
                 };
 
@@ -1806,7 +1871,7 @@ class SetBindGroupPersistenceValidationTest : public ValidationTest {
             device.CreatePipelineLayout(&pipelineLayoutDescriptor);
 
         std::stringstream ss;
-        ss << "[[block]] struct S { value : vec2<f32>; };";
+        ss << "struct S { value : vec2<f32>; };";
 
         // Build a shader which has bindings that match the pipeline layout.
         for (uint32_t l = 0; l < layouts.size(); ++l) {
@@ -1986,7 +2051,7 @@ class BindGroupLayoutCompatibilityTest : public ValidationTest {
 
     wgpu::RenderPipeline CreateRenderPipeline(std::vector<wgpu::BindGroupLayout> bindGroupLayouts) {
         return CreateFSRenderPipeline(R"(
-            [[block]] struct S {
+            struct S {
                 value : vec2<f32>;
             };
 
@@ -2021,7 +2086,7 @@ class BindGroupLayoutCompatibilityTest : public ValidationTest {
     wgpu::ComputePipeline CreateComputePipeline(
         std::vector<wgpu::BindGroupLayout> bindGroupLayouts) {
         return CreateComputePipeline(R"(
-            [[block]] struct S {
+            struct S {
                 value : vec2<f32>;
             };
 

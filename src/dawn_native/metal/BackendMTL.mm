@@ -194,7 +194,7 @@ namespace dawn_native { namespace metal {
             // MTLDevice’s counterSets property declares which counter sets it supports. Check
             // whether it's available on the device before requesting a counter set.
             id<MTLCounterSet> counterSet = nil;
-            for (id<MTLCounterSet> set in device.counterSets) {
+            for (id<MTLCounterSet> set in [device counterSets]) {
                 if ([set.name caseInsensitiveCompare:counterSetName] == NSOrderedSame) {
                     counterSet = set;
                     break;
@@ -211,7 +211,7 @@ namespace dawn_native { namespace metal {
             // if there is a counter unsupported.
             for (MTLCommonCounter counterName : counterNames) {
                 bool found = false;
-                for (id<MTLCounter> counter in counterSet.counters) {
+                for (id<MTLCounter> counter in [counterSet counters]) {
                     if ([counter.name caseInsensitiveCompare:counterName] == NSOrderedSame) {
                         found = true;
                         break;
@@ -548,6 +548,19 @@ namespace dawn_native { namespace metal {
     }
 
     std::vector<std::unique_ptr<AdapterBase>> Backend::DiscoverDefaultAdapters() {
+        AdapterDiscoveryOptions options;
+        auto result = DiscoverAdapters(&options);
+        if (result.IsError()) {
+            GetInstance()->ConsumedError(result.AcquireError());
+            return {};
+        }
+        return result.AcquireSuccess();
+    }
+
+    ResultOrError<std::vector<std::unique_ptr<AdapterBase>>> Backend::DiscoverAdapters(
+        const AdapterDiscoveryOptionsBase* optionsBase) {
+        ASSERT(optionsBase->backendType == WGPUBackendType_Metal);
+
         std::vector<std::unique_ptr<AdapterBase>> adapters;
         BOOL supportedVersion = NO;
 #if defined(DAWN_PLATFORM_MACOS)

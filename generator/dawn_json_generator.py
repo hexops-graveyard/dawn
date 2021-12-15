@@ -28,6 +28,7 @@ class Metadata:
         self.api = metadata['api']
         self.namespace = metadata['namespace']
         self.c_prefix = metadata.get('c_prefix', self.namespace.upper())
+        self.proc_table_prefix = metadata['proc_table_prefix']
         self.copyright_year = metadata.get('copyright_year', None)
 
 
@@ -84,6 +85,7 @@ class Type:
         self.dict_name = name
         self.name = Name(name, native=native)
         self.category = json_data['category']
+        self.is_wire_transparent = False
 
 
 EnumValue = namedtuple('EnumValue', ['name', 'value', 'valid', 'json_data'])
@@ -113,6 +115,7 @@ class EnumType(Type):
                 raise Exception("Duplicate value {} in enum {}".format(
                     value.value, name))
             all_values.add(value.value)
+        self.is_wire_transparent = True
 
 
 BitmaskValue = namedtuple('BitmaskValue', ['name', 'value', 'json_data'])
@@ -128,11 +131,13 @@ class BitmaskType(Type):
         self.full_mask = 0
         for value in self.values:
             self.full_mask = self.full_mask | value.value
+        self.is_wire_transparent = True
 
 
-class CallbackType(Type):
+class FunctionPointerType(Type):
     def __init__(self, is_enabled, name, json_data):
         Type.__init__(self, name, json_data)
+        self.return_type = None
         self.arguments = []
 
 
@@ -145,6 +150,7 @@ class TypedefType(Type):
 class NativeType(Type):
     def __init__(self, is_enabled, name, json_data):
         Type.__init__(self, name, json_data, native=True)
+        self.is_wire_transparent = True
 
 
 # Methods and structures are both "records", so record members correspond to
@@ -247,6 +253,14 @@ class ConstantDefinition():
         self.name = Name(name)
 
 
+class FunctionDeclaration():
+    def __init__(self, is_enabled, name, json_data):
+        self.return_type = None
+        self.arguments = []
+        self.json_data = json_data
+        self.name = Name(name)
+
+
 class Command(Record):
     def __init__(self, name, members=None):
         Record.__init__(self, name)
@@ -283,6 +297,10 @@ def linked_record_members(json_data, types):
                     assert False
             elif m['length'] == 'strlen':
                 member.length = 'strlen'
+            elif isinstance(m['length'], int):
+                assert m['length'] > 0
+                member.length = "constant"
+                member.constant_length = m['length']
             else:
                 member.length = members_by_name[m['length']]
 
@@ -309,9 +327,8 @@ def link_structure(struct, types):
     struct.members = linked_record_members(struct.json_data['members'], types)
 
 
-def link_callback(callback, types):
-    callback.arguments = linked_record_members(callback.json_data['args'],
-                                               types)
+def link_function_pointer(function_pointer, types):
+    link_function(function_pointer, types)
 
 
 def link_typedef(typedef, types):
@@ -321,6 +338,12 @@ def link_typedef(typedef, types):
 def link_constant(constant, types):
     constant.type = types[constant.json_data['type']]
     assert constant.type.name.native
+
+
+def link_function(function, types):
+    function.return_type = types[function.json_data.get('returns', 'void')]
+    function.arguments = linked_record_members(function.json_data['args'],
+                                               types)
 
 
 # Sort structures so that if struct A has struct B as a member, then B is
@@ -371,11 +394,12 @@ def parse_json(json, enabled_tags):
         'bitmask': BitmaskType,
         'enum': EnumType,
         'native': NativeType,
-        'callback': CallbackType,
+        'function pointer': FunctionPointerType,
         'object': ObjectType,
         'structure': StructureType,
         'typedef': TypedefType,
         'constant': ConstantDefinition,
+        'function': FunctionDeclaration
     }
 
     types = {}
@@ -398,14 +422,17 @@ def parse_json(json, enabled_tags):
     for struct in by_category['structure']:
         link_structure(struct, types)
 
-    for callback in by_category['callback']:
-        link_callback(callback, types)
+    for function_pointer in by_category['function pointer']:
+        link_function_pointer(function_pointer, types)
 
     for typedef in by_category['typedef']:
         link_typedef(typedef, types)
 
     for constant in by_category['constant']:
         link_constant(constant, types)
+
+    for function in by_category['function']:
+        link_function(function, types)
 
     for category in by_category.keys():
         by_category[category] = sorted(
@@ -557,6 +584,8 @@ def convert_cType_to_cppType(typ, annotation, arg, indent=0):
             converted_members = ',\n'.join(converted_members)
 
             return as_cppType(typ.name) + ' {\n' + converted_members + '\n}'
+        elif typ.category == 'function pointer':
+            return 'reinterpret_cast<{}>({})'.format(as_cppType(typ.name), arg)
         else:
             return 'static_cast<{}>({})'.format(as_cppType(typ.name), arg)
     else:
@@ -571,8 +600,6 @@ def decorate(name, typ, arg):
         return typ + ' * ' + name
     elif arg.annotation == 'const*':
         return typ + ' const * ' + name
-    elif arg.annotation == 'const*const*':
-        return 'const ' + typ + '* const * ' + name
     else:
         assert False
 
@@ -639,7 +666,7 @@ def get_c_methods_sorted_by_name(api_params):
 
 
 def has_callback_arguments(method):
-    return any(arg.type.category == 'callback' for arg in method.arguments)
+    return any(arg.type.category == 'function pointer' for arg in method.arguments)
 
 
 def make_base_render_params(metadata):
@@ -655,12 +682,22 @@ def make_base_render_params(metadata):
         return c_prefix + type_name.CamelCase() + '_' + value_name.CamelCase()
 
     def as_cMethod(type_name, method_name):
-        assert not type_name.native and not method_name.native
-        return c_prefix.lower() + type_name.CamelCase() + method_name.CamelCase()
+        c_method = c_prefix.lower()
+        if type_name != None:
+            assert not type_name.native
+            c_method += type_name.CamelCase()
+        assert not method_name.native
+        c_method += method_name.CamelCase()
+        return c_method
 
     def as_cProc(type_name, method_name):
-        assert not type_name.native and not method_name.native
-        return c_prefix + 'Proc' + type_name.CamelCase() + method_name.CamelCase()
+        c_proc = c_prefix + 'Proc'
+        if type_name != None:
+            assert not type_name.native
+            c_proc += type_name.CamelCase()
+        assert not method_name.native
+        c_proc += method_name.CamelCase()
+        return c_proc
 
     return {
             'Name': lambda name: Name(name),
@@ -689,7 +726,7 @@ class MultiGeneratorFromDawnJSON(Generator):
     def add_commandline_arguments(self, parser):
         allowed_targets = [
             'dawn_headers', 'dawncpp_headers', 'dawncpp', 'dawn_proc',
-            'mock_webgpu', 'dawn_wire', "dawn_native_utils"
+            'mock_api', 'dawn_wire', "dawn_native_utils"
         ]
 
         parser.add_argument('--dawn-json',
@@ -725,79 +762,86 @@ class MultiGeneratorFromDawnJSON(Generator):
         metadata = params_dawn['metadata']
         RENDER_PARAMS_BASE = make_base_render_params(metadata)
 
-        api_file_name = metadata.api.lower()
+        api = metadata.api.lower()
+        prefix = metadata.proc_table_prefix.lower()
         if 'dawn_headers' in targets:
             renders.append(
-                FileRender('api.h', 'src/include/dawn/' + api_file_name + '.h',
+                FileRender('api.h', 'src/include/dawn/' + api + '.h',
                            [RENDER_PARAMS_BASE, params_dawn]))
             renders.append(
                 FileRender('dawn_proc_table.h',
-                           'src/include/dawn/dawn_proc_table.h',
+                           'src/include/dawn/' + prefix + '_proc_table.h',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
         if 'dawncpp_headers' in targets:
             renders.append(
-                FileRender('webgpu_cpp.h', 'src/include/dawn/webgpu_cpp.h',
+                FileRender('api_cpp.h', 'src/include/dawn/' + api + '_cpp.h',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
             renders.append(
-                FileRender('webgpu_cpp_print.h',
-                           'src/include/dawn/webgpu_cpp_print.h',
+                FileRender('api_cpp_print.h',
+                           'src/include/dawn/' + api + '_cpp_print.h',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
         if 'dawn_proc' in targets:
             renders.append(
-                FileRender('dawn_proc.c', 'src/dawn/dawn_proc.c',
+                FileRender('dawn_proc.c', 'src/dawn/' + prefix + '_proc.c',
                            [RENDER_PARAMS_BASE, params_dawn]))
             renders.append(
                 FileRender('dawn_thread_dispatch_proc.cpp',
-                           'src/dawn/dawn_thread_dispatch_proc.cpp',
+                           'src/dawn/' + prefix + '_thread_dispatch_proc.cpp',
+                           [RENDER_PARAMS_BASE, params_dawn]))
+
+        if 'webgpu_dawn_native_proc' in targets:
+            renders.append(
+                FileRender('dawn_native/api_dawn_native_proc.cpp',
+                           'src/dawn_native/webgpu_dawn_native_proc.cpp',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
         if 'dawncpp' in targets:
             renders.append(
-                FileRender('webgpu_cpp.cpp', 'src/dawn/webgpu_cpp.cpp',
+                FileRender('api_cpp.cpp', 'src/dawn/' + api + '_cpp.cpp',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
         if 'webgpu_headers' in targets:
             params_upstream = parse_json(loaded_json,
                                          enabled_tags=['upstream', 'native'])
             renders.append(
-                FileRender('api.h', 'webgpu-headers/' + api_file_name + '.h',
+                FileRender('api.h', 'webgpu-headers/' + api + '.h',
                            [RENDER_PARAMS_BASE, params_upstream]))
 
         if 'emscripten_bits' in targets:
             params_emscripten = parse_json(
                 loaded_json, enabled_tags=['upstream', 'emscripten'])
             renders.append(
-                FileRender('api.h', 'emscripten-bits/' + api_file_name + '.h',
+                FileRender('api.h', 'emscripten-bits/' + api + '.h',
                            [RENDER_PARAMS_BASE, params_emscripten]))
             renders.append(
-                FileRender('webgpu_cpp.h', 'emscripten-bits/webgpu_cpp.h',
+                FileRender('api_cpp.h', 'emscripten-bits/' + api + '_cpp.h',
                            [RENDER_PARAMS_BASE, params_emscripten]))
             renders.append(
-                FileRender('webgpu_cpp.cpp', 'emscripten-bits/webgpu_cpp.cpp',
+                FileRender('api_cpp.cpp', 'emscripten-bits/' + api + '_cpp.cpp',
                            [RENDER_PARAMS_BASE, params_emscripten]))
             renders.append(
-                FileRender('webgpu_struct_info.json',
-                           'emscripten-bits/webgpu_struct_info.json',
+                FileRender('api_struct_info.json',
+                           'emscripten-bits/' + api + '_struct_info.json',
                            [RENDER_PARAMS_BASE, params_emscripten]))
             renders.append(
-                FileRender('library_webgpu_enum_tables.js',
-                           'emscripten-bits/library_webgpu_enum_tables.js',
+                FileRender('library_api_enum_tables.js',
+                           'emscripten-bits/library_' + api + '_enum_tables.js',
                            [RENDER_PARAMS_BASE, params_emscripten]))
 
-        if 'mock_webgpu' in targets:
+        if 'mock_api' in targets:
             mock_params = [
                 RENDER_PARAMS_BASE, params_dawn, {
                     'has_callback_arguments': has_callback_arguments
                 }
             ]
             renders.append(
-                FileRender('mock_webgpu.h', 'src/dawn/mock_webgpu.h',
+                FileRender('mock_api.h', 'src/dawn/mock_' + api + '.h',
                            mock_params))
             renders.append(
-                FileRender('mock_webgpu.cpp', 'src/dawn/mock_webgpu.cpp',
+                FileRender('mock_api.cpp', 'src/dawn/mock_' + api + '.cpp',
                            mock_params))
 
         if 'dawn_native_utils' in targets:
