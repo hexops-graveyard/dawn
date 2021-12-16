@@ -128,6 +128,64 @@ abcd)");
   EXPECT_EQ(t.source().range.end.column, 4u);
 }
 
+TEST_F(LexerTest, Null_InWhitespace_IsError) {
+  Source::FileContent content(std::string{' ', 0, ' '});
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  EXPECT_TRUE(t.IsError());
+  EXPECT_EQ(t.source().range.begin.line, 1u);
+  EXPECT_EQ(t.source().range.begin.column, 2u);
+  EXPECT_EQ(t.source().range.end.line, 1u);
+  EXPECT_EQ(t.source().range.end.column, 2u);
+  EXPECT_EQ(t.to_str(), "null character found");
+}
+
+TEST_F(LexerTest, Null_InLineComment_IsError) {
+  Source::FileContent content(std::string{'/', '/', ' ', 0, ' '});
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  EXPECT_TRUE(t.IsError());
+  EXPECT_EQ(t.source().range.begin.line, 1u);
+  EXPECT_EQ(t.source().range.begin.column, 4u);
+  EXPECT_EQ(t.source().range.end.line, 1u);
+  EXPECT_EQ(t.source().range.end.column, 4u);
+  EXPECT_EQ(t.to_str(), "null character found");
+}
+
+TEST_F(LexerTest, Null_InBlockComment_IsError) {
+  Source::FileContent content(std::string{'/', '*', ' ', 0, '*', '/'});
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  EXPECT_TRUE(t.IsError());
+  EXPECT_EQ(t.source().range.begin.line, 1u);
+  EXPECT_EQ(t.source().range.begin.column, 4u);
+  EXPECT_EQ(t.source().range.end.line, 1u);
+  EXPECT_EQ(t.source().range.end.column, 4u);
+  EXPECT_EQ(t.to_str(), "null character found");
+}
+
+TEST_F(LexerTest, Null_InIdentifier_IsError) {
+  // Try inserting a null in an identifier. Other valid token
+  // kinds will behave similarly, so use the identifier case
+  // as a representative.
+  Source::FileContent content(std::string{'a', 0, 'c'});
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  EXPECT_TRUE(t.IsIdentifier());
+  EXPECT_EQ(t.to_str(), "a");
+  t = l.next();
+  EXPECT_TRUE(t.IsError());
+  EXPECT_EQ(t.source().range.begin.line, 1u);
+  EXPECT_EQ(t.source().range.begin.column, 2u);
+  EXPECT_EQ(t.source().range.end.line, 1u);
+  EXPECT_EQ(t.source().range.end.column, 2u);
+  EXPECT_EQ(t.to_str(), "null character found");
+}
+
 struct FloatData {
   const char* input;
   float result;
@@ -341,6 +399,28 @@ INSTANTIATE_TEST_SUITE_P(
         HexSignedIntData{"0xeF1Abc9", 250719177},
         HexSignedIntData{"-0x80000000", std::numeric_limits<int32_t>::min()},
         HexSignedIntData{"0x7FFFFFFF", std::numeric_limits<int32_t>::max()}));
+
+TEST_F(LexerTest, HexPrefixOnly_IsError) {
+  // Could be the start of a hex integer or hex float, but is neither.
+  Source::FileContent content("0x");
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  ASSERT_TRUE(t.Is(Token::Type::kError));
+  EXPECT_EQ(t.to_str(),
+            "integer or float hex literal has no significant digits");
+}
+
+TEST_F(LexerTest, NegativeHexPrefixOnly_IsError) {
+  // Could be the start of a hex integer or hex float, but is neither.
+  Source::FileContent content("-0x");
+  Lexer l("test.wgsl", &content);
+
+  auto t = l.next();
+  ASSERT_TRUE(t.Is(Token::Type::kError));
+  EXPECT_EQ(t.to_str(),
+            "integer or float hex literal has no significant digits");
+}
 
 TEST_F(LexerTest, IntegerTest_HexSignedTooLarge) {
   Source::FileContent content("0x80000000");

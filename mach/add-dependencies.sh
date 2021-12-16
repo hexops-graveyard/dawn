@@ -13,7 +13,6 @@ rm -rf third_party/abseil-cpp/.git
 rm -rf third_party/angle/.git
 rm -rf third_party/swiftshader/.git
 rm -rf third_party/tint/.git
-rm -rf third_party/tint/test/
 rm -rf third_party/vulkan_memory_allocator/.git
 rm -rf third_party/zlib/.git
 rm -rf third_party/vulkan-deps/.git
@@ -26,6 +25,15 @@ rm -rf third_party/vulkan-deps/vulkan-headers/src/.git
 rm -rf third_party/vulkan-deps/vulkan-loader/src/.git
 rm -rf third_party/vulkan-deps/vulkan-tools/src/.git
 rm -rf third_party/vulkan-deps/vulkan-validation-layers/src/.git
+
+# Remove files that are not needed.
+find third_party | grep /tests/ | xargs -n1 rm -rf
+find third_party | grep /docs/ | xargs -n1 rm -rf
+find third_party | grep /samples/ | xargs -n1 rm -rf
+find third_party | grep CMake | xargs -n1 rm -rf
+rm -rf third_party/angle/doc/
+rm -rf third_party/angle/extensions/
+rm -rf third_party/angle/third_party/logdog/
 
 git add third_party/
 echo "you may now 'git commit -s -m 'update dependencies' if you are happy with the staged changes"

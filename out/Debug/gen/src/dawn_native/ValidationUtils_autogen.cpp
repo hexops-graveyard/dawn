@@ -31,6 +31,17 @@ namespace dawn_native {
         }
     }
 
+    MaybeError ValidateAlphaMode(wgpu::AlphaMode value) {
+        switch (value) {
+            case wgpu::AlphaMode::Premultiplied:
+                return {};
+            case wgpu::AlphaMode::Unpremultiplied:
+                return {};
+            default:
+                return DAWN_VALIDATION_ERROR("Invalid value for WGPUAlphaMode");
+        }
+    }
+
     MaybeError ValidateAlphaOp(wgpu::AlphaOp value) {
         switch (value) {
             case wgpu::AlphaOp::DontChange:
@@ -243,8 +254,6 @@ namespace dawn_native {
 
     MaybeError ValidateErrorFilter(wgpu::ErrorFilter value) {
         switch (value) {
-            case wgpu::ErrorFilter::None:
-                return {};
             case wgpu::ErrorFilter::Validation:
                 return {};
             case wgpu::ErrorFilter::OutOfMemory:
@@ -268,6 +277,39 @@ namespace dawn_native {
                 return {};
             default:
                 return DAWN_VALIDATION_ERROR("Invalid value for WGPUErrorType");
+        }
+    }
+
+    MaybeError ValidateFeatureName(wgpu::FeatureName value) {
+        switch (value) {
+            case wgpu::FeatureName::Undefined:
+                return {};
+            case wgpu::FeatureName::Depth24UnormStencil8:
+                return {};
+            case wgpu::FeatureName::Depth32FloatStencil8:
+                return {};
+            case wgpu::FeatureName::TimestampQuery:
+                return {};
+            case wgpu::FeatureName::PipelineStatisticsQuery:
+                return {};
+            case wgpu::FeatureName::TextureCompressionBC:
+                return {};
+            case wgpu::FeatureName::TextureCompressionETC2:
+                return {};
+            case wgpu::FeatureName::TextureCompressionASTC:
+                return {};
+            case wgpu::FeatureName::IndirectFirstInstance:
+                return {};
+            case wgpu::FeatureName::DepthClamping:
+                return {};
+            case wgpu::FeatureName::DawnShaderFloat16:
+                return {};
+            case wgpu::FeatureName::DawnInternalUsages:
+                return {};
+            case wgpu::FeatureName::DawnMultiPlanarFormats:
+                return {};
+            default:
+                return DAWN_VALIDATION_ERROR("Invalid value for WGPUFeatureName");
         }
     }
 
@@ -349,6 +391,19 @@ namespace dawn_native {
         }
     }
 
+    MaybeError ValidatePowerPreference(wgpu::PowerPreference value) {
+        switch (value) {
+            case wgpu::PowerPreference::Undefined:
+                return {};
+            case wgpu::PowerPreference::LowPower:
+                return {};
+            case wgpu::PowerPreference::HighPerformance:
+                return {};
+            default:
+                return DAWN_VALIDATION_ERROR("Invalid value for WGPUPowerPreference");
+        }
+    }
+
     MaybeError ValidatePresentMode(wgpu::PresentMode value) {
         switch (value) {
             case wgpu::PresentMode::Immediate:
@@ -404,6 +459,21 @@ namespace dawn_native {
                 return {};
             default:
                 return DAWN_VALIDATION_ERROR("Invalid value for WGPUQueueWorkDoneStatus");
+        }
+    }
+
+    MaybeError ValidateRequestAdapterStatus(wgpu::RequestAdapterStatus value) {
+        switch (value) {
+            case wgpu::RequestAdapterStatus::Success:
+                return {};
+            case wgpu::RequestAdapterStatus::Unavailable:
+                return {};
+            case wgpu::RequestAdapterStatus::Error:
+                return {};
+            case wgpu::RequestAdapterStatus::Unknown:
+                return {};
+            default:
+                return DAWN_VALIDATION_ERROR("Invalid value for WGPURequestAdapterStatus");
         }
     }
 

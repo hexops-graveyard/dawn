@@ -98,7 +98,7 @@ class GeneratorImpl : public TextGenerator {
   bool Generate();
 
   /// @returns true if an invariant attribute was generated
-  bool HasInvariant() { return has_invariant_; }
+  bool HasInvariant() { return !invariant_define_name_.empty(); }
 
   /// @returns a map from entry point to list of required workgroup allocations
   const std::unordered_map<std::string, std::vector<uint32_t>>&
@@ -187,11 +187,11 @@ class GeneratorImpl : public TextGenerator {
   /// Handles generating a call to a texture function (`textureSample`,
   /// `textureSampleGrad`, etc)
   /// @param out the output of the expression stream
-  /// @param expr the call expression
+  /// @param call the call expression
   /// @param intrinsic the semantic information for the texture intrinsic
   /// @returns true if the call expression is emitted
   bool EmitTextureCall(std::ostream& out,
-                       const ast::CallExpression* expr,
+                       const sem::Call* call,
                        const sem::Intrinsic* intrinsic);
   /// Handles generating a call to the `dot()` intrinsic
   /// @param out the output of the expression stream
@@ -410,8 +410,9 @@ class GeneratorImpl : public TextGenerator {
   /// class.
   StorageClassToString atomicCompareExchangeWeak_;
 
-  /// True if an invariant attribute has been generated.
-  bool has_invariant_ = false;
+  /// Unique name of the 'TINT_INVARIANT' preprocessor define. Non-empty only if
+  /// an invariant attribute has been generated.
+  std::string invariant_define_name_;
 
   /// True if matrix-packed_vector operator overloads have been generated.
   bool matrix_packed_vector_overloads_ = false;

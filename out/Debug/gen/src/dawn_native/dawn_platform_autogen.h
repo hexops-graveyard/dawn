@@ -431,6 +431,21 @@ namespace dawn_native {
     inline RenderPassDepthStencilAttachment* FromAPI(WGPURenderPassDepthStencilAttachment* rhs) {
         return reinterpret_cast<RenderPassDepthStencilAttachment*>(rhs);
     }
+    inline const WGPURequestAdapterOptions* ToAPI(const RequestAdapterOptions* rhs) {
+        return reinterpret_cast<const WGPURequestAdapterOptions*>(rhs);
+    }
+
+    inline WGPURequestAdapterOptions* ToAPI(RequestAdapterOptions* rhs) {
+        return reinterpret_cast<WGPURequestAdapterOptions*>(rhs);
+    }
+
+    inline const RequestAdapterOptions* FromAPI(const WGPURequestAdapterOptions* rhs) {
+        return reinterpret_cast<const RequestAdapterOptions*>(rhs);
+    }
+
+    inline RequestAdapterOptions* FromAPI(WGPURequestAdapterOptions* rhs) {
+        return reinterpret_cast<RequestAdapterOptions*>(rhs);
+    }
     inline const WGPUSamplerBindingLayout* ToAPI(const SamplerBindingLayout* rhs) {
         return reinterpret_cast<const WGPUSamplerBindingLayout*>(rhs);
     }
@@ -956,6 +971,21 @@ namespace dawn_native {
     inline ComputePipelineDescriptor* FromAPI(WGPUComputePipelineDescriptor* rhs) {
         return reinterpret_cast<ComputePipelineDescriptor*>(rhs);
     }
+    inline const WGPUDeviceDescriptor* ToAPI(const DeviceDescriptor* rhs) {
+        return reinterpret_cast<const WGPUDeviceDescriptor*>(rhs);
+    }
+
+    inline WGPUDeviceDescriptor* ToAPI(DeviceDescriptor* rhs) {
+        return reinterpret_cast<WGPUDeviceDescriptor*>(rhs);
+    }
+
+    inline const DeviceDescriptor* FromAPI(const WGPUDeviceDescriptor* rhs) {
+        return reinterpret_cast<const DeviceDescriptor*>(rhs);
+    }
+
+    inline DeviceDescriptor* FromAPI(WGPUDeviceDescriptor* rhs) {
+        return reinterpret_cast<DeviceDescriptor*>(rhs);
+    }
     inline const WGPUDeviceProperties* ToAPI(const DeviceProperties* rhs) {
         return reinterpret_cast<const WGPUDeviceProperties*>(rhs);
     }
@@ -1032,6 +1062,21 @@ namespace dawn_native {
         return reinterpret_cast<RenderPipelineDescriptor*>(rhs);
     }
 
+    inline const WGPUAdapterImpl* ToAPI(const AdapterBase* rhs) {
+        return reinterpret_cast<const WGPUAdapterImpl*>(rhs);
+    }
+
+    inline WGPUAdapterImpl* ToAPI(AdapterBase* rhs) {
+        return reinterpret_cast<WGPUAdapterImpl*>(rhs);
+    }
+
+    inline const AdapterBase* FromAPI(const WGPUAdapterImpl* rhs) {
+        return reinterpret_cast<const AdapterBase*>(rhs);
+    }
+
+    inline AdapterBase* FromAPI(WGPUAdapterImpl* rhs) {
+        return reinterpret_cast<AdapterBase*>(rhs);
+    }
     inline const WGPUBindGroupImpl* ToAPI(const BindGroupBase* rhs) {
         return reinterpret_cast<const WGPUBindGroupImpl*>(rhs);
     }
@@ -1377,6 +1422,178 @@ namespace dawn_native {
     inline TextureViewBase* FromAPI(WGPUTextureViewImpl* rhs) {
         return reinterpret_cast<TextureViewBase*>(rhs);
     }
+
+    template <typename T>
+    struct EnumCount;
+
+    template<>
+    struct EnumCount<wgpu::AdapterType> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::AddressMode> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::AlphaMode> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::AlphaOp> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::BackendType> {
+        static constexpr uint32_t value = 8;
+    };
+    template<>
+    struct EnumCount<wgpu::BlendFactor> {
+        static constexpr uint32_t value = 13;
+    };
+    template<>
+    struct EnumCount<wgpu::BlendOperation> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::BufferBindingType> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::BufferMapAsyncStatus> {
+        static constexpr uint32_t value = 6;
+    };
+    template<>
+    struct EnumCount<wgpu::CompareFunction> {
+        static constexpr uint32_t value = 9;
+    };
+    template<>
+    struct EnumCount<wgpu::CompilationInfoRequestStatus> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::CompilationMessageType> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::CreatePipelineAsyncStatus> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::CullMode> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::DeviceLostReason> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::ErrorFilter> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::ErrorType> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::FilterMode> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::FrontFace> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::IndexFormat> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::LoadOp> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::LoggingType> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::PipelineStatisticName> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::PowerPreference> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::PresentMode> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::PrimitiveTopology> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::QueryType> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::QueueWorkDoneStatus> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::RequestAdapterStatus> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::RequestDeviceStatus> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::SamplerBindingType> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::StencilOperation> {
+        static constexpr uint32_t value = 8;
+    };
+    template<>
+    struct EnumCount<wgpu::StorageTextureAccess> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::StoreOp> {
+        static constexpr uint32_t value = 2;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureAspect> {
+        static constexpr uint32_t value = 5;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureComponentType> {
+        static constexpr uint32_t value = 4;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureDimension> {
+        static constexpr uint32_t value = 3;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureFormat> {
+        static constexpr uint32_t value = 97;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureSampleType> {
+        static constexpr uint32_t value = 6;
+    };
+    template<>
+    struct EnumCount<wgpu::TextureViewDimension> {
+        static constexpr uint32_t value = 7;
+    };
+    template<>
+    struct EnumCount<wgpu::VertexFormat> {
+        static constexpr uint32_t value = 31;
+    };
+    template<>
+    struct EnumCount<wgpu::VertexStepMode> {
+        static constexpr uint32_t value = 2;
+    };
 }
 
 #endif  // DAWNNATIVE_DAWN_PLATFORM_AUTOGEN_H_

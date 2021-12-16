@@ -137,6 +137,10 @@ namespace dawn_native {
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(const DeviceDescriptor* value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s);
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(const RenderPassDescriptor* value,
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
@@ -158,6 +162,10 @@ namespace wgpu {
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(AddressMode value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s);
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(AlphaMode value,
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
@@ -217,6 +225,10 @@ namespace wgpu {
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(FeatureName value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s);
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(FilterMode value,
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
@@ -241,6 +253,10 @@ namespace wgpu {
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(PowerPreference value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s);
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(PresentMode value,
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
@@ -254,6 +270,10 @@ namespace wgpu {
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(QueueWorkDoneStatus value,
+                      const absl::FormatConversionSpec& spec,
+                      absl::FormatSink* s);
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(RequestAdapterStatus value,
                       const absl::FormatConversionSpec& spec,
                       absl::FormatSink* s);
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>

@@ -4,6 +4,23 @@
 
 namespace dawn_wire { namespace server {
 
+    bool Server::HandleAdapterRequestDevice(DeserializeBuffer* deserializeBuffer) {
+        AdapterRequestDeviceCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoAdapterRequestDevice(cmd.adapterId, cmd.requestSerial, cmd.deviceObjectHandle, cmd.descriptor);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleBindGroupLayoutSetLabel(DeserializeBuffer* deserializeBuffer) {
         BindGroupLayoutSetLabelCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -209,6 +226,23 @@ namespace dawn_wire { namespace server {
             return false;
         }
 
+        return true;
+    }
+
+    bool Server::HandleCommandEncoderClearBuffer(DeserializeBuffer* deserializeBuffer) {
+        CommandEncoderClearBufferCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoCommandEncoderClearBuffer(cmd.self, cmd.buffer, cmd.offset, cmd.size);
+
+        if (!success) {
+            return false;
+        }
         return true;
     }
 
@@ -1202,6 +1236,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleDeviceDestroy(DeserializeBuffer* deserializeBuffer) {
+        DeviceDestroyCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoDeviceDestroy(cmd.self);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandleDeviceGetQueue(DeserializeBuffer* deserializeBuffer) {
         DeviceGetQueueCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -1386,6 +1437,23 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::HandleInstanceRequestAdapter(DeserializeBuffer* deserializeBuffer) {
+        InstanceRequestAdapterCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        bool success = DoInstanceRequestAdapter(cmd.instanceId, cmd.requestSerial, cmd.adapterObjectHandle, cmd.options);
+
+        if (!success) {
+            return false;
+        }
+        return true;
+    }
+
     bool Server::HandlePipelineLayoutSetLabel(DeserializeBuffer* deserializeBuffer) {
         PipelineLayoutSetLabelCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
@@ -1488,8 +1556,8 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
-    bool Server::HandleQueueWriteBufferInternal(DeserializeBuffer* deserializeBuffer) {
-        QueueWriteBufferInternalCmd cmd;
+    bool Server::HandleQueueWriteBuffer(DeserializeBuffer* deserializeBuffer) {
+        QueueWriteBufferCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator);
 
         if (deserializeResult == WireResult::FatalError) {
@@ -1497,7 +1565,7 @@ namespace dawn_wire { namespace server {
         }
 
 
-        bool success = DoQueueWriteBufferInternal(cmd.queueId, cmd.bufferId, cmd.bufferOffset, cmd.data, cmd.size);
+        bool success = DoQueueWriteBuffer(cmd.queueId, cmd.bufferId, cmd.bufferOffset, cmd.data, cmd.size);
 
         if (!success) {
             return false;
@@ -1505,8 +1573,8 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
-    bool Server::HandleQueueWriteTextureInternal(DeserializeBuffer* deserializeBuffer) {
-        QueueWriteTextureInternalCmd cmd;
+    bool Server::HandleQueueWriteTexture(DeserializeBuffer* deserializeBuffer) {
+        QueueWriteTextureCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator, *this);
 
         if (deserializeResult == WireResult::FatalError) {
@@ -1514,7 +1582,7 @@ namespace dawn_wire { namespace server {
         }
 
 
-        bool success = DoQueueWriteTextureInternal(cmd.queueId, cmd.destination, cmd.data, cmd.dataSize, cmd.dataLayout, cmd.writeSize);
+        bool success = DoQueueWriteTexture(cmd.queueId, cmd.destination, cmd.data, cmd.dataSize, cmd.dataLayout, cmd.writeSize);
 
         if (!success) {
             return false;
@@ -2387,6 +2455,9 @@ namespace dawn_wire { namespace server {
                 deserializeBuffer.Buffer() + sizeof(CmdHeader)));
             bool success = false;
             switch (cmdId) {
+                case WireCmd::AdapterRequestDevice:
+                    success = HandleAdapterRequestDevice(&deserializeBuffer);
+                    break;
                 case WireCmd::BindGroupLayoutSetLabel:
                     success = HandleBindGroupLayoutSetLabel(&deserializeBuffer);
                     break;
@@ -2416,6 +2487,9 @@ namespace dawn_wire { namespace server {
                     break;
                 case WireCmd::CommandEncoderBeginRenderPass:
                     success = HandleCommandEncoderBeginRenderPass(&deserializeBuffer);
+                    break;
+                case WireCmd::CommandEncoderClearBuffer:
+                    success = HandleCommandEncoderClearBuffer(&deserializeBuffer);
                     break;
                 case WireCmd::CommandEncoderCopyBufferToBuffer:
                     success = HandleCommandEncoderCopyBufferToBuffer(&deserializeBuffer);
@@ -2549,6 +2623,9 @@ namespace dawn_wire { namespace server {
                 case WireCmd::DeviceCreateTexture:
                     success = HandleDeviceCreateTexture(&deserializeBuffer);
                     break;
+                case WireCmd::DeviceDestroy:
+                    success = HandleDeviceDestroy(&deserializeBuffer);
+                    break;
                 case WireCmd::DeviceGetQueue:
                     success = HandleDeviceGetQueue(&deserializeBuffer);
                     break;
@@ -2576,6 +2653,9 @@ namespace dawn_wire { namespace server {
                 case WireCmd::InstanceCreateSurface:
                     success = HandleInstanceCreateSurface(&deserializeBuffer);
                     break;
+                case WireCmd::InstanceRequestAdapter:
+                    success = HandleInstanceRequestAdapter(&deserializeBuffer);
+                    break;
                 case WireCmd::PipelineLayoutSetLabel:
                     success = HandlePipelineLayoutSetLabel(&deserializeBuffer);
                     break;
@@ -2594,11 +2674,11 @@ namespace dawn_wire { namespace server {
                 case WireCmd::QueueSubmit:
                     success = HandleQueueSubmit(&deserializeBuffer);
                     break;
-                case WireCmd::QueueWriteBufferInternal:
-                    success = HandleQueueWriteBufferInternal(&deserializeBuffer);
+                case WireCmd::QueueWriteBuffer:
+                    success = HandleQueueWriteBuffer(&deserializeBuffer);
                     break;
-                case WireCmd::QueueWriteTextureInternal:
-                    success = HandleQueueWriteTextureInternal(&deserializeBuffer);
+                case WireCmd::QueueWriteTexture:
+                    success = HandleQueueWriteTexture(&deserializeBuffer);
                     break;
                 case WireCmd::RenderBundleEncoderDraw:
                     success = HandleRenderBundleEncoderDraw(&deserializeBuffer);

@@ -43,7 +43,6 @@
 #include "src/ast/sampled_texture.h"
 #include "src/ast/sampler.h"
 #include "src/ast/storage_texture.h"
-#include "src/ast/struct_block_decoration.h"
 #include "src/ast/switch_statement.h"
 #include "src/ast/traverse_expressions.h"
 #include "src/ast/type_name.h"
@@ -264,7 +263,8 @@ bool Resolver::ValidateStorageClassLayout(const sem::Struct* str,
 
   // TODO(amaiorano): Output struct and member decorations so that this output
   // can be copied verbatim back into source
-  auto get_struct_layout_string = [&](const sem::Struct* st) -> std::string {
+  auto get_struct_layout_string = [this, member_name_of, type_name_of](
+                                      const sem::Struct* st) -> std::string {
     std::stringstream ss;
 
     if (st->Members().empty()) {
@@ -309,7 +309,7 @@ bool Resolver::ValidateStorageClassLayout(const sem::Struct* str,
       auto* const m = st->Members()[i];
 
       // Output field alignment padding, if any
-      auto* const prev_member = (i == 0) ? nullptr : str->Members()[i - 1];
+      auto* const prev_member = (i == 0) ? nullptr : st->Members()[i - 1];
       if (prev_member) {
         uint32_t padding =
             m->Offset() - (prev_member->Offset() + prev_member->Size());
@@ -541,23 +541,11 @@ bool Resolver::ValidateGlobalVariable(const sem::Variable* var) {
       // attribute, satisfying the storage class constraints.
 
       auto* str = var->Type()->UnwrapRef()->As<sem::Struct>();
-
       if (!str) {
         AddError(
             "variables declared in the <storage> storage class must be of a "
             "structure type",
             decl->source);
-        return false;
-      }
-
-      if (!str->IsBlockDecorated()) {
-        AddError(
-            "structure used as a storage buffer must be declared with the "
-            "[[block]] decoration",
-            str->Declaration()->source);
-        if (decl->source.range.begin.line) {
-          AddNote("structure used as storage buffer here", decl->source);
-        }
         return false;
       }
       break;
@@ -575,18 +563,6 @@ bool Resolver::ValidateGlobalVariable(const sem::Variable* var) {
             decl->source);
         return false;
       }
-
-      if (!str->IsBlockDecorated()) {
-        AddError(
-            "structure used as a uniform buffer must be declared with the "
-            "[[block]] decoration",
-            str->Declaration()->source);
-        if (decl->source.range.begin.line) {
-          AddNote("structure used as uniform buffer here", decl->source);
-        }
-        return false;
-      }
-
       for (auto* member : str->Members()) {
         if (auto* arr = member->Type()->As<sem::Array>()) {
           if (arr->IsRuntimeSized()) {
@@ -1000,10 +976,12 @@ bool Resolver::ValidateFunction(const sem::Function* func) {
     }
 
     if (decl->body) {
-      if (!decl->body->Last() ||
-          !decl->body->Last()->Is<ast::ReturnStatement>()) {
-        AddError("non-void function must end with a return statement",
-                 decl->source);
+      sem::Behaviors behaviors{sem::Behavior::kNext};
+      if (auto* last = decl->body->Last()) {
+        behaviors = Sem(last)->Behaviors();
+      }
+      if (behaviors.Contains(sem::Behavior::kNext)) {
+        AddError("missing return at end of function", decl->source);
         return false;
       }
     } else if (IsValidationEnabled(
@@ -1040,6 +1018,18 @@ bool Resolver::ValidateFunction(const sem::Function* func) {
     if (!ValidateEntryPoint(func)) {
       return false;
     }
+  }
+
+  // https://www.w3.org/TR/WGSL/#behaviors-rules
+  // a function behavior is always one of {}, {Next}, {Discard}, or
+  // {Next, Discard}.
+  if (func->Behaviors() != sem::Behaviors{} &&  // NOLINT: bad warning
+      func->Behaviors() != sem::Behavior::kNext &&
+      func->Behaviors() != sem::Behavior::kDiscard &&
+      func->Behaviors() != sem::Behaviors{sem::Behavior::kNext,  //
+                                          sem::Behavior::kDiscard}) {
+    TINT_ICE(Resolver, diagnostics_)
+        << "function '" << name << "' behaviors are: " << func->Behaviors();
   }
 
   return true;
@@ -1322,31 +1312,49 @@ bool Resolver::ValidateEntryPoint(const sem::Function* func) {
 }
 
 bool Resolver::ValidateStatements(const ast::StatementList& stmts) {
-  bool unreachable = false;
   for (auto* stmt : stmts) {
-    if (unreachable) {
-      AddError("code is unreachable", stmt->source);
-      return false;
-    }
-
-    auto* nested_stmt = stmt;
-    while (auto* block = nested_stmt->As<ast::BlockStatement>()) {
-      if (block->Empty()) {
-        break;
-      }
-      nested_stmt = block->statements.back();
-    }
-    if (nested_stmt->IsAnyOf<ast::ReturnStatement, ast::BreakStatement,
-                             ast::ContinueStatement, ast::DiscardStatement>()) {
-      unreachable = true;
+    if (!Sem(stmt)->IsReachable()) {
+      /// TODO(https://github.com/gpuweb/gpuweb/issues/2378): This may need to
+      /// become an error.
+      AddWarning("code is unreachable", stmt->source);
+      break;
     }
   }
   return true;
 }
 
+bool Resolver::ValidateBitcast(const ast::BitcastExpression* cast,
+                               const sem::Type* to) {
+  auto* from = TypeOf(cast->expr)->UnwrapRef();
+  if (!from->is_numeric_scalar_or_vector()) {
+    AddError("'" + TypeNameOf(from) + "' cannot be bitcast",
+             cast->expr->source);
+    return false;
+  }
+  if (!to->is_numeric_scalar_or_vector()) {
+    AddError("cannot bitcast to '" + TypeNameOf(to) + "'", cast->type->source);
+    return false;
+  }
+
+  auto width = [&](const sem::Type* ty) {
+    if (auto* vec = ty->As<sem::Vector>()) {
+      return vec->Width();
+    }
+    return 1u;
+  };
+
+  if (width(from) != width(to)) {
+    AddError("cannot bitcast from '" + TypeNameOf(from) + "' to '" +
+                 TypeNameOf(to) + "'",
+             cast->source);
+    return false;
+  }
+
+  return true;
+}
+
 bool Resolver::ValidateBreakStatement(const sem::Statement* stmt) {
-  if (!stmt->FindFirstParent<sem::LoopBlockStatement>() &&
-      !stmt->FindFirstParent<sem::SwitchCaseBlockStatement>()) {
+  if (!stmt->FindFirstParent<sem::LoopBlockStatement, sem::CaseStatement>()) {
     AddError("break statement must be in a loop or switch case",
              stmt->Declaration()->source);
     return false;
@@ -1355,15 +1363,17 @@ bool Resolver::ValidateBreakStatement(const sem::Statement* stmt) {
 }
 
 bool Resolver::ValidateContinueStatement(const sem::Statement* stmt) {
-  if (auto* block =
-          stmt->FindFirstParent<sem::LoopBlockStatement,
-                                sem::LoopContinuingBlockStatement>()) {
-    if (block->Is<sem::LoopContinuingBlockStatement>()) {
-      AddError("continuing blocks must not contain a continue statement",
-               stmt->Declaration()->source);
-      return false;
+  if (auto* continuing = ClosestContinuing(/*stop_at_loop*/ true)) {
+    AddError("continuing blocks must not contain a continue statement",
+             stmt->Declaration()->source);
+    if (continuing != stmt->Declaration() &&
+        continuing != stmt->Parent()->Declaration()) {
+      AddNote("see continuing block here", continuing->source);
     }
-  } else {
+    return false;
+  }
+
+  if (!stmt->FindFirstParent<sem::LoopBlockStatement>()) {
     AddError("continue statement must be in a loop",
              stmt->Declaration()->source);
     return false;
@@ -1373,16 +1383,39 @@ bool Resolver::ValidateContinueStatement(const sem::Statement* stmt) {
 }
 
 bool Resolver::ValidateDiscardStatement(const sem::Statement* stmt) {
-  if (auto* continuing =
-          stmt->FindFirstParent<sem::LoopContinuingBlockStatement>()) {
+  if (auto* continuing = ClosestContinuing(/*stop_at_loop*/ false)) {
     AddError("continuing blocks must not contain a discard statement",
              stmt->Declaration()->source);
-    if (continuing != stmt->Parent()) {
-      AddNote("see continuing block here", continuing->Declaration()->source);
+    if (continuing != stmt->Declaration() &&
+        continuing != stmt->Parent()->Declaration()) {
+      AddNote("see continuing block here", continuing->source);
     }
     return false;
   }
   return true;
+}
+
+bool Resolver::ValidateFallthroughStatement(const sem::Statement* stmt) {
+  if (auto* block = As<sem::BlockStatement>(stmt->Parent())) {
+    if (auto* c = As<sem::CaseStatement>(block->Parent())) {
+      if (block->Declaration()->Last() == stmt->Declaration()) {
+        if (auto* s = As<sem::SwitchStatement>(c->Parent())) {
+          if (c->Declaration() != s->Declaration()->body.back()) {
+            return true;
+          }
+          AddError(
+              "a fallthrough statement must not be used in the last switch "
+              "case",
+              stmt->Declaration()->source);
+          return false;
+        }
+      }
+    }
+  }
+  AddError(
+      "fallthrough must only be used as the last statement of a case block",
+      stmt->Declaration()->source);
+  return false;
 }
 
 bool Resolver::ValidateElseStatement(const sem::ElseStatement* stmt) {
@@ -1448,22 +1481,30 @@ bool Resolver::ValidateTextureIntrinsicFunction(const sem::Call* call) {
   if (!intrinsic) {
     return false;
   }
+
   std::string func_name = intrinsic->str();
   auto& signature = intrinsic->Signature();
-  auto index = signature.IndexOf(sem::ParameterUsage::kOffset);
-  if (index > -1) {
+
+  auto check_arg_is_constexpr = [&](sem::ParameterUsage usage, int min,
+                                    int max) {
+    auto index = signature.IndexOf(usage);
+    if (index < 0) {
+      return true;
+    }
+    std::string name = sem::str(usage);
     auto* arg = call->Arguments()[index];
     if (auto values = arg->ConstantValue()) {
       // Assert that the constant values are of the expected type.
-      if (!values.Type()->Is<sem::Vector>() ||
+      if (!values.Type()->IsAnyOf<sem::I32, sem::Vector>() ||
           !values.ElementType()->Is<sem::I32>()) {
         TINT_ICE(Resolver, diagnostics_)
-            << "failed to resolve '" + func_name + "' offset parameter type";
+            << "failed to resolve '" + func_name + "' " << name
+            << " parameter type";
         return false;
       }
 
       // Currently const_expr is restricted to literals and type constructors.
-      // Check that that's all we have for the offset parameter.
+      // Check that that's all we have for the parameter.
       bool is_const_expr = true;
       ast::TraverseExpressions(
           arg->Declaration(), diagnostics_, [&](const ast::Expression* e) {
@@ -1474,25 +1515,37 @@ bool Resolver::ValidateTextureIntrinsicFunction(const sem::Call* call) {
             return ast::TraverseAction::Stop;
           });
       if (is_const_expr) {
-        for (auto offset : values.Elements()) {
-          auto offset_value = offset.i32;
-          if (offset_value < -8 || offset_value > 7) {
-            AddError("each offset component of '" + func_name +
-                         "' must be at least -8 and at most 7. "
-                         "found: '" +
-                         std::to_string(offset_value) + "'",
-                     arg->Declaration()->source);
+        auto vector = intrinsic->Parameters()[index]->Type()->Is<sem::Vector>();
+        for (size_t i = 0; i < values.Elements().size(); i++) {
+          auto value = values.Elements()[i].i32;
+          if (value < min || value > max) {
+            if (vector) {
+              AddError("each component of the " + name +
+                           " argument must be at least " + std::to_string(min) +
+                           " and at most " + std::to_string(max) + ". " + name +
+                           " component " + std::to_string(i) + " is " +
+                           std::to_string(value),
+                       arg->Declaration()->source);
+            } else {
+              AddError("the " + name + " argument must be at least " +
+                           std::to_string(min) + " and at most " +
+                           std::to_string(max) + ". " + name + " is " +
+                           std::to_string(value),
+                       arg->Declaration()->source);
+            }
             return false;
           }
         }
         return true;
       }
     }
-    AddError("'" + func_name + "' offset parameter must be a const_expression",
+    AddError("the " + name + " argument must be a const_expression",
              arg->Declaration()->source);
     return false;
-  }
-  return true;
+  };
+
+  return check_arg_is_constexpr(sem::ParameterUsage::kOffset, -8, 7) &&
+         check_arg_is_constexpr(sem::ParameterUsage::kComponent, 0, 3);
 }
 
 bool Resolver::ValidateFunctionCall(const sem::Call* call) {
@@ -1594,6 +1647,20 @@ bool Resolver::ValidateFunctionCall(const sem::Call* call) {
       return false;
     }
   }
+
+  if (call->Behaviors().Contains(sem::Behavior::kDiscard)) {
+    if (auto* continuing = ClosestContinuing(/*stop_at_loop*/ false)) {
+      AddError(
+          "cannot call a function that may discard inside a continuing block",
+          call->Declaration()->source);
+      if (continuing != call->Stmt()->Declaration() &&
+          continuing != call->Stmt()->Parent()->Declaration()) {
+        AddNote("see continuing block here", continuing->source);
+      }
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -1762,6 +1829,12 @@ bool Resolver::ValidateMatrixConstructorOrCast(const ast::CallExpression* ctor,
     return false;
   }
 
+  std::vector<const sem::Type*> arg_tys;
+  arg_tys.reserve(values.size());
+  for (auto* value : values) {
+    arg_tys.emplace_back(TypeOf(value)->UnwrapRef());
+  }
+
   auto* elem_type = matrix_ty->type();
   auto num_elements = matrix_ty->columns() * matrix_ty->rows();
 
@@ -1773,7 +1846,14 @@ bool Resolver::ValidateMatrixConstructorOrCast(const ast::CallExpression* ctor,
     auto type_name = TypeNameOf(matrix_ty);
     auto elem_type_name = TypeNameOf(elem_type);
     std::stringstream ss;
-    ss << "invalid constructor for " + type_name << std::endl << std::endl;
+    ss << "no matching constructor " + type_name << "(";
+    for (size_t i = 0; i < values.size(); i++) {
+      if (i > 0) {
+        ss << ", ";
+      }
+      ss << arg_tys[i]->FriendlyName(builder_->Symbols());
+    }
+    ss << ")" << std::endl << std::endl;
     ss << "3 candidates available:" << std::endl;
     ss << "  " << type_name << "()" << std::endl;
     ss << "  " << type_name << "(" << elem_type_name << ",...,"
@@ -1802,8 +1882,8 @@ bool Resolver::ValidateMatrixConstructorOrCast(const ast::CallExpression* ctor,
     return false;
   }
 
-  for (auto* value : values) {
-    if (TypeOf(value)->UnwrapRef() != expected_arg_type) {
+  for (auto* arg_ty : arg_tys) {
+    if (arg_ty != expected_arg_type) {
       print_error();
       return false;
     }
@@ -1946,18 +2026,10 @@ bool Resolver::ValidatePipelineStages() {
 bool Resolver::ValidateArray(const sem::Array* arr, const Source& source) {
   auto* el_ty = arr->ElemType();
 
-  if (auto* el_str = el_ty->As<sem::Struct>()) {
-    if (el_str->IsBlockDecorated()) {
-      // https://gpuweb.github.io/gpuweb/wgsl/#attributes
-      // A structure type with the block attribute must not be:
-      // * the element type of an array type
-      // * the member type in another structure
-      AddError(
-          "A structure type with a [[block]] decoration cannot be used as an "
-          "element of an array",
-          source);
-      return false;
-    }
+  if (!IsFixedFootprint(el_ty)) {
+    AddError("an array element type cannot contain a runtime-sized array",
+             source);
+    return false;
   }
   return true;
 }
@@ -2019,15 +2091,13 @@ bool Resolver::ValidateStructure(const sem::Struct* str) {
               member->Declaration()->source);
           return false;
         }
-        if (!str->IsBlockDecorated()) {
-          AddError(
-              "a struct containing a runtime-sized array "
-              "requires the [[block]] attribute: '" +
-                  builder_->Symbols().NameFor(str->Declaration()->name) + "'",
-              member->Declaration()->source);
-          return false;
-        }
       }
+    } else if (!IsFixedFootprint(member->Type())) {
+      AddError(
+          "a struct that contains a runtime array cannot be nested inside "
+          "another struct",
+          member->Declaration()->source);
+      return false;
     }
 
     auto has_location = false;
@@ -2088,22 +2158,11 @@ bool Resolver::ValidateStructure(const sem::Struct* str) {
                interpolate_attribute->source);
       return false;
     }
-
-    if (auto* member_struct_type = member->Type()->As<sem::Struct>()) {
-      if (auto* member_struct_type_block_decoration =
-              ast::GetDecoration<ast::StructBlockDecoration>(
-                  member_struct_type->Declaration()->decorations)) {
-        AddError("structs must not contain [[block]] decorated struct members",
-                 member->Declaration()->source);
-        AddNote("see member's struct decoration here",
-                member_struct_type_block_decoration->source);
-        return false;
-      }
-    }
   }
 
   for (auto* deco : str->Declaration()->decorations) {
-    if (!(deco->Is<ast::StructBlockDecoration>())) {
+    if (!(deco->IsAnyOf<ast::StructBlockDecoration,
+                        ast::InternalDecoration>())) {
       AddError("decoration is not valid for struct declarations", deco->source);
       return false;
     }
@@ -2165,12 +2224,12 @@ bool Resolver::ValidateReturn(const ast::ReturnStatement* ret) {
   }
 
   auto* sem = Sem(ret);
-  if (auto* continuing =
-          sem->FindFirstParent<sem::LoopContinuingBlockStatement>()) {
+  if (auto* continuing = ClosestContinuing(/*stop_at_loop*/ false)) {
     AddError("continuing blocks must not contain a return statement",
              ret->source);
-    if (continuing != sem->Parent()) {
-      AddNote("see continuing block here", continuing->Declaration()->source);
+    if (continuing != sem->Declaration() &&
+        continuing != sem->Parent()->Declaration()) {
+      AddNote("see continuing block here", continuing->source);
     }
     return false;
   }
@@ -2229,18 +2288,6 @@ bool Resolver::ValidateSwitch(const ast::SwitchStatement* s) {
     // No default clause
     AddError("switch statement must have a default clause", s->source);
     return false;
-  }
-
-  if (!s->body.empty()) {
-    auto* last_clause = s->body.back()->As<ast::CaseStatement>();
-    auto* last_stmt = last_clause->body->Last();
-    if (last_stmt && last_stmt->Is<ast::FallthroughStatement>()) {
-      AddError(
-          "a fallthrough statement must not appear as "
-          "the last statement in last clause of a switch",
-          last_stmt->source);
-      return false;
-    }
   }
 
   return true;

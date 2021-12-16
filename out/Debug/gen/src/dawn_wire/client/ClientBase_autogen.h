@@ -14,6 +14,12 @@ namespace dawn_wire { namespace client {
         ClientBase() = default;
         virtual ~ClientBase() = default;
 
+        const ObjectAllocator<Adapter>& AdapterAllocator() const {
+            return mAdapterAllocator;
+        }
+        ObjectAllocator<Adapter>& AdapterAllocator() {
+            return mAdapterAllocator;
+        }
         const ObjectAllocator<BindGroup>& BindGroupAllocator() const {
             return mBindGroupAllocator;
         }
@@ -155,6 +161,9 @@ namespace dawn_wire { namespace client {
 
         void FreeObject(ObjectType objectType, ObjectBase* obj) {
             switch (objectType) {
+                case ObjectType::Adapter:
+                    mAdapterAllocator.Free(static_cast<Adapter*>(obj));
+                    break;
                 case ObjectType::BindGroup:
                     mBindGroupAllocator.Free(static_cast<BindGroup*>(obj));
                     break;
@@ -229,6 +238,19 @@ namespace dawn_wire { namespace client {
 
       private:
         // Implementation of the ObjectIdProvider interface
+        WireResult GetId(WGPUAdapter object, ObjectId* out) const final {
+            ASSERT(out != nullptr);
+            if (object == nullptr) {
+                return WireResult::FatalError;
+            }
+            *out = reinterpret_cast<Adapter*>(object)->id;
+            return WireResult::Success;
+        }
+        WireResult GetOptionalId(WGPUAdapter object, ObjectId* out) const final {
+            ASSERT(out != nullptr);
+            *out = (object == nullptr ? 0 : reinterpret_cast<Adapter*>(object)->id);
+            return WireResult::Success;
+        }
         WireResult GetId(WGPUBindGroup object, ObjectId* out) const final {
             ASSERT(out != nullptr);
             if (object == nullptr) {
@@ -529,6 +551,7 @@ namespace dawn_wire { namespace client {
             return WireResult::Success;
         }
 
+        ObjectAllocator<Adapter> mAdapterAllocator;
         ObjectAllocator<BindGroup> mBindGroupAllocator;
         ObjectAllocator<BindGroupLayout> mBindGroupLayoutAllocator;
         ObjectAllocator<Buffer> mBufferAllocator;

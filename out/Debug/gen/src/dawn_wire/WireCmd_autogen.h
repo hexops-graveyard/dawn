@@ -43,6 +43,8 @@ namespace dawn_wire {
     // Methods return FatalError if the ID is for a non-existent object and Success otherwise.
     class ObjectIdResolver {
         public:
+            virtual WireResult GetFromId(ObjectId id, WGPUAdapter* out) const = 0;
+            virtual WireResult GetOptionalFromId(ObjectId id, WGPUAdapter* out) const = 0;
             virtual WireResult GetFromId(ObjectId id, WGPUBindGroup* out) const = 0;
             virtual WireResult GetOptionalFromId(ObjectId id, WGPUBindGroup* out) const = 0;
             virtual WireResult GetFromId(ObjectId id, WGPUBindGroupLayout* out) const = 0;
@@ -94,6 +96,8 @@ namespace dawn_wire {
     // Interface to convert a client object to its ID for the wiring.
     class ObjectIdProvider {
         public:
+            virtual WireResult GetId(WGPUAdapter object, ObjectId* out) const = 0;
+            virtual WireResult GetOptionalId(WGPUAdapter object, ObjectId* out) const = 0;
             virtual WireResult GetId(WGPUBindGroup object, ObjectId* out) const = 0;
             virtual WireResult GetOptionalId(WGPUBindGroup object, ObjectId* out) const = 0;
             virtual WireResult GetId(WGPUBindGroupLayout object, ObjectId* out) const = 0;
@@ -143,6 +147,7 @@ namespace dawn_wire {
     };
 
     enum class WireCmd : uint32_t {
+        AdapterRequestDevice,
         BindGroupLayoutSetLabel,
         BindGroupSetLabel,
         BufferDestroy,
@@ -153,6 +158,7 @@ namespace dawn_wire {
         CommandBufferSetLabel,
         CommandEncoderBeginComputePass,
         CommandEncoderBeginRenderPass,
+        CommandEncoderClearBuffer,
         CommandEncoderCopyBufferToBuffer,
         CommandEncoderCopyBufferToTexture,
         CommandEncoderCopyTextureToBuffer,
@@ -197,6 +203,7 @@ namespace dawn_wire {
         DeviceCreateShaderModule,
         DeviceCreateSwapChain,
         DeviceCreateTexture,
+        DeviceDestroy,
         DeviceGetQueue,
         DeviceInjectError,
         DeviceLoseForTesting,
@@ -206,14 +213,15 @@ namespace dawn_wire {
         ExternalTextureDestroy,
         ExternalTextureSetLabel,
         InstanceCreateSurface,
+        InstanceRequestAdapter,
         PipelineLayoutSetLabel,
         QuerySetDestroy,
         QuerySetSetLabel,
         QueueCopyTextureForBrowser,
         QueueOnSubmittedWorkDone,
         QueueSubmit,
-        QueueWriteBufferInternal,
-        QueueWriteTextureInternal,
+        QueueWriteBuffer,
+        QueueWriteTexture,
         RenderBundleEncoderDraw,
         RenderBundleEncoderDrawIndexed,
         RenderBundleEncoderDrawIndexedIndirect,
@@ -263,6 +271,7 @@ namespace dawn_wire {
     };
 
     enum class ReturnWireCmd : uint32_t {
+        AdapterRequestDeviceCallback,
         BufferMapAsyncCallback,
         DeviceCreateComputePipelineAsyncCallback,
         DeviceCreateRenderPipelineAsyncCallback,
@@ -270,6 +279,7 @@ namespace dawn_wire {
         DeviceLostCallback,
         DevicePopErrorScopeCallback,
         DeviceUncapturedErrorCallback,
+        InstanceRequestAdapterCallback,
         QueueWorkDoneCallback,
         ShaderModuleGetCompilationInfoCallback,
     };
@@ -278,6 +288,24 @@ namespace dawn_wire {
         uint64_t commandSize;
     };
 
+
+    struct AdapterRequestDeviceCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+
+    ObjectId adapterId;
+    uint64_t requestSerial;
+    ObjectHandle deviceObjectHandle;
+    WGPUDeviceDescriptor const * descriptor;
+};
 
     struct BindGroupLayoutSetLabelCmd {
     size_t GetRequiredSize() const;
@@ -451,6 +479,25 @@ namespace dawn_wire {
     WGPUCommandEncoder self;
     WGPURenderPassDescriptor const * descriptor;
     ObjectHandle result;
+};
+
+    struct CommandEncoderClearBufferCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUCommandEncoder self;
+    WGPUBuffer buffer;
+    uint64_t offset;
+    uint64_t size;
 };
 
     struct CommandEncoderCopyBufferToBufferCmd {
@@ -1246,6 +1293,22 @@ namespace dawn_wire {
     ObjectHandle result;
 };
 
+    struct DeviceDestroyCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+    ObjectId selfId;
+
+    WGPUDevice self;
+};
+
     struct DeviceGetQueueCmd {
     size_t GetRequiredSize() const;
 
@@ -1397,6 +1460,24 @@ namespace dawn_wire {
     ObjectHandle result;
 };
 
+    struct InstanceRequestAdapterCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+
+    ObjectId instanceId;
+    uint64_t requestSerial;
+    ObjectHandle adapterObjectHandle;
+    WGPURequestAdapterOptions const * options;
+};
+
     struct PipelineLayoutSetLabelCmd {
     size_t GetRequiredSize() const;
 
@@ -1502,7 +1583,7 @@ namespace dawn_wire {
     WGPUCommandBuffer const * commands;
 };
 
-    struct QueueWriteBufferInternalCmd {
+    struct QueueWriteBufferCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
@@ -1521,7 +1602,7 @@ namespace dawn_wire {
     uint64_t size;
 };
 
-    struct QueueWriteTextureInternalCmd {
+    struct QueueWriteTextureCmd {
     size_t GetRequiredSize() const;
 
     WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
@@ -2369,6 +2450,27 @@ namespace dawn_wire {
 };
 
 
+    struct ReturnAdapterRequestDeviceCallbackCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+
+    ObjectHandle adapter;
+    uint64_t requestSerial;
+    WGPURequestDeviceStatus status;
+    char const * message;
+    WGPUSupportedLimits const * limits;
+    uint32_t featuresCount;
+    WGPUFeatureName const * features;
+};
+
     struct ReturnBufferMapAsyncCallbackCmd {
     size_t GetRequiredSize() const;
 
@@ -2491,6 +2593,28 @@ namespace dawn_wire {
     ObjectHandle device;
     WGPUErrorType type;
     char const * message;
+};
+
+    struct ReturnInstanceRequestAdapterCallbackCmd {
+    size_t GetRequiredSize() const;
+
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer, const ObjectIdProvider& objectIdProvider) const;
+    // Override which produces a FatalError if any object is used.
+    WireResult Serialize(size_t commandSize, SerializeBuffer* serializeBuffer) const;
+
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator, const ObjectIdResolver& resolver);
+    // Override which produces a FatalError if any object is used.
+    WireResult Deserialize(DeserializeBuffer* deserializeBuffer, DeserializeAllocator* allocator);
+
+
+    ObjectHandle instance;
+    uint64_t requestSerial;
+    WGPURequestAdapterStatus status;
+    char const * message;
+    WGPUAdapterProperties const * properties;
+    WGPUSupportedLimits const * limits;
+    uint32_t featuresCount;
+    WGPUFeatureName const * features;
 };
 
     struct ReturnQueueWorkDoneCallbackCmd {

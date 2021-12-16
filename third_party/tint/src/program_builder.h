@@ -32,6 +32,7 @@
 #include "src/ast/call_expression.h"
 #include "src/ast/call_statement.h"
 #include "src/ast/case_statement.h"
+#include "src/ast/continue_statement.h"
 #include "src/ast/depth_multisampled_texture.h"
 #include "src/ast/depth_texture.h"
 #include "src/ast/disable_validation_decoration.h"
@@ -1864,6 +1865,19 @@ class ProgramBuilder {
   /// @returns the break statement pointer
   const ast::BreakStatement* Break() { return create<ast::BreakStatement>(); }
 
+  /// Creates an ast::ContinueStatement
+  /// @param source the source information
+  /// @returns the continue statement pointer
+  const ast::ContinueStatement* Continue(const Source& source) {
+    return create<ast::ContinueStatement>(source);
+  }
+
+  /// Creates an ast::ContinueStatement
+  /// @returns the continue statement pointer
+  const ast::ContinueStatement* Continue() {
+    return create<ast::ContinueStatement>();
+  }
+
   /// Creates an ast::ReturnStatement with no return value
   /// @param source the source information
   /// @returns the return statement pointer
@@ -2041,6 +2055,13 @@ class ProgramBuilder {
                                       body);
   }
 
+  /// Creates a ast::ElseStatement with no condition and body
+  /// @param body the else body
+  /// @returns the else statement pointer
+  const ast::ElseStatement* Else(const ast::BlockStatement* body) {
+    return create<ast::ElseStatement>(nullptr, body);
+  }
+
   /// Creates a ast::IfStatement with input condition, body, and optional
   /// variadic else statements
   /// @param condition the if statement condition expression
@@ -2081,6 +2102,18 @@ class ProgramBuilder {
     return create<ast::AssignmentStatement>(
         Expr(std::forward<LhsExpressionInit>(lhs)),
         Expr(std::forward<RhsExpressionInit>(rhs)));
+  }
+
+  /// Creates a ast::LoopStatement with input body and optional continuing
+  /// @param source the source information
+  /// @param body the loop body
+  /// @param continuing the optional continuing block
+  /// @returns the loop statement pointer
+  const ast::LoopStatement* Loop(
+      const Source& source,
+      const ast::BlockStatement* body,
+      const ast::BlockStatement* continuing = nullptr) {
+    return create<ast::LoopStatement>(source, body, continuing);
   }
 
   /// Creates a ast::LoopStatement with input body and optional continuing
@@ -2432,6 +2465,15 @@ class ProgramBuilder {
       const std::unordered_set<const TypeInfo*>& transforms) {
     for (auto* transform : transforms) {
       transforms_applied_.emplace(transform);
+    }
+  }
+
+  /// Unmarks that the given transform `T` has been applied to this program.
+  template <typename T>
+  void UnsetTransformApplied() {
+    auto it = transforms_applied_.find(&TypeInfo::Of<T>());
+    if (it != transforms_applied_.end()) {
+      transforms_applied_.erase(it);
     }
   }
 

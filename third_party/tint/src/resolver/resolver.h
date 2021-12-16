@@ -45,7 +45,6 @@ class BitcastExpression;
 class CallExpression;
 class CallStatement;
 class CaseStatement;
-class ConstructorExpression;
 class ForLoopStatement;
 class Function;
 class IdentifierExpression;
@@ -60,13 +59,13 @@ namespace sem {
 class Array;
 class Atomic;
 class BlockStatement;
+class CaseStatement;
 class ElseStatement;
 class ForLoopStatement;
 class IfStatement;
 class Intrinsic;
 class LoopStatement;
 class Statement;
-class SwitchCaseBlockStatement;
 class SwitchStatement;
 class TypeConstructor;
 }  // namespace sem
@@ -92,6 +91,10 @@ class Resolver {
   /// @param type the given type
   /// @returns true if the given type is a plain type
   bool IsPlain(const sem::Type* type) const;
+
+  /// @param type the given type
+  /// @returns true if the given type is a fixed-footprint type
+  bool IsFixedFootprint(const sem::Type* type) const;
 
   /// @param type the given type
   /// @returns true if the given type is storable
@@ -185,7 +188,8 @@ class Resolver {
   sem::Function* Function(const ast::Function*);
   sem::Call* FunctionCall(const ast::CallExpression*,
                           sem::Function* target,
-                          const std::vector<const sem::Expression*> args);
+                          const std::vector<const sem::Expression*> args,
+                          sem::Behaviors arg_behaviors);
   sem::Expression* Identifier(const ast::IdentifierExpression*);
   sem::Call* IntrinsicCall(const ast::CallExpression*,
                            sem::IntrinsicType,
@@ -209,7 +213,7 @@ class Resolver {
   sem::BlockStatement* BlockStatement(const ast::BlockStatement*);
   sem::Statement* BreakStatement(const ast::BreakStatement*);
   sem::Statement* CallStatement(const ast::CallStatement*);
-  sem::SwitchCaseBlockStatement* CaseStatement(const ast::CaseStatement*);
+  sem::CaseStatement* CaseStatement(const ast::CaseStatement*);
   sem::Statement* ContinueStatement(const ast::ContinueStatement*);
   sem::Statement* DiscardStatement(const ast::DiscardStatement*);
   sem::ElseStatement* ElseStatement(const ast::ElseStatement*);
@@ -237,15 +241,17 @@ class Resolver {
   bool ValidateAtomic(const ast::Atomic* a, const sem::Atomic* s);
   bool ValidateAtomicVariable(const sem::Variable* var);
   bool ValidateAssignment(const ast::AssignmentStatement* a);
+  bool ValidateBitcast(const ast::BitcastExpression* cast, const sem::Type* to);
   bool ValidateBreakStatement(const sem::Statement* stmt);
-  bool ValidateContinueStatement(const sem::Statement* stmt);
-  bool ValidateDiscardStatement(const sem::Statement* stmt);
   bool ValidateBuiltinDecoration(const ast::BuiltinDecoration* deco,
                                  const sem::Type* storage_type,
                                  const bool is_input);
+  bool ValidateContinueStatement(const sem::Statement* stmt);
+  bool ValidateDiscardStatement(const sem::Statement* stmt);
   bool ValidateElseStatement(const sem::ElseStatement* stmt);
   bool ValidateEntryPoint(const sem::Function* func);
   bool ValidateForLoopStatement(const sem::ForLoopStatement* stmt);
+  bool ValidateFallthroughStatement(const sem::Statement* stmt);
   bool ValidateFunction(const sem::Function* func);
   bool ValidateFunctionCall(const sem::Call* call);
   bool ValidateGlobalVariable(const sem::Variable* var);
@@ -458,6 +464,17 @@ class Resolver {
   /// @returns true if the symbol is the name of an intrinsic (builtin)
   /// function.
   bool IsIntrinsic(Symbol) const;
+
+  /// @returns true if `expr` is the current CallStatement's CallExpression
+  bool IsCallStatement(const ast::Expression* expr) const;
+
+  /// Searches the current statement and up through parents of the current
+  /// statement looking for a loop or for-loop continuing statement.
+  /// @returns the closest continuing statement to the current statement that
+  /// (transitively) owns the current statement.
+  /// @param stop_at_loop if true then the function will return nullptr if a
+  /// loop or for-loop was found before the continuing.
+  const ast::Statement* ClosestContinuing(bool stop_at_loop) const;
 
   /// @returns the resolved symbol (function, type or variable) for the given
   /// ast::Identifier or ast::TypeName cast to the given semantic type.

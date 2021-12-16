@@ -180,8 +180,7 @@ namespace dawn_native {
         }
 
         if (descriptor != nullptr && descriptor->requiredLimits != nullptr) {
-            mLimits.v1 = ReifyDefaultLimits(
-                reinterpret_cast<const RequiredLimits*>(descriptor->requiredLimits)->limits);
+            mLimits.v1 = ReifyDefaultLimits(FromAPI(descriptor->requiredLimits)->limits);
         } else {
             GetDefaultLimits(&mLimits.v1);
         }
@@ -252,7 +251,7 @@ namespace dawn_native {
             ShaderModuleDescriptor descriptor;
             ShaderModuleWGSLDescriptor wgslDesc;
             wgslDesc.source = kEmptyFragmentShader;
-            descriptor.nextInChain = reinterpret_cast<ChainedStruct*>(&wgslDesc);
+            descriptor.nextInChain = &wgslDesc;
 
             DAWN_TRY_ASSIGN(mInternalPipelineStore->dummyFragmentShader,
                             CreateShaderModule(&descriptor));
@@ -312,8 +311,20 @@ namespace dawn_native {
     }
 
     void DeviceBase::Destroy() {
+        // Skip if we are already destroyed.
+        if (mState == State::Destroyed) {
+            return;
+        }
+
         // Skip handling device facilities if they haven't even been created (or failed doing so)
         if (mState != State::BeingCreated) {
+            // The device is being destroyed so it will be lost, call the application callback.
+            if (mDeviceLostCallback != nullptr) {
+                mDeviceLostCallback(WGPUDeviceLostReason_Destroyed, "Device was destroyed.",
+                                    mDeviceLostUserdata);
+                mDeviceLostCallback = nullptr;
+            }
+
             // Call all the callbacks immediately as the device is about to shut down.
             // TODO(crbug.com/dawn/826): Cancel the tasks that are in flight if possible.
             mAsyncTaskManager->WaitAllPendingTasks();
@@ -346,15 +357,21 @@ namespace dawn_native {
 
             case State::Disconnected:
                 break;
+
+            case State::Destroyed:
+                // If we are already destroyed we should've skipped this work entirely.
+                UNREACHABLE();
+                break;
         }
         ASSERT(mCompletedSerial == mLastSubmittedSerial);
         ASSERT(mFutureSerial <= mCompletedSerial);
 
         if (mState != State::BeingCreated) {
             // The GPU timeline is finished.
-            // Tick the queue-related tasks since they should be complete. This must be done before
-            // DestroyImpl() it may relinquish resources that will be freed by backends in the
-            // DestroyImpl() call.
+            // Finish destroying all objects owned by the device and tick the queue-related tasks
+            // since they should be complete. This must be done before DestroyImpl() it may
+            // relinquish resources that will be freed by backends in the DestroyImpl() call.
+            DestroyObjects();
             mQueue->Tick(GetCompletedCommandSerial());
             // Call TickImpl once last time to clean up resources
             // Ignore errors so that we can continue with destruction
@@ -362,6 +379,8 @@ namespace dawn_native {
         }
 
         // At this point GPU operations are always finished, so we are in the disconnected state.
+        // Note that currently this state change is required because some of the backend
+        // implementations of DestroyImpl checks that we are disconnected before doing work.
         mState = State::Disconnected;
 
         mDynamicUploader = nullptr;
@@ -373,12 +392,15 @@ namespace dawn_native {
 
         AssumeCommandsComplete();
 
-        // Now that the GPU timeline is empty, destroy all objects owned by the device, and then the
-        // backend device.
-        DestroyObjects();
+        // Now that the GPU timeline is empty, destroy the backend device.
         DestroyImpl();
 
         mCaches = nullptr;
+        mState = State::Destroyed;
+    }
+
+    void DeviceBase::APIDestroy() {
+        Destroy();
     }
 
     void DeviceBase::HandleError(InternalErrorType type, const char* message) {
@@ -421,8 +443,6 @@ namespace dawn_native {
         if (type == InternalErrorType::DeviceLost) {
             // The device was lost, call the application callback.
             if (mDeviceLostCallback != nullptr) {
-                // TODO(crbug.com/dawn/628): Make sure the "Destroyed" reason is passed if
-                // the device was destroyed.
                 mDeviceLostCallback(WGPUDeviceLostReason_Undefined, message, mDeviceLostUserdata);
                 mDeviceLostCallback = nullptr;
             }
@@ -461,6 +481,9 @@ namespace dawn_native {
         // resetting) the resources pointed by such pointer may be freed. Flush all deferred
         // callback tasks to guarantee we are never going to use the previous callback after
         // this call.
+        if (IsLost()) {
+            return;
+        }
         FlushCallbackTaskQueue();
         mLoggingCallback = callback;
         mLoggingUserdata = userdata;
@@ -472,6 +495,9 @@ namespace dawn_native {
         // resetting) the resources pointed by such pointer may be freed. Flush all deferred
         // callback tasks to guarantee we are never going to use the previous callback after
         // this call.
+        if (IsLost()) {
+            return;
+        }
         FlushCallbackTaskQueue();
         mUncapturedErrorCallback = callback;
         mUncapturedErrorUserdata = userdata;
@@ -483,6 +509,9 @@ namespace dawn_native {
         // resetting) the resources pointed by such pointer may be freed. Flush all deferred
         // callback tasks to guarantee we are never going to use the previous callback after
         // this call.
+        if (IsLost()) {
+            return;
+        }
         FlushCallbackTaskQueue();
         mDeviceLostCallback = callback;
         mDeviceLostUserdata = userdata;
@@ -1168,13 +1197,21 @@ namespace dawn_native {
         }
     }
 
-    bool DeviceBase::APIGetLimits(SupportedLimits* limits) {
+    bool DeviceBase::APIGetLimits(SupportedLimits* limits) const {
         ASSERT(limits != nullptr);
         if (limits->nextInChain != nullptr) {
             return false;
         }
         limits->limits = mLimits.v1;
         return true;
+    }
+
+    bool DeviceBase::APIHasFeature(wgpu::FeatureName feature) const {
+        return mEnabledFeatures.IsEnabled(feature);
+    }
+
+    uint32_t DeviceBase::APIEnumerateFeatures(wgpu::FeatureName* features) const {
+        return mEnabledFeatures.EnumerateFeatures(features);
     }
 
     void DeviceBase::APIInjectError(wgpu::ErrorType type, const char* message) {
@@ -1285,9 +1322,8 @@ namespace dawn_native {
         Ref<ComputePipelineBase> cachedComputePipeline =
             GetCachedComputePipeline(uninitializedComputePipeline.Get());
         if (cachedComputePipeline.Get() != nullptr) {
-            callback(WGPUCreatePipelineAsyncStatus_Success,
-                     reinterpret_cast<WGPUComputePipeline>(cachedComputePipeline.Detach()), "",
-                     userdata);
+            callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(cachedComputePipeline.Detach()),
+                     "", userdata);
         } else {
             // Otherwise we will create the pipeline object in InitializeComputePipelineAsyncImpl(),
             // where the pipeline object may be initialized asynchronously and the result will be
@@ -1432,9 +1468,8 @@ namespace dawn_native {
         Ref<RenderPipelineBase> cachedRenderPipeline =
             GetCachedRenderPipeline(uninitializedRenderPipeline.Get());
         if (cachedRenderPipeline != nullptr) {
-            callback(WGPUCreatePipelineAsyncStatus_Success,
-                     reinterpret_cast<WGPURenderPipeline>(cachedRenderPipeline.Detach()), "",
-                     userdata);
+            callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(cachedRenderPipeline.Detach()),
+                     "", userdata);
         } else {
             // Otherwise we will create the pipeline object in InitializeRenderPipelineAsyncImpl(),
             // where the pipeline object may be initialized asynchronously and the result will be

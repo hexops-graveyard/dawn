@@ -240,6 +240,18 @@ bool GeneratorImpl::Generate() {
     line();
   }
 
+  if (!invariant_define_name_.empty()) {
+    // 'invariant' attribute requires MSL 2.1 or higher.
+    // WGSL can ignore the invariant attribute on pre MSL 2.1 devices.
+    // See: https://github.com/gpuweb/gpuweb/issues/893#issuecomment-745537465
+    line(&helpers_) << "#if __METAL_VERSION__ >= 210";
+    line(&helpers_) << "#define " << invariant_define_name_ << " [[invariant]]";
+    line(&helpers_) << "#else";
+    line(&helpers_) << "#define " << invariant_define_name_;
+    line(&helpers_) << "#endif";
+    line(&helpers_);
+  }
+
   if (!helpers_.lines.empty()) {
     current_buffer_->Insert("", helpers_insertion_point++, 0);
     current_buffer_->Insert(helpers_, helpers_insertion_point++, 0);
@@ -570,7 +582,7 @@ bool GeneratorImpl::EmitIntrinsicCall(std::ostream& out,
     return EmitAtomicCall(out, expr, intrinsic);
   }
   if (intrinsic->IsTexture()) {
-    return EmitTextureCall(out, expr, intrinsic);
+    return EmitTextureCall(out, call, intrinsic);
   }
 
   auto name = generate_builtin_name(intrinsic);
@@ -827,12 +839,13 @@ bool GeneratorImpl::EmitAtomicCall(std::ostream& out,
 }
 
 bool GeneratorImpl::EmitTextureCall(std::ostream& out,
-                                    const ast::CallExpression* expr,
+                                    const sem::Call* call,
                                     const sem::Intrinsic* intrinsic) {
   using Usage = sem::ParameterUsage;
 
   auto& signature = intrinsic->Signature();
-  auto arguments = expr->args;
+  auto* expr = call->Declaration();
+  auto& arguments = call->Arguments();
 
   // Returns the argument with the given usage
   auto arg = [&](Usage usage) {
@@ -840,7 +853,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
     return (idx >= 0) ? arguments[idx] : nullptr;
   };
 
-  auto* texture = arg(Usage::kTexture);
+  auto* texture = arg(Usage::kTexture)->Declaration();
   if (!texture) {
     TINT_ICE(Writer, diagnostics_) << "missing texture arg";
     return false;
@@ -896,7 +909,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
         }
         out << ".get_" << name << "(";
         if (auto* level = arg(Usage::kLevel)) {
-          if (!EmitExpression(out, level)) {
+          if (!EmitExpression(out, level->Declaration())) {
             return false;
           }
         }
@@ -966,6 +979,12 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
     case sem::IntrinsicType::kTextureSampleCompareLevel:
       out << ".sample_compare(";
       break;
+    case sem::IntrinsicType::kTextureGather:
+      out << ".gather(";
+      break;
+    case sem::IntrinsicType::kTextureGatherCompare:
+      out << ".gather_compare(";
+      break;
     case sem::IntrinsicType::kTextureLoad:
       out << ".read(";
       lod_param_is_named = false;
@@ -991,14 +1010,12 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
        {Usage::kValue, Usage::kSampler, Usage::kCoords, Usage::kArrayIndex,
         Usage::kDepthRef, Usage::kSampleIndex}) {
     if (auto* e = arg(usage)) {
-      auto* sem_e = program_->Sem().Get(e);
-
       maybe_write_comma();
 
       // Cast the coordinates to unsigned integers if necessary.
       bool casted = false;
       if (usage == Usage::kCoords &&
-          sem_e->Type()->UnwrapRef()->is_integer_scalar_or_vector()) {
+          e->Type()->UnwrapRef()->is_integer_scalar_or_vector()) {
         casted = true;
         switch (texture_type->dim()) {
           case ast::TextureDimension::k1d:
@@ -1018,7 +1035,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
         }
       }
 
-      if (!EmitExpression(out, e))
+      if (!EmitExpression(out, e->Declaration()))
         return false;
 
       if (casted) {
@@ -1030,7 +1047,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
   if (auto* bias = arg(Usage::kBias)) {
     maybe_write_comma();
     out << "bias(";
-    if (!EmitExpression(out, bias)) {
+    if (!EmitExpression(out, bias->Declaration())) {
       return false;
     }
     out << ")";
@@ -1040,7 +1057,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
     if (lod_param_is_named) {
       out << "level(";
     }
-    if (!EmitExpression(out, level)) {
+    if (!EmitExpression(out, level->Declaration())) {
       return false;
     }
     if (lod_param_is_named) {
@@ -1075,20 +1092,56 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
         return false;
       }
     }
-    if (!EmitExpression(out, ddx)) {
+    if (!EmitExpression(out, ddx->Declaration())) {
       return false;
     }
     out << ", ";
-    if (!EmitExpression(out, arg(Usage::kDdy))) {
+    if (!EmitExpression(out, arg(Usage::kDdy)->Declaration())) {
       return false;
     }
     out << ")";
   }
 
+  bool has_offset = false;
   if (auto* offset = arg(Usage::kOffset)) {
+    has_offset = true;
     maybe_write_comma();
-    if (!EmitExpression(out, offset)) {
+    if (!EmitExpression(out, offset->Declaration())) {
       return false;
+    }
+  }
+
+  if (auto* component = arg(Usage::kComponent)) {
+    maybe_write_comma();
+    if (!has_offset) {
+      // offset argument may need to be provided if we have a component.
+      switch (texture_type->dim()) {
+        case ast::TextureDimension::k2d:
+        case ast::TextureDimension::k2dArray:
+          out << "int2(0), ";
+          break;
+        default:
+          break;  // Other texture dimensions don't have an offset
+      }
+    }
+    auto c = component->ConstantValue().Elements()[0].i32;
+    switch (c) {
+      case 0:
+        out << "component::x";
+        break;
+      case 1:
+        out << "component::y";
+        break;
+      case 2:
+        out << "component::z";
+        break;
+      case 3:
+        out << "component::w";
+        break;
+      default:
+        TINT_ICE(Writer, diagnostics_)
+            << "invalid textureGather component: " << c;
+        break;
     }
   }
 
@@ -2378,12 +2431,12 @@ bool GeneratorImpl::EmitPackedType(std::ostream& out,
       TextBuffer b;
       TINT_DEFER(helpers_.Append(b));
       line(&b) << R"(template<typename T, int N, int M>
-inline auto operator*(matrix<T, N, M> lhs, packed_vec<T, N> rhs) {
+inline vec<T, M> operator*(matrix<T, N, M> lhs, packed_vec<T, N> rhs) {
   return lhs * vec<T, N>(rhs);
 }
 
 template<typename T, int N, int M>
-inline auto operator*(packed_vec<T, M> lhs, matrix<T, N, M> rhs) {
+inline vec<T, N> operator*(packed_vec<T, M> lhs, matrix<T, N, M> rhs) {
   return vec<T, M>(lhs) * rhs;
 }
 )";
@@ -2504,8 +2557,10 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
           }
           out << " [[" << attr << "]]";
         } else if (deco->Is<ast::InvariantDecoration>()) {
-          out << " [[invariant]]";
-          has_invariant_ = true;
+          if (invariant_define_name_.empty()) {
+            invariant_define_name_ = UniqueIdentifier("TINT_INVARIANT");
+          }
+          out << " " << invariant_define_name_;
         } else if (!deco->IsAnyOf<ast::StructMemberOffsetDecoration,
                                   ast::StructMemberAlignDecoration,
                                   ast::StructMemberSizeDecoration>()) {

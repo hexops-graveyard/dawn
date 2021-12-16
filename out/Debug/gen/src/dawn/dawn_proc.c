@@ -14,11 +14,32 @@ void dawnProcSetProcs(const DawnProcTable* procs_) {
 }
 
 WGPUInstance wgpuCreateInstance(WGPUInstanceDescriptor const * descriptor) {
-    return procs.createInstance(descriptor);
+return     procs.createInstance(descriptor);
+}
+WGPUProc wgpuGetProcAddress(WGPUDevice device, char const * procName) {
+return     procs.getProcAddress(device, procName);
 }
 
-WGPUProc wgpuGetProcAddress(WGPUDevice device, const char* procName) {
-    return procs.getProcAddress(device, procName);
+uint32_t wgpuAdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features) {
+return     procs.adapterEnumerateFeatures(adapter, features);
+}
+bool wgpuAdapterGetLimits(WGPUAdapter adapter, WGPUSupportedLimits * limits) {
+return     procs.adapterGetLimits(adapter, limits);
+}
+void wgpuAdapterGetProperties(WGPUAdapter adapter, WGPUAdapterProperties * properties) {
+    procs.adapterGetProperties(adapter, properties);
+}
+bool wgpuAdapterHasFeature(WGPUAdapter adapter, WGPUFeatureName feature) {
+return     procs.adapterHasFeature(adapter, feature);
+}
+void wgpuAdapterRequestDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) {
+    procs.adapterRequestDevice(adapter, descriptor, callback, userdata);
+}
+void wgpuAdapterReference(WGPUAdapter adapter) {
+    procs.adapterReference(adapter);
+}
+void wgpuAdapterRelease(WGPUAdapter adapter) {
+    procs.adapterRelease(adapter);
 }
 
 void wgpuBindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) {
@@ -81,6 +102,9 @@ return     procs.commandEncoderBeginComputePass(commandEncoder, descriptor);
 }
 WGPURenderPassEncoder wgpuCommandEncoderBeginRenderPass(WGPUCommandEncoder commandEncoder, WGPURenderPassDescriptor const * descriptor) {
 return     procs.commandEncoderBeginRenderPass(commandEncoder, descriptor);
+}
+void wgpuCommandEncoderClearBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t offset, uint64_t size) {
+    procs.commandEncoderClearBuffer(commandEncoder, buffer, offset, size);
 }
 void wgpuCommandEncoderCopyBufferToBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size) {
     procs.commandEncoderCopyBufferToBuffer(commandEncoder, source, sourceOffset, destination, destinationOffset, size);
@@ -232,11 +256,20 @@ return     procs.deviceCreateSwapChain(device, surface, descriptor);
 WGPUTexture wgpuDeviceCreateTexture(WGPUDevice device, WGPUTextureDescriptor const * descriptor) {
 return     procs.deviceCreateTexture(device, descriptor);
 }
+void wgpuDeviceDestroy(WGPUDevice device) {
+    procs.deviceDestroy(device);
+}
+uint32_t wgpuDeviceEnumerateFeatures(WGPUDevice device, WGPUFeatureName * features) {
+return     procs.deviceEnumerateFeatures(device, features);
+}
 bool wgpuDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits * limits) {
 return     procs.deviceGetLimits(device, limits);
 }
 WGPUQueue wgpuDeviceGetQueue(WGPUDevice device) {
 return     procs.deviceGetQueue(device);
+}
+bool wgpuDeviceHasFeature(WGPUDevice device, WGPUFeatureName feature) {
+return     procs.deviceHasFeature(device, feature);
 }
 void wgpuDeviceInjectError(WGPUDevice device, WGPUErrorType type, char const * message) {
     procs.deviceInjectError(device, type, message);
@@ -284,6 +317,9 @@ void wgpuExternalTextureRelease(WGPUExternalTexture externalTexture) {
 
 WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WGPUSurfaceDescriptor const * descriptor) {
 return     procs.instanceCreateSurface(instance, descriptor);
+}
+void wgpuInstanceRequestAdapter(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) {
+    procs.instanceRequestAdapter(instance, options, callback, userdata);
 }
 void wgpuInstanceReference(WGPUInstance instance) {
     procs.instanceReference(instance);

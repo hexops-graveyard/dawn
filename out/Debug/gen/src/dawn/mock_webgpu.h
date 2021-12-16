@@ -15,12 +15,13 @@ class ProcTableAsClass {
     public:
         virtual ~ProcTableAsClass();
 
-        void GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* device);
+        void GetProcTable(DawnProcTable* table);
 
         // Creates an object that can be returned by a mocked call as in WillOnce(Return(foo)).
         // It returns an object of the write type that isn't equal to any previously returned object.
         // Otherwise some mock expectation could be triggered by two different objects having the same
         // value.
+        WGPUAdapter GetNewAdapter();
         WGPUBindGroup GetNewBindGroup();
         WGPUBindGroupLayout GetNewBindGroupLayout();
         WGPUBuffer GetNewBuffer();
@@ -45,6 +46,18 @@ class ProcTableAsClass {
         WGPUTexture GetNewTexture();
         WGPUTextureView GetNewTextureView();
 
+        virtual uint32_t AdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features) = 0;
+        virtual bool AdapterGetLimits(WGPUAdapter adapter, WGPUSupportedLimits * limits) = 0;
+        virtual void AdapterGetProperties(WGPUAdapter adapter, WGPUAdapterProperties * properties) = 0;
+        virtual bool AdapterHasFeature(WGPUAdapter adapter, WGPUFeatureName feature) = 0;
+
+        virtual void AdapterReference(WGPUAdapter self) = 0;
+        virtual void AdapterRelease(WGPUAdapter self) = 0;
+
+        void AdapterRequestDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata);
+        virtual void OnAdapterRequestDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) = 0;
+
+        void CallAdapterRequestDeviceCallback(WGPUAdapter adapter, WGPURequestDeviceStatus status, WGPUDevice device, char const * message);
         virtual void BindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) = 0;
 
         virtual void BindGroupReference(WGPUBindGroup self) = 0;
@@ -75,6 +88,7 @@ class ProcTableAsClass {
 
         virtual WGPUComputePassEncoder CommandEncoderBeginComputePass(WGPUCommandEncoder commandEncoder, WGPUComputePassDescriptor const * descriptor) = 0;
         virtual WGPURenderPassEncoder CommandEncoderBeginRenderPass(WGPUCommandEncoder commandEncoder, WGPURenderPassDescriptor const * descriptor) = 0;
+        virtual void CommandEncoderClearBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t offset, uint64_t size) = 0;
         virtual void CommandEncoderCopyBufferToBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size) = 0;
         virtual void CommandEncoderCopyBufferToTexture(WGPUCommandEncoder commandEncoder, WGPUImageCopyBuffer const * source, WGPUImageCopyTexture const * destination, WGPUExtent3D const * copySize) = 0;
         virtual void CommandEncoderCopyTextureToBuffer(WGPUCommandEncoder commandEncoder, WGPUImageCopyTexture const * source, WGPUImageCopyBuffer const * destination, WGPUExtent3D const * copySize) = 0;
@@ -128,8 +142,11 @@ class ProcTableAsClass {
         virtual WGPUShaderModule DeviceCreateShaderModule(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor) = 0;
         virtual WGPUSwapChain DeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor) = 0;
         virtual WGPUTexture DeviceCreateTexture(WGPUDevice device, WGPUTextureDescriptor const * descriptor) = 0;
+        virtual void DeviceDestroy(WGPUDevice device) = 0;
+        virtual uint32_t DeviceEnumerateFeatures(WGPUDevice device, WGPUFeatureName * features) = 0;
         virtual bool DeviceGetLimits(WGPUDevice device, WGPUSupportedLimits * limits) = 0;
         virtual WGPUQueue DeviceGetQueue(WGPUDevice device) = 0;
+        virtual bool DeviceHasFeature(WGPUDevice device, WGPUFeatureName feature) = 0;
         virtual void DeviceInjectError(WGPUDevice device, WGPUErrorType type, char const * message) = 0;
         virtual void DeviceLoseForTesting(WGPUDevice device) = 0;
         virtual void DevicePushErrorScope(WGPUDevice device, WGPUErrorFilter filter) = 0;
@@ -173,6 +190,10 @@ class ProcTableAsClass {
         virtual void InstanceReference(WGPUInstance self) = 0;
         virtual void InstanceRelease(WGPUInstance self) = 0;
 
+        void InstanceRequestAdapter(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata);
+        virtual void OnInstanceRequestAdapter(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) = 0;
+
+        void CallInstanceRequestAdapterCallback(WGPUInstance instance, WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message);
         virtual void PipelineLayoutSetLabel(WGPUPipelineLayout pipelineLayout, char const * label) = 0;
 
         virtual void PipelineLayoutReference(WGPUPipelineLayout self) = 0;
@@ -288,6 +309,7 @@ class ProcTableAsClass {
 
         struct Object {
             ProcTableAsClass* procs = nullptr;
+            WGPURequestDeviceCallback mAdapterRequestDeviceCallback = nullptr;
             WGPUBufferMapCallback mBufferMapAsyncCallback = nullptr;
             WGPUCreateComputePipelineAsyncCallback mDeviceCreateComputePipelineAsyncCallback = nullptr;
             WGPUCreateRenderPipelineAsyncCallback mDeviceCreateRenderPipelineAsyncCallback = nullptr;
@@ -295,6 +317,7 @@ class ProcTableAsClass {
             WGPUDeviceLostCallback mDeviceSetDeviceLostCallbackCallback = nullptr;
             WGPULoggingCallback mDeviceSetLoggingCallbackCallback = nullptr;
             WGPUErrorCallback mDeviceSetUncapturedErrorCallbackCallback = nullptr;
+            WGPURequestAdapterCallback mInstanceRequestAdapterCallback = nullptr;
             WGPUQueueWorkDoneCallback mQueueOnSubmittedWorkDoneCallback = nullptr;
             WGPUCompilationInfoCallback mShaderModuleGetCompilationInfoCallback = nullptr;
             void* userdata = 0;
@@ -312,6 +335,15 @@ class MockProcTable : public ProcTableAsClass {
 
         void IgnoreAllReleaseCalls();
 
+        MOCK_METHOD(uint32_t, AdapterEnumerateFeatures, (WGPUAdapter adapter, WGPUFeatureName * features), (override));
+        MOCK_METHOD(bool, AdapterGetLimits, (WGPUAdapter adapter, WGPUSupportedLimits * limits), (override));
+        MOCK_METHOD(void, AdapterGetProperties, (WGPUAdapter adapter, WGPUAdapterProperties * properties), (override));
+        MOCK_METHOD(bool, AdapterHasFeature, (WGPUAdapter adapter, WGPUFeatureName feature), (override));
+
+        MOCK_METHOD(void, AdapterReference, (WGPUAdapter self), (override));
+        MOCK_METHOD(void, AdapterRelease, (WGPUAdapter self), (override));
+
+        MOCK_METHOD(void, OnAdapterRequestDevice, (WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata), (override));
         MOCK_METHOD(void, BindGroupSetLabel, (WGPUBindGroup bindGroup, char const * label), (override));
 
         MOCK_METHOD(void, BindGroupReference, (WGPUBindGroup self), (override));
@@ -339,6 +371,7 @@ class MockProcTable : public ProcTableAsClass {
 
         MOCK_METHOD(WGPUComputePassEncoder, CommandEncoderBeginComputePass, (WGPUCommandEncoder commandEncoder, WGPUComputePassDescriptor const * descriptor), (override));
         MOCK_METHOD(WGPURenderPassEncoder, CommandEncoderBeginRenderPass, (WGPUCommandEncoder commandEncoder, WGPURenderPassDescriptor const * descriptor), (override));
+        MOCK_METHOD(void, CommandEncoderClearBuffer, (WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t offset, uint64_t size), (override));
         MOCK_METHOD(void, CommandEncoderCopyBufferToBuffer, (WGPUCommandEncoder commandEncoder, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size), (override));
         MOCK_METHOD(void, CommandEncoderCopyBufferToTexture, (WGPUCommandEncoder commandEncoder, WGPUImageCopyBuffer const * source, WGPUImageCopyTexture const * destination, WGPUExtent3D const * copySize), (override));
         MOCK_METHOD(void, CommandEncoderCopyTextureToBuffer, (WGPUCommandEncoder commandEncoder, WGPUImageCopyTexture const * source, WGPUImageCopyBuffer const * destination, WGPUExtent3D const * copySize), (override));
@@ -392,8 +425,11 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(WGPUShaderModule, DeviceCreateShaderModule, (WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor), (override));
         MOCK_METHOD(WGPUSwapChain, DeviceCreateSwapChain, (WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor), (override));
         MOCK_METHOD(WGPUTexture, DeviceCreateTexture, (WGPUDevice device, WGPUTextureDescriptor const * descriptor), (override));
+        MOCK_METHOD(void, DeviceDestroy, (WGPUDevice device), (override));
+        MOCK_METHOD(uint32_t, DeviceEnumerateFeatures, (WGPUDevice device, WGPUFeatureName * features), (override));
         MOCK_METHOD(bool, DeviceGetLimits, (WGPUDevice device, WGPUSupportedLimits * limits), (override));
         MOCK_METHOD(WGPUQueue, DeviceGetQueue, (WGPUDevice device), (override));
+        MOCK_METHOD(bool, DeviceHasFeature, (WGPUDevice device, WGPUFeatureName feature), (override));
         MOCK_METHOD(void, DeviceInjectError, (WGPUDevice device, WGPUErrorType type, char const * message), (override));
         MOCK_METHOD(void, DeviceLoseForTesting, (WGPUDevice device), (override));
         MOCK_METHOD(void, DevicePushErrorScope, (WGPUDevice device, WGPUErrorFilter filter), (override));
@@ -419,6 +455,7 @@ class MockProcTable : public ProcTableAsClass {
         MOCK_METHOD(void, InstanceReference, (WGPUInstance self), (override));
         MOCK_METHOD(void, InstanceRelease, (WGPUInstance self), (override));
 
+        MOCK_METHOD(void, OnInstanceRequestAdapter, (WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata), (override));
         MOCK_METHOD(void, PipelineLayoutSetLabel, (WGPUPipelineLayout pipelineLayout, char const * label), (override));
 
         MOCK_METHOD(void, PipelineLayoutReference, (WGPUPipelineLayout self), (override));

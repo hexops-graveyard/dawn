@@ -20,12 +20,12 @@ namespace {
     constexpr uint32_t kTileSize = 32u;
 
     const std::string& kMatMulFloatHeader = R"(
-        [[block]] struct Uniforms {
+        struct Uniforms {
             dimAOuter : u32;
             dimInner : u32;
             dimBOuter : u32;
         };
-        [[block]] struct Matrix {
+        struct Matrix {
             numbers: array<f32>;
         };
 
@@ -187,12 +187,12 @@ namespace {
 
     // The vec4 version requires that dimInner and dimBOuter are divisible by 4.
     const std::string& kMatMulVec4Header = R"(
-        [[block]] struct Uniforms {
+        struct Uniforms {
             dimAOuter : u32;
             dimInner : u32;
             dimBOuter : u32;
         };
-        [[block]] struct Matrix {
+        struct Matrix {
             numbers: array<vec4<f32>>;
         };
 
@@ -374,7 +374,7 @@ namespace {
     using DimAOuter = uint32_t;
     using DimInner = uint32_t;
     using DimBOuter = uint32_t;
-    DAWN_TEST_PARAM_STRUCT(ShaderRobustnessParams, MatMulMethod, DimAOuter, DimInner, DimBOuter)
+    DAWN_TEST_PARAM_STRUCT(ShaderRobustnessParams, MatMulMethod, DimAOuter, DimInner, DimBOuter);
 
 }  // namespace
 

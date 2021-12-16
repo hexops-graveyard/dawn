@@ -393,6 +393,21 @@ namespace dawn_native {
         return {true};
     }
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(const DeviceDescriptor* value,
+                        const absl::FormatConversionSpec& spec,
+                        absl::FormatSink* s) {
+        if (value == nullptr) {
+            s->Append("[null]");
+            return {true};
+        }
+        s->Append("[DeviceDescriptor");
+        if (value->label != nullptr) {
+            s->Append(absl::StrFormat(" \"%s\"", value->label));
+        }
+        s->Append("]");
+        return {true};
+    }
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(const RenderPassDescriptor* value,
                         const absl::FormatConversionSpec& spec,
                         absl::FormatSink* s) {
@@ -471,6 +486,23 @@ namespace wgpu {
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<AddressMode>::type>(value)));
+        }
+        return {true};
+    }
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(AlphaMode value,
+                        const absl::FormatConversionSpec& spec,
+                        absl::FormatSink* s) {
+        s->Append("AlphaMode::");
+        switch (value) {
+        case AlphaMode::Premultiplied:
+        s->Append("Premultiplied");
+        break;
+        case AlphaMode::Unpremultiplied:
+        s->Append("Unpremultiplied");
+        break;
+            default:
+            s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<AlphaMode>::type>(value)));
         }
         return {true};
     }
@@ -807,9 +839,6 @@ namespace wgpu {
                         absl::FormatSink* s) {
         s->Append("ErrorFilter::");
         switch (value) {
-        case ErrorFilter::None:
-        s->Append("None");
-        break;
         case ErrorFilter::Validation:
         s->Append("Validation");
         break;
@@ -844,6 +873,56 @@ namespace wgpu {
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<ErrorType>::type>(value)));
+        }
+        return {true};
+    }
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(FeatureName value,
+                        const absl::FormatConversionSpec& spec,
+                        absl::FormatSink* s) {
+        s->Append("FeatureName::");
+        switch (value) {
+        case FeatureName::Undefined:
+        s->Append("Undefined");
+        break;
+        case FeatureName::Depth24UnormStencil8:
+        s->Append("Depth24UnormStencil8");
+        break;
+        case FeatureName::Depth32FloatStencil8:
+        s->Append("Depth32FloatStencil8");
+        break;
+        case FeatureName::TimestampQuery:
+        s->Append("TimestampQuery");
+        break;
+        case FeatureName::PipelineStatisticsQuery:
+        s->Append("PipelineStatisticsQuery");
+        break;
+        case FeatureName::TextureCompressionBC:
+        s->Append("TextureCompressionBC");
+        break;
+        case FeatureName::TextureCompressionETC2:
+        s->Append("TextureCompressionETC2");
+        break;
+        case FeatureName::TextureCompressionASTC:
+        s->Append("TextureCompressionASTC");
+        break;
+        case FeatureName::IndirectFirstInstance:
+        s->Append("IndirectFirstInstance");
+        break;
+        case FeatureName::DepthClamping:
+        s->Append("DepthClamping");
+        break;
+        case FeatureName::DawnShaderFloat16:
+        s->Append("DawnShaderFloat16");
+        break;
+        case FeatureName::DawnInternalUsages:
+        s->Append("DawnInternalUsages");
+        break;
+        case FeatureName::DawnMultiPlanarFormats:
+        s->Append("DawnMultiPlanarFormats");
+        break;
+            default:
+            s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<FeatureName>::type>(value)));
         }
         return {true};
     }
@@ -968,6 +1047,26 @@ namespace wgpu {
         return {true};
     }
     absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(PowerPreference value,
+                        const absl::FormatConversionSpec& spec,
+                        absl::FormatSink* s) {
+        s->Append("PowerPreference::");
+        switch (value) {
+        case PowerPreference::Undefined:
+        s->Append("Undefined");
+        break;
+        case PowerPreference::LowPower:
+        s->Append("LowPower");
+        break;
+        case PowerPreference::HighPerformance:
+        s->Append("HighPerformance");
+        break;
+            default:
+            s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<PowerPreference>::type>(value)));
+        }
+        return {true};
+    }
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
     AbslFormatConvert(PresentMode value,
                         const absl::FormatConversionSpec& spec,
                         absl::FormatSink* s) {
@@ -1053,6 +1152,29 @@ namespace wgpu {
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<QueueWorkDoneStatus>::type>(value)));
+        }
+        return {true};
+    }
+    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
+    AbslFormatConvert(RequestAdapterStatus value,
+                        const absl::FormatConversionSpec& spec,
+                        absl::FormatSink* s) {
+        s->Append("RequestAdapterStatus::");
+        switch (value) {
+        case RequestAdapterStatus::Success:
+        s->Append("Success");
+        break;
+        case RequestAdapterStatus::Unavailable:
+        s->Append("Unavailable");
+        break;
+        case RequestAdapterStatus::Error:
+        s->Append("Error");
+        break;
+        case RequestAdapterStatus::Unknown:
+        s->Append("Unknown");
+        break;
+            default:
+            s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<RequestAdapterStatus>::type>(value)));
         }
         return {true};
     }

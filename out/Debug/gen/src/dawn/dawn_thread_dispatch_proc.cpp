@@ -13,14 +13,34 @@ void dawnProcSetPerThreadProcs(const DawnProcTable* procs) {
     }
 }
 
-static WGPUProc ThreadDispatchGetProcAddress(WGPUDevice device, const char* procName) {
-    return perThreadProcs.getProcAddress(device, procName);
-}
-
 static WGPUInstance ThreadDispatchCreateInstance(WGPUInstanceDescriptor const * descriptor) {
-    return perThreadProcs.createInstance(descriptor);
+return     perThreadProcs.createInstance(descriptor);
+}
+static WGPUProc ThreadDispatchGetProcAddress(WGPUDevice device, char const * procName) {
+return     perThreadProcs.getProcAddress(device, procName);
 }
 
+static uint32_t ThreadDispatchAdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features) {
+return     perThreadProcs.adapterEnumerateFeatures(adapter, features);
+}
+static bool ThreadDispatchAdapterGetLimits(WGPUAdapter adapter, WGPUSupportedLimits * limits) {
+return     perThreadProcs.adapterGetLimits(adapter, limits);
+}
+static void ThreadDispatchAdapterGetProperties(WGPUAdapter adapter, WGPUAdapterProperties * properties) {
+    perThreadProcs.adapterGetProperties(adapter, properties);
+}
+static bool ThreadDispatchAdapterHasFeature(WGPUAdapter adapter, WGPUFeatureName feature) {
+return     perThreadProcs.adapterHasFeature(adapter, feature);
+}
+static void ThreadDispatchAdapterRequestDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) {
+    perThreadProcs.adapterRequestDevice(adapter, descriptor, callback, userdata);
+}
+static void ThreadDispatchAdapterReference(WGPUAdapter adapter) {
+    perThreadProcs.adapterReference(adapter);
+}
+static void ThreadDispatchAdapterRelease(WGPUAdapter adapter) {
+    perThreadProcs.adapterRelease(adapter);
+}
 static void ThreadDispatchBindGroupSetLabel(WGPUBindGroup bindGroup, char const * label) {
     perThreadProcs.bindGroupSetLabel(bindGroup, label);
 }
@@ -77,6 +97,9 @@ return     perThreadProcs.commandEncoderBeginComputePass(commandEncoder, descrip
 }
 static WGPURenderPassEncoder ThreadDispatchCommandEncoderBeginRenderPass(WGPUCommandEncoder commandEncoder, WGPURenderPassDescriptor const * descriptor) {
 return     perThreadProcs.commandEncoderBeginRenderPass(commandEncoder, descriptor);
+}
+static void ThreadDispatchCommandEncoderClearBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer buffer, uint64_t offset, uint64_t size) {
+    perThreadProcs.commandEncoderClearBuffer(commandEncoder, buffer, offset, size);
 }
 static void ThreadDispatchCommandEncoderCopyBufferToBuffer(WGPUCommandEncoder commandEncoder, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size) {
     perThreadProcs.commandEncoderCopyBufferToBuffer(commandEncoder, source, sourceOffset, destination, destinationOffset, size);
@@ -225,11 +248,20 @@ return     perThreadProcs.deviceCreateSwapChain(device, surface, descriptor);
 static WGPUTexture ThreadDispatchDeviceCreateTexture(WGPUDevice device, WGPUTextureDescriptor const * descriptor) {
 return     perThreadProcs.deviceCreateTexture(device, descriptor);
 }
+static void ThreadDispatchDeviceDestroy(WGPUDevice device) {
+    perThreadProcs.deviceDestroy(device);
+}
+static uint32_t ThreadDispatchDeviceEnumerateFeatures(WGPUDevice device, WGPUFeatureName * features) {
+return     perThreadProcs.deviceEnumerateFeatures(device, features);
+}
 static bool ThreadDispatchDeviceGetLimits(WGPUDevice device, WGPUSupportedLimits * limits) {
 return     perThreadProcs.deviceGetLimits(device, limits);
 }
 static WGPUQueue ThreadDispatchDeviceGetQueue(WGPUDevice device) {
 return     perThreadProcs.deviceGetQueue(device);
+}
+static bool ThreadDispatchDeviceHasFeature(WGPUDevice device, WGPUFeatureName feature) {
+return     perThreadProcs.deviceHasFeature(device, feature);
 }
 static void ThreadDispatchDeviceInjectError(WGPUDevice device, WGPUErrorType type, char const * message) {
     perThreadProcs.deviceInjectError(device, type, message);
@@ -275,6 +307,9 @@ static void ThreadDispatchExternalTextureRelease(WGPUExternalTexture externalTex
 }
 static WGPUSurface ThreadDispatchInstanceCreateSurface(WGPUInstance instance, WGPUSurfaceDescriptor const * descriptor) {
 return     perThreadProcs.instanceCreateSurface(instance, descriptor);
+}
+static void ThreadDispatchInstanceRequestAdapter(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) {
+    perThreadProcs.instanceRequestAdapter(instance, options, callback, userdata);
 }
 static void ThreadDispatchInstanceReference(WGPUInstance instance) {
     perThreadProcs.instanceReference(instance);
@@ -525,174 +560,186 @@ static void ThreadDispatchTextureViewRelease(WGPUTextureView textureView) {
 
 extern "C" {
     DawnProcTable dawnThreadDispatchProcTable = {
-        ThreadDispatchGetProcAddress,
         ThreadDispatchCreateInstance,
-ThreadDispatchBindGroupSetLabel,
-ThreadDispatchBindGroupReference,
-ThreadDispatchBindGroupRelease,
-ThreadDispatchBindGroupLayoutSetLabel,
-ThreadDispatchBindGroupLayoutReference,
-ThreadDispatchBindGroupLayoutRelease,
-ThreadDispatchBufferDestroy,
-ThreadDispatchBufferGetConstMappedRange,
-ThreadDispatchBufferGetMappedRange,
-ThreadDispatchBufferMapAsync,
-ThreadDispatchBufferSetLabel,
-ThreadDispatchBufferUnmap,
-ThreadDispatchBufferReference,
-ThreadDispatchBufferRelease,
-ThreadDispatchCommandBufferSetLabel,
-ThreadDispatchCommandBufferReference,
-ThreadDispatchCommandBufferRelease,
-ThreadDispatchCommandEncoderBeginComputePass,
-ThreadDispatchCommandEncoderBeginRenderPass,
-ThreadDispatchCommandEncoderCopyBufferToBuffer,
-ThreadDispatchCommandEncoderCopyBufferToTexture,
-ThreadDispatchCommandEncoderCopyTextureToBuffer,
-ThreadDispatchCommandEncoderCopyTextureToTexture,
-ThreadDispatchCommandEncoderCopyTextureToTextureInternal,
-ThreadDispatchCommandEncoderFinish,
-ThreadDispatchCommandEncoderInjectValidationError,
-ThreadDispatchCommandEncoderInsertDebugMarker,
-ThreadDispatchCommandEncoderPopDebugGroup,
-ThreadDispatchCommandEncoderPushDebugGroup,
-ThreadDispatchCommandEncoderResolveQuerySet,
-ThreadDispatchCommandEncoderSetLabel,
-ThreadDispatchCommandEncoderWriteBuffer,
-ThreadDispatchCommandEncoderWriteTimestamp,
-ThreadDispatchCommandEncoderReference,
-ThreadDispatchCommandEncoderRelease,
-ThreadDispatchComputePassEncoderDispatch,
-ThreadDispatchComputePassEncoderDispatchIndirect,
-ThreadDispatchComputePassEncoderEndPass,
-ThreadDispatchComputePassEncoderInsertDebugMarker,
-ThreadDispatchComputePassEncoderPopDebugGroup,
-ThreadDispatchComputePassEncoderPushDebugGroup,
-ThreadDispatchComputePassEncoderSetBindGroup,
-ThreadDispatchComputePassEncoderSetLabel,
-ThreadDispatchComputePassEncoderSetPipeline,
-ThreadDispatchComputePassEncoderWriteTimestamp,
-ThreadDispatchComputePassEncoderReference,
-ThreadDispatchComputePassEncoderRelease,
-ThreadDispatchComputePipelineGetBindGroupLayout,
-ThreadDispatchComputePipelineSetLabel,
-ThreadDispatchComputePipelineReference,
-ThreadDispatchComputePipelineRelease,
-ThreadDispatchDeviceCreateBindGroup,
-ThreadDispatchDeviceCreateBindGroupLayout,
-ThreadDispatchDeviceCreateBuffer,
-ThreadDispatchDeviceCreateCommandEncoder,
-ThreadDispatchDeviceCreateComputePipeline,
-ThreadDispatchDeviceCreateComputePipelineAsync,
-ThreadDispatchDeviceCreateErrorBuffer,
-ThreadDispatchDeviceCreateExternalTexture,
-ThreadDispatchDeviceCreatePipelineLayout,
-ThreadDispatchDeviceCreateQuerySet,
-ThreadDispatchDeviceCreateRenderBundleEncoder,
-ThreadDispatchDeviceCreateRenderPipeline,
-ThreadDispatchDeviceCreateRenderPipelineAsync,
-ThreadDispatchDeviceCreateSampler,
-ThreadDispatchDeviceCreateShaderModule,
-ThreadDispatchDeviceCreateSwapChain,
-ThreadDispatchDeviceCreateTexture,
-ThreadDispatchDeviceGetLimits,
-ThreadDispatchDeviceGetQueue,
-ThreadDispatchDeviceInjectError,
-ThreadDispatchDeviceLoseForTesting,
-ThreadDispatchDevicePopErrorScope,
-ThreadDispatchDevicePushErrorScope,
-ThreadDispatchDeviceSetDeviceLostCallback,
-ThreadDispatchDeviceSetLoggingCallback,
-ThreadDispatchDeviceSetUncapturedErrorCallback,
-ThreadDispatchDeviceTick,
-ThreadDispatchDeviceReference,
-ThreadDispatchDeviceRelease,
-ThreadDispatchExternalTextureDestroy,
-ThreadDispatchExternalTextureSetLabel,
-ThreadDispatchExternalTextureReference,
-ThreadDispatchExternalTextureRelease,
-ThreadDispatchInstanceCreateSurface,
-ThreadDispatchInstanceReference,
-ThreadDispatchInstanceRelease,
-ThreadDispatchPipelineLayoutSetLabel,
-ThreadDispatchPipelineLayoutReference,
-ThreadDispatchPipelineLayoutRelease,
-ThreadDispatchQuerySetDestroy,
-ThreadDispatchQuerySetSetLabel,
-ThreadDispatchQuerySetReference,
-ThreadDispatchQuerySetRelease,
-ThreadDispatchQueueCopyTextureForBrowser,
-ThreadDispatchQueueOnSubmittedWorkDone,
-ThreadDispatchQueueSubmit,
-ThreadDispatchQueueWriteBuffer,
-ThreadDispatchQueueWriteTexture,
-ThreadDispatchQueueReference,
-ThreadDispatchQueueRelease,
-ThreadDispatchRenderBundleReference,
-ThreadDispatchRenderBundleRelease,
-ThreadDispatchRenderBundleEncoderDraw,
-ThreadDispatchRenderBundleEncoderDrawIndexed,
-ThreadDispatchRenderBundleEncoderDrawIndexedIndirect,
-ThreadDispatchRenderBundleEncoderDrawIndirect,
-ThreadDispatchRenderBundleEncoderFinish,
-ThreadDispatchRenderBundleEncoderInsertDebugMarker,
-ThreadDispatchRenderBundleEncoderPopDebugGroup,
-ThreadDispatchRenderBundleEncoderPushDebugGroup,
-ThreadDispatchRenderBundleEncoderSetBindGroup,
-ThreadDispatchRenderBundleEncoderSetIndexBuffer,
-ThreadDispatchRenderBundleEncoderSetLabel,
-ThreadDispatchRenderBundleEncoderSetPipeline,
-ThreadDispatchRenderBundleEncoderSetVertexBuffer,
-ThreadDispatchRenderBundleEncoderReference,
-ThreadDispatchRenderBundleEncoderRelease,
-ThreadDispatchRenderPassEncoderBeginOcclusionQuery,
-ThreadDispatchRenderPassEncoderDraw,
-ThreadDispatchRenderPassEncoderDrawIndexed,
-ThreadDispatchRenderPassEncoderDrawIndexedIndirect,
-ThreadDispatchRenderPassEncoderDrawIndirect,
-ThreadDispatchRenderPassEncoderEndOcclusionQuery,
-ThreadDispatchRenderPassEncoderEndPass,
-ThreadDispatchRenderPassEncoderExecuteBundles,
-ThreadDispatchRenderPassEncoderInsertDebugMarker,
-ThreadDispatchRenderPassEncoderPopDebugGroup,
-ThreadDispatchRenderPassEncoderPushDebugGroup,
-ThreadDispatchRenderPassEncoderSetBindGroup,
-ThreadDispatchRenderPassEncoderSetBlendConstant,
-ThreadDispatchRenderPassEncoderSetIndexBuffer,
-ThreadDispatchRenderPassEncoderSetLabel,
-ThreadDispatchRenderPassEncoderSetPipeline,
-ThreadDispatchRenderPassEncoderSetScissorRect,
-ThreadDispatchRenderPassEncoderSetStencilReference,
-ThreadDispatchRenderPassEncoderSetVertexBuffer,
-ThreadDispatchRenderPassEncoderSetViewport,
-ThreadDispatchRenderPassEncoderWriteTimestamp,
-ThreadDispatchRenderPassEncoderReference,
-ThreadDispatchRenderPassEncoderRelease,
-ThreadDispatchRenderPipelineGetBindGroupLayout,
-ThreadDispatchRenderPipelineSetLabel,
-ThreadDispatchRenderPipelineReference,
-ThreadDispatchRenderPipelineRelease,
-ThreadDispatchSamplerSetLabel,
-ThreadDispatchSamplerReference,
-ThreadDispatchSamplerRelease,
-ThreadDispatchShaderModuleGetCompilationInfo,
-ThreadDispatchShaderModuleSetLabel,
-ThreadDispatchShaderModuleReference,
-ThreadDispatchShaderModuleRelease,
-ThreadDispatchSurfaceReference,
-ThreadDispatchSurfaceRelease,
-ThreadDispatchSwapChainConfigure,
-ThreadDispatchSwapChainGetCurrentTextureView,
-ThreadDispatchSwapChainPresent,
-ThreadDispatchSwapChainReference,
-ThreadDispatchSwapChainRelease,
-ThreadDispatchTextureCreateView,
-ThreadDispatchTextureDestroy,
-ThreadDispatchTextureSetLabel,
-ThreadDispatchTextureReference,
-ThreadDispatchTextureRelease,
-ThreadDispatchTextureViewSetLabel,
-ThreadDispatchTextureViewReference,
-ThreadDispatchTextureViewRelease,
+        ThreadDispatchGetProcAddress,
+        ThreadDispatchAdapterEnumerateFeatures,
+        ThreadDispatchAdapterGetLimits,
+        ThreadDispatchAdapterGetProperties,
+        ThreadDispatchAdapterHasFeature,
+        ThreadDispatchAdapterRequestDevice,
+        ThreadDispatchAdapterReference,
+        ThreadDispatchAdapterRelease,
+        ThreadDispatchBindGroupSetLabel,
+        ThreadDispatchBindGroupReference,
+        ThreadDispatchBindGroupRelease,
+        ThreadDispatchBindGroupLayoutSetLabel,
+        ThreadDispatchBindGroupLayoutReference,
+        ThreadDispatchBindGroupLayoutRelease,
+        ThreadDispatchBufferDestroy,
+        ThreadDispatchBufferGetConstMappedRange,
+        ThreadDispatchBufferGetMappedRange,
+        ThreadDispatchBufferMapAsync,
+        ThreadDispatchBufferSetLabel,
+        ThreadDispatchBufferUnmap,
+        ThreadDispatchBufferReference,
+        ThreadDispatchBufferRelease,
+        ThreadDispatchCommandBufferSetLabel,
+        ThreadDispatchCommandBufferReference,
+        ThreadDispatchCommandBufferRelease,
+        ThreadDispatchCommandEncoderBeginComputePass,
+        ThreadDispatchCommandEncoderBeginRenderPass,
+        ThreadDispatchCommandEncoderClearBuffer,
+        ThreadDispatchCommandEncoderCopyBufferToBuffer,
+        ThreadDispatchCommandEncoderCopyBufferToTexture,
+        ThreadDispatchCommandEncoderCopyTextureToBuffer,
+        ThreadDispatchCommandEncoderCopyTextureToTexture,
+        ThreadDispatchCommandEncoderCopyTextureToTextureInternal,
+        ThreadDispatchCommandEncoderFinish,
+        ThreadDispatchCommandEncoderInjectValidationError,
+        ThreadDispatchCommandEncoderInsertDebugMarker,
+        ThreadDispatchCommandEncoderPopDebugGroup,
+        ThreadDispatchCommandEncoderPushDebugGroup,
+        ThreadDispatchCommandEncoderResolveQuerySet,
+        ThreadDispatchCommandEncoderSetLabel,
+        ThreadDispatchCommandEncoderWriteBuffer,
+        ThreadDispatchCommandEncoderWriteTimestamp,
+        ThreadDispatchCommandEncoderReference,
+        ThreadDispatchCommandEncoderRelease,
+        ThreadDispatchComputePassEncoderDispatch,
+        ThreadDispatchComputePassEncoderDispatchIndirect,
+        ThreadDispatchComputePassEncoderEndPass,
+        ThreadDispatchComputePassEncoderInsertDebugMarker,
+        ThreadDispatchComputePassEncoderPopDebugGroup,
+        ThreadDispatchComputePassEncoderPushDebugGroup,
+        ThreadDispatchComputePassEncoderSetBindGroup,
+        ThreadDispatchComputePassEncoderSetLabel,
+        ThreadDispatchComputePassEncoderSetPipeline,
+        ThreadDispatchComputePassEncoderWriteTimestamp,
+        ThreadDispatchComputePassEncoderReference,
+        ThreadDispatchComputePassEncoderRelease,
+        ThreadDispatchComputePipelineGetBindGroupLayout,
+        ThreadDispatchComputePipelineSetLabel,
+        ThreadDispatchComputePipelineReference,
+        ThreadDispatchComputePipelineRelease,
+        ThreadDispatchDeviceCreateBindGroup,
+        ThreadDispatchDeviceCreateBindGroupLayout,
+        ThreadDispatchDeviceCreateBuffer,
+        ThreadDispatchDeviceCreateCommandEncoder,
+        ThreadDispatchDeviceCreateComputePipeline,
+        ThreadDispatchDeviceCreateComputePipelineAsync,
+        ThreadDispatchDeviceCreateErrorBuffer,
+        ThreadDispatchDeviceCreateExternalTexture,
+        ThreadDispatchDeviceCreatePipelineLayout,
+        ThreadDispatchDeviceCreateQuerySet,
+        ThreadDispatchDeviceCreateRenderBundleEncoder,
+        ThreadDispatchDeviceCreateRenderPipeline,
+        ThreadDispatchDeviceCreateRenderPipelineAsync,
+        ThreadDispatchDeviceCreateSampler,
+        ThreadDispatchDeviceCreateShaderModule,
+        ThreadDispatchDeviceCreateSwapChain,
+        ThreadDispatchDeviceCreateTexture,
+        ThreadDispatchDeviceDestroy,
+        ThreadDispatchDeviceEnumerateFeatures,
+        ThreadDispatchDeviceGetLimits,
+        ThreadDispatchDeviceGetQueue,
+        ThreadDispatchDeviceHasFeature,
+        ThreadDispatchDeviceInjectError,
+        ThreadDispatchDeviceLoseForTesting,
+        ThreadDispatchDevicePopErrorScope,
+        ThreadDispatchDevicePushErrorScope,
+        ThreadDispatchDeviceSetDeviceLostCallback,
+        ThreadDispatchDeviceSetLoggingCallback,
+        ThreadDispatchDeviceSetUncapturedErrorCallback,
+        ThreadDispatchDeviceTick,
+        ThreadDispatchDeviceReference,
+        ThreadDispatchDeviceRelease,
+        ThreadDispatchExternalTextureDestroy,
+        ThreadDispatchExternalTextureSetLabel,
+        ThreadDispatchExternalTextureReference,
+        ThreadDispatchExternalTextureRelease,
+        ThreadDispatchInstanceCreateSurface,
+        ThreadDispatchInstanceRequestAdapter,
+        ThreadDispatchInstanceReference,
+        ThreadDispatchInstanceRelease,
+        ThreadDispatchPipelineLayoutSetLabel,
+        ThreadDispatchPipelineLayoutReference,
+        ThreadDispatchPipelineLayoutRelease,
+        ThreadDispatchQuerySetDestroy,
+        ThreadDispatchQuerySetSetLabel,
+        ThreadDispatchQuerySetReference,
+        ThreadDispatchQuerySetRelease,
+        ThreadDispatchQueueCopyTextureForBrowser,
+        ThreadDispatchQueueOnSubmittedWorkDone,
+        ThreadDispatchQueueSubmit,
+        ThreadDispatchQueueWriteBuffer,
+        ThreadDispatchQueueWriteTexture,
+        ThreadDispatchQueueReference,
+        ThreadDispatchQueueRelease,
+        ThreadDispatchRenderBundleReference,
+        ThreadDispatchRenderBundleRelease,
+        ThreadDispatchRenderBundleEncoderDraw,
+        ThreadDispatchRenderBundleEncoderDrawIndexed,
+        ThreadDispatchRenderBundleEncoderDrawIndexedIndirect,
+        ThreadDispatchRenderBundleEncoderDrawIndirect,
+        ThreadDispatchRenderBundleEncoderFinish,
+        ThreadDispatchRenderBundleEncoderInsertDebugMarker,
+        ThreadDispatchRenderBundleEncoderPopDebugGroup,
+        ThreadDispatchRenderBundleEncoderPushDebugGroup,
+        ThreadDispatchRenderBundleEncoderSetBindGroup,
+        ThreadDispatchRenderBundleEncoderSetIndexBuffer,
+        ThreadDispatchRenderBundleEncoderSetLabel,
+        ThreadDispatchRenderBundleEncoderSetPipeline,
+        ThreadDispatchRenderBundleEncoderSetVertexBuffer,
+        ThreadDispatchRenderBundleEncoderReference,
+        ThreadDispatchRenderBundleEncoderRelease,
+        ThreadDispatchRenderPassEncoderBeginOcclusionQuery,
+        ThreadDispatchRenderPassEncoderDraw,
+        ThreadDispatchRenderPassEncoderDrawIndexed,
+        ThreadDispatchRenderPassEncoderDrawIndexedIndirect,
+        ThreadDispatchRenderPassEncoderDrawIndirect,
+        ThreadDispatchRenderPassEncoderEndOcclusionQuery,
+        ThreadDispatchRenderPassEncoderEndPass,
+        ThreadDispatchRenderPassEncoderExecuteBundles,
+        ThreadDispatchRenderPassEncoderInsertDebugMarker,
+        ThreadDispatchRenderPassEncoderPopDebugGroup,
+        ThreadDispatchRenderPassEncoderPushDebugGroup,
+        ThreadDispatchRenderPassEncoderSetBindGroup,
+        ThreadDispatchRenderPassEncoderSetBlendConstant,
+        ThreadDispatchRenderPassEncoderSetIndexBuffer,
+        ThreadDispatchRenderPassEncoderSetLabel,
+        ThreadDispatchRenderPassEncoderSetPipeline,
+        ThreadDispatchRenderPassEncoderSetScissorRect,
+        ThreadDispatchRenderPassEncoderSetStencilReference,
+        ThreadDispatchRenderPassEncoderSetVertexBuffer,
+        ThreadDispatchRenderPassEncoderSetViewport,
+        ThreadDispatchRenderPassEncoderWriteTimestamp,
+        ThreadDispatchRenderPassEncoderReference,
+        ThreadDispatchRenderPassEncoderRelease,
+        ThreadDispatchRenderPipelineGetBindGroupLayout,
+        ThreadDispatchRenderPipelineSetLabel,
+        ThreadDispatchRenderPipelineReference,
+        ThreadDispatchRenderPipelineRelease,
+        ThreadDispatchSamplerSetLabel,
+        ThreadDispatchSamplerReference,
+        ThreadDispatchSamplerRelease,
+        ThreadDispatchShaderModuleGetCompilationInfo,
+        ThreadDispatchShaderModuleSetLabel,
+        ThreadDispatchShaderModuleReference,
+        ThreadDispatchShaderModuleRelease,
+        ThreadDispatchSurfaceReference,
+        ThreadDispatchSurfaceRelease,
+        ThreadDispatchSwapChainConfigure,
+        ThreadDispatchSwapChainGetCurrentTextureView,
+        ThreadDispatchSwapChainPresent,
+        ThreadDispatchSwapChainReference,
+        ThreadDispatchSwapChainRelease,
+        ThreadDispatchTextureCreateView,
+        ThreadDispatchTextureDestroy,
+        ThreadDispatchTextureSetLabel,
+        ThreadDispatchTextureReference,
+        ThreadDispatchTextureRelease,
+        ThreadDispatchTextureViewSetLabel,
+        ThreadDispatchTextureViewReference,
+        ThreadDispatchTextureViewRelease,
     };
 }

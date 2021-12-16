@@ -4,6 +4,35 @@
 using namespace testing;
 
 namespace {
+    uint32_t ForwardAdapterEnumerateFeatures(WGPUAdapter self, WGPUFeatureName * features) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterEnumerateFeatures(self, features);
+    }
+    bool ForwardAdapterGetLimits(WGPUAdapter self, WGPUSupportedLimits * limits) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterGetLimits(self, limits);
+    }
+    void ForwardAdapterGetProperties(WGPUAdapter self, WGPUAdapterProperties * properties) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterGetProperties(self, properties);
+    }
+    bool ForwardAdapterHasFeature(WGPUAdapter self, WGPUFeatureName feature) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterHasFeature(self, feature);
+    }
+    void ForwardAdapterRequestDevice(WGPUAdapter self, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterRequestDevice(self, descriptor, callback, userdata);
+    }
+    void ForwardAdapterReference(WGPUAdapter self) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterReference(self);
+    }
+    void ForwardAdapterRelease(WGPUAdapter self) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->AdapterRelease(self);
+    }
+
     void ForwardBindGroupSetLabel(WGPUBindGroup self, char const * label) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->BindGroupSetLabel(self, label);
@@ -83,6 +112,10 @@ namespace {
     WGPURenderPassEncoder ForwardCommandEncoderBeginRenderPass(WGPUCommandEncoder self, WGPURenderPassDescriptor const * descriptor) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->CommandEncoderBeginRenderPass(self, descriptor);
+    }
+    void ForwardCommandEncoderClearBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t offset, uint64_t size) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->CommandEncoderClearBuffer(self, buffer, offset, size);
     }
     void ForwardCommandEncoderCopyBufferToBuffer(WGPUCommandEncoder self, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
@@ -283,6 +316,14 @@ namespace {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->DeviceCreateTexture(self, descriptor);
     }
+    void ForwardDeviceDestroy(WGPUDevice self) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->DeviceDestroy(self);
+    }
+    uint32_t ForwardDeviceEnumerateFeatures(WGPUDevice self, WGPUFeatureName * features) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->DeviceEnumerateFeatures(self, features);
+    }
     bool ForwardDeviceGetLimits(WGPUDevice self, WGPUSupportedLimits * limits) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->DeviceGetLimits(self, limits);
@@ -290,6 +331,10 @@ namespace {
     WGPUQueue ForwardDeviceGetQueue(WGPUDevice self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->DeviceGetQueue(self);
+    }
+    bool ForwardDeviceHasFeature(WGPUDevice self, WGPUFeatureName feature) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->DeviceHasFeature(self, feature);
     }
     void ForwardDeviceInjectError(WGPUDevice self, WGPUErrorType type, char const * message) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
@@ -352,6 +397,10 @@ namespace {
     WGPUSurface ForwardInstanceCreateSurface(WGPUInstance self, WGPUSurfaceDescriptor const * descriptor) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
         return object->procs->InstanceCreateSurface(self, descriptor);
+    }
+    void ForwardInstanceRequestAdapter(WGPUInstance self, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) {
+        auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
+        return object->procs->InstanceRequestAdapter(self, options, callback, userdata);
     }
     void ForwardInstanceReference(WGPUInstance self) {
         auto object = reinterpret_cast<ProcTableAsClass::Object*>(self);
@@ -700,9 +749,14 @@ namespace {
 ProcTableAsClass::~ProcTableAsClass() {
 }
 
-void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* device) {
-    *device = GetNewDevice();
-
+void ProcTableAsClass::GetProcTable(DawnProcTable* table) {
+    table->adapterEnumerateFeatures = reinterpret_cast<WGPUProcAdapterEnumerateFeatures>(ForwardAdapterEnumerateFeatures);
+    table->adapterGetLimits = reinterpret_cast<WGPUProcAdapterGetLimits>(ForwardAdapterGetLimits);
+    table->adapterGetProperties = reinterpret_cast<WGPUProcAdapterGetProperties>(ForwardAdapterGetProperties);
+    table->adapterHasFeature = reinterpret_cast<WGPUProcAdapterHasFeature>(ForwardAdapterHasFeature);
+    table->adapterRequestDevice = reinterpret_cast<WGPUProcAdapterRequestDevice>(ForwardAdapterRequestDevice);
+    table->adapterReference = reinterpret_cast<WGPUProcAdapterReference>(ForwardAdapterReference);
+    table->adapterRelease = reinterpret_cast<WGPUProcAdapterRelease>(ForwardAdapterRelease);
     table->bindGroupSetLabel = reinterpret_cast<WGPUProcBindGroupSetLabel>(ForwardBindGroupSetLabel);
     table->bindGroupReference = reinterpret_cast<WGPUProcBindGroupReference>(ForwardBindGroupReference);
     table->bindGroupRelease = reinterpret_cast<WGPUProcBindGroupRelease>(ForwardBindGroupRelease);
@@ -722,6 +776,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->commandBufferRelease = reinterpret_cast<WGPUProcCommandBufferRelease>(ForwardCommandBufferRelease);
     table->commandEncoderBeginComputePass = reinterpret_cast<WGPUProcCommandEncoderBeginComputePass>(ForwardCommandEncoderBeginComputePass);
     table->commandEncoderBeginRenderPass = reinterpret_cast<WGPUProcCommandEncoderBeginRenderPass>(ForwardCommandEncoderBeginRenderPass);
+    table->commandEncoderClearBuffer = reinterpret_cast<WGPUProcCommandEncoderClearBuffer>(ForwardCommandEncoderClearBuffer);
     table->commandEncoderCopyBufferToBuffer = reinterpret_cast<WGPUProcCommandEncoderCopyBufferToBuffer>(ForwardCommandEncoderCopyBufferToBuffer);
     table->commandEncoderCopyBufferToTexture = reinterpret_cast<WGPUProcCommandEncoderCopyBufferToTexture>(ForwardCommandEncoderCopyBufferToTexture);
     table->commandEncoderCopyTextureToBuffer = reinterpret_cast<WGPUProcCommandEncoderCopyTextureToBuffer>(ForwardCommandEncoderCopyTextureToBuffer);
@@ -771,8 +826,11 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->deviceCreateShaderModule = reinterpret_cast<WGPUProcDeviceCreateShaderModule>(ForwardDeviceCreateShaderModule);
     table->deviceCreateSwapChain = reinterpret_cast<WGPUProcDeviceCreateSwapChain>(ForwardDeviceCreateSwapChain);
     table->deviceCreateTexture = reinterpret_cast<WGPUProcDeviceCreateTexture>(ForwardDeviceCreateTexture);
+    table->deviceDestroy = reinterpret_cast<WGPUProcDeviceDestroy>(ForwardDeviceDestroy);
+    table->deviceEnumerateFeatures = reinterpret_cast<WGPUProcDeviceEnumerateFeatures>(ForwardDeviceEnumerateFeatures);
     table->deviceGetLimits = reinterpret_cast<WGPUProcDeviceGetLimits>(ForwardDeviceGetLimits);
     table->deviceGetQueue = reinterpret_cast<WGPUProcDeviceGetQueue>(ForwardDeviceGetQueue);
+    table->deviceHasFeature = reinterpret_cast<WGPUProcDeviceHasFeature>(ForwardDeviceHasFeature);
     table->deviceInjectError = reinterpret_cast<WGPUProcDeviceInjectError>(ForwardDeviceInjectError);
     table->deviceLoseForTesting = reinterpret_cast<WGPUProcDeviceLoseForTesting>(ForwardDeviceLoseForTesting);
     table->devicePopErrorScope = reinterpret_cast<WGPUProcDevicePopErrorScope>(ForwardDevicePopErrorScope);
@@ -788,6 +846,7 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
     table->externalTextureReference = reinterpret_cast<WGPUProcExternalTextureReference>(ForwardExternalTextureReference);
     table->externalTextureRelease = reinterpret_cast<WGPUProcExternalTextureRelease>(ForwardExternalTextureRelease);
     table->instanceCreateSurface = reinterpret_cast<WGPUProcInstanceCreateSurface>(ForwardInstanceCreateSurface);
+    table->instanceRequestAdapter = reinterpret_cast<WGPUProcInstanceRequestAdapter>(ForwardInstanceRequestAdapter);
     table->instanceReference = reinterpret_cast<WGPUProcInstanceReference>(ForwardInstanceReference);
     table->instanceRelease = reinterpret_cast<WGPUProcInstanceRelease>(ForwardInstanceRelease);
     table->pipelineLayoutSetLabel = reinterpret_cast<WGPUProcPipelineLayoutSetLabel>(ForwardPipelineLayoutSetLabel);
@@ -873,6 +932,18 @@ void ProcTableAsClass::GetProcTableAndDevice(DawnProcTable* table, WGPUDevice* d
 }
 
 
+void ProcTableAsClass::AdapterRequestDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) {
+    ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(adapter);
+    object->mAdapterRequestDeviceCallback = callback;
+    object->userdata = userdata;
+    return OnAdapterRequestDevice(adapter, descriptor, callback, userdata);
+}
+
+void ProcTableAsClass::CallAdapterRequestDeviceCallback(WGPUAdapter adapter, WGPURequestDeviceStatus status, WGPUDevice device, char const * message) {
+    ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(adapter);
+    object->mAdapterRequestDeviceCallback(status, device, message, object->userdata);
+}
+
 void ProcTableAsClass::BufferMapAsync(WGPUBuffer buffer, WGPUMapModeFlags mode, size_t offset, size_t size, WGPUBufferMapCallback callback, void * userdata) {
     ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(buffer);
     object->mBufferMapAsyncCallback = callback;
@@ -957,6 +1028,18 @@ void ProcTableAsClass::CallDeviceSetUncapturedErrorCallbackCallback(WGPUDevice d
     object->mDeviceSetUncapturedErrorCallbackCallback(type, message, object->userdata);
 }
 
+void ProcTableAsClass::InstanceRequestAdapter(WGPUInstance instance, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) {
+    ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(instance);
+    object->mInstanceRequestAdapterCallback = callback;
+    object->userdata = userdata;
+    return OnInstanceRequestAdapter(instance, options, callback, userdata);
+}
+
+void ProcTableAsClass::CallInstanceRequestAdapterCallback(WGPUInstance instance, WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message) {
+    ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(instance);
+    object->mInstanceRequestAdapterCallback(status, adapter, message, object->userdata);
+}
+
 void ProcTableAsClass::QueueOnSubmittedWorkDone(WGPUQueue queue, uint64_t signalValue, WGPUQueueWorkDoneCallback callback, void * userdata) {
     ProcTableAsClass::Object* object = reinterpret_cast<ProcTableAsClass::Object*>(queue);
     object->mQueueOnSubmittedWorkDoneCallback = callback;
@@ -981,6 +1064,11 @@ void ProcTableAsClass::CallShaderModuleGetCompilationInfoCallback(WGPUShaderModu
     object->mShaderModuleGetCompilationInfoCallback(status, compilationInfo, object->userdata);
 }
 
+WGPUAdapter ProcTableAsClass::GetNewAdapter() {
+    mObjects.emplace_back(new Object);
+    mObjects.back()->procs = this;
+    return reinterpret_cast<WGPUAdapter>(mObjects.back().get());
+}
 WGPUBindGroup ProcTableAsClass::GetNewBindGroup() {
     mObjects.emplace_back(new Object);
     mObjects.back()->procs = this;
@@ -1102,6 +1190,7 @@ MockProcTable::MockProcTable() = default;
 MockProcTable::~MockProcTable() = default;
 
 void MockProcTable::IgnoreAllReleaseCalls() {
+    EXPECT_CALL(*this, AdapterRelease(_)).Times(AnyNumber());
     EXPECT_CALL(*this, BindGroupRelease(_)).Times(AnyNumber());
     EXPECT_CALL(*this, BindGroupLayoutRelease(_)).Times(AnyNumber());
     EXPECT_CALL(*this, BufferRelease(_)).Times(AnyNumber());

@@ -6,8 +6,16 @@
 
 // Note: Often allocated as a static global. Do not add a complex constructor.
 typedef struct DawnProcTable {
-    WGPUProcGetProcAddress getProcAddress;
     WGPUProcCreateInstance createInstance;
+    WGPUProcGetProcAddress getProcAddress;
+
+    WGPUProcAdapterEnumerateFeatures adapterEnumerateFeatures;
+    WGPUProcAdapterGetLimits adapterGetLimits;
+    WGPUProcAdapterGetProperties adapterGetProperties;
+    WGPUProcAdapterHasFeature adapterHasFeature;
+    WGPUProcAdapterRequestDevice adapterRequestDevice;
+    WGPUProcAdapterReference adapterReference;
+    WGPUProcAdapterRelease adapterRelease;
 
     WGPUProcBindGroupSetLabel bindGroupSetLabel;
     WGPUProcBindGroupReference bindGroupReference;
@@ -32,6 +40,7 @@ typedef struct DawnProcTable {
 
     WGPUProcCommandEncoderBeginComputePass commandEncoderBeginComputePass;
     WGPUProcCommandEncoderBeginRenderPass commandEncoderBeginRenderPass;
+    WGPUProcCommandEncoderClearBuffer commandEncoderClearBuffer;
     WGPUProcCommandEncoderCopyBufferToBuffer commandEncoderCopyBufferToBuffer;
     WGPUProcCommandEncoderCopyBufferToTexture commandEncoderCopyBufferToTexture;
     WGPUProcCommandEncoderCopyTextureToBuffer commandEncoderCopyTextureToBuffer;
@@ -84,8 +93,11 @@ typedef struct DawnProcTable {
     WGPUProcDeviceCreateShaderModule deviceCreateShaderModule;
     WGPUProcDeviceCreateSwapChain deviceCreateSwapChain;
     WGPUProcDeviceCreateTexture deviceCreateTexture;
+    WGPUProcDeviceDestroy deviceDestroy;
+    WGPUProcDeviceEnumerateFeatures deviceEnumerateFeatures;
     WGPUProcDeviceGetLimits deviceGetLimits;
     WGPUProcDeviceGetQueue deviceGetQueue;
+    WGPUProcDeviceHasFeature deviceHasFeature;
     WGPUProcDeviceInjectError deviceInjectError;
     WGPUProcDeviceLoseForTesting deviceLoseForTesting;
     WGPUProcDevicePopErrorScope devicePopErrorScope;
@@ -103,6 +115,7 @@ typedef struct DawnProcTable {
     WGPUProcExternalTextureRelease externalTextureRelease;
 
     WGPUProcInstanceCreateSurface instanceCreateSurface;
+    WGPUProcInstanceRequestAdapter instanceRequestAdapter;
     WGPUProcInstanceReference instanceReference;
     WGPUProcInstanceRelease instanceRelease;
 

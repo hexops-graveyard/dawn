@@ -316,14 +316,38 @@ namespace dawn_native {
             "offsetof mismatch for CopyTextureForBrowserOptions::flipY");
     static_assert(offsetof(CopyTextureForBrowserOptions, alphaOp) == offsetof(WGPUCopyTextureForBrowserOptions, alphaOp),
             "offsetof mismatch for CopyTextureForBrowserOptions::alphaOp");
+    static_assert(offsetof(CopyTextureForBrowserOptions, needsColorSpaceConversion) == offsetof(WGPUCopyTextureForBrowserOptions, needsColorSpaceConversion),
+            "offsetof mismatch for CopyTextureForBrowserOptions::needsColorSpaceConversion");
+    static_assert(offsetof(CopyTextureForBrowserOptions, srcAlphaMode) == offsetof(WGPUCopyTextureForBrowserOptions, srcAlphaMode),
+            "offsetof mismatch for CopyTextureForBrowserOptions::srcAlphaMode");
+    static_assert(offsetof(CopyTextureForBrowserOptions, srcTransferFunctionParameters) == offsetof(WGPUCopyTextureForBrowserOptions, srcTransferFunctionParameters),
+            "offsetof mismatch for CopyTextureForBrowserOptions::srcTransferFunctionParameters");
+    static_assert(offsetof(CopyTextureForBrowserOptions, conversionMatrix) == offsetof(WGPUCopyTextureForBrowserOptions, conversionMatrix),
+            "offsetof mismatch for CopyTextureForBrowserOptions::conversionMatrix");
+    static_assert(offsetof(CopyTextureForBrowserOptions, dstTransferFunctionParameters) == offsetof(WGPUCopyTextureForBrowserOptions, dstTransferFunctionParameters),
+            "offsetof mismatch for CopyTextureForBrowserOptions::dstTransferFunctionParameters");
+    static_assert(offsetof(CopyTextureForBrowserOptions, dstAlphaMode) == offsetof(WGPUCopyTextureForBrowserOptions, dstAlphaMode),
+            "offsetof mismatch for CopyTextureForBrowserOptions::dstAlphaMode");
 
     bool CopyTextureForBrowserOptions::operator==(const CopyTextureForBrowserOptions& rhs) const {
         return (nextInChain == rhs.nextInChain) && std::tie(
             flipY,
-            alphaOp
+            alphaOp,
+            needsColorSpaceConversion,
+            srcAlphaMode,
+            srcTransferFunctionParameters,
+            conversionMatrix,
+            dstTransferFunctionParameters,
+            dstAlphaMode
         ) == std::tie(
             rhs.flipY,
-            rhs.alphaOp
+            rhs.alphaOp,
+            rhs.needsColorSpaceConversion,
+            rhs.srcAlphaMode,
+            rhs.srcTransferFunctionParameters,
+            rhs.conversionMatrix,
+            rhs.dstTransferFunctionParameters,
+            rhs.dstAlphaMode
         );
     }
 
@@ -796,6 +820,31 @@ namespace dawn_native {
             rhs.stencilStoreOp,
             rhs.clearStencil,
             rhs.stencilReadOnly
+        );
+    }
+
+
+    static_assert(sizeof(RequestAdapterOptions) == sizeof(WGPURequestAdapterOptions), "sizeof mismatch for RequestAdapterOptions");
+    static_assert(alignof(RequestAdapterOptions) == alignof(WGPURequestAdapterOptions), "alignof mismatch for RequestAdapterOptions");
+
+    static_assert(offsetof(RequestAdapterOptions, nextInChain) == offsetof(WGPURequestAdapterOptions, nextInChain),
+            "offsetof mismatch for RequestAdapterOptions::nextInChain");
+    static_assert(offsetof(RequestAdapterOptions, compatibleSurface) == offsetof(WGPURequestAdapterOptions, compatibleSurface),
+            "offsetof mismatch for RequestAdapterOptions::compatibleSurface");
+    static_assert(offsetof(RequestAdapterOptions, powerPreference) == offsetof(WGPURequestAdapterOptions, powerPreference),
+            "offsetof mismatch for RequestAdapterOptions::powerPreference");
+    static_assert(offsetof(RequestAdapterOptions, forceFallbackAdapter) == offsetof(WGPURequestAdapterOptions, forceFallbackAdapter),
+            "offsetof mismatch for RequestAdapterOptions::forceFallbackAdapter");
+
+    bool RequestAdapterOptions::operator==(const RequestAdapterOptions& rhs) const {
+        return (nextInChain == rhs.nextInChain) && std::tie(
+            compatibleSurface,
+            powerPreference,
+            forceFallbackAdapter
+        ) == std::tie(
+            rhs.compatibleSurface,
+            rhs.powerPreference,
+            rhs.forceFallbackAdapter
         );
     }
 
@@ -1693,6 +1742,35 @@ namespace dawn_native {
             rhs.label,
             rhs.layout,
             rhs.compute
+        );
+    }
+
+
+    static_assert(sizeof(DeviceDescriptor) == sizeof(WGPUDeviceDescriptor), "sizeof mismatch for DeviceDescriptor");
+    static_assert(alignof(DeviceDescriptor) == alignof(WGPUDeviceDescriptor), "alignof mismatch for DeviceDescriptor");
+
+    static_assert(offsetof(DeviceDescriptor, nextInChain) == offsetof(WGPUDeviceDescriptor, nextInChain),
+            "offsetof mismatch for DeviceDescriptor::nextInChain");
+    static_assert(offsetof(DeviceDescriptor, label) == offsetof(WGPUDeviceDescriptor, label),
+            "offsetof mismatch for DeviceDescriptor::label");
+    static_assert(offsetof(DeviceDescriptor, requiredFeaturesCount) == offsetof(WGPUDeviceDescriptor, requiredFeaturesCount),
+            "offsetof mismatch for DeviceDescriptor::requiredFeaturesCount");
+    static_assert(offsetof(DeviceDescriptor, requiredFeatures) == offsetof(WGPUDeviceDescriptor, requiredFeatures),
+            "offsetof mismatch for DeviceDescriptor::requiredFeatures");
+    static_assert(offsetof(DeviceDescriptor, requiredLimits) == offsetof(WGPUDeviceDescriptor, requiredLimits),
+            "offsetof mismatch for DeviceDescriptor::requiredLimits");
+
+    bool DeviceDescriptor::operator==(const DeviceDescriptor& rhs) const {
+        return (nextInChain == rhs.nextInChain) && std::tie(
+            label,
+            requiredFeaturesCount,
+            requiredFeatures,
+            requiredLimits
+        ) == std::tie(
+            rhs.label,
+            rhs.requiredFeaturesCount,
+            rhs.requiredFeatures,
+            rhs.requiredLimits
         );
     }
 

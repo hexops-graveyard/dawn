@@ -13,6 +13,58 @@ namespace dawn_wire { namespace client {
 
 
 
+    static
+    uint32_t ClientAdapterEnumerateFeatures(WGPUAdapter cSelf, WGPUFeatureName * features) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->EnumerateFeatures( features);
+    }
+
+    static
+    bool ClientAdapterGetLimits(WGPUAdapter cSelf, WGPUSupportedLimits * limits) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->GetLimits( limits);
+    }
+
+    static
+    void ClientAdapterGetProperties(WGPUAdapter cSelf, WGPUAdapterProperties * properties) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->GetProperties( properties);
+    }
+
+    static
+    bool ClientAdapterHasFeature(WGPUAdapter cSelf, WGPUFeatureName feature) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->HasFeature( feature);
+    }
+
+    static
+    void ClientAdapterRequestDevice(WGPUAdapter cSelf, WGPUDeviceDescriptor const * descriptor, WGPURequestDeviceCallback callback, void * userdata) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->RequestDevice( descriptor,  callback,  userdata);
+    }
+
+    void ClientAdapterRelease(WGPUAdapter cObj) {
+        Adapter* obj = reinterpret_cast<Adapter*>(cObj);
+        obj->refcount --;
+
+        if (obj->refcount > 0) {
+            return;
+        }
+
+        DestroyObjectCmd cmd;
+        cmd.objectType = ObjectType::Adapter;
+        cmd.objectId = obj->id;
+
+        obj->client->SerializeCommand(cmd);
+        obj->client->AdapterAllocator().Free(obj);
+    }
+
+    void ClientAdapterReference(WGPUAdapter cObj) {
+        Adapter* obj = reinterpret_cast<Adapter*>(cObj);
+        obj->refcount ++;
+    }
+
+
     void ClientBindGroupSetLabel(WGPUBindGroup cSelf, char const * label) {
         auto self = reinterpret_cast<BindGroup*>(cSelf);
         BindGroupSetLabelCmd cmd;
@@ -20,6 +72,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -55,6 +108,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -114,6 +168,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -155,6 +210,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -192,6 +248,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->ComputePassEncoderAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -208,11 +265,30 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->RenderPassEncoderAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
 
         return reinterpret_cast<WGPURenderPassEncoder>(allocation->object.get());
+    }
+
+    void ClientCommandEncoderClearBuffer(WGPUCommandEncoder cSelf, WGPUBuffer buffer, uint64_t offset, uint64_t size) {
+        auto self = reinterpret_cast<CommandEncoder*>(cSelf);
+        CommandEncoderClearBufferCmd cmd;
+
+        cmd.self = cSelf;
+
+
+        
+        cmd.buffer = buffer;
+        
+        cmd.offset = offset;
+        
+        cmd.size = size;
+
+        self->client->SerializeCommand(cmd);
+
     }
 
     void ClientCommandEncoderCopyBufferToBuffer(WGPUCommandEncoder cSelf, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size) {
@@ -222,10 +298,15 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.sourceOffset = sourceOffset;
+        
         cmd.destination = destination;
+        
         cmd.destinationOffset = destinationOffset;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -239,8 +320,11 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.destination = destination;
+        
         cmd.copySize = copySize;
 
         self->client->SerializeCommand(cmd);
@@ -254,8 +338,11 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.destination = destination;
+        
         cmd.copySize = copySize;
 
         self->client->SerializeCommand(cmd);
@@ -269,8 +356,11 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.destination = destination;
+        
         cmd.copySize = copySize;
 
         self->client->SerializeCommand(cmd);
@@ -284,8 +374,11 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.destination = destination;
+        
         cmd.copySize = copySize;
 
         self->client->SerializeCommand(cmd);
@@ -301,6 +394,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->CommandBufferAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -315,6 +409,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.message = message;
 
         self->client->SerializeCommand(cmd);
@@ -328,6 +423,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.markerLabel = markerLabel;
 
         self->client->SerializeCommand(cmd);
@@ -353,6 +449,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupLabel = groupLabel;
 
         self->client->SerializeCommand(cmd);
@@ -366,10 +463,15 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.querySet = querySet;
+        
         cmd.firstQuery = firstQuery;
+        
         cmd.queryCount = queryCount;
+        
         cmd.destination = destination;
+        
         cmd.destinationOffset = destinationOffset;
 
         self->client->SerializeCommand(cmd);
@@ -383,6 +485,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -396,9 +499,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.buffer = buffer;
+        
         cmd.bufferOffset = bufferOffset;
+        
         cmd.data = data;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -412,7 +519,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.querySet = querySet;
+        
         cmd.queryIndex = queryIndex;
 
         self->client->SerializeCommand(cmd);
@@ -448,8 +557,11 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.x = x;
+        
         cmd.y = y;
+        
         cmd.z = z;
 
         self->client->SerializeCommand(cmd);
@@ -463,7 +575,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indirectBuffer = indirectBuffer;
+        
         cmd.indirectOffset = indirectOffset;
 
         self->client->SerializeCommand(cmd);
@@ -489,6 +603,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.markerLabel = markerLabel;
 
         self->client->SerializeCommand(cmd);
@@ -514,6 +629,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupLabel = groupLabel;
 
         self->client->SerializeCommand(cmd);
@@ -527,9 +643,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupIndex = groupIndex;
+        
         cmd.group = group;
+        
         cmd.dynamicOffsetCount = dynamicOffsetCount;
+        
         cmd.dynamicOffsets = dynamicOffsets;
 
         self->client->SerializeCommand(cmd);
@@ -543,6 +663,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -556,6 +677,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.pipeline = pipeline;
 
         self->client->SerializeCommand(cmd);
@@ -569,7 +691,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.querySet = querySet;
+        
         cmd.queryIndex = queryIndex;
 
         self->client->SerializeCommand(cmd);
@@ -607,6 +731,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->BindGroupLayoutAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.groupIndex = groupIndex;
 
         self->client->SerializeCommand(cmd);
@@ -621,6 +746,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -658,6 +784,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->BindGroupAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -674,6 +801,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->BindGroupLayoutAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -696,6 +824,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->CommandEncoderAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -712,6 +841,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->ComputePipelineAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -740,6 +870,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->ExternalTextureAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.externalTextureDescriptor = externalTextureDescriptor;
 
         self->client->SerializeCommand(cmd);
@@ -756,6 +887,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->PipelineLayoutAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -772,6 +904,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->QuerySetAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -788,6 +921,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->RenderBundleEncoderAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -804,6 +938,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->RenderPipelineAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -826,6 +961,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->SamplerAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -842,6 +978,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->ShaderModuleAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -858,7 +995,9 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->SwapChainAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.surface = surface;
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -875,11 +1014,30 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->TextureAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
 
         return reinterpret_cast<WGPUTexture>(allocation->object.get());
+    }
+
+    void ClientDeviceDestroy(WGPUDevice cSelf) {
+        auto self = reinterpret_cast<Device*>(cSelf);
+        DeviceDestroyCmd cmd;
+
+        cmd.self = cSelf;
+
+
+
+        self->client->SerializeCommand(cmd);
+
+    }
+
+    static
+    uint32_t ClientDeviceEnumerateFeatures(WGPUDevice cSelf, WGPUFeatureName * features) {
+        auto self = reinterpret_cast<Device*>(cSelf);
+        return self->EnumerateFeatures( features);
     }
 
     static
@@ -892,6 +1050,12 @@ namespace dawn_wire { namespace client {
     WGPUQueue ClientDeviceGetQueue(WGPUDevice cSelf) {
         auto self = reinterpret_cast<Device*>(cSelf);
         return self->GetQueue();
+    }
+
+    static
+    bool ClientDeviceHasFeature(WGPUDevice cSelf, WGPUFeatureName feature) {
+        auto self = reinterpret_cast<Device*>(cSelf);
+        return self->HasFeature( feature);
     }
 
     static
@@ -995,6 +1159,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1032,11 +1197,18 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->SurfaceAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
 
         return reinterpret_cast<WGPUSurface>(allocation->object.get());
+    }
+
+    static
+    void ClientInstanceRequestAdapter(WGPUInstance cSelf, WGPURequestAdapterOptions const * options, WGPURequestAdapterCallback callback, void * userdata) {
+        auto self = reinterpret_cast<Instance*>(cSelf);
+        return self->RequestAdapter( options,  callback,  userdata);
     }
 
     void ClientInstanceRelease(WGPUInstance cObj) {
@@ -1068,6 +1240,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1115,6 +1288,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1150,9 +1324,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.source = source;
+        
         cmd.destination = destination;
+        
         cmd.copySize = copySize;
+        
         cmd.options = options;
 
         self->client->SerializeCommand(cmd);
@@ -1172,7 +1350,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.commandCount = commandCount;
+        
         cmd.commands = commands;
 
         self->client->SerializeCommand(cmd);
@@ -1242,9 +1422,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.vertexCount = vertexCount;
+        
         cmd.instanceCount = instanceCount;
+        
         cmd.firstVertex = firstVertex;
+        
         cmd.firstInstance = firstInstance;
 
         self->client->SerializeCommand(cmd);
@@ -1258,10 +1442,15 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indexCount = indexCount;
+        
         cmd.instanceCount = instanceCount;
+        
         cmd.firstIndex = firstIndex;
+        
         cmd.baseVertex = baseVertex;
+        
         cmd.firstInstance = firstInstance;
 
         self->client->SerializeCommand(cmd);
@@ -1275,7 +1464,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indirectBuffer = indirectBuffer;
+        
         cmd.indirectOffset = indirectOffset;
 
         self->client->SerializeCommand(cmd);
@@ -1289,7 +1480,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indirectBuffer = indirectBuffer;
+        
         cmd.indirectOffset = indirectOffset;
 
         self->client->SerializeCommand(cmd);
@@ -1305,6 +1498,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->RenderBundleAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -1319,6 +1513,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.markerLabel = markerLabel;
 
         self->client->SerializeCommand(cmd);
@@ -1344,6 +1539,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupLabel = groupLabel;
 
         self->client->SerializeCommand(cmd);
@@ -1357,9 +1553,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupIndex = groupIndex;
+        
         cmd.group = group;
+        
         cmd.dynamicOffsetCount = dynamicOffsetCount;
+        
         cmd.dynamicOffsets = dynamicOffsets;
 
         self->client->SerializeCommand(cmd);
@@ -1373,9 +1573,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.buffer = buffer;
+        
         cmd.format = format;
+        
         cmd.offset = offset;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -1389,6 +1593,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1402,6 +1607,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.pipeline = pipeline;
 
         self->client->SerializeCommand(cmd);
@@ -1415,9 +1621,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.slot = slot;
+        
         cmd.buffer = buffer;
+        
         cmd.offset = offset;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -1453,6 +1663,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.queryIndex = queryIndex;
 
         self->client->SerializeCommand(cmd);
@@ -1466,9 +1677,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.vertexCount = vertexCount;
+        
         cmd.instanceCount = instanceCount;
+        
         cmd.firstVertex = firstVertex;
+        
         cmd.firstInstance = firstInstance;
 
         self->client->SerializeCommand(cmd);
@@ -1482,10 +1697,15 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indexCount = indexCount;
+        
         cmd.instanceCount = instanceCount;
+        
         cmd.firstIndex = firstIndex;
+        
         cmd.baseVertex = baseVertex;
+        
         cmd.firstInstance = firstInstance;
 
         self->client->SerializeCommand(cmd);
@@ -1499,7 +1719,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indirectBuffer = indirectBuffer;
+        
         cmd.indirectOffset = indirectOffset;
 
         self->client->SerializeCommand(cmd);
@@ -1513,7 +1735,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.indirectBuffer = indirectBuffer;
+        
         cmd.indirectOffset = indirectOffset;
 
         self->client->SerializeCommand(cmd);
@@ -1551,7 +1775,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.bundlesCount = bundlesCount;
+        
         cmd.bundles = bundles;
 
         self->client->SerializeCommand(cmd);
@@ -1565,6 +1791,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.markerLabel = markerLabel;
 
         self->client->SerializeCommand(cmd);
@@ -1590,6 +1817,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupLabel = groupLabel;
 
         self->client->SerializeCommand(cmd);
@@ -1603,9 +1831,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.groupIndex = groupIndex;
+        
         cmd.group = group;
+        
         cmd.dynamicOffsetCount = dynamicOffsetCount;
+        
         cmd.dynamicOffsets = dynamicOffsets;
 
         self->client->SerializeCommand(cmd);
@@ -1619,6 +1851,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.color = color;
 
         self->client->SerializeCommand(cmd);
@@ -1632,9 +1865,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.buffer = buffer;
+        
         cmd.format = format;
+        
         cmd.offset = offset;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -1648,6 +1885,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1661,6 +1899,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.pipeline = pipeline;
 
         self->client->SerializeCommand(cmd);
@@ -1674,9 +1913,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.x = x;
+        
         cmd.y = y;
+        
         cmd.width = width;
+        
         cmd.height = height;
 
         self->client->SerializeCommand(cmd);
@@ -1690,6 +1933,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.reference = reference;
 
         self->client->SerializeCommand(cmd);
@@ -1703,9 +1947,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.slot = slot;
+        
         cmd.buffer = buffer;
+        
         cmd.offset = offset;
+        
         cmd.size = size;
 
         self->client->SerializeCommand(cmd);
@@ -1719,11 +1967,17 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.x = x;
+        
         cmd.y = y;
+        
         cmd.width = width;
+        
         cmd.height = height;
+        
         cmd.minDepth = minDepth;
+        
         cmd.maxDepth = maxDepth;
 
         self->client->SerializeCommand(cmd);
@@ -1737,7 +1991,9 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.querySet = querySet;
+        
         cmd.queryIndex = queryIndex;
 
         self->client->SerializeCommand(cmd);
@@ -1775,6 +2031,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->BindGroupLayoutAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.groupIndex = groupIndex;
 
         self->client->SerializeCommand(cmd);
@@ -1789,6 +2046,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1824,6 +2082,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1865,6 +2124,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -1922,9 +2182,13 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.format = format;
+        
         cmd.allowedUsage = allowedUsage;
+        
         cmd.width = width;
+        
         cmd.height = height;
 
         self->client->SerializeCommand(cmd);
@@ -1989,6 +2253,7 @@ namespace dawn_wire { namespace client {
         auto* allocation = self->client->TextureViewAllocator().New(self->client);
         cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
 
+        
         cmd.descriptor = descriptor;
 
         self->client->SerializeCommand(cmd);
@@ -2015,6 +2280,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -2050,6 +2316,7 @@ namespace dawn_wire { namespace client {
         cmd.self = cSelf;
 
 
+        
         cmd.label = label;
 
         self->client->SerializeCommand(cmd);
@@ -2088,6 +2355,13 @@ namespace dawn_wire { namespace client {
             const char* name;
         };
         static const ProcEntry sProcMap[] = {
+            { reinterpret_cast<WGPUProc>(ClientAdapterEnumerateFeatures), "wgpuAdapterEnumerateFeatures" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterGetLimits), "wgpuAdapterGetLimits" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterGetProperties), "wgpuAdapterGetProperties" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterHasFeature), "wgpuAdapterHasFeature" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterReference), "wgpuAdapterReference" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterRelease), "wgpuAdapterRelease" },
+            { reinterpret_cast<WGPUProc>(ClientAdapterRequestDevice), "wgpuAdapterRequestDevice" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutReference), "wgpuBindGroupLayoutReference" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutRelease), "wgpuBindGroupLayoutRelease" },
             { reinterpret_cast<WGPUProc>(ClientBindGroupLayoutSetLabel), "wgpuBindGroupLayoutSetLabel" },
@@ -2107,6 +2381,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientCommandBufferSetLabel), "wgpuCommandBufferSetLabel" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderBeginComputePass), "wgpuCommandEncoderBeginComputePass" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderBeginRenderPass), "wgpuCommandEncoderBeginRenderPass" },
+            { reinterpret_cast<WGPUProc>(ClientCommandEncoderClearBuffer), "wgpuCommandEncoderClearBuffer" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderCopyBufferToBuffer), "wgpuCommandEncoderCopyBufferToBuffer" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderCopyBufferToTexture), "wgpuCommandEncoderCopyBufferToTexture" },
             { reinterpret_cast<WGPUProc>(ClientCommandEncoderCopyTextureToBuffer), "wgpuCommandEncoderCopyTextureToBuffer" },
@@ -2156,8 +2431,11 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientDeviceCreateShaderModule), "wgpuDeviceCreateShaderModule" },
             { reinterpret_cast<WGPUProc>(ClientDeviceCreateSwapChain), "wgpuDeviceCreateSwapChain" },
             { reinterpret_cast<WGPUProc>(ClientDeviceCreateTexture), "wgpuDeviceCreateTexture" },
+            { reinterpret_cast<WGPUProc>(ClientDeviceDestroy), "wgpuDeviceDestroy" },
+            { reinterpret_cast<WGPUProc>(ClientDeviceEnumerateFeatures), "wgpuDeviceEnumerateFeatures" },
             { reinterpret_cast<WGPUProc>(ClientDeviceGetLimits), "wgpuDeviceGetLimits" },
             { reinterpret_cast<WGPUProc>(ClientDeviceGetQueue), "wgpuDeviceGetQueue" },
+            { reinterpret_cast<WGPUProc>(ClientDeviceHasFeature), "wgpuDeviceHasFeature" },
             { reinterpret_cast<WGPUProc>(ClientDeviceInjectError), "wgpuDeviceInjectError" },
             { reinterpret_cast<WGPUProc>(ClientDeviceLoseForTesting), "wgpuDeviceLoseForTesting" },
             { reinterpret_cast<WGPUProc>(ClientDevicePopErrorScope), "wgpuDevicePopErrorScope" },
@@ -2175,6 +2453,7 @@ namespace dawn_wire { namespace client {
             { reinterpret_cast<WGPUProc>(ClientInstanceCreateSurface), "wgpuInstanceCreateSurface" },
             { reinterpret_cast<WGPUProc>(ClientInstanceReference), "wgpuInstanceReference" },
             { reinterpret_cast<WGPUProc>(ClientInstanceRelease), "wgpuInstanceRelease" },
+            { reinterpret_cast<WGPUProc>(ClientInstanceRequestAdapter), "wgpuInstanceRequestAdapter" },
             { reinterpret_cast<WGPUProc>(ClientPipelineLayoutReference), "wgpuPipelineLayoutReference" },
             { reinterpret_cast<WGPUProc>(ClientPipelineLayoutRelease), "wgpuPipelineLayoutRelease" },
             { reinterpret_cast<WGPUProc>(ClientPipelineLayoutSetLabel), "wgpuPipelineLayoutSetLabel" },
@@ -2296,8 +2575,15 @@ namespace dawn_wire { namespace client {
     }
 
     static DawnProcTable gProcTable = {
-        ClientGetProcAddress,
         ClientCreateInstance,
+        ClientGetProcAddress,
+        ClientAdapterEnumerateFeatures,
+        ClientAdapterGetLimits,
+        ClientAdapterGetProperties,
+        ClientAdapterHasFeature,
+        ClientAdapterRequestDevice,
+        ClientAdapterReference,
+        ClientAdapterRelease,
         ClientBindGroupSetLabel,
         ClientBindGroupReference,
         ClientBindGroupRelease,
@@ -2317,6 +2603,7 @@ namespace dawn_wire { namespace client {
         ClientCommandBufferRelease,
         ClientCommandEncoderBeginComputePass,
         ClientCommandEncoderBeginRenderPass,
+        ClientCommandEncoderClearBuffer,
         ClientCommandEncoderCopyBufferToBuffer,
         ClientCommandEncoderCopyBufferToTexture,
         ClientCommandEncoderCopyTextureToBuffer,
@@ -2366,8 +2653,11 @@ namespace dawn_wire { namespace client {
         ClientDeviceCreateShaderModule,
         ClientDeviceCreateSwapChain,
         ClientDeviceCreateTexture,
+        ClientDeviceDestroy,
+        ClientDeviceEnumerateFeatures,
         ClientDeviceGetLimits,
         ClientDeviceGetQueue,
+        ClientDeviceHasFeature,
         ClientDeviceInjectError,
         ClientDeviceLoseForTesting,
         ClientDevicePopErrorScope,
@@ -2383,6 +2673,7 @@ namespace dawn_wire { namespace client {
         ClientExternalTextureReference,
         ClientExternalTextureRelease,
         ClientInstanceCreateSurface,
+        ClientInstanceRequestAdapter,
         ClientInstanceReference,
         ClientInstanceRelease,
         ClientPipelineLayoutSetLabel,

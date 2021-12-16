@@ -140,6 +140,12 @@ namespace dawn_native {
         ChainedStruct const * nextInChain = nullptr;
         bool flipY = false;
         wgpu::AlphaOp alphaOp = wgpu::AlphaOp::DontChange;
+        bool needsColorSpaceConversion = false;
+        wgpu::AlphaMode srcAlphaMode = wgpu::AlphaMode::Unpremultiplied;
+        float const * srcTransferFunctionParameters = nullptr;
+        float const * conversionMatrix = nullptr;
+        float const * dstTransferFunctionParameters = nullptr;
+        wgpu::AlphaMode dstAlphaMode = wgpu::AlphaMode::Unpremultiplied;
 
         // Equality operators, mostly for testing. Note that this tests
         // strict pointer-pointer equality if the struct contains member pointers.
@@ -346,6 +352,17 @@ namespace dawn_native {
         // Equality operators, mostly for testing. Note that this tests
         // strict pointer-pointer equality if the struct contains member pointers.
         bool operator==(const RenderPassDepthStencilAttachment& rhs) const;
+    };
+
+    struct RequestAdapterOptions {
+        ChainedStruct const * nextInChain = nullptr;
+        SurfaceBase* compatibleSurface = nullptr;
+        wgpu::PowerPreference powerPreference = wgpu::PowerPreference::Undefined;
+        bool forceFallbackAdapter = false;
+
+        // Equality operators, mostly for testing. Note that this tests
+        // strict pointer-pointer equality if the struct contains member pointers.
+        bool operator==(const RequestAdapterOptions& rhs) const;
     };
 
     struct SamplerBindingLayout {
@@ -754,6 +771,18 @@ namespace dawn_native {
         // Equality operators, mostly for testing. Note that this tests
         // strict pointer-pointer equality if the struct contains member pointers.
         bool operator==(const ComputePipelineDescriptor& rhs) const;
+    };
+
+    struct DeviceDescriptor {
+        ChainedStruct const * nextInChain = nullptr;
+        char const * label = nullptr;
+        uint32_t requiredFeaturesCount = 0;
+        wgpu::FeatureName const * requiredFeatures = nullptr;
+        RequiredLimits const * requiredLimits = nullptr;
+
+        // Equality operators, mostly for testing. Note that this tests
+        // strict pointer-pointer equality if the struct contains member pointers.
+        bool operator==(const DeviceDescriptor& rhs) const;
     };
 
     struct DeviceProperties {

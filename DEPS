@@ -12,6 +12,7 @@ vars = {
   'dawn_node': False, # Also fetches dependencies required for building NodeJS bindings.
   'dawn_cmake_version': 'version:3.13.5',
   'dawn_cmake_win32_sha1': 'b106d66bcdc8a71ea2cdf5446091327bfdb1bcd7',
+  'dawn_gn_version': 'git_revision:fc295f3ac7ca4fe7acc6cb5fb052d22909ef3a8f',
   'dawn_go_version': 'version:1.16',
 }
 
@@ -33,7 +34,7 @@ deps = {
   'buildtools/linux64': {
     'packages': [{
       'package': 'gn/gn/linux-amd64',
-      'version': 'git_revision:dfcbc6fed0a8352696f92d67ccad54048ad182b3',
+      'version': Var('dawn_gn_version'),
     }],
     'dep_type': 'cipd',
     'condition': 'dawn_standalone and host_os == "linux"',
@@ -41,7 +42,7 @@ deps = {
   'buildtools/mac': {
     'packages': [{
       'package': 'gn/gn/mac-${{arch}}',
-      'version': 'git_revision:dfcbc6fed0a8352696f92d67ccad54048ad182b3',
+      'version': Var('dawn_gn_version'),
     }],
     'dep_type': 'cipd',
     'condition': 'dawn_standalone and host_os == "mac"',
@@ -49,7 +50,7 @@ deps = {
   'buildtools/win': {
     'packages': [{
       'package': 'gn/gn/windows-amd64',
-      'version': 'git_revision:dfcbc6fed0a8352696f92d67ccad54048ad182b3',
+      'version': Var('dawn_gn_version'),
     }],
     'dep_type': 'cipd',
     'condition': 'dawn_standalone and host_os == "win"',
@@ -100,18 +101,12 @@ deps = {
 
   # WGSL support
   'third_party/tint': {
-    'url': '{dawn_git}/tint@77e2c6f0b2479d286406c2dc8802ba93c79ca5fb',
+    'url': '{dawn_git}/tint@9360046a86f67db1794f05ad33655e3305bfa695',
   },
 
   # GLFW for tests and samples
   'third_party/glfw': {
     'url': '{chromium_git}/external/github.com/glfw/glfw@94773111300fee0453844a4c9407af7e880b4df8',
-    'condition': 'dawn_standalone',
-  },
-
-  # Dependencies for samples: GLM
-  'third_party/glm': {
-    'url': '{github_git}/g-truc/glm.git@bf71a834948186f4097caa076cd2663c69a10e1e',
     'condition': 'dawn_standalone',
   },
 
@@ -121,7 +116,7 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@17261f3bffe2475cab26117719afc62c9fb794e3',
+    'url': '{chromium_git}/angle/angle@8419f4fcd1ec05ffac0ac51a1ac73f343dab00f4',
     'condition': 'dawn_standalone',
   },
 

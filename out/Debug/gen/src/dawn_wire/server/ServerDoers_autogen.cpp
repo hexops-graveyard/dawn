@@ -4,6 +4,7 @@
 
 namespace dawn_wire { namespace server {
 
+
     bool Server::DoBindGroupLayoutSetLabel(WGPUBindGroupLayout self, char const * label) {
         
         mProcs.bindGroupLayoutSetLabel(self, label);
@@ -53,6 +54,12 @@ namespace dawn_wire { namespace server {
         *result =
         mProcs.commandEncoderBeginRenderPass(self, descriptor);
         ASSERT(*result != nullptr);
+        return true;
+    }
+
+    bool Server::DoCommandEncoderClearBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t offset, uint64_t size) {
+        
+        mProcs.commandEncoderClearBuffer(self, buffer, offset, size);
         return true;
     }
 
@@ -316,6 +323,12 @@ namespace dawn_wire { namespace server {
         return true;
     }
 
+    bool Server::DoDeviceDestroy(WGPUDevice self) {
+        
+        mProcs.deviceDestroy(self);
+        return true;
+    }
+
     bool Server::DoDeviceGetQueue(WGPUDevice self, WGPUQueue* result) {
         *result =
         mProcs.deviceGetQueue(self);
@@ -366,6 +379,7 @@ namespace dawn_wire { namespace server {
         ASSERT(*result != nullptr);
         return true;
     }
+
 
     bool Server::DoPipelineLayoutSetLabel(WGPUPipelineLayout self, char const * label) {
         
@@ -681,6 +695,25 @@ namespace dawn_wire { namespace server {
         }
 
         switch(objectType) {
+            case ObjectType::Adapter: {
+                auto* data = AdapterObjects().Get(objectId);
+                if (data == nullptr) {
+                    return false;
+                }
+                if (data->deviceInfo != nullptr) {
+                    if (!UntrackDeviceChild(data->deviceInfo, objectType, objectId)) {
+                        return false;
+                    }
+                }
+                if (data->state == AllocationState::Allocated) {
+                    ASSERT(data->handle != nullptr);
+
+
+                    mProcs.adapterRelease(data->handle);
+                }
+                AdapterObjects().Free(objectId);
+                return true;
+            }
             case ObjectType::BindGroup: {
                 auto* data = BindGroupObjects().Get(objectId);
                 if (data == nullptr) {

@@ -248,14 +248,9 @@ namespace dawn_native {
             DAWN_TRY(ValidateFrontFace(descriptor->frontFace));
             DAWN_TRY(ValidateCullMode(descriptor->cullMode));
 
-            // Pipeline descriptors must have stripIndexFormat != undefined IFF they are using strip
-            // topologies.
-            if (IsStripPrimitiveTopology(descriptor->topology)) {
-                DAWN_INVALID_IF(
-                    descriptor->stripIndexFormat == wgpu::IndexFormat::Undefined,
-                    "StripIndexFormat is undefined when using a strip primitive topology (%s).",
-                    descriptor->topology);
-            } else {
+            // Pipeline descriptors must have stripIndexFormat == undefined if they are using
+            // non-strip topologies.
+            if (!IsStripPrimitiveTopology(descriptor->topology)) {
                 DAWN_INVALID_IF(
                     descriptor->stripIndexFormat != wgpu::IndexFormat::Undefined,
                     "StripIndexFormat (%s) is not undefined when using a non-strip primitive "
@@ -292,6 +287,19 @@ namespace dawn_native {
                                 std::isnan(descriptor->depthBiasClamp),
                             "Either depthBiasSlopeScale (%f) or depthBiasClamp (%f) is NaN.",
                             descriptor->depthBiasSlopeScale, descriptor->depthBiasClamp);
+
+            DAWN_INVALID_IF(
+                !format->HasDepth() && (descriptor->depthCompare != wgpu::CompareFunction::Always ||
+                                        descriptor->depthWriteEnabled),
+                "Depth stencil format (%s) doesn't have depth aspect while depthCompare (%s) is "
+                "not %s or depthWriteEnabled (%u) is true.",
+                descriptor->format, descriptor->depthCompare, wgpu::CompareFunction::Always,
+                descriptor->depthWriteEnabled);
+
+            DAWN_INVALID_IF(!format->HasStencil() && StencilTestEnabled(descriptor),
+                            "Depth stencil format (%s) doesn't have stencil aspect while stencil "
+                            "test or stencil write is enabled.",
+                            descriptor->format);
 
             return {};
         }
@@ -683,17 +691,15 @@ namespace dawn_native {
 
     RenderPipelineBase::~RenderPipelineBase() = default;
 
-    bool RenderPipelineBase::Destroy() {
-        bool wasDestroyed = ApiObjectBase::Destroy();
-        if (wasDestroyed && IsCachedReference()) {
-            // Do not uncache the actual cached object if we are a blueprint or already destroyed.
+    void RenderPipelineBase::DestroyImpl() {
+        if (IsCachedReference()) {
+            // Do not uncache the actual cached object if we are a blueprint.
             GetDevice()->UncacheRenderPipeline(this);
         }
 
         // Remove reference to the attachment state so that we don't have lingering references to
         // it preventing it from being uncached in the device.
         mAttachmentState = nullptr;
-        return wasDestroyed;
     }
 
     // static

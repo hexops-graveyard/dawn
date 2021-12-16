@@ -129,7 +129,7 @@ std::ostream& operator<<(std::ostream& o, Field field) {
     return o;
 }
 
-DAWN_TEST_PARAM_STRUCT(ComputeLayoutMemoryBufferTestParams, StorageClass, Field)
+DAWN_TEST_PARAM_STRUCT(ComputeLayoutMemoryBufferTestParams, StorageClass, Field);
 
 class ComputeLayoutMemoryBufferTests
     : public DawnTestWithParams<ComputeLayoutMemoryBufferTestParams> {
@@ -174,17 +174,17 @@ struct Data {
     footer : u32;
 };
 
-[[block]] struct Input {
+struct Input {
     header : u32;
     {data_align}data : Data;
     {footer_align}footer : u32;
 };
 
-[[block]] struct Output {
+struct Output {
     data : {field_type};
 };
 
-[[block]] struct Status {
+struct Status {
     code : u32;
 };
 

@@ -51,6 +51,7 @@
 #include "src/transform/decompose_memory_access.h"
 #include "src/transform/external_texture_transform.h"
 #include "src/transform/fold_trivial_single_use_lets.h"
+#include "src/transform/localize_struct_array_assignment.h"
 #include "src/transform/loop_to_for_loop.h"
 #include "src/transform/manager.h"
 #include "src/transform/num_workgroups_from_uniform.h"
@@ -144,6 +145,15 @@ SanitizedResult Sanitize(
       array_length_from_uniform.bindpoint_to_size_index;
 
   manager.Add<transform::Unshadow>();
+
+  // LocalizeStructArrayAssignment must come after:
+  // * SimplifyPointers, because it assumes assignment to arrays in structs are
+  // done directly, not indirectly.
+  // TODO(crbug.com/tint/1340): See if we can get rid of the duplicate
+  // SimplifyPointers transform. Can't do it right now because
+  // LocalizeStructArrayAssignment introduces pointers.
+  manager.Add<transform::SimplifyPointers>();
+  manager.Add<transform::LocalizeStructArrayAssignment>();
 
   // Attempt to convert `loop`s into for-loops. This is to try and massage the
   // output into something that will not cause FXC to choke or misbehave.
@@ -344,6 +354,181 @@ bool GeneratorImpl::EmitDynamicVectorAssignment(
   return true;
 }
 
+bool GeneratorImpl::EmitDynamicMatrixVectorAssignment(
+    const ast::AssignmentStatement* stmt,
+    const sem::Matrix* mat) {
+  auto name = utils::GetOrCreate(
+      dynamic_matrix_vector_write_, mat, [&]() -> std::string {
+        std::string fn;
+        {
+          std::ostringstream ss;
+          if (!EmitType(ss, mat, tint::ast::StorageClass::kInvalid,
+                        ast::Access::kUndefined, "")) {
+            return "";
+          }
+          fn = UniqueIdentifier("set_vector_" + ss.str());
+        }
+        {
+          auto out = line(&helpers_);
+          out << "void " << fn << "(inout ";
+          if (!EmitTypeAndName(out, mat, ast::StorageClass::kInvalid,
+                               ast::Access::kUndefined, "mat")) {
+            return "";
+          }
+          out << ", int col, ";
+          if (!EmitTypeAndName(out, mat->ColumnType(),
+                               ast::StorageClass::kInvalid,
+                               ast::Access::kUndefined, "val")) {
+            return "";
+          }
+          out << ") {";
+        }
+        {
+          ScopedIndent si(&helpers_);
+          line(&helpers_) << "switch (col) {";
+          {
+            ScopedIndent si2(&helpers_);
+            for (uint32_t i = 0; i < mat->columns(); ++i) {
+              line(&helpers_)
+                  << "case " << i << ": mat[" << i << "] = val; break;";
+            }
+          }
+          line(&helpers_) << "}";
+        }
+        line(&helpers_) << "}";
+        line(&helpers_);
+        return fn;
+      });
+
+  if (name.empty()) {
+    return false;
+  }
+
+  auto* ast_access_expr = stmt->lhs->As<ast::IndexAccessorExpression>();
+
+  auto out = line();
+  out << name << "(";
+  if (!EmitExpression(out, ast_access_expr->object)) {
+    return false;
+  }
+  out << ", ";
+  if (!EmitExpression(out, ast_access_expr->index)) {
+    return false;
+  }
+  out << ", ";
+  if (!EmitExpression(out, stmt->rhs)) {
+    return false;
+  }
+  out << ");";
+
+  return true;
+}
+
+bool GeneratorImpl::EmitDynamicMatrixScalarAssignment(
+    const ast::AssignmentStatement* stmt,
+    const sem::Matrix* mat) {
+  auto* lhs_col_access = stmt->lhs->As<ast::IndexAccessorExpression>();
+  auto* lhs_row_access =
+      lhs_col_access->object->As<ast::IndexAccessorExpression>();
+
+  auto name = utils::GetOrCreate(
+      dynamic_matrix_scalar_write_, mat, [&]() -> std::string {
+        std::string fn;
+        {
+          std::ostringstream ss;
+          if (!EmitType(ss, mat, tint::ast::StorageClass::kInvalid,
+                        ast::Access::kUndefined, "")) {
+            return "";
+          }
+          fn = UniqueIdentifier("set_scalar_" + ss.str());
+        }
+        {
+          auto out = line(&helpers_);
+          out << "void " << fn << "(inout ";
+          if (!EmitTypeAndName(out, mat, ast::StorageClass::kInvalid,
+                               ast::Access::kUndefined, "mat")) {
+            return "";
+          }
+          out << ", int col, int row, ";
+          if (!EmitTypeAndName(out, mat->type(), ast::StorageClass::kInvalid,
+                               ast::Access::kUndefined, "val")) {
+            return "";
+          }
+          out << ") {";
+        }
+        {
+          ScopedIndent si(&helpers_);
+          line(&helpers_) << "switch (col) {";
+          {
+            ScopedIndent si2(&helpers_);
+            auto* vec =
+                TypeOf(lhs_row_access->object)->UnwrapRef()->As<sem::Vector>();
+            for (uint32_t i = 0; i < mat->columns(); ++i) {
+              line(&helpers_) << "case " << i << ":";
+              {
+                auto vec_name = "mat[" + std::to_string(i) + "]";
+                ScopedIndent si3(&helpers_);
+                {
+                  auto out = line(&helpers_);
+                  switch (mat->rows()) {
+                    case 2:
+                      out << vec_name
+                          << " = (row.xx == int2(0, 1)) ? val.xx : " << vec_name
+                          << ";";
+                      break;
+                    case 3:
+                      out << vec_name
+                          << " = (row.xxx == int3(0, 1, 2)) ? val.xxx : "
+                          << vec_name << ";";
+                      break;
+                    case 4:
+                      out << vec_name
+                          << " = (row.xxxx == int4(0, 1, 2, 3)) ? val.xxxx : "
+                          << vec_name << ";";
+                      break;
+                    default:
+                      TINT_UNREACHABLE(Writer, builder_.Diagnostics())
+                          << "invalid vector size " << vec->Width();
+                      break;
+                  }
+                }
+                line(&helpers_) << "break;";
+              }
+            }
+          }
+          line(&helpers_) << "}";
+        }
+        line(&helpers_) << "}";
+        line(&helpers_);
+        return fn;
+      });
+
+  if (name.empty()) {
+    return false;
+  }
+
+  auto out = line();
+  out << name << "(";
+  if (!EmitExpression(out, lhs_row_access->object)) {
+    return false;
+  }
+  out << ", ";
+  if (!EmitExpression(out, lhs_col_access->index)) {
+    return false;
+  }
+  out << ", ";
+  if (!EmitExpression(out, lhs_row_access->index)) {
+    return false;
+  }
+  out << ", ";
+  if (!EmitExpression(out, stmt->rhs)) {
+    return false;
+  }
+  out << ");";
+
+  return true;
+}
+
 bool GeneratorImpl::EmitIndexAccessor(
     std::ostream& out,
     const ast::IndexAccessorExpression* expr) {
@@ -387,9 +572,34 @@ bool GeneratorImpl::EmitBitcast(std::ostream& out,
 }
 
 bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
-  if (auto* idx = stmt->lhs->As<ast::IndexAccessorExpression>()) {
-    if (auto* vec = TypeOf(idx->object)->UnwrapRef()->As<sem::Vector>()) {
-      auto* rhs_sem = builder_.Sem().Get(idx->index);
+  if (auto* lhs_access = stmt->lhs->As<ast::IndexAccessorExpression>()) {
+    // BUG(crbug.com/tint/1333): work around assignment of scalar to matrices
+    // with at least one dynamic index
+    if (auto* lhs_sub_access =
+            lhs_access->object->As<ast::IndexAccessorExpression>()) {
+      if (auto* mat =
+              TypeOf(lhs_sub_access->object)->UnwrapRef()->As<sem::Matrix>()) {
+        auto* rhs_col_idx_sem = builder_.Sem().Get(lhs_access->index);
+        auto* rhs_row_idx_sem = builder_.Sem().Get(lhs_sub_access->index);
+        if (!rhs_col_idx_sem->ConstantValue().IsValid() ||
+            !rhs_row_idx_sem->ConstantValue().IsValid()) {
+          return EmitDynamicMatrixScalarAssignment(stmt, mat);
+        }
+      }
+    }
+    // BUG(crbug.com/tint/1333): work around assignment of vector to matrices
+    // with dynamic indices
+    const auto* lhs_access_type = TypeOf(lhs_access->object)->UnwrapRef();
+    if (auto* mat = lhs_access_type->As<sem::Matrix>()) {
+      auto* lhs_index_sem = builder_.Sem().Get(lhs_access->index);
+      if (!lhs_index_sem->ConstantValue().IsValid()) {
+        return EmitDynamicMatrixVectorAssignment(stmt, mat);
+      }
+    }
+    // BUG(crbug.com/tint/534): work around assignment to vectors with dynamic
+    // indices
+    if (auto* vec = lhs_access_type->As<sem::Vector>()) {
+      auto* rhs_sem = builder_.Sem().Get(lhs_access->index);
       if (!rhs_sem->ConstantValue().IsValid()) {
         return EmitDynamicVectorAssignment(stmt, vec);
       }
@@ -671,7 +881,7 @@ bool GeneratorImpl::EmitIntrinsicCall(std::ostream& out,
                                       const sem::Intrinsic* intrinsic) {
   auto* expr = call->Declaration();
   if (intrinsic->IsTexture()) {
-    return EmitTextureCall(out, expr, intrinsic);
+    return EmitTextureCall(out, call, intrinsic);
   }
   if (intrinsic->Type() == sem::IntrinsicType::kSelect) {
     return EmitSelectCall(out, expr);
@@ -1749,11 +1959,12 @@ bool GeneratorImpl::EmitBarrierCall(std::ostream& out,
 }
 
 bool GeneratorImpl::EmitTextureCall(std::ostream& out,
-                                    const ast::CallExpression* expr,
+                                    const sem::Call* call,
                                     const sem::Intrinsic* intrinsic) {
   using Usage = sem::ParameterUsage;
 
   auto& signature = intrinsic->Signature();
+  auto* expr = call->Declaration();
   auto arguments = expr->args;
 
   // Returns the argument with the given usage
@@ -1986,6 +2197,30 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
       if (!texture_type->Is<sem::MultisampledTexture>()) {
         pack_level_in_coords = true;
       }
+      break;
+    case sem::IntrinsicType::kTextureGather:
+      out << ".Gather";
+      if (intrinsic->Parameters()[0]->Usage() ==
+          sem::ParameterUsage::kComponent) {
+        switch (call->Arguments()[0]->ConstantValue().Elements()[0].i32) {
+          case 0:
+            out << "Red";
+            break;
+          case 1:
+            out << "Green";
+            break;
+          case 2:
+            out << "Blue";
+            break;
+          case 3:
+            out << "Alpha";
+            break;
+        }
+      }
+      out << "(";
+      break;
+    case sem::IntrinsicType::kTextureGatherCompare:
+      out << ".GatherCmp(";
       break;
     case sem::IntrinsicType::kTextureStore:
       out << "[";

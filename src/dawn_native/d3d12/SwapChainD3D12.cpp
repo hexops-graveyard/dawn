@@ -83,7 +83,7 @@ namespace dawn_native { namespace d3d12 {
         : OldSwapChainBase(device, descriptor) {
         const auto& im = GetImplementation();
         DawnWSIContextD3D12 wsiContext = {};
-        wsiContext.device = reinterpret_cast<WGPUDevice>(GetDevice());
+        wsiContext.device = ToAPI(GetDevice());
         im.Init(im.userData, &wsiContext);
 
         ASSERT(im.textureUsage != WGPUTextureUsage_None);
@@ -144,6 +144,7 @@ namespace dawn_native { namespace d3d12 {
     SwapChain::~SwapChain() = default;
 
     void SwapChain::DestroyImpl() {
+        SwapChainBase::DestroyImpl();
         DetachFromSurface();
     }
 

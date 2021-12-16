@@ -1,3 +1,0 @@
-LIBRARY test_icd_export_icd_gipa
-EXPORTS
-    vk_icdGetInstanceProcAddr

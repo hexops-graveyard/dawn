@@ -217,10 +217,11 @@ namespace dawn_native { namespace vulkan {
                 if (renderPass->attachmentState->HasDepthStencilAttachment()) {
                     const auto& attachmentInfo = renderPass->depthStencilAttachment;
 
-                    query.SetDepthStencil(attachmentInfo.view->GetTexture()->GetFormat().format,
-                                          attachmentInfo.depthLoadOp, attachmentInfo.depthStoreOp,
-                                          attachmentInfo.stencilLoadOp,
-                                          attachmentInfo.stencilStoreOp);
+                    query.SetDepthStencil(
+                        attachmentInfo.view->GetTexture()->GetFormat().format,
+                        attachmentInfo.depthLoadOp, attachmentInfo.depthStoreOp,
+                        attachmentInfo.stencilLoadOp, attachmentInfo.stencilStoreOp,
+                        attachmentInfo.depthReadOnly || attachmentInfo.stencilReadOnly);
                 }
 
                 query.SetSampleCount(renderPass->attachmentState->GetSampleCount());
@@ -702,6 +703,27 @@ namespace dawn_native { namespace vulkan {
                     } else {
                         RecordCopyImageWithTemporaryBuffer(recordingContext, src, dst,
                                                            copy->copySize);
+                    }
+
+                    break;
+                }
+
+                case Command::ClearBuffer: {
+                    ClearBufferCmd* cmd = mCommands.NextCommand<ClearBufferCmd>();
+                    if (cmd->size == 0) {
+                        // Skip no-op fills.
+                        break;
+                    }
+
+                    Buffer* dstBuffer = ToBackend(cmd->buffer.Get());
+                    bool clearedToZero = dstBuffer->EnsureDataInitializedAsDestination(
+                        recordingContext, cmd->offset, cmd->size);
+
+                    if (!clearedToZero) {
+                        dstBuffer->TransitionUsageNow(recordingContext, wgpu::BufferUsage::CopyDst);
+                        device->fn.CmdFillBuffer(recordingContext->commandBuffer,
+                                                 dstBuffer->GetHandle(), cmd->offset, cmd->size,
+                                                 0u);
                     }
 
                     break;
