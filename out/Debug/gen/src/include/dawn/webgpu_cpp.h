@@ -28,6 +28,11 @@ namespace wgpu {
         ClampToEdge = 0x00000002,
     };
 
+    enum class AlphaMode : uint32_t {
+        Premultiplied = 0x00000000,
+        Unpremultiplied = 0x00000001,
+    };
+
     enum class AlphaOp : uint32_t {
         DontChange = 0x00000000,
         Premultiply = 0x00000001,
@@ -130,9 +135,8 @@ namespace wgpu {
     };
 
     enum class ErrorFilter : uint32_t {
-        None = 0x00000000,
-        Validation = 0x00000001,
-        OutOfMemory = 0x00000002,
+        Validation = 0x00000000,
+        OutOfMemory = 0x00000001,
     };
 
     enum class ErrorType : uint32_t {
@@ -141,6 +145,22 @@ namespace wgpu {
         OutOfMemory = 0x00000002,
         Unknown = 0x00000003,
         DeviceLost = 0x00000004,
+    };
+
+    enum class FeatureName : uint32_t {
+        Undefined = 0x00000000,
+        Depth24UnormStencil8 = 0x00000002,
+        Depth32FloatStencil8 = 0x00000003,
+        TimestampQuery = 0x00000004,
+        PipelineStatisticsQuery = 0x00000005,
+        TextureCompressionBC = 0x00000006,
+        TextureCompressionETC2 = 0x00000007,
+        TextureCompressionASTC = 0x00000008,
+        IndirectFirstInstance = 0x00000009,
+        DepthClamping = 0x000003E8,
+        DawnShaderFloat16 = 0x000003E9,
+        DawnInternalUsages = 0x000003EA,
+        DawnMultiPlanarFormats = 0x000003EB,
     };
 
     enum class FilterMode : uint32_t {
@@ -179,6 +199,12 @@ namespace wgpu {
         ComputeShaderInvocations = 0x00000004,
     };
 
+    enum class PowerPreference : uint32_t {
+        Undefined = 0x00000000,
+        LowPower = 0x00000001,
+        HighPerformance = 0x00000002,
+    };
+
     enum class PresentMode : uint32_t {
         Immediate = 0x00000000,
         Mailbox = 0x00000001,
@@ -204,6 +230,13 @@ namespace wgpu {
         Error = 0x00000001,
         Unknown = 0x00000002,
         DeviceLost = 0x00000003,
+    };
+
+    enum class RequestAdapterStatus : uint32_t {
+        Success = 0x00000000,
+        Unavailable = 0x00000001,
+        Error = 0x00000002,
+        Unknown = 0x00000003,
     };
 
     enum class RequestDeviceStatus : uint32_t {
@@ -483,33 +516,6 @@ namespace wgpu {
     };
 
 
-    template<>
-    struct IsDawnBitmask<BufferUsage> {
-        static constexpr bool enable = true;
-    };
-
-    template<>
-    struct IsDawnBitmask<ColorWriteMask> {
-        static constexpr bool enable = true;
-    };
-
-    template<>
-    struct IsDawnBitmask<MapMode> {
-        static constexpr bool enable = true;
-    };
-
-    template<>
-    struct IsDawnBitmask<ShaderStage> {
-        static constexpr bool enable = true;
-    };
-
-    template<>
-    struct IsDawnBitmask<TextureUsage> {
-        static constexpr bool enable = true;
-    };
-
-
-    using Proc = WGPUProc;
     using BufferMapCallback = WGPUBufferMapCallback;
     using CompilationInfoCallback = WGPUCompilationInfoCallback;
     using CreateComputePipelineAsyncCallback = WGPUCreateComputePipelineAsyncCallback;
@@ -517,9 +523,12 @@ namespace wgpu {
     using DeviceLostCallback = WGPUDeviceLostCallback;
     using ErrorCallback = WGPUErrorCallback;
     using LoggingCallback = WGPULoggingCallback;
+    using Proc = WGPUProc;
     using QueueWorkDoneCallback = WGPUQueueWorkDoneCallback;
+    using RequestAdapterCallback = WGPURequestAdapterCallback;
     using RequestDeviceCallback = WGPURequestDeviceCallback;
 
+    class Adapter;
     class BindGroup;
     class BindGroupLayout;
     class Buffer;
@@ -572,6 +581,7 @@ namespace wgpu {
     struct RenderBundleDescriptor;
     struct RenderBundleEncoderDescriptor;
     struct RenderPassDepthStencilAttachment;
+    struct RequestAdapterOptions;
     struct SamplerBindingLayout;
     struct SamplerDescriptor;
     struct ShaderModuleDescriptor;
@@ -607,6 +617,7 @@ namespace wgpu {
     struct BindGroupLayoutDescriptor;
     struct ColorTargetState;
     struct ComputePipelineDescriptor;
+    struct DeviceDescriptor;
     struct DeviceProperties;
     struct RenderPassDescriptor;
     struct VertexState;
@@ -690,6 +701,23 @@ namespace wgpu {
 
 
 
+    class Adapter : public ObjectBase<Adapter, WGPUAdapter> {
+      public:
+        using ObjectBase::ObjectBase;
+        using ObjectBase::operator=;
+
+        uint32_t EnumerateFeatures(FeatureName * features) const;
+        bool GetLimits(SupportedLimits * limits) const;
+        void GetProperties(AdapterProperties * properties) const;
+        bool HasFeature(FeatureName feature) const;
+        void RequestDevice(DeviceDescriptor const * descriptor, RequestDeviceCallback callback, void * userdata) const;
+
+      private:
+        friend ObjectBase<Adapter, WGPUAdapter>;
+        static void WGPUReference(WGPUAdapter handle);
+        static void WGPURelease(WGPUAdapter handle);
+    };
+
     class BindGroup : public ObjectBase<BindGroup, WGPUBindGroup> {
       public:
         using ObjectBase::ObjectBase;
@@ -754,6 +782,7 @@ namespace wgpu {
 
         ComputePassEncoder BeginComputePass(ComputePassDescriptor const * descriptor = nullptr) const;
         RenderPassEncoder BeginRenderPass(RenderPassDescriptor const * descriptor) const;
+        void ClearBuffer(Buffer const& buffer, uint64_t offset = 0, uint64_t size = WGPU_WHOLE_SIZE) const;
         void CopyBufferToBuffer(Buffer const& source, uint64_t sourceOffset, Buffer const& destination, uint64_t destinationOffset, uint64_t size) const;
         void CopyBufferToTexture(ImageCopyBuffer const * source, ImageCopyTexture const * destination, Extent3D const * copySize) const;
         void CopyTextureToBuffer(ImageCopyTexture const * source, ImageCopyBuffer const * destination, Extent3D const * copySize) const;
@@ -833,8 +862,11 @@ namespace wgpu {
         ShaderModule CreateShaderModule(ShaderModuleDescriptor const * descriptor) const;
         SwapChain CreateSwapChain(Surface const& surface, SwapChainDescriptor const * descriptor) const;
         Texture CreateTexture(TextureDescriptor const * descriptor) const;
+        void Destroy() const;
+        uint32_t EnumerateFeatures(FeatureName * features) const;
         bool GetLimits(SupportedLimits * limits) const;
         Queue GetQueue() const;
+        bool HasFeature(FeatureName feature) const;
         void InjectError(ErrorType type, char const * message) const;
         void LoseForTesting() const;
         bool PopErrorScope(ErrorCallback callback, void * userdata) const;
@@ -870,6 +902,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         Surface CreateSurface(SurfaceDescriptor const * descriptor) const;
+        void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;
 
       private:
         friend ObjectBase<Instance, WGPUInstance>;
@@ -1089,7 +1122,7 @@ namespace wgpu {
 
 
     Instance CreateInstance(InstanceDescriptor const * descriptor = nullptr);
-    Proc GetProcAddress(Device const& device, const char* procName);
+    Proc GetProcAddress(Device device, char const * procName);
 
     struct ChainedStruct {
         ChainedStruct const * nextInChain = nullptr;
@@ -1184,6 +1217,12 @@ namespace wgpu {
         ChainedStruct const * nextInChain = nullptr;
         bool flipY = false;
         AlphaOp alphaOp = AlphaOp::DontChange;
+        bool needsColorSpaceConversion = false;
+        AlphaMode srcAlphaMode = AlphaMode::Unpremultiplied;
+        float const * srcTransferFunctionParameters = nullptr;
+        float const * conversionMatrix = nullptr;
+        float const * dstTransferFunctionParameters = nullptr;
+        AlphaMode dstAlphaMode = AlphaMode::Unpremultiplied;
     };
 
     struct DawnTextureInternalUsageDescriptor : ChainedStruct {
@@ -1322,6 +1361,13 @@ namespace wgpu {
         StoreOp stencilStoreOp;
         uint32_t clearStencil = 0;
         bool stencilReadOnly = false;
+    };
+
+    struct RequestAdapterOptions {
+        ChainedStruct const * nextInChain = nullptr;
+        Surface compatibleSurface = nullptr;
+        PowerPreference powerPreference = PowerPreference::Undefined;
+        bool forceFallbackAdapter = false;
     };
 
     struct SamplerBindingLayout {
@@ -1592,6 +1638,14 @@ namespace wgpu {
         ProgrammableStageDescriptor compute;
     };
 
+    struct DeviceDescriptor {
+        ChainedStruct const * nextInChain = nullptr;
+        char const * label = nullptr;
+        uint32_t requiredFeaturesCount = 0;
+        FeatureName const * requiredFeatures = nullptr;
+        RequiredLimits const * requiredLimits = nullptr;
+    };
+
     struct DeviceProperties {
         uint32_t deviceID;
         uint32_t vendorID;
@@ -1651,6 +1705,38 @@ namespace wgpu {
         FragmentState const * fragment = nullptr;
     };
 
+
+    // The operators of EnumClassBitmmasks in the dawn:: namespace need to be imported
+    // in the wgpu namespace for Argument Dependent Lookup.
+    DAWN_IMPORT_BITMASK_OPERATORS
 }  // namespace wgpu
+
+namespace dawn {
+    template<>
+    struct IsDawnBitmask<wgpu::BufferUsage> {
+        static constexpr bool enable = true;
+    };
+
+    template<>
+    struct IsDawnBitmask<wgpu::ColorWriteMask> {
+        static constexpr bool enable = true;
+    };
+
+    template<>
+    struct IsDawnBitmask<wgpu::MapMode> {
+        static constexpr bool enable = true;
+    };
+
+    template<>
+    struct IsDawnBitmask<wgpu::ShaderStage> {
+        static constexpr bool enable = true;
+    };
+
+    template<>
+    struct IsDawnBitmask<wgpu::TextureUsage> {
+        static constexpr bool enable = true;
+    };
+
+} // namespace dawn
 
 #endif // WEBGPU_CPP_H_

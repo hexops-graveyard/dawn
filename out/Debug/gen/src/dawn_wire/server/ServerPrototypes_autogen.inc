@@ -1,5 +1,8 @@
 
 // Command handlers & doers
+bool HandleAdapterRequestDevice(DeserializeBuffer* deserializeBuffer);
+
+bool DoAdapterRequestDevice(ObjectId adapterId, uint64_t requestSerial, ObjectHandle deviceObjectHandle, WGPUDeviceDescriptor const * descriptor);
 bool HandleBindGroupLayoutSetLabel(DeserializeBuffer* deserializeBuffer);
 
 bool DoBindGroupLayoutSetLabel(WGPUBindGroupLayout self, char const * label);
@@ -30,6 +33,9 @@ bool DoCommandEncoderBeginComputePass(WGPUCommandEncoder self, WGPUComputePassDe
 bool HandleCommandEncoderBeginRenderPass(DeserializeBuffer* deserializeBuffer);
 
 bool DoCommandEncoderBeginRenderPass(WGPUCommandEncoder self, WGPURenderPassDescriptor const * descriptor, WGPURenderPassEncoder* result);
+bool HandleCommandEncoderClearBuffer(DeserializeBuffer* deserializeBuffer);
+
+bool DoCommandEncoderClearBuffer(WGPUCommandEncoder self, WGPUBuffer buffer, uint64_t offset, uint64_t size);
 bool HandleCommandEncoderCopyBufferToBuffer(DeserializeBuffer* deserializeBuffer);
 
 bool DoCommandEncoderCopyBufferToBuffer(WGPUCommandEncoder self, WGPUBuffer source, uint64_t sourceOffset, WGPUBuffer destination, uint64_t destinationOffset, uint64_t size);
@@ -162,6 +168,9 @@ bool DoDeviceCreateSwapChain(WGPUDevice self, WGPUSurface surface, WGPUSwapChain
 bool HandleDeviceCreateTexture(DeserializeBuffer* deserializeBuffer);
 
 bool DoDeviceCreateTexture(WGPUDevice self, WGPUTextureDescriptor const * descriptor, WGPUTexture* result);
+bool HandleDeviceDestroy(DeserializeBuffer* deserializeBuffer);
+
+bool DoDeviceDestroy(WGPUDevice self);
 bool HandleDeviceGetQueue(DeserializeBuffer* deserializeBuffer);
 
 bool DoDeviceGetQueue(WGPUDevice self, WGPUQueue* result);
@@ -189,6 +198,9 @@ bool DoExternalTextureSetLabel(WGPUExternalTexture self, char const * label);
 bool HandleInstanceCreateSurface(DeserializeBuffer* deserializeBuffer);
 
 bool DoInstanceCreateSurface(WGPUInstance self, WGPUSurfaceDescriptor const * descriptor, WGPUSurface* result);
+bool HandleInstanceRequestAdapter(DeserializeBuffer* deserializeBuffer);
+
+bool DoInstanceRequestAdapter(ObjectId instanceId, uint64_t requestSerial, ObjectHandle adapterObjectHandle, WGPURequestAdapterOptions const * options);
 bool HandlePipelineLayoutSetLabel(DeserializeBuffer* deserializeBuffer);
 
 bool DoPipelineLayoutSetLabel(WGPUPipelineLayout self, char const * label);
@@ -207,12 +219,12 @@ bool DoQueueOnSubmittedWorkDone(ObjectId queueId, uint64_t signalValue, uint64_t
 bool HandleQueueSubmit(DeserializeBuffer* deserializeBuffer);
 
 bool DoQueueSubmit(WGPUQueue self, uint32_t commandCount, WGPUCommandBuffer const * commands);
-bool HandleQueueWriteBufferInternal(DeserializeBuffer* deserializeBuffer);
+bool HandleQueueWriteBuffer(DeserializeBuffer* deserializeBuffer);
 
-bool DoQueueWriteBufferInternal(ObjectId queueId, ObjectId bufferId, uint64_t bufferOffset, uint8_t const * data, uint64_t size);
-bool HandleQueueWriteTextureInternal(DeserializeBuffer* deserializeBuffer);
+bool DoQueueWriteBuffer(ObjectId queueId, ObjectId bufferId, uint64_t bufferOffset, uint8_t const * data, uint64_t size);
+bool HandleQueueWriteTexture(DeserializeBuffer* deserializeBuffer);
 
-bool DoQueueWriteTextureInternal(ObjectId queueId, WGPUImageCopyTexture const * destination, uint8_t const * data, uint64_t dataSize, WGPUTextureDataLayout const * dataLayout, WGPUExtent3D const * writeSize);
+bool DoQueueWriteTexture(ObjectId queueId, WGPUImageCopyTexture const * destination, uint8_t const * data, uint64_t dataSize, WGPUTextureDataLayout const * dataLayout, WGPUExtent3D const * writeSize);
 bool HandleRenderBundleEncoderDraw(DeserializeBuffer* deserializeBuffer);
 
 bool DoRenderBundleEncoderDraw(WGPURenderBundleEncoder self, uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);

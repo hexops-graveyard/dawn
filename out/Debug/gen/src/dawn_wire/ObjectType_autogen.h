@@ -7,6 +7,7 @@
 namespace dawn_wire {
 
     enum class ObjectType : uint32_t {
+        Adapter,
         BindGroup,
         BindGroupLayout,
         Buffer,
@@ -33,7 +34,7 @@ namespace dawn_wire {
     };
 
     template <typename T>
-    using PerObjectType = ityp::array<ObjectType, T, 23>;
+    using PerObjectType = ityp::array<ObjectType, T, 24>;
 
 } // namespace dawn_wire
 

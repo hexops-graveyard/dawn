@@ -19,6 +19,12 @@ namespace dawn_wire { namespace server {
       protected:
         void DestroyAllObjects(const DawnProcTable& procs) {
             {
+                std::vector<WGPUAdapter> handles = mKnownAdapter.AcquireAllHandles();
+                for (WGPUAdapter handle : handles) {
+                    procs.adapterRelease(handle);
+                }
+            }
+            {
                 std::vector<WGPUBindGroup> handles = mKnownBindGroup.AcquireAllHandles();
                 for (WGPUBindGroup handle : handles) {
                     procs.bindGroupRelease(handle);
@@ -158,6 +164,12 @@ namespace dawn_wire { namespace server {
             }
         }
 
+        const KnownObjects<WGPUAdapter>& AdapterObjects() const {
+            return mKnownAdapter;
+        }
+        KnownObjects<WGPUAdapter>& AdapterObjects() {
+            return mKnownAdapter;
+        }
         const KnownObjects<WGPUBindGroup>& BindGroupObjects() const {
             return mKnownBindGroup;
         }
@@ -300,6 +312,24 @@ namespace dawn_wire { namespace server {
 
       private:
         // Implementation of the ObjectIdResolver interface
+        WireResult GetFromId(ObjectId id, WGPUAdapter* out) const final {
+            auto data = mKnownAdapter.Get(id);
+            if (data == nullptr) {
+                return WireResult::FatalError;
+            }
+
+            *out = data->handle;
+            return WireResult::Success;
+        }
+
+        WireResult GetOptionalFromId(ObjectId id, WGPUAdapter* out) const final {
+            if (id == 0) {
+                *out = nullptr;
+                return WireResult::Success;
+            }
+
+            return GetFromId(id, out);
+        }
         WireResult GetFromId(ObjectId id, WGPUBindGroup* out) const final {
             auto data = mKnownBindGroup.Get(id);
             if (data == nullptr) {
@@ -715,6 +745,7 @@ namespace dawn_wire { namespace server {
             return GetFromId(id, out);
         }
 
+        KnownObjects<WGPUAdapter> mKnownAdapter;
         KnownObjects<WGPUBindGroup> mKnownBindGroup;
         KnownObjects<WGPUBindGroupLayout> mKnownBindGroupLayout;
         KnownObjects<WGPUBuffer> mKnownBuffer;

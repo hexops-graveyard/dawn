@@ -11,6 +11,7 @@ namespace dawn_native {
     // Helper functions to check the value of enums and bitmasks
     MaybeError ValidateAdapterType(wgpu::AdapterType value);
     MaybeError ValidateAddressMode(wgpu::AddressMode value);
+    MaybeError ValidateAlphaMode(wgpu::AlphaMode value);
     MaybeError ValidateAlphaOp(wgpu::AlphaOp value);
     MaybeError ValidateBackendType(wgpu::BackendType value);
     MaybeError ValidateBlendFactor(wgpu::BlendFactor value);
@@ -25,16 +26,19 @@ namespace dawn_native {
     MaybeError ValidateDeviceLostReason(wgpu::DeviceLostReason value);
     MaybeError ValidateErrorFilter(wgpu::ErrorFilter value);
     MaybeError ValidateErrorType(wgpu::ErrorType value);
+    MaybeError ValidateFeatureName(wgpu::FeatureName value);
     MaybeError ValidateFilterMode(wgpu::FilterMode value);
     MaybeError ValidateFrontFace(wgpu::FrontFace value);
     MaybeError ValidateIndexFormat(wgpu::IndexFormat value);
     MaybeError ValidateLoadOp(wgpu::LoadOp value);
     MaybeError ValidateLoggingType(wgpu::LoggingType value);
     MaybeError ValidatePipelineStatisticName(wgpu::PipelineStatisticName value);
+    MaybeError ValidatePowerPreference(wgpu::PowerPreference value);
     MaybeError ValidatePresentMode(wgpu::PresentMode value);
     MaybeError ValidatePrimitiveTopology(wgpu::PrimitiveTopology value);
     MaybeError ValidateQueryType(wgpu::QueryType value);
     MaybeError ValidateQueueWorkDoneStatus(wgpu::QueueWorkDoneStatus value);
+    MaybeError ValidateRequestAdapterStatus(wgpu::RequestAdapterStatus value);
     MaybeError ValidateRequestDeviceStatus(wgpu::RequestDeviceStatus value);
     MaybeError ValidateSType(wgpu::SType value);
     MaybeError ValidateSamplerBindingType(wgpu::SamplerBindingType value);

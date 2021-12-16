@@ -5,6 +5,8 @@ namespace dawn_native {
 
     const char* ObjectTypeAsString(ObjectType type) {
         switch (type) {
+            case ObjectType::Adapter:
+                return "Adapter";
             case ObjectType::BindGroup:
                 return "BindGroup";
             case ObjectType::BindGroupLayout:

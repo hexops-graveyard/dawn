@@ -5,6 +5,23 @@
 #include <string>
 
 namespace dawn_wire { namespace client {
+    bool Client::HandleAdapterRequestDeviceCallback(DeserializeBuffer* deserializeBuffer) {
+        ReturnAdapterRequestDeviceCallbackCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        Adapter* adapter = AdapterAllocator().GetObject(cmd.adapter.id);
+        uint32_t adapterGeneration = AdapterAllocator().GetGeneration(cmd.adapter.id);
+        if (adapterGeneration != cmd.adapter.generation) {
+            adapter = nullptr;
+        }
+
+        return DoAdapterRequestDeviceCallback(adapter, cmd.requestSerial, cmd.status, cmd.message, cmd.limits, cmd.featuresCount, cmd.features);
+    }
     bool Client::HandleBufferMapAsyncCallback(DeserializeBuffer* deserializeBuffer) {
         ReturnBufferMapAsyncCallbackCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator);
@@ -124,6 +141,23 @@ namespace dawn_wire { namespace client {
 
         return DoDeviceUncapturedErrorCallback(device, cmd.type, cmd.message);
     }
+    bool Client::HandleInstanceRequestAdapterCallback(DeserializeBuffer* deserializeBuffer) {
+        ReturnInstanceRequestAdapterCallbackCmd cmd;
+        WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator);
+
+        if (deserializeResult == WireResult::FatalError) {
+            return false;
+        }
+
+
+        Instance* instance = InstanceAllocator().GetObject(cmd.instance.id);
+        uint32_t instanceGeneration = InstanceAllocator().GetGeneration(cmd.instance.id);
+        if (instanceGeneration != cmd.instance.generation) {
+            instance = nullptr;
+        }
+
+        return DoInstanceRequestAdapterCallback(instance, cmd.requestSerial, cmd.status, cmd.message, cmd.properties, cmd.limits, cmd.featuresCount, cmd.features);
+    }
     bool Client::HandleQueueWorkDoneCallback(DeserializeBuffer* deserializeBuffer) {
         ReturnQueueWorkDoneCallbackCmd cmd;
         WireResult deserializeResult = cmd.Deserialize(deserializeBuffer, &mAllocator);
@@ -178,6 +212,9 @@ namespace dawn_wire { namespace client {
                 deserializeBuffer.Buffer() + sizeof(CmdHeader)));
             bool success = false;
             switch (cmdId) {
+                case ReturnWireCmd::AdapterRequestDeviceCallback:
+                    success = HandleAdapterRequestDeviceCallback(&deserializeBuffer);
+                    break;
                 case ReturnWireCmd::BufferMapAsyncCallback:
                     success = HandleBufferMapAsyncCallback(&deserializeBuffer);
                     break;
@@ -198,6 +235,9 @@ namespace dawn_wire { namespace client {
                     break;
                 case ReturnWireCmd::DeviceUncapturedErrorCallback:
                     success = HandleDeviceUncapturedErrorCallback(&deserializeBuffer);
+                    break;
+                case ReturnWireCmd::InstanceRequestAdapterCallback:
+                    success = HandleInstanceRequestAdapterCallback(&deserializeBuffer);
                     break;
                 case ReturnWireCmd::QueueWorkDoneCallback:
                     success = HandleQueueWorkDoneCallback(&deserializeBuffer);

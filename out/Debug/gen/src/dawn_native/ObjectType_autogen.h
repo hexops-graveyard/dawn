@@ -9,6 +9,7 @@
 namespace dawn_native {
 
     enum class ObjectType : uint32_t {
+        Adapter,
         BindGroup,
         BindGroupLayout,
         Buffer,
@@ -35,7 +36,7 @@ namespace dawn_native {
     };
 
     template <typename T>
-    using PerObjectType = ityp::array<ObjectType, T, 23>;
+    using PerObjectType = ityp::array<ObjectType, T, 24>;
 
     const char* ObjectTypeAsString(ObjectType type);
 

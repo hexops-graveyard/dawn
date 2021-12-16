@@ -12,6 +12,20 @@ namespace dawn_wire { namespace client {
         static constexpr ObjectType value = static_cast<ObjectType>(-1);
     };
 
+    class Adapter;
+
+    inline Adapter* FromAPI(WGPUAdapter obj) {
+        return reinterpret_cast<Adapter*>(obj);
+    }
+    inline WGPUAdapter ToAPI(Adapter* obj) {
+        return reinterpret_cast<WGPUAdapter>(obj);
+    }
+
+    template <>
+    struct ObjectTypeToTypeEnum<Adapter> {
+        static constexpr ObjectType value = ObjectType::Adapter;
+    };
+
     struct BindGroup final : ObjectBase {
         using ObjectBase::ObjectBase;
     };
@@ -152,9 +166,7 @@ namespace dawn_wire { namespace client {
         static constexpr ObjectType value = ObjectType::ExternalTexture;
     };
 
-    struct Instance final : ObjectBase {
-        using ObjectBase::ObjectBase;
-    };
+    class Instance;
 
     inline Instance* FromAPI(WGPUInstance obj) {
         return reinterpret_cast<Instance*>(obj);
