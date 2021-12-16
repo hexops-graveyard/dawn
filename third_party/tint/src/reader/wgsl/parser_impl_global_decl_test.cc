@@ -182,7 +182,6 @@ TEST_F(ParserImplTest, GlobalDecl_Struct_WithStride) {
   auto* str = t->As<ast::Struct>();
   EXPECT_EQ(str->name, program.Symbols().Get("A"));
   EXPECT_EQ(str->members.size(), 1u);
-  EXPECT_FALSE(str->IsBlockDecorated());
 
   const auto* ty = str->members[0]->type;
   ASSERT_TRUE(ty->Is<ast::Array>());
@@ -194,6 +193,7 @@ TEST_F(ParserImplTest, GlobalDecl_Struct_WithStride) {
   ASSERT_EQ(stride->As<ast::StrideDecoration>()->stride, 4u);
 }
 
+// TODO(crbug.com/tint/1324): DEPRECATED: Remove when [[block]] is removed.
 TEST_F(ParserImplTest, GlobalDecl_Struct_WithDecoration) {
   auto p = parser("[[block]] struct A { data: f32; };");
   p->expect_global_decl();
@@ -209,21 +209,20 @@ TEST_F(ParserImplTest, GlobalDecl_Struct_WithDecoration) {
   auto* str = t->As<ast::Struct>();
   EXPECT_EQ(str->name, program.Symbols().Get("A"));
   EXPECT_EQ(str->members.size(), 1u);
-  EXPECT_TRUE(str->IsBlockDecorated());
 }
 
 TEST_F(ParserImplTest, GlobalDecl_Struct_Invalid) {
-  auto p = parser("[[block]] A {};");
+  auto p = parser("A {};");
   p->expect_global_decl();
   ASSERT_TRUE(p->has_error());
-  EXPECT_EQ(p->error(), "1:11: expected declaration after decorations");
+  EXPECT_EQ(p->error(), "1:1: unexpected token");
 }
 
 TEST_F(ParserImplTest, GlobalDecl_StructMissing_Semi) {
-  auto p = parser("[[block]] struct A {}");
+  auto p = parser("struct A {}");
   p->expect_global_decl();
   ASSERT_TRUE(p->has_error());
-  EXPECT_EQ(p->error(), "1:22: expected ';' for struct declaration");
+  EXPECT_EQ(p->error(), "1:12: expected ';' for struct declaration");
 }
 
 }  // namespace

@@ -208,11 +208,11 @@ class GeneratorImpl : public TextGenerator {
   /// Handles generating a call to a texture function (`textureSample`,
   /// `textureSampleGrad`, etc)
   /// @param out the output of the expression stream
-  /// @param expr the call expression
+  /// @param call the call expression
   /// @param intrinsic the semantic information for the texture intrinsic
   /// @returns true if the call expression is emitted
   bool EmitTextureCall(std::ostream& out,
-                       const ast::CallExpression* expr,
+                       const sem::Call* call,
                        const sem::Intrinsic* intrinsic);
   /// Handles generating a call to the `select()` intrinsic
   /// @param out the output of the expression stream
@@ -423,6 +423,26 @@ class GeneratorImpl : public TextGenerator {
   /// @returns true on success
   bool EmitDynamicVectorAssignment(const ast::AssignmentStatement* stmt,
                                    const sem::Vector* vec);
+  /// Emits call to a helper matrix assignment function for the input assignment
+  /// statement and matrix type. This is used to work around FXC issues where
+  /// assignment of a vector to a matrix with a dynamic index causes compilation
+  /// failures.
+  /// @param stmt assignment statement that corresponds to a matrix assignment
+  /// via an accessor expression
+  /// @param mat the matrix type being assigned to
+  /// @returns true on success
+  bool EmitDynamicMatrixVectorAssignment(const ast::AssignmentStatement* stmt,
+                                         const sem::Matrix* mat);
+  /// Emits call to a helper matrix assignment function for the input assignment
+  /// statement and matrix type. This is used to work around FXC issues where
+  /// assignment of a scalar to a matrix with at least one dynamic index causes
+  /// compilation failures.
+  /// @param stmt assignment statement that corresponds to a matrix assignment
+  /// via an accessor expression
+  /// @param mat the matrix type being assigned to
+  /// @returns true on success
+  bool EmitDynamicMatrixScalarAssignment(const ast::AssignmentStatement* stmt,
+                                         const sem::Matrix* mat);
 
   /// Handles generating a builtin method name
   /// @param intrinsic the semantic info for the intrinsic
@@ -491,6 +511,10 @@ class GeneratorImpl : public TextGenerator {
   std::unordered_map<const sem::Intrinsic*, std::string> intrinsics_;
   std::unordered_map<const sem::Struct*, std::string> structure_builders_;
   std::unordered_map<const sem::Vector*, std::string> dynamic_vector_write_;
+  std::unordered_map<const sem::Matrix*, std::string>
+      dynamic_matrix_vector_write_;
+  std::unordered_map<const sem::Matrix*, std::string>
+      dynamic_matrix_scalar_write_;
 };
 
 }  // namespace hlsl
