@@ -48,8 +48,8 @@ namespace Spv
     public static class Specification
     {
         public const uint MagicNumber = 0x07230203;
-        public const uint Version = 0x00010500;
-        public const uint Revision = 4;
+        public const uint Version = 0x00010600;
+        public const uint Revision = 1;
         public const uint OpCodeMask = 0xffff;
         public const uint WordCountShift = 16;
 
@@ -349,6 +349,8 @@ namespace Spv
             VolatileTexelKHR = 11,
             SignExtend = 12,
             ZeroExtend = 13,
+            Nontemporal = 14,
+            Offsets = 16,
         }
 
         public enum ImageOperandsMask
@@ -372,6 +374,8 @@ namespace Spv
             VolatileTexelKHR = 0x00000800,
             SignExtend = 0x00001000,
             ZeroExtend = 0x00002000,
+            Nontemporal = 0x00004000,
+            Offsets = 0x00010000,
         }
 
         public enum FPFastMathModeShift
@@ -490,6 +494,7 @@ namespace Spv
             PerPrimitiveNV = 5271,
             PerViewNV = 5272,
             PerTaskNV = 5273,
+            PerVertexKHR = 5285,
             PerVertexNV = 5285,
             NonUniform = 5300,
             NonUniformEXT = 5300,
@@ -497,6 +502,10 @@ namespace Spv
             RestrictPointerEXT = 5355,
             AliasedPointer = 5356,
             AliasedPointerEXT = 5356,
+            BindlessSamplerNV = 5398,
+            BindlessImageNV = 5399,
+            BoundSamplerNV = 5400,
+            BoundImageNV = 5401,
             SIMTCallINTEL = 5599,
             ReferencedIndirectlyINTEL = 5602,
             ClobberINTEL = 5607,
@@ -536,6 +545,7 @@ namespace Spv
             FunctionFloatingPointModeINTEL = 6080,
             SingleElementVectorINTEL = 6085,
             VectorComputeCallableFunctionINTEL = 6087,
+            MediaBlockIOINTEL = 6140,
         }
 
         public enum BuiltIn
@@ -620,7 +630,9 @@ namespace Spv
             LayerPerViewNV = 5279,
             MeshViewCountNV = 5280,
             MeshViewIndicesNV = 5281,
+            BaryCoordKHR = 5286,
             BaryCoordNV = 5286,
+            BaryCoordNoPerspKHR = 5287,
             BaryCoordNoPerspNV = 5287,
             FragSizeEXT = 5292,
             FragmentSizeNV = 5292,
@@ -918,6 +930,7 @@ namespace Spv
             GroupNonUniformQuad = 68,
             ShaderLayer = 69,
             ShaderViewportIndex = 70,
+            UniformDecoration = 71,
             FragmentShadingRateKHR = 4422,
             SubgroupBallotKHR = 4423,
             DrawParameters = 4427,
@@ -966,6 +979,7 @@ namespace Spv
             FragmentFullyCoveredEXT = 5265,
             MeshShadingNV = 5266,
             ImageFootprintNV = 5282,
+            FragmentBarycentricKHR = 5284,
             FragmentBarycentricNV = 5284,
             ComputeDerivativeGroupQuadsNV = 5288,
             FragmentDensityEXT = 5291,
@@ -1010,7 +1024,9 @@ namespace Spv
             FragmentShaderShadingRateInterlockEXT = 5372,
             ShaderSMBuiltinsNV = 5373,
             FragmentShaderPixelInterlockEXT = 5378,
+            DemoteToHelperInvocation = 5379,
             DemoteToHelperInvocationEXT = 5379,
+            BindlessTextureNV = 5390,
             SubgroupShuffleINTEL = 5568,
             SubgroupBufferBlockIOINTEL = 5569,
             SubgroupImageBlockIOINTEL = 5570,
@@ -1049,9 +1065,13 @@ namespace Spv
             IOPipesINTEL = 5943,
             BlockingPipesINTEL = 5945,
             FPGARegINTEL = 5948,
+            DotProductInputAll = 6016,
             DotProductInputAllKHR = 6016,
+            DotProductInput4x8Bit = 6017,
             DotProductInput4x8BitKHR = 6017,
+            DotProductInput4x8BitPacked = 6018,
             DotProductInput4x8BitPackedKHR = 6018,
+            DotProduct = 6019,
             DotProductKHR = 6019,
             BitInstructions = 6025,
             AtomicFloat32AddEXT = 6033,
@@ -1161,6 +1181,7 @@ namespace Spv
 
         public enum PackedVectorFormat
         {
+            PackedVectorFormat4x8Bit = 0,
             PackedVectorFormat4x8BitKHR = 0,
         }
 
@@ -1522,11 +1543,17 @@ namespace Spv
             OpConvertUToAccelerationStructureKHR = 4447,
             OpIgnoreIntersectionKHR = 4448,
             OpTerminateRayKHR = 4449,
+            OpSDot = 4450,
             OpSDotKHR = 4450,
+            OpUDot = 4451,
             OpUDotKHR = 4451,
+            OpSUDot = 4452,
             OpSUDotKHR = 4452,
+            OpSDotAccSat = 4453,
             OpSDotAccSatKHR = 4453,
+            OpUDotAccSat = 4454,
             OpUDotAccSatKHR = 4454,
+            OpSUDotAccSat = 4455,
             OpSUDotAccSatKHR = 4455,
             OpTypeRayQueryKHR = 4472,
             OpRayQueryInitializeKHR = 4473,
@@ -1566,8 +1593,16 @@ namespace Spv
             OpCooperativeMatrixLengthNV = 5362,
             OpBeginInvocationInterlockEXT = 5364,
             OpEndInvocationInterlockEXT = 5365,
+            OpDemoteToHelperInvocation = 5380,
             OpDemoteToHelperInvocationEXT = 5380,
             OpIsHelperInvocationEXT = 5381,
+            OpConvertUToImageNV = 5391,
+            OpConvertUToSamplerNV = 5392,
+            OpConvertImageToUNV = 5393,
+            OpConvertSamplerToUNV = 5394,
+            OpConvertUToSampledImageNV = 5395,
+            OpConvertSampledImageToUNV = 5396,
+            OpSamplerImageAddressingModeNV = 5397,
             OpSubgroupShuffleINTEL = 5571,
             OpSubgroupShuffleDownINTEL = 5572,
             OpSubgroupShuffleUpINTEL = 5573,
@@ -1592,7 +1627,7 @@ namespace Spv
             OpUSubSatINTEL = 5596,
             OpIMul32x16INTEL = 5597,
             OpUMul32x16INTEL = 5598,
-            OpConstFunctionPointerINTEL = 5600,
+            OpConstantFunctionPointerINTEL = 5600,
             OpFunctionPointerCallINTEL = 5601,
             OpAsmTargetINTEL = 5609,
             OpAsmINTEL = 5610,

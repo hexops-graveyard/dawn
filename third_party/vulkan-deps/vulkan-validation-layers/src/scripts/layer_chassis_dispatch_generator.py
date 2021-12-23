@@ -32,8 +32,6 @@ from common_codegen import *
 # layer chassis dispatch file generation.
 #
 # Additional members
-#   prefixText - list of strings to prefix generated header with
-#     (usually a copyright statement + calling convention macros).
 #   protectFile - True if multiple inclusion protection should be
 #     generated (based on the filename) around the entire header.
 #   protectFeature - True if #ifndef..#endif protection should be
@@ -65,27 +63,26 @@ class LayerChassisDispatchGeneratorOptions(GeneratorOptions):
                  filename = None,
                  directory = '.',
                  genpath = None,
-                 apiname = None,
+                 apiname = 'vulkan',
                  profile = None,
                  versions = '.*',
                  emitversions = '.*',
-                 defaultExtensions = None,
+                 defaultExtensions = 'vulkan',
                  addExtensions = None,
                  removeExtensions = None,
                  emitExtensions = None,
                  emitSpirv = None,
                  sortProcedure = regSortFeatures,
-                 prefixText = "",
                  genFuncPointers = True,
                  protectFile = True,
-                 protectFeature = True,
-                 apicall = '',
-                 apientry = '',
-                 apientryp = '',
+                 protectFeature = False,
+                 apicall = 'VKAPI_ATTR ',
+                 apientry = 'VKAPI_CALL ',
+                 apientryp = 'VKAPI_PTR *',
                  indentFuncProto = True,
                  indentFuncPointer = False,
-                 alignFuncParam = 0,
-                 expandEnumerants = True):
+                 alignFuncParam = 48,
+                 expandEnumerants = False):
         GeneratorOptions.__init__(self,
                 conventions = conventions,
                 filename = filename,
@@ -101,7 +98,6 @@ class LayerChassisDispatchGeneratorOptions(GeneratorOptions):
                 emitExtensions = emitExtensions,
                 emitSpirv = emitSpirv,
                 sortProcedure = sortProcedure)
-        self.prefixText      = prefixText
         self.genFuncPointers = genFuncPointers
         self.protectFile     = protectFile
         self.protectFeature  = protectFeature
@@ -179,7 +175,7 @@ VkResult DispatchCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipeli
     safe_VkGraphicsPipelineCreateInfo *local_pCreateInfos = nullptr;
     if (pCreateInfos) {
         local_pCreateInfos = new safe_VkGraphicsPipelineCreateInfo[createInfoCount];
-        read_lock_guard_t lock(dispatch_lock);
+        ReadLockGuard lock(dispatch_lock);
         for (uint32_t idx0 = 0; idx0 < createInfoCount; ++idx0) {
             bool uses_color_attachment = false;
             bool uses_depthstencil_attachment = false;
@@ -192,6 +188,12 @@ VkResult DispatchCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipeli
                     if (subpasses_uses.subpasses_using_depthstencil_attachment.count(pCreateInfos[idx0].subpass))
                         uses_depthstencil_attachment = true;
                 }
+            }
+
+            auto dynamic_rendering = LvlFindInChain<VkPipelineRenderingCreateInfoKHR>(pCreateInfos[idx0].pNext);
+            if (dynamic_rendering) {
+                uses_color_attachment        = (dynamic_rendering->colorAttachmentCount > 0);
+                uses_depthstencil_attachment = (dynamic_rendering->depthAttachmentFormat != VK_FORMAT_UNDEFINED);
             }
 
             local_pCreateInfos[idx0].initialize(&pCreateInfos[idx0], uses_color_attachment, uses_depthstencil_attachment);
@@ -262,7 +264,7 @@ VkResult DispatchCreateRenderPass(VkDevice device, const VkRenderPassCreateInfo 
     VkResult result = layer_data->device_dispatch_table.CreateRenderPass(device, pCreateInfo, pAllocator, pRenderPass);
     if (!wrap_handles) return result;
     if (VK_SUCCESS == result) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         UpdateCreateRenderPassState(layer_data, pCreateInfo, *pRenderPass);
         *pRenderPass = layer_data->WrapNew(*pRenderPass);
     }
@@ -275,7 +277,7 @@ VkResult DispatchCreateRenderPass2KHR(VkDevice device, const VkRenderPassCreateI
     VkResult result = layer_data->device_dispatch_table.CreateRenderPass2KHR(device, pCreateInfo, pAllocator, pRenderPass);
     if (!wrap_handles) return result;
     if (VK_SUCCESS == result) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         UpdateCreateRenderPassState(layer_data, pCreateInfo, *pRenderPass);
         *pRenderPass = layer_data->WrapNew(*pRenderPass);
     }
@@ -288,7 +290,7 @@ VkResult DispatchCreateRenderPass2(VkDevice device, const VkRenderPassCreateInfo
     VkResult result = layer_data->device_dispatch_table.CreateRenderPass2(device, pCreateInfo, pAllocator, pRenderPass);
     if (!wrap_handles) return result;
     if (VK_SUCCESS == result) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         UpdateCreateRenderPassState(layer_data, pCreateInfo, *pRenderPass);
         *pRenderPass = layer_data->WrapNew(*pRenderPass);
     }
@@ -309,7 +311,7 @@ void DispatchDestroyRenderPass(VkDevice device, VkRenderPass renderPass, const V
 
     layer_data->device_dispatch_table.DestroyRenderPass(device, renderPass, pAllocator);
 
-    write_lock_guard_t lock(dispatch_lock);
+    WriteLockGuard lock(dispatch_lock);
     layer_data->renderpasses_states.erase(renderPass);
 }
 
@@ -380,7 +382,7 @@ VkResult DispatchGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain
         layer_data->device_dispatch_table.GetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages);
     if ((VK_SUCCESS == result) || (VK_INCOMPLETE == result)) {
         if ((*pSwapchainImageCount > 0) && pSwapchainImages) {
-            write_lock_guard_t lock(dispatch_lock);
+            WriteLockGuard lock(dispatch_lock);
             auto &wrapped_swapchain_image_handles = layer_data->swapchain_wrapped_image_handle_map[wrapped_swapchain_handle];
             for (uint32_t i = static_cast<uint32_t>(wrapped_swapchain_image_handles.size()); i < *pSwapchainImageCount; i++) {
                 wrapped_swapchain_image_handles.emplace_back(layer_data->WrapNew(pSwapchainImages[i]));
@@ -396,7 +398,7 @@ VkResult DispatchGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain
 void DispatchDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks *pAllocator) {
     auto layer_data = GetLayerDataPtr(get_dispatch_key(device), layer_data_map);
     if (!wrap_handles) return layer_data->device_dispatch_table.DestroySwapchainKHR(device, swapchain, pAllocator);
-    write_lock_guard_t lock(dispatch_lock);
+    WriteLockGuard lock(dispatch_lock);
 
     auto &image_array = layer_data->swapchain_wrapped_image_handle_map[swapchain];
     for (auto &image_handle : image_array) {
@@ -452,7 +454,7 @@ VkResult DispatchQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresent
 void DispatchDestroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, const VkAllocationCallbacks *pAllocator) {
     auto layer_data = GetLayerDataPtr(get_dispatch_key(device), layer_data_map);
     if (!wrap_handles) return layer_data->device_dispatch_table.DestroyDescriptorPool(device, descriptorPool, pAllocator);
-    write_lock_guard_t lock(dispatch_lock);
+    WriteLockGuard lock(dispatch_lock);
 
     // remove references to implicitly freed descriptor sets
     for(auto descriptor_set : layer_data->pool_descriptor_sets_map[descriptorPool]) {
@@ -482,7 +484,7 @@ VkResult DispatchResetDescriptorPool(VkDevice device, VkDescriptorPool descripto
     }
     VkResult result = layer_data->device_dispatch_table.ResetDescriptorPool(device, local_descriptor_pool, flags);
     if (VK_SUCCESS == result) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         // remove references to implicitly freed descriptor sets
         for(auto descriptor_set : layer_data->pool_descriptor_sets_map[descriptorPool]) {
             unique_id_mapping.erase(reinterpret_cast<uint64_t &>(descriptor_set));
@@ -517,7 +519,7 @@ VkResult DispatchAllocateDescriptorSets(VkDevice device, const VkDescriptorSetAl
         delete local_pAllocateInfo;
     }
     if (VK_SUCCESS == result) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         auto &pool_descriptor_sets = layer_data->pool_descriptor_sets_map[pAllocateInfo->descriptorPool];
         for (uint32_t index0 = 0; index0 < pAllocateInfo->descriptorSetCount; index0++) {
             pDescriptorSets[index0] = layer_data->WrapNew(pDescriptorSets[index0]);
@@ -547,7 +549,7 @@ VkResult DispatchFreeDescriptorSets(VkDevice device, VkDescriptorPool descriptor
                                                                            (const VkDescriptorSet *)local_pDescriptorSets);
     if (local_pDescriptorSets) delete[] local_pDescriptorSets;
     if ((VK_SUCCESS == result) && (pDescriptorSets)) {
-        write_lock_guard_t lock(dispatch_lock);
+        WriteLockGuard lock(dispatch_lock);
         auto &pool_descriptor_sets = layer_data->pool_descriptor_sets_map[descriptorPool];
         for (uint32_t index0 = 0; index0 < descriptorSetCount; index0++) {
             VkDescriptorSet handle = pDescriptorSets[index0];
@@ -586,7 +588,7 @@ VkResult DispatchCreateDescriptorUpdateTemplate(VkDevice device, const VkDescrip
 
         // Shadow template createInfo for later updates
         if (local_pCreateInfo) {
-            write_lock_guard_t lock(dispatch_lock);
+            WriteLockGuard lock(dispatch_lock);
             std::unique_ptr<TEMPLATE_STATE> template_state(new TEMPLATE_STATE(*pDescriptorUpdateTemplate, local_pCreateInfo));
             layer_data->desc_template_createinfo_map[(uint64_t)*pDescriptorUpdateTemplate] = std::move(template_state);
         }
@@ -622,7 +624,7 @@ VkResult DispatchCreateDescriptorUpdateTemplateKHR(VkDevice device, const VkDesc
 
         // Shadow template createInfo for later updates
         if (local_pCreateInfo) {
-            write_lock_guard_t lock(dispatch_lock);
+            WriteLockGuard lock(dispatch_lock);
             std::unique_ptr<TEMPLATE_STATE> template_state(new TEMPLATE_STATE(*pDescriptorUpdateTemplate, local_pCreateInfo));
             layer_data->desc_template_createinfo_map[(uint64_t)*pDescriptorUpdateTemplate] = std::move(template_state);
         }
@@ -636,7 +638,7 @@ void DispatchDestroyDescriptorUpdateTemplate(VkDevice device, VkDescriptorUpdate
     auto layer_data = GetLayerDataPtr(get_dispatch_key(device), layer_data_map);
     if (!wrap_handles)
         return layer_data->device_dispatch_table.DestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
-    write_lock_guard_t lock(dispatch_lock);
+    WriteLockGuard lock(dispatch_lock);
     uint64_t descriptor_update_template_id = reinterpret_cast<uint64_t &>(descriptorUpdateTemplate);
     layer_data->desc_template_createinfo_map.erase(descriptor_update_template_id);
     lock.unlock();
@@ -657,7 +659,7 @@ void DispatchDestroyDescriptorUpdateTemplateKHR(VkDevice device, VkDescriptorUpd
     auto layer_data = GetLayerDataPtr(get_dispatch_key(device), layer_data_map);
     if (!wrap_handles)
         return layer_data->device_dispatch_table.DestroyDescriptorUpdateTemplateKHR(device, descriptorUpdateTemplate, pAllocator);
-    write_lock_guard_t lock(dispatch_lock);
+    WriteLockGuard lock(dispatch_lock);
     uint64_t descriptor_update_template_id = reinterpret_cast<uint64_t &>(descriptorUpdateTemplate);
     layer_data->desc_template_createinfo_map.erase(descriptor_update_template_id);
     lock.unlock();
@@ -797,7 +799,7 @@ void DispatchUpdateDescriptorSetWithTemplate(VkDevice device, VkDescriptorSet de
     uint64_t template_handle = reinterpret_cast<uint64_t &>(descriptorUpdateTemplate);
     void *unwrapped_buffer = nullptr;
     {
-        read_lock_guard_t lock(dispatch_lock);
+        ReadLockGuard lock(dispatch_lock);
         descriptorSet = layer_data->Unwrap(descriptorSet);
         descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)layer_data->Unwrap(descriptorUpdateTemplate);
         unwrapped_buffer = BuildUnwrappedUpdateTemplateBuffer(layer_data, template_handle, pData);
@@ -815,7 +817,7 @@ void DispatchUpdateDescriptorSetWithTemplateKHR(VkDevice device, VkDescriptorSet
     uint64_t template_handle = reinterpret_cast<uint64_t &>(descriptorUpdateTemplate);
     void *unwrapped_buffer = nullptr;
     {
-        read_lock_guard_t lock(dispatch_lock);
+        ReadLockGuard lock(dispatch_lock);
         descriptorSet = layer_data->Unwrap(descriptorSet);
         descriptorUpdateTemplate = layer_data->Unwrap(descriptorUpdateTemplate);
         unwrapped_buffer = BuildUnwrappedUpdateTemplateBuffer(layer_data, template_handle, pData);
@@ -834,7 +836,7 @@ void DispatchCmdPushDescriptorSetWithTemplateKHR(VkCommandBuffer commandBuffer,
     uint64_t template_handle = reinterpret_cast<uint64_t &>(descriptorUpdateTemplate);
     void *unwrapped_buffer = nullptr;
     {
-        read_lock_guard_t lock(dispatch_lock);
+        ReadLockGuard lock(dispatch_lock);
         descriptorUpdateTemplate = layer_data->Unwrap(descriptorUpdateTemplate);
         layout = layer_data->Unwrap(layout);
         unwrapped_buffer = BuildUnwrappedUpdateTemplateBuffer(layer_data, template_handle, pData);
@@ -1083,12 +1085,12 @@ layer_data::unordered_map<VkCommandBuffer, VkCommandPool> secondary_cb_map{};
 
 ReadWriteLock dispatch_secondary_cb_map_mutex;
 
-read_lock_guard_t dispatch_cb_read_lock() {
-    return read_lock_guard_t(dispatch_secondary_cb_map_mutex);
+ReadLockGuard dispatch_cb_read_lock() {
+    return ReadLockGuard(dispatch_secondary_cb_map_mutex);
 }
 
-write_lock_guard_t dispatch_cb_write_lock() {
-    return write_lock_guard_t(dispatch_secondary_cb_map_mutex);
+WriteLockGuard dispatch_cb_write_lock() {
+    return WriteLockGuard(dispatch_secondary_cb_map_mutex);
 }
 
 VkResult DispatchAllocateCommandBuffers(VkDevice device, const VkCommandBufferAllocateInfo* pAllocateInfo, VkCommandBuffer* pCommandBuffers) {
@@ -1170,6 +1172,31 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
     VkResult result = layer_data->device_dispatch_table.BeginCommandBuffer(commandBuffer, (const VkCommandBufferBeginInfo*)local_pBeginInfo);
     return result;
 }
+
+VkResult DispatchDeferredOperationJoinKHR(
+    VkDevice                                    device,
+    VkDeferredOperationKHR                      operation)
+{
+    auto layer_data = GetLayerDataPtr(get_dispatch_key(device), layer_data_map);
+    if (wrap_handles)
+    {
+        operation = layer_data->Unwrap(operation);
+    }
+    VkResult result = layer_data->device_dispatch_table.DeferredOperationJoinKHR(device, operation);
+
+    // If this thread completed the operation, free any retained memory.
+    if (result == VK_SUCCESS)
+    {
+        auto iter = layer_data->deferred_operation_cleanup.pop(operation);
+        if (iter != layer_data->deferred_operation_cleanup.end())
+        {
+            std::function<void()> &cleanup_fn = iter->second;
+            cleanup_fn();
+        }
+    }
+
+    return result;
+}
 """
     # Separate generated text for source and headers
     ALL_SECTIONS = ['source_file', 'header_file']
@@ -1227,6 +1254,7 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
             'vkGetPhysicalDeviceToolPropertiesEXT',
             'vkSetPrivateDataEXT',
             'vkGetPrivateDataEXT',
+            'vkDeferredOperationJoinKHR',
             # These are for special-casing the pInheritanceInfo issue (must be ignored for primary CBs)
             'vkAllocateCommandBuffers',
             'vkFreeCommandBuffers',
@@ -1617,11 +1645,23 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
 
     #
     # Clean up local declarations
-    def cleanUpLocalDeclarations(self, indent, prefix, name, len, index):
+    def cleanUpLocalDeclarations(self, indent, prefix, name, len, deferred_name, index):
         cleanup = ''
-        if len is not None:
-            cleanup = '%sif (local_%s%s) {\n' % (indent, prefix, name)
-            cleanup += '%s    delete[] local_%s%s;\n' % (indent, prefix, name)
+        if len is not None or deferred_name is not None:
+            delete_var = "local_%s%s" % (prefix, name)
+            if len is None:
+                delete_code = "delete %s" % (delete_var)
+            else:
+                delete_code = "delete[] %s" % (delete_var)
+            cleanup = '%sif (%s) {\n' % (indent, delete_var)
+            if deferred_name is not None:
+                cleanup += '%s    if (%s != VK_NULL_HANDLE) {\n' % (indent, deferred_name)
+                cleanup += '%s        layer_data->deferred_operation_cleanup.insert(%s, [%s](){ %s; });\n' % (indent, deferred_name, delete_var, delete_code)
+                cleanup += '%s    } else {\n' % (indent)
+                cleanup += '%s        %s;\n' % (indent, delete_code)
+                cleanup += "%s    }\n" % (indent)
+            else:
+                cleanup += '%s    %s;\n' % (indent, delete_code)
             cleanup += "%s}\n" % (indent)
         return cleanup
     #
@@ -1704,6 +1744,8 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
                         safe_type = member.type
                     # Struct Array
                     if member.len is not None:
+                        # Check if this function can be deferred.
+                        deferred_name = next((member.name for member in members if member.type == 'VkDeferredOperationKHR'), None)
                         # Update struct prefix
                         if first_level_param == True:
                             new_prefix = 'local_%s' % member.name
@@ -1735,13 +1777,16 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
                         indent = self.decIndent(indent)
                         pre_code += '%s    }\n' % indent
                         if first_level_param == True:
-                            post_code += self.cleanUpLocalDeclarations(indent, prefix, member.name, member.len, index)
+                            post_code += self.cleanUpLocalDeclarations(indent, prefix, member.name, member.len, deferred_name, index)
                     # Single Struct
                     elif member.ispointer:
+                        # Check if this function can be deferred.
+                        deferred_name = next((member.name for member in members if member.type == 'VkDeferredOperationKHR'), None)
                         # Update struct prefix
                         if first_level_param == True:
                             new_prefix = 'local_%s->' % member.name
-                            decls += '%s%s var_local_%s%s;\n' % (indent, safe_type, prefix, member.name)
+                            if deferred_name is None:
+                                decls += '%s%s var_local_%s%s;\n' % (indent, safe_type, prefix, member.name)
                             decls += '%s%s *local_%s%s = NULL;\n' % (indent, safe_type, prefix, member.name)
                         else:
                             new_prefix = '%s%s->' % (prefix, member.name)
@@ -1749,7 +1794,10 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
                         pre_code += '%s    if (%s%s) {\n' % (indent, prefix, member.name)
                         indent = self.incIndent(indent)
                         if first_level_param == True:
-                            pre_code += '%s    local_%s%s = &var_local_%s%s;\n' % (indent, prefix, member.name, prefix, member.name)
+                            if deferred_name is None:
+                                pre_code += '%s    local_%s%s = &var_local_%s%s;\n' % (indent, prefix, member.name, prefix, member.name)
+                            else:
+                                pre_code += '%s    local_%s = new %s;\n' % (indent, member.name, safe_type)
                             if 'safe_' in safe_type:
                                 pre_code += '%s    local_%s%s->initialize(%s);\n' % (indent, prefix, member.name, member.name)
                             else:
@@ -1764,7 +1812,7 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
                         indent = self.decIndent(indent)
                         pre_code += '%s    }\n' % indent
                         if first_level_param == True:
-                            post_code += self.cleanUpLocalDeclarations(indent, prefix, member.name, member.len, index)
+                            post_code += self.cleanUpLocalDeclarations(indent, prefix, member.name, member.len, deferred_name, index)
                     else:
                         # Update struct prefix
                         if first_level_param == True:
@@ -1978,7 +2026,32 @@ VkResult DispatchBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkComma
                 copy_feedback_source += '        }\n'
                 copy_feedback_source += '    }\n'
                 self.appendSection('source_file', copy_feedback_source)
-            self.appendSection('source_file', "\n".join(str(api_post).rstrip().split("\n")))
+            if ('CreateRayTracingPipelinesKHR' in cmdname):
+                ray_tracing_source    = '    if (deferredOperation != VK_NULL_HANDLE) {\n'
+                ray_tracing_source   += '        auto cleanup_fn = [local_pCreateInfos,pPipelines,createInfoCount,layer_data](){\n'
+                ray_tracing_source   += '                              if (local_pCreateInfos) {\n'
+                ray_tracing_source   += '                                  delete[] local_pCreateInfos;\n'
+                ray_tracing_source   += '                              }\n'
+                ray_tracing_source   += '                              for (uint32_t index0 = 0; index0 < createInfoCount; index0++) {\n'
+                ray_tracing_source   += '                                  if (pPipelines[index0] != VK_NULL_HANDLE) {\n'
+                ray_tracing_source   += '                                      pPipelines[index0] = layer_data->WrapNew(pPipelines[index0]);\n'
+                ray_tracing_source   += '                                  }\n'
+                ray_tracing_source   += '                              }\n'
+                ray_tracing_source   += '                          };\n'
+                ray_tracing_source   += '        layer_data->deferred_operation_cleanup.insert(deferredOperation, cleanup_fn);\n'
+                ray_tracing_source   += '    } else {\n'
+                ray_tracing_source   += '        if (local_pCreateInfos) {\n'
+                ray_tracing_source   += '            delete[] local_pCreateInfos;\n'
+                ray_tracing_source   += '        }\n'
+                ray_tracing_source   += '        for (uint32_t index0 = 0; index0 < createInfoCount; index0++) {\n'
+                ray_tracing_source   += '            if (pPipelines[index0] != VK_NULL_HANDLE) {\n'
+                ray_tracing_source   += '                pPipelines[index0] = layer_data->WrapNew(pPipelines[index0]);\n'
+                ray_tracing_source   += '            }\n'
+                ray_tracing_source   += '        }\n'
+                ray_tracing_source   += '    }\n'
+                self.appendSection('source_file', ray_tracing_source)
+            else:
+                self.appendSection('source_file', "\n".join(str(api_post).rstrip().split("\n")))
             # Handle the return result variable, if any
             if (resulttype is not None):
                 self.appendSection('source_file', '    return result;')

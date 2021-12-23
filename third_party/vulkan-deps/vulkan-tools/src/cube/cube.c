@@ -446,6 +446,7 @@ struct demo {
     bool validate_checks_disabled;
     bool use_break;
     bool suppress_popups;
+    bool force_errors;
 
     PFN_vkCreateDebugUtilsMessengerEXT CreateDebugUtilsMessengerEXT;
     PFN_vkDestroyDebugUtilsMessengerEXT DestroyDebugUtilsMessengerEXT;
@@ -633,6 +634,10 @@ static void demo_flush_init_cmd(struct demo *demo) {
 
     VkFence fence;
     VkFenceCreateInfo fence_ci = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = NULL, .flags = 0};
+    if (demo->force_errors) {
+        // Remove sType to intentionally force validation layer errors.
+        fence_ci.sType = 0;
+    }
     err = vkCreateFence(demo->device, &fence_ci, NULL, &fence);
     assert(!err);
 
@@ -1063,8 +1068,8 @@ static void demo_draw(struct demo *demo) {
     VkSubmitInfo submit_info;
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submit_info.pNext = NULL;
-    submit_info.pWaitDstStageMask = &pipe_stage_flags;
     pipe_stage_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    submit_info.pWaitDstStageMask = &pipe_stage_flags;
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &demo->image_acquired_semaphores[demo->frame_index];
     submit_info.commandBufferCount = 1;
@@ -1445,6 +1450,12 @@ static void demo_prepare_depth(struct demo *demo) {
         .flags = 0,
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
     };
+
+
+    if (demo->force_errors) {
+        // Intentionally force a bad pNext value to generate a validation layer error
+        view.pNext = &image;
+    }
 
     VkMemoryRequirements mem_reqs;
     VkResult U_ASSERT_ONLY err;
@@ -3914,7 +3925,7 @@ static void demo_init_connection(struct demo *demo) {
 
     demo->connection = xcb_connect(NULL, &scr);
     if (xcb_connection_has_error(demo->connection) > 0) {
-        printf("Cannot find a compatible Vulkan installable client driver (ICD).\nExiting ...\n");
+        printf("Cannot connect to XCB.\nExiting ...\n");
         fflush(stdout);
         exit(1);
     }
@@ -3928,7 +3939,7 @@ static void demo_init_connection(struct demo *demo) {
     demo->display = wl_display_connect(NULL);
 
     if (demo->display == NULL) {
-        printf("Cannot find a compatible Vulkan installable client driver (ICD).\nExiting ...\n");
+        printf("Cannot connect to wayland.\nExiting ...\n");
         fflush(stdout);
         exit(1);
     }
@@ -4010,6 +4021,10 @@ static void demo_init(struct demo *demo, int argc, char **argv) {
             i++;
             continue;
         }
+        if (strcmp(argv[i], "--force_errors") == 0) {
+            demo->force_errors = true;
+            continue;
+        }
 
 #if defined(ANDROID)
         ERR_EXIT("Usage: vkcube [--validate]\n", "Usage");
@@ -4021,6 +4036,7 @@ static void demo_init(struct demo *demo, int argc, char **argv) {
             "\t[--gpu_number <index of physical device>]\n"
             "\t[--present_mode <present mode enum>]\n"
             "\t[--width <width>] [--height <height>]\n"
+            "\t[--force_errors]\n"
             "\t<present_mode_enum>\n"
             "\t\tVK_PRESENT_MODE_IMMEDIATE_KHR = %d\n"
             "\t\tVK_PRESENT_MODE_MAILBOX_KHR = %d\n"

@@ -88,26 +88,44 @@ class RENDER_PASS_STATE : public BASE_NODE {
         AttachmentTransition(uint32_t prev_pass_, uint32_t attachment_, VkImageLayout old_layout_, VkImageLayout new_layout_)
             : prev_pass(prev_pass_), attachment(attachment_), old_layout(old_layout_), new_layout(new_layout_) {}
     };
-
-    safe_VkRenderPassCreateInfo2 createInfo;
-    std::vector<std::vector<uint32_t>> self_dependencies;
-    std::vector<DAGNode> subpassToNode;
-    layer_data::unordered_map<uint32_t, bool> attachment_first_read;
-    std::vector<uint32_t> attachment_first_subpass;
-    std::vector<uint32_t> attachment_last_subpass;
-    std::vector<bool> attachment_first_is_transition;
-    std::vector<SubpassDependencyGraphNode> subpass_dependencies;
-    std::vector<std::vector<AttachmentTransition>> subpass_transitions;
+    const bool use_dynamic_rendering;
+    const bool use_dynamic_rendering_inherited;
+    const safe_VkRenderingInfoKHR dynamic_rendering_begin_rendering_info;
+    const safe_VkPipelineRenderingCreateInfoKHR dynamic_rendering_pipeline_create_info;
+    const safe_VkCommandBufferInheritanceRenderingInfoKHR inheritance_rendering_info;
+    const safe_VkRenderPassCreateInfo2 createInfo;
+    using SubpassVec = std::vector<uint32_t>;
+    using SelfDepVec = std::vector<SubpassVec>;
+    const std::vector<SubpassVec> self_dependencies;
+    using DAGNodeVec = std::vector<DAGNode>;
+    const DAGNodeVec subpass_to_node;
+    using FirstReadMap = layer_data::unordered_map<uint32_t, bool>;
+    const FirstReadMap attachment_first_read;
+    const SubpassVec attachment_first_subpass;
+    const SubpassVec attachment_last_subpass;
+    using FirstIsTransitionVec = std::vector<bool>;
+    const FirstIsTransitionVec attachment_first_is_transition;
+    using SubpassGraphVec = std::vector<SubpassDependencyGraphNode>;
+    const SubpassGraphVec subpass_dependencies;
+    using TransitionVec = std::vector<std::vector<AttachmentTransition>>;
+    const TransitionVec subpass_transitions;
 
     RENDER_PASS_STATE(VkRenderPass rp, VkRenderPassCreateInfo2 const *pCreateInfo);
     RENDER_PASS_STATE(VkRenderPass rp, VkRenderPassCreateInfo const *pCreateInfo);
 
+    RENDER_PASS_STATE(VkPipelineRenderingCreateInfoKHR const *pPipelineRenderingCreateInfo);
+    RENDER_PASS_STATE(VkRenderingInfoKHR const *pRenderingInfo);
+    RENDER_PASS_STATE(VkCommandBufferInheritanceRenderingInfoKHR const *pInheritanceRenderingInfo);
+
     VkRenderPass renderPass() const { return handle_.Cast<VkRenderPass>(); }
+
+    bool UsesColorAttachment(uint32_t subpass) const;
+    bool UsesDepthStencilAttachment(uint32_t subpass) const;
 };
 
 class FRAMEBUFFER_STATE : public BASE_NODE {
   public:
-    safe_VkFramebufferCreateInfo createInfo;
+    const safe_VkFramebufferCreateInfo createInfo;
     std::shared_ptr<const RENDER_PASS_STATE> rp_state;
     std::vector<std::shared_ptr<IMAGE_VIEW_STATE>> attachments_view_state;
 

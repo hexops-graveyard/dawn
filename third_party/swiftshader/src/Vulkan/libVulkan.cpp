@@ -42,6 +42,7 @@
 #include "VkSemaphore.hpp"
 #include "VkShaderModule.hpp"
 #include "VkStringify.hpp"
+#include "VkStructConversion.hpp"
 #include "VkTimelineSemaphore.hpp"
 
 #include "Reactor/Nucleus.hpp"
@@ -97,6 +98,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <string>
 
@@ -136,7 +138,7 @@ std::shared_ptr<marl::Scheduler> getOrCreateScheduler()
 		std::weak_ptr<marl::Scheduler> weakptr GUARDED_BY(mutex);
 	};
 
-	static Scheduler scheduler;
+	static Scheduler scheduler;  // TODO(b/208256248): Avoid exit-time destructor.
 
 	marl::lock lock(scheduler.mutex);
 	auto sptr = scheduler.weakptr.lock();
@@ -245,8 +247,11 @@ void ValidateRenderPassPNextChain(VkDevice device, const T *pCreateInfo)
 				ASSERT(vk::Cast(device)->getPhysicalDevice()->getProperties().limits.maxFramebufferLayers >= 32);
 			}
 			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -292,9 +297,10 @@ VK_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vk_icdInitializeConnectToServiceCallbac
 
 struct ExtensionProperties : public VkExtensionProperties
 {
-	bool isSupported = true;
+	std::function<bool()> isSupported = [] { return true; };
 };
 
+// TODO(b/208256248): Avoid exit-time destructor.
 static const ExtensionProperties instanceExtensionProperties[] = {
 	{ { VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME, VK_KHR_DEVICE_GROUP_CREATION_SPEC_VERSION } },
 	{ { VK_KHR_EXTERNAL_FENCE_CAPABILITIES_EXTENSION_NAME, VK_KHR_EXTERNAL_FENCE_CAPABILITIES_SPEC_VERSION } },
@@ -307,10 +313,10 @@ static const ExtensionProperties instanceExtensionProperties[] = {
 	{ { VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_SPEC_VERSION } },
 #endif
 #ifdef VK_USE_PLATFORM_XCB_KHR
-	{ { VK_KHR_XCB_SURFACE_EXTENSION_NAME, VK_KHR_XCB_SURFACE_SPEC_VERSION }, vk::XcbSurfaceKHR::hasLibXCB() },
+	{ { VK_KHR_XCB_SURFACE_EXTENSION_NAME, VK_KHR_XCB_SURFACE_SPEC_VERSION }, [] { return vk::XcbSurfaceKHR::isSupported(); } },
 #endif
 #ifdef VK_USE_PLATFORM_XLIB_KHR
-	{ { VK_KHR_XLIB_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_SPEC_VERSION }, static_cast<bool>(libX11) },
+	{ { VK_KHR_XLIB_SURFACE_EXTENSION_NAME, VK_KHR_XLIB_SURFACE_SPEC_VERSION }, [] { return vk::XlibSurfaceKHR::isSupported(); } },
 #endif
 #ifdef VK_USE_PLATFORM_WAYLAND_KHR
 	{ { VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME, VK_KHR_WAYLAND_SURFACE_SPEC_VERSION } },
@@ -332,6 +338,7 @@ static const ExtensionProperties instanceExtensionProperties[] = {
 #endif
 };
 
+// TODO(b/208256248): Avoid exit-time destructor.
 static const ExtensionProperties deviceExtensionProperties[] = {
 	{ { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME, VK_KHR_DRIVER_PROPERTIES_SPEC_VERSION } },
 	// Vulkan 1.1 promoted extensions
@@ -367,6 +374,8 @@ static const ExtensionProperties deviceExtensionProperties[] = {
 	{ { VK_EXT_IMAGE_ROBUSTNESS_EXTENSION_NAME, VK_EXT_IMAGE_ROBUSTNESS_SPEC_VERSION } },
 	// Useful for D3D emulation
 	{ { VK_EXT_4444_FORMATS_EXTENSION_NAME, VK_EXT_4444_FORMATS_SPEC_VERSION } },
+	// Used by ANGLE to support GL_KHR_blend_equation_advanced
+	{ { VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME, VK_EXT_BLEND_OPERATION_ADVANCED_SPEC_VERSION } },
 #ifndef __ANDROID__
 	// We fully support the KHR_swapchain v70 additions, so just track the spec version.
 	{ { VK_KHR_SWAPCHAIN_EXTENSION_NAME, VK_KHR_SWAPCHAIN_SPEC_VERSION } },
@@ -414,6 +423,13 @@ static const ExtensionProperties deviceExtensionProperties[] = {
 	{ { VK_KHR_SPIRV_1_4_EXTENSION_NAME, VK_KHR_SPIRV_1_4_SPEC_VERSION } },
 	{ { VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME, VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_SPEC_VERSION } },
 	{ { VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME, VK_KHR_TIMELINE_SEMAPHORE_SPEC_VERSION } },
+	// Other extensions
+	{ { VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME, VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_SPEC_VERSION } },
+	{ { VK_EXT_PIPELINE_CREATION_FEEDBACK_EXTENSION_NAME, VK_EXT_PIPELINE_CREATION_FEEDBACK_SPEC_VERSION } },
+	{ { VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME, VK_KHR_COPY_COMMANDS_2_SPEC_VERSION } },
+	{ { VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME, VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_SPEC_VERSION } },
+	{ { VK_KHR_FORMAT_FEATURE_FLAGS_2_EXTENSION_NAME, VK_KHR_FORMAT_FEATURE_FLAGS_2_SPEC_VERSION } },
+	{ { VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME, VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION } },
 };
 
 static uint32_t numSupportedExtensions(const ExtensionProperties *extensionProperties, uint32_t extensionPropertiesCount)
@@ -422,7 +438,7 @@ static uint32_t numSupportedExtensions(const ExtensionProperties *extensionPrope
 
 	for(uint32_t i = 0; i < extensionPropertiesCount; i++)
 	{
-		if(extensionProperties[i].isSupported)
+		if(extensionProperties[i].isSupported())
 		{
 			count++;
 		}
@@ -447,7 +463,7 @@ static bool hasExtension(const char *extensionName, const ExtensionProperties *e
 	{
 		if(strcmp(extensionName, extensionProperties[i].extensionName) == 0)
 		{
-			return extensionProperties[i].isSupported;
+			return extensionProperties[i].isSupported();
 		}
 	}
 
@@ -468,7 +484,7 @@ static void copyExtensions(VkExtensionProperties *pProperties, uint32_t toCopy, 
 {
 	for(uint32_t i = 0, j = 0; i < toCopy; i++, j++)
 	{
-		while((j < extensionPropertiesCount) && !extensionProperties[j].isSupported)
+		while((j < extensionPropertiesCount) && !extensionProperties[j].isSupported())
 		{
 			j++;
 		}
@@ -539,7 +555,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateInstance(const VkInstanceCreateInfo *pCre
 			//  Vulkan structures in this Specification."
 			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(createInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(createInfo->sType).c_str());
 			break;
 		}
 	}
@@ -856,6 +872,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(VkPhysicalDevice physicalDevice, c
 				(void)hostQueryResetFeatures->hostQueryReset;
 			}
 			break;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT:
+			{
+				const VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *pipelineCreationCacheControlFeatures = reinterpret_cast<const VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT *>(extensionCreateInfo);
+
+				// VK_EXT_pipeline_creation_cache_control is always enabled.
+				(void)pipelineCreationCacheControlFeatures->pipelineCreationCacheControl;
+			}
+			break;
 		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES:
 			{
 				const auto *tsFeatures = reinterpret_cast<const VkPhysicalDeviceTimelineSemaphoreFeatures *>(extensionCreateInfo);
@@ -903,9 +927,25 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(VkPhysicalDevice physicalDevice, c
 				}
 			}
 			break;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT:
+			{
+				const auto *blendOpFeatures = reinterpret_cast<const VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT *>(extensionCreateInfo);
+				bool hasFeatures = vk::Cast(physicalDevice)->hasExtendedFeatures(blendOpFeatures);
+				if(!hasFeatures)
+				{
+					return VK_ERROR_FEATURE_NOT_PRESENT;
+				}
+			}
+			break;
+		// These structs are supported, but no behavior changes based on their feature bools
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES:
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES:
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT:
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES:
+			break;
 		default:
 			// "the [driver] must skip over, without processing (other than reading the sType and pNext members) any structures in the chain with sType values not defined by [supported extenions]"
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -935,7 +975,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDevice(VkPhysicalDevice physicalDevice, c
 		auto extInfo = reinterpret_cast<VkBaseInStructure const *>(queueCreateInfo.pNext);
 		while(extInfo)
 		{
-			LOG_TRAP("pCreateInfo->pQueueCreateInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pQueueCreateInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
 			extInfo = extInfo->pNext;
 		}
 
@@ -1321,7 +1361,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateFence(VkDevice device, const VkFenceCreat
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pCreateInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -1462,7 +1510,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkImportSemaphoreZirconHandleFUCHSIA(
 	bool temporaryImport = (pImportSemaphoreZirconHandleInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT) != 0;
 	auto *sem = vk::DynamicCast<vk::BinarySemaphore>(pImportSemaphoreZirconHandleInfo->semaphore);
 	ASSERT(sem != nullptr);
-	return sem->importHandle(pImportSemaphoreZirconHandleInfo->handle, temporaryImport);
+	return sem->importHandle(pImportSemaphoreZirconHandleInfo->zirconHandle, temporaryImport);
 }
 
 VKAPI_ATTR VkResult VKAPI_CALL vkGetSemaphoreZirconHandleFUCHSIA(
@@ -1522,7 +1570,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateEvent(VkDevice device, const VkEventCreat
 	while(extInfo)
 	{
 		// Vulkan 1.2: "pNext must be NULL"
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -1576,7 +1624,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateQueryPool(VkDevice device, const VkQueryP
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -1612,8 +1660,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateBuffer(VkDevice device, const VkBufferCre
 		case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO:
 			// Do nothing. Should be handled by vk::Buffer::Create().
 			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
 			break;
 		}
 		nextInfo = nextInfo->pNext;
@@ -1668,7 +1719,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateBufferView(VkDevice device, const VkBuffe
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -1736,9 +1787,12 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateImage(VkDevice device, const VkImageCreat
 				(void)stencilUsageInfo->stencilUsage;
 			}
 			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
 			// "the [driver] must skip over, without processing (other than reading the sType and pNext members) any structures in the chain with sType values not defined by [supported extenions]"
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -1841,8 +1895,11 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateImageView(VkDevice device, const VkImageV
 				}
 			}
 			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -1881,7 +1938,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateShaderModule(VkDevice device, const VkSha
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pCreateInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -1910,7 +1975,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreatePipelineCache(VkDevice device, const VkPi
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -1946,6 +2011,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(VkDevice device, VkPipe
 	TRACE("(VkDevice device = %p, VkPipelineCache pipelineCache = %p, uint32_t createInfoCount = %d, const VkGraphicsPipelineCreateInfo* pCreateInfos = %p, const VkAllocationCallbacks* pAllocator = %p, VkPipeline* pPipelines = %p)",
 	      device, static_cast<void *>(pipelineCache), int(createInfoCount), pCreateInfos, pAllocator, pPipelines);
 
+	memset(pPipelines, 0, sizeof(void *) * createInfoCount);
+
 	VkResult errorResult = VK_SUCCESS;
 	for(uint32_t i = 0; i < createInfoCount; i++)
 	{
@@ -1953,9 +2020,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(VkDevice device, VkPipe
 
 		if(result == VK_SUCCESS)
 		{
-			static_cast<vk::GraphicsPipeline *>(vk::Cast(pPipelines[i]))->compileShaders(pAllocator, &pCreateInfos[i], vk::Cast(pipelineCache));
+			result = static_cast<vk::GraphicsPipeline *>(vk::Cast(pPipelines[i]))->compileShaders(pAllocator, &pCreateInfos[i], vk::Cast(pipelineCache));
+			if(result != VK_SUCCESS)
+			{
+				vk::destroy(pPipelines[i], pAllocator);
+			}
 		}
-		else
+
+		if(result != VK_SUCCESS)
 		{
 			// According to the Vulkan spec, section 9.4. Multiple Pipeline Creation
 			// "When an application attempts to create many pipelines in a single command,
@@ -1967,6 +2039,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateGraphicsPipelines(VkDevice device, VkPipe
 			//  only return VK_NULL_HANDLE values for those that actually failed."
 			pPipelines[i] = VK_NULL_HANDLE;
 			errorResult = result;
+
+			// VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT specifies that control
+			// will be returned to the application on failure of the corresponding pipeline
+			// rather than continuing to create additional pipelines.
+			if(pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+			{
+				return errorResult;
+			}
 		}
 	}
 
@@ -1978,6 +2058,8 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateComputePipelines(VkDevice device, VkPipel
 	TRACE("(VkDevice device = %p, VkPipelineCache pipelineCache = %p, uint32_t createInfoCount = %d, const VkComputePipelineCreateInfo* pCreateInfos = %p, const VkAllocationCallbacks* pAllocator = %p, VkPipeline* pPipelines = %p)",
 	      device, static_cast<void *>(pipelineCache), int(createInfoCount), pCreateInfos, pAllocator, pPipelines);
 
+	memset(pPipelines, 0, sizeof(void *) * createInfoCount);
+
 	VkResult errorResult = VK_SUCCESS;
 	for(uint32_t i = 0; i < createInfoCount; i++)
 	{
@@ -1985,9 +2067,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateComputePipelines(VkDevice device, VkPipel
 
 		if(result == VK_SUCCESS)
 		{
-			static_cast<vk::ComputePipeline *>(vk::Cast(pPipelines[i]))->compileShaders(pAllocator, &pCreateInfos[i], vk::Cast(pipelineCache));
+			result = static_cast<vk::ComputePipeline *>(vk::Cast(pPipelines[i]))->compileShaders(pAllocator, &pCreateInfos[i], vk::Cast(pipelineCache));
+			if(result != VK_SUCCESS)
+			{
+				vk::destroy(pPipelines[i], pAllocator);
+			}
 		}
-		else
+
+		if(result != VK_SUCCESS)
 		{
 			// According to the Vulkan spec, section 9.4. Multiple Pipeline Creation
 			// "When an application attempts to create many pipelines in a single command,
@@ -1999,6 +2086,14 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateComputePipelines(VkDevice device, VkPipel
 			//  only return VK_NULL_HANDLE values for those that actually failed."
 			pPipelines[i] = VK_NULL_HANDLE;
 			errorResult = result;
+
+			// VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT specifies that control
+			// will be returned to the application on failure of the corresponding pipeline
+			// rather than continuing to create additional pipelines.
+			if(pCreateInfos[i].flags & VK_PIPELINE_CREATE_EARLY_RETURN_ON_FAILURE_BIT_EXT)
+			{
+				return errorResult;
+			}
 		}
 	}
 
@@ -2027,7 +2122,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreatePipelineLayout(VkDevice device, const VkP
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pCreateInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -2086,7 +2189,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSampler(VkDevice device, const VkSamplerC
 			}
 			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -2135,7 +2238,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDescriptorSetLayout(VkDevice device, cons
 			ASSERT(!vk::Cast(device)->hasExtension(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME));
 			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extensionCreateInfo->sType).c_str());
 			break;
 		}
 
@@ -2161,7 +2264,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDescriptorPool(VkDevice device, const VkD
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -2198,7 +2301,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAllocateDescriptorSets(VkDevice device, const V
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pAllocateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pAllocateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pAllocateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -2295,7 +2398,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateCommandPool(VkDevice device, const VkComm
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pCreateInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -2326,7 +2437,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkAllocateCommandBuffers(VkDevice device, const V
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pAllocateInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pAllocateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pAllocateInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -2349,7 +2468,15 @@ VKAPI_ATTR VkResult VKAPI_CALL vkBeginCommandBuffer(VkCommandBuffer commandBuffe
 	auto *nextInfo = reinterpret_cast<const VkBaseInStructure *>(pBeginInfo->pNext);
 	while(nextInfo)
 	{
-		LOG_TRAP("pBeginInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+		switch(nextInfo->sType)
+		{
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
+		default:
+			UNSUPPORTED("pBeginInfo->pNext sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			break;
+		}
 		nextInfo = nextInfo->pNext;
 	}
 
@@ -2540,7 +2667,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdCopyBuffer(VkCommandBuffer commandBuffer, VkBuff
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkBuffer srcBuffer = %p, VkBuffer dstBuffer = %p, uint32_t regionCount = %d, const VkBufferCopy* pRegions = %p)",
 	      commandBuffer, static_cast<void *>(srcBuffer), static_cast<void *>(dstBuffer), int(regionCount), pRegions);
 
-	vk::Cast(commandBuffer)->copyBuffer(vk::Cast(srcBuffer), vk::Cast(dstBuffer), regionCount, pRegions);
+	vk::Cast(commandBuffer)->copyBuffer(vk::CopyBufferInfo(srcBuffer, dstBuffer, regionCount, pRegions));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdCopyBuffer2KHR(VkCommandBuffer commandBuffer, const VkCopyBufferInfo2KHR *pCopyBufferInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkCopyBufferInfo2KHR* pCopyBufferInfo = %p)",
+	      commandBuffer, pCopyBufferInfo);
+
+	vk::Cast(commandBuffer)->copyBuffer(*pCopyBufferInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdCopyImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkImageCopy *pRegions)
@@ -2548,7 +2683,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdCopyImage(VkCommandBuffer commandBuffer, VkImage
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkImage srcImage = %p, VkImageLayout srcImageLayout = %d, VkImage dstImage = %p, VkImageLayout dstImageLayout = %d, uint32_t regionCount = %d, const VkImageCopy* pRegions = %p)",
 	      commandBuffer, static_cast<void *>(srcImage), srcImageLayout, static_cast<void *>(dstImage), dstImageLayout, int(regionCount), pRegions);
 
-	vk::Cast(commandBuffer)->copyImage(vk::Cast(srcImage), srcImageLayout, vk::Cast(dstImage), dstImageLayout, regionCount, pRegions);
+	vk::Cast(commandBuffer)->copyImage(vk::CopyImageInfo(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdCopyImage2KHR(VkCommandBuffer commandBuffer, const VkCopyImageInfo2KHR *pCopyImageInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkCopyImageInfo2KHR* pCopyImageInfo = %p)",
+	      commandBuffer, pCopyImageInfo);
+
+	vk::Cast(commandBuffer)->copyImage(*pCopyImageInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdBlitImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkImageBlit *pRegions, VkFilter filter)
@@ -2556,7 +2699,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdBlitImage(VkCommandBuffer commandBuffer, VkImage
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkImage srcImage = %p, VkImageLayout srcImageLayout = %d, VkImage dstImage = %p, VkImageLayout dstImageLayout = %d, uint32_t regionCount = %d, const VkImageBlit* pRegions = %p, VkFilter filter = %d)",
 	      commandBuffer, static_cast<void *>(srcImage), srcImageLayout, static_cast<void *>(dstImage), dstImageLayout, int(regionCount), pRegions, filter);
 
-	vk::Cast(commandBuffer)->blitImage(vk::Cast(srcImage), srcImageLayout, vk::Cast(dstImage), dstImageLayout, regionCount, pRegions, filter);
+	vk::Cast(commandBuffer)->blitImage(vk::BlitImageInfo(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdBlitImage2KHR(VkCommandBuffer commandBuffer, const VkBlitImageInfo2KHR *pBlitImageInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkBlitImageInfo2KHR* pBlitImageInfo = %p)",
+	      commandBuffer, pBlitImageInfo);
+
+	vk::Cast(commandBuffer)->blitImage(*pBlitImageInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdCopyBufferToImage(VkCommandBuffer commandBuffer, VkBuffer srcBuffer, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkBufferImageCopy *pRegions)
@@ -2564,7 +2715,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdCopyBufferToImage(VkCommandBuffer commandBuffer,
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkBuffer srcBuffer = %p, VkImage dstImage = %p, VkImageLayout dstImageLayout = %d, uint32_t regionCount = %d, const VkBufferImageCopy* pRegions = %p)",
 	      commandBuffer, static_cast<void *>(srcBuffer), static_cast<void *>(dstImage), dstImageLayout, int(regionCount), pRegions);
 
-	vk::Cast(commandBuffer)->copyBufferToImage(vk::Cast(srcBuffer), vk::Cast(dstImage), dstImageLayout, regionCount, pRegions);
+	vk::Cast(commandBuffer)->copyBufferToImage(vk::CopyBufferToImageInfo(srcBuffer, dstImage, dstImageLayout, regionCount, pRegions));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer, const VkCopyBufferToImageInfo2KHR *pCopyBufferToImageInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkCopyBufferToImageInfo2KHR* pCopyBufferToImageInfo = %p)",
+	      commandBuffer, pCopyBufferToImageInfo);
+
+	vk::Cast(commandBuffer)->copyBufferToImage(*pCopyBufferToImageInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdCopyImageToBuffer(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcImageLayout, VkBuffer dstBuffer, uint32_t regionCount, const VkBufferImageCopy *pRegions)
@@ -2572,7 +2731,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkImage srcImage = %p, VkImageLayout srcImageLayout = %d, VkBuffer dstBuffer = %p, uint32_t regionCount = %d, const VkBufferImageCopy* pRegions = %p)",
 	      commandBuffer, static_cast<void *>(srcImage), int(srcImageLayout), static_cast<void *>(dstBuffer), int(regionCount), pRegions);
 
-	vk::Cast(commandBuffer)->copyImageToBuffer(vk::Cast(srcImage), srcImageLayout, vk::Cast(dstBuffer), regionCount, pRegions);
+	vk::Cast(commandBuffer)->copyImageToBuffer(vk::CopyImageToBufferInfo(srcImage, srcImageLayout, dstBuffer, regionCount, pRegions));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdCopyImageToBuffer2KHR(VkCommandBuffer commandBuffer, const VkCopyImageToBufferInfo2KHR *pCopyImageToBufferInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkCopyImageToBufferInfo2KHR* pCopyImageToBufferInfo = %p)",
+	      commandBuffer, pCopyImageToBufferInfo);
+
+	vk::Cast(commandBuffer)->copyImageToBuffer(*pCopyImageToBufferInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdUpdateBuffer(VkCommandBuffer commandBuffer, VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize dataSize, const void *pData)
@@ -2620,7 +2787,15 @@ VKAPI_ATTR void VKAPI_CALL vkCmdResolveImage(VkCommandBuffer commandBuffer, VkIm
 	TRACE("(VkCommandBuffer commandBuffer = %p, VkImage srcImage = %p, VkImageLayout srcImageLayout = %d, VkImage dstImage = %p, VkImageLayout dstImageLayout = %d, uint32_t regionCount = %d, const VkImageResolve* pRegions = %p)",
 	      commandBuffer, static_cast<void *>(srcImage), int(srcImageLayout), static_cast<void *>(dstImage), int(dstImageLayout), regionCount, pRegions);
 
-	vk::Cast(commandBuffer)->resolveImage(vk::Cast(srcImage), srcImageLayout, vk::Cast(dstImage), dstImageLayout, regionCount, pRegions);
+	vk::Cast(commandBuffer)->resolveImage(vk::ResolveImageInfo(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions));
+}
+
+VKAPI_ATTR void VKAPI_CALL vkCmdResolveImage2KHR(VkCommandBuffer commandBuffer, const VkResolveImageInfo2KHR *pResolveImageInfo)
+{
+	TRACE("(VkCommandBuffer commandBuffer = %p, const VkResolveImageInfo2KHR* pResolveImageInfo = %p)",
+	      commandBuffer, pResolveImageInfo);
+
+	vk::Cast(commandBuffer)->resolveImage(*pResolveImageInfo);
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdSetEvent(VkCommandBuffer commandBuffer, VkEvent event, VkPipelineStageFlags stageMask)
@@ -2730,8 +2905,11 @@ VKAPI_ATTR void VKAPI_CALL vkCmdBeginRenderPass2(VkCommandBuffer commandBuffer, 
 		case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO:
 			attachmentBeginInfo = reinterpret_cast<const VkRenderPassAttachmentBeginInfo *>(renderPassBeginInfo);
 			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
-			LOG_TRAP("pRenderPassBegin->pNext sType = %s", vk::Stringify(renderPassBeginInfo->sType).c_str());
+			UNSUPPORTED("pRenderPassBegin->pNext sType = %s", vk::Stringify(renderPassBeginInfo->sType).c_str());
 			break;
 		}
 
@@ -2796,7 +2974,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkBindBufferMemory2(VkDevice device, uint32_t bin
 		auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pBindInfos[i].pNext);
 		while(extInfo)
 		{
-			LOG_TRAP("pBindInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
+			UNSUPPORTED("pBindInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
 			extInfo = extInfo->pNext;
 		}
 
@@ -2854,7 +3032,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkBindImageMemory2(VkDevice device, uint32_t bind
 #endif
 
 			default:
-				LOG_TRAP("pBindInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
+				UNSUPPORTED("pBindInfos[%d].pNext sType = %s", i, vk::Stringify(extInfo->sType).c_str());
 				break;
 			}
 			extInfo = extInfo->pNext;
@@ -2913,7 +3091,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetImageMemoryRequirements2(VkDevice device, const 
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -2936,7 +3114,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetImageMemoryRequirements2(VkDevice device, const 
 			}
 			break;
 		default:
-			LOG_TRAP("pMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
+			UNSUPPORTED("pMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
 			break;
 		}
 
@@ -2954,7 +3132,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetBufferMemoryRequirements2(VkDevice device, const
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -2970,7 +3148,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetBufferMemoryRequirements2(VkDevice device, const
 			}
 			break;
 		default:
-			LOG_TRAP("pMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
+			UNSUPPORTED("pMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
 			break;
 		}
 
@@ -2988,14 +3166,14 @@ VKAPI_ATTR void VKAPI_CALL vkGetImageSparseMemoryRequirements2(VkDevice device, 
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
 	auto extensionRequirements = reinterpret_cast<VkBaseInStructure const *>(pSparseMemoryRequirements->pNext);
 	while(extensionRequirements)
 	{
-		LOG_TRAP("pSparseMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
+		UNSUPPORTED("pSparseMemoryRequirements->pNext sType = %s", vk::Stringify(extensionRequirements->sType).c_str());
 		extensionRequirements = extensionRequirements->pNext;
 	}
 
@@ -3144,9 +3322,17 @@ VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceProperties2(VkPhysicalDevice physi
 				vk::Cast(physicalDevice)->getProperties(properties);
 			}
 			break;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT:
+			{
+				auto properties = reinterpret_cast<VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT *>(extensionProperties);
+				vk::Cast(physicalDevice)->getProperties(properties);
+			}
+			break;
+		case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_DOT_PRODUCT_PROPERTIES_KHR:
+			break;
 		default:
 			// "the [driver] must skip over, without processing (other than reading the sType and pNext members) any structures in the chain with sType values not defined by [supported extenions]"
-			LOG_TRAP("pProperties->pNext sType = %s", vk::Stringify(extensionProperties->sType).c_str());
+			UNSUPPORTED("pProperties->pNext sType = %s", vk::Stringify(extensionProperties->sType).c_str());
 			break;
 		}
 
@@ -3161,11 +3347,24 @@ VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceFormatProperties2(VkPhysicalDevice
 	TRACE("(VkPhysicalDevice physicalDevice = %p, VkFormat format = %d, VkFormatProperties2* pFormatProperties = %p)",
 	      physicalDevice, format, pFormatProperties);
 
-	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pFormatProperties->pNext);
-	while(extInfo)
+	VkBaseOutStructure *extensionProperties = reinterpret_cast<VkBaseOutStructure *>(pFormatProperties->pNext);
+	while(extensionProperties)
 	{
-		LOG_TRAP("pFormatProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
-		extInfo = extInfo->pNext;
+		switch(extensionProperties->sType)
+		{
+		case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3_KHR:
+			{
+				auto *properties3 = reinterpret_cast<VkFormatProperties3KHR *>(extensionProperties);
+				vk::Cast(physicalDevice)->GetFormatProperties(format, properties3);
+			}
+			break;
+		default:
+			// "the [driver] must skip over, without processing (other than reading the sType and pNext members) any structures in the chain with sType values not defined by [supported extenions]"
+			UNSUPPORTED("pFormatProperties->pNext sType = %s", vk::Stringify(extensionProperties->sType).c_str());
+			break;
+		}
+
+		extensionProperties = extensionProperties->pNext;
 	}
 
 	vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &(pFormatProperties->formatProperties));
@@ -3260,7 +3459,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceImageFormatProperties2(VkPhysi
 			}
 			break;
 		default:
-			LOG_TRAP("pImageFormatInfo->pNext sType = %s", vk::Stringify(extensionFormatInfo->sType).c_str());
+			UNSUPPORTED("pImageFormatInfo->pNext sType = %s", vk::Stringify(extensionFormatInfo->sType).c_str());
 			break;
 		}
 
@@ -3305,7 +3504,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceImageFormatProperties2(VkPhysi
 			break;
 #endif
 		default:
-			LOG_TRAP("pImageFormatProperties->pNext sType = %s", vk::Stringify(extensionProperties->sType).c_str());
+			UNSUPPORTED("pImageFormatProperties->pNext sType = %s", vk::Stringify(extensionProperties->sType).c_str());
 			break;
 		}
 
@@ -3432,7 +3631,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceQueueFamilyProperties2(VkPhysicalD
 		auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pQueueFamilyProperties->pNext);
 		while(extInfo)
 		{
-			LOG_TRAP("pQueueFamilyProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+			UNSUPPORTED("pQueueFamilyProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 			extInfo = extInfo->pNext;
 		}
 	}
@@ -3454,7 +3653,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceMemoryProperties2(VkPhysicalDevice
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pMemoryProperties->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pMemoryProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pMemoryProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -3471,7 +3670,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceSparseImageFormatProperties2(VkPhy
 		auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pProperties->pNext);
 		while(extInfo)
 		{
-			LOG_TRAP("pProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+			UNSUPPORTED("pProperties->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 			extInfo = extInfo->pNext;
 		}
 	}
@@ -3502,7 +3701,7 @@ VKAPI_ATTR void VKAPI_CALL vkGetDeviceQueue2(VkDevice device, const VkDeviceQueu
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pQueueInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pQueueInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pQueueInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -3527,7 +3726,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateSamplerYcbcrConversion(VkDevice device, c
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -3561,7 +3760,7 @@ VKAPI_ATTR VkResult VKAPI_CALL vkCreateDescriptorUpdateTemplate(VkDevice device,
 	auto extInfo = reinterpret_cast<VkBaseInStructure const *>(pCreateInfo->pNext);
 	while(extInfo)
 	{
-		LOG_TRAP("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
+		UNSUPPORTED("pCreateInfo->pNext sType = %s", vk::Stringify(extInfo->sType).c_str());
 		extInfo = extInfo->pNext;
 	}
 
@@ -3621,7 +3820,14 @@ VKAPI_ATTR void VKAPI_CALL vkCmdSetLineStippleEXT(VkCommandBuffer commandBuffer,
 	TRACE("(VkCommandBuffer commandBuffer = %p, uint32_t lineStippleFactor = %u, uint16_t lineStipplePattern = %u)",
 	      commandBuffer, lineStippleFactor, lineStipplePattern);
 
-	UNSUPPORTED("VkPhysicalDeviceLineRasterizationFeaturesEXT::stippled*Lines");
+	static constexpr uint16_t solidLine = 0xFFFFu;
+	if(lineStipplePattern != solidLine)
+	{
+		// VkPhysicalDeviceLineRasterizationFeaturesEXT::stippled*Lines are all set to VK_FALSE and,
+		// according to the Vulkan spec for VkPipelineRasterizationLineStateCreateInfoEXT:
+		// "If stippledLineEnable is VK_FALSE, the values of lineStippleFactor and lineStipplePattern are ignored."
+		WARN("vkCmdSetLineStippleEXT: line stipple pattern ignored : 0x%04X", lineStipplePattern);
+	}
 }
 
 VKAPI_ATTR void VKAPI_CALL vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer commandBuffer, const VkDebugUtilsLabelEXT *pLabelInfo)

@@ -29,11 +29,19 @@
 
 // Note: some of the types in this header are needed by both the DescriptorSet and Pipeline
 // state objects. It is helpful to have a separate header to avoid circular #include madness.
+struct DescriptorSlot {
+    uint32_t set;
+    uint32_t binding;
 
-typedef std::pair<unsigned, unsigned> descriptor_slot_t;
+    DescriptorSlot(uint32_t s, uint32_t b) : set(s), binding(b) {}
+};
+
+inline bool operator==(const DescriptorSlot &lhs, const DescriptorSlot &rhs) NOEXCEPT {
+    return lhs.set == rhs.set && lhs.binding == rhs.binding;
+}
 
 struct SamplerUsedByImage {
-    descriptor_slot_t sampler_slot;
+    DescriptorSlot sampler_slot;
     uint32_t sampler_index;
 };
 
@@ -43,8 +51,14 @@ inline bool operator==(const SamplerUsedByImage &a, const SamplerUsedByImage &b)
 
 namespace std {
 template <>
-struct less<SamplerUsedByImage> {
-    bool operator()(const SamplerUsedByImage &left, const SamplerUsedByImage &right) const { return false; }
+struct hash<DescriptorSlot> {
+    size_t operator()(DescriptorSlot slot) const NOEXCEPT { return hash<uint32_t>()(slot.set) ^ hash<uint32_t>()(slot.binding); }
+};
+template <>
+struct hash<SamplerUsedByImage> {
+    size_t operator()(SamplerUsedByImage s) const NOEXCEPT {
+        return hash<DescriptorSlot>()(s.sampler_slot) ^ hash<uint32_t>()(s.sampler_index);
+    }
 };
 }  // namespace std
 

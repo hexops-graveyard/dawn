@@ -199,25 +199,24 @@ AHardwareBufferExternalMemory::AHardwareBufferExternalMemory(const VkMemoryAlloc
 
 AHardwareBufferExternalMemory::~AHardwareBufferExternalMemory()
 {
-	// correct deallocation of AHB does not require a pointer or size
-	deallocate(nullptr, 0);
+	freeBuffer();
 }
 
-// VkAllocateMemory
-VkResult AHardwareBufferExternalMemory::allocate(size_t size, void **pBuffer)
+// vkAllocateMemory
+VkResult AHardwareBufferExternalMemory::allocateBuffer()
 {
 	if(allocateInfo.importAhb)
 	{
-		return importAndroidHardwareBuffer(allocateInfo.ahb, pBuffer);
+		return importAndroidHardwareBuffer(allocateInfo.ahb, &buffer);
 	}
 	else
 	{
 		ASSERT(allocateInfo.exportAhb);
-		return allocateAndroidHardwareBuffer(size, pBuffer);
+		return allocateAndroidHardwareBuffer(allocationSize, &buffer);
 	}
 }
 
-void AHardwareBufferExternalMemory::deallocate(void *buffer, size_t size)
+void AHardwareBufferExternalMemory::freeBuffer()
 {
 	if(ahb != nullptr)
 	{
@@ -452,14 +451,14 @@ VkResult AHardwareBufferExternalMemory::GetAndroidHardwareBufferProperties(VkDev
 
 		VkImage Image;
 
-		result = vk::Image::Create(vk::DEVICE_MEMORY, &info, &Image, vk::Cast(device));
+		result = vk::Image::Create(vk::NULL_ALLOCATION_CALLBACKS, &info, &Image, vk::Cast(device));
 		if(result != VK_SUCCESS)
 		{
 			return result;
 		}
 
 		pProperties->allocationSize = vk::Cast(Image)->getMemoryRequirements().size;
-		vk::destroy(Image, vk::DEVICE_MEMORY);
+		vk::destroy(Image, vk::NULL_ALLOCATION_CALLBACKS);
 	}
 
 	return result;

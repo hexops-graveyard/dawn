@@ -20,6 +20,7 @@
  * limitations under the License.
  *
  * Author: Mark Lobodzinski <mark@lunarg.com>
+ * Author: Nadav Geva <nadav.geva@amd.com>
  */
 #pragma once
 
@@ -1355,6 +1356,14 @@ VKAPI_ATTR void VKAPI_CALL CmdDecodeVideoKHR(
 #endif // VK_ENABLE_BETA_EXTENSIONS
 
 
+VKAPI_ATTR void VKAPI_CALL CmdBeginRenderingKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderingInfoKHR*                   pRenderingInfo);
+
+VKAPI_ATTR void VKAPI_CALL CmdEndRenderingKHR(
+    VkCommandBuffer                             commandBuffer);
+
+
 
 VKAPI_ATTR void VKAPI_CALL GetPhysicalDeviceFeatures2KHR(
     VkPhysicalDevice                            physicalDevice,
@@ -1814,6 +1823,7 @@ VKAPI_ATTR VkResult VKAPI_CALL GetPipelineExecutableInternalRepresentationsKHR(
 
 
 
+
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 
 VKAPI_ATTR void VKAPI_CALL CmdEncodeVideoKHR(
@@ -1893,6 +1903,24 @@ VKAPI_ATTR void VKAPI_CALL CmdBlitImage2KHR(
 VKAPI_ATTR void VKAPI_CALL CmdResolveImage2KHR(
     VkCommandBuffer                             commandBuffer,
     const VkResolveImageInfo2KHR*               pResolveImageInfo);
+
+
+
+VKAPI_ATTR void VKAPI_CALL GetDeviceBufferMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceBufferMemoryRequirementsKHR*  pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements);
+
+VKAPI_ATTR void VKAPI_CALL GetDeviceImageMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements);
+
+VKAPI_ATTR void VKAPI_CALL GetDeviceImageSparseMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    uint32_t*                                   pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements);
 
 
 VKAPI_ATTR VkResult VKAPI_CALL CreateDebugReportCallbackEXT(
@@ -2047,6 +2075,9 @@ VKAPI_ATTR void VKAPI_CALL CmdDrawIndexedIndirectCountAMD(
 
 
 
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+#endif // VK_ENABLE_BETA_EXTENSIONS
 
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 #endif // VK_ENABLE_BETA_EXTENSIONS
@@ -2852,6 +2883,8 @@ VKAPI_ATTR void VKAPI_CALL CmdSetFragmentShadingRateEnumNV(
 
 
 
+
+
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 
 VKAPI_ATTR VkResult VKAPI_CALL AcquireWinrtDisplayNV(
@@ -2888,6 +2921,8 @@ VKAPI_ATTR void VKAPI_CALL CmdSetVertexInputEXT(
     const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions);
 
 
+
+
 #ifdef VK_USE_PLATFORM_FUCHSIA
 
 VKAPI_ATTR VkResult VKAPI_CALL GetMemoryZirconHandleFUCHSIA(
@@ -2912,6 +2947,35 @@ VKAPI_ATTR VkResult VKAPI_CALL GetSemaphoreZirconHandleFUCHSIA(
     VkDevice                                    device,
     const VkSemaphoreGetZirconHandleInfoFUCHSIA* pGetZirconHandleInfo,
     zx_handle_t*                                pZirconHandle);
+#endif // VK_USE_PLATFORM_FUCHSIA
+
+#ifdef VK_USE_PLATFORM_FUCHSIA
+
+VKAPI_ATTR VkResult VKAPI_CALL CreateBufferCollectionFUCHSIA(
+    VkDevice                                    device,
+    const VkBufferCollectionCreateInfoFUCHSIA*  pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkBufferCollectionFUCHSIA*                  pCollection);
+
+VKAPI_ATTR VkResult VKAPI_CALL SetBufferCollectionImageConstraintsFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkImageConstraintsInfoFUCHSIA*        pImageConstraintsInfo);
+
+VKAPI_ATTR VkResult VKAPI_CALL SetBufferCollectionBufferConstraintsFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkBufferConstraintsInfoFUCHSIA*       pBufferConstraintsInfo);
+
+VKAPI_ATTR void VKAPI_CALL DestroyBufferCollectionFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkAllocationCallbacks*                pAllocator);
+
+VKAPI_ATTR VkResult VKAPI_CALL GetBufferCollectionPropertiesFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    VkBufferCollectionPropertiesFUCHSIA*        pProperties);
 #endif // VK_USE_PLATFORM_FUCHSIA
 
 
@@ -2978,6 +3042,7 @@ VKAPI_ATTR void                                    VKAPI_CALL CmdSetColorWriteEn
 
 
 
+
 VKAPI_ATTR void VKAPI_CALL CmdDrawMultiEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    drawCount,
@@ -2994,6 +3059,16 @@ VKAPI_ATTR void VKAPI_CALL CmdDrawMultiIndexedEXT(
     uint32_t                                    firstInstance,
     uint32_t                                    stride,
     const int32_t*                              pVertexOffset);
+
+
+
+
+VKAPI_ATTR void VKAPI_CALL SetDeviceMemoryPriorityEXT(
+    VkDevice                                    device,
+    VkDeviceMemory                              memory,
+    float                                       priority);
+
+
 
 
 
@@ -3178,6 +3253,7 @@ typedef enum ValidationCheckDisables {
 
 typedef enum ValidationCheckEnables {
     VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_ARM,
+    VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_AMD,
     VALIDATION_CHECK_ENABLE_VENDOR_SPECIFIC_ALL,
 } ValidationCheckEnables;
 
@@ -3209,6 +3285,7 @@ typedef enum EnableFlags {
     gpu_validation_reserve_binding_slot,
     best_practices,
     vendor_specific_arm,
+    vendor_specific_amd,
     debug_printf,
     sync_validation,
     // Insert new enables above this line
@@ -3246,6 +3323,8 @@ class ValidationObject {
         std::vector<ValidationObject*> object_dispatch;
         LayerObjectTypeId container_type;
 
+        vl_concurrent_unordered_map<VkDeferredOperationKHR, std::function<void()>, 0> deferred_operation_cleanup;
+
         std::string layer_name = "CHASSIS";
 
         // Constructor
@@ -3256,11 +3335,11 @@ class ValidationObject {
         void InitObjectDispatchVectors();
 
         ReadWriteLock validation_object_mutex;
-        virtual read_lock_guard_t read_lock() {
-            return read_lock_guard_t(validation_object_mutex);
+        virtual ReadLockGuard ReadLock() {
+            return ReadLockGuard(validation_object_mutex);
         }
-        virtual write_lock_guard_t write_lock() {
-            return write_lock_guard_t(validation_object_mutex);
+        virtual WriteLockGuard WriteLock() {
+            return WriteLockGuard(validation_object_mutex);
         }
 
         void RegisterValidationObject(bool vo_enabled, uint32_t instance_api_version,
@@ -3272,10 +3351,11 @@ class ValidationObject {
             }
         }
 
-        void FinalizeInstanceValidationObject(ValidationObject *framework) {
+        void FinalizeInstanceValidationObject(ValidationObject *framework, VkInstance inst) {
             instance_dispatch_table = framework->instance_dispatch_table;
             enabled = framework->enabled;
             disabled = framework->disabled;
+            instance = inst;
         }
 
         virtual void InitDeviceValidationObject(bool add_obj, ValidationObject *inst_obj, ValidationObject *dev_obj) {
@@ -4213,6 +4293,12 @@ class ValidationObject {
         virtual void PreCallRecordCmdDecodeVideoKHR(VkCommandBuffer commandBuffer, const VkVideoDecodeInfoKHR* pFrameInfo) {};
         virtual void PostCallRecordCmdDecodeVideoKHR(VkCommandBuffer commandBuffer, const VkVideoDecodeInfoKHR* pFrameInfo) {};
 #endif
+        virtual bool PreCallValidateCmdBeginRenderingKHR(VkCommandBuffer                   commandBuffer, const VkRenderingInfoKHR*                           pRenderingInfo) const { return false; };
+        virtual void PreCallRecordCmdBeginRenderingKHR(VkCommandBuffer                   commandBuffer, const VkRenderingInfoKHR*                           pRenderingInfo) {};
+        virtual void PostCallRecordCmdBeginRenderingKHR(VkCommandBuffer                   commandBuffer, const VkRenderingInfoKHR*                           pRenderingInfo) {};
+        virtual bool PreCallValidateCmdEndRenderingKHR(VkCommandBuffer                   commandBuffer) const { return false; };
+        virtual void PreCallRecordCmdEndRenderingKHR(VkCommandBuffer                   commandBuffer) {};
+        virtual void PostCallRecordCmdEndRenderingKHR(VkCommandBuffer                   commandBuffer) {};
         virtual bool PreCallValidateGetPhysicalDeviceFeatures2KHR(VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures2* pFeatures) const { return false; };
         virtual void PreCallRecordGetPhysicalDeviceFeatures2KHR(VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures2* pFeatures) {};
         virtual void PostCallRecordGetPhysicalDeviceFeatures2KHR(VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures2* pFeatures) {};
@@ -4455,24 +4541,24 @@ class ValidationObject {
         virtual bool PreCallValidateCmdSetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, const VkDependencyInfoKHR*                          pDependencyInfo) const { return false; };
         virtual void PreCallRecordCmdSetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, const VkDependencyInfoKHR*                          pDependencyInfo) {};
         virtual void PostCallRecordCmdSetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, const VkDependencyInfoKHR*                          pDependencyInfo) {};
-        virtual bool PreCallValidateCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR                            stageMask) const { return false; };
-        virtual void PreCallRecordCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR                            stageMask) {};
-        virtual void PostCallRecordCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR                            stageMask) {};
+        virtual bool PreCallValidateCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR            stageMask) const { return false; };
+        virtual void PreCallRecordCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR            stageMask) {};
+        virtual void PostCallRecordCmdResetEvent2KHR(VkCommandBuffer                   commandBuffer, VkEvent                                             event, VkPipelineStageFlags2KHR            stageMask) {};
         virtual bool PreCallValidateCmdWaitEvents2KHR(VkCommandBuffer                   commandBuffer, uint32_t                                            eventCount, const VkEvent*                     pEvents, const VkDependencyInfoKHR*         pDependencyInfos) const { return false; };
         virtual void PreCallRecordCmdWaitEvents2KHR(VkCommandBuffer                   commandBuffer, uint32_t                                            eventCount, const VkEvent*                     pEvents, const VkDependencyInfoKHR*         pDependencyInfos) {};
         virtual void PostCallRecordCmdWaitEvents2KHR(VkCommandBuffer                   commandBuffer, uint32_t                                            eventCount, const VkEvent*                     pEvents, const VkDependencyInfoKHR*         pDependencyInfos) {};
         virtual bool PreCallValidateCmdPipelineBarrier2KHR(VkCommandBuffer                   commandBuffer, const VkDependencyInfoKHR*                                pDependencyInfo) const { return false; };
         virtual void PreCallRecordCmdPipelineBarrier2KHR(VkCommandBuffer                   commandBuffer, const VkDependencyInfoKHR*                                pDependencyInfo) {};
         virtual void PostCallRecordCmdPipelineBarrier2KHR(VkCommandBuffer                   commandBuffer, const VkDependencyInfoKHR*                                pDependencyInfo) {};
-        virtual bool PreCallValidateCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkQueryPool                                         queryPool, uint32_t                                            query) const { return false; };
-        virtual void PreCallRecordCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkQueryPool                                         queryPool, uint32_t                                            query) {};
-        virtual void PostCallRecordCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkQueryPool                                         queryPool, uint32_t                                            query) {};
+        virtual bool PreCallValidateCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkQueryPool                                         queryPool, uint32_t                                            query) const { return false; };
+        virtual void PreCallRecordCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkQueryPool                                         queryPool, uint32_t                                            query) {};
+        virtual void PostCallRecordCmdWriteTimestamp2KHR(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkQueryPool                                         queryPool, uint32_t                                            query) {};
         virtual bool PreCallValidateQueueSubmit2KHR(VkQueue                           queue, uint32_t                            submitCount, const VkSubmitInfo2KHR*           pSubmits, VkFence           fence) const { return false; };
         virtual void PreCallRecordQueueSubmit2KHR(VkQueue                           queue, uint32_t                            submitCount, const VkSubmitInfo2KHR*           pSubmits, VkFence           fence) {};
         virtual void PostCallRecordQueueSubmit2KHR(VkQueue                           queue, uint32_t                            submitCount, const VkSubmitInfo2KHR*           pSubmits, VkFence           fence, VkResult result) {};
-        virtual bool PreCallValidateCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) const { return false; };
-        virtual void PreCallRecordCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) {};
-        virtual void PostCallRecordCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR                            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) {};
+        virtual bool PreCallValidateCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) const { return false; };
+        virtual void PreCallRecordCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) {};
+        virtual void PostCallRecordCmdWriteBufferMarker2AMD(VkCommandBuffer                   commandBuffer, VkPipelineStageFlags2KHR            stage, VkBuffer                                            dstBuffer, VkDeviceSize                                        dstOffset, uint32_t                                            marker) {};
         virtual bool PreCallValidateGetQueueCheckpointData2NV(VkQueue queue, uint32_t* pCheckpointDataCount, VkCheckpointData2NV* pCheckpointData) const { return false; };
         virtual void PreCallRecordGetQueueCheckpointData2NV(VkQueue queue, uint32_t* pCheckpointDataCount, VkCheckpointData2NV* pCheckpointData) {};
         virtual void PostCallRecordGetQueueCheckpointData2NV(VkQueue queue, uint32_t* pCheckpointDataCount, VkCheckpointData2NV* pCheckpointData) {};
@@ -4494,6 +4580,15 @@ class ValidationObject {
         virtual bool PreCallValidateCmdResolveImage2KHR(VkCommandBuffer commandBuffer, const VkResolveImageInfo2KHR* pResolveImageInfo) const { return false; };
         virtual void PreCallRecordCmdResolveImage2KHR(VkCommandBuffer commandBuffer, const VkResolveImageInfo2KHR* pResolveImageInfo) {};
         virtual void PostCallRecordCmdResolveImage2KHR(VkCommandBuffer commandBuffer, const VkResolveImageInfo2KHR* pResolveImageInfo) {};
+        virtual bool PreCallValidateGetDeviceBufferMemoryRequirementsKHR(VkDevice device, const VkDeviceBufferMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) const { return false; };
+        virtual void PreCallRecordGetDeviceBufferMemoryRequirementsKHR(VkDevice device, const VkDeviceBufferMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) {};
+        virtual void PostCallRecordGetDeviceBufferMemoryRequirementsKHR(VkDevice device, const VkDeviceBufferMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) {};
+        virtual bool PreCallValidateGetDeviceImageMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) const { return false; };
+        virtual void PreCallRecordGetDeviceImageMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) {};
+        virtual void PostCallRecordGetDeviceImageMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, VkMemoryRequirements2* pMemoryRequirements) {};
+        virtual bool PreCallValidateGetDeviceImageSparseMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, uint32_t* pSparseMemoryRequirementCount, VkSparseImageMemoryRequirements2* pSparseMemoryRequirements) const { return false; };
+        virtual void PreCallRecordGetDeviceImageSparseMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, uint32_t* pSparseMemoryRequirementCount, VkSparseImageMemoryRequirements2* pSparseMemoryRequirements) {};
+        virtual void PostCallRecordGetDeviceImageSparseMemoryRequirementsKHR(VkDevice device, const VkDeviceImageMemoryRequirementsKHR* pInfo, uint32_t* pSparseMemoryRequirementCount, VkSparseImageMemoryRequirements2* pSparseMemoryRequirements) {};
         virtual bool PreCallValidateCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) const { return false; };
         virtual void PreCallRecordCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {};
         virtual void PostCallRecordCreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback, VkResult result) {};
@@ -4972,6 +5067,31 @@ class ValidationObject {
         virtual void PreCallRecordGetSemaphoreZirconHandleFUCHSIA(VkDevice device, const VkSemaphoreGetZirconHandleInfoFUCHSIA* pGetZirconHandleInfo, zx_handle_t* pZirconHandle) {};
         virtual void PostCallRecordGetSemaphoreZirconHandleFUCHSIA(VkDevice device, const VkSemaphoreGetZirconHandleInfoFUCHSIA* pGetZirconHandleInfo, zx_handle_t* pZirconHandle, VkResult result) {};
 #endif
+#ifdef VK_USE_PLATFORM_FUCHSIA
+        virtual bool PreCallValidateCreateBufferCollectionFUCHSIA(VkDevice device, const VkBufferCollectionCreateInfoFUCHSIA* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBufferCollectionFUCHSIA* pCollection) const { return false; };
+        virtual void PreCallRecordCreateBufferCollectionFUCHSIA(VkDevice device, const VkBufferCollectionCreateInfoFUCHSIA* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBufferCollectionFUCHSIA* pCollection) {};
+        virtual void PostCallRecordCreateBufferCollectionFUCHSIA(VkDevice device, const VkBufferCollectionCreateInfoFUCHSIA* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkBufferCollectionFUCHSIA* pCollection, VkResult result) {};
+#endif
+#ifdef VK_USE_PLATFORM_FUCHSIA
+        virtual bool PreCallValidateSetBufferCollectionImageConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkImageConstraintsInfoFUCHSIA* pImageConstraintsInfo) const { return false; };
+        virtual void PreCallRecordSetBufferCollectionImageConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkImageConstraintsInfoFUCHSIA* pImageConstraintsInfo) {};
+        virtual void PostCallRecordSetBufferCollectionImageConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkImageConstraintsInfoFUCHSIA* pImageConstraintsInfo, VkResult result) {};
+#endif
+#ifdef VK_USE_PLATFORM_FUCHSIA
+        virtual bool PreCallValidateSetBufferCollectionBufferConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkBufferConstraintsInfoFUCHSIA* pBufferConstraintsInfo) const { return false; };
+        virtual void PreCallRecordSetBufferCollectionBufferConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkBufferConstraintsInfoFUCHSIA* pBufferConstraintsInfo) {};
+        virtual void PostCallRecordSetBufferCollectionBufferConstraintsFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkBufferConstraintsInfoFUCHSIA* pBufferConstraintsInfo, VkResult result) {};
+#endif
+#ifdef VK_USE_PLATFORM_FUCHSIA
+        virtual bool PreCallValidateDestroyBufferCollectionFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkAllocationCallbacks* pAllocator) const { return false; };
+        virtual void PreCallRecordDestroyBufferCollectionFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkAllocationCallbacks* pAllocator) {};
+        virtual void PostCallRecordDestroyBufferCollectionFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, const VkAllocationCallbacks* pAllocator) {};
+#endif
+#ifdef VK_USE_PLATFORM_FUCHSIA
+        virtual bool PreCallValidateGetBufferCollectionPropertiesFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, VkBufferCollectionPropertiesFUCHSIA* pProperties) const { return false; };
+        virtual void PreCallRecordGetBufferCollectionPropertiesFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, VkBufferCollectionPropertiesFUCHSIA* pProperties) {};
+        virtual void PostCallRecordGetBufferCollectionPropertiesFUCHSIA(VkDevice device, VkBufferCollectionFUCHSIA collection, VkBufferCollectionPropertiesFUCHSIA* pProperties, VkResult result) {};
+#endif
         virtual bool PreCallValidateGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(VkDevice device, VkRenderPass renderpass, VkExtent2D* pMaxWorkgroupSize) const { return false; };
         virtual void PreCallRecordGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(VkDevice device, VkRenderPass renderpass, VkExtent2D* pMaxWorkgroupSize) {};
         virtual void PostCallRecordGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(VkDevice device, VkRenderPass renderpass, VkExtent2D* pMaxWorkgroupSize, VkResult result) {};
@@ -5018,6 +5138,9 @@ class ValidationObject {
         virtual bool PreCallValidateCmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT* pIndexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t* pVertexOffset) const { return false; };
         virtual void PreCallRecordCmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT* pIndexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t* pVertexOffset) {};
         virtual void PostCallRecordCmdDrawMultiIndexedEXT(VkCommandBuffer commandBuffer, uint32_t drawCount, const VkMultiDrawIndexedInfoEXT* pIndexInfo, uint32_t instanceCount, uint32_t firstInstance, uint32_t stride, const int32_t* pVertexOffset) {};
+        virtual bool PreCallValidateSetDeviceMemoryPriorityEXT(VkDevice       device, VkDeviceMemory memory, float          priority) const { return false; };
+        virtual void PreCallRecordSetDeviceMemoryPriorityEXT(VkDevice       device, VkDeviceMemory memory, float          priority) {};
+        virtual void PostCallRecordSetDeviceMemoryPriorityEXT(VkDevice       device, VkDeviceMemory memory, float          priority) {};
         virtual bool PreCallValidateCreateAccelerationStructureKHR(VkDevice                                           device, const VkAccelerationStructureCreateInfoKHR*        pCreateInfo, const VkAllocationCallbacks*       pAllocator, VkAccelerationStructureKHR*                        pAccelerationStructure) const { return false; };
         virtual void PreCallRecordCreateAccelerationStructureKHR(VkDevice                                           device, const VkAccelerationStructureCreateInfoKHR*        pCreateInfo, const VkAllocationCallbacks*       pAllocator, VkAccelerationStructureKHR*                        pAccelerationStructure) {};
         virtual void PostCallRecordCreateAccelerationStructureKHR(VkDevice                                           device, const VkAccelerationStructureCreateInfoKHR*        pCreateInfo, const VkAllocationCallbacks*       pAllocator, VkAccelerationStructureKHR*                        pAccelerationStructure, VkResult result) {};

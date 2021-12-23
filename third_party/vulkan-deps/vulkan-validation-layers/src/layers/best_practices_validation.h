@@ -1,6 +1,7 @@
 /* Copyright (c) 2015-2021 The Khronos Group Inc.
  * Copyright (c) 2015-2021 Valve Corporation
  * Copyright (c) 2015-2021 LunarG, Inc.
+ * Modifications Copyright (C) 2020 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +16,7 @@
  * limitations under the License.
  *
  * Author: Camden Stocker <camden@lunarg.com>
+ * Author: Nadav Geva <nadav.geva@amd.com>
  */
 
 #pragma once
@@ -39,6 +41,34 @@ static const VkDeviceSize kMinDeviceAllocationSize = 256 * 1024;
 // very large allocation.
 static const VkDeviceSize kMinDedicatedAllocationSize = 1024 * 1024;
 
+// AMD best practices
+// Note: These are initial ball park numbers for good performance
+// We expect to adjust them as we get more data on layer usage
+// Avoid small command buffers
+static const uint32_t kMinRecommendedCommandBufferSizeAMD = 10;
+// Avoid small secondary command buffers
+static const uint32_t kMinRecommendedDrawsInSecondaryCommandBufferSizeAMD = 10;
+// Idealy, only 1 fence per frame, so 3 for triple buffering
+static const uint32_t kMaxRecommendedFenceObjectsSizeAMD = 3;
+// Avoid excessive sempahores
+static const uint32_t kMaxRecommendedSemaphoreObjectsSizeAMD = 10;
+// Avoid excessive barriers
+static const uint32_t kMaxRecommendedBarriersSizeAMD = 500;
+// Avoid excessive pipelines
+static const uint32_t kMaxRecommendedNumberOfPSOAMD = 5000;
+// Unlikely that the user needs all the dynamic states enabled at the same time, and they encur a cost
+static const uint32_t kDynamicStatesWarningLimitAMD = 7;
+// Too many dynamic descriptor sets can cause a large pipeline layout
+static const uint32_t kPipelineLayoutSizeWarningLimitAMD = 13;
+// Check that the user is submitting excessivly to a queue
+static const uint32_t kNumberOfSubmissionWarningLimitAMD = 20;
+// Check that there is enough work per vertex stream change
+static const float kVertexStreamToDrawRatioWarningLimitAMD = 0.8f;
+// Check that there is enough work per pipeline change
+static const float kDrawsPerPipelineRatioWarningLimitAMD = 5.f;
+// Check that command buffers are used with an appropriatly sized pool
+static const float kCmdBufferToCmdPoolRatioWarningLimitAMD = 0.1f;
+
 enum ExtDeprecationReason {
     kExtPromoted,
     kExtObsoleted,
@@ -61,6 +91,7 @@ struct SpecialUseVUIDs
 
 typedef enum {
     kBPVendorArm = 0x00000001,
+    kBPVendorAMD = 0x00000002,
 } BPVendorFlagBits;
 typedef VkFlags BPVendorFlags;
 
@@ -95,7 +126,9 @@ struct IMAGE_STATE_BP {
     IMAGE_STATE* image{nullptr};
 };
 
-struct PHYSICAL_DEVICE_STATE_BP {
+struct PHYSICAL_DEVICE_STATE_BP : public PHYSICAL_DEVICE_STATE {
+    PHYSICAL_DEVICE_STATE_BP(VkPhysicalDevice phys_dev) : PHYSICAL_DEVICE_STATE(phys_dev) {}
+
     // Track the call state and array sizes for various query functions
     CALL_STATE vkGetPhysicalDeviceQueueFamilyPropertiesState = UNCALLED;
     CALL_STATE vkGetPhysicalDeviceQueueFamilyProperties2State = UNCALLED;
@@ -106,6 +139,7 @@ struct PHYSICAL_DEVICE_STATE_BP {
     CALL_STATE vkGetPhysicalDeviceSurfaceCapabilitiesKHRState = UNCALLED;
     CALL_STATE vkGetPhysicalDeviceSurfacePresentModesKHRState = UNCALLED;
     CALL_STATE vkGetPhysicalDeviceSurfaceFormatsKHRState = UNCALLED;
+    uint32_t surface_formats_count = 0;
     CALL_STATE vkGetPhysicalDeviceDisplayPlanePropertiesKHRState = UNCALLED;
 };
 
@@ -172,7 +206,7 @@ class CMD_BUFFER_STATE_BP : public CMD_BUFFER_STATE {
     RenderPassState render_pass_state;
 
     CMD_BUFFER_STATE_BP(BestPractices* bp, VkCommandBuffer cb, const VkCommandBufferAllocateInfo* pCreateInfo,
-                        std::shared_ptr<COMMAND_POOL_STATE>& pool);
+                        const COMMAND_POOL_STATE* pool);
 };
 
 class BestPractices : public ValidationStateTracker {
@@ -182,6 +216,8 @@ class BestPractices : public ValidationStateTracker {
     BestPractices() { container_type = LayerObjectTypeBestPractices; }
 
     std::string GetAPIVersionName(uint32_t version) const;
+
+    void InitDeviceValidationObject(bool add_obj, ValidationObject* inst_obj, ValidationObject* dev_obj) override;
 
     bool ValidateCmdDrawType(VkCommandBuffer cmd_buffer, const char* caller) const;
 
@@ -201,8 +237,6 @@ class BestPractices : public ValidationStateTracker {
 
     bool PreCallValidateCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator,
                                        VkInstance* pInstance) const override;
-    void PreCallRecordCreateInstance(const VkInstanceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator,
-                                     VkInstance* pInstance) override;
     bool PreCallValidateCreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo* pCreateInfo,
                                      const VkAllocationCallbacks* pAllocator, VkDevice* pDevice) const override;
     bool PreCallValidateCreateBuffer(VkDevice device, const VkBufferCreateInfo* pCreateInfo,
@@ -400,7 +434,7 @@ class BestPractices : public ValidationStateTracker {
     bool PreCallValidateCmdResolveImage2KHR(VkCommandBuffer commandBuffer,
                                             const VkResolveImageInfo2KHR* pResolveImageInfo) const override;
 
-    using QueueCallbacks = std::vector<std::function<bool (const ValidationStateTracker*, const QUEUE_STATE*)>>;
+    using QueueCallbacks = std::vector<CMD_BUFFER_STATE::QueueCallback>;
 
     void QueueValidateImageView(QueueCallbacks &func, const char* function_name,
                                 IMAGE_VIEW_STATE* view, IMAGE_SUBRESOURCE_USAGE_BP usage);
@@ -502,11 +536,70 @@ class BestPractices : public ValidationStateTracker {
     void ManualPostCallRecordGetSwapchainImagesKHR(VkDevice device, VkSwapchainKHR swapchain, uint32_t* pSwapchainImageCount,
                                                    VkImage* pSwapchainImages, VkResult result);
 
-    void ManualPostCallRecordEnumeratePhysicalDevices(VkInstance instance, uint32_t* pPhysicalDeviceCount,
-                                                      VkPhysicalDevice* pPhysicalDevices, VkResult result);
-
     void ManualPostCallRecordCreateDevice(VkPhysicalDevice gpu, const VkDeviceCreateInfo* pCreateInfo,
                                           const VkAllocationCallbacks* pAllocator, VkDevice* pDevice, VkResult result);
+
+    void ManualPostCallRecordQueueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence,
+                                         VkResult result);
+
+    void ManualPostCallRecordEndCommandBuffer(VkCommandBuffer commandBuffer, VkResult result);
+
+    void ManualPostCallRecordCreateSemaphore(VkDevice device, const VkSemaphoreCreateInfo* pCreateInfo,
+                                                      const VkAllocationCallbacks* pAllocator, VkSemaphore* pSemaphore,
+                                                      VkResult result);
+
+    void ManualPostCallRecordCreateFence(VkDevice device, const VkFenceCreateInfo* pCreateInfo,
+                                                  const VkAllocationCallbacks* pAllocator, VkFence* pFence, VkResult result);
+
+    void ManualPostCallRecordCreateComputePipelines(VkDevice device, VkPipelineCache pipelineCache,
+                                                             uint32_t createInfoCount,
+                                                             const VkComputePipelineCreateInfo* pCreateInfos,
+                                                             const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines,
+                                                             VkResult result, void* state_data);
+
+    void PostCallRecordCmdPipelineBarrier(VkCommandBuffer commandBuffer, VkPipelineStageFlags srcStageMask,
+                                          VkPipelineStageFlags dstStageMask, VkDependencyFlags dependencyFlags,
+                                          uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers,
+                                          uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+                                          uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers) override;
+
+    void PreCallRecordCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
+                                              const VkGraphicsPipelineCreateInfo* pCreateInfos,
+                                              const VkAllocationCallbacks* pAllocator, VkPipeline* pPipelines,
+                                              void* cgpl_state) override;
+
+    bool PreCallValidateUpdateDescriptorSets(VkDevice device, uint32_t descriptorWriteCount,
+                                            const VkWriteDescriptorSet* pDescriptorWrites, uint32_t descriptorCopyCount,
+                                             const VkCopyDescriptorSet* pDescriptorCopies) const override;
+    bool PreCallValidateCreateDescriptorUpdateTemplate(VkDevice device, const VkDescriptorUpdateTemplateCreateInfo* pCreateInfo,
+                                                       const VkAllocationCallbacks* pAllocator,
+                                                       VkDescriptorUpdateTemplate* pDescriptorUpdateTemplate) const override;
+    bool PreCallValidateCmdClearColorImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout,
+                                           const VkClearColorValue* pColor, uint32_t rangeCount,
+                                           const VkImageSubresourceRange* pRanges) const override;
+
+    bool PreCallValidateCmdClearDepthStencilImage(VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout,
+                                                  const VkClearDepthStencilValue* pDepthStencil, uint32_t rangeCount,
+                                                  const VkImageSubresourceRange* pRanges) const override;
+
+    bool PreCallValidateCreatePipelineLayout(VkDevice device, const VkPipelineLayoutCreateInfo* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator,
+                                             VkPipelineLayout* pPipelineLayout) const override;
+
+    bool PreCallValidateCmdCopyImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcImageLayout,
+                                     VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount,
+                                     const VkImageCopy* pRegions) const override;
+
+    bool PreCallValidateCmdBindPipeline(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
+                                        VkPipeline pipeline) const override;
+
+    bool PreCallValidateQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) const override;
+
+    bool PreCallValidateCreateSemaphore(VkDevice device, const VkSemaphoreCreateInfo* pCreateInfo,
+                                        const VkAllocationCallbacks* pAllocator, VkSemaphore* pSemaphore) const override;
+    bool PreCallValidateCreateFence(VkDevice device, const VkFenceCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator,
+                                    VkFence* pFence) const override;
+
 
     void PreCallRecordQueueSubmit(VkQueue queue, uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence) override;
 
@@ -524,12 +617,25 @@ class BestPractices : public ValidationStateTracker {
         return std::static_pointer_cast<SWAPCHAIN_NODE>(std::make_shared<SWAPCHAIN_STATE_BP>(this, create_info, swapchain));
     }
 
+    std::shared_ptr<PHYSICAL_DEVICE_STATE> CreatePhysicalDeviceState(VkPhysicalDevice phys_dev) final {
+        return std::static_pointer_cast<PHYSICAL_DEVICE_STATE>(std::make_shared<PHYSICAL_DEVICE_STATE_BP>(phys_dev));
+    }
+
 // Include code-generated functions
 #include "best_practices.h"
 
   private:
-    uint32_t instance_api_version = 0;
     uint32_t num_mem_objects = 0;
+
+    // AMD tracked
+    uint32_t num_fence_objects = 0;
+    uint32_t num_semaphore_objects = 0;
+    uint32_t num_barriers_objects = 0;
+    uint32_t num_pso = 0;
+    uint32_t num_queue_submissions = 0;
+    VkPipelineCache pipeline_cache = 0;
+    layer_data::unordered_set<VkPipeline> pipelines_used_in_frame;
+    bool robust_buffer_access = false;
 
     // Check that vendor-specific checks are enabled for at least one of the vendors
     bool VendorCheckEnabled(BPVendorFlags vendors) const;
@@ -567,18 +673,19 @@ class BestPractices : public ValidationStateTracker {
 
     void RecordCmdDrawTypeArm(RenderPassState& render_pass_state, uint32_t draw_count, const char* caller);
 
-    // Backing data for BP-specific state data
-    layer_data::unordered_map<VkPhysicalDevice, PHYSICAL_DEVICE_STATE_BP> phys_device_bp_state_map;
-    // Physical device state for this instance
-    PHYSICAL_DEVICE_STATE_BP* instance_device_bp_state = nullptr;
-
     // Get BestPractices-specific state for the given physical devices
-    PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceStateBP(const VkPhysicalDevice& phys_device);
-    const PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceStateBP(const VkPhysicalDevice& phys_device) const;
+    std::shared_ptr<PHYSICAL_DEVICE_STATE_BP> GetPhysicalDeviceState(const VkPhysicalDevice& phys_device) {
+        return std::static_pointer_cast<PHYSICAL_DEVICE_STATE_BP>(Get<PHYSICAL_DEVICE_STATE>(phys_device));
+    }
+    std::shared_ptr<const PHYSICAL_DEVICE_STATE_BP> GetPhysicalDeviceState(const VkPhysicalDevice& phys_device) const {
+        return std::static_pointer_cast<const PHYSICAL_DEVICE_STATE_BP>(Get<PHYSICAL_DEVICE_STATE>(phys_device));
+    }
 
     // Get BestPractices-specific for the current instance
-    PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceStateBP();
-    const PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceStateBP() const;
+    PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceState() { return static_cast<PHYSICAL_DEVICE_STATE_BP*>(physical_device_state); }
+    const PHYSICAL_DEVICE_STATE_BP* GetPhysicalDeviceState() const {
+        return static_cast<const PHYSICAL_DEVICE_STATE_BP*>(physical_device_state);
+    }
 
     IMAGE_STATE_BP* GetImageUsageState(VkImage image);
     void ReleaseImageUsageState(VkImage image);
@@ -597,13 +704,13 @@ class BestPractices : public ValidationStateTracker {
     bool ValidateCmdEndRenderPass(VkCommandBuffer commandBuffer) const;
     void RecordCmdBeginRenderPass(VkCommandBuffer commandBuffer, const VkRenderPassBeginInfo *pRenderPassBegin);
 
-    const CMD_BUFFER_STATE_BP* GetCBState(const VkCommandBuffer cb) const {
-        return static_cast<const CMD_BUFFER_STATE_BP*>(Get<CMD_BUFFER_STATE>(cb));
+    std::shared_ptr<const CMD_BUFFER_STATE_BP> GetCBState(const VkCommandBuffer cb) const {
+        return std::static_pointer_cast<const CMD_BUFFER_STATE_BP>(Get<CMD_BUFFER_STATE>(cb));
     }
-    CMD_BUFFER_STATE_BP* GetCBState(const VkCommandBuffer cb) {
-        return static_cast<CMD_BUFFER_STATE_BP*>(Get<CMD_BUFFER_STATE>(cb));
+    std::shared_ptr<CMD_BUFFER_STATE_BP> GetCBState(const VkCommandBuffer cb) {
+        return std::static_pointer_cast<CMD_BUFFER_STATE_BP>(Get<CMD_BUFFER_STATE>(cb));
     }
     std::shared_ptr<CMD_BUFFER_STATE> CreateCmdBufferState(VkCommandBuffer cb, const VkCommandBufferAllocateInfo* create_info,
-                                                           std::shared_ptr<COMMAND_POOL_STATE>& pool) final;
+                                                           const COMMAND_POOL_STATE* pool) final;
 };
 

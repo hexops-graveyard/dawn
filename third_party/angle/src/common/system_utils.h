@@ -32,6 +32,8 @@ bool GetBoolEnvironmentVar(const char *variableName);
 std::string GetEnvironmentVar(const char *variableName);
 std::string GetEnvironmentVarOrUnCachedAndroidProperty(const char *variableName,
                                                        const char *propertyName);
+std::string GetAndSetEnvironmentVarOrUnCachedAndroidProperty(const char *variableName,
+                                                             const char *propertyName);
 std::string GetEnvironmentVarOrAndroidProperty(const char *variableName, const char *propertyName);
 const char *GetPathSeparatorForEnvironmentVar();
 bool PrependPathToEnvironmentVar(const char *variableName, const char *path);
@@ -83,9 +85,14 @@ enum class SearchType
     AlreadyLoaded,
 };
 
-std::string GetSharedLibraryName(const char *libraryName, SearchType searchType);
 Library *OpenSharedLibrary(const char *libraryName, SearchType searchType);
 Library *OpenSharedLibraryWithExtension(const char *libraryName, SearchType searchType);
+Library *OpenSharedLibraryAndGetError(const char *libraryName,
+                                      SearchType searchType,
+                                      std::string *errorOut);
+Library *OpenSharedLibraryWithExtensionAndGetError(const char *libraryName,
+                                                   SearchType searchType,
+                                                   std::string *errorOut);
 
 // Returns true if the process is currently being debugged.
 bool IsDebuggerAttached();

@@ -2344,11 +2344,12 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %func "func"
 OpExecutionMode %func OriginUpperLeft
-OpDecorate %array_t Block
+OpDecorate %struct Block
 %uint_t = OpTypeInt 32 0
 %inner_array_t = OpTypeRuntimeArray %uint_t
 %array_t = OpTypeRuntimeArray %inner_array_t
-%array_ptr = OpTypePointer StorageBuffer %array_t
+%struct = OpTypeStruct %array_t
+%array_ptr = OpTypePointer StorageBuffer %struct
 %2 = OpVariable %array_ptr StorageBuffer
 %void = OpTypeVoid
 %func_t = OpTypeFunction %void
@@ -2504,13 +2505,14 @@ OpExtension "SPV_EXT_descriptor_indexing"
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %func "func"
 OpExecutionMode %func OriginUpperLeft
-OpDecorate %array_t Block
+OpDecorate %struct Block
 %uint_t = OpTypeInt 32 0
 %dim = OpConstant %uint_t 1
 %sampler_t = OpTypeSampler
 %inner_array_t = OpTypeRuntimeArray %uint_t
 %array_t = OpTypeRuntimeArray %inner_array_t
-%array_ptr = OpTypePointer StorageBuffer %array_t
+%struct = OpTypeStruct %array_t
+%array_ptr = OpTypePointer StorageBuffer %struct
 %2 = OpVariable %array_ptr StorageBuffer
 %void = OpTypeVoid
 %func_t = OpTypeFunction %void
@@ -4046,7 +4048,7 @@ TEST_F(ValidateMemory, VulkanInvariantOutputSuccess) {
   const std::string spirv = R"(
 OpCapability Shader
 OpMemoryModel Logical GLSL450
-OpEntryPoint Vertex %main "main"
+OpEntryPoint Vertex %main "main" %var
 OpDecorate %var Location 0
 OpDecorate %var Invariant
 %void = OpTypeVoid
@@ -4068,7 +4070,7 @@ TEST_F(ValidateMemory, VulkanInvariantInputStructSuccess) {
   const std::string spirv = R"(
 OpCapability Shader
 OpMemoryModel Logical GLSL450
-OpEntryPoint Fragment %main "main"
+OpEntryPoint Fragment %main "main" %var
 OpExecutionMode %main OriginUpperLeft
 OpDecorate %var Location 0
 OpMemberDecorate %struct 1 Invariant
@@ -4370,6 +4372,29 @@ OpFunctionEnd
   EXPECT_EQ(SPV_ERROR_INVALID_ID, ValidateInstructions());
   EXPECT_THAT(getDiagnosticString(),
               HasSubstr("Cannot load a runtime-sized array"));
+}
+
+TEST_F(ValidateMemory, Pre1p4WorkgroupMemoryBadLayoutOk) {
+  const std::string spirv = R"(
+OpCapability Shader
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %main "main"
+OpDecorate %struct Block
+OpMemberDecorate %struct 0 Offset 0
+%void = OpTypeVoid
+%bool = OpTypeBool
+%struct = OpTypeStruct %bool
+%ptr = OpTypePointer Workgroup %struct
+%var = OpVariable %ptr Workgroup
+%void_fn = OpTypeFunction %void
+%main = OpFunction %void None %void_fn
+%entry = OpLabel
+OpReturn
+OpFunctionEnd
+)";
+
+  CompileSuccessfully(spirv);
+  EXPECT_EQ(SPV_SUCCESS, ValidateInstructions());
 }
 
 }  // namespace

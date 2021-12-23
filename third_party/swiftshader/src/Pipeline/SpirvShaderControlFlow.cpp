@@ -511,7 +511,7 @@ SpirvShader::EmitResult SpirvShader::EmitBranchConditional(InsnIterator insn, Em
 	auto falseBlockId = Block::ID(block.branchInstruction.word(3));
 
 	auto cond = Operand(this, state, condId);
-	ASSERT_MSG(getType(getObject(condId)).componentCount == 1, "Condition must be a Boolean type scalar");
+	ASSERT_MSG(getObjectType(condId).componentCount == 1, "Condition must be a Boolean type scalar");
 
 	// TODO: Optimize for case where all lanes take same path.
 
@@ -623,8 +623,8 @@ SpirvShader::EmitResult SpirvShader::EmitControlBarrier(InsnIterator insn, EmitS
 {
 	auto executionScope = spv::Scope(GetConstScalarInt(insn.word(1)));
 	auto semantics = spv::MemorySemanticsMask(GetConstScalarInt(insn.word(3)));
-	// TODO: We probably want to consider the memory scope here. For now,
-	// just always emit the full fence.
+	// TODO(b/176819536): We probably want to consider the memory scope here.
+	// For now, just always emit the full fence.
 	Fence(semantics);
 
 	switch(executionScope)
@@ -713,15 +713,6 @@ void SpirvShader::StorePhi(Block::ID currentBlock, InsnIterator insn, EmitState 
 	}
 }
 
-void SpirvShader::Fence(spv::MemorySemanticsMask semantics) const
-{
-	if(semantics == spv::MemorySemanticsMaskNone)
-	{
-		return;  // no-op
-	}
-	rr::Fence(MemoryOrder(semantics));
-}
-
 void SpirvShader::Yield(YieldResult res) const
 {
 	rr::Yield(RValue<Int>(int(res)));
@@ -778,6 +769,7 @@ void SpirvShader::WriteCFGGraphVizDotFile(const char *path) const
 					     << "[label=\"M\" style=dashed color=blue]"
 					     << std::endl;
 				}
+
 				if(block.second.continueTarget != 0)
 				{
 					file << "    block_" << block.first.value() << " -> "
