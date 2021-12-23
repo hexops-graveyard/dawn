@@ -31,9 +31,17 @@ find third_party | grep /tests/ | xargs -n1 rm -rf
 find third_party | grep /docs/ | xargs -n1 rm -rf
 find third_party | grep /samples/ | xargs -n1 rm -rf
 find third_party | grep CMake | xargs -n1 rm -rf
+rm -rf third_party/tint/test/
 rm -rf third_party/angle/doc/
 rm -rf third_party/angle/extensions/
 rm -rf third_party/angle/third_party/logdog/
+rm -rf third_party/vulkan-deps/glslang/src/Test
+rm -rf third_party/vulkan-deps/spirv-cross/src/reference
+rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-hlsl-no-opt
+rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-msl-no-opt
+rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-msl
+rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-no-opt
+rm -rf third_party/vulkan-deps/spirv-cross/src/shaders
 
 rm -rf third_party/swiftshader/third_party/SPIRV-Tools # already in third_party/vulkan-deps/spirv-tools
 rm -rf third_party/swiftshader/third_party/SPIRV-Headers # already in third_party/vulkan-deps/spirv-headers
