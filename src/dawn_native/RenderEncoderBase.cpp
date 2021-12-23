@@ -281,7 +281,7 @@ namespace dawn_native {
                                     "Index format must be specified");
 
                     DAWN_INVALID_IF(offset % uint64_t(IndexFormatSize(format)) != 0,
-                                    "Index buffer offset (%u) is not a multiple of the size (%u)"
+                                    "Index buffer offset (%u) is not a multiple of the size (%u) "
                                     "of %s.",
                                     offset, IndexFormatSize(format), format);
 
@@ -403,7 +403,11 @@ namespace dawn_native {
 
                 return {};
             },
-            "encoding %s.SetBindGroup(%u, %s, %u, ...).", this, groupIndexIn, group,
+            // TODO(dawn:1190): For unknown reasons formatting this message fails if `group` is used
+            // as a string value in the message. This despite the exact same code working as
+            // intended in ComputePassEncoder::APISetBindGroup. Replacing with a static [BindGroup]
+            // until the reason for the failure can be determined.
+            "encoding %s.SetBindGroup(%u, [BindGroup], %u, ...).", this, groupIndexIn,
             dynamicOffsetCount);
     }
 

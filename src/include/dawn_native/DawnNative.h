@@ -28,6 +28,7 @@ namespace dawn_platform {
 
 namespace wgpu {
     struct AdapterProperties;
+    struct DeviceDescriptor;
 }
 
 namespace dawn_native {
@@ -121,14 +122,23 @@ namespace dawn_native {
 
         explicit operator bool() const;
 
-        // Create a device on this adapter, note that the interface will change to include at least
-        // a device descriptor and a pointer to backend specific options.
-        // On an error, nullptr is returned.
-        WGPUDevice CreateDevice(const DawnDeviceDescriptor* deviceDescriptor = nullptr);
+        // Create a device on this adapter. On an error, nullptr is returned.
+        WGPUDevice CreateDevice(const DawnDeviceDescriptor* deviceDescriptor);
+        WGPUDevice CreateDevice(const wgpu::DeviceDescriptor* deviceDescriptor);
+        WGPUDevice CreateDevice(const WGPUDeviceDescriptor* deviceDescriptor = nullptr);
 
         void RequestDevice(const DawnDeviceDescriptor* descriptor,
                            WGPURequestDeviceCallback callback,
                            void* userdata);
+        void RequestDevice(const wgpu::DeviceDescriptor* descriptor,
+                           WGPURequestDeviceCallback callback,
+                           void* userdata);
+        void RequestDevice(const WGPUDeviceDescriptor* descriptor,
+                           WGPURequestDeviceCallback callback,
+                           void* userdata);
+
+        // Returns the underlying WGPUAdapter object.
+        WGPUAdapter Get() const;
 
         // Reset the backend device object for testing purposes.
         void ResetInternalDeviceForTesting();
@@ -173,6 +183,7 @@ namespace dawn_native {
         std::vector<Adapter> GetAdapters() const;
 
         const ToggleInfo* GetToggleInfo(const char* toggleName);
+        const FeatureInfo* GetFeatureInfo(WGPUFeatureName feature);
 
         // Enables backend validation layers
         void EnableBackendValidation(bool enableBackendValidation);
