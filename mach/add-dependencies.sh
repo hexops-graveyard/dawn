@@ -35,5 +35,8 @@ rm -rf third_party/angle/doc/
 rm -rf third_party/angle/extensions/
 rm -rf third_party/angle/third_party/logdog/
 
+rm -rf third_party/swiftshader/third_party/SPIRV-Tools # already in third_party/vulkan-deps/spirv-tools
+rm -rf third_party/swiftshader/third_party/SPIRV-Headers # already in third_party/vulkan-deps/spirv-headers
+
 git add third_party/
 echo "you may now 'git commit -s -m 'update dependencies' if you are happy with the staged changes"
