@@ -42,6 +42,7 @@ rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-msl-no-opt
 rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-msl
 rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-no-opt
 rm -rf third_party/vulkan-deps/spirv-cross/src/shaders
+rm -rf third_party/vulkan-deps/spirv-tools/src/test
 
 rm -rf third_party/swiftshader/third_party/SPIRV-Tools # already in third_party/vulkan-deps/spirv-tools
 rm -rf third_party/swiftshader/third_party/SPIRV-Headers # already in third_party/vulkan-deps/spirv-headers
