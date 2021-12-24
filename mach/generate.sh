@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -ex
 
+mkdir -p out/Debug
+
 # Mac
 cp mach/args-linux.gn out/Debug/args.gn
 gn gen out/Debug
