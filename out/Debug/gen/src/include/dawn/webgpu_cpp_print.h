@@ -63,23 +63,6 @@ namespace wgpu {
       return o;
   }
   template <typename CharT, typename Traits>
-  std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& o, AlphaOp value) {
-      switch (value) {
-      case AlphaOp::DontChange:
-        o << "AlphaOp::DontChange";
-        break;
-      case AlphaOp::Premultiply:
-        o << "AlphaOp::Premultiply";
-        break;
-      case AlphaOp::Unpremultiply:
-        o << "AlphaOp::Unpremultiply";
-        break;
-          default:
-            o << "AlphaOp::" << std::showbase << std::hex << std::setfill('0') << std::setw(4) << static_cast<typename std::underlying_type<AlphaOp>::type>(value);
-      }
-      return o;
-  }
-  template <typename CharT, typename Traits>
   std::basic_ostream<CharT, Traits>& operator<<(std::basic_ostream<CharT, Traits>& o, BackendType value) {
       switch (value) {
       case BackendType::Null:
@@ -432,6 +415,9 @@ namespace wgpu {
       case FeatureName::DawnMultiPlanarFormats:
         o << "FeatureName::DawnMultiPlanarFormats";
         break;
+      case FeatureName::DawnNative:
+        o << "FeatureName::DawnNative";
+        break;
           default:
             o << "FeatureName::" << std::showbase << std::hex << std::setfill('0') << std::setw(4) << static_cast<typename std::underlying_type<FeatureName>::type>(value);
       }
@@ -711,6 +697,9 @@ namespace wgpu {
         break;
       case SType::PrimitiveDepthClampingState:
         o << "SType::PrimitiveDepthClampingState";
+        break;
+      case SType::DawnTogglesDeviceDescriptor:
+        o << "SType::DawnTogglesDeviceDescriptor";
         break;
           default:
             o << "SType::" << std::showbase << std::hex << std::setfill('0') << std::setw(4) << static_cast<typename std::underlying_type<SType>::type>(value);

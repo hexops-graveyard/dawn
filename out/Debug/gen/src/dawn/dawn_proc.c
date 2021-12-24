@@ -20,6 +20,9 @@ WGPUProc wgpuGetProcAddress(WGPUDevice device, char const * procName) {
 return     procs.getProcAddress(device, procName);
 }
 
+WGPUDevice wgpuAdapterCreateDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
+return     procs.adapterCreateDevice(adapter, descriptor);
+}
 uint32_t wgpuAdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features) {
 return     procs.adapterEnumerateFeatures(adapter, features);
 }

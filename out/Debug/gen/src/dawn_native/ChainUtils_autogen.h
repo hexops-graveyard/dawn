@@ -31,6 +31,7 @@ namespace dawn_native {
     void FindInChain(const ChainedStruct* chain, const SurfaceDescriptorFromWindowsSwapChainPanel** out);
     void FindInChain(const ChainedStruct* chain, const DawnTextureInternalUsageDescriptor** out);
     void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState** out);
+    void FindInChain(const ChainedStruct* chain, const DawnTogglesDeviceDescriptor** out);
 
     // Verifies that |chain| only contains ChainedStructs of types enumerated in
     // |oneOfConstraints| and contains no duplicate sTypes. Each vector in

@@ -139,7 +139,6 @@ namespace dawn_native {
     struct CopyTextureForBrowserOptions {
         ChainedStruct const * nextInChain = nullptr;
         bool flipY = false;
-        wgpu::AlphaOp alphaOp = wgpu::AlphaOp::DontChange;
         bool needsColorSpaceConversion = false;
         wgpu::AlphaMode srcAlphaMode = wgpu::AlphaMode::Unpremultiplied;
         float const * srcTransferFunctionParameters = nullptr;
@@ -161,6 +160,20 @@ namespace dawn_native {
         // Equality operators, mostly for testing. Note that this tests
         // strict pointer-pointer equality if the struct contains member pointers.
         bool operator==(const DawnTextureInternalUsageDescriptor& rhs) const;
+    };
+
+    struct DawnTogglesDeviceDescriptor : ChainedStruct {
+        DawnTogglesDeviceDescriptor() {
+            sType = wgpu::SType::DawnTogglesDeviceDescriptor;
+        }
+        alignas(ChainedStruct) uint32_t forceEnabledTogglesCount = 0;
+        const char* const * forceEnabledToggles;
+        uint32_t forceDisabledTogglesCount = 0;
+        const char* const * forceDisabledToggles;
+
+        // Equality operators, mostly for testing. Note that this tests
+        // strict pointer-pointer equality if the struct contains member pointers.
+        bool operator==(const DawnTogglesDeviceDescriptor& rhs) const;
     };
 
     struct Extent3D {
@@ -801,6 +814,7 @@ namespace dawn_native {
         bool depth32FloatStencil8 = false;
         bool invalidFeature = false;
         bool dawnInternalUsages = false;
+        bool dawnNative = false;
         SupportedLimits limits;
 
         // Equality operators, mostly for testing. Note that this tests

@@ -206,6 +206,21 @@ namespace dawn_native {
     inline DawnTextureInternalUsageDescriptor* FromAPI(WGPUDawnTextureInternalUsageDescriptor* rhs) {
         return reinterpret_cast<DawnTextureInternalUsageDescriptor*>(rhs);
     }
+    inline const WGPUDawnTogglesDeviceDescriptor* ToAPI(const DawnTogglesDeviceDescriptor* rhs) {
+        return reinterpret_cast<const WGPUDawnTogglesDeviceDescriptor*>(rhs);
+    }
+
+    inline WGPUDawnTogglesDeviceDescriptor* ToAPI(DawnTogglesDeviceDescriptor* rhs) {
+        return reinterpret_cast<WGPUDawnTogglesDeviceDescriptor*>(rhs);
+    }
+
+    inline const DawnTogglesDeviceDescriptor* FromAPI(const WGPUDawnTogglesDeviceDescriptor* rhs) {
+        return reinterpret_cast<const DawnTogglesDeviceDescriptor*>(rhs);
+    }
+
+    inline DawnTogglesDeviceDescriptor* FromAPI(WGPUDawnTogglesDeviceDescriptor* rhs) {
+        return reinterpret_cast<DawnTogglesDeviceDescriptor*>(rhs);
+    }
     inline const WGPUExtent3D* ToAPI(const Extent3D* rhs) {
         return reinterpret_cast<const WGPUExtent3D*>(rhs);
     }
@@ -1437,10 +1452,6 @@ namespace dawn_native {
     template<>
     struct EnumCount<wgpu::AlphaMode> {
         static constexpr uint32_t value = 2;
-    };
-    template<>
-    struct EnumCount<wgpu::AlphaOp> {
-        static constexpr uint32_t value = 3;
     };
     template<>
     struct EnumCount<wgpu::BackendType> {

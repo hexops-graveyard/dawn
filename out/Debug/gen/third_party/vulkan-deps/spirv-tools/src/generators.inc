@@ -29,3 +29,5 @@
 {28, "gfx-rs community", "Naga", "gfx-rs community Naga"},
 {29, "Mikkosoft Productions", "MSP Shader Compiler", "Mikkosoft Productions MSP Shader Compiler"},
 {30, "SpvGenTwo community", "SpvGenTwo SPIR-V IR Tools", "SpvGenTwo community SpvGenTwo SPIR-V IR Tools"},
+{31, "Google", "Skia SkSL", "Google Skia SkSL"},
+{32, "TornadoVM", "SPIRV Beehive Toolkit", "TornadoVM SPIRV Beehive Toolkit"},

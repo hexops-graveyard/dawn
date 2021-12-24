@@ -33,12 +33,6 @@ namespace wgpu {
         Unpremultiplied = 0x00000001,
     };
 
-    enum class AlphaOp : uint32_t {
-        DontChange = 0x00000000,
-        Premultiply = 0x00000001,
-        Unpremultiply = 0x00000002,
-    };
-
     enum class BackendType : uint32_t {
         Null = 0x00000000,
         WebGPU = 0x00000001,
@@ -161,6 +155,7 @@ namespace wgpu {
         DawnShaderFloat16 = 0x000003E9,
         DawnInternalUsages = 0x000003EA,
         DawnMultiPlanarFormats = 0x000003EB,
+        DawnNative = 0x000003EC,
     };
 
     enum class FilterMode : uint32_t {
@@ -259,6 +254,7 @@ namespace wgpu {
         SurfaceDescriptorFromWindowsSwapChainPanel = 0x0000000B,
         DawnTextureInternalUsageDescriptor = 0x000003E8,
         PrimitiveDepthClampingState = 0x000003E9,
+        DawnTogglesDeviceDescriptor = 0x000003EA,
     };
 
     enum class SamplerBindingType : uint32_t {
@@ -566,6 +562,7 @@ namespace wgpu {
     struct ConstantEntry;
     struct CopyTextureForBrowserOptions;
     struct DawnTextureInternalUsageDescriptor;
+    struct DawnTogglesDeviceDescriptor;
     struct Extent3D;
     struct ExternalTextureBindingEntry;
     struct ExternalTextureBindingLayout;
@@ -706,6 +703,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        Device CreateDevice(DeviceDescriptor const * descriptor = nullptr) const;
         uint32_t EnumerateFeatures(FeatureName * features) const;
         bool GetLimits(SupportedLimits * limits) const;
         void GetProperties(AdapterProperties * properties) const;
@@ -1216,7 +1214,6 @@ namespace wgpu {
     struct CopyTextureForBrowserOptions {
         ChainedStruct const * nextInChain = nullptr;
         bool flipY = false;
-        AlphaOp alphaOp = AlphaOp::DontChange;
         bool needsColorSpaceConversion = false;
         AlphaMode srcAlphaMode = AlphaMode::Unpremultiplied;
         float const * srcTransferFunctionParameters = nullptr;
@@ -1230,6 +1227,16 @@ namespace wgpu {
             sType = SType::DawnTextureInternalUsageDescriptor;
         }
         alignas(ChainedStruct) TextureUsage internalUsage = TextureUsage::None;
+    };
+
+    struct DawnTogglesDeviceDescriptor : ChainedStruct {
+        DawnTogglesDeviceDescriptor() {
+            sType = SType::DawnTogglesDeviceDescriptor;
+        }
+        alignas(ChainedStruct) uint32_t forceEnabledTogglesCount = 0;
+        const char* const * forceEnabledToggles;
+        uint32_t forceDisabledTogglesCount = 0;
+        const char* const * forceDisabledToggles;
     };
 
     struct Extent3D {
@@ -1662,6 +1669,7 @@ namespace wgpu {
         bool depth32FloatStencil8 = false;
         bool invalidFeature = false;
         bool dawnInternalUsages = false;
+        bool dawnNative = false;
         SupportedLimits limits;
     };
 

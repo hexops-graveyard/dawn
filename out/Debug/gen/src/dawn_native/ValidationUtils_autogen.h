@@ -12,7 +12,6 @@ namespace dawn_native {
     MaybeError ValidateAdapterType(wgpu::AdapterType value);
     MaybeError ValidateAddressMode(wgpu::AddressMode value);
     MaybeError ValidateAlphaMode(wgpu::AlphaMode value);
-    MaybeError ValidateAlphaOp(wgpu::AlphaOp value);
     MaybeError ValidateBackendType(wgpu::BackendType value);
     MaybeError ValidateBlendFactor(wgpu::BlendFactor value);
     MaybeError ValidateBlendOperation(wgpu::BlendOperation value);

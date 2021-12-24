@@ -9,6 +9,7 @@ typedef struct DawnProcTable {
     WGPUProcCreateInstance createInstance;
     WGPUProcGetProcAddress getProcAddress;
 
+    WGPUProcAdapterCreateDevice adapterCreateDevice;
     WGPUProcAdapterEnumerateFeatures adapterEnumerateFeatures;
     WGPUProcAdapterGetLimits adapterGetLimits;
     WGPUProcAdapterGetProperties adapterGetProperties;

@@ -42,19 +42,6 @@ namespace dawn_native {
         }
     }
 
-    MaybeError ValidateAlphaOp(wgpu::AlphaOp value) {
-        switch (value) {
-            case wgpu::AlphaOp::DontChange:
-                return {};
-            case wgpu::AlphaOp::Premultiply:
-                return {};
-            case wgpu::AlphaOp::Unpremultiply:
-                return {};
-            default:
-                return DAWN_VALIDATION_ERROR("Invalid value for WGPUAlphaOp");
-        }
-    }
-
     MaybeError ValidateBackendType(wgpu::BackendType value) {
         switch (value) {
             case wgpu::BackendType::Null:
@@ -308,6 +295,8 @@ namespace dawn_native {
                 return {};
             case wgpu::FeatureName::DawnMultiPlanarFormats:
                 return {};
+            case wgpu::FeatureName::DawnNative:
+                return {};
             default:
                 return DAWN_VALIDATION_ERROR("Invalid value for WGPUFeatureName");
         }
@@ -515,6 +504,8 @@ namespace dawn_native {
             case wgpu::SType::DawnTextureInternalUsageDescriptor:
                 return {};
             case wgpu::SType::PrimitiveDepthClampingState:
+                return {};
+            case wgpu::SType::DawnTogglesDeviceDescriptor:
                 return {};
             default:
                 return DAWN_VALIDATION_ERROR("Invalid value for WGPUSType");

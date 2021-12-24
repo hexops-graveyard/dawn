@@ -1,122 +1,9 @@
 
 #include "dawn_native/webgpu_absl_format_autogen.h"
 
-#include "dawn_native/Device.h"
-#include "dawn_native/ObjectBase.h"
 #include "dawn_native/ObjectType_autogen.h"
-#include "dawn_native/Texture.h"
 
 namespace dawn_native {
-
-    //
-    // Structs (Manually written)
-    //
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const Color* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append(absl::StrFormat("[Color r:%f, g:%f, b:%f, a:%f]",
-            value->r, value->g, value->b, value->a));
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const Extent3D* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append(absl::StrFormat("[Extent3D width:%u, height:%u, depthOrArrayLayers:%u]",
-            value->width, value->height, value->depthOrArrayLayers));
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const Origin3D* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append(absl::StrFormat("[Origin3D x:%u, y:%u, z:%u]",
-            value->x, value->y, value->z));
-        return {true};
-    }
-
-    //
-    // Objects
-    //
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const DeviceBase* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append("[Device");
-        const std::string& label = value->GetLabel();
-        if (!label.empty()) {
-            s->Append(absl::StrFormat(" \"%s\"", label));
-        }
-        s->Append("]");
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const ApiObjectBase* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append("[");
-        if (value->IsError()) {
-            s->Append("Invalid ");
-        }
-        s->Append(ObjectTypeAsString(value->GetType()));
-        const std::string& label = value->GetLabel();
-        if (!label.empty()) {
-            s->Append(absl::StrFormat(" \"%s\"", label));
-        }
-        s->Append("]");
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(const TextureViewBase* value,
-                      const absl::FormatConversionSpec& spec,
-                      absl::FormatSink* s) {
-        if (value == nullptr) {
-            s->Append("[null]");
-            return {true};
-        }
-        s->Append("[");
-        if (value->IsError()) {
-            s->Append("Invalid ");
-        }
-        s->Append(ObjectTypeAsString(value->GetType()));
-        const std::string& label = value->GetLabel();
-        if (!label.empty()) {
-            s->Append(absl::StrFormat(" \"%s\"", label));
-        }
-        const std::string& textureLabel = value->GetTexture()->GetLabel();
-        if (!textureLabel.empty()) {
-            s->Append(absl::StrFormat(" of Texture \"%s\"", textureLabel));
-        }
-        s->Append("]");
-        return {true};
-    }
 
     //
     // Descriptors
@@ -503,26 +390,6 @@ namespace wgpu {
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<AlphaMode>::type>(value)));
-        }
-        return {true};
-    }
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString>
-    AbslFormatConvert(AlphaOp value,
-                        const absl::FormatConversionSpec& spec,
-                        absl::FormatSink* s) {
-        s->Append("AlphaOp::");
-        switch (value) {
-        case AlphaOp::DontChange:
-        s->Append("DontChange");
-        break;
-        case AlphaOp::Premultiply:
-        s->Append("Premultiply");
-        break;
-        case AlphaOp::Unpremultiply:
-        s->Append("Unpremultiply");
-        break;
-            default:
-            s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<AlphaOp>::type>(value)));
         }
         return {true};
     }
@@ -921,6 +788,9 @@ namespace wgpu {
         case FeatureName::DawnMultiPlanarFormats:
         s->Append("DawnMultiPlanarFormats");
         break;
+        case FeatureName::DawnNative:
+        s->Append("DawnNative");
+        break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<FeatureName>::type>(value)));
         }
@@ -1242,6 +1112,9 @@ namespace wgpu {
         break;
         case SType::PrimitiveDepthClampingState:
         s->Append("PrimitiveDepthClampingState");
+        break;
+        case SType::DawnTogglesDeviceDescriptor:
+        s->Append("DawnTogglesDeviceDescriptor");
         break;
             default:
             s->Append(absl::StrFormat("%x", static_cast<typename std::underlying_type<SType>::type>(value)));

@@ -14,6 +14,12 @@ namespace dawn_wire { namespace client {
 
 
     static
+    WGPUDevice ClientAdapterCreateDevice(WGPUAdapter cSelf, WGPUDeviceDescriptor const * descriptor) {
+        auto self = reinterpret_cast<Adapter*>(cSelf);
+        return self->CreateDevice( descriptor);
+    }
+
+    static
     uint32_t ClientAdapterEnumerateFeatures(WGPUAdapter cSelf, WGPUFeatureName * features) {
         auto self = reinterpret_cast<Adapter*>(cSelf);
         return self->EnumerateFeatures( features);
@@ -2355,6 +2361,7 @@ namespace dawn_wire { namespace client {
             const char* name;
         };
         static const ProcEntry sProcMap[] = {
+            { reinterpret_cast<WGPUProc>(ClientAdapterCreateDevice), "wgpuAdapterCreateDevice" },
             { reinterpret_cast<WGPUProc>(ClientAdapterEnumerateFeatures), "wgpuAdapterEnumerateFeatures" },
             { reinterpret_cast<WGPUProc>(ClientAdapterGetLimits), "wgpuAdapterGetLimits" },
             { reinterpret_cast<WGPUProc>(ClientAdapterGetProperties), "wgpuAdapterGetProperties" },
@@ -2577,6 +2584,7 @@ namespace dawn_wire { namespace client {
     static DawnProcTable gProcTable = {
         ClientCreateInstance,
         ClientGetProcAddress,
+        ClientAdapterCreateDevice,
         ClientAdapterEnumerateFeatures,
         ClientAdapterGetLimits,
         ClientAdapterGetProperties,
