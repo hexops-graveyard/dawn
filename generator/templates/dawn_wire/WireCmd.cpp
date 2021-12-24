@@ -63,9 +63,14 @@
     {%- if member.type.category == "object" -%}
         {%- set Optional = "Optional" if member.optional else "" -%}
         WIRE_TRY(provider.Get{{Optional}}Id({{in}}, &{{out}}));
-    {% elif member.type.category == "structure"%}
-        {%- set Provider = ", provider" if member.type.may_have_dawn_object else "" -%}
-        WIRE_TRY({{as_cType(member.type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
+    {%- elif member.type.category == "structure" -%}
+        {%- if member.type.is_wire_transparent -%}
+            static_assert(sizeof({{out}}) == sizeof({{in}}), "Serialize memcpy size must match.");
+            memcpy(&{{out}}, &{{in}}, {{member_transfer_sizeof(member)}});
+        {%- else -%}
+            {%- set Provider = ", provider" if member.type.may_have_dawn_object else "" -%}
+            WIRE_TRY({{as_cType(member.type.name)}}Serialize({{in}}, &{{out}}, buffer{{Provider}}));
+        {%- endif -%}
     {%- else -%}
         {{out}} = {{in}};
     {%- endif -%}
@@ -77,11 +82,16 @@
         {%- set Optional = "Optional" if member.optional else "" -%}
         WIRE_TRY(resolver.Get{{Optional}}FromId({{in}}, &{{out}}));
     {%- elif member.type.category == "structure" -%}
-        WIRE_TRY({{as_cType(member.type.name)}}Deserialize(&{{out}}, &{{in}}, deserializeBuffer, allocator
-            {%- if member.type.may_have_dawn_object -%}
-                , resolver
-            {%- endif -%}
-        ));
+        {%- if member.type.is_wire_transparent -%}
+            static_assert(sizeof({{out}}) == sizeof({{in}}), "Deserialize memcpy size must match.");
+            memcpy(&{{out}}, const_cast<const {{member_transfer_type(member)}}*>(&{{in}}), {{member_transfer_sizeof(member)}});
+        {%- else -%}
+            WIRE_TRY({{as_cType(member.type.name)}}Deserialize(&{{out}}, &{{in}}, deserializeBuffer, allocator
+                {%- if member.type.may_have_dawn_object -%}
+                    , resolver
+                {%- endif -%}
+            ));
+        {%- endif -%}
     {%- else -%}
         static_assert(sizeof({{out}}) >= sizeof({{in}}), "Deserialize assignment may not narrow.");
         {{out}} = {{in}};
@@ -169,6 +179,7 @@
             {% endif %}
             {
                 {% if member.annotation != "value" %}
+                    {{ assert(member.annotation != "const*const*") }}
                     auto memberLength = {{member_length(member, "record.")}};
                     result += memberLength * {{member_transfer_sizeof(member)}};
                     //* Structures might contain more pointers so we need to add their extra size as well.
@@ -248,6 +259,7 @@
 
         //* Allocate space and write the non-value arguments in it.
         {% for member in members if member.annotation != "value" and member.length != "strlen" and not member.skip_serialize %}
+            {{ assert(member.annotation != "const*const*") }}
             {% set memberName = as_varName(member.name) %}
 
             {% if member.type.category != "object" and member.optional %}
@@ -357,6 +369,7 @@
 
         //* Get extra buffer data, and copy pointed to values in extra allocated space.
         {% for member in members if member.annotation != "value" and member.length != "strlen" %}
+            {{ assert(member.annotation != "const*const*") }}
             {% set memberName = as_varName(member.name) %}
 
             {% if member.type.category != "object" and member.optional %}

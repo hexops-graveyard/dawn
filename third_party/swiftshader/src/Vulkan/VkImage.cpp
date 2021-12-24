@@ -19,6 +19,7 @@
 #include "VkDeviceMemory.hpp"
 #include "VkImageView.hpp"
 #include "VkStringify.hpp"
+#include "VkStructConversion.hpp"
 #include "Device/ASTC_Decoder.hpp"
 #include "Device/BC_Decoder.hpp"
 #include "Device/Blitter.hpp"
@@ -148,8 +149,17 @@ VkFormat GetImageFormat(const VkImageCreateInfo *pCreateInfo)
 			}
 			break;
 #endif
+		// We support these extensions, but they don't affect the image format.
+		case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO:
+		case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR:
+		case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+		case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO:
+			break;
+		case VK_STRUCTURE_TYPE_MAX_ENUM:
+			// dEQP tests that this value is ignored.
+			break;
 		default:
-			LOG_TRAP("pCreateInfo->pNext->sType = %s", vk::Stringify(nextInfo->sType).c_str());
+			UNSUPPORTED("pCreateInfo->pNext->sType = %s", vk::Stringify(nextInfo->sType).c_str());
 			break;
 		}
 
@@ -197,7 +207,7 @@ void Image::destroy(const VkAllocationCallbacks *pAllocator)
 {
 	if(decompressedImage)
 	{
-		vk::deallocate(decompressedImage, pAllocator);
+		vk::freeHostMemory(decompressedImage, pAllocator);
 	}
 }
 
@@ -345,7 +355,28 @@ void Image::getSubresourceLayout(const VkImageSubresource *pSubresource, VkSubre
 	pLayout->arrayPitch = getLayerSize(aspect);
 }
 
-void Image::copyTo(Image *dstImage, const VkImageCopy &region) const
+void Image::copyTo(Image *dstImage, const VkImageCopy2KHR &region) const
+{
+	static constexpr VkImageAspectFlags CombinedDepthStencilAspects =
+	    VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	if((region.srcSubresource.aspectMask == CombinedDepthStencilAspects) &&
+	   (region.dstSubresource.aspectMask == CombinedDepthStencilAspects))
+	{
+		// Depth and stencil can be specified together, copy each separately
+		VkImageCopy2KHR singleAspectRegion = region;
+		singleAspectRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		singleAspectRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+		copySingleAspectTo(dstImage, singleAspectRegion);
+		singleAspectRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+		singleAspectRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+		copySingleAspectTo(dstImage, singleAspectRegion);
+		return;
+	}
+
+	copySingleAspectTo(dstImage, region);
+}
+
+void Image::copySingleAspectTo(Image *dstImage, const VkImageCopy2KHR &region) const
 {
 	// Image copy does not perform any conversion, it simply copies memory from
 	// an image to another image that has the same number of bytes per pixel.
@@ -437,8 +468,8 @@ void Image::copyTo(Image *dstImage, const VkImageCopy &region) const
 	                     (copyExtent.height == dstExtent.height) &&
 	                     (srcDepthPitch == dstDepthPitch);
 
-	const uint8_t *srcLayer = static_cast<const uint8_t *>(getTexelPointer(region.srcOffset, { region.srcSubresource.aspectMask, region.srcSubresource.mipLevel, region.srcSubresource.baseArrayLayer }));
-	uint8_t *dstLayer = static_cast<uint8_t *>(dstImage->getTexelPointer(region.dstOffset, { region.dstSubresource.aspectMask, region.dstSubresource.mipLevel, region.dstSubresource.baseArrayLayer }));
+	const uint8_t *srcLayer = static_cast<const uint8_t *>(getTexelPointer(region.srcOffset, ImageSubresource(region.srcSubresource)));
+	uint8_t *dstLayer = static_cast<uint8_t *>(dstImage->getTexelPointer(region.dstOffset, ImageSubresource(region.dstSubresource)));
 
 	for(uint32_t layer = 0; layer < layerCount; layer++)
 	{
@@ -511,11 +542,10 @@ void Image::copyTo(Image *dstImage, const VkImageCopy &region) const
 		dstLayer += dstLayerPitch;
 	}
 
-	dstImage->contentsChanged({ region.dstSubresource.aspectMask, region.dstSubresource.mipLevel, 1,
-	                            region.dstSubresource.baseArrayLayer, region.dstSubresource.layerCount });
+	dstImage->contentsChanged(ImageSubresourceRange(region.dstSubresource));
 }
 
-void Image::copy(Buffer *buffer, const VkBufferImageCopy &region, bool bufferIsSource)
+void Image::copy(Buffer *buffer, const VkBufferImageCopy2KHR &region, bool bufferIsSource)
 {
 	switch(region.imageSubresource.aspectMask)
 	{
@@ -541,14 +571,14 @@ void Image::copy(Buffer *buffer, const VkBufferImageCopy &region, bool bufferIsS
 		return;
 	}
 
-	VkExtent2D bufferExtent = bufferExtentInBlocks({ imageExtent.width, imageExtent.height }, region);
+	VkExtent2D bufferExtent = bufferExtentInBlocks(Extent2D(imageExtent), region);
 	int bytesPerBlock = copyFormat.bytesPerBlock();
 	int bufferRowPitchBytes = bufferExtent.width * bytesPerBlock;
 	int bufferSlicePitchBytes = bufferExtent.height * bufferRowPitchBytes;
 	ASSERT(samples == 1);
 
 	uint8_t *bufferMemory = static_cast<uint8_t *>(buffer->getOffsetPointer(region.bufferOffset));
-	uint8_t *imageMemory = static_cast<uint8_t *>(getTexelPointer(region.imageOffset, { region.imageSubresource.aspectMask, region.imageSubresource.mipLevel, region.imageSubresource.baseArrayLayer }));
+	uint8_t *imageMemory = static_cast<uint8_t *>(getTexelPointer(region.imageOffset, ImageSubresource(region.imageSubresource)));
 	uint8_t *srcMemory = bufferIsSource ? bufferMemory : imageMemory;
 	uint8_t *dstMemory = bufferIsSource ? imageMemory : bufferMemory;
 	int imageRowPitchBytes = rowPitchBytes(aspect, region.imageSubresource.mipLevel);
@@ -641,17 +671,16 @@ void Image::copy(Buffer *buffer, const VkBufferImageCopy &region, bool bufferIsS
 
 	if(bufferIsSource)
 	{
-		contentsChanged({ region.imageSubresource.aspectMask, region.imageSubresource.mipLevel, 1,
-		                  region.imageSubresource.baseArrayLayer, region.imageSubresource.layerCount });
+		contentsChanged(ImageSubresourceRange(region.imageSubresource));
 	}
 }
 
-void Image::copyTo(Buffer *dstBuffer, const VkBufferImageCopy &region)
+void Image::copyTo(Buffer *dstBuffer, const VkBufferImageCopy2KHR &region)
 {
 	copy(dstBuffer, region, false);
 }
 
-void Image::copyFrom(Buffer *srcBuffer, const VkBufferImageCopy &region)
+void Image::copyFrom(Buffer *srcBuffer, const VkBufferImageCopy2KHR &region)
 {
 	copy(srcBuffer, region, true);
 }
@@ -698,7 +727,7 @@ VkOffset3D Image::imageOffsetInBlocks(const VkOffset3D &offset, VkImageAspectFla
 	return adjustedOffset;
 }
 
-VkExtent2D Image::bufferExtentInBlocks(const VkExtent2D &extent, const VkBufferImageCopy &region) const
+VkExtent2D Image::bufferExtentInBlocks(const VkExtent2D &extent, const VkBufferImageCopy2KHR &region) const
 {
 	VkExtent2D adjustedExtent = extent;
 	VkImageAspectFlagBits aspect = static_cast<VkImageAspectFlagBits>(region.imageSubresource.aspectMask);
@@ -788,7 +817,7 @@ VkExtent3D Image::getMipLevelExtent(VkImageAspectFlagBits aspect, uint32_t mipLe
 	return mipLevelExtent;
 }
 
-int Image::rowPitchBytes(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
+size_t Image::rowPitchBytes(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
 {
 	if(deviceMemory && deviceMemory->hasExternalImageProperties())
 	{
@@ -810,7 +839,7 @@ int Image::rowPitchBytes(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
 	return usedFormat.pitchB(mipLevelExtent.width, borderSize());
 }
 
-int Image::slicePitchBytes(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
+size_t Image::slicePitchBytes(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
 {
 	// Depth and Stencil slice should be computed separately
 	ASSERT((aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) !=
@@ -908,8 +937,7 @@ VkDeviceSize Image::getMemoryOffset(VkImageAspectFlagBits aspect, uint32_t mipLe
 
 VkDeviceSize Image::getMipLevelSize(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
 {
-	return static_cast<VkDeviceSize>(slicePitchBytes(aspect, mipLevel)) *
-	       getMipLevelExtent(aspect, mipLevel).depth;
+	return slicePitchBytes(aspect, mipLevel) * getMipLevelExtent(aspect, mipLevel).depth;
 }
 
 VkDeviceSize Image::getMultiSampledLevelSize(VkImageAspectFlagBits aspect, uint32_t mipLevel) const
@@ -986,9 +1014,10 @@ const Image *Image::getSampledImage(const vk::Format &imageViewFormat) const
 	return (decompressedImage && isImageViewCompressed) ? decompressedImage : this;
 }
 
-void Image::blitTo(Image *dstImage, const VkImageBlit &region, VkFilter filter) const
+void Image::blitTo(Image *dstImage, const VkImageBlit2KHR &region, VkFilter filter) const
 {
-	device->getBlitter()->blit(this, dstImage, region, filter);
+	prepareForSampling(ImageSubresourceRange(region.srcSubresource));
+	device->getBlitter()->blit(decompressedImage ? decompressedImage : this, dstImage, region, filter);
 }
 
 void Image::copyTo(uint8_t *dst, unsigned int dstPitch) const
@@ -996,7 +1025,7 @@ void Image::copyTo(uint8_t *dst, unsigned int dstPitch) const
 	device->getBlitter()->copy(this, dst, dstPitch);
 }
 
-void Image::resolveTo(Image *dstImage, const VkImageResolve &region) const
+void Image::resolveTo(Image *dstImage, const VkImageResolve2KHR &region) const
 {
 	device->getBlitter()->resolve(this, dstImage, region);
 }
@@ -1004,22 +1033,6 @@ void Image::resolveTo(Image *dstImage, const VkImageResolve &region) const
 void Image::resolveDepthStencilTo(const ImageView *src, ImageView *dst, const VkSubpassDescriptionDepthStencilResolve &dsResolve) const
 {
 	device->getBlitter()->resolveDepthStencil(src, dst, dsResolve);
-}
-
-VkFormat Image::getClearFormat() const
-{
-	// Set the proper format for the clear value, as described here:
-	// https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#clears-values
-	if(format.isSignedUnnormalizedInteger())
-	{
-		return VK_FORMAT_R32G32B32A32_SINT;
-	}
-	else if(format.isUnsignedUnnormalizedInteger())
-	{
-		return VK_FORMAT_R32G32B32A32_UINT;
-	}
-
-	return VK_FORMAT_R32G32B32A32_SFLOAT;
 }
 
 uint32_t Image::getLastLayerIndex(const VkImageSubresourceRange &subresourceRange) const
@@ -1032,16 +1045,16 @@ uint32_t Image::getLastMipLevel(const VkImageSubresourceRange &subresourceRange)
 	return ((subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS) ? mipLevels : (subresourceRange.baseMipLevel + subresourceRange.levelCount)) - 1;
 }
 
-void Image::clear(void *pixelData, VkFormat pixelFormat, const vk::Format &viewFormat, const VkImageSubresourceRange &subresourceRange, const VkRect2D &renderArea)
+void Image::clear(const void *pixelData, VkFormat pixelFormat, const vk::Format &viewFormat, const VkImageSubresourceRange &subresourceRange, const VkRect2D *renderArea)
 {
-	device->getBlitter()->clear(pixelData, pixelFormat, this, viewFormat, subresourceRange, &renderArea);
+	device->getBlitter()->clear(pixelData, pixelFormat, this, viewFormat, subresourceRange, renderArea);
 }
 
 void Image::clear(const VkClearColorValue &color, const VkImageSubresourceRange &subresourceRange)
 {
 	ASSERT(subresourceRange.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT);
 
-	device->getBlitter()->clear((void *)color.float32, getClearFormat(), this, format, subresourceRange);
+	clear(color.float32, format.getClearFormat(), format, subresourceRange, nullptr);
 }
 
 void Image::clear(const VkClearDepthStencilValue &color, const VkImageSubresourceRange &subresourceRange)
@@ -1053,14 +1066,14 @@ void Image::clear(const VkClearDepthStencilValue &color, const VkImageSubresourc
 	{
 		VkImageSubresourceRange depthSubresourceRange = subresourceRange;
 		depthSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		device->getBlitter()->clear((void *)(&color.depth), VK_FORMAT_D32_SFLOAT, this, format, depthSubresourceRange);
+		clear(&color.depth, VK_FORMAT_D32_SFLOAT, format, depthSubresourceRange, nullptr);
 	}
 
 	if(subresourceRange.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
 	{
 		VkImageSubresourceRange stencilSubresourceRange = subresourceRange;
 		stencilSubresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-		device->getBlitter()->clear((void *)(&color.stencil), VK_FORMAT_S8_UINT, this, format, stencilSubresourceRange);
+		clear(&color.stencil, VK_FORMAT_S8_UINT, format, stencilSubresourceRange, nullptr);
 	}
 }
 
@@ -1072,7 +1085,7 @@ void Image::clear(const VkClearValue &clearValue, const vk::Format &viewFormat, 
 
 	if(subresourceRange.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT)
 	{
-		clear((void *)(clearValue.color.float32), getClearFormat(), viewFormat, subresourceRange, renderArea);
+		clear(clearValue.color.float32, viewFormat.getClearFormat(), viewFormat, subresourceRange, &renderArea);
 	}
 	else
 	{
@@ -1080,14 +1093,14 @@ void Image::clear(const VkClearValue &clearValue, const vk::Format &viewFormat, 
 		{
 			VkImageSubresourceRange depthSubresourceRange = subresourceRange;
 			depthSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-			clear((void *)(&clearValue.depthStencil.depth), VK_FORMAT_D32_SFLOAT, viewFormat, depthSubresourceRange, renderArea);
+			clear(&clearValue.depthStencil.depth, VK_FORMAT_D32_SFLOAT, viewFormat, depthSubresourceRange, &renderArea);
 		}
 
 		if(subresourceRange.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
 		{
 			VkImageSubresourceRange stencilSubresourceRange = subresourceRange;
 			stencilSubresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-			clear((void *)(&clearValue.depthStencil.stencil), VK_FORMAT_S8_UINT, viewFormat, stencilSubresourceRange, renderArea);
+			clear(&clearValue.depthStencil.stencil, VK_FORMAT_S8_UINT, viewFormat, stencilSubresourceRange, &renderArea);
 		}
 	}
 }
@@ -1138,7 +1151,7 @@ void Image::contentsChanged(const VkImageSubresourceRange &subresourceRange, Con
 	}
 }
 
-void Image::prepareForSampling(const VkImageSubresourceRange &subresourceRange)
+void Image::prepareForSampling(const VkImageSubresourceRange &subresourceRange) const
 {
 	// If this isn't a cube or a compressed image, there's nothing to do
 	if(!requiresPreprocessing())
@@ -1229,7 +1242,7 @@ void Image::prepareForSampling(const VkImageSubresourceRange &subresourceRange)
 	}
 }
 
-void Image::decompress(const VkImageSubresource &subresource)
+void Image::decompress(const VkImageSubresource &subresource) const
 {
 	switch(format)
 	{
@@ -1299,7 +1312,7 @@ void Image::decompress(const VkImageSubresource &subresource)
 	}
 }
 
-void Image::decodeETC2(const VkImageSubresource &subresource)
+void Image::decodeETC2(const VkImageSubresource &subresource) const
 {
 	ASSERT(decompressedImage);
 
@@ -1337,7 +1350,7 @@ void Image::decodeETC2(const VkImageSubresource &subresource)
 	}
 }
 
-void Image::decodeBC(const VkImageSubresource &subresource)
+void Image::decodeBC(const VkImageSubresource &subresource) const
 {
 	ASSERT(decompressedImage);
 
@@ -1360,7 +1373,7 @@ void Image::decodeBC(const VkImageSubresource &subresource)
 	}
 }
 
-void Image::decodeASTC(const VkImageSubresource &subresource)
+void Image::decodeASTC(const VkImageSubresource &subresource) const
 {
 	ASSERT(decompressedImage);
 

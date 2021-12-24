@@ -1,9 +1,9 @@
 # Common
 is_debug=true
 use_cxx11=true
-use_swiftshader_with_subzero=true
 
 # macOS
+use_swiftshader_with_subzero=false
 target_os="mac"
 target_cpu="arm"
 use_system_xcode=true

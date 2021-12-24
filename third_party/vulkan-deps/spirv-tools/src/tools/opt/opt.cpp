@@ -59,7 +59,7 @@ std::string GetListOfPassesAsString(const spvtools::Optimizer& optimizer) {
   return ss.str();
 }
 
-const auto kDefaultEnvironment = SPV_ENV_UNIVERSAL_1_5;
+const auto kDefaultEnvironment = SPV_ENV_UNIVERSAL_1_6;
 
 std::string GetLegalizationPasses() {
   spvtools::Optimizer optimizer(kDefaultEnvironment);
@@ -162,6 +162,11 @@ Options (in lexicographical order):)",
                followed by a store of the initial value. This is done to work
                around known issues with some Vulkan drivers for initialize
                variables.)");
+  printf(R"(
+  --replace-desc-array-access-using-var-index
+               Replaces accesses to descriptor arrays based on a variable index
+               with a switch that has a case for every possible value of the
+               index.)");
   printf(R"(
   --descriptor-scalar-replacement
                Replaces every array variable |desc| that has a DescriptorSet
@@ -387,9 +392,12 @@ Options (in lexicographical order):)",
                Change the scope of private variables that are used in a single
                function to that function.)");
   printf(R"(
-  --reduce-load-size
+  --reduce-load-size[=<threshold>]
                Replaces loads of composite objects where not every component is
-               used by loads of just the elements that are used.)");
+               used by loads of just the elements that are used.  If the ratio
+               of the used components of the load is less than the <threshold>,
+               we replace the load.  <threshold> is a double type number.  If
+               it is bigger than 1.0, we always replaces the load.)");
   printf(R"(
   --redundancy-elimination
                Looks for instructions in the same function that compute the
@@ -471,10 +479,13 @@ Options (in lexicographical order):)",
   --strip-debug
                Remove all debug instructions.)");
   printf(R"(
+  --strip-nonsemantic
+               Remove all reflection and nonsemantic information.)");
+  printf(R"(
   --strip-reflect
-               Remove all reflection information.  For now, this covers
-               reflection information defined by SPV_GOOGLE_hlsl_functionality1
-               and SPV_KHR_non_semantic_info)");
+               DEPRECATED.  Remove all reflection information.  For now, this
+               covers reflection information defined by
+               SPV_GOOGLE_hlsl_functionality1 and SPV_KHR_non_semantic_info)");
   printf(R"(
   --target-env=<env>
                Set the target environment. Without this flag the target

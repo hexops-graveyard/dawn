@@ -2,9 +2,9 @@
 // See loader_extension_generator.py for modifications
 
 /*
- * Copyright (c) 2015-2017 The Khronos Group Inc.
- * Copyright (c) 2015-2017 Valve Corporation
- * Copyright (c) 2015-2017 LunarG, Inc.
+ * Copyright (c) 2015-2021 The Khronos Group Inc.
+ * Copyright (c) 2015-2021 Valve Corporation
+ * Copyright (c) 2015-2021 LunarG, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -275,7 +275,9 @@ typedef struct VkLayerInstanceDispatchTable_ {
 } VkLayerInstanceDispatchTable;
 
 // Device function pointer dispatch table
+#define DEVICE_DISP_TABLE_MAGIC_NUMBER 0x10ADED040410ADEDUL
 typedef struct VkLayerDispatchTable_ {
+    uint64_t magic; // Should be DEVICE_DISP_TABLE_MAGIC_NUMBER
 
     // ---- Core 1_0 commands
     PFN_vkGetDeviceProcAddr GetDeviceProcAddr;
@@ -483,6 +485,10 @@ typedef struct VkLayerDispatchTable_ {
     PFN_vkCmdDecodeVideoKHR CmdDecodeVideoKHR;
 #endif // VK_ENABLE_BETA_EXTENSIONS
 
+    // ---- VK_KHR_dynamic_rendering extension commands
+    PFN_vkCmdBeginRenderingKHR CmdBeginRenderingKHR;
+    PFN_vkCmdEndRenderingKHR CmdEndRenderingKHR;
+
     // ---- VK_KHR_device_group extension commands
     PFN_vkGetDeviceGroupPeerMemoryFeaturesKHR GetDeviceGroupPeerMemoryFeaturesKHR;
     PFN_vkCmdSetDeviceMaskKHR CmdSetDeviceMaskKHR;
@@ -619,6 +625,11 @@ typedef struct VkLayerDispatchTable_ {
     PFN_vkCmdCopyImageToBuffer2KHR CmdCopyImageToBuffer2KHR;
     PFN_vkCmdBlitImage2KHR CmdBlitImage2KHR;
     PFN_vkCmdResolveImage2KHR CmdResolveImage2KHR;
+
+    // ---- VK_KHR_maintenance4 extension commands
+    PFN_vkGetDeviceBufferMemoryRequirementsKHR GetDeviceBufferMemoryRequirementsKHR;
+    PFN_vkGetDeviceImageMemoryRequirementsKHR GetDeviceImageMemoryRequirementsKHR;
+    PFN_vkGetDeviceImageSparseMemoryRequirementsKHR GetDeviceImageSparseMemoryRequirementsKHR;
 
     // ---- VK_EXT_debug_marker extension commands
     PFN_vkDebugMarkerSetObjectTagEXT DebugMarkerSetObjectTagEXT;
@@ -836,6 +847,23 @@ typedef struct VkLayerDispatchTable_ {
     PFN_vkGetSemaphoreZirconHandleFUCHSIA GetSemaphoreZirconHandleFUCHSIA;
 #endif // VK_USE_PLATFORM_FUCHSIA
 
+    // ---- VK_FUCHSIA_buffer_collection extension commands
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkCreateBufferCollectionFUCHSIA CreateBufferCollectionFUCHSIA;
+#endif // VK_USE_PLATFORM_FUCHSIA
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkSetBufferCollectionImageConstraintsFUCHSIA SetBufferCollectionImageConstraintsFUCHSIA;
+#endif // VK_USE_PLATFORM_FUCHSIA
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkSetBufferCollectionBufferConstraintsFUCHSIA SetBufferCollectionBufferConstraintsFUCHSIA;
+#endif // VK_USE_PLATFORM_FUCHSIA
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkDestroyBufferCollectionFUCHSIA DestroyBufferCollectionFUCHSIA;
+#endif // VK_USE_PLATFORM_FUCHSIA
+#ifdef VK_USE_PLATFORM_FUCHSIA
+    PFN_vkGetBufferCollectionPropertiesFUCHSIA GetBufferCollectionPropertiesFUCHSIA;
+#endif // VK_USE_PLATFORM_FUCHSIA
+
     // ---- VK_HUAWEI_subpass_shading extension commands
     PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI GetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI;
     PFN_vkCmdSubpassShadingHUAWEI CmdSubpassShadingHUAWEI;
@@ -859,6 +887,9 @@ typedef struct VkLayerDispatchTable_ {
     // ---- VK_EXT_multi_draw extension commands
     PFN_vkCmdDrawMultiEXT CmdDrawMultiEXT;
     PFN_vkCmdDrawMultiIndexedEXT CmdDrawMultiIndexedEXT;
+
+    // ---- VK_EXT_pageable_device_local_memory extension commands
+    PFN_vkSetDeviceMemoryPriorityEXT SetDeviceMemoryPriorityEXT;
 
     // ---- VK_KHR_acceleration_structure extension commands
     PFN_vkCreateAccelerationStructureKHR CreateAccelerationStructureKHR;

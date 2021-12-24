@@ -109,13 +109,6 @@ typedef enum WGPUAlphaMode {
     WGPUAlphaMode_Force32 = 0x7FFFFFFF
 } WGPUAlphaMode;
 
-typedef enum WGPUAlphaOp {
-    WGPUAlphaOp_DontChange = 0x00000000,
-    WGPUAlphaOp_Premultiply = 0x00000001,
-    WGPUAlphaOp_Unpremultiply = 0x00000002,
-    WGPUAlphaOp_Force32 = 0x7FFFFFFF
-} WGPUAlphaOp;
-
 typedef enum WGPUBackendType {
     WGPUBackendType_Null = 0x00000000,
     WGPUBackendType_WebGPU = 0x00000001,
@@ -251,6 +244,7 @@ typedef enum WGPUFeatureName {
     WGPUFeatureName_DawnShaderFloat16 = 0x000003E9,
     WGPUFeatureName_DawnInternalUsages = 0x000003EA,
     WGPUFeatureName_DawnMultiPlanarFormats = 0x000003EB,
+    WGPUFeatureName_DawnNative = 0x000003EC,
     WGPUFeatureName_Force32 = 0x7FFFFFFF
 } WGPUFeatureName;
 
@@ -363,6 +357,7 @@ typedef enum WGPUSType {
     WGPUSType_SurfaceDescriptorFromWindowsSwapChainPanel = 0x0000000B,
     WGPUSType_DawnTextureInternalUsageDescriptor = 0x000003E8,
     WGPUSType_PrimitiveDepthClampingState = 0x000003E9,
+    WGPUSType_DawnTogglesDeviceDescriptor = 0x000003EA,
     WGPUSType_Force32 = 0x7FFFFFFF
 } WGPUSType;
 
@@ -733,7 +728,6 @@ typedef struct WGPUConstantEntry {
 typedef struct WGPUCopyTextureForBrowserOptions {
     WGPUChainedStruct const * nextInChain;
     bool flipY;
-    WGPUAlphaOp alphaOp;
     bool needsColorSpaceConversion;
     WGPUAlphaMode srcAlphaMode;
     float const * srcTransferFunctionParameters;
@@ -746,6 +740,14 @@ typedef struct WGPUDawnTextureInternalUsageDescriptor {
     WGPUChainedStruct chain;
     WGPUTextureUsageFlags internalUsage;
 } WGPUDawnTextureInternalUsageDescriptor;
+
+typedef struct WGPUDawnTogglesDeviceDescriptor {
+    WGPUChainedStruct chain;
+    uint32_t forceEnabledTogglesCount;
+    const char* const * forceEnabledToggles;
+    uint32_t forceDisabledTogglesCount;
+    const char* const * forceDisabledToggles;
+} WGPUDawnTogglesDeviceDescriptor;
 
 typedef struct WGPUExtent3D {
     uint32_t width;
@@ -1155,6 +1157,7 @@ typedef struct WGPUDeviceProperties {
     bool depth32FloatStencil8;
     bool invalidFeature;
     bool dawnInternalUsages;
+    bool dawnNative;
     WGPUSupportedLimits limits;
 } WGPUDeviceProperties;
 
@@ -1220,6 +1223,7 @@ typedef WGPUInstance (*WGPUProcCreateInstance)(WGPUInstanceDescriptor const * de
 typedef WGPUProc (*WGPUProcGetProcAddress)(WGPUDevice device, char const * procName);
 
 // Procs of Adapter
+typedef WGPUDevice (*WGPUProcAdapterCreateDevice)(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor);
 typedef uint32_t (*WGPUProcAdapterEnumerateFeatures)(WGPUAdapter adapter, WGPUFeatureName * features);
 typedef bool (*WGPUProcAdapterGetLimits)(WGPUAdapter adapter, WGPUSupportedLimits * limits);
 typedef void (*WGPUProcAdapterGetProperties)(WGPUAdapter adapter, WGPUAdapterProperties * properties);
@@ -1454,6 +1458,7 @@ WGPU_EXPORT WGPUInstance wgpuCreateInstance(WGPUInstanceDescriptor const * descr
 WGPU_EXPORT WGPUProc wgpuGetProcAddress(WGPUDevice device, char const * procName);
 
 // Methods of Adapter
+WGPU_EXPORT WGPUDevice wgpuAdapterCreateDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor);
 WGPU_EXPORT uint32_t wgpuAdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features);
 WGPU_EXPORT bool wgpuAdapterGetLimits(WGPUAdapter adapter, WGPUSupportedLimits * limits);
 WGPU_EXPORT void wgpuAdapterGetProperties(WGPUAdapter adapter, WGPUAdapterProperties * properties);

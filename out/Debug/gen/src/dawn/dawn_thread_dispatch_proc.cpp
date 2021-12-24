@@ -20,6 +20,9 @@ static WGPUProc ThreadDispatchGetProcAddress(WGPUDevice device, char const * pro
 return     perThreadProcs.getProcAddress(device, procName);
 }
 
+static WGPUDevice ThreadDispatchAdapterCreateDevice(WGPUAdapter adapter, WGPUDeviceDescriptor const * descriptor) {
+return     perThreadProcs.adapterCreateDevice(adapter, descriptor);
+}
 static uint32_t ThreadDispatchAdapterEnumerateFeatures(WGPUAdapter adapter, WGPUFeatureName * features) {
 return     perThreadProcs.adapterEnumerateFeatures(adapter, features);
 }
@@ -562,6 +565,7 @@ extern "C" {
     DawnProcTable dawnThreadDispatchProcTable = {
         ThreadDispatchCreateInstance,
         ThreadDispatchGetProcAddress,
+        ThreadDispatchAdapterCreateDevice,
         ThreadDispatchAdapterEnumerateFeatures,
         ThreadDispatchAdapterGetLimits,
         ThreadDispatchAdapterGetProperties,

@@ -2607,6 +2607,20 @@ static VKAPI_ATTR void VKAPI_CALL CmdDecodeVideoKHR(
 #endif /* VK_ENABLE_BETA_EXTENSIONS */
 
 
+static VKAPI_ATTR void VKAPI_CALL CmdBeginRenderingKHR(
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderingInfoKHR*                   pRenderingInfo)
+{
+//Not a CREATE or DESTROY function
+}
+
+static VKAPI_ATTR void VKAPI_CALL CmdEndRenderingKHR(
+    VkCommandBuffer                             commandBuffer)
+{
+//Not a CREATE or DESTROY function
+}
+
+
 
 static VKAPI_ATTR void VKAPI_CALL GetPhysicalDeviceFeatures2KHR(
     VkPhysicalDevice                            physicalDevice,
@@ -2676,6 +2690,15 @@ static VKAPI_ATTR void VKAPI_CALL GetPhysicalDeviceProperties2KHR(
         write_props->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
         write_props->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
     }
+
+    const auto *fragment_density_map2_props = lvl_find_in_chain<VkPhysicalDeviceFragmentDensityMap2PropertiesEXT>(pProperties->pNext);
+    if (fragment_density_map2_props) {
+        VkPhysicalDeviceFragmentDensityMap2PropertiesEXT* write_props = (VkPhysicalDeviceFragmentDensityMap2PropertiesEXT*)fragment_density_map2_props;
+        write_props->subsampledLoads = VK_FALSE;
+        write_props->subsampledCoarseReconstructionEarlyAccess = VK_FALSE;
+        write_props->maxSubsampledArrayLayers = 2;
+        write_props->maxDescriptorSetSubsampledSamplers = 1;
+    }
 }
 
 static VKAPI_ATTR void VKAPI_CALL GetPhysicalDeviceFormatProperties2KHR(
@@ -2684,6 +2707,12 @@ static VKAPI_ATTR void VKAPI_CALL GetPhysicalDeviceFormatProperties2KHR(
     VkFormatProperties2*                        pFormatProperties)
 {
     GetPhysicalDeviceFormatProperties(physicalDevice, format, &pFormatProperties->formatProperties);
+    VkFormatProperties3KHR *props_3 = lvl_find_mod_in_chain<VkFormatProperties3KHR>(pFormatProperties->pNext);
+    if (props_3) {
+        props_3->linearTilingFeatures = pFormatProperties->formatProperties.linearTilingFeatures;
+        props_3->optimalTilingFeatures = pFormatProperties->formatProperties.optimalTilingFeatures;
+        props_3->bufferFeatures = pFormatProperties->formatProperties.bufferFeatures;
+    }
 }
 
 static VKAPI_ATTR VkResult VKAPI_CALL GetPhysicalDeviceImageFormatProperties2KHR(
@@ -3412,6 +3441,7 @@ static VKAPI_ATTR VkResult VKAPI_CALL GetPipelineExecutableInternalRepresentatio
 
 
 
+
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 
 static VKAPI_ATTR void VKAPI_CALL CmdEncodeVideoKHR(
@@ -3534,6 +3564,33 @@ static VKAPI_ATTR void VKAPI_CALL CmdBlitImage2KHR(
 static VKAPI_ATTR void VKAPI_CALL CmdResolveImage2KHR(
     VkCommandBuffer                             commandBuffer,
     const VkResolveImageInfo2KHR*               pResolveImageInfo)
+{
+//Not a CREATE or DESTROY function
+}
+
+
+
+static VKAPI_ATTR void VKAPI_CALL GetDeviceBufferMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceBufferMemoryRequirementsKHR*  pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+//Not a CREATE or DESTROY function
+}
+
+static VKAPI_ATTR void VKAPI_CALL GetDeviceImageMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements)
+{
+//Not a CREATE or DESTROY function
+}
+
+static VKAPI_ATTR void VKAPI_CALL GetDeviceImageSparseMemoryRequirementsKHR(
+    VkDevice                                    device,
+    const VkDeviceImageMemoryRequirementsKHR*   pInfo,
+    uint32_t*                                   pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2*           pSparseMemoryRequirements)
 {
 //Not a CREATE or DESTROY function
 }
@@ -3770,6 +3827,9 @@ static VKAPI_ATTR void VKAPI_CALL CmdDrawIndexedIndirectCountAMD(
 
 
 
+
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+#endif /* VK_ENABLE_BETA_EXTENSIONS */
 
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 #endif /* VK_ENABLE_BETA_EXTENSIONS */
@@ -4998,6 +5058,8 @@ static VKAPI_ATTR void VKAPI_CALL CmdSetFragmentShadingRateEnumNV(
 
 
 
+
+
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 
 static VKAPI_ATTR VkResult VKAPI_CALL AcquireWinrtDisplayNV(
@@ -5054,6 +5116,8 @@ static VKAPI_ATTR void VKAPI_CALL CmdSetVertexInputEXT(
 }
 
 
+
+
 #ifdef VK_USE_PLATFORM_FUCHSIA
 
 static VKAPI_ATTR VkResult VKAPI_CALL GetMemoryZirconHandleFUCHSIA(
@@ -5090,6 +5154,55 @@ static VKAPI_ATTR VkResult VKAPI_CALL GetSemaphoreZirconHandleFUCHSIA(
     VkDevice                                    device,
     const VkSemaphoreGetZirconHandleInfoFUCHSIA* pGetZirconHandleInfo,
     zx_handle_t*                                pZirconHandle)
+{
+//Not a CREATE or DESTROY function
+    return VK_SUCCESS;
+}
+#endif /* VK_USE_PLATFORM_FUCHSIA */
+
+#ifdef VK_USE_PLATFORM_FUCHSIA
+
+static VKAPI_ATTR VkResult VKAPI_CALL CreateBufferCollectionFUCHSIA(
+    VkDevice                                    device,
+    const VkBufferCollectionCreateInfoFUCHSIA*  pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkBufferCollectionFUCHSIA*                  pCollection)
+{
+    unique_lock_t lock(global_lock);
+    *pCollection = (VkBufferCollectionFUCHSIA)global_unique_handle++;
+    return VK_SUCCESS;
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL SetBufferCollectionImageConstraintsFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkImageConstraintsInfoFUCHSIA*        pImageConstraintsInfo)
+{
+//Not a CREATE or DESTROY function
+    return VK_SUCCESS;
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL SetBufferCollectionBufferConstraintsFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkBufferConstraintsInfoFUCHSIA*       pBufferConstraintsInfo)
+{
+//Not a CREATE or DESTROY function
+    return VK_SUCCESS;
+}
+
+static VKAPI_ATTR void VKAPI_CALL DestroyBufferCollectionFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    const VkAllocationCallbacks*                pAllocator)
+{
+//Destroy object
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL GetBufferCollectionPropertiesFUCHSIA(
+    VkDevice                                    device,
+    VkBufferCollectionFUCHSIA                   collection,
+    VkBufferCollectionPropertiesFUCHSIA*        pProperties)
 {
 //Not a CREATE or DESTROY function
     return VK_SUCCESS;
@@ -5201,6 +5314,7 @@ static VKAPI_ATTR void                                    VKAPI_CALL CmdSetColor
 
 
 
+
 static VKAPI_ATTR void VKAPI_CALL CmdDrawMultiEXT(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    drawCount,
@@ -5224,6 +5338,16 @@ static VKAPI_ATTR void VKAPI_CALL CmdDrawMultiIndexedEXT(
 //Not a CREATE or DESTROY function
 }
 
+
+
+
+static VKAPI_ATTR void VKAPI_CALL SetDeviceMemoryPriorityEXT(
+    VkDevice                                    device,
+    VkDeviceMemory                              memory,
+    float                                       priority)
+{
+//Not a CREATE or DESTROY function
+}
 
 
 static VKAPI_ATTR VkResult VKAPI_CALL CreateAccelerationStructureKHR(

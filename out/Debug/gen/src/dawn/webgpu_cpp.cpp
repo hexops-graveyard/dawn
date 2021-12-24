@@ -34,15 +34,6 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(AlphaMode::Premultiplied) == WGPUAlphaMode_Premultiplied, "value mismatch for AlphaMode::Premultiplied");
     static_assert(static_cast<uint32_t>(AlphaMode::Unpremultiplied) == WGPUAlphaMode_Unpremultiplied, "value mismatch for AlphaMode::Unpremultiplied");
 
-    // AlphaOp
-
-    static_assert(sizeof(AlphaOp) == sizeof(WGPUAlphaOp), "sizeof mismatch for AlphaOp");
-    static_assert(alignof(AlphaOp) == alignof(WGPUAlphaOp), "alignof mismatch for AlphaOp");
-
-    static_assert(static_cast<uint32_t>(AlphaOp::DontChange) == WGPUAlphaOp_DontChange, "value mismatch for AlphaOp::DontChange");
-    static_assert(static_cast<uint32_t>(AlphaOp::Premultiply) == WGPUAlphaOp_Premultiply, "value mismatch for AlphaOp::Premultiply");
-    static_assert(static_cast<uint32_t>(AlphaOp::Unpremultiply) == WGPUAlphaOp_Unpremultiply, "value mismatch for AlphaOp::Unpremultiply");
-
     // BackendType
 
     static_assert(sizeof(BackendType) == sizeof(WGPUBackendType), "sizeof mismatch for BackendType");
@@ -208,6 +199,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(FeatureName::DawnShaderFloat16) == WGPUFeatureName_DawnShaderFloat16, "value mismatch for FeatureName::DawnShaderFloat16");
     static_assert(static_cast<uint32_t>(FeatureName::DawnInternalUsages) == WGPUFeatureName_DawnInternalUsages, "value mismatch for FeatureName::DawnInternalUsages");
     static_assert(static_cast<uint32_t>(FeatureName::DawnMultiPlanarFormats) == WGPUFeatureName_DawnMultiPlanarFormats, "value mismatch for FeatureName::DawnMultiPlanarFormats");
+    static_assert(static_cast<uint32_t>(FeatureName::DawnNative) == WGPUFeatureName_DawnNative, "value mismatch for FeatureName::DawnNative");
 
     // FilterMode
 
@@ -348,6 +340,7 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(SType::SurfaceDescriptorFromWindowsSwapChainPanel) == WGPUSType_SurfaceDescriptorFromWindowsSwapChainPanel, "value mismatch for SType::SurfaceDescriptorFromWindowsSwapChainPanel");
     static_assert(static_cast<uint32_t>(SType::DawnTextureInternalUsageDescriptor) == WGPUSType_DawnTextureInternalUsageDescriptor, "value mismatch for SType::DawnTextureInternalUsageDescriptor");
     static_assert(static_cast<uint32_t>(SType::PrimitiveDepthClampingState) == WGPUSType_PrimitiveDepthClampingState, "value mismatch for SType::PrimitiveDepthClampingState");
+    static_assert(static_cast<uint32_t>(SType::DawnTogglesDeviceDescriptor) == WGPUSType_DawnTogglesDeviceDescriptor, "value mismatch for SType::DawnTogglesDeviceDescriptor");
 
     // SamplerBindingType
 
@@ -831,8 +824,6 @@ namespace wgpu {
             "offsetof mismatch for CopyTextureForBrowserOptions::nextInChain");
     static_assert(offsetof(CopyTextureForBrowserOptions, flipY) == offsetof(WGPUCopyTextureForBrowserOptions, flipY),
             "offsetof mismatch for CopyTextureForBrowserOptions::flipY");
-    static_assert(offsetof(CopyTextureForBrowserOptions, alphaOp) == offsetof(WGPUCopyTextureForBrowserOptions, alphaOp),
-            "offsetof mismatch for CopyTextureForBrowserOptions::alphaOp");
     static_assert(offsetof(CopyTextureForBrowserOptions, needsColorSpaceConversion) == offsetof(WGPUCopyTextureForBrowserOptions, needsColorSpaceConversion),
             "offsetof mismatch for CopyTextureForBrowserOptions::needsColorSpaceConversion");
     static_assert(offsetof(CopyTextureForBrowserOptions, srcAlphaMode) == offsetof(WGPUCopyTextureForBrowserOptions, srcAlphaMode),
@@ -853,6 +844,20 @@ namespace wgpu {
 
     static_assert(offsetof(DawnTextureInternalUsageDescriptor, internalUsage) == offsetof(WGPUDawnTextureInternalUsageDescriptor, internalUsage),
             "offsetof mismatch for DawnTextureInternalUsageDescriptor::internalUsage");
+
+    // DawnTogglesDeviceDescriptor
+
+    static_assert(sizeof(DawnTogglesDeviceDescriptor) == sizeof(WGPUDawnTogglesDeviceDescriptor), "sizeof mismatch for DawnTogglesDeviceDescriptor");
+    static_assert(alignof(DawnTogglesDeviceDescriptor) == alignof(WGPUDawnTogglesDeviceDescriptor), "alignof mismatch for DawnTogglesDeviceDescriptor");
+
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceEnabledTogglesCount) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceEnabledTogglesCount),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceEnabledTogglesCount");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceEnabledToggles) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceEnabledToggles),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceEnabledToggles");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceDisabledTogglesCount) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceDisabledTogglesCount),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceDisabledTogglesCount");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceDisabledToggles) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceDisabledToggles),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceDisabledToggles");
 
     // Extent3D
 
@@ -1651,6 +1656,8 @@ namespace wgpu {
             "offsetof mismatch for DeviceProperties::invalidFeature");
     static_assert(offsetof(DeviceProperties, dawnInternalUsages) == offsetof(WGPUDeviceProperties, dawnInternalUsages),
             "offsetof mismatch for DeviceProperties::dawnInternalUsages");
+    static_assert(offsetof(DeviceProperties, dawnNative) == offsetof(WGPUDeviceProperties, dawnNative),
+            "offsetof mismatch for DeviceProperties::dawnNative");
     static_assert(offsetof(DeviceProperties, limits) == offsetof(WGPUDeviceProperties, limits),
             "offsetof mismatch for DeviceProperties::limits");
 
@@ -1739,6 +1746,10 @@ namespace wgpu {
     static_assert(sizeof(Adapter) == sizeof(WGPUAdapter), "sizeof mismatch for Adapter");
     static_assert(alignof(Adapter) == alignof(WGPUAdapter), "alignof mismatch for Adapter");
 
+    Device Adapter::CreateDevice(DeviceDescriptor const * descriptor) const {
+        auto result = wgpuAdapterCreateDevice(Get(), reinterpret_cast<WGPUDeviceDescriptor const * >(descriptor));
+        return Device::Acquire(result);
+    }
     uint32_t Adapter::EnumerateFeatures(FeatureName * features) const {
         auto result = wgpuAdapterEnumerateFeatures(Get(), reinterpret_cast<WGPUFeatureName * >(features));
         return result;

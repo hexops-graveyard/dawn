@@ -314,8 +314,6 @@ namespace dawn_native {
             "offsetof mismatch for CopyTextureForBrowserOptions::nextInChain");
     static_assert(offsetof(CopyTextureForBrowserOptions, flipY) == offsetof(WGPUCopyTextureForBrowserOptions, flipY),
             "offsetof mismatch for CopyTextureForBrowserOptions::flipY");
-    static_assert(offsetof(CopyTextureForBrowserOptions, alphaOp) == offsetof(WGPUCopyTextureForBrowserOptions, alphaOp),
-            "offsetof mismatch for CopyTextureForBrowserOptions::alphaOp");
     static_assert(offsetof(CopyTextureForBrowserOptions, needsColorSpaceConversion) == offsetof(WGPUCopyTextureForBrowserOptions, needsColorSpaceConversion),
             "offsetof mismatch for CopyTextureForBrowserOptions::needsColorSpaceConversion");
     static_assert(offsetof(CopyTextureForBrowserOptions, srcAlphaMode) == offsetof(WGPUCopyTextureForBrowserOptions, srcAlphaMode),
@@ -332,7 +330,6 @@ namespace dawn_native {
     bool CopyTextureForBrowserOptions::operator==(const CopyTextureForBrowserOptions& rhs) const {
         return (nextInChain == rhs.nextInChain) && std::tie(
             flipY,
-            alphaOp,
             needsColorSpaceConversion,
             srcAlphaMode,
             srcTransferFunctionParameters,
@@ -341,7 +338,6 @@ namespace dawn_native {
             dstAlphaMode
         ) == std::tie(
             rhs.flipY,
-            rhs.alphaOp,
             rhs.needsColorSpaceConversion,
             rhs.srcAlphaMode,
             rhs.srcTransferFunctionParameters,
@@ -363,6 +359,33 @@ namespace dawn_native {
             internalUsage
         ) == std::tie(
             rhs.internalUsage
+        );
+    }
+
+
+    static_assert(sizeof(DawnTogglesDeviceDescriptor) == sizeof(WGPUDawnTogglesDeviceDescriptor), "sizeof mismatch for DawnTogglesDeviceDescriptor");
+    static_assert(alignof(DawnTogglesDeviceDescriptor) == alignof(WGPUDawnTogglesDeviceDescriptor), "alignof mismatch for DawnTogglesDeviceDescriptor");
+
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceEnabledTogglesCount) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceEnabledTogglesCount),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceEnabledTogglesCount");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceEnabledToggles) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceEnabledToggles),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceEnabledToggles");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceDisabledTogglesCount) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceDisabledTogglesCount),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceDisabledTogglesCount");
+    static_assert(offsetof(DawnTogglesDeviceDescriptor, forceDisabledToggles) == offsetof(WGPUDawnTogglesDeviceDescriptor, forceDisabledToggles),
+            "offsetof mismatch for DawnTogglesDeviceDescriptor::forceDisabledToggles");
+
+    bool DawnTogglesDeviceDescriptor::operator==(const DawnTogglesDeviceDescriptor& rhs) const {
+        return (nextInChain == rhs.nextInChain) && std::tie(
+            forceEnabledTogglesCount,
+            forceEnabledToggles,
+            forceDisabledTogglesCount,
+            forceDisabledToggles
+        ) == std::tie(
+            rhs.forceEnabledTogglesCount,
+            rhs.forceEnabledToggles,
+            rhs.forceDisabledTogglesCount,
+            rhs.forceDisabledToggles
         );
     }
 
@@ -1808,6 +1831,8 @@ namespace dawn_native {
             "offsetof mismatch for DeviceProperties::invalidFeature");
     static_assert(offsetof(DeviceProperties, dawnInternalUsages) == offsetof(WGPUDeviceProperties, dawnInternalUsages),
             "offsetof mismatch for DeviceProperties::dawnInternalUsages");
+    static_assert(offsetof(DeviceProperties, dawnNative) == offsetof(WGPUDeviceProperties, dawnNative),
+            "offsetof mismatch for DeviceProperties::dawnNative");
     static_assert(offsetof(DeviceProperties, limits) == offsetof(WGPUDeviceProperties, limits),
             "offsetof mismatch for DeviceProperties::limits");
 
@@ -1828,6 +1853,7 @@ namespace dawn_native {
             depth32FloatStencil8,
             invalidFeature,
             dawnInternalUsages,
+            dawnNative,
             limits
         ) == std::tie(
             rhs.deviceID,
@@ -1845,6 +1871,7 @@ namespace dawn_native {
             rhs.depth32FloatStencil8,
             rhs.invalidFeature,
             rhs.dawnInternalUsages,
+            rhs.dawnNative,
             rhs.limits
         );
     }
@@ -1997,4 +2024,4 @@ namespace dawn_native {
         );
     }
 
-}
+} // namespace dawn_native

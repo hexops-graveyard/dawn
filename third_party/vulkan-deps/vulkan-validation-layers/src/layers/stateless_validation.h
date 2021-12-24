@@ -57,6 +57,8 @@ extern const VkImageUsageFlags AllVkImageUsageFlagBits;
 extern const VkSampleCountFlags AllVkSampleCountFlagBits;
 extern const VkBuildAccelerationStructureFlagsNV AllVkBuildAccelerationStructureFlagBitsNV;
 extern const VkGeometryFlagsKHR AllVkGeometryFlagBitsKHR;
+extern const VkPipelineColorBlendStateCreateFlags AllVkPipelineColorBlendStateCreateFlagBits;
+extern const VkPipelineDepthStencilStateCreateFlags AllVkPipelineDepthStencilStateCreateFlagBits;
 
 extern const std::vector<VkGeometryTypeKHR> AllVkGeometryTypeKHREnums;
 extern const std::vector<VkCompareOp> AllVkCompareOpEnums;
@@ -98,8 +100,8 @@ class StatelessValidation : public ValidationObject {
 
     // Override chassis read/write locks for this validation object
     // This override takes a deferred lock. i.e. it is not acquired.
-    read_lock_guard_t read_lock() override;
-    write_lock_guard_t write_lock() override;
+    ReadLockGuard ReadLock() override;
+    WriteLockGuard WriteLock() override;
 
     // Device extension properties -- storing properties gathered from VkPhysicalDeviceProperties2::pNext chain
     struct DeviceExtensionProperties {
@@ -111,12 +113,14 @@ class StatelessValidation : public ValidationObject {
         VkPhysicalDeviceTransformFeedbackPropertiesEXT transform_feedback_props;
         VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT vertex_attribute_divisor_props;
         VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT blend_operation_advanced_props;
+        VkPhysicalDeviceMaintenance4PropertiesKHR maintenance4_props;
     };
     DeviceExtensionProperties phys_dev_ext_props = {};
 
     struct SubpassesUsageStates {
         layer_data::unordered_set<uint32_t> subpasses_using_color_attachment;
         layer_data::unordered_set<uint32_t> subpasses_using_depthstencil_attachment;
+        std::vector<VkSubpassDescriptionFlags> subpasses_flags;
     };
 
     // Though this validation object is predominantly statless, the Framebuffer checks are greatly simplified by creating and
@@ -530,7 +534,7 @@ class StatelessValidation : public ValidationObject {
     bool SupportedByPdev(const VkPhysicalDevice physical_device, const std::string ext_name) const;
 
     bool ValidatePnextStructContents(const char *api_name, const ParameterName &parameter_name, const VkBaseOutStructure *header,
-                                     const char *pnext_vuid) const;
+                                     const char *pnext_vuid, bool is_physdev_api = false, bool is_const_param = true) const;
 
     /**
      * Validate a structure's pNext member.
@@ -550,7 +554,8 @@ class StatelessValidation : public ValidationObject {
      */
     bool validate_struct_pnext(const char *api_name, const ParameterName &parameter_name, const char *allowed_struct_names,
                                const void *next, size_t allowed_type_count, const VkStructureType *allowed_types,
-                               uint32_t header_version, const char *pnext_vuid, const char *stype_vuid) const {
+                               uint32_t header_version, const char *pnext_vuid, const char *stype_vuid,
+                               const bool is_physdev_api = false, const bool is_const_param = true) const {
         bool skip_call = false;
 
         if (next != nullptr) {
@@ -616,7 +621,8 @@ class StatelessValidation : public ValidationObject {
                                                           allowed_struct_names, header_version, parameter_name.get_name().c_str());
                                 }
                             }
-                            skip_call |= ValidatePnextStructContents(api_name, parameter_name, current, pnext_vuid);
+                            skip_call |= ValidatePnextStructContents(api_name, parameter_name, current, pnext_vuid, is_physdev_api,
+                                                                     is_const_param);
                         }
                     }
                     current = reinterpret_cast<const VkBaseOutStructure *>(current->pNext);
@@ -1222,7 +1228,11 @@ class StatelessValidation : public ValidationObject {
                     initial_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
                     initial_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
                     initial_layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL) {
-                    vuid = use_rp2 ? "VUID-VkAttachmentDescription2-format-03294" : "VUID-VkAttachmentDescription-format-03280";
+                    vuid = use_rp2 ? "VUID-VkAttachmentDescription2-format-03294"
+                           : (initial_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
+                              initial_layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL)
+                               ? "VUID-VkAttachmentDescription-format-06487"
+                               : "VUID-VkAttachmentDescription-format-03280";
                     skip |= LogError(device, vuid,
                                      "%s: pCreateInfo->pAttachments[%d].initialLayout must not be "
                                      "VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, "
@@ -1235,7 +1245,11 @@ class StatelessValidation : public ValidationObject {
                     final_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL ||
                     final_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
                     final_layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL) {
-                    vuid = use_rp2 ? "VUID-VkAttachmentDescription2-format-03296" : "VUID-VkAttachmentDescription-format-03282";
+                    vuid = use_rp2 ? "VUID-VkAttachmentDescription2-format-03296"
+                           : (final_layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL ||
+                              final_layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL)
+                               ? "VUID-VkAttachmentDescription-format-06488"
+                               : "VUID-VkAttachmentDescription-format-03282";
                     skip |= LogError(device, vuid,
                                      "%s: pCreateInfo->pAttachments[%d].finalLayout must not be "
                                      "VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, "
@@ -1297,6 +1311,7 @@ class StatelessValidation : public ValidationObject {
         auto &renderpass_state = renderpasses_states[renderPass];
         lock.unlock();
 
+        renderpass_state.subpasses_flags.resize(pCreateInfo->subpassCount);
         for (uint32_t subpass = 0; subpass < pCreateInfo->subpassCount; ++subpass) {
             bool uses_color = false;
             for (uint32_t i = 0; i < pCreateInfo->pSubpasses[subpass].colorAttachmentCount && !uses_color; ++i)
@@ -1309,6 +1324,7 @@ class StatelessValidation : public ValidationObject {
 
             if (uses_color) renderpass_state.subpasses_using_color_attachment.insert(subpass);
             if (uses_depthstencil) renderpass_state.subpasses_using_depthstencil_attachment.insert(subpass);
+            renderpass_state.subpasses_flags[subpass] = pCreateInfo->pSubpasses[subpass].flags;
         }
     }
 
@@ -1418,6 +1434,9 @@ class StatelessValidation : public ValidationObject {
 
     bool manual_PreCallValidateCreateSampler(VkDevice device, const VkSamplerCreateInfo *pCreateInfo,
                                              const VkAllocationCallbacks *pAllocator, VkSampler *pSampler) const;
+    bool ValidateMutableDescriptorTypeCreateInfo(const VkDescriptorSetLayoutCreateInfo &create_info,
+                                                 const VkMutableDescriptorTypeCreateInfoVALVE &mutable_create_info,
+                                                 const char *func_name) const;
     bool manual_PreCallValidateCreateDescriptorSetLayout(VkDevice device, const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
                                                          const VkAllocationCallbacks *pAllocator,
                                                          VkDescriptorSetLayout *pSetLayout) const;
@@ -1774,6 +1793,11 @@ class StatelessValidation : public ValidationObject {
 
     bool manual_PreCallValidateCmdSetDiscardRectangleEXT(VkCommandBuffer commandBuffer, uint32_t firstDiscardRectangle,
                                                          uint32_t discardRectangleCount, const VkRect2D *pDiscardRectangles) const;
+    bool manual_PreCallValidateGetQueryPoolResults(VkDevice device, VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount,
+                                                   size_t dataSize, void *pData, VkDeviceSize stride,
+                                                   VkQueryResultFlags flags) const;
+    bool manual_PreCallValidateCmdBeginConditionalRenderingEXT(
+        VkCommandBuffer commandBuffer, const VkConditionalRenderingBeginInfoEXT *pConditionalRenderingBegin) const;
 
 #include "parameter_validation.h"
 };  // Class StatelessValidation

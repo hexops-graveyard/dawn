@@ -114,6 +114,14 @@ void FindInChain(const ChainedStruct* chain, const PrimitiveDepthClampingState**
         }
     }
 }
+void FindInChain(const ChainedStruct* chain, const DawnTogglesDeviceDescriptor** out) {
+    for (; chain; chain = chain->nextInChain) {
+        if (chain->sType == wgpu::SType::DawnTogglesDeviceDescriptor) {
+            *out = static_cast<const DawnTogglesDeviceDescriptor*>(chain);
+            break;
+        }
+    }
+}
 
 MaybeError ValidateSTypes(const ChainedStruct* chain,
                           std::vector<std::vector<wgpu::SType>> oneOfConstraints) {

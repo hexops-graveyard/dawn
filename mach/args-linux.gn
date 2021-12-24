@@ -1,9 +1,9 @@
 # Common
 is_debug=true
 use_cxx11=true
-use_swiftshader_with_subzero=true
 
 # Linux
+use_swiftshader_with_subzero=true
 target_os="linux"
 target_cpu="x64"
 dawn_use_x11=true

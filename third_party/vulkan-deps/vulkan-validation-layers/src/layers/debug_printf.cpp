@@ -145,18 +145,11 @@ void DebugPrintf::PostCallRecordCreatePipelineLayout(VkDevice device, const VkPi
 }
 
 // Free the device memory and descriptor set associated with a command buffer.
-void DebugPrintf::ResetCommandBuffer(VkCommandBuffer commandBuffer) {
-    if (aborted) {
-        return;
+void DebugPrintf::DestroyBuffer(DPFBufferInfo &buffer_info) {
+    vmaDestroyBuffer(vmaAllocator, buffer_info.output_mem_block.buffer, buffer_info.output_mem_block.allocation);
+    if (buffer_info.desc_set != VK_NULL_HANDLE) {
+        desc_set_manager->PutBackDescriptorSet(buffer_info.desc_pool, buffer_info.desc_set);
     }
-    auto debug_printf_buffer_list = GetBufferInfo(commandBuffer);
-    for (const auto &buffer_info : debug_printf_buffer_list) {
-        vmaDestroyBuffer(vmaAllocator, buffer_info.output_mem_block.buffer, buffer_info.output_mem_block.allocation);
-        if (buffer_info.desc_set != VK_NULL_HANDLE) {
-            desc_set_manager->PutBackDescriptorSet(buffer_info.desc_pool, buffer_info.desc_set);
-        }
-    }
-    command_buffer_map.erase(commandBuffer);
 }
 
 // Just gives a warning about a possible deadlock.
@@ -322,7 +315,7 @@ bool DebugPrintf::InstrumentShader(const VkShaderModuleCreateInfo *pCreateInfo, 
     // Use the unique_shader_module_id as a shader ID so we can look up its handle later in the shader_map.
     // If descriptor indexing is enabled, enable length checks and updated descriptor checks
     using namespace spvtools;
-    spv_target_env target_env = PickSpirvEnv(api_version, (device_extensions.vk_khr_spirv_1_4 != kNotEnabled));
+    spv_target_env target_env = PickSpirvEnv(api_version, IsExtEnabled(device_extensions.vk_khr_spirv_1_4));
     spvtools::ValidatorOptions val_options;
     AdjustValidatorOptions(device_extensions, enabled_features, val_options);
     spvtools::OptimizerOptions opt_options;
@@ -467,8 +460,7 @@ std::vector<DPFSubstring> DebugPrintf::ParseFormatString(const std::string forma
 
 std::string DebugPrintf::FindFormatString(std::vector<unsigned int> pgm, uint32_t string_id) {
     std::string format_string;
-    SHADER_MODULE_STATE shader;
-    shader.words = pgm;
+    SHADER_MODULE_STATE shader(pgm);
     if (shader.words.size() > 0) {
         for (const auto &insn : shader) {
             if (insn.opcode() == spv::OpString) {
@@ -647,11 +639,11 @@ void DebugPrintf::AnalyzeAndGenerateMessages(VkCommandBuffer command_buffer, VkQ
 bool DebugPrintf::CommandBufferNeedsProcessing(VkCommandBuffer command_buffer) {
     bool buffers_present = false;
     auto cb_node = GetCBState(command_buffer);
-    if (GetBufferInfo(cb_node->commandBuffer()).size()) {
+    if (GetBufferInfo(cb_node.get()).size()) {
         buffers_present = true;
     }
     for (const auto *secondaryCmdBuffer : cb_node->linkedCommandBuffers) {
-        if (GetBufferInfo(secondaryCmdBuffer->commandBuffer()).size()) {
+        if (GetBufferInfo(secondaryCmdBuffer).size()) {
             buffers_present = true;
         }
     }
@@ -660,7 +652,7 @@ bool DebugPrintf::CommandBufferNeedsProcessing(VkCommandBuffer command_buffer) {
 
 void DebugPrintf::ProcessCommandBuffer(VkQueue queue, VkCommandBuffer command_buffer) {
     auto cb_node = GetCBState(command_buffer);
-    UtilProcessInstrumentationBuffer(queue, cb_node, this);
+    UtilProcessInstrumentationBuffer(queue, cb_node.get(), this);
     for (auto *secondary_cmd_buffer : cb_node->linkedCommandBuffers) {
         UtilProcessInstrumentationBuffer(queue, secondary_cmd_buffer, this);
     }
@@ -856,7 +848,7 @@ void DebugPrintf::PostCallRecordCmdTraceRaysNV(VkCommandBuffer commandBuffer, Vk
                                                VkDeviceSize hitShaderBindingStride, VkBuffer callableShaderBindingTableBuffer,
                                                VkDeviceSize callableShaderBindingOffset, VkDeviceSize callableShaderBindingStride,
                                                uint32_t width, uint32_t height, uint32_t depth) {
-    CMD_BUFFER_STATE *cb_state = GetCBState(commandBuffer);
+    auto cb_state = GetCBState(commandBuffer);
     cb_state->hasTraceRaysCmd = true;
 }
 
@@ -875,7 +867,7 @@ void DebugPrintf::PostCallRecordCmdTraceRaysKHR(VkCommandBuffer commandBuffer,
                                                 const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
                                                 const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable, uint32_t width,
                                                 uint32_t height, uint32_t depth) {
-    CMD_BUFFER_STATE *cb_state = GetCBState(commandBuffer);
+    auto cb_state = GetCBState(commandBuffer);
     cb_state->hasTraceRaysCmd = true;
 }
 
@@ -894,7 +886,7 @@ void DebugPrintf::PostCallRecordCmdTraceRaysIndirectKHR(VkCommandBuffer commandB
                                                         const VkStridedDeviceAddressRegionKHR *pHitShaderBindingTable,
                                                         const VkStridedDeviceAddressRegionKHR *pCallableShaderBindingTable,
                                                         VkDeviceAddress indirectDeviceAddress) {
-    CMD_BUFFER_STATE *cb_state = GetCBState(commandBuffer);
+    auto cb_state = GetCBState(commandBuffer);
     cb_state->hasTraceRaysCmd = true;
 }
 
@@ -971,11 +963,34 @@ void DebugPrintf::AllocateDebugPrintfResources(const VkCommandBuffer cmd_buffer,
                                           desc_sets.data(), 0, nullptr);
         }
         // Record buffer and memory info in CB state tracking
-        GetBufferInfo(cmd_buffer).emplace_back(output_block, desc_sets[0], desc_pool, bind_point);
+        cb_node->buffer_infos.emplace_back(output_block, desc_sets[0], desc_pool, bind_point);
     } else {
         ReportSetupProblem(device, "Unable to find pipeline state");
         vmaDestroyBuffer(vmaAllocator, output_block.buffer, output_block.allocation);
         aborted = true;
         return;
     }
+}
+
+std::shared_ptr<CMD_BUFFER_STATE> DebugPrintf::CreateCmdBufferState(VkCommandBuffer cb,
+                                                                    const VkCommandBufferAllocateInfo *pCreateInfo,
+                                                                    const COMMAND_POOL_STATE *pool) {
+    return std::static_pointer_cast<CMD_BUFFER_STATE>(std::make_shared<CMD_BUFFER_STATE_PRINTF>(this, cb, pCreateInfo, pool));
+}
+
+CMD_BUFFER_STATE_PRINTF::CMD_BUFFER_STATE_PRINTF(DebugPrintf *dp, VkCommandBuffer cb,
+                                                 const VkCommandBufferAllocateInfo *pCreateInfo, const COMMAND_POOL_STATE *pool)
+    : CMD_BUFFER_STATE(dp, cb, pCreateInfo, pool) {}
+
+void CMD_BUFFER_STATE_PRINTF::Reset() {
+    CMD_BUFFER_STATE::Reset();
+    auto debug_printf = static_cast<DebugPrintf *>(dev_data);
+    // Free the device memory and descriptor set(s) associated with a command buffer.
+    if (debug_printf->aborted) {
+        return;
+    }
+    for (auto &buffer_info : buffer_infos) {
+        debug_printf->DestroyBuffer(buffer_info);
+    }
+    buffer_infos.clear();
 }

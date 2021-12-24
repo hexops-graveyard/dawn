@@ -26,6 +26,7 @@
  */
 #pragma once
 #include "base_node.h"
+#include "layer_chassis_dispatch.h"
 #include <vector>
 
 struct DeviceFeatures {
@@ -33,13 +34,13 @@ struct DeviceFeatures {
     VkPhysicalDeviceVulkan11Features core11;
     VkPhysicalDeviceVulkan12Features core12;
 
-    VkPhysicalDeviceExclusiveScissorFeaturesNV exclusive_scissor;
-    VkPhysicalDeviceShadingRateImageFeaturesNV shading_rate_image;
-    VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader;
-    VkPhysicalDeviceInlineUniformBlockFeaturesEXT inline_uniform_block;
+    VkPhysicalDeviceExclusiveScissorFeaturesNV exclusive_scissor_features;
+    VkPhysicalDeviceShadingRateImageFeaturesNV shading_rate_image_features;
+    VkPhysicalDeviceMeshShaderFeaturesNV mesh_shader_features;
+    VkPhysicalDeviceInlineUniformBlockFeaturesEXT inline_uniform_block_features;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT transform_feedback_features;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT vtx_attrib_divisor_features;
-    VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_ext;
+    VkPhysicalDeviceBufferDeviceAddressFeaturesEXT buffer_device_address_ext_features;
     VkPhysicalDeviceCooperativeMatrixFeaturesNV cooperative_matrix_features;
     VkPhysicalDeviceComputeShaderDerivativesFeaturesNV compute_shader_derivatives_features;
     VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV fragment_shader_barycentric_features;
@@ -66,11 +67,11 @@ struct DeviceFeatures {
     VkPhysicalDevicePortabilitySubsetFeaturesKHR portability_subset_features;
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR fragment_shading_rate_features;
     VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL shader_integer_functions2_features;
-    VkPhysicalDeviceShaderSMBuiltinsFeaturesNV shader_sm_builtins_feature;
-    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT shader_atomic_float_feature;
-    VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT shader_image_atomic_int64_feature;
-    VkPhysicalDeviceShaderClockFeaturesKHR shader_clock_feature;
-    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering;
+    VkPhysicalDeviceShaderSMBuiltinsFeaturesNV shader_sm_builtins_features;
+    VkPhysicalDeviceShaderAtomicFloatFeaturesEXT shader_atomic_float_features;
+    VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT shader_image_atomic_int64_features;
+    VkPhysicalDeviceShaderClockFeaturesKHR shader_clock_features;
+    VkPhysicalDeviceConditionalRenderingFeaturesEXT conditional_rendering_features;
     VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR workgroup_memory_explicit_layout_features;
     VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2_features;
     VkPhysicalDeviceExtendedDynamicState2FeaturesEXT extended_dynamic_state2_features;
@@ -82,6 +83,14 @@ struct DeviceFeatures {
     VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT shader_atomic_float2_features;
     VkPhysicalDevicePresentIdFeaturesKHR present_id_features;
     VkPhysicalDevicePresentWaitFeaturesKHR present_wait_features;
+    VkPhysicalDeviceRayTracingMotionBlurFeaturesNV ray_tracing_motion_blur_features;
+    VkPhysicalDeviceShaderIntegerDotProductFeaturesKHR shader_integer_dot_product_features;
+    VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT primitive_topology_list_restart_features;
+    VkPhysicalDeviceSubgroupSizeControlFeaturesEXT subgroup_size_control_features;
+    VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT rgba10x6_formats_features;
+    VkPhysicalDeviceMaintenance4FeaturesKHR maintenance4_features;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features;
+    VkPhysicalDeviceImageViewMinLodFeaturesEXT image_view_min_lod_features;
     // If a new feature is added here that involves a SPIR-V capability add also in spirv_validation_generator.py
     // This is known by checking the table in the spec or if the struct is in a <spirvcapability> in vk.xml
 };
@@ -91,28 +100,36 @@ class QUEUE_FAMILY_PERF_COUNTERS {
     std::vector<VkPerformanceCounterKHR> counters;
 };
 
-class PHYSICAL_DEVICE_STATE {
+class PHYSICAL_DEVICE_STATE : public BASE_NODE {
   public:
-    safe_VkPhysicalDeviceFeatures2 features2 = {};
-    VkPhysicalDevice phys_device = VK_NULL_HANDLE;
     uint32_t queue_family_known_count = 1;  // spec implies one QF must always be supported
-    std::vector<VkQueueFamilyProperties> queue_family_properties;
-    VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
-    std::vector<VkPresentModeKHR> present_modes;
-    std::vector<VkSurfaceFormatKHR> surface_formats;
+    const std::vector<VkQueueFamilyProperties> queue_family_properties;
+    // TODO These are currently used by CoreChecks, but should probably be refactored
+    bool vkGetPhysicalDeviceDisplayPlanePropertiesKHR_called = false;
     uint32_t display_plane_property_count = 0;
 
     // Map of queue family index to QUEUE_FAMILY_PERF_COUNTERS
     layer_data::unordered_map<uint32_t, std::unique_ptr<QUEUE_FAMILY_PERF_COUNTERS>> perf_counters;
 
-    // TODO These are currently used by CoreChecks, but should probably be refactored
-    bool vkGetPhysicalDeviceSurfaceCapabilitiesKHR_called = false;
-    bool vkGetPhysicalDeviceDisplayPlanePropertiesKHR_called = false;
+    PHYSICAL_DEVICE_STATE(VkPhysicalDevice phys_dev)
+        : BASE_NODE(phys_dev, kVulkanObjectTypePhysicalDevice), queue_family_properties(GetQueueFamilyProps(phys_dev)) {}
+
+    VkPhysicalDevice PhysDev() const { return handle_.Cast<VkPhysicalDevice>(); }
+
+  private:
+    const std::vector<VkQueueFamilyProperties> GetQueueFamilyProps(VkPhysicalDevice phys_dev) {
+        std::vector<VkQueueFamilyProperties> result;
+        uint32_t count;
+        DispatchGetPhysicalDeviceQueueFamilyProperties(phys_dev, &count, nullptr);
+        result.resize(count);
+        DispatchGetPhysicalDeviceQueueFamilyProperties(phys_dev, &count, result.data());
+        return result;
+    }
 };
 
 class DISPLAY_MODE_STATE : public BASE_NODE {
   public:
-    VkPhysicalDevice physical_device;
+    const VkPhysicalDevice physical_device;
 
     DISPLAY_MODE_STATE(VkDisplayModeKHR dm, VkPhysicalDevice phys_dev)
         : BASE_NODE(dm, kVulkanObjectTypeDisplayModeKHR), physical_device(phys_dev) {}

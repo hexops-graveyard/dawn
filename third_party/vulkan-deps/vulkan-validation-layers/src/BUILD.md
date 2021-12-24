@@ -162,21 +162,12 @@ described below.
 #### Google Test
 
 The validation layer tests depend on the
-[Google Test](https://github.com/google/googletest)
-framework and do not build unless this framework is downloaded into the
-repository's `external` directory.
-
-To obtain the framework, change your current directory to the top of your
-Vulkan-ValidationLayers repository and run:
-
-    git clone https://github.com/google/googletest.git external/googletest
-    cd external/googletest
-    git checkout tags/release-1.8.1
-
-before configuring your build with CMake.
-
-If you do not need the tests, there is no need to download this
-framework.
+[Google Test](https://github.com/google/googletest). To build the tests, pass the `-DBUILD_TESTS=ON` option when
+generating the project:
+```bash
+cmake ... -DUPDATE_DEPS=ON -DBUILD_TESTS=ON ...
+```
+This will ensure googletest is downloaded and the appropriate version is used.
 
 #### Vulkan-Loader
 
@@ -283,7 +274,10 @@ directory which is not intended to be modified directly. Instead, changes should
 made to the corresponding generator in the `scripts` directory. The source files can
 then be regenerated using `scripts/generate_source.py`:
 
-    python3 scripts/generate_source.py PATH_TO_VULKAN_HEADERS_REGISTRY_DIR
+    python3 scripts/generate_source.py PATH_TO_VULKAN_HEADERS_REGISTRY_DIR PATH_TO_SPIRV_HEADERS_GRAMMAR_DIR
+
+    // Example
+    python3 scripts/generate_source.py external/Vulkan-Headers/registry/ external/SPIRV-Headers/include/spirv/unified1/
 
 A helper CMake target `VulkanVL_generated_source` is also provided to simplify
 the invocation of `scripts/generate_source.py` from the build directory:
@@ -707,6 +701,8 @@ following.
 
 Note that the minimum supported Android SDK API Level is 26, revision
 level 3.
+
+NDK r20 or greater required
 
 - Install [Android Studio 2.3](https://developer.android.com/studio/index.html)
   or later.

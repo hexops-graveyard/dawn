@@ -20,6 +20,7 @@ namespace dawn_native {
 
 extern WGPUInstance NativeCreateInstance(WGPUInstanceDescriptor const * descriptor);
 extern WGPUProc NativeGetProcAddress(WGPUDevice device, char const * procName);
+extern WGPUDevice NativeAdapterCreateDevice(WGPUAdapter cSelf, WGPUDeviceDescriptor const * descriptor);
 extern uint32_t NativeAdapterEnumerateFeatures(WGPUAdapter cSelf, WGPUFeatureName * features);
 extern bool NativeAdapterGetLimits(WGPUAdapter cSelf, WGPUSupportedLimits * limits);
 extern void NativeAdapterGetProperties(WGPUAdapter cSelf, WGPUAdapterProperties * properties);
@@ -212,6 +213,10 @@ extern "C" {
         return NativeGetProcAddress(device, procName);
     }
 
+    WGPUDevice wgpuAdapterCreateDevice(WGPUAdapter cSelf, WGPUDeviceDescriptor const * descriptor) {
+        return NativeAdapterCreateDevice(
+            cSelf, descriptor);
+    }
     uint32_t wgpuAdapterEnumerateFeatures(WGPUAdapter cSelf, WGPUFeatureName * features) {
         return NativeAdapterEnumerateFeatures(
             cSelf, features);

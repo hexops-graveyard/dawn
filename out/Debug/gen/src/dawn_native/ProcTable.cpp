@@ -32,6 +32,14 @@
 namespace dawn_native {
 
 
+    WGPUDevice NativeAdapterCreateDevice(WGPUAdapter cSelf, WGPUDeviceDescriptor const * descriptor) {
+        auto self = FromAPI(cSelf);
+
+        auto descriptor_ = reinterpret_cast<DeviceDescriptor const * >(descriptor);
+        auto result =        self->APICreateDevice(descriptor_);
+        return ToAPI(result);
+    }
+
     uint32_t NativeAdapterEnumerateFeatures(WGPUAdapter cSelf, WGPUFeatureName * features) {
         auto self = FromAPI(cSelf);
 
@@ -1371,6 +1379,7 @@ namespace dawn_native {
             const char* name;
         };
         static const ProcEntry sProcMap[] = {
+            { reinterpret_cast<WGPUProc>(NativeAdapterCreateDevice), "wgpuAdapterCreateDevice" },
             { reinterpret_cast<WGPUProc>(NativeAdapterEnumerateFeatures), "wgpuAdapterEnumerateFeatures" },
             { reinterpret_cast<WGPUProc>(NativeAdapterGetLimits), "wgpuAdapterGetLimits" },
             { reinterpret_cast<WGPUProc>(NativeAdapterGetProperties), "wgpuAdapterGetProperties" },
@@ -1555,11 +1564,11 @@ namespace dawn_native {
 
     }  // anonymous namespace
 
-    WGPUInstance NativeCreateInstance(WGPUInstanceDescriptor const* descriptor) {
+    WGPUInstance NativeCreateInstance(WGPUInstanceDescriptor const * descriptor) {
         return ToAPI(InstanceBase::Create(FromAPI(descriptor)));
     }
 
-    WGPUProc NativeGetProcAddress(WGPUDevice, const char* procName) {
+    WGPUProc NativeGetProcAddress(WGPUDevice device, char const * procName) {
         if (procName == nullptr) {
             return nullptr;
         }
@@ -1574,17 +1583,19 @@ namespace dawn_native {
             return entry->proc;
         }
 
-        // Special case the two free-standing functions of the API.
-        if (strcmp(procName, "wgpuGetProcAddress") == 0) {
-            return reinterpret_cast<WGPUProc>(NativeGetProcAddress);
-        }
-
+        // Special case the free-standing functions of the API.
+        // TODO(dawn:1238) Checking string one by one is slow, it needs to be optimized.
         if (strcmp(procName, "wgpuCreateInstance") == 0) {
             return reinterpret_cast<WGPUProc>(NativeCreateInstance);
         }
 
+        if (strcmp(procName, "wgpuGetProcAddress") == 0) {
+            return reinterpret_cast<WGPUProc>(NativeGetProcAddress);
+        }
+
         return nullptr;
     }
+
 
     std::vector<const char*> GetProcMapNamesForTestingInternal() {
         std::vector<const char*> result;
@@ -1598,6 +1609,7 @@ namespace dawn_native {
     static DawnProcTable gProcTable = {
         NativeCreateInstance,
         NativeGetProcAddress,
+        NativeAdapterCreateDevice,
         NativeAdapterEnumerateFeatures,
         NativeAdapterGetLimits,
         NativeAdapterGetProperties,

@@ -136,6 +136,7 @@ const char* const E_GL_ARB_explicit_attrib_location     = "GL_ARB_explicit_attri
 const char* const E_GL_ARB_explicit_uniform_location    = "GL_ARB_explicit_uniform_location";
 const char* const E_GL_ARB_shader_image_load_store      = "GL_ARB_shader_image_load_store";
 const char* const E_GL_ARB_shader_atomic_counters       = "GL_ARB_shader_atomic_counters";
+const char* const E_GL_ARB_shader_atomic_counter_ops    = "GL_ARB_shader_atomic_counter_ops";
 const char* const E_GL_ARB_shader_draw_parameters       = "GL_ARB_shader_draw_parameters";
 const char* const E_GL_ARB_shader_group_vote            = "GL_ARB_shader_group_vote";
 const char* const E_GL_ARB_derivative_control           = "GL_ARB_derivative_control";
@@ -160,6 +161,8 @@ const char* const E_GL_ARB_shader_storage_buffer_object = "GL_ARB_shader_storage
 const char* const E_GL_ARB_shading_language_packing     = "GL_ARB_shading_language_packing";
 const char* const E_GL_ARB_texture_query_lod            = "GL_ARB_texture_query_lod";
 const char* const E_GL_ARB_vertex_attrib_64bit          = "GL_ARB_vertex_attrib_64bit";
+const char* const E_GL_ARB_draw_instanced               = "GL_ARB_draw_instanced";
+const char* const E_GL_ARB_fragment_coord_conventions   = "GL_ARB_fragment_coord_conventions";
 
 const char* const E_GL_KHR_shader_subgroup_basic            = "GL_KHR_shader_subgroup_basic";
 const char* const E_GL_KHR_shader_subgroup_vote             = "GL_KHR_shader_subgroup_vote";

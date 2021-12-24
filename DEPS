@@ -101,7 +101,7 @@ deps = {
 
   # WGSL support
   'third_party/tint': {
-    'url': '{dawn_git}/tint@9360046a86f67db1794f05ad33655e3305bfa695',
+    'url': '{dawn_git}/tint@9943de6813695e831a9e6aa43ae36322e81ae3e6',
   },
 
   # GLFW for tests and samples
@@ -111,22 +111,22 @@ deps = {
   },
 
   'third_party/vulkan_memory_allocator': {
-    'url': '{chromium_git}/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@1ecb35c39875c77219c75ecb5c5b3316020f66b8',
+    'url': '{chromium_git}/external/github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator@5e49f57a6e71a026a54eb42e366de09a4142d24e',
     'condition': 'dawn_standalone',
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@8419f4fcd1ec05ffac0ac51a1ac73f343dab00f4',
+    'url': '{chromium_git}/angle/angle@582651bee8a90924c752d146ab40b71089c07032',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@562df4889b8140479d1429e67391f80025493e94',
+    'url': '{swiftshader_git}/SwiftShader@f1afdde60a81bce2451f208d989637ce09ecfbdb',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@d74e02442e56681f44548a549a41d9c76c34ddf4',
+    'url': '{chromium_git}/vulkan-deps@c32df39c11ce4103e175d16d6dee11ca8f74612a',
     'condition': 'dawn_standalone',
   },
 

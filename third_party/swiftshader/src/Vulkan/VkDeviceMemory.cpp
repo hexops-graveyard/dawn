@@ -13,74 +13,14 @@
 // limitations under the License.
 
 #include "VkDeviceMemory.hpp"
+#include "VkDeviceMemoryExternalHost.hpp"
+
 #include "VkBuffer.hpp"
+#include "VkConfig.hpp"
 #include "VkDevice.hpp"
 #include "VkImage.hpp"
+#include "VkMemory.hpp"
 #include "VkStringify.hpp"
-
-#include "VkConfig.hpp"
-
-// Host-allocated memory and host-mapped foreign memory
-class ExternalMemoryHost : public vk::DeviceMemory, public vk::ObjectBase<ExternalMemoryHost, VkDeviceMemory>
-{
-public:
-	struct AllocateInfo
-	{
-		bool supported = false;
-		void *hostPointer = nullptr;
-
-		AllocateInfo() = default;
-
-		AllocateInfo(const vk::DeviceMemory::ExtendedAllocationInfo &extendedAllocationInfo)
-		{
-			if(extendedAllocationInfo.importMemoryHostPointerInfo)
-			{
-				if((extendedAllocationInfo.importMemoryHostPointerInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT) &&
-				   (extendedAllocationInfo.importMemoryHostPointerInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT))
-				{
-					UNSUPPORTED("extendedAllocationInfo.importMemoryHostPointerInfo->handleType, %d",
-					            int(extendedAllocationInfo.importMemoryHostPointerInfo->handleType));
-				}
-				hostPointer = extendedAllocationInfo.importMemoryHostPointerInfo->pHostPointer;
-				supported = true;
-			}
-		}
-	};
-
-	static const VkExternalMemoryHandleTypeFlagBits typeFlagBit = (VkExternalMemoryHandleTypeFlagBits)(VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT | VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT);
-
-	static bool SupportsAllocateInfo(const vk::DeviceMemory::ExtendedAllocationInfo &extendedAllocationInfo)
-	{
-		AllocateInfo info(extendedAllocationInfo);
-		return info.supported;
-	}
-
-	explicit ExternalMemoryHost(const VkMemoryAllocateInfo *pCreateInfo, void *mem, const DeviceMemory::ExtendedAllocationInfo &extendedAllocationInfo, vk::Device *pDevice)
-	    : vk::DeviceMemory(pCreateInfo, pDevice)
-	    , allocateInfo(extendedAllocationInfo)
-	{}
-
-	VkResult allocate(size_t size, void **pBuffer) override
-	{
-		if(allocateInfo.supported)
-		{
-			*pBuffer = allocateInfo.hostPointer;
-			return VK_SUCCESS;
-		}
-		return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-	}
-
-	void deallocate(void *buffer, size_t size) override
-	{}
-
-	VkExternalMemoryHandleTypeFlagBits getFlagBit() const override
-	{
-		return typeFlagBit;
-	}
-
-private:
-	AllocateInfo allocateInfo;
-};
 
 #if SWIFTSHADER_EXTERNAL_MEMORY_OPAQUE_FD
 
@@ -179,7 +119,7 @@ VkResult DeviceMemory::Allocate(const VkAllocationCallbacks *pAllocator, const V
 	}
 #endif
 #if VK_USE_PLATFORM_FUCHSIA
-	if(zircon::VmoExternalMemory::SupportsAllocateInfo(extendedAllocationInfo))
+	if(zircon::VmoExternalMemory::supportsAllocateInfo(extendedAllocationInfo))
 	{
 		return zircon::VmoExternalMemory::Create(pAllocator, pAllocateInfo, pMemory, extendedAllocationInfo, device);
 	}
@@ -193,21 +133,23 @@ VkResult DeviceMemory::Allocate(const VkAllocationCallbacks *pAllocator, const V
 }
 
 DeviceMemory::DeviceMemory(const VkMemoryAllocateInfo *pAllocateInfo, Device *pDevice)
-    : size(pAllocateInfo->allocationSize)
+    : allocationSize(pAllocateInfo->allocationSize)
     , memoryTypeIndex(pAllocateInfo->memoryTypeIndex)
     , device(pDevice)
 {
-	ASSERT(size);
+	ASSERT(allocationSize);
 }
 
 void DeviceMemory::destroy(const VkAllocationCallbacks *pAllocator)
 {
 #ifdef SWIFTSHADER_DEVICE_MEMORY_REPORT
-	device->emitDeviceMemoryReport(isImport() ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_UNIMPORT_EXT : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_FREE_EXT, getMemoryObjectId(), 0 /* size */, VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(void *)VkDeviceMemory(*this));
+	VkDeviceMemoryReportEventTypeEXT eventType = isImport() ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_UNIMPORT_EXT : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_FREE_EXT;
+	device->emitDeviceMemoryReport(eventType, getMemoryObjectId(), 0 /* size */, VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(void *)VkDeviceMemory(*this));
 #endif  // SWIFTSHADER_DEVICE_MEMORY_REPORT
+
 	if(buffer)
 	{
-		deallocate(buffer, size);
+		freeBuffer();
 		buffer = nullptr;
 	}
 }
@@ -259,7 +201,7 @@ VkResult DeviceMemory::ParseAllocationInfo(const VkMemoryAllocateInfo *pAllocate
 				break;
 #endif
 #if VK_USE_PLATFORM_FUCHSIA
-			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_TEMP_ZIRCON_VMO_BIT_FUCHSIA:
+			case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ZIRCON_VMO_BIT_FUCHSIA:
 				break;
 #endif
 			default:
@@ -282,9 +224,9 @@ VkResult DeviceMemory::ParseAllocationInfo(const VkMemoryAllocateInfo *pAllocate
 			}
 			break;
 #if VK_USE_PLATFORM_FUCHSIA
-		case VK_STRUCTURE_TYPE_TEMP_IMPORT_MEMORY_ZIRCON_HANDLE_INFO_FUCHSIA:
+		case VK_STRUCTURE_TYPE_IMPORT_MEMORY_ZIRCON_HANDLE_INFO_FUCHSIA:
 			extendedAllocationInfo->importMemoryZirconHandleInfo = reinterpret_cast<const VkImportMemoryZirconHandleInfoFUCHSIA *>(allocationInfo);
-			if(extendedAllocationInfo->importMemoryZirconHandleInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_TEMP_ZIRCON_VMO_BIT_FUCHSIA)
+			if(extendedAllocationInfo->importMemoryZirconHandleInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_ZIRCON_VMO_BIT_FUCHSIA)
 			{
 				UNSUPPORTED("extendedAllocationInfo->importMemoryZirconHandleInfo->handleType %u", extendedAllocationInfo->importMemoryZirconHandleInfo->handleType);
 				return VK_ERROR_INVALID_EXTERNAL_HANDLE;
@@ -292,7 +234,7 @@ VkResult DeviceMemory::ParseAllocationInfo(const VkMemoryAllocateInfo *pAllocate
 			break;
 #endif  // VK_USE_PLATFORM_FUCHSIA
 		default:
-			LOG_TRAP("pAllocateInfo->pNext sType = %s", vk::Stringify(allocationInfo->sType).c_str());
+			UNSUPPORTED("pAllocateInfo->pNext sType = %s", vk::Stringify(allocationInfo->sType).c_str());
 			break;
 		}
 
@@ -304,29 +246,33 @@ VkResult DeviceMemory::ParseAllocationInfo(const VkMemoryAllocateInfo *pAllocate
 
 VkResult DeviceMemory::allocate()
 {
-	if(size > MAX_MEMORY_ALLOCATION_SIZE)
+	if(allocationSize > MAX_MEMORY_ALLOCATION_SIZE)
 	{
 #ifdef SWIFTSHADER_DEVICE_MEMORY_REPORT
-		device->emitDeviceMemoryReport(VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATION_FAILED_EXT, 0 /* memoryObjectId */, size, VK_OBJECT_TYPE_DEVICE_MEMORY, 0 /* objectHandle */);
+		device->emitDeviceMemoryReport(VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATION_FAILED_EXT, 0 /* memoryObjectId */, allocationSize, VK_OBJECT_TYPE_DEVICE_MEMORY, 0 /* objectHandle */);
 #endif  // SWIFTSHADER_DEVICE_MEMORY_REPORT
+
 		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 	}
 
 	VkResult result = VK_SUCCESS;
 	if(!buffer)
 	{
-		result = allocate(size, &buffer);
+		result = allocateBuffer();
 	}
+
 #ifdef SWIFTSHADER_DEVICE_MEMORY_REPORT
 	if(result == VK_SUCCESS)
 	{
-		device->emitDeviceMemoryReport(isImport() ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_IMPORT_EXT : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATE_EXT, getMemoryObjectId(), size, VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(void *)VkDeviceMemory(*this));
+		VkDeviceMemoryReportEventTypeEXT eventType = isImport() ? VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_IMPORT_EXT : VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATE_EXT;
+		device->emitDeviceMemoryReport(eventType, getMemoryObjectId(), allocationSize, VK_OBJECT_TYPE_DEVICE_MEMORY, (uint64_t)(void *)VkDeviceMemory(*this));
 	}
 	else
 	{
-		device->emitDeviceMemoryReport(VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATION_FAILED_EXT, 0 /* memoryObjectId */, size, VK_OBJECT_TYPE_DEVICE_MEMORY, 0 /* objectHandle */);
+		device->emitDeviceMemoryReport(VK_DEVICE_MEMORY_REPORT_EVENT_TYPE_ALLOCATION_FAILED_EXT, 0 /* memoryObjectId */, allocationSize, VK_OBJECT_TYPE_DEVICE_MEMORY, 0 /* objectHandle */);
 	}
 #endif  // SWIFTSHADER_DEVICE_MEMORY_REPORT
+
 	return result;
 }
 
@@ -339,7 +285,7 @@ VkResult DeviceMemory::map(VkDeviceSize pOffset, VkDeviceSize pSize, void **ppDa
 
 VkDeviceSize DeviceMemory::getCommittedMemoryInBytes() const
 {
-	return size;
+	return allocationSize;
 }
 
 void *DeviceMemory::getOffsetPointer(VkDeviceSize pOffset) const
@@ -370,24 +316,23 @@ bool DeviceMemory::checkExternalMemoryHandleType(
 	return (supportedHandleTypes & handle_type_bit) != 0;
 }
 
-// Allocate the memory according to |size|. On success return VK_SUCCESS
-// and sets |*pBuffer|.
-VkResult DeviceMemory::allocate(size_t size, void **pBuffer)
+// Allocate the memory according to `allocationSize`. On success return VK_SUCCESS
+// and sets `buffer`.
+VkResult DeviceMemory::allocateBuffer()
 {
-	buffer = vk::allocate(size, REQUIRED_MEMORY_ALIGNMENT, DEVICE_MEMORY);
+	buffer = vk::allocateDeviceMemory(allocationSize, REQUIRED_MEMORY_ALIGNMENT);
 	if(!buffer)
 	{
 		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 	}
 
-	*pBuffer = buffer;
 	return VK_SUCCESS;
 }
 
-// Deallocate previously allocated memory at |buffer|.
-void DeviceMemory::deallocate(void *buffer, size_t size)
+// Free previously allocated memory at `buffer`.
+void DeviceMemory::freeBuffer()
 {
-	vk::deallocate(buffer, DEVICE_MEMORY);
+	vk::freeDeviceMemory(buffer);
 	buffer = nullptr;
 }
 
