@@ -20,8 +20,8 @@
 #include "dawn_native/SwapChain.h"
 
 #if defined(DAWN_PLATFORM_WINDOWS)
-#    include <windows.ui.core.h>
-#    include <windows.ui.xaml.controls.h>
+//#    include <windows.ui.core.h>
+//#    include <windows.ui.xaml.controls.h>
 #endif  // defined(DAWN_PLATFORM_WINDOWS)
 
 #if defined(DAWN_USE_X11)
@@ -91,28 +91,28 @@ namespace dawn_native {
             return {};
         }
 #    endif  // defined(DAWN_PLATFORM_WIN32)
-        const SurfaceDescriptorFromWindowsCoreWindow* coreWindowDesc = nullptr;
-        FindInChain(descriptor->nextInChain, &coreWindowDesc);
-        if (coreWindowDesc) {
-            // Validate the coreWindow by query for ICoreWindow interface
-            ComPtr<ABI::Windows::UI::Core::ICoreWindow> coreWindow;
-            DAWN_INVALID_IF(coreWindowDesc->coreWindow == nullptr ||
-                                FAILED(static_cast<IUnknown*>(coreWindowDesc->coreWindow)
-                                           ->QueryInterface(IID_PPV_ARGS(&coreWindow))),
-                            "Invalid CoreWindow");
-            return {};
-        }
-        const SurfaceDescriptorFromWindowsSwapChainPanel* swapChainPanelDesc = nullptr;
-        FindInChain(descriptor->nextInChain, &swapChainPanelDesc);
-        if (swapChainPanelDesc) {
-            // Validate the swapChainPanel by querying for ISwapChainPanel interface
-            ComPtr<ABI::Windows::UI::Xaml::Controls::ISwapChainPanel> swapChainPanel;
-            DAWN_INVALID_IF(swapChainPanelDesc->swapChainPanel == nullptr ||
-                                FAILED(static_cast<IUnknown*>(swapChainPanelDesc->swapChainPanel)
-                                           ->QueryInterface(IID_PPV_ARGS(&swapChainPanel))),
-                            "Invalid SwapChainPanel");
-            return {};
-        }
+        // const SurfaceDescriptorFromWindowsCoreWindow* coreWindowDesc = nullptr;
+        // FindInChain(descriptor->nextInChain, &coreWindowDesc);
+        // if (coreWindowDesc) {
+        //     // Validate the coreWindow by query for ICoreWindow interface
+        //     ComPtr<ABI::Windows::UI::Core::ICoreWindow> coreWindow;
+        //     DAWN_INVALID_IF(coreWindowDesc->coreWindow == nullptr ||
+        //                         FAILED(static_cast<IUnknown*>(coreWindowDesc->coreWindow)
+        //                                    ->QueryInterface(IID_PPV_ARGS(&coreWindow))),
+        //                     "Invalid CoreWindow");
+        //     return {};
+        // }
+        // const SurfaceDescriptorFromWindowsSwapChainPanel* swapChainPanelDesc = nullptr;
+        // FindInChain(descriptor->nextInChain, &swapChainPanelDesc);
+        // if (swapChainPanelDesc) {
+        //     // Validate the swapChainPanel by querying for ISwapChainPanel interface
+        //     ComPtr<ABI::Windows::UI::Xaml::Controls::ISwapChainPanel> swapChainPanel;
+        //     DAWN_INVALID_IF(swapChainPanelDesc->swapChainPanel == nullptr ||
+        //                         FAILED(static_cast<IUnknown*>(swapChainPanelDesc->swapChainPanel)
+        //                                    ->QueryInterface(IID_PPV_ARGS(&swapChainPanel))),
+        //                     "Invalid SwapChainPanel");
+        //     return {};
+        // }
 #endif  // defined(DAWN_PLATFORM_WINDOWS)
 
 #if defined(DAWN_USE_X11)

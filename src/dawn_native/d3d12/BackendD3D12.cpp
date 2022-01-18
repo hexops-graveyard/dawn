@@ -48,14 +48,15 @@ namespace dawn_native { namespace d3d12 {
                     }
                 }
 
-                if (beginCaptureOnStartup) {
-                    ComPtr<IDXGraphicsAnalysis> graphicsAnalysis;
-                    if (functions->dxgiGetDebugInterface1 != nullptr &&
-                        SUCCEEDED(functions->dxgiGetDebugInterface1(
-                            0, IID_PPV_ARGS(&graphicsAnalysis)))) {
-                        graphicsAnalysis->BeginCapture();
-                    }
-                }
+                // TODO(slimsag): figure out how to get IDXGraphicsAnalysis working under MinGW
+                // if (beginCaptureOnStartup) {
+                //     ComPtr<IDXGraphicsAnalysis> graphicsAnalysis;
+                //     if (functions->dxgiGetDebugInterface1 != nullptr &&
+                //         SUCCEEDED(functions->dxgiGetDebugInterface1(
+                //             0, IID_PPV_ARGS(&graphicsAnalysis)))) {
+                //         graphicsAnalysis->BeginCapture();
+                //     }
+                // }
             }
 
             if (FAILED(functions->createDxgiFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)))) {

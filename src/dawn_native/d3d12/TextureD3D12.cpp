@@ -14,6 +14,7 @@
 
 #include "dawn_native/d3d12/TextureD3D12.h"
 
+#include "common/windows_with_undefs.h"
 #include "common/Constants.h"
 #include "common/Math.h"
 #include "dawn_native/DynamicUploader.h"
@@ -671,7 +672,7 @@ namespace dawn_native { namespace d3d12 {
         if (mSwapChainTexture) {
             ID3D12SharingContract* d3dSharingContract = device->GetSharingContract();
             if (d3dSharingContract != nullptr) {
-                d3dSharingContract->Present(mResourceAllocation.GetD3D12Resource(), 0, 0);
+                //d3dSharingContract->Present(mResourceAllocation.GetD3D12Resource(), 0, 0);
             }
         }
 
@@ -796,7 +797,7 @@ namespace dawn_native { namespace d3d12 {
         // non-simultaneous-access texture: NON_PIXEL_SHADER_RESOURCE,
         // PIXEL_SHADER_RESOURCE, COPY_SRC, COPY_DEST.
         {
-            static constexpr D3D12_RESOURCE_STATES kD3D12PromotableReadOnlyStates =
+            static D3D12_RESOURCE_STATES kD3D12PromotableReadOnlyStates =
                 D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
