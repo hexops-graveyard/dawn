@@ -1,0 +1,8 @@
+# Common
+is_debug=true
+use_cxx11=true
+
+# Windows
+use_swiftshader_with_subzero=true
+target_os="win"
+target_cpu="x64"
