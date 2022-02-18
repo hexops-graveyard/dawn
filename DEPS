@@ -113,7 +113,7 @@ deps = {
 
   # WGSL support
   'third_party/tint': {
-    'url': '{dawn_git}/tint@4a15605be725129166edba4d3b00b19fc1a0da75',
+    'url': '{dawn_git}/tint@7274b8ac19c434d86991c08044f7c45d537c888d',
   },
 
   # GLFW for tests and samples
@@ -128,17 +128,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@eeddb05040ba96b21dcc0032eaad1eae669a98e5',
+    'url': '{chromium_git}/angle/angle@671fcf732d8f13f2532a777b8436e52276fb2410',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@0863290dc7f6cc1649bab1858790e812b8aef02a',
+    'url': '{swiftshader_git}/SwiftShader@8941bdeeafac3d1c04f116097e82fd16d6cd383a',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@6b02308bdccf4c3099368a6b6d449f016d0fb86d',
+    'url': '{chromium_git}/vulkan-deps@f987c40d5cc642feccf0d36ffc8f565daaa02880',
     'condition': 'dawn_standalone',
   },
 
