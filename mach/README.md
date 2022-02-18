@@ -37,27 +37,32 @@ git checkout main
 git checkout -B generated-2022-02-16
 ```
 
-Compare the diff between this generated branch and the prior generated branch to determine if any changes need to be made to the mach/gpu-dawn `build.zig` files. In particular look out for changes to (`BUILD`) `.gn` files, `.gni` files.
-
 (optional) Run `gn args out/Debug` (set `use_system_xcode=true`) and `ninja -C out/Debug` to build Dawn & confirm your build works.
 
+If you have not already, bootstrap your `gclient` config:
+
 ```sh
-rm -rf build/ 
-gclient sync
+cp scripts/standalone.gclient .gclient
 ```
 
-At this point there will be quite a large diff to add all of the `third_party/` dependencies we will commit.
+```sh
+rm -rf build/
+gclient sync
+```
 
 Stage and review the changes:
 
 ```sh
 ./mach/add-dependencies.sh
+git add -f third_party/
 ```
+
+At this point there will be quite a large diff to add all of the `third_party/` dependencies we will commit.
 
 Alter the above script as needed to include/exclude files. Make sure test files, documentation, `.gitmodules`, etc. are not included. Commit the result:
 
 ```sh
-git commit -s -m 'generated: add dependencies'
+git commit -s -m 'generated: commit vendored dependencies'
 ```
 
 Perform code generation:
@@ -72,4 +77,6 @@ Commit the generated code, e.g. headers in `out/Debug`.
 git commit -s -m 'generated: commit generated code'
 ```
 
-Confirm that `zig build run-dawn-example` works in `mach/gpu`
+Compare the diff between this generated branch and the prior generated branch to determine if any changes need to be made to the mach/gpu-dawn `build.zig` files. In particular look out for changes to (`BUILD`) `.gn` files, `.gni` files.
+
+Confirm that `zig build run-dawn-example` works in `mach/gpu-dawn` before updating the hard-coded branch version that `mach/gpu-dawn` uses.
