@@ -55,7 +55,7 @@ rm -rf third_party/zlib/google/test/
 # rm -rf third_party/markupsafe/
 # rm -rf third_party/jinja2/
 # rm -rf third_party/catapult/
-find third_party/catapult ! -name 'BUILD.gn' ! -name '*.gni' -type f | xargs -n1 rm
+find third_party/catapult ! -name 'BUILD.gn' ! -name '*.gni' -type f | xargs -n1 rm || true
 
 rm -rf third_party/swiftshader/third_party/SPIRV-Tools # already in third_party/vulkan-deps/spirv-tools
 rm -rf third_party/swiftshader/third_party/SPIRV-Headers # already in third_party/vulkan-deps/spirv-headers

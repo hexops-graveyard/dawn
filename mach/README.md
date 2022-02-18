@@ -54,7 +54,6 @@ Stage and review the changes:
 
 ```sh
 ./mach/add-dependencies.sh
-git add -f third_party/
 ```
 
 At this point there will be quite a large diff to add all of the `third_party/` dependencies we will commit.
@@ -74,6 +73,7 @@ Perform code generation:
 Commit the generated code, e.g. headers in `out/Debug`.
 
 ```sh
+./mach/add-generated.sh
 git commit -s -m 'generated: commit generated code'
 ```
 

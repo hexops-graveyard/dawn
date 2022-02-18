@@ -9,6 +9,7 @@ gn gen out/Debug
 ./mach/ninja-generate.sh
 
 # Linux
+build/linux/sysroot_scripts/install-sysroot.py --arch=amd64
 cp mach/args-linux.gn out/Debug/args.gn
 gn gen out/Debug
 ./mach/ninja-generate.sh
