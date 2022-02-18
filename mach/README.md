@@ -26,7 +26,7 @@ git push origin refs/remotes/upstream/main:refs/heads/upstream
 
 ```sh
 git checkout main
-git merge upstream
+git merge origin/upstream
 git push
 ```
 
