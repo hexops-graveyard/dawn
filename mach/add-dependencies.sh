@@ -33,9 +33,7 @@ rm -rf third_party/angle/extensions/
 rm -rf third_party/angle/third_party/logdog/
 rm -rf third_party/angle/src/android_system_settings
 rm -rf third_party/vulkan-deps/glslang/src/Test
-rm -rf third_party/vulkan-deps/spirv-cross/src/reference
-rm -rf third_party/vulkan-deps/spirv-cross/src/shaders-*
-rm -rf third_party/vulkan-deps/spirv-cross/src/test*
+rm -rf third_party/vulkan-deps/spirv-cross
 rm -rf third_party/vulkan-deps/spirv-tools/src/test
 rm -rf third_party/vulkan-deps/spirv-tools/src/source/fuzz/
 rm -rf third_party/vulkan-deps/spirv-tools/src/kokoro/
