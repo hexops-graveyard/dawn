@@ -106,7 +106,7 @@ namespace {
             colorAttachments[i].view =
                 Create2DAttachment(device, 1, 1, wgpu::TextureFormat::RGBA8Unorm);
             colorAttachments[i].resolveTarget = nullptr;
-            colorAttachments[i].clearColor = {0.0f, 0.0f, 0.0f, 0.0f};
+            colorAttachments[i].clearValue = {0.0f, 0.0f, 0.0f, 0.0f};
             colorAttachments[i].loadOp = wgpu::LoadOp::Clear;
             colorAttachments[i].storeOp = wgpu::StoreOp::Store;
         }
@@ -127,6 +127,62 @@ namespace {
             renderPass.colorAttachments = colorAttachments.data();
             renderPass.depthStencilAttachment = nullptr;
             AssertBeginRenderPassError(&renderPass);
+        }
+    }
+
+    // Test sparse color attachment validations
+    TEST_F(RenderPassDescriptorValidationTest, SparseColorAttachment) {
+        // Having sparse color attachment is valid.
+        {
+            std::array<wgpu::RenderPassColorAttachment, 2> colorAttachments;
+            colorAttachments[0].view = nullptr;
+
+            colorAttachments[1].view =
+                Create2DAttachment(device, 1, 1, wgpu::TextureFormat::RGBA8Unorm);
+            colorAttachments[1].loadOp = wgpu::LoadOp::Load;
+            colorAttachments[1].storeOp = wgpu::StoreOp::Store;
+
+            wgpu::RenderPassDescriptor renderPass;
+            renderPass.colorAttachmentCount = colorAttachments.size();
+            renderPass.colorAttachments = colorAttachments.data();
+            renderPass.depthStencilAttachment = nullptr;
+            AssertBeginRenderPassSuccess(&renderPass);
+        }
+
+        // When all color attachments are null
+        {
+            std::array<wgpu::RenderPassColorAttachment, 2> colorAttachments;
+            colorAttachments[0].view = nullptr;
+            colorAttachments[1].view = nullptr;
+
+            // Control case: depth stencil attachment is not null is valid.
+            {
+                wgpu::TextureView depthStencilView =
+                    Create2DAttachment(device, 1, 1, wgpu::TextureFormat::Depth24PlusStencil8);
+                wgpu::RenderPassDepthStencilAttachment depthStencilAttachment;
+                depthStencilAttachment.view = depthStencilView;
+                depthStencilAttachment.depthClearValue = 1.0f;
+                depthStencilAttachment.stencilClearValue = 0;
+                depthStencilAttachment.depthLoadOp = wgpu::LoadOp::Clear;
+                depthStencilAttachment.depthStoreOp = wgpu::StoreOp::Store;
+                depthStencilAttachment.stencilLoadOp = wgpu::LoadOp::Clear;
+                depthStencilAttachment.stencilStoreOp = wgpu::StoreOp::Store;
+
+                wgpu::RenderPassDescriptor renderPass;
+                renderPass.colorAttachmentCount = colorAttachments.size();
+                renderPass.colorAttachments = colorAttachments.data();
+                renderPass.depthStencilAttachment = &depthStencilAttachment;
+                AssertBeginRenderPassSuccess(&renderPass);
+            }
+
+            // Error case: depth stencil attachment being null is invalid.
+            {
+                wgpu::RenderPassDescriptor renderPass;
+                renderPass.colorAttachmentCount = colorAttachments.size();
+                renderPass.colorAttachments = colorAttachments.data();
+                renderPass.depthStencilAttachment = nullptr;
+                AssertBeginRenderPassError(&renderPass);
+            }
         }
     }
 
@@ -676,6 +732,30 @@ namespace {
         }
     }
 
+    // Tests the texture format of the resolve target must support being used as resolve target.
+    TEST_F(MultisampledRenderPassDescriptorValidationTest, ResolveTargetFormat) {
+        for (wgpu::TextureFormat format : utils::kAllTextureFormats) {
+            if (!utils::TextureFormatSupportsMultisampling(format) ||
+                !utils::TextureFormatSupportsRendering(format)) {
+                continue;
+            }
+
+            wgpu::Texture colorTexture =
+                CreateTexture(device, wgpu::TextureDimension::e2D, format, kSize, kSize,
+                              kArrayLayers, kLevelCount, kSampleCount);
+            wgpu::Texture resolveTarget = CreateTexture(device, wgpu::TextureDimension::e2D, format,
+                                                        kSize, kSize, kArrayLayers, kLevelCount, 1);
+
+            utils::ComboRenderPassDescriptor renderPass({colorTexture.CreateView()});
+            renderPass.cColorAttachments[0].resolveTarget = resolveTarget.CreateView();
+            if (utils::TextureFormatSupportsResolveTarget(format)) {
+                AssertBeginRenderPassSuccess(&renderPass);
+            } else {
+                AssertBeginRenderPassError(&renderPass);
+            }
+        }
+    }
+
     // Tests on the sample count of depth stencil attachment.
     TEST_F(MultisampledRenderPassDescriptorValidationTest, DepthStencilAttachmentSampleCount) {
         constexpr wgpu::TextureFormat kDepthStencilFormat =
@@ -729,68 +809,68 @@ namespace {
         // Tests that NaN cannot be used in clearColor.
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.r = NAN;
+            renderPass.cColorAttachments[0].clearValue.r = NAN;
             AssertBeginRenderPassError(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.g = NAN;
+            renderPass.cColorAttachments[0].clearValue.g = NAN;
             AssertBeginRenderPassError(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.b = NAN;
+            renderPass.cColorAttachments[0].clearValue.b = NAN;
             AssertBeginRenderPassError(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.a = NAN;
+            renderPass.cColorAttachments[0].clearValue.a = NAN;
             AssertBeginRenderPassError(&renderPass);
         }
 
         // Tests that INFINITY can be used in clearColor.
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.r = INFINITY;
+            renderPass.cColorAttachments[0].clearValue.r = INFINITY;
             AssertBeginRenderPassSuccess(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.g = INFINITY;
+            renderPass.cColorAttachments[0].clearValue.g = INFINITY;
             AssertBeginRenderPassSuccess(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.b = INFINITY;
+            renderPass.cColorAttachments[0].clearValue.b = INFINITY;
             AssertBeginRenderPassSuccess(&renderPass);
         }
 
         {
             utils::ComboRenderPassDescriptor renderPass({color}, nullptr);
-            renderPass.cColorAttachments[0].clearColor.a = INFINITY;
+            renderPass.cColorAttachments[0].clearValue.a = INFINITY;
             AssertBeginRenderPassSuccess(&renderPass);
         }
 
-        // Tests that NaN cannot be used in clearDepth.
+        // Tests that NaN cannot be used in depthClearValue.
         {
             wgpu::TextureView depth =
                 Create2DAttachment(device, 1, 1, wgpu::TextureFormat::Depth24Plus);
             utils::ComboRenderPassDescriptor renderPass({color}, depth);
-            renderPass.cDepthStencilAttachmentInfo.clearDepth = NAN;
+            renderPass.cDepthStencilAttachmentInfo.depthClearValue = NAN;
             AssertBeginRenderPassError(&renderPass);
         }
 
-        // Tests that INFINITY can be used in clearDepth.
+        // Tests that INFINITY can be used in depthClearValue.
         {
             wgpu::TextureView depth =
                 Create2DAttachment(device, 1, 1, wgpu::TextureFormat::Depth24Plus);
             utils::ComboRenderPassDescriptor renderPass({color}, depth);
-            renderPass.cDepthStencilAttachmentInfo.clearDepth = INFINITY;
+            renderPass.cDepthStencilAttachmentInfo.depthClearValue = INFINITY;
             AssertBeginRenderPassSuccess(&renderPass);
         }
 
