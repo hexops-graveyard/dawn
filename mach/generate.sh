@@ -23,6 +23,7 @@ echo "print('runtime_dirs = \"\"')" >> ./build/vs_toolchain.py
 
 echo "print('include_flags_imsvc = \"\"')" > ./build/toolchain/win/setup_toolchain.py
 echo "print('libpath_flags = \"\"')" >> ./build/toolchain/win/setup_toolchain.py
+echo "print('libpath_lldlink_flags = \"\"')" >> ./build/toolchain/win/setup_toolchain.py
 echo "print('vc_lib_path = \"tmp\"')" >> ./build/toolchain/win/setup_toolchain.py
 echo "print('vc_lib_um_path = \"tmp\"')" >> ./build/toolchain/win/setup_toolchain.py
 
