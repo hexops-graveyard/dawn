@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTILS_DAWNHELPERS_H_
-#define UTILS_DAWNHELPERS_H_
+#ifndef SRC_DAWN_UTILS_WGPUHELPERS_H_
+#define SRC_DAWN_UTILS_WGPUHELPERS_H_
 
 #include <dawn/webgpu_cpp.h>
 
@@ -65,6 +65,8 @@ namespace utils {
         ComboRenderPassDescriptor(const ComboRenderPassDescriptor& otherRenderPass);
         const ComboRenderPassDescriptor& operator=(
             const ComboRenderPassDescriptor& otherRenderPass);
+
+        void UnsetDepthStencilLoadStoreOpsForFormat(wgpu::TextureFormat format);
 
         std::array<wgpu::RenderPassColorAttachment, kMaxColorAttachments> cColorAttachments;
         wgpu::RenderPassDepthStencilAttachment cDepthStencilAttachmentInfo = {};
@@ -177,4 +179,4 @@ namespace utils {
 
 }  // namespace utils
 
-#endif  // UTILS_DAWNHELPERS_H_
+#endif  // SRC_DAWN_UTILS_WGPUHELPERS_H_

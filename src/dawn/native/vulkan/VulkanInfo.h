@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DAWNNATIVE_VULKAN_VULKANINFO_H_
-#define DAWNNATIVE_VULKAN_VULKANINFO_H_
+#ifndef SRC_DAWN_NATIVE_VULKAN_VULKANINFO_H_
+#define SRC_DAWN_NATIVE_VULKAN_VULKANINFO_H_
 
 #include "dawn/common/ityp_array.h"
 #include "dawn/common/vulkan_platform.h"
@@ -51,6 +51,8 @@ namespace dawn::native::vulkan {
         VkPhysicalDeviceShaderFloat16Int8FeaturesKHR shaderFloat16Int8Features;
         VkPhysicalDevice16BitStorageFeaturesKHR _16BitStorageFeatures;
         VkPhysicalDeviceSubgroupSizeControlFeaturesEXT subgroupSizeControlFeatures;
+        VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR
+            zeroInitializeWorkgroupMemoryFeatures;
 
         bool HasExt(DeviceExt ext) const;
         DeviceExtSet extensions;
@@ -86,4 +88,4 @@ namespace dawn::native::vulkan {
                                                        VkSurfaceKHR surface);
 }  // namespace dawn::native::vulkan
 
-#endif  // DAWNNATIVE_VULKAN_VULKANINFO_H_
+#endif  // SRC_DAWN_NATIVE_VULKAN_VULKANINFO_H_

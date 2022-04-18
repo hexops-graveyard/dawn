@@ -338,7 +338,7 @@ namespace dawn::native::d3d12 {
         return {};
     }
 
-    ResultOrError<TextureViewBase*> SwapChain::GetCurrentTextureViewImpl() {
+    ResultOrError<Ref<TextureViewBase>> SwapChain::GetCurrentTextureViewImpl() {
         Device* device = ToBackend(GetDevice());
 
         // Synchronously wait until previous operations on the next swapchain buffer are finished.
@@ -352,9 +352,7 @@ namespace dawn::native::d3d12 {
         TextureDescriptor descriptor = GetSwapChainBaseTextureDescriptor(this);
         DAWN_TRY_ASSIGN(mApiTexture, Texture::Create(ToBackend(GetDevice()), &descriptor,
                                                      mBuffers[mCurrentBuffer]));
-
-        // TODO(dawn:723): change to not use AcquireRef for reentrant object creation.
-        return mApiTexture->APICreateView();
+        return mApiTexture->CreateView();
     }
 
     MaybeError SwapChain::DetachAndWaitForDeallocation() {

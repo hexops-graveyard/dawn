@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DAWNNATIVE_VULKAN_VULKANEXTENSIONS_H_
-#define DAWNNATIVE_VULKAN_VULKANEXTENSIONS_H_
+#ifndef SRC_DAWN_NATIVE_VULKAN_VULKANEXTENSIONS_H_
+#define SRC_DAWN_NATIVE_VULKAN_VULKANEXTENSIONS_H_
 
 #include "dawn/common/ityp_bitset.h"
 
@@ -37,6 +37,7 @@ namespace dawn::native::vulkan {
         Win32Surface,
         XcbSurface,
         XlibSurface,
+        AndroidSurface,
 
         // Others
         DebugUtils,
@@ -88,6 +89,9 @@ namespace dawn::native::vulkan {
         DriverProperties,
         ImageFormatList,
         ShaderFloat16Int8,
+
+        // Promoted to 1.3
+        ZeroInitializeWorkgroupMemory,
 
         // External* extensions
         ExternalMemoryFD,
@@ -159,4 +163,4 @@ namespace dawn::native::vulkan {
 
 }  // namespace dawn::native::vulkan
 
-#endif  // DAWNNATIVE_VULKAN_VULKANEXTENSIONS_H_
+#endif  // SRC_DAWN_NATIVE_VULKAN_VULKANEXTENSIONS_H_

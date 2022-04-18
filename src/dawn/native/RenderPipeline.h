@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DAWNNATIVE_RENDERPIPELINE_H_
-#define DAWNNATIVE_RENDERPIPELINE_H_
+#ifndef SRC_DAWN_NATIVE_RENDERPIPELINE_H_
+#define SRC_DAWN_NATIVE_RENDERPIPELINE_H_
 
 #include "dawn/common/TypedInteger.h"
 #include "dawn/native/AttachmentState.h"
@@ -54,6 +54,9 @@ namespace dawn::native {
         uint64_t arrayStride;
         wgpu::VertexStepMode stepMode;
         uint16_t usedBytesInStride;
+        // As indicated in the spec, the lastStride is max(attribute.offset +
+        // sizeof(attribute.format)) for each attribute in the buffer[slot]
+        uint64_t lastStride;
     };
 
     class RenderPipelineBase : public PipelineBase {
@@ -109,7 +112,7 @@ namespace dawn::native {
 
       protected:
         // Constructor used only for mocking and testing.
-        RenderPipelineBase(DeviceBase* device);
+        explicit RenderPipelineBase(DeviceBase* device);
         void DestroyImpl() override;
 
       private:
@@ -141,4 +144,4 @@ namespace dawn::native {
 
 }  // namespace dawn::native
 
-#endif  // DAWNNATIVE_RENDERPIPELINE_H_
+#endif  // SRC_DAWN_NATIVE_RENDERPIPELINE_H_

@@ -141,6 +141,10 @@ namespace dawn::native {
                 bindingType = BindingInfoType::ExternalTexture;
             }
 
+            DAWN_INVALID_IF(bindingMemberCount == 0,
+                            "BindGroupLayoutEntry had none of buffer, sampler, texture, "
+                            "storageTexture, or externalTexture set");
+
             DAWN_INVALID_IF(bindingMemberCount != 1,
                             "BindGroupLayoutEntry had more than one of buffer, sampler, texture, "
                             "storageTexture, or externalTexture set");
@@ -657,11 +661,13 @@ namespace dawn::native {
     }
 
     std::string BindGroupLayoutBase::EntriesToString() const {
-        std::string entries = " [";
+        std::string entries = "[";
+        std::string sep = "";
         const BindGroupLayoutBase::BindingMap& bindingMap = GetBindingMap();
         for (const auto [bindingNumber, bindingIndex] : bindingMap) {
             const BindingInfo& bindingInfo = GetBindingInfo(bindingIndex);
-            entries += absl::StrFormat("%s, ", bindingInfo);
+            entries += absl::StrFormat("%s%s", sep, bindingInfo);
+            sep = ", ";
         }
         entries += "]";
         return entries;

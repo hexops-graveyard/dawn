@@ -28,88 +28,6 @@
 #include <sstream>
 
 namespace dawn::native {
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
-        VertexFormatBaseType value,
-        const absl::FormatConversionSpec& spec,
-        absl::FormatSink* s) {
-        switch (value) {
-            case VertexFormatBaseType::Float:
-                s->Append("Float");
-                break;
-            case VertexFormatBaseType::Uint:
-                s->Append("Uint");
-                break;
-            case VertexFormatBaseType::Sint:
-                s->Append("Sint");
-                break;
-            default:
-                UNREACHABLE();
-        }
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
-        InterStageComponentType value,
-        const absl::FormatConversionSpec& spec,
-        absl::FormatSink* s) {
-        switch (value) {
-            case InterStageComponentType::Float:
-                s->Append("Float");
-                break;
-            case InterStageComponentType::Uint:
-                s->Append("Uint");
-                break;
-            case InterStageComponentType::Sint:
-                s->Append("Sint");
-                break;
-            default:
-                UNREACHABLE();
-        }
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
-        InterpolationType value,
-        const absl::FormatConversionSpec& spec,
-        absl::FormatSink* s) {
-        switch (value) {
-            case InterpolationType::Perspective:
-                s->Append("Perspective");
-                break;
-            case InterpolationType::Linear:
-                s->Append("Linear");
-                break;
-            case InterpolationType::Flat:
-                s->Append("Flat");
-                break;
-            default:
-                UNREACHABLE();
-        }
-        return {true};
-    }
-
-    absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
-        InterpolationSampling value,
-        const absl::FormatConversionSpec& spec,
-        absl::FormatSink* s) {
-        switch (value) {
-            case InterpolationSampling::None:
-                s->Append("None");
-                break;
-            case InterpolationSampling::Center:
-                s->Append("Center");
-                break;
-            case InterpolationSampling::Centroid:
-                s->Append("Centroid");
-                break;
-            case InterpolationSampling::Sample:
-                s->Append("Sample");
-                break;
-            default:
-                UNREACHABLE();
-        }
-        return {true};
-    }
 
     // Helper functions
     namespace {
@@ -610,6 +528,7 @@ namespace dawn::native {
             mVertexBufferInfos[typedSlot].arrayStride = buffers[slot].arrayStride;
             mVertexBufferInfos[typedSlot].stepMode = buffers[slot].stepMode;
             mVertexBufferInfos[typedSlot].usedBytesInStride = 0;
+            mVertexBufferInfos[typedSlot].lastStride = 0;
             switch (buffers[slot].stepMode) {
                 case wgpu::VertexStepMode::Vertex:
                     mVertexBufferSlotsUsedAsVertexBuffer.set(typedSlot);
@@ -634,12 +553,16 @@ namespace dawn::native {
                 // maxVertexBufferArrayStride (2048), which is promised by the GPUVertexBufferLayout
                 // validation of creating render pipeline. Therefore, calculating in uint16_t will
                 // cause no overflow.
+                uint32_t formatByteSize =
+                    GetVertexFormatInfo(buffers[slot].attributes[i].format).byteSize;
                 DAWN_ASSERT(buffers[slot].attributes[i].offset <= 2048);
                 uint16_t accessBoundary =
-                    uint16_t(buffers[slot].attributes[i].offset) +
-                    uint16_t(GetVertexFormatInfo(buffers[slot].attributes[i].format).byteSize);
+                    uint16_t(buffers[slot].attributes[i].offset) + uint16_t(formatByteSize);
                 mVertexBufferInfos[typedSlot].usedBytesInStride =
                     std::max(mVertexBufferInfos[typedSlot].usedBytesInStride, accessBoundary);
+                mVertexBufferInfos[typedSlot].lastStride =
+                    std::max(mVertexBufferInfos[typedSlot].lastStride,
+                             mAttributeInfos[location].offset + formatByteSize);
             }
         }
 
@@ -732,7 +655,7 @@ namespace dawn::native {
     RenderPipelineBase* RenderPipelineBase::MakeError(DeviceBase* device) {
         class ErrorRenderPipeline final : public RenderPipelineBase {
           public:
-            ErrorRenderPipeline(DeviceBase* device)
+            explicit ErrorRenderPipeline(DeviceBase* device)
                 : RenderPipelineBase(device, ObjectBase::kError) {
             }
 

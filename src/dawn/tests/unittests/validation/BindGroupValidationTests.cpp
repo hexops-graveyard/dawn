@@ -964,6 +964,33 @@ TEST_F(BindGroupLayoutValidationTest, DynamicAndTypeCompatibility) {
                 });
 }
 
+// Test that it is invalid to create a BGL with more than one binding type set.
+TEST_F(BindGroupLayoutValidationTest, BindGroupLayoutEntryTooManySet) {
+    wgpu::BindGroupLayoutEntry entry = {};
+    entry.binding = 0;
+    entry.visibility = wgpu::ShaderStage::Fragment;
+    entry.buffer.type = wgpu::BufferBindingType::Uniform;
+    entry.sampler.type = wgpu::SamplerBindingType::Filtering;
+
+    wgpu::BindGroupLayoutDescriptor descriptor;
+    descriptor.entryCount = 1;
+    descriptor.entries = &entry;
+    ASSERT_DEVICE_ERROR(device.CreateBindGroupLayout(&descriptor),
+                        testing::HasSubstr("had more than one of"));
+}
+
+// Test that it is invalid to create a BGL with none one of buffer,
+// sampler, texture, storageTexture, or externalTexture set.
+TEST_F(BindGroupLayoutValidationTest, BindGroupLayoutEntryNoneSet) {
+    wgpu::BindGroupLayoutEntry entry = {};
+
+    wgpu::BindGroupLayoutDescriptor descriptor;
+    descriptor.entryCount = 1;
+    descriptor.entries = &entry;
+    ASSERT_DEVICE_ERROR(device.CreateBindGroupLayout(&descriptor),
+                        testing::HasSubstr("had none of"));
+}
+
 // This test verifies that visibility of bindings in BindGroupLayout can be none
 TEST_F(BindGroupLayoutValidationTest, BindGroupLayoutVisibilityNone) {
     utils::MakeBindGroupLayout(device,
@@ -1421,8 +1448,8 @@ class SetBindGroupValidationTest : public ValidationTest {
 
         wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
                 struct S {
-                    value : vec2<f32>;
-                };
+                    value : vec2<f32>
+                }
 
                 @group(0) @binding(0) var<uniform> uBufferDynamic : S;
                 @group(0) @binding(1) var<uniform> uBuffer : S;
@@ -1445,8 +1472,8 @@ class SetBindGroupValidationTest : public ValidationTest {
     wgpu::ComputePipeline CreateComputePipeline() {
         wgpu::ShaderModule csModule = utils::CreateShaderModule(device, R"(
                 struct S {
-                    value : vec2<f32>;
-                };
+                    value : vec2<f32>
+                }
 
                 @group(0) @binding(0) var<uniform> uBufferDynamic : S;
                 @group(0) @binding(1) var<uniform> uBuffer : S;
@@ -1872,7 +1899,7 @@ class SetBindGroupPersistenceValidationTest : public ValidationTest {
             device.CreatePipelineLayout(&pipelineLayoutDescriptor);
 
         std::stringstream ss;
-        ss << "struct S { value : vec2<f32>; };";
+        ss << "struct S { value : vec2<f32> }";
 
         // Build a shader which has bindings that match the pipeline layout.
         for (uint32_t l = 0; l < layouts.size(); ++l) {
@@ -2047,8 +2074,8 @@ class BindGroupLayoutCompatibilityTest : public ValidationTest {
     wgpu::RenderPipeline CreateRenderPipeline(std::vector<wgpu::BindGroupLayout> bindGroupLayouts) {
         return CreateFSRenderPipeline(R"(
             struct S {
-                value : vec2<f32>;
-            };
+                value : vec2<f32>
+            }
 
             @group(0) @binding(0) var<storage, read_write> sBufferDynamic : S;
             @group(1) @binding(0) var<storage, read> sReadonlyBufferDynamic : S;
@@ -2082,8 +2109,8 @@ class BindGroupLayoutCompatibilityTest : public ValidationTest {
         std::vector<wgpu::BindGroupLayout> bindGroupLayouts) {
         return CreateComputePipeline(R"(
             struct S {
-                value : vec2<f32>;
-            };
+                value : vec2<f32>
+            }
 
             @group(0) @binding(0) var<storage, read_write> sBufferDynamic : S;
             @group(1) @binding(0) var<storage, read> sReadonlyBufferDynamic : S;

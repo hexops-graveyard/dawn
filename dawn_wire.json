@@ -174,9 +174,10 @@
         "client_side_structures": [
             "SurfaceDescriptorFromMetalLayer",
             "SurfaceDescriptorFromWindowsHWND",
-            "SurfaceDescriptorFromXlib",
+            "SurfaceDescriptorFromXlibWindow",
             "SurfaceDescriptorFromWindowsCoreWindow",
-            "SurfaceDescriptorFromWindowsSwapChainPanel"
+            "SurfaceDescriptorFromWindowsSwapChainPanel",
+            "SurfaceDescriptorFromAndroidNativeWindow"
         ],
         "client_side_commands": [
             "AdapterCreateDevice",
@@ -209,8 +210,7 @@
             "BufferUnmap",
             "DeviceCreateErrorBuffer",
             "DeviceGetQueue",
-            "DeviceInjectError",
-            "DevicePushErrorScope"
+            "DeviceInjectError"
         ],
         "client_special_objects": [
             "Adapter",

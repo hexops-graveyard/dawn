@@ -29,8 +29,8 @@ namespace {
 
             vsModule = utils::CreateShaderModule(device, R"(
                 struct S {
-                    transform : mat2x2<f32>;
-                };
+                    transform : mat2x2<f32>
+                }
                 @group(0) @binding(0) var<uniform> uniforms : S;
 
                 @stage(vertex) fn main(@location(0) pos : vec2<f32>) -> @builtin(position) vec4<f32> {
@@ -39,13 +39,13 @@ namespace {
 
             fsModule = utils::CreateShaderModule(device, R"(
                 struct Uniforms {
-                    color : vec4<f32>;
-                };
+                    color : vec4<f32>
+                }
                 @group(1) @binding(0) var<uniform> uniforms : Uniforms;
 
                 struct Storage {
-                    dummy : array<f32>;
-                };
+                    dummy : array<f32>
+                }
                 @group(1) @binding(1) var<storage, read_write> ssbo : Storage;
 
                 @stage(fragment) fn main() {
@@ -1033,6 +1033,8 @@ TEST_F(RenderBundleValidationTest, RenderPassDepthStencilFormatMismatch) {
     // Test the success case
     {
         utils::ComboRenderPassDescriptor renderPass({tex0.CreateView()}, tex1.CreateView());
+        renderPass.cDepthStencilAttachmentInfo.stencilLoadOp = wgpu::LoadOp::Undefined;
+        renderPass.cDepthStencilAttachmentInfo.stencilStoreOp = wgpu::StoreOp::Undefined;
 
         wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
         wgpu::RenderPassEncoder pass = commandEncoder.BeginRenderPass(&renderPass);
@@ -1044,6 +1046,8 @@ TEST_F(RenderBundleValidationTest, RenderPassDepthStencilFormatMismatch) {
     // Test the failure case for mismatched format
     {
         utils::ComboRenderPassDescriptor renderPass({tex0.CreateView()}, tex2.CreateView());
+        renderPass.cDepthStencilAttachmentInfo.stencilLoadOp = wgpu::LoadOp::Undefined;
+        renderPass.cDepthStencilAttachmentInfo.stencilStoreOp = wgpu::StoreOp::Undefined;
 
         wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
         wgpu::RenderPassEncoder pass = commandEncoder.BeginRenderPass(&renderPass);

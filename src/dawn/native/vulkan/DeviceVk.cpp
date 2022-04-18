@@ -48,7 +48,7 @@ namespace dawn::native::vulkan {
     ResultOrError<Ref<Device>> Device::Create(Adapter* adapter,
                                               const DeviceDescriptor* descriptor) {
         Ref<Device> device = AcquireRef(new Device(adapter, descriptor));
-        DAWN_TRY(device->Initialize());
+        DAWN_TRY(device->Initialize(descriptor));
         return device;
     }
 
@@ -57,7 +57,7 @@ namespace dawn::native::vulkan {
         InitTogglesFromDriver();
     }
 
-    MaybeError Device::Initialize() {
+    MaybeError Device::Initialize(const DeviceDescriptor* descriptor) {
         // Copy the adapter's device info to the device so that we can change the "knobs"
         mDeviceInfo = ToBackend(GetAdapter())->GetDeviceInfo();
 
@@ -93,11 +93,17 @@ namespace dawn::native::vulkan {
 
         DAWN_TRY(PrepareRecordingContext());
 
-        // The environment can request to use D32S8 or D24S8 when it's not available. Override
-        // the decision if it is not applicable.
-        ApplyDepth24PlusS8Toggle();
+        // The environment can request to various options for depth-stencil formats that could be
+        // unavailable. Override the decision if it is not applicable.
+        ApplyDepthStencilFormatToggles();
 
-        return DeviceBase::Initialize(Queue::Create(this));
+        // The environment can only request to use VK_KHR_zero_initialize_workgroup_memory when the
+        // extension is available. Override the decision if it is no applicable.
+        ApplyUseZeroInitializeWorkgroupMemoryExtensionToggle();
+
+        SetLabelImpl();
+
+        return DeviceBase::Initialize(Queue::Create(this, &descriptor->defaultQueue));
     }
 
     Device::~Device() {
@@ -345,6 +351,20 @@ namespace dawn::native::vulkan {
             mComputeSubgroupSize = FindComputeSubgroupSize();
         }
 
+        if (mDeviceInfo.HasExt(DeviceExt::ZeroInitializeWorkgroupMemory)) {
+            ASSERT(usedKnobs.HasExt(DeviceExt::ZeroInitializeWorkgroupMemory));
+
+            usedKnobs.zeroInitializeWorkgroupMemoryFeatures.sType =
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR;
+
+            // Always allow initializing workgroup memory with OpConstantNull when available.
+            // Note that the driver still won't initialize workgroup memory unless the workgroup
+            // variable is explicitly initialized with OpConstantNull.
+            usedKnobs.zeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory =
+                VK_TRUE;
+            featuresChain.Add(&usedKnobs.zeroInitializeWorkgroupMemoryFeatures);
+        }
+
         if (mDeviceInfo.features.samplerAnisotropy == VK_TRUE) {
             usedKnobs.features.samplerAnisotropy = VK_TRUE;
         }
@@ -488,6 +508,7 @@ namespace dawn::native::vulkan {
         fn.GetDeviceQueue(mVkDevice, mQueueFamily, 0, &mQueue);
     }
 
+    // Note that this function is called before mDeviceInfo is initialized.
     void Device::InitTogglesFromDriver() {
         // TODO(crbug.com/dawn/857): tighten this workaround when this issue is fixed in both
         // Vulkan SPEC and drivers.
@@ -495,13 +516,21 @@ namespace dawn::native::vulkan {
 
         // By default try to use D32S8 for Depth24PlusStencil8
         SetToggle(Toggle::VulkanUseD32S8, true);
+
+        // By default try to initialize workgroup memory with OpConstantNull according to the Vulkan
+        // extension VK_KHR_zero_initialize_workgroup_memory.
+        SetToggle(Toggle::VulkanUseZeroInitializeWorkgroupMemoryExtension, true);
+
+        // By default try to use S8 if available.
+        SetToggle(Toggle::VulkanUseS8, true);
     }
 
-    void Device::ApplyDepth24PlusS8Toggle() {
+    void Device::ApplyDepthStencilFormatToggles() {
         bool supportsD32s8 =
             ToBackend(GetAdapter())->IsDepthStencilFormatSupported(VK_FORMAT_D32_SFLOAT_S8_UINT);
         bool supportsD24s8 =
             ToBackend(GetAdapter())->IsDepthStencilFormatSupported(VK_FORMAT_D24_UNORM_S8_UINT);
+        bool supportsS8 = ToBackend(GetAdapter())->IsDepthStencilFormatSupported(VK_FORMAT_S8_UINT);
 
         ASSERT(supportsD32s8 || supportsD24s8);
 
@@ -510,6 +539,15 @@ namespace dawn::native::vulkan {
         }
         if (!supportsD32s8) {
             ForceSetToggle(Toggle::VulkanUseD32S8, false);
+        }
+        if (!supportsS8) {
+            ForceSetToggle(Toggle::VulkanUseS8, false);
+        }
+    }
+
+    void Device::ApplyUseZeroInitializeWorkgroupMemoryExtensionToggle() {
+        if (!mDeviceInfo.HasExt(DeviceExt::ZeroInitializeWorkgroupMemory)) {
+            ForceSetToggle(Toggle::VulkanUseZeroInitializeWorkgroupMemoryExtension, false);
         }
     }
 
@@ -1012,6 +1050,10 @@ namespace dawn::native::vulkan {
 
     float Device::GetTimestampPeriodInNS() const {
         return mDeviceInfo.properties.limits.timestampPeriod;
+    }
+
+    void Device::SetLabelImpl() {
+        SetDebugName(this, VK_OBJECT_TYPE_DEVICE, mVkDevice, "Dawn_Device", GetLabel());
     }
 
 }  // namespace dawn::native::vulkan

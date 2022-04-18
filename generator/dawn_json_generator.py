@@ -684,6 +684,15 @@ def as_wireType(metadata, typ):
         return as_cppType(typ.name)
 
 
+def as_formatType(typ):
+    # Unsigned integral types
+    if typ.json_data['type'] in ['bool', 'uint32_t', 'uint64_t']:
+        return 'u'
+
+    # Defaults everything else to strings.
+    return 's'
+
+
 def c_methods(params, typ):
     return typ.methods + [
         x for x in [
@@ -753,7 +762,8 @@ def make_base_render_params(metadata):
             'as_jsEnumValue': as_jsEnumValue,
             'convert_cType_to_cppType': convert_cType_to_cppType,
             'as_varName': as_varName,
-            'decorate': decorate
+            'decorate': decorate,
+            'as_formatType': as_formatType
         }
 
 
@@ -843,7 +853,8 @@ class MultiGeneratorFromDawnJSON(Generator):
 
         if 'webgpu_headers' in targets:
             params_upstream = parse_json(loaded_json,
-                                         enabled_tags=['upstream', 'native'])
+                                         enabled_tags=['upstream', 'native'],
+                                         disabled_tags=['dawn'])
             renders.append(
                 FileRender('api.h', 'webgpu-headers/' + api + '.h',
                            [RENDER_PARAMS_BASE, params_upstream]))
@@ -943,6 +954,10 @@ class MultiGeneratorFromDawnJSON(Generator):
             renders.append(
                 FileRender('dawn/native/ObjectType.cpp',
                            'src/' + native_dir + '/ObjectType_autogen.cpp',
+                           frontend_params))
+            renders.append(
+                FileRender('dawn/native/CacheKey.cpp',
+                           'src/' + native_dir + '/CacheKey_autogen.cpp',
                            frontend_params))
 
         if 'wire' in targets:
