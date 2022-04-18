@@ -23,7 +23,6 @@ set -ex
 #
 ninja -C ./out/Debug \
     remove_stale_autogen_files \
-    spvtools_generators_inc \
     vulkan_gen_icd_json_file \
     vulkan_gen_json_files \
     headers_gen \
@@ -36,20 +35,20 @@ ninja -C ./out/Debug \
     mock_webgpu_gen \
     gen \
     opengl_loader_gen \
-    spvtools_language_header_debuginfo \
-    spvtools_language_header_cldebuginfo100 \
-    spvtools_language_header_vkdebuginfo100 \
-    spvtools_core_tables_unified1 \
-    spvtools_core_enums_unified1 \
-    spvtools_glsl_tables_glsl1-0 \
-    spvtools_opencl_tables_opencl1-0 \
-    spvtools_vendor_tables_spv-amd-shader-explicit-vertex-parameter \
-    spvtools_vendor_tables_spv-amd-shader-trinary-minmax \
-    spvtools_vendor_tables_spv-amd-gcn-shader \
-    spvtools_vendor_tables_spv-amd-shader-ballot \
-    spvtools_vendor_tables_debuginfo \
-    spvtools_vendor_tables_opencl.debuginfo.100 \
-    spvtools_vendor_tables_nonsemantic.clspvreflection \
-    spvtools_vendor_tables_nonsemantic.shader.debuginfo.100 \
-    spvtools_generators_inc \
-    spvtools_build_version \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_language_header_debuginfo \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_language_header_cldebuginfo100 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_language_header_vkdebuginfo100 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_core_tables_unified1 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_core_enums_unified1 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_glsl_tables_glsl1-0 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_opencl_tables_opencl1-0 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_spv-amd-shader-explicit-vertex-parameter \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_spv-amd-shader-trinary-minmax \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_spv-amd-gcn-shader \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_spv-amd-shader-ballot \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_debuginfo \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_opencl.debuginfo.100 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_nonsemantic.clspvreflection \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_vendor_tables_nonsemantic.shader.debuginfo.100 \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_generators_inc \
+    third_party/vulkan-deps/spirv-tools/src:spvtools_build_version
