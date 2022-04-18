@@ -48,6 +48,10 @@ rm -rf third_party/vulkan_memory_allocator/build/src/Release/
 rm -rf third_party/vulkan_memory_allocator/build/src/VmaReplay/
 rm -rf third_party/vulkan_memory_allocator/tools/
 rm -rf third_party/zlib/google/test/
+rm -rf third_party/webgpu-cts/
+rm -rf third_party/benchmark/
+rm -rf third_party/gpuweb-cts/
+rm -rf third_party/protobuf/
 
 # Required for ./mach/generate.sh to succeed, otherwise we could remove:
 # rm -rf third_party/markupsafe/
