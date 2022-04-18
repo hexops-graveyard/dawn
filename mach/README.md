@@ -50,20 +50,6 @@ rm -rf build/
 gclient sync
 ```
 
-Stage and review the changes:
-
-```sh
-./mach/add-dependencies.sh
-```
-
-At this point there will be quite a large diff to add all of the `third_party/` dependencies we will commit.
-
-Alter the above script as needed to include/exclude files. Make sure test files, documentation, `.gitmodules`, etc. are not included. Commit the result:
-
-```sh
-git commit -s -m 'generated: commit vendored dependencies'
-```
-
 Perform code generation:
 
 ```sh
@@ -75,6 +61,20 @@ Commit the generated code, e.g. headers in `out/Debug`.
 ```sh
 ./mach/add-generated.sh
 git commit -s -m 'generated: commit generated code'
+```
+
+Stage and review third party dependency changes:
+
+```sh
+./mach/add-dependencies.sh
+```
+
+At this point there will be quite a large diff to add all of the `third_party/` dependencies we will commit.
+
+Alter the above script as needed to include/exclude files. Make sure test files, documentation, `.gitmodules`, etc. are not included. Commit the result:
+
+```sh
+git commit -s -m 'generated: commit vendored dependencies'
 ```
 
 Compare the diff between this generated branch and the prior generated branch to determine if any changes need to be made to the mach/gpu-dawn `build.zig` files. In particular look out for changes to (`BUILD`) `.gn` files, `.gni` files.
