@@ -63,7 +63,7 @@ namespace dawn::native::vulkan {
         wgpu::StoreOp depthStoreOp;
         wgpu::LoadOp stencilLoadOp;
         wgpu::StoreOp stencilStoreOp;
-        bool readOnlyDepthStencil;
+        bool readOnlyDepthStencil = false;
 
         uint32_t sampleCount;
     };
