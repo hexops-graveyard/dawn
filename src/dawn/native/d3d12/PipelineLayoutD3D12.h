@@ -15,6 +15,8 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_PIPELINELAYOUTD3D12_H_
 #define SRC_DAWN_NATIVE_D3D12_PIPELINELAYOUTD3D12_H_
 
+#include <vector>
+
 #include "dawn/common/Constants.h"
 #include "dawn/common/ityp_array.h"
 #include "dawn/native/BindingInfo.h"
@@ -53,6 +55,10 @@ namespace dawn::native::d3d12 {
         ID3D12RootSignature* GetRootSignature() const;
 
         ID3D12CommandSignature* GetDispatchIndirectCommandSignatureWithNumWorkgroups();
+
+        ID3D12CommandSignature* GetDrawIndirectCommandSignatureWithInstanceVertexOffsets();
+
+        ID3D12CommandSignature* GetDrawIndexedIndirectCommandSignatureWithInstanceVertexOffsets();
 
         struct PerBindGroupDynamicStorageBufferLengthInfo {
             // First register offset for a bind group's dynamic storage buffer lengths.
@@ -93,6 +99,9 @@ namespace dawn::native::d3d12 {
         uint32_t mDynamicStorageBufferLengthsParameterIndex;
         ComPtr<ID3D12RootSignature> mRootSignature;
         ComPtr<ID3D12CommandSignature> mDispatchIndirectCommandSignatureWithNumWorkgroups;
+        ComPtr<ID3D12CommandSignature> mDrawIndirectCommandSignatureWithInstanceVertexOffsets;
+        ComPtr<ID3D12CommandSignature>
+            mDrawIndexedIndirectCommandSignatureWithInstanceVertexOffsets;
     };
 
 }  // namespace dawn::native::d3d12

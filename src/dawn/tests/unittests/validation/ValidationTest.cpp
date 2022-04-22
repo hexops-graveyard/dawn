@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/unittests/validation/ValidationTest.h"
+#include <algorithm>
+#include <vector>
 
 #include "dawn/common/Assert.h"
 #include "dawn/common/SystemUtils.h"
 #include "dawn/dawn_proc.h"
 #include "dawn/native/NullBackend.h"
 #include "dawn/tests/ToggleParser.h"
+#include "dawn/tests/unittests/validation/ValidationTest.h"
 #include "dawn/utils/WireHelper.h"
 #include "dawn/webgpu.h"
-
-#include <algorithm>
 
 namespace {
 
@@ -252,7 +252,7 @@ void ValidationTest::OnDeviceLost(WGPUDeviceLostReason reason,
     ASSERT(false);
 }
 
-ValidationTest::DummyRenderPass::DummyRenderPass(const wgpu::Device& device)
+ValidationTest::PlaceholderRenderPass::PlaceholderRenderPass(const wgpu::Device& device)
     : attachmentFormat(wgpu::TextureFormat::RGBA8Unorm), width(400), height(400) {
     wgpu::TextureDescriptor descriptor;
     descriptor.dimension = wgpu::TextureDimension::e2D;

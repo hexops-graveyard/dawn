@@ -14,6 +14,12 @@
 
 #include "dawn/samples/SampleUtils.h"
 
+#include <algorithm>
+#include <cstring>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "GLFW/glfw3.h"
 #include "dawn/common/Assert.h"
 #include "dawn/common/Log.h"
@@ -26,9 +32,6 @@
 #include "dawn/utils/TerribleCommandBuffer.h"
 #include "dawn/wire/WireClient.h"
 #include "dawn/wire/WireServer.h"
-
-#include <algorithm>
-#include <cstring>
 
 void PrintDeviceError(WGPUErrorType errorType, const char* message, void*) {
     const char* errorTypeName = "";

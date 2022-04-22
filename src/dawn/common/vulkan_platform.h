@@ -22,10 +22,10 @@
 #    error "vulkan.h included before vulkan_platform.h"
 #endif
 
-#include "dawn/common/Platform.h"
-
 #include <cstddef>
 #include <cstdint>
+
+#include "dawn/common/Platform.h"
 
 // vulkan.h defines non-dispatchable handles to opaque pointers on 64bit architectures and uint64_t
 // on 32bit architectures. This causes a problem in 32bit where the handles cannot be used to
@@ -53,7 +53,7 @@ T NativeNonDispatachableHandleFromU64(uint64_t u64) {
 #    error "Unsupported platform"
 #endif
 
-// Define a dummy Vulkan handle for use before we include vulkan.h
+// Define a placeholder Vulkan handle for use before we include vulkan.h
 DAWN_DEFINE_NATIVE_NON_DISPATCHABLE_HANDLE(VkSomeHandle)
 
 // Find out the alignment of native handles. Logically we would use alignof(VkSomeHandleNative) so

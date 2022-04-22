@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstring>
+#include <memory>
+#include <utility>
+
 #include "dawn/common/Alloc.h"
 #include "dawn/common/Assert.h"
 #include "dawn/wire/WireClient.h"
 #include "dawn/wire/client/Client.h"
-
-#include <cstring>
 
 namespace dawn::wire::client {
 

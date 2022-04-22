@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NATIVE_VULKAN_VULKANEXTENSIONS_H_
 #define SRC_DAWN_NATIVE_VULKAN_VULKANEXTENSIONS_H_
 
-#include "dawn/common/ityp_bitset.h"
-
+#include <string>
 #include <unordered_map>
+
+#include "dawn/common/ityp_bitset.h"
 
 namespace dawn::native::vulkan {
 

@@ -15,6 +15,8 @@
 #include "src/dawn/node/binding/GPUShaderModule.h"
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "src/dawn/node/utils/Debug.h"
 
@@ -32,7 +34,7 @@ namespace wgpu::binding {
         struct GPUCompilationMessage : public interop::GPUCompilationMessage {
             WGPUCompilationMessage message;
 
-            GPUCompilationMessage(const WGPUCompilationMessage& m) : message(m) {
+            explicit GPUCompilationMessage(const WGPUCompilationMessage& m) : message(m) {
             }
             std::string getMessage(Napi::Env) override {
                 return message.message;
@@ -91,7 +93,7 @@ namespace wgpu::binding {
             Promise promise;
             AsyncTask task;
         };
-        auto ctx = new Context{env, Promise(env, PROMISE_INFO), async_};
+        auto ctx = new Context{env, Promise(env, PROMISE_INFO), AsyncTask(async_)};
         auto promise = ctx->promise;
 
         shader_.GetCompilationInfo(

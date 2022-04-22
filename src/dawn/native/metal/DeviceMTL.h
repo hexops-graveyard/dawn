@@ -15,6 +15,10 @@
 #ifndef SRC_DAWN_NATIVE_METAL_DEVICEMTL_H_
 #define SRC_DAWN_NATIVE_METAL_DEVICEMTL_H_
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+
 #include "dawn/native/dawn_platform.h"
 
 #include "dawn/native/Commands.h"
@@ -26,15 +30,9 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 
-#include <atomic>
-#include <memory>
-#include <mutex>
-
 namespace dawn::native::metal {
 
-    namespace {
-        struct KalmanInfo;
-    }
+    struct KalmanInfo;
 
     class Device final : public DeviceBase {
       public:

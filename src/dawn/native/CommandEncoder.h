@@ -15,14 +15,15 @@
 #ifndef SRC_DAWN_NATIVE_COMMANDENCODER_H_
 #define SRC_DAWN_NATIVE_COMMANDENCODER_H_
 
+#include <set>
+#include <string>
+
 #include "dawn/native/dawn_platform.h"
 
 #include "dawn/native/EncodingContext.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/ObjectBase.h"
 #include "dawn/native/PassResourceUsage.h"
-
-#include <string>
 
 namespace dawn::native {
 

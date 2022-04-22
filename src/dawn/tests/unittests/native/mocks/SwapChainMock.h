@@ -15,16 +15,16 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_SWAPCHAINMOCK_H_
 #define SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_SWAPCHAINMOCK_H_
 
+#include "gmock/gmock.h"
+
 #include "dawn/native/Device.h"
 #include "dawn/native/SwapChain.h"
-
-#include <gmock/gmock.h>
 
 namespace dawn::native {
 
     class SwapChainMock : public SwapChainBase {
       public:
-        SwapChainMock(DeviceBase* device) : SwapChainBase(device) {
+        explicit SwapChainMock(DeviceBase* device) : SwapChainBase(device) {
             ON_CALL(*this, DestroyImpl).WillByDefault([this]() {
                 this->SwapChainBase::DestroyImpl();
             });

@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/unittests/validation/ValidationTest.h"
+#include <vector>
 
+#include "dawn/tests/unittests/validation/ValidationTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
 namespace {
@@ -224,10 +225,10 @@ namespace {
 
     // Test copying from a buffer to a multi-planar format fails.
     TEST_F(VideoViewsValidation, B2TCopyAllAspectsFails) {
-        std::vector<uint8_t> dummyData(4, 0);
+        std::vector<uint8_t> placeholderData(4, 0);
 
         wgpu::Buffer srcBuffer = utils::CreateBufferFromData(
-            device, dummyData.data(), dummyData.size(), wgpu::BufferUsage::CopySrc);
+            device, placeholderData.data(), placeholderData.size(), wgpu::BufferUsage::CopySrc);
 
         wgpu::Texture dstTexture = CreateVideoTextureForTest(
             wgpu::TextureFormat::R8BG8Biplanar420Unorm, wgpu::TextureUsage::TextureBinding);
@@ -245,10 +246,10 @@ namespace {
 
     // Test copying from a buffer to a multi-planar format per plane fails.
     TEST_F(VideoViewsValidation, B2TCopyPlaneAspectsFails) {
-        std::vector<uint8_t> dummyData(4, 0);
+        std::vector<uint8_t> placeholderData(4, 0);
 
         wgpu::Buffer srcBuffer = utils::CreateBufferFromData(
-            device, dummyData.data(), dummyData.size(), wgpu::BufferUsage::CopySrc);
+            device, placeholderData.data(), placeholderData.size(), wgpu::BufferUsage::CopySrc);
 
         wgpu::Texture dstTexture = CreateVideoTextureForTest(
             wgpu::TextureFormat::R8BG8Biplanar420Unorm, wgpu::TextureUsage::TextureBinding);
@@ -311,13 +312,14 @@ namespace {
         wgpu::ImageCopyTexture imageCopyTexture =
             utils::CreateImageCopyTexture(texture, 0, {0, 0, 0});
 
-        std::vector<uint8_t> dummyData(4, 0);
+        std::vector<uint8_t> placeholderData(4, 0);
         wgpu::Extent3D writeSize = {1, 1, 1};
 
         wgpu::Queue queue = device.GetQueue();
 
-        ASSERT_DEVICE_ERROR(queue.WriteTexture(&imageCopyTexture, dummyData.data(),
-                                               dummyData.size(), &textureDataLayout, &writeSize));
+        ASSERT_DEVICE_ERROR(queue.WriteTexture(&imageCopyTexture, placeholderData.data(),
+                                               placeholderData.size(), &textureDataLayout,
+                                               &writeSize));
     }
 
     // Tests writing into a multi-planar format per plane fails.
@@ -329,13 +331,14 @@ namespace {
         wgpu::ImageCopyTexture imageCopyTexture =
             utils::CreateImageCopyTexture(texture, 0, {0, 0, 0}, wgpu::TextureAspect::Plane0Only);
 
-        std::vector<uint8_t> dummmyData(4, 0);
+        std::vector<uint8_t> placeholderData(4, 0);
         wgpu::Extent3D writeSize = {1, 1, 1};
 
         wgpu::Queue queue = device.GetQueue();
 
-        ASSERT_DEVICE_ERROR(queue.WriteTexture(&imageCopyTexture, dummmyData.data(),
-                                               dummmyData.size(), &textureDataLayout, &writeSize));
+        ASSERT_DEVICE_ERROR(queue.WriteTexture(&imageCopyTexture, placeholderData.data(),
+                                               placeholderData.size(), &textureDataLayout,
+                                               &writeSize));
     }
 
 }  // anonymous namespace

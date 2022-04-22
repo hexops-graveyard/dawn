@@ -15,15 +15,15 @@
 #ifndef SRC_DAWN_NATIVE_CACHEKEY_H_
 #define SRC_DAWN_NATIVE_CACHEKEY_H_
 
-#include "dawn/common/TypedInteger.h"
-#include "dawn/common/ityp_array.h"
-
 #include <bitset>
 #include <iostream>
 #include <limits>
 #include <string>
 #include <type_traits>
 #include <vector>
+
+#include "dawn/common/TypedInteger.h"
+#include "dawn/common/ityp_array.h"
 
 namespace dawn::native {
 
@@ -45,6 +45,8 @@ namespace dawn::native {
     class CacheKey : public std::vector<uint8_t> {
       public:
         using std::vector<uint8_t>::vector;
+
+        enum class Type { ComputePipeline, RenderPipeline };
 
         template <typename T>
         CacheKey& Record(const T& t) {

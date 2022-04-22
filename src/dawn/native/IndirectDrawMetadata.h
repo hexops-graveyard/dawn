@@ -15,17 +15,17 @@
 #ifndef SRC_DAWN_NATIVE_INDIRECTDRAWMETADATA_H_
 #define SRC_DAWN_NATIVE_INDIRECTDRAWMETADATA_H_
 
-#include "dawn/common/NonCopyable.h"
-#include "dawn/common/RefCounted.h"
-#include "dawn/native/Buffer.h"
-#include "dawn/native/CommandBufferStateTracker.h"
-#include "dawn/native/Commands.h"
-
 #include <cstdint>
 #include <map>
 #include <set>
 #include <utility>
 #include <vector>
+
+#include "dawn/common/NonCopyable.h"
+#include "dawn/common/RefCounted.h"
+#include "dawn/native/Buffer.h"
+#include "dawn/native/CommandBufferStateTracker.h"
+#include "dawn/native/Commands.h"
 
 namespace dawn::native {
 
@@ -34,7 +34,7 @@ namespace dawn::native {
 
     // In the unlikely scenario that indirect offsets used over a single buffer span more than
     // this length of the buffer, we split the validation work into multiple batches.
-    uint32_t ComputeMaxIndirectValidationBatchOffsetRange(const CombinedLimits& limits);
+    uint64_t ComputeMaxIndirectValidationBatchOffsetRange(const CombinedLimits& limits);
 
     // Metadata corresponding to the validation requirements of a single render pass. This metadata
     // is accumulated while its corresponding render pass is encoded, and is later used to encode
@@ -42,18 +42,18 @@ namespace dawn::native {
     // commands.
     class IndirectDrawMetadata : public NonCopyable {
       public:
-        struct IndexedIndirectDraw {
+        struct IndirectDraw {
             uint64_t clientBufferOffset;
             // This is a pointer to the command that should be populated with the validated
             // indirect scratch buffer. It is only valid up until the encoded command buffer
             // is submitted.
-            DrawIndexedIndirectCmd* cmd;
+            DrawIndirectCmd* cmd;
         };
 
-        struct IndexedIndirectValidationBatch {
+        struct IndirectValidationBatch {
             uint64_t minOffset;
             uint64_t maxOffset;
-            std::vector<IndexedIndirectDraw> draws;
+            std::vector<IndirectDraw> draws;
         };
 
         // Tracks information about every draw call in this render pass which uses the same indirect
@@ -65,18 +65,18 @@ namespace dawn::native {
 
             // Logs a new drawIndexedIndirect call for the render pass. `cmd` is updated with an
             // assigned (and deferred) buffer ref and relative offset before returning.
-            void AddIndexedIndirectDraw(uint32_t maxDrawCallsPerIndirectValidationBatch,
-                                        uint32_t maxBatchOffsetRange,
-                                        IndexedIndirectDraw draw);
+            void AddIndirectDraw(uint32_t maxDrawCallsPerIndirectValidationBatch,
+                                 uint64_t maxBatchOffsetRange,
+                                 IndirectDraw draw);
 
             // Adds draw calls from an already-computed batch, e.g. from a previously encoded
             // RenderBundle. The added batch is merged into an existing batch if possible, otherwise
             // it's added to mBatch.
             void AddBatch(uint32_t maxDrawCallsPerIndirectValidationBatch,
-                          uint32_t maxBatchOffsetRange,
-                          const IndexedIndirectValidationBatch& batch);
+                          uint64_t maxBatchOffsetRange,
+                          const IndirectValidationBatch& batch);
 
-            const std::vector<IndexedIndirectValidationBatch>& GetBatches() const;
+            const std::vector<IndirectValidationBatch>& GetBatches() const;
 
           private:
             Ref<BufferBase> mIndirectBuffer;
@@ -89,12 +89,23 @@ namespace dawn::native {
             // Since the most common expected cases will overwhelmingly require only a single
             // validation pass per render pass, this is optimized for efficient updates to a single
             // batch rather than for efficient manipulation of a large number of batches.
-            std::vector<IndexedIndirectValidationBatch> mBatches;
+            std::vector<IndirectValidationBatch> mBatches;
         };
 
-        // Combination of an indirect buffer reference, and the number of addressable index buffer
-        // elements at the time of a draw call.
-        using IndexedIndirectConfig = std::pair<BufferBase*, uint64_t>;
+        enum class DrawType {
+            NonIndexed,
+            Indexed,
+        };
+        struct IndexedIndirectConfig {
+            BufferBase* clientIndirectBuffer;
+            uint64_t numIndexBufferElements;
+            bool duplicateBaseVertexInstance;
+            DrawType drawType;
+
+            bool operator<(const IndexedIndirectConfig& other) const;
+            bool operator==(const IndexedIndirectConfig& other) const;
+        };
+
         using IndexedIndirectBufferValidationInfoMap =
             std::map<IndexedIndirectConfig, IndexedIndirectBufferValidationInfo>;
 
@@ -111,14 +122,20 @@ namespace dawn::native {
                                     uint64_t indexBufferSize,
                                     BufferBase* indirectBuffer,
                                     uint64_t indirectOffset,
+                                    bool duplicateBaseVertexInstance,
                                     DrawIndexedIndirectCmd* cmd);
+
+        void AddIndirectDraw(BufferBase* indirectBuffer,
+                             uint64_t indirectOffset,
+                             bool duplicateBaseVertexInstance,
+                             DrawIndirectCmd* cmd);
 
       private:
         IndexedIndirectBufferValidationInfoMap mIndexedIndirectBufferValidationInfo;
         std::set<RenderBundleBase*> mAddedBundles;
 
+        uint64_t mMaxBatchOffsetRange;
         uint32_t mMaxDrawCallsPerBatch;
-        uint32_t mMaxBatchOffsetRange;
     };
 
 }  // namespace dawn::native

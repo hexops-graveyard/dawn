@@ -15,13 +15,14 @@
 #ifndef SRC_DAWN_WIRE_CLIENT_OBJECTALLOCATOR_H_
 #define SRC_DAWN_WIRE_CLIENT_OBJECTALLOCATOR_H_
 
+#include <limits>
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/Compiler.h"
 #include "dawn/wire/WireCmd_autogen.h"
-
-#include <limits>
-#include <memory>
-#include <vector>
 
 namespace dawn::wire::client {
 

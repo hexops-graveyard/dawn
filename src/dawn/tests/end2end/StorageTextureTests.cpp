@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
+#include <string>
+#include <vector>
 
 #include "dawn/common/Assert.h"
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/TestUtils.h"
 #include "dawn/utils/TextureUtils.h"
@@ -535,10 +537,11 @@ fn IsEqualTo(pixel : vec4<f32>, expected : vec4<f32>) -> bool {
 
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
 
-        wgpu::Texture dummyOutputTexture = CreateTexture(
+        wgpu::Texture placeholderOutputTexture = CreateTexture(
             kRenderAttachmentFormat,
             wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc, {1, 1});
-        utils::ComboRenderPassDescriptor renderPassDescriptor({dummyOutputTexture.CreateView()});
+        utils::ComboRenderPassDescriptor renderPassDescriptor(
+            {placeholderOutputTexture.CreateView()});
         wgpu::RenderPassEncoder renderPassEncoder = encoder.BeginRenderPass(&renderPassDescriptor);
         renderPassEncoder.SetBindGroup(0, bindGroup);
         renderPassEncoder.SetPipeline(pipeline);

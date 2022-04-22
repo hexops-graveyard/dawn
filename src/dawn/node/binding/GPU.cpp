@@ -14,9 +14,12 @@
 
 #include "src/dawn/node/binding/GPU.h"
 
-#include "src/dawn/node/binding/GPUAdapter.h"
-
+#include <algorithm>
 #include <cstdlib>
+#include <string>
+#include <utility>
+
+#include "src/dawn/node/binding/GPUAdapter.h"
 
 #if defined(_WIN32)
 #    include <Windows.h>
@@ -57,7 +60,7 @@ namespace wgpu::binding {
     // wgpu::bindings::GPU
     ////////////////////////////////////////////////////////////////////////////////
     GPU::GPU(Flags flags) : flags_(std::move(flags)) {
-        // TODO: Disable in 'release'
+        // TODO(dawn:1123): Disable in 'release'
         instance_.EnableBackendValidation(true);
         instance_.SetBackendValidationLevel(dawn::native::BackendValidationLevel::Full);
 

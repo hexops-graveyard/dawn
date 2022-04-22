@@ -15,13 +15,13 @@
 #ifndef SRC_DAWN_NATIVE_VULKAN_CACHEKEYVK_H_
 #define SRC_DAWN_NATIVE_VULKAN_CACHEKEYVK_H_
 
+#include <map>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/vulkan_platform.h"
 #include "dawn/native/CacheKey.h"
 
 #include "icd/generated/vk_typemap_helper.h"
-
-#include <map>
 
 namespace dawn::native::vulkan {
 
@@ -72,7 +72,7 @@ namespace dawn::native::vulkan {
 
         template <typename VK_STRUCT_TYPE>
         const VkBaseOutStructure* ToVkBaseOutStructure(const VK_STRUCT_TYPE* t) {
-            // Sanity checks to ensure proper type safety.
+            // Checks to ensure proper type safety.
             static_assert(
                 offsetof(VK_STRUCT_TYPE, sType) == offsetof(VkBaseOutStructure, sType) &&
                     offsetof(VK_STRUCT_TYPE, pNext) == offsetof(VkBaseOutStructure, pNext),

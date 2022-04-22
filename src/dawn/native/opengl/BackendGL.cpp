@@ -14,13 +14,15 @@
 
 #include "dawn/native/opengl/BackendGL.h"
 
+#include <cstring>
+#include <string>
+#include <utility>
+
 #include "dawn/common/GPUInfo.h"
 #include "dawn/common/Log.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/OpenGLBackend.h"
 #include "dawn/native/opengl/DeviceGL.h"
-
-#include <cstring>
 
 namespace dawn::native::opengl {
 

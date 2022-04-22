@@ -14,6 +14,10 @@
 
 #include "dawn/native/RenderPassEncoder.h"
 
+#include <math.h>
+#include <cstring>
+#include <utility>
+
 #include "dawn/common/Constants.h"
 #include "dawn/native/Buffer.h"
 #include "dawn/native/CommandEncoder.h"
@@ -24,9 +28,6 @@
 #include "dawn/native/QuerySet.h"
 #include "dawn/native/RenderBundle.h"
 #include "dawn/native/RenderPipeline.h"
-
-#include <math.h>
-#include <cstring>
 
 namespace dawn::native {
     namespace {

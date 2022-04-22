@@ -14,6 +14,11 @@
 
 #include "dawn/native/d3d12/RenderPipelineD3D12.h"
 
+#include <d3dcompiler.h>
+
+#include <memory>
+#include <utility>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/Log.h"
 #include "dawn/native/CreatePipelineAsyncTask.h"
@@ -24,8 +29,6 @@
 #include "dawn/native/d3d12/ShaderModuleD3D12.h"
 #include "dawn/native/d3d12/TextureD3D12.h"
 #include "dawn/native/d3d12/UtilsD3D12.h"
-
-#include <d3dcompiler.h>
 
 namespace dawn::native::d3d12 {
 
@@ -458,6 +461,24 @@ namespace dawn::native::d3d12 {
 
     void RenderPipeline::SetLabelImpl() {
         SetDebugName(ToBackend(GetDevice()), GetPipelineState(), "Dawn_RenderPipeline", GetLabel());
+    }
+
+    ComPtr<ID3D12CommandSignature> RenderPipeline::GetDrawIndirectCommandSignature() {
+        if (mFirstOffsetInfo.usesVertexIndex || mFirstOffsetInfo.usesInstanceIndex) {
+            return ToBackend(GetLayout())
+                ->GetDrawIndirectCommandSignatureWithInstanceVertexOffsets();
+        }
+
+        return ToBackend(GetDevice())->GetDrawIndirectSignature();
+    }
+
+    ComPtr<ID3D12CommandSignature> RenderPipeline::GetDrawIndexedIndirectCommandSignature() {
+        if (mFirstOffsetInfo.usesVertexIndex || mFirstOffsetInfo.usesInstanceIndex) {
+            return ToBackend(GetLayout())
+                ->GetDrawIndexedIndirectCommandSignatureWithInstanceVertexOffsets();
+        }
+
+        return ToBackend(GetDevice())->GetDrawIndexedIndirectSignature();
     }
 
     D3D12_INPUT_LAYOUT_DESC RenderPipeline::ComputeInputLayout(

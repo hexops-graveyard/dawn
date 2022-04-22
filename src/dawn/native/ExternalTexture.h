@@ -15,12 +15,12 @@
 #ifndef SRC_DAWN_NATIVE_EXTERNALTEXTURE_H_
 #define SRC_DAWN_NATIVE_EXTERNALTEXTURE_H_
 
+#include <array>
+
 #include "dawn/native/Error.h"
 #include "dawn/native/Forward.h"
 #include "dawn/native/ObjectBase.h"
 #include "dawn/native/Subresource.h"
-
-#include <array>
 
 namespace dawn::native {
 
@@ -28,10 +28,8 @@ namespace dawn::native {
 
     struct ExternalTextureParams {
         uint32_t numPlanes;
-        float vr;
-        float vg;
-        float ub;
-        float ug;
+        std::array<uint32_t, 3> padding;
+        std::array<float, 12> yuvToRgbConversion;
     };
 
     MaybeError ValidateExternalTextureDescriptor(const DeviceBase* device,
@@ -66,7 +64,7 @@ namespace dawn::native {
         ExternalTextureBase(DeviceBase* device, ObjectBase::ErrorTag tag);
         MaybeError Initialize(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
 
-        Ref<TextureBase> mDummyTexture;
+        Ref<TextureBase> mPlaceholderTexture;
         Ref<BufferBase> mParamsBuffer;
         std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat> mTextureViews;
 

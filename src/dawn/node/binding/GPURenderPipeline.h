@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPURENDERPIPELINE_H_
 #define SRC_DAWN_NODE_BINDING_GPURENDERPIPELINE_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -27,7 +28,7 @@ namespace wgpu::binding {
     // wgpu::RenderPipeline.
     class GPURenderPipeline final : public interop::GPURenderPipeline {
       public:
-        GPURenderPipeline(wgpu::RenderPipeline pipeline);
+        explicit GPURenderPipeline(wgpu::RenderPipeline pipeline);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::RenderPipeline&() const {

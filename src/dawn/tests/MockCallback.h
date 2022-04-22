@@ -15,12 +15,13 @@
 #ifndef SRC_DAWN_TESTS_MOCKCALLBACK_H_
 #define SRC_DAWN_TESTS_MOCKCALLBACK_H_
 
-#include <gmock/gmock.h>
-
-#include "dawn/common/Assert.h"
-
 #include <memory>
 #include <set>
+#include <tuple>
+#include <utility>
+
+#include "gmock/gmock.h"
+#include "dawn/common/Assert.h"
 
 namespace testing {
 

@@ -15,12 +15,12 @@
 #ifndef INCLUDE_DAWN_NATIVE_DAWNNATIVE_H_
 #define INCLUDE_DAWN_NATIVE_DAWNNATIVE_H_
 
-#include <dawn/dawn_proc_table.h>
-#include <dawn/native/dawn_native_export.h>
-#include <dawn/webgpu.h>
-
 #include <string>
 #include <vector>
+
+#include "dawn/dawn_proc_table.h"
+#include "dawn/native/dawn_native_export.h"
+#include "dawn/webgpu.h"
 
 namespace dawn::platform {
     class Platform;
@@ -164,6 +164,7 @@ namespace dawn::native {
         // Enable debug capture on Dawn startup
         void EnableBeginCaptureOnStartup(bool beginCaptureOnStartup);
 
+        // TODO(dawn:1374) Deprecate this once it is passed via the descriptor.
         void SetPlatform(dawn::platform::Platform* platform);
 
         // Returns the underlying WGPUInstance object.

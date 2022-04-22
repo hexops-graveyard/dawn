@@ -14,6 +14,11 @@
 
 #include "dawn/native/d3d12/DeviceD3D12.h"
 
+#include <algorithm>
+#include <limits>
+#include <sstream>
+#include <utility>
+
 #include "dawn/common/GPUInfo.h"
 #include "dawn/native/DynamicUploader.h"
 #include "dawn/native/Instance.h"
@@ -41,8 +46,8 @@
 #include "dawn/native/d3d12/StagingDescriptorAllocatorD3D12.h"
 #include "dawn/native/d3d12/SwapChainD3D12.h"
 #include "dawn/native/d3d12/UtilsD3D12.h"
-
-#include <sstream>
+#include "dawn/platform/DawnPlatform.h"
+#include "dawn/platform/tracing/TraceEvent.h"
 
 namespace dawn::native::d3d12 {
 
@@ -339,6 +344,9 @@ namespace dawn::native::d3d12 {
     MaybeError Device::NextSerial() {
         IncrementLastSubmittedCommandSerial();
 
+        TRACE_EVENT1(GetPlatform(), General, "D3D12Device::SignalFence", "serial",
+                     uint64_t(GetLastSubmittedCommandSerial()));
+
         return CheckHRESULT(
             mCommandQueue->Signal(mFence.Get(), uint64_t(GetLastSubmittedCommandSerial())),
             "D3D12 command queue signal fence");
@@ -604,6 +612,11 @@ namespace dawn::native::d3d12 {
                     true);
             }
         }
+
+        // Currently this workaround is needed on any D3D12 backend for some particular situations.
+        // But we may need to limit it if D3D12 runtime fixes the bug on its new release. See
+        // https://crbug.com/dawn/1289 for more information.
+        SetToggle(Toggle::D3D12SplitBufferTextureCopyForRowsPerImagePaddings, true);
     }
 
     MaybeError Device::WaitForIdleForDestruction() {
@@ -745,6 +758,16 @@ namespace dawn::native::d3d12 {
 
     void Device::SetLabelImpl() {
         SetDebugName(this, mD3d12Device.Get(), "Dawn_Device", GetLabel());
+    }
+
+    bool Device::MayRequireDuplicationOfIndirectParameters() const {
+        return true;
+    }
+
+    bool Device::ShouldDuplicateParametersForDrawIndirect(
+        const RenderPipelineBase* renderPipelineBase) const {
+        return ToBackend(renderPipelineBase)->GetFirstOffsetInfo().usesVertexIndex ||
+               ToBackend(renderPipelineBase)->GetFirstOffsetInfo().usesInstanceIndex;
     }
 
 }  // namespace dawn::native::d3d12

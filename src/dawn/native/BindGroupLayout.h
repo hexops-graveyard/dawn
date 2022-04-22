@@ -15,6 +15,11 @@
 #ifndef SRC_DAWN_NATIVE_BINDGROUPLAYOUT_H_
 #define SRC_DAWN_NATIVE_BINDGROUPLAYOUT_H_
 
+#include <algorithm>
+#include <bitset>
+#include <map>
+#include <string>
+
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
 #include "dawn/common/SlabAllocator.h"
@@ -27,9 +32,6 @@
 #include "dawn/native/ObjectBase.h"
 
 #include "dawn/native/dawn_platform.h"
-
-#include <bitset>
-#include <map>
 
 namespace dawn::native {
     // TODO(dawn:1082): Minor optimization to use BindingIndex instead of BindingNumber

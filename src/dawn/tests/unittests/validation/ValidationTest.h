@@ -15,12 +15,14 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_VALIDATION_VALIDATIONTEST_H_
 #define SRC_DAWN_TESTS_UNITTESTS_VALIDATION_VALIDATIONTEST_H_
 
+#include <memory>
+#include <string>
+
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include "dawn/common/Log.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 
 // Argument helpers to allow macro overriding.
 #define UNIMPLEMENTED_MACRO(...) UNREACHABLE()
@@ -115,9 +117,9 @@ class ValidationTest : public testing::Test {
 
     // Helper functions to create objects to test validation.
 
-    struct DummyRenderPass : public wgpu::RenderPassDescriptor {
+    struct PlaceholderRenderPass : public wgpu::RenderPassDescriptor {
       public:
-        DummyRenderPass(const wgpu::Device& device);
+        explicit PlaceholderRenderPass(const wgpu::Device& device);
         wgpu::Texture attachment;
         wgpu::TextureFormat attachmentFormat;
         uint32_t width;

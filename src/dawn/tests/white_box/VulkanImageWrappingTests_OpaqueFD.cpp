@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/white_box/VulkanImageWrappingTests.h"
+#include <unistd.h>
+
+#include <memory>
+#include <utility>
+#include <vector>
 
 #include "dawn/native/vulkan/DeviceVk.h"
 #include "dawn/native/vulkan/FencedDeleter.h"
 #include "dawn/native/vulkan/ResourceMemoryAllocatorVk.h"
-
-#include <gtest/gtest.h>
-#include <unistd.h>
+#include "dawn/tests/white_box/VulkanImageWrappingTests.h"
+#include "gtest/gtest.h"
 
 namespace dawn::native::vulkan {
 
@@ -32,7 +35,7 @@ namespace dawn::native::vulkan {
 
     class ExternalSemaphoreOpaqueFD : public VulkanImageWrappingTestBackend::ExternalSemaphore {
       public:
-        ExternalSemaphoreOpaqueFD(int handle) : mHandle(handle) {
+        explicit ExternalSemaphoreOpaqueFD(int handle) : mHandle(handle) {
         }
         ~ExternalSemaphoreOpaqueFD() override {
             if (mHandle != -1) {
@@ -94,7 +97,8 @@ namespace dawn::native::vulkan {
 
     class VulkanImageWrappingTestBackendOpaqueFD : public VulkanImageWrappingTestBackend {
       public:
-        VulkanImageWrappingTestBackendOpaqueFD(const wgpu::Device& device) : mDevice(device) {
+        explicit VulkanImageWrappingTestBackendOpaqueFD(const wgpu::Device& device)
+            : mDevice(device) {
             mDeviceVk = dawn::native::vulkan::ToBackend(dawn::native::FromAPI(device.Get()));
         }
 

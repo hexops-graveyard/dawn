@@ -15,6 +15,9 @@
 #ifndef SRC_DAWN_NATIVE_VULKAN_UTILSVULKAN_H_
 #define SRC_DAWN_NATIVE_VULKAN_UTILSVULKAN_H_
 
+#include <string>
+#include <vector>
+
 #include "dawn/common/vulkan_platform.h"
 #include "dawn/native/Commands.h"
 #include "dawn/native/dawn_platform.h"
@@ -68,7 +71,7 @@ namespace dawn::native::vulkan {
         // that is already initialized.
         template <typename VK_STRUCT_TYPE>
         void Add(VK_STRUCT_TYPE* vkStruct) {
-            // Sanity checks to ensure proper type safety.
+            // Checks to ensure proper type safety.
             static_assert(
                 offsetof(VK_STRUCT_TYPE, sType) == offsetof(VkBaseOutStructure, sType) &&
                     offsetof(VK_STRUCT_TYPE, pNext) == offsetof(VkBaseOutStructure, pNext),

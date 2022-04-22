@@ -15,16 +15,16 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_SAMPLERMOCK_H_
 #define SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_SAMPLERMOCK_H_
 
+#include "gmock/gmock.h"
+
 #include "dawn/native/Device.h"
 #include "dawn/native/Sampler.h"
-
-#include <gmock/gmock.h>
 
 namespace dawn::native {
 
     class SamplerMock : public SamplerBase {
       public:
-        SamplerMock(DeviceBase* device) : SamplerBase(device) {
+        explicit SamplerMock(DeviceBase* device) : SamplerBase(device) {
             ON_CALL(*this, DestroyImpl).WillByDefault([this]() {
                 this->SamplerBase::DestroyImpl();
             });

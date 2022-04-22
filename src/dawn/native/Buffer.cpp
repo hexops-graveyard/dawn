@@ -14,6 +14,11 @@
 
 #include "dawn/native/Buffer.h"
 
+#include <cstdio>
+#include <cstring>
+#include <limits>
+#include <utility>
+
 #include "dawn/common/Alloc.h"
 #include "dawn/common/Assert.h"
 #include "dawn/native/Commands.h"
@@ -23,10 +28,8 @@
 #include "dawn/native/ObjectType_autogen.h"
 #include "dawn/native/Queue.h"
 #include "dawn/native/ValidationUtils_autogen.h"
-
-#include <cstdio>
-#include <cstring>
-#include <utility>
+#include "dawn/platform/DawnPlatform.h"
+#include "dawn/platform/tracing/TraceEvent.h"
 
 namespace dawn::native {
 
@@ -35,7 +38,9 @@ namespace dawn::native {
             MapRequestTask(Ref<BufferBase> buffer, MapRequestID id)
                 : buffer(std::move(buffer)), id(id) {
             }
-            void Finish() override {
+            void Finish(dawn::platform::Platform* platform, ExecutionSerial serial) override {
+                TRACE_EVENT1(platform, General, "Buffer::TaskInFlight::Finished", "serial",
+                             uint64_t(serial));
                 buffer->OnMapRequestCompleted(id, WGPUBufferMapAsyncStatus_Success);
             }
             void HandleDeviceLoss() override {
@@ -350,6 +355,8 @@ namespace dawn::native {
         }
         std::unique_ptr<MapRequestTask> request =
             std::make_unique<MapRequestTask>(this, mLastMapID);
+        TRACE_EVENT1(GetDevice()->GetPlatform(), General, "Buffer::APIMapAsync", "serial",
+                     uint64_t(GetDevice()->GetPendingCommandSerial()));
         GetDevice()->GetQueue()->TrackTask(std::move(request),
                                            GetDevice()->GetPendingCommandSerial());
     }
@@ -510,8 +517,8 @@ namespace dawn::native {
                 return true;
 
             case BufferState::Mapped:
-                ASSERT(bool(mMapMode & wgpu::MapMode::Read) ^
-                       bool(mMapMode & wgpu::MapMode::Write));
+                ASSERT(bool{mMapMode & wgpu::MapMode::Read} ^
+                       bool{mMapMode & wgpu::MapMode::Write});
                 return !writable || (mMapMode & wgpu::MapMode::Write);
 
             case BufferState::Unmapped:

@@ -16,11 +16,14 @@
 #define SRC_DAWN_NODE_BINDING_CONVERTER_H_
 
 #include <functional>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/binding/Errors.h"
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
@@ -65,7 +68,7 @@ namespace wgpu::binding {
     // automatically freed when the Converter is destructed.
     class Converter {
       public:
-        Converter(Napi::Env e) : env(e) {
+        explicit Converter(Napi::Env e) : env(e) {
         }
         ~Converter();
 

@@ -14,6 +14,10 @@
 
 #include "dawn/fuzzers/DawnWireServerFuzzer.h"
 
+#include <fstream>
+#include <memory>
+#include <vector>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/Log.h"
 #include "dawn/common/SystemUtils.h"
@@ -22,9 +26,6 @@
 #include "dawn/utils/SystemUtils.h"
 #include "dawn/webgpu_cpp.h"
 #include "dawn/wire/WireServer.h"
-
-#include <fstream>
-#include <vector>
 
 namespace {
 

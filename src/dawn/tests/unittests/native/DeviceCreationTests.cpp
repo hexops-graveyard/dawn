@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+
 #include "dawn/dawn_proc.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/native/Device.h"
@@ -19,14 +21,17 @@
 #include "dawn/tests/MockCallback.h"
 #include "dawn/utils/SystemUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
-
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 
 namespace {
 
-    using namespace testing;
+    using testing::Contains;
+    using testing::MockCallback;
+    using testing::NotNull;
+    using testing::SaveArg;
+    using testing::StrEq;
 
-    class DeviceCreationTest : public Test {
+    class DeviceCreationTest : public testing::Test {
       protected:
         void SetUp() override {
             dawnProcSetProcs(&dawn::native::GetProcs());
@@ -82,7 +87,7 @@ namespace {
         EXPECT_NE(device, nullptr);
 
         auto toggles = dawn::native::GetTogglesUsed(device.Get());
-        EXPECT_THAT(toggles, testing::Contains(testing::StrEq(toggle)));
+        EXPECT_THAT(toggles, Contains(StrEq(toggle)));
     }
 
     TEST_F(DeviceCreationTest, CreateDeviceWithCacheSuccess) {

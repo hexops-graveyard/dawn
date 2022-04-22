@@ -14,6 +14,10 @@
 
 #include "dawn/native/RenderPipeline.h"
 
+#include <algorithm>
+#include <cmath>
+#include <sstream>
+
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/native/ChainUtils_autogen.h"
 #include "dawn/native/Commands.h"
@@ -23,9 +27,6 @@
 #include "dawn/native/ObjectType_autogen.h"
 #include "dawn/native/ValidationUtils_autogen.h"
 #include "dawn/native/VertexFormat.h"
-
-#include <cmath>
-#include <sstream>
 
 namespace dawn::native {
 
@@ -473,7 +474,7 @@ namespace dawn::native {
         return {};
     }
 
-    std::vector<StageAndDescriptor> GetRenderStagesAndSetDummyShader(
+    std::vector<StageAndDescriptor> GetRenderStagesAndSetPlaceholderShader(
         DeviceBase* device,
         const RenderPipelineDescriptor* descriptor) {
         std::vector<StageAndDescriptor> stages;
@@ -484,13 +485,13 @@ namespace dawn::native {
             stages.push_back({SingleShaderStage::Fragment, descriptor->fragment->module,
                               descriptor->fragment->entryPoint, descriptor->fragment->constantCount,
                               descriptor->fragment->constants});
-        } else if (device->IsToggleEnabled(Toggle::UseDummyFragmentInVertexOnlyPipeline)) {
+        } else if (device->IsToggleEnabled(Toggle::UsePlaceholderFragmentInVertexOnlyPipeline)) {
             InternalPipelineStore* store = device->GetInternalPipelineStore();
-            // The dummy fragment shader module should already be initialized
-            DAWN_ASSERT(store->dummyFragmentShader != nullptr);
-            ShaderModuleBase* dummyFragmentShader = store->dummyFragmentShader.Get();
-            stages.push_back(
-                {SingleShaderStage::Fragment, dummyFragmentShader, "fs_empty_main", 0, nullptr});
+            // The placeholder fragment shader module should already be initialized
+            DAWN_ASSERT(store->placeholderFragmentShader != nullptr);
+            ShaderModuleBase* placeholderFragmentShader = store->placeholderFragmentShader.Get();
+            stages.push_back({SingleShaderStage::Fragment, placeholderFragmentShader,
+                              "fs_empty_main", 0, nullptr});
         }
         return stages;
     }
@@ -513,7 +514,7 @@ namespace dawn::native {
         : PipelineBase(device,
                        descriptor->layout,
                        descriptor->label,
-                       GetRenderStagesAndSetDummyShader(device, descriptor)),
+                       GetRenderStagesAndSetPlaceholderShader(device, descriptor)),
           mAttachmentState(device->GetOrCreateAttachmentState(descriptor)) {
         mVertexBufferCount = descriptor->vertex.bufferCount;
         const VertexBufferLayout* buffers = descriptor->vertex.buffers;
@@ -628,6 +629,9 @@ namespace dawn::native {
 
         SetContentHash(ComputeContentHash());
         TrackInDevice();
+
+        // Initialize the cache key to include the cache type and device information.
+        GetCacheKey()->Record(CacheKey::Type::RenderPipeline, device->GetCacheKey());
     }
 
     RenderPipelineBase::RenderPipelineBase(DeviceBase* device) : PipelineBase(device) {

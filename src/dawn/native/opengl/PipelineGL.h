@@ -15,12 +15,12 @@
 #ifndef SRC_DAWN_NATIVE_OPENGL_PIPELINEGL_H_
 #define SRC_DAWN_NATIVE_OPENGL_PIPELINEGL_H_
 
+#include <vector>
+
 #include "dawn/native/Pipeline.h"
 
 #include "dawn/native/PerStage.h"
 #include "dawn/native/opengl/opengl_platform.h"
-
-#include <vector>
 
 namespace dawn::native {
     struct ProgrammableStage;
@@ -58,10 +58,10 @@ namespace dawn::native::opengl {
         GLuint mProgram;
         std::vector<std::vector<SamplerUnit>> mUnitsForSamplers;
         std::vector<std::vector<GLuint>> mUnitsForTextures;
-        std::vector<GLuint> mDummySamplerUnits;
+        std::vector<GLuint> mPlaceholderSamplerUnits;
         // TODO(enga): This could live on the Device, or elsewhere, but currently it makes Device
         // destruction complex as it requires the sampler to be destroyed before the sampler cache.
-        Ref<Sampler> mDummySampler;
+        Ref<Sampler> mPlaceholderSampler;
     };
 
 }  // namespace dawn::native::opengl

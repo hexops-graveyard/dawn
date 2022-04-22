@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPUQUERYSET_H_
 #define SRC_DAWN_NODE_BINDING_GPUQUERYSET_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -26,7 +27,7 @@ namespace wgpu::binding {
     // GPUQuerySet is an implementation of interop::GPUQuerySet that wraps a wgpu::QuerySet.
     class GPUQuerySet final : public interop::GPUQuerySet {
       public:
-        GPUQuerySet(wgpu::QuerySet query_set);
+        explicit GPUQuerySet(wgpu::QuerySet query_set);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::QuerySet&() const {

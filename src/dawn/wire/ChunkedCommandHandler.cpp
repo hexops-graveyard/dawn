@@ -14,10 +14,11 @@
 
 #include "dawn/wire/ChunkedCommandHandler.h"
 
-#include "dawn/common/Alloc.h"
-
 #include <algorithm>
 #include <cstring>
+#include <utility>
+
+#include "dawn/common/Alloc.h"
 
 namespace dawn::wire {
 

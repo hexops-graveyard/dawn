@@ -14,6 +14,10 @@
 
 #include "dawn/native/vulkan/SwapChainVk.h"
 
+#include <algorithm>
+#include <limits>
+#include <utility>
+
 #include "dawn/common/Compiler.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/Surface.h"
@@ -23,8 +27,6 @@
 #include "dawn/native/vulkan/FencedDeleter.h"
 #include "dawn/native/vulkan/TextureVk.h"
 #include "dawn/native/vulkan/VulkanError.h"
-
-#include <algorithm>
 
 #if defined(DAWN_USE_X11)
 #    include "dawn/native/XlibXcbFunctions.h"
@@ -307,7 +309,7 @@ namespace dawn::native::vulkan {
 
         DAWN_TRY_ASSIGN(mConfig, ChooseConfig(surfaceInfo));
 
-        // TODO Choose config instead of hardcoding
+        // TODO(dawn:269): Choose config instead of hardcoding
         VkSwapchainCreateInfoKHR createInfo;
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.pNext = nullptr;
@@ -512,7 +514,8 @@ namespace dawn::native::vulkan {
         CommandRecordingContext* recordingContext = device->GetPendingRecordingContext();
 
         if (mConfig.needsBlit) {
-            // TODO ditto same as present below: eagerly transition the blit texture to CopySrc.
+            // TODO(dawn:269): ditto same as present below: eagerly transition the blit texture to
+            // CopySrc.
             mBlitTexture->TransitionUsageNow(recordingContext, wgpu::TextureUsage::CopySrc,
                                              mBlitTexture->GetAllSubresources());
             mTexture->TransitionUsageNow(recordingContext, wgpu::TextureUsage::CopyDst,

@@ -14,6 +14,8 @@
 
 #include "dawn/native/d3d12/AdapterD3D12.h"
 
+#include <sstream>
+
 #include "dawn/common/Constants.h"
 #include "dawn/common/WindowsUtils.h"
 #include "dawn/native/Instance.h"
@@ -21,8 +23,6 @@
 #include "dawn/native/d3d12/D3D12Error.h"
 #include "dawn/native/d3d12/DeviceD3D12.h"
 #include "dawn/native/d3d12/PlatformFunctions.h"
-
-#include <sstream>
 
 namespace dawn::native::d3d12 {
 
@@ -306,7 +306,6 @@ namespace dawn::native::d3d12 {
         }
 
         D3D12_MESSAGE_ID denyIds[] = {
-
             //
             // Permanent IDs: list of warnings that are not applicable
             //

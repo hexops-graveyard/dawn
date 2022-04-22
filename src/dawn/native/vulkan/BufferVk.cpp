@@ -14,6 +14,11 @@
 
 #include "dawn/native/vulkan/BufferVk.h"
 
+#include <algorithm>
+#include <cstring>
+#include <limits>
+#include <utility>
+
 #include "dawn/native/CommandBuffer.h"
 #include "dawn/native/vulkan/DeviceVk.h"
 #include "dawn/native/vulkan/FencedDeleter.h"
@@ -21,8 +26,6 @@
 #include "dawn/native/vulkan/ResourceMemoryAllocatorVk.h"
 #include "dawn/native/vulkan/UtilsVulkan.h"
 #include "dawn/native/vulkan/VulkanError.h"
-
-#include <cstring>
 
 namespace dawn::native::vulkan {
 

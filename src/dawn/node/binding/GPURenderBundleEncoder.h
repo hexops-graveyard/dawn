@@ -15,9 +15,11 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPURENDERBUNDLEENCODER_H_
 #define SRC_DAWN_NODE_BINDING_GPURENDERBUNDLEENCODER_H_
 
+#include <string>
+#include <vector>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -27,7 +29,7 @@ namespace wgpu::binding {
     // wgpu::RenderBundleEncoder.
     class GPURenderBundleEncoder final : public interop::GPURenderBundleEncoder {
       public:
-        GPURenderBundleEncoder(wgpu::RenderBundleEncoder enc);
+        explicit GPURenderBundleEncoder(wgpu::RenderBundleEncoder enc);
 
         // interop::GPURenderBundleEncoder interface compliance
         interop::Interface<interop::GPURenderBundle> finish(

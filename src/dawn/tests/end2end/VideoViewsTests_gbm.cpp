@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "VideoViewsTests.h"
-
-#include "dawn/common/Assert.h"
-#include "dawn/native/VulkanBackend.h"
-
 #include <fcntl.h>
 #include <gbm.h>
+
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "VideoViewsTests.h"
+#include "dawn/common/Assert.h"
+#include "dawn/native/VulkanBackend.h"
 
 // "linux-chromeos-rel"'s gbm.h is too old to compile, missing this change at least:
 // https://chromium-review.googlesource.com/c/chromiumos/platform/minigbm/+/1963001/10/gbm.h#244

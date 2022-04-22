@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
-
 #include <array>
 #include <cstring>
+#include <limits>
+#include <vector>
+
+#include "dawn/tests/DawnTest.h"
 
 class BufferMappingTests : public DawnTest {
   protected:

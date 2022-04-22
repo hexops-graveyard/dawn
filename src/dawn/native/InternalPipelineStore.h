@@ -15,11 +15,11 @@
 #ifndef SRC_DAWN_NATIVE_INTERNALPIPELINESTORE_H_
 #define SRC_DAWN_NATIVE_INTERNALPIPELINESTORE_H_
 
+#include <unordered_map>
+
 #include "dawn/native/ObjectBase.h"
 #include "dawn/native/ScratchBuffer.h"
 #include "dawn/native/dawn_platform.h"
-
-#include <unordered_map>
 
 namespace dawn::native {
 
@@ -41,7 +41,7 @@ namespace dawn::native {
         Ref<ComputePipelineBase> timestampComputePipeline;
         Ref<ShaderModuleBase> timestampCS;
 
-        Ref<ShaderModuleBase> dummyFragmentShader;
+        Ref<ShaderModuleBase> placeholderFragmentShader;
 
         // A scratch buffer suitable for use as a copy destination and storage binding.
         ScratchBuffer scratchStorage;

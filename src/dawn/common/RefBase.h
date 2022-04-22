@@ -15,11 +15,11 @@
 #ifndef SRC_DAWN_COMMON_REFBASE_H_
 #define SRC_DAWN_COMMON_REFBASE_H_
 
-#include "dawn/common/Assert.h"
-#include "dawn/common/Compiler.h"
-
 #include <type_traits>
 #include <utility>
+
+#include "dawn/common/Assert.h"
+#include "dawn/common/Compiler.h"
 
 // A common class for various smart-pointers acting on referenceable/releasable pointer-like
 // objects. Logic for each specialization can be customized using a Traits type that looks
@@ -44,6 +44,7 @@ class RefBase {
     }
 
     // Constructors from nullptr.
+    // NOLINTNEXTLINE(runtime/explicit)
     constexpr RefBase(std::nullptr_t) : RefBase() {
     }
 
@@ -53,6 +54,7 @@ class RefBase {
     }
 
     // Constructors from a value T.
+    // NOLINTNEXTLINE(runtime/explicit)
     RefBase(T value) : mValue(value) {
         Reference(value);
     }

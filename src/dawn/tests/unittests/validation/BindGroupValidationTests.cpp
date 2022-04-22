@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/unittests/validation/ValidationTest.h"
+#include <tuple>
+#include <utility>
+#include <vector>
 
 #include "dawn/common/Assert.h"
 #include "dawn/common/Constants.h"
+#include "dawn/tests/unittests/validation/ValidationTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
@@ -1499,7 +1502,7 @@ class SetBindGroupValidationTest : public ValidationTest {
                                  uint32_t count,
                                  bool expectation) {
         wgpu::RenderPipeline renderPipeline = CreateRenderPipeline();
-        DummyRenderPass renderPass(device);
+        PlaceholderRenderPass renderPass(device);
 
         wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
         wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
@@ -1602,7 +1605,7 @@ TEST_F(SetBindGroupValidationTest, VerifyGroupIfChangedAfterAction) {
     }
     {
         wgpu::RenderPipeline renderPipeline = CreateRenderPipeline();
-        DummyRenderPass renderPass(device);
+        PlaceholderRenderPass renderPass(device);
 
         wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
         wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
@@ -1966,7 +1969,7 @@ TEST_F(SetBindGroupPersistenceValidationTest, BindGroupBeforePipeline) {
         device, bindGroupLayouts[1],
         {{0, storageBuffer, 0, kBindingSize}, {1, uniformBuffer, 0, kBindingSize}});
 
-    DummyRenderPass renderPass(device);
+    PlaceholderRenderPass renderPass(device);
     wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
     wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
 
@@ -2020,7 +2023,7 @@ TEST_F(SetBindGroupPersistenceValidationTest, NotVulkanInheritance) {
         device, bindGroupLayoutsB[0],
         {{0, storageBuffer, 0, kBindingSize}, {1, uniformBuffer, 0, kBindingSize}});
 
-    DummyRenderPass renderPass(device);
+    PlaceholderRenderPass renderPass(device);
     wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
     wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
 
@@ -2270,8 +2273,8 @@ class BindingsValidationTest : public BindGroupLayoutCompatibilityTest {
                                 wgpu::RenderPipeline pipeline,
                                 bool expectation) {
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
-        DummyRenderPass dummyRenderPass(device);
-        wgpu::RenderPassEncoder rp = encoder.BeginRenderPass(&dummyRenderPass);
+        PlaceholderRenderPass PlaceholderRenderPass(device);
+        wgpu::RenderPassEncoder rp = encoder.BeginRenderPass(&PlaceholderRenderPass);
         for (uint32_t i = 0; i < count; ++i) {
             rp.SetBindGroup(i, bg[i]);
         }

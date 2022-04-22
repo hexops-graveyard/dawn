@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstring>
+#include <memory>
+
 #include "dawn/common/Assert.h"
 #include "dawn/wire/WireServer.h"
 #include "dawn/wire/server/Server.h"
-
-#include <cstring>
 
 namespace dawn::wire::server {
 

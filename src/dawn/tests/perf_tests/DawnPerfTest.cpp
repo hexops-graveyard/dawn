@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <limits>
+#include <vector>
 
 #include "dawn/common/Assert.h"
 #include "dawn/common/Log.h"
@@ -131,7 +132,7 @@ void DawnPerfTestEnvironment::SetUp() {
         std::ofstream outFile;
         outFile.open(mTraceFile);
         outFile << "{ \"traceEvents\": [";
-        outFile << "{}";  // Dummy object so trace events can always prepend a comma
+        outFile << "{}";  // Placeholder object so trace events can always prepend a comma
         outFile.flush();
         outFile.close();
     }

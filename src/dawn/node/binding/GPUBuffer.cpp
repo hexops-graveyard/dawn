@@ -15,6 +15,7 @@
 #include "src/dawn/node/binding/GPUBuffer.h"
 
 #include <memory>
+#include <utility>
 
 #include "src/dawn/node/binding/Converter.h"
 #include "src/dawn/node/binding/Errors.h"
@@ -66,7 +67,8 @@ namespace wgpu::binding {
             AsyncTask task;
             State& state;
         };
-        auto ctx = new Context{env, interop::Promise<void>(env, PROMISE_INFO), async_, state_};
+        auto ctx =
+            new Context{env, interop::Promise<void>(env, PROMISE_INFO), AsyncTask(async_), state_};
         auto promise = ctx->promise;
 
         uint64_t s = size.has_value() ? size.value().value : (desc_.size - offset);
@@ -95,8 +97,8 @@ namespace wgpu::binding {
                         break;
                     case WGPUBufferMapAsyncStatus_Unknown:
                     case WGPUBufferMapAsyncStatus_DeviceLost:
-                        // TODO: The spec is a bit vague around what the promise should do
-                        // here.
+                        // TODO(dawn:1123): The spec is a bit vague around what the promise should
+                        // do here.
                         c->promise.Reject(Errors::UnknownError(c->env));
                         break;
                 }

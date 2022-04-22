@@ -14,8 +14,13 @@
 
 #include "dawn/native/BindGroupLayout.h"
 
-#include "dawn/common/BitSetIterator.h"
+#include <algorithm>
+#include <functional>
+#include <limits>
+#include <set>
+#include <vector>
 
+#include "dawn/common/BitSetIterator.h"
 #include "dawn/native/ChainUtils_autogen.h"
 #include "dawn/native/Device.h"
 #include "dawn/native/ObjectBase.h"
@@ -23,10 +28,6 @@
 #include "dawn/native/ObjectType_autogen.h"
 #include "dawn/native/PerStage.h"
 #include "dawn/native/ValidationUtils_autogen.h"
-
-#include <algorithm>
-#include <functional>
-#include <set>
 
 namespace dawn::native {
 
@@ -203,7 +204,7 @@ namespace dawn::native {
                         // increment the binding counts for an additional sampled textures and a
                         // sampler so that an external texture will occupy the correct number of
                         // slots for correct validation of shader binding limits.
-                        // TODO:(dawn:1082): Consider removing this and instead making a change to
+                        // TODO(dawn:1082): Consider removing this and instead making a change to
                         // the validation.
                         constexpr uint32_t kUnimplementedSampledTexturesPerExternalTexture = 2;
                         constexpr uint32_t kUnimplementedSamplersPerExternalTexture = 1;

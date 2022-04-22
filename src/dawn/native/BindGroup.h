@@ -15,6 +15,9 @@
 #ifndef SRC_DAWN_NATIVE_BINDGROUP_H_
 #define SRC_DAWN_NATIVE_BINDGROUP_H_
 
+#include <array>
+#include <vector>
+
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
 #include "dawn/native/BindGroupLayout.h"
@@ -23,8 +26,6 @@
 #include "dawn/native/ObjectBase.h"
 
 #include "dawn/native/dawn_platform.h"
-
-#include <array>
 
 namespace dawn::native {
 
@@ -86,7 +87,7 @@ namespace dawn::native {
         Ref<BindGroupLayoutBase> mLayout;
         BindGroupLayoutBase::BindingDataPointers mBindingData;
 
-        // TODO:(dawn:1293): Store external textures in
+        // TODO(dawn:1293): Store external textures in
         // BindGroupLayoutBase::BindingDataPointers::bindings
         std::vector<Ref<ExternalTextureBase>> mBoundExternalTextures;
     };

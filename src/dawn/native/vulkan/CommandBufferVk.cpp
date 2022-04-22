@@ -14,6 +14,9 @@
 
 #include "dawn/native/vulkan/CommandBufferVk.h"
 
+#include <algorithm>
+#include <vector>
+
 #include "dawn/native/BindGroupTracker.h"
 #include "dawn/native/CommandEncoder.h"
 #include "dawn/native/CommandValidation.h"
@@ -35,8 +38,6 @@
 #include "dawn/native/vulkan/TextureVk.h"
 #include "dawn/native/vulkan/UtilsVulkan.h"
 #include "dawn/native/vulkan/VulkanError.h"
-
-#include <algorithm>
 
 namespace dawn::native::vulkan {
 
@@ -667,7 +668,6 @@ namespace dawn::native::vulkan {
                                                   copy->copySize.depthOrArrayLayers));
                     }
 
-                    // TODO after Yunchao's CL
                     ToBackend(src.texture)
                         ->TransitionUsageNow(recordingContext, wgpu::TextureUsage::CopySrc,
                                              srcRange);

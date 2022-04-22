@@ -16,6 +16,7 @@
 #define SRC_DAWN_TESTS_PARAMGENERATOR_H_
 
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // ParamStruct is a custom struct which ParamStruct will yield when iterating.
@@ -46,7 +47,7 @@ class ParamGenerator {
   public:
     using value_type = ParamStruct;
 
-    ParamGenerator(std::vector<Params>... params) : mParams(params...), mIsEmpty(false) {
+    explicit ParamGenerator(std::vector<Params>... params) : mParams(params...), mIsEmpty(false) {
         for (bool isEmpty : {params.empty()...}) {
             mIsEmpty |= isEmpty;
         }

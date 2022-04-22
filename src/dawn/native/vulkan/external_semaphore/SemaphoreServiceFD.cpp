@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <utility>
+
 #include "dawn/native/vulkan/AdapterVk.h"
 #include "dawn/native/vulkan/BackendVk.h"
 #include "dawn/native/vulkan/DeviceVk.h"
@@ -25,7 +27,7 @@ static constexpr VkExternalSemaphoreHandleTypeFlagBits kHandleType =
     VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
 #endif  // defined(DAWN_USE_SYNC_FDS)
 
-namespace dawn::native { namespace vulkan::external_semaphore {
+namespace dawn::native::vulkan::external_semaphore {
 
     Service::Service(Device* device)
         : mDevice(device),
@@ -134,4 +136,4 @@ namespace dawn::native { namespace vulkan::external_semaphore {
         return fd;
     }
 
-}}  // namespace dawn::native::vulkan::external_semaphore
+}  // namespace dawn::native::vulkan::external_semaphore

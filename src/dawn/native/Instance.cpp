@@ -14,6 +14,8 @@
 
 #include "dawn/native/Instance.h"
 
+#include <utility>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/GPUInfo.h"
 #include "dawn/common/Log.h"
@@ -91,6 +93,14 @@ namespace dawn::native {
             return enabledBackends;
         }
 
+        dawn::platform::CachingInterface* GetCachingInterface(dawn::platform::Platform* platform) {
+            if (platform != nullptr) {
+                return platform->GetCachingInterface(/*fingerprint*/ nullptr,
+                                                     /*fingerprintSize*/ 0);
+            }
+            return nullptr;
+        }
+
     }  // anonymous namespace
 
     InstanceBase* APICreateInstance(const InstanceDescriptor* descriptor) {
@@ -131,6 +141,11 @@ namespace dawn::native {
             mRuntimeSearchPaths.push_back(std::move(*p));
         }
         mRuntimeSearchPaths.push_back("");
+
+        // Initialize the platform to the default for now.
+        mDefaultPlatform = std::make_unique<dawn::platform::Platform>();
+        SetPlatform(mDefaultPlatform.get());
+
         return {};
     }
 
@@ -399,18 +414,24 @@ namespace dawn::native {
     }
 
     void InstanceBase::SetPlatform(dawn::platform::Platform* platform) {
-        mPlatform = platform;
+        if (platform == nullptr) {
+            mPlatform = mDefaultPlatform.get();
+        } else {
+            mPlatform = platform;
+        }
+        mBlobCache = std::make_unique<BlobCache>(GetCachingInterface(platform));
+    }
+
+    void InstanceBase::SetPlatformForTesting(dawn::platform::Platform* platform) {
+        SetPlatform(platform);
     }
 
     dawn::platform::Platform* InstanceBase::GetPlatform() {
-        if (mPlatform != nullptr) {
-            return mPlatform;
-        }
+        return mPlatform;
+    }
 
-        if (mDefaultPlatform == nullptr) {
-            mDefaultPlatform = std::make_unique<dawn::platform::Platform>();
-        }
-        return mDefaultPlatform.get();
+    BlobCache* InstanceBase::GetBlobCache() {
+        return mBlobCache.get();
     }
 
     const std::vector<std::string>& InstanceBase::GetRuntimeSearchPaths() const {

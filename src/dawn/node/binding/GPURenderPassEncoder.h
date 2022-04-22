@@ -15,9 +15,11 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPURENDERPASSENCODER_H_
 #define SRC_DAWN_NODE_BINDING_GPURENDERPASSENCODER_H_
 
+#include <string>
+#include <vector>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -27,7 +29,7 @@ namespace wgpu::binding {
     // wgpu::RenderPassEncoder.
     class GPURenderPassEncoder final : public interop::GPURenderPassEncoder {
       public:
-        GPURenderPassEncoder(wgpu::RenderPassEncoder enc);
+        explicit GPURenderPassEncoder(wgpu::RenderPassEncoder enc);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::RenderPassEncoder&() const {

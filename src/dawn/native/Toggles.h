@@ -16,6 +16,7 @@
 #define SRC_DAWN_NATIVE_TOGGLES_H_
 
 #include <bitset>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -61,11 +62,12 @@ namespace dawn::native {
         DisableSymbolRenaming,
         UseUserDefinedLabelsInBackend,
         DisableR8RG8Mipmaps,
-        UseDummyFragmentInVertexOnlyPipeline,
+        UsePlaceholderFragmentInVertexOnlyPipeline,
         FxcOptimizations,
         RecordDetailedTimingInTraceEvents,
         DisableTimestampQueryConversion,
         VulkanUseZeroInitializeWorkgroupMemoryExtension,
+        D3D12SplitBufferTextureCopyForRowsPerImagePaddings,
 
         EnumCount,
         InvalidEnum = EnumCount,

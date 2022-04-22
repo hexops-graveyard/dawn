@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
-
 #include <d3d11.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "dawn/native/D3D12Backend.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 

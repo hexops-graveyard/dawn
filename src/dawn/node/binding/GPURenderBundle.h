@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPURENDERBUNDLE_H_
 #define SRC_DAWN_NODE_BINDING_GPURENDERBUNDLE_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -27,7 +28,7 @@ namespace wgpu::binding {
     // wgpu::RenderBundle.
     class GPURenderBundle final : public interop::GPURenderBundle {
       public:
-        GPURenderBundle(wgpu::RenderBundle bundle);
+        explicit GPURenderBundle(wgpu::RenderBundle bundle);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::RenderBundle&() const {

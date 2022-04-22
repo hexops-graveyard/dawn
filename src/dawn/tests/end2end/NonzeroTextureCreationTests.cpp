@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
+#include <algorithm>
+#include <vector>
 
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/TestUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
@@ -299,7 +301,7 @@ DAWN_INSTANTIATE_TEST_P(
     {wgpu::TextureAspect::All},
     {wgpu::TextureUsage(wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc),
      wgpu::TextureUsage::CopySrc},
-    {wgpu::TextureDimension::e2D, wgpu::TextureDimension::e3D},
+    {wgpu::TextureDimension::e2D},
     {1u, 7u},          // depth or array layers
     {4u},              // mip count
     {0u, 1u, 2u, 3u},  // mip

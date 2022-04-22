@@ -17,9 +17,9 @@
 
 #include <stdint.h>
 #include <memory>
+#include <utility>
 
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 
 namespace wgpu::binding {
@@ -57,7 +57,8 @@ namespace wgpu::binding {
 
         // Constructor.
         // Calls AsyncRunner::Begin()
-        inline AsyncTask(std::shared_ptr<AsyncRunner> runner) : runner_(std::move(runner)) {
+        explicit inline AsyncTask(std::shared_ptr<AsyncRunner> runner)
+            : runner_(std::move(runner)) {
             runner_->Begin();
         }
 

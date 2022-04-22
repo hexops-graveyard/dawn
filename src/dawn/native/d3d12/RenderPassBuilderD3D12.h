@@ -15,14 +15,14 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_RENDERPASSBUILDERD3D12_H_
 #define SRC_DAWN_NATIVE_D3D12_RENDERPASSBUILDERD3D12_H_
 
+#include <array>
+
 #include "dawn/common/Constants.h"
 #include "dawn/common/ityp_array.h"
 #include "dawn/common/ityp_span.h"
 #include "dawn/native/IntegerTypes.h"
 #include "dawn/native/d3d12/d3d12_platform.h"
 #include "dawn/native/dawn_platform.h"
-
-#include <array>
 
 namespace dawn::native::d3d12 {
 
@@ -35,7 +35,7 @@ namespace dawn::native::d3d12 {
     // operations is extracted from the descriptors.
     class RenderPassBuilder {
       public:
-        RenderPassBuilder(bool hasUAV);
+        explicit RenderPassBuilder(bool hasUAV);
 
         // Returns the highest color attachment index + 1. If there is no color attachment, returns
         // 0. Range: [0, kMaxColorAttachments + 1)

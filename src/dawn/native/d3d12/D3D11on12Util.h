@@ -15,13 +15,13 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_D3D11ON12UTIL_H_
 #define SRC_DAWN_NATIVE_D3D12_D3D11ON12UTIL_H_
 
-#include "dawn/common/RefCounted.h"
-#include "dawn/native/Error.h"
-#include "dawn/native/d3d12/d3d12_platform.h"
-
-#include <dawn/native/DawnNative.h>
 #include <memory>
 #include <unordered_set>
+
+#include "dawn/common/RefCounted.h"
+#include "dawn/native/DawnNative.h"
+#include "dawn/native/Error.h"
+#include "dawn/native/d3d12/d3d12_platform.h"
 
 struct ID3D11On12Device;
 struct IDXGIKeyedMutex;
@@ -31,7 +31,7 @@ namespace dawn::native::d3d12 {
     // Wraps 11 wrapped resources in a cache.
     class D3D11on12ResourceCacheEntry : public RefCounted {
       public:
-        D3D11on12ResourceCacheEntry(ComPtr<ID3D11On12Device> d3d11on12Device);
+        explicit D3D11on12ResourceCacheEntry(ComPtr<ID3D11On12Device> d3d11on12Device);
         D3D11on12ResourceCacheEntry(ComPtr<IDXGIKeyedMutex> d3d11on12Resource,
                                     ComPtr<ID3D11On12Device> d3d11on12Device);
         ~D3D11on12ResourceCacheEntry();

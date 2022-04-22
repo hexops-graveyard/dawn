@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <cstring>
 #include <iomanip>
 #include <string>
+#include <vector>
 
 #include "dawn/native/CacheKey.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 namespace dawn::native {
 
@@ -144,8 +144,8 @@ namespace dawn::native {
 
         TEST(CacheKeySerializerTests, FloatingTypes) {
             // Using 0s to avoid dealing with implementation specific float details.
-            EXPECT_THAT(CacheKey().Record(float(0)), CacheKeyEq(CacheKey(sizeof(float), 0)));
-            EXPECT_THAT(CacheKey().Record(double(0)), CacheKeyEq(CacheKey(sizeof(double), 0)));
+            EXPECT_THAT(CacheKey().Record(float{0}), CacheKeyEq(CacheKey(sizeof(float), 0)));
+            EXPECT_THAT(CacheKey().Record(double{0}), CacheKeyEq(CacheKey(sizeof(double), 0)));
         }
 
         TEST(CacheKeySerializerTests, LiteralStrings) {

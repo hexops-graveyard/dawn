@@ -17,6 +17,7 @@
 #include <cassert>
 #include <limits>
 #include <memory>
+#include <utility>
 
 #include "src/dawn/node/binding/Converter.h"
 #include "src/dawn/node/binding/GPUBuffer.h"
@@ -53,7 +54,7 @@ namespace wgpu::binding {
             interop::Promise<void> promise;
             AsyncTask task;
         };
-        auto ctx = new Context{env, interop::Promise<void>(env, PROMISE_INFO), async_};
+        auto ctx = new Context{env, interop::Promise<void>(env, PROMISE_INFO), AsyncTask(async_)};
         auto promise = ctx->promise;
 
         queue_.OnSubmittedWorkDone(

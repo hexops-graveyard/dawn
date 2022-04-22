@@ -15,12 +15,14 @@
 #ifndef SRC_DAWN_COMMON_ITYP_ARRAY_H_
 #define SRC_DAWN_COMMON_ITYP_ARRAY_H_
 
-#include "dawn/common/TypedInteger.h"
-#include "dawn/common/UnderlyingType.h"
-
 #include <array>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
+#include <utility>
+
+#include "dawn/common/TypedInteger.h"
+#include "dawn/common/UnderlyingType.h"
 
 namespace ityp {
 
@@ -39,6 +41,7 @@ namespace ityp {
         constexpr array() = default;
 
         template <typename... Values>
+        // NOLINTNEXTLINE(runtime/explicit)
         constexpr array(Values&&... values) : Base{std::forward<Values>(values)...} {
         }
 

@@ -14,16 +14,17 @@
 
 #include "dawn/native/d3d12/SwapChainD3D12.h"
 
+#if !defined(DAWN_NO_WINDOWS_UI)
+#include <windows.ui.xaml.media.dxinterop.h>
+#endif // !defined(DAWN_NO_WINDOWS_UI)
+
+#include <utility>
+
+#include "dawn/dawn_wsi.h"
 #include "dawn/native/Surface.h"
 #include "dawn/native/d3d12/D3D12Error.h"
 #include "dawn/native/d3d12/DeviceD3D12.h"
 #include "dawn/native/d3d12/TextureD3D12.h"
-
-#include <dawn/dawn_wsi.h>
-
-#if !defined(DAWN_NO_WINDOWS_UI)
-#include <windows.ui.xaml.media.dxinterop.h>
-#endif // !defined(DAWN_NO_WINDOWS_UI)
 
 namespace dawn::native::d3d12 {
     namespace {

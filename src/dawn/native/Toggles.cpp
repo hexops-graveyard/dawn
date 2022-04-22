@@ -232,11 +232,11 @@ namespace dawn::native {
               "Disables mipmaps for r8unorm and rg8unorm textures, which are known on some drivers "
               "to not clear correctly.",
               "https://crbug.com/dawn/1071"}},
-            {Toggle::UseDummyFragmentInVertexOnlyPipeline,
-             {"use_dummy_fragment_in_vertex_only_pipeline",
-              "Use a dummy empty fragment shader in vertex only render pipeline. This toggle must "
-              "be enabled for OpenGL ES backend, and serves as a workaround by default enabled on "
-              "some Metal devices with Intel GPU to ensure the depth result is correct.",
+            {Toggle::UsePlaceholderFragmentInVertexOnlyPipeline,
+             {"use_placeholder_fragment_in_vertex_only_pipeline",
+              "Use a placeholder empty fragment shader in vertex only render pipeline. This toggle "
+              "must be enabled for OpenGL ES backend, and serves as a workaround by default "
+              "enabled on some Metal devices with Intel GPU to ensure the depth result is correct.",
               "https://crbug.com/dawn/136"}},
             {Toggle::FxcOptimizations,
              {"fxc_optimizations",
@@ -259,8 +259,17 @@ namespace dawn::native {
               "Initialize workgroup memory with OpConstantNull on Vulkan when the Vulkan extension "
               "VK_KHR_zero_initialize_workgroup_memory is supported.",
               "https://crbug.com/dawn/1302"}},
+            {Toggle::D3D12SplitBufferTextureCopyForRowsPerImagePaddings,
+             {"d3d12_split_buffer_texture_copy_for_rows_per_image_paddings",
+              "D3D12 requires more buffer storage than it should when rowsPerImage is greater than "
+              "copyHeight, which means there are pure padding row(s) on each image. In this "
+              "situation, the buffer used for B2T/T2B copy might be big enough according to "
+              "WebGPU's spec but it doesn't meet D3D12's requirement, then we need to workaround "
+              "it via split the copy operation into two copies, in order to make B2T/T2B copy "
+              "being done correctly on D3D12.",
+              "https://crbug.com/dawn/1289"}},
 
-            // Dummy comment to separate the }} so it is clearer what to copy-paste to add a toggle.
+            // Comment to separate the }} so it is clearer what to copy-paste to add a toggle.
         }};
     }  // anonymous namespace
 

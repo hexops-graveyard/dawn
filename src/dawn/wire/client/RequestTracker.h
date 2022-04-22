@@ -15,11 +15,12 @@
 #ifndef SRC_DAWN_WIRE_CLIENT_REQUESTTRACKER_H_
 #define SRC_DAWN_WIRE_CLIENT_REQUESTTRACKER_H_
 
-#include "dawn/common/Assert.h"
-#include "dawn/common/NonCopyable.h"
-
 #include <cstdint>
 #include <map>
+#include <utility>
+
+#include "dawn/common/Assert.h"
+#include "dawn/common/NonCopyable.h"
 
 namespace dawn::wire::client {
 

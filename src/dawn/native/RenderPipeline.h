@@ -15,6 +15,10 @@
 #ifndef SRC_DAWN_NATIVE_RENDERPIPELINE_H_
 #define SRC_DAWN_NATIVE_RENDERPIPELINE_H_
 
+#include <array>
+#include <bitset>
+#include <vector>
+
 #include "dawn/common/TypedInteger.h"
 #include "dawn/native/AttachmentState.h"
 #include "dawn/native/Forward.h"
@@ -23,9 +27,6 @@
 
 #include "dawn/native/dawn_platform.h"
 
-#include <array>
-#include <bitset>
-
 namespace dawn::native {
 
     class DeviceBase;
@@ -33,7 +34,7 @@ namespace dawn::native {
     MaybeError ValidateRenderPipelineDescriptor(DeviceBase* device,
                                                 const RenderPipelineDescriptor* descriptor);
 
-    std::vector<StageAndDescriptor> GetRenderStagesAndSetDummyShader(
+    std::vector<StageAndDescriptor> GetRenderStagesAndSetPlaceholderShader(
         DeviceBase* device,
         const RenderPipelineDescriptor* descriptor);
 

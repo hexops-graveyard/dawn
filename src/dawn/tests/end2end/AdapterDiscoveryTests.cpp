@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+#include <utility>
+
 #include "dawn/common/GPUInfo.h"
 #include "dawn/common/Log.h"
 #include "dawn/common/Platform.h"
@@ -42,7 +45,9 @@
 
 namespace {
 
-    using namespace testing;
+    using testing::_;
+    using testing::MockCallback;
+    using testing::SaveArg;
 
     class AdapterDiscoveryTests : public ::testing::Test {};
 

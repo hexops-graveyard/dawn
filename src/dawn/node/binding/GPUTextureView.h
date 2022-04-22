@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPUTEXTUREVIEW_H_
 #define SRC_DAWN_NODE_BINDING_GPUTEXTUREVIEW_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -27,7 +28,7 @@ namespace wgpu::binding {
     // wgpu::TextureView.
     class GPUTextureView final : public interop::GPUTextureView {
       public:
-        GPUTextureView(wgpu::TextureView view);
+        explicit GPUTextureView(wgpu::TextureView view);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::TextureView&() const {

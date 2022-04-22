@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/white_box/VulkanImageWrappingTests.h"
-
 #include <fcntl.h>
 #include <gbm.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
+
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "dawn/tests/white_box/VulkanImageWrappingTests.h"
 
 namespace dawn::native::vulkan {
 
@@ -30,7 +35,7 @@ namespace dawn::native::vulkan {
 
     class ExternalSemaphoreDmaBuf : public VulkanImageWrappingTestBackend::ExternalSemaphore {
       public:
-        ExternalSemaphoreDmaBuf(int handle) : mHandle(handle) {
+        explicit ExternalSemaphoreDmaBuf(int handle) : mHandle(handle) {
         }
         ~ExternalSemaphoreDmaBuf() override {
             if (mHandle != -1) {
@@ -77,7 +82,7 @@ namespace dawn::native::vulkan {
 
     class VulkanImageWrappingTestBackendDmaBuf : public VulkanImageWrappingTestBackend {
       public:
-        VulkanImageWrappingTestBackendDmaBuf(const wgpu::Device& device) {
+        explicit VulkanImageWrappingTestBackendDmaBuf(const wgpu::Device& device) {
         }
 
         ~VulkanImageWrappingTestBackendDmaBuf() {

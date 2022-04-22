@@ -15,16 +15,16 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_BINDGROUPLAYOUTMOCK_H_
 #define SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_BINDGROUPLAYOUTMOCK_H_
 
+#include "gmock/gmock.h"
+
 #include "dawn/native/BindGroupLayout.h"
 #include "dawn/native/Device.h"
-
-#include <gmock/gmock.h>
 
 namespace dawn::native {
 
     class BindGroupLayoutMock final : public BindGroupLayoutBase {
       public:
-        BindGroupLayoutMock(DeviceBase* device) : BindGroupLayoutBase(device) {
+        explicit BindGroupLayoutMock(DeviceBase* device) : BindGroupLayoutBase(device) {
             ON_CALL(*this, DestroyImpl).WillByDefault([this]() {
                 this->BindGroupLayoutBase::DestroyImpl();
             });

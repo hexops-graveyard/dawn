@@ -7,10 +7,11 @@
 #ifndef SRC_DAWN_COMMON_STACKCONTAINER_H_
 #define SRC_DAWN_COMMON_STACKCONTAINER_H_
 
-#include "dawn/common/Compiler.h"
-
 #include <cstddef>
+#include <memory>
 #include <vector>
+
+#include "dawn/common/Compiler.h"
 
 // This allocator can be used with STL containers to provide a stack buffer
 // from which to allocate memory and overflows onto the heap. This stack buffer
@@ -82,8 +83,6 @@ class StackAllocator : public std::allocator<T> {
     // For this constructor, we cannot share storage; there's
     // no guarantee that the Source buffer of Ts is large enough
     // for Us.
-    // TODO: If we were fancy pants, perhaps we could share storage
-    // iff sizeof(T) == sizeof(U).
     template <typename U, size_t other_capacity>
     StackAllocator(const StackAllocator<U, other_capacity>& other) : source_(nullptr) {
     }

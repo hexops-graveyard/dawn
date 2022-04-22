@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPUBINDGROUP_H_
 #define SRC_DAWN_NODE_BINDING_GPUBINDGROUP_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -26,7 +27,7 @@ namespace wgpu::binding {
     // GPUBindGroup is an implementation of interop::GPUBindGroup that wraps a wgpu::BindGroup.
     class GPUBindGroup final : public interop::GPUBindGroup {
       public:
-        GPUBindGroup(wgpu::BindGroup group);
+        explicit GPUBindGroup(wgpu::BindGroup group);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::BindGroup&() const {

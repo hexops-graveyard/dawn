@@ -15,6 +15,11 @@
 #ifndef SRC_DAWN_NATIVE_OPENGL_SHADERMODULEGL_H_
 #define SRC_DAWN_NATIVE_OPENGL_SHADERMODULEGL_H_
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "dawn/native/ShaderModule.h"
 
 #include "dawn/native/opengl/opengl_platform.h"
@@ -36,8 +41,9 @@ namespace dawn::native::opengl {
         BindingLocation samplerLocation;
         BindingLocation textureLocation;
         // OpenGL requires a sampler with texelFetch. If this is true, the developer did not provide
-        // one and Dawn should bind a dummy non-filtering sampler. |samplerLocation| is unused.
-        bool useDummySampler;
+        // one and Dawn should bind a placeholder non-filtering sampler. |samplerLocation| is
+        // unused.
+        bool usePlaceholderSampler;
         std::string GetName() const;
     };
     bool operator<(const CombinedSampler& a, const CombinedSampler& b);
@@ -57,7 +63,7 @@ namespace dawn::native::opengl {
                                                    SingleShaderStage stage,
                                                    CombinedSamplerInfo* combinedSamplers,
                                                    const PipelineLayout* layout,
-                                                   bool* needsDummySampler) const;
+                                                   bool* needsPlaceholderSampler) const;
 
       private:
         ShaderModule(Device* device, const ShaderModuleDescriptor* descriptor);

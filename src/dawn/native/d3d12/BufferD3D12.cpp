@@ -14,6 +14,8 @@
 
 #include "dawn/native/d3d12/BufferD3D12.h"
 
+#include <algorithm>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
@@ -25,6 +27,8 @@
 #include "dawn/native/d3d12/HeapD3D12.h"
 #include "dawn/native/d3d12/ResidencyManagerD3D12.h"
 #include "dawn/native/d3d12/UtilsD3D12.h"
+#include "dawn/platform/DawnPlatform.h"
+#include "dawn/platform/tracing/TraceEvent.h"
 
 namespace dawn::native::d3d12 {
 
@@ -320,6 +324,8 @@ namespace dawn::native::d3d12 {
                                    const char* contextInfo) {
         // The mapped buffer can be accessed at any time, so it must be locked to ensure it is never
         // evicted. This buffer should already have been made resident when it was created.
+        TRACE_EVENT0(GetDevice()->GetPlatform(), General, "BufferD3D12::MapInternal");
+
         Heap* heap = ToBackend(mResourceAllocation.GetResourceHeap());
         DAWN_TRY(ToBackend(GetDevice())->GetResidencyManager()->LockAllocation(heap));
 

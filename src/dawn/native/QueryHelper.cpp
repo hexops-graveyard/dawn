@@ -14,6 +14,9 @@
 
 #include "dawn/native/QueryHelper.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "dawn/native/BindGroup.h"
 #include "dawn/native/BindGroupLayout.h"
 #include "dawn/native/Buffer.h"
@@ -23,8 +26,6 @@
 #include "dawn/native/Device.h"
 #include "dawn/native/InternalPipelineStore.h"
 #include "dawn/native/utils/WGPUHelpers.h"
-
-#include <cmath>
 
 namespace dawn::native {
 

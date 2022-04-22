@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/end2end/VideoViewsTests.h"
+#include <utility>
 
+#include "dawn/tests/end2end/VideoViewsTests.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
@@ -91,11 +92,11 @@ std::vector<uint8_t> VideoViewsTests::GetTestTextureData(wgpu::TextureFormat for
 
                 // clang-format off
                         return {
-                            Wy, Wy, Ry, Ry, // plane 0, start + 0
+                            Wy, Wy, Ry, Ry,  // plane 0, start + 0
                             Wy, Wy, Ry, Ry,
                             Yy, Yy, By, By,
                             Yy, Yy, By, By,
-                            Wu, Wv, Ru, Rv, // plane 1, start + 16
+                            Wu, Wv, Ru, Rv,  // plane 1, start + 16
                             Yu, Yv, Bu, Bv,
                         };
                 // clang-format on

@@ -14,6 +14,15 @@
 
 #include "dawn/tests/DawnTest.h"
 
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/GPUInfo.h"
 #include "dawn/common/Log.h"
@@ -21,6 +30,8 @@
 #include "dawn/common/Platform.h"
 #include "dawn/common/SystemUtils.h"
 #include "dawn/dawn_proc.h"
+#include "dawn/native/Instance.h"
+#include "dawn/native/dawn_platform.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/PlatformDebugLogger.h"
 #include "dawn/utils/SystemUtils.h"
@@ -30,14 +41,6 @@
 #include "dawn/utils/WireHelper.h"
 #include "dawn/wire/WireClient.h"
 #include "dawn/wire/WireServer.h"
-
-#include <algorithm>
-#include <fstream>
-#include <iomanip>
-#include <regex>
-#include <sstream>
-#include <unordered_map>
-#include <unordered_set>
 
 #if defined(DAWN_ENABLE_BACKEND_OPENGL)
 #    include "GLFW/glfw3.h"
@@ -95,7 +98,7 @@ namespace {
             auto byteView = reinterpret_cast<const uint8_t*>(buffer + index);
             for (unsigned int b = 0; b < kBytes; ++b) {
                 char buf[4];
-                snprintf(buf, 4, "%02X ", byteView[b]);
+                snprintf(buf, sizeof(buf), "%02X ", byteView[b]);
                 result << buf;
             }
         }
@@ -428,11 +431,12 @@ std::unique_ptr<dawn::native::Instance> DawnTestEnvironment::CreateInstanceAndDi
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     mOpenGLWindow = glfwCreateWindow(400, 400, "Dawn OpenGL test window", nullptr, nullptr);
-
-    glfwMakeContextCurrent(mOpenGLWindow);
-    dawn::native::opengl::AdapterDiscoveryOptions adapterOptions;
-    adapterOptions.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
-    instance->DiscoverAdapters(&adapterOptions);
+    if (mOpenGLWindow != nullptr) {
+        glfwMakeContextCurrent(mOpenGLWindow);
+        dawn::native::opengl::AdapterDiscoveryOptions adapterOptions;
+        adapterOptions.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
+        instance->DiscoverAdapters(&adapterOptions);
+    }
 #endif  // DAWN_ENABLE_BACKEND_DESKTOP_GL
 
 #ifdef DAWN_ENABLE_BACKEND_OPENGLES
@@ -453,12 +457,13 @@ std::unique_ptr<dawn::native::Instance> DawnTestEnvironment::CreateInstanceAndDi
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
     mOpenGLESWindow = glfwCreateWindow(400, 400, "Dawn OpenGLES test window", nullptr, nullptr);
-
-    glfwMakeContextCurrent(mOpenGLESWindow);
-    dawn::native::opengl::AdapterDiscoveryOptionsES adapterOptionsES;
-    adapterOptionsES.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
-    instance->DiscoverAdapters(&adapterOptionsES);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    if (mOpenGLESWindow != nullptr) {
+        glfwMakeContextCurrent(mOpenGLESWindow);
+        dawn::native::opengl::AdapterDiscoveryOptionsES adapterOptionsES;
+        adapterOptionsES.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
+        instance->DiscoverAdapters(&adapterOptionsES);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    }
 #endif  // DAWN_ENABLE_BACKEND_OPENGLES
 
     return instance;
@@ -918,9 +923,11 @@ void DawnTestBase::SetUp() {
         mBackendAdapter = *it;
     }
 
-    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform.
+    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform. This is
+    // NOT a thread-safe operation and is allowed here for testing only.
     mTestPlatform = CreateTestPlatform();
-    gTestEnv->GetInstance()->SetPlatform(mTestPlatform.get());
+    dawn::native::FromAPI(gTestEnv->GetInstance()->Get())
+        ->SetPlatformForTesting(mTestPlatform.get());
 
     // Create the device from the adapter
     for (const char* forceEnabledWorkaround : mParam.forceEnabledWorkarounds) {

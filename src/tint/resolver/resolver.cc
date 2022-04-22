@@ -84,7 +84,9 @@ namespace tint::resolver {
 Resolver::Resolver(ProgramBuilder* builder)
     : builder_(builder),
       diagnostics_(builder->Diagnostics()),
-      builtin_table_(BuiltinTable::Create(*builder)) {}
+      builtin_table_(BuiltinTable::Create(*builder)),
+      sem_(builder, dependencies_),
+      validator_(builder, sem_) {}
 
 Resolver::~Resolver() = default;
 
@@ -137,7 +139,7 @@ bool Resolver::ResolveInternal() {
 
   SetShadows();
 
-  if (!ValidatePipelineStages()) {
+  if (!validator_.PipelineStages(entry_points_)) {
     return false;
   }
 
@@ -171,7 +173,7 @@ sem::Type* Resolver::Type(const ast::Type* ty) {
         }
         if (auto* el = Type(t->type)) {
           if (auto* vector = builder_->create<sem::Vector>(el, t->width)) {
-            if (ValidateVector(vector, t->source)) {
+            if (validator_.Vector(vector, t->source)) {
               return vector;
             }
           }
@@ -187,7 +189,7 @@ sem::Type* Resolver::Type(const ast::Type* ty) {
           if (auto* column_type = builder_->create<sem::Vector>(el, t->rows)) {
             if (auto* matrix =
                     builder_->create<sem::Matrix>(column_type, t->columns)) {
-              if (ValidateMatrix(matrix, t->source)) {
+              if (validator_.Matrix(matrix, t->source)) {
                 return matrix;
               }
             }
@@ -199,7 +201,7 @@ sem::Type* Resolver::Type(const ast::Type* ty) {
       [&](const ast::Atomic* t) -> sem::Atomic* {
         if (auto* el = Type(t->type)) {
           auto* a = builder_->create<sem::Atomic>(el);
-          if (!ValidateAtomic(t, a)) {
+          if (!validator_.Atomic(t, a)) {
             return nullptr;
           }
           return a;
@@ -239,7 +241,7 @@ sem::Type* Resolver::Type(const ast::Type* ty) {
       },
       [&](const ast::StorageTexture* t) -> sem::StorageTexture* {
         if (auto* el = Type(t->type)) {
-          if (!ValidateStorageTexture(t)) {
+          if (!validator_.StorageTexture(t)) {
             return nullptr;
           }
           return builder_->create<sem::StorageTexture>(t->dim, t->format,
@@ -251,7 +253,7 @@ sem::Type* Resolver::Type(const ast::Type* ty) {
         return builder_->create<sem::ExternalTexture>();
       },
       [&](Default) {
-        auto* resolved = ResolvedSymbol(ty);
+        auto* resolved = sem_.ResolvedSymbol(ty);
         return Switch(
             resolved,  //
             [&](sem::Type* type) { return type; },
@@ -365,8 +367,8 @@ sem::Variable* Resolver::Variable(const ast::Variable* var,
 
   if (kind == VariableKind::kLocal && !var->is_const &&
       storage_class != ast::StorageClass::kFunction &&
-      IsValidationEnabled(var->attributes,
-                          ast::DisabledValidation::kIgnoreStorageClass)) {
+      validator_.IsValidationEnabled(
+          var->attributes, ast::DisabledValidation::kIgnoreStorageClass)) {
     AddError("function variable has a non-function storage class", var->source);
     return nullptr;
   }
@@ -384,8 +386,8 @@ sem::Variable* Resolver::Variable(const ast::Variable* var,
         builder_->create<sem::Reference>(storage_ty, storage_class, access);
   }
 
-  if (rhs && !ValidateVariableConstructorOrCast(var, storage_class, storage_ty,
-                                                rhs->Type())) {
+  if (rhs && !validator_.VariableConstructorOrCast(var, storage_class,
+                                                   storage_ty, rhs->Type())) {
     return nullptr;
   }
 
@@ -505,7 +507,7 @@ void Resolver::AllocateOverridableConstantIds() {
       next_constant_id = constant_id + 1;
     }
 
-    auto* sem = Sem<sem::GlobalVariable>(var);
+    auto* sem = sem_.Get<sem::GlobalVariable>(var);
     const_cast<sem::GlobalVariable*>(sem)->SetConstantId(constant_id);
   }
 }
@@ -513,9 +515,11 @@ void Resolver::AllocateOverridableConstantIds() {
 void Resolver::SetShadows() {
   for (auto it : dependencies_.shadows) {
     Switch(
-        Sem(it.first),  //
-        [&](sem::LocalVariable* local) { local->SetShadows(Sem(it.second)); },
-        [&](sem::Parameter* param) { param->SetShadows(Sem(it.second)); });
+        sem_.Get(it.first),  //
+        [&](sem::LocalVariable* local) {
+          local->SetShadows(sem_.Get(it.second));
+        },
+        [&](sem::Parameter* param) { param->SetShadows(sem_.Get(it.second)); });
   }
 }
 
@@ -544,17 +548,17 @@ sem::GlobalVariable* Resolver::GlobalVariable(const ast::Variable* var) {
     }
   }
 
-  if (!ValidateNoDuplicateAttributes(var->attributes)) {
+  if (!validator_.NoDuplicateAttributes(var->attributes)) {
     return nullptr;
   }
 
-  if (!ValidateGlobalVariable(sem)) {
+  if (!validator_.GlobalVariable(sem, constant_ids_, atomic_composite_info_)) {
     return nullptr;
   }
 
   // TODO(bclayton): Call this at the end of resolve on all uniform and storage
   // referenced structs
-  if (!ValidateStorageClassLayout(sem)) {
+  if (!validator_.StorageClassLayout(sem, valid_type_storage_layouts_)) {
     return nullptr;
   }
 
@@ -589,7 +593,7 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
     for (auto* attr : param->attributes) {
       Mark(attr);
     }
-    if (!ValidateNoDuplicateAttributes(param->attributes)) {
+    if (!validator_.NoDuplicateAttributes(param->attributes)) {
       return nullptr;
     }
 
@@ -688,18 +692,21 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
   for (auto* attr : decl->attributes) {
     Mark(attr);
   }
-  if (!ValidateNoDuplicateAttributes(decl->attributes)) {
+  if (!validator_.NoDuplicateAttributes(decl->attributes)) {
     return nullptr;
   }
 
   for (auto* attr : decl->return_type_attributes) {
     Mark(attr);
   }
-  if (!ValidateNoDuplicateAttributes(decl->return_type_attributes)) {
+  if (!validator_.NoDuplicateAttributes(decl->return_type_attributes)) {
     return nullptr;
   }
 
-  if (!ValidateFunction(func)) {
+  auto stage = current_function_
+                   ? current_function_->Declaration()->PipelineStage()
+                   : ast::PipelineStage::kNone;
+  if (!validator_.Function(func, stage)) {
     return nullptr;
   }
 
@@ -752,7 +759,7 @@ bool Resolver::WorkgroupSize(const ast::Function* func) {
         "workgroup_size arguments must be of the same type, either i32 "
         "or u32";
 
-    auto* ty = TypeOf(expr);
+    auto* ty = sem_.TypeOf(expr);
     bool is_i32 = ty->UnwrapRef()->Is<sem::I32>();
     bool is_u32 = ty->UnwrapRef()->Is<sem::U32>();
     if (!is_i32 && !is_u32) {
@@ -769,7 +776,7 @@ bool Resolver::WorkgroupSize(const ast::Function* func) {
 
     sem::Constant value;
 
-    if (auto* user = Sem(expr)->As<sem::VariableUser>()) {
+    if (auto* user = sem_.Get(expr)->As<sem::VariableUser>()) {
       // We have an variable of a module-scope constant.
       auto* decl = user->Variable()->Declaration();
       if (!decl->is_const) {
@@ -782,14 +789,14 @@ bool Resolver::WorkgroupSize(const ast::Function* func) {
       }
 
       if (decl->constructor) {
-        value = Sem(decl->constructor)->ConstantValue();
+        value = sem_.Get(decl->constructor)->ConstantValue();
       } else {
         // No constructor means this value must be overriden by the user.
         ws[i].value = 0;
         continue;
       }
     } else if (expr->Is<ast::LiteralExpression>()) {
-      value = Sem(expr)->ConstantValue();
+      value = sem_.Get(expr)->ConstantValue();
     } else {
       AddError(
           "workgroup_size argument must be either a literal or a "
@@ -803,7 +810,7 @@ bool Resolver::WorkgroupSize(const ast::Function* func) {
           << "could not resolve constant workgroup_size constant value";
       continue;
     }
-    // Validate and set the default value for this dimension.
+    // validator_.Validate and set the default value for this dimension.
     if (is_i32 ? value.Elements()[0].i32 < 1 : value.Elements()[0].u32 < 1) {
       AddError("workgroup_size argument must be at least 1", values[i]->source);
       return false;
@@ -837,7 +844,7 @@ bool Resolver::Statements(const ast::StatementList& stmts) {
 
   current_statement_->Behaviors() = behaviors;
 
-  if (!ValidateStatements(stmts)) {
+  if (!validator_.Statements(stmts)) {
     return false;
   }
 
@@ -952,7 +959,7 @@ sem::IfStatement* Resolver::IfStatement(const ast::IfStatement* stmt) {
       sem->Behaviors().Add(sem::Behavior::kNext);
     }
 
-    return ValidateIfStatement(sem);
+    return validator_.IfStatement(sem);
   });
 }
 
@@ -983,7 +990,7 @@ sem::ElseStatement* Resolver::ElseStatement(const ast::ElseStatement* stmt) {
     }
     sem->Behaviors().Add(body->Behaviors());
 
-    return ValidateElseStatement(sem);
+    return validator_.ElseStatement(sem);
   });
 }
 
@@ -1033,7 +1040,7 @@ sem::LoopStatement* Resolver::LoopStatement(const ast::LoopStatement* stmt) {
       }
       behaviors.Remove(sem::Behavior::kBreak, sem::Behavior::kContinue);
 
-      return ValidateLoopStatement(sem);
+      return validator_.LoopStatement(sem);
     });
   });
 }
@@ -1089,7 +1096,7 @@ sem::ForLoopStatement* Resolver::ForLoopStatement(
     }
     behaviors.Remove(sem::Behavior::kBreak, sem::Behavior::kContinue);
 
-    return ValidateForLoopStatement(sem);
+    return validator_.ForLoopStatement(sem);
   });
 }
 
@@ -1165,8 +1172,8 @@ sem::Expression* Resolver::Expression(const ast::Expression* root) {
 
 sem::Expression* Resolver::IndexAccessor(
     const ast::IndexAccessorExpression* expr) {
-  auto* idx = Sem(expr->index);
-  auto* obj = Sem(expr->object);
+  auto* idx = sem_.Get(expr->index);
+  auto* obj = sem_.Get(expr->object);
   auto* obj_raw_ty = obj->Type();
   auto* obj_ty = obj_raw_ty->UnwrapRef();
   auto* ty = Switch(
@@ -1177,7 +1184,7 @@ sem::Expression* Resolver::IndexAccessor(
         return builder_->create<sem::Vector>(mat->type(), mat->rows());
       },
       [&](Default) {
-        AddError("cannot index type '" + TypeNameOf(obj_ty) + "'",
+        AddError("cannot index type '" + sem_.TypeNameOf(obj_ty) + "'",
                  expr->source);
         return nullptr;
       });
@@ -1188,7 +1195,7 @@ sem::Expression* Resolver::IndexAccessor(
   auto* idx_ty = idx->Type()->UnwrapRef();
   if (!idx_ty->IsAnyOf<sem::I32, sem::U32>()) {
     AddError("index must be of type 'i32' or 'u32', found: '" +
-                 TypeNameOf(idx_ty) + "'",
+                 sem_.TypeNameOf(idx_ty) + "'",
              idx->Declaration()->source);
     return nullptr;
   }
@@ -1208,7 +1215,7 @@ sem::Expression* Resolver::IndexAccessor(
 }
 
 sem::Expression* Resolver::Bitcast(const ast::BitcastExpression* expr) {
-  auto* inner = Sem(expr->expr);
+  auto* inner = sem_.Get(expr->expr);
   auto* ty = Type(expr->type);
   if (!ty) {
     return nullptr;
@@ -1220,7 +1227,7 @@ sem::Expression* Resolver::Bitcast(const ast::BitcastExpression* expr) {
 
   sem->Behaviors() = inner->Behaviors();
 
-  if (!ValidateBitcast(expr, ty)) {
+  if (!validator_.Bitcast(expr, ty)) {
     return nullptr;
   }
 
@@ -1237,7 +1244,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
   const sem::Type* arg_el_ty = nullptr;
 
   for (size_t i = 0; i < expr->args.size(); i++) {
-    auto* arg = Sem(expr->args[i]);
+    auto* arg = sem_.Get(expr->args[i]);
     if (!arg) {
       return nullptr;
     }
@@ -1310,7 +1317,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
           Mark(vec);
           auto* v = builder_->create<sem::Vector>(
               arg_el_ty, static_cast<uint32_t>(vec->width));
-          if (!ValidateVector(v, vec->source)) {
+          if (!validator_.Vector(v, vec->source)) {
             return nullptr;
           }
           builder_->Sem().Add(vec, v);
@@ -1331,7 +1338,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
           auto* column_type =
               builder_->create<sem::Vector>(arg_el_ty, mat->rows);
           auto* m = builder_->create<sem::Matrix>(column_type, mat->columns);
-          if (!ValidateMatrix(m, mat->source)) {
+          if (!validator_.Matrix(m, mat->source)) {
             return nullptr;
           }
           builder_->Sem().Add(mat, m);
@@ -1353,7 +1360,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
   auto* ident = expr->target.name;
   Mark(ident);
 
-  auto* resolved = ResolvedSymbol(ident);
+  auto* resolved = sem_.ResolvedSymbol(ident);
   return Switch(
       resolved,  //
       [&](sem::Type* type) { return type_ctor_or_conv(type); },
@@ -1408,7 +1415,7 @@ sem::Call* Resolver::BuiltinCall(const ast::CallExpression* expr,
   current_function_->AddDirectlyCalledBuiltin(builtin);
 
   if (IsTextureBuiltin(builtin_type)) {
-    if (!ValidateTextureBuiltinFunction(call)) {
+    if (!validator_.TextureBuiltinFunction(call)) {
       return nullptr;
     }
     // Collect a texture/sampler pair for this builtin.
@@ -1430,7 +1437,7 @@ sem::Call* Resolver::BuiltinCall(const ast::CallExpression* expr,
     }
   }
 
-  if (!ValidateBuiltinCall(call)) {
+  if (!validator_.BuiltinCall(call)) {
     return nullptr;
   }
 
@@ -1494,7 +1501,7 @@ sem::Call* Resolver::FunctionCall(
 
   call->Behaviors() = arg_behaviors + target->Behaviors();
 
-  if (!ValidateFunctionCall(call)) {
+  if (!validator_.FunctionCall(call, current_statement_)) {
     return nullptr;
   }
 
@@ -1521,23 +1528,23 @@ sem::Call* Resolver::TypeConversion(const ast::CallExpression* expr,
         bool ok = Switch(
             target,
             [&](const sem::Vector* vec_type) {
-              return ValidateVectorConstructorOrCast(expr, vec_type);
+              return validator_.VectorConstructorOrCast(expr, vec_type);
             },
             [&](const sem::Matrix* mat_type) {
               // Note: Matrix types currently cannot be converted (the element
               // type must only be f32). We implement this for the day we
               // support other matrix element types.
-              return ValidateMatrixConstructorOrCast(expr, mat_type);
+              return validator_.MatrixConstructorOrCast(expr, mat_type);
             },
             [&](const sem::Array* arr_type) {
-              return ValidateArrayConstructorOrCast(expr, arr_type);
+              return validator_.ArrayConstructorOrCast(expr, arr_type);
             },
             [&](const sem::Struct* struct_type) {
-              return ValidateStructureConstructorOrCast(expr, struct_type);
+              return validator_.StructureConstructorOrCast(expr, struct_type);
             },
             [&](Default) {
               if (target->is_scalar()) {
-                return ValidateScalarConstructorOrCast(expr, target);
+                return validator_.ScalarConstructorOrCast(expr, target);
               }
               AddError("type is not constructible", expr->source);
               return false;
@@ -1587,20 +1594,20 @@ sem::Call* Resolver::TypeConstructor(
         bool ok = Switch(
             ty,
             [&](const sem::Vector* vec_type) {
-              return ValidateVectorConstructorOrCast(expr, vec_type);
+              return validator_.VectorConstructorOrCast(expr, vec_type);
             },
             [&](const sem::Matrix* mat_type) {
-              return ValidateMatrixConstructorOrCast(expr, mat_type);
+              return validator_.MatrixConstructorOrCast(expr, mat_type);
             },
             [&](const sem::Array* arr_type) {
-              return ValidateArrayConstructorOrCast(expr, arr_type);
+              return validator_.ArrayConstructorOrCast(expr, arr_type);
             },
             [&](const sem::Struct* struct_type) {
-              return ValidateStructureConstructorOrCast(expr, struct_type);
+              return validator_.StructureConstructorOrCast(expr, struct_type);
             },
             [&](Default) {
               if (ty->is_scalar()) {
-                return ValidateScalarConstructorOrCast(expr, ty);
+                return validator_.ScalarConstructorOrCast(expr, ty);
               }
               AddError("type is not constructible", expr->source);
               return false;
@@ -1634,7 +1641,7 @@ sem::Call* Resolver::TypeConstructor(
 }
 
 sem::Expression* Resolver::Literal(const ast::LiteralExpression* literal) {
-  auto* ty = TypeOf(literal);
+  auto* ty = sem_.TypeOf(literal);
   if (!ty) {
     return nullptr;
   }
@@ -1646,7 +1653,7 @@ sem::Expression* Resolver::Literal(const ast::LiteralExpression* literal) {
 
 sem::Expression* Resolver::Identifier(const ast::IdentifierExpression* expr) {
   auto symbol = expr->symbol;
-  auto* resolved = ResolvedSymbol(expr);
+  auto* resolved = sem_.ResolvedSymbol(expr);
   if (auto* var = As<sem::Variable>(resolved)) {
     auto* user =
         builder_->create<sem::VariableUser>(expr, current_statement_, var);
@@ -1722,14 +1729,14 @@ sem::Expression* Resolver::Identifier(const ast::IdentifierExpression* expr) {
 
 sem::Expression* Resolver::MemberAccessor(
     const ast::MemberAccessorExpression* expr) {
-  auto* structure = TypeOf(expr->structure);
+  auto* structure = sem_.TypeOf(expr->structure);
   auto* storage_ty = structure->UnwrapRef();
 
   const sem::Type* ret = nullptr;
   std::vector<uint32_t> swizzle;
 
   // Structure may be a side-effecting expression (e.g. function call).
-  auto* sem_structure = Sem(expr->structure);
+  auto* sem_structure = sem_.Get(expr->structure);
   bool has_side_effects = sem_structure && sem_structure->HasSideEffects();
 
   if (auto* str = storage_ty->As<sem::Struct>()) {
@@ -1837,14 +1844,14 @@ sem::Expression* Resolver::MemberAccessor(
 
   AddError(
       "invalid member accessor expression. Expected vector or struct, got '" +
-          TypeNameOf(storage_ty) + "'",
+          sem_.TypeNameOf(storage_ty) + "'",
       expr->structure->source);
   return nullptr;
 }
 
 sem::Expression* Resolver::Binary(const ast::BinaryExpression* expr) {
-  auto* lhs = Sem(expr->lhs);
-  auto* rhs = Sem(expr->rhs);
+  auto* lhs = sem_.Get(expr->lhs);
+  auto* rhs = sem_.Get(expr->rhs);
   auto* lhs_ty = lhs->Type()->UnwrapRef();
   auto* rhs_ty = rhs->Type()->UnwrapRef();
 
@@ -1852,8 +1859,8 @@ sem::Expression* Resolver::Binary(const ast::BinaryExpression* expr) {
   if (!ty) {
     AddError(
         "Binary expression operand types are invalid for this operation: " +
-            TypeNameOf(lhs_ty) + " " + FriendlyName(expr->op) + " " +
-            TypeNameOf(rhs_ty),
+            sem_.TypeNameOf(lhs_ty) + " " + FriendlyName(expr->op) + " " +
+            sem_.TypeNameOf(rhs_ty),
         expr->source);
     return nullptr;
   }
@@ -2033,7 +2040,7 @@ const sem::Type* Resolver::BinaryOpType(const sem::Type* lhs_ty,
 }
 
 sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
-  auto* expr = Sem(unary->expr);
+  auto* expr = sem_.Get(unary->expr);
   auto* expr_ty = expr->Type();
   if (!expr_ty) {
     return nullptr;
@@ -2046,9 +2053,9 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
       // Result type matches the deref'd inner type.
       ty = expr_ty->UnwrapRef();
       if (!ty->Is<sem::Bool>() && !ty->is_bool_vector()) {
-        AddError(
-            "cannot logical negate expression of type '" + TypeNameOf(expr_ty),
-            unary->expr->source);
+        AddError("cannot logical negate expression of type '" +
+                     sem_.TypeNameOf(expr_ty),
+                 unary->expr->source);
         return nullptr;
       }
       break;
@@ -2058,7 +2065,7 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
       ty = expr_ty->UnwrapRef();
       if (!ty->is_integer_scalar_or_vector()) {
         AddError("cannot bitwise complement expression of type '" +
-                     TypeNameOf(expr_ty),
+                     sem_.TypeNameOf(expr_ty),
                  unary->expr->source);
         return nullptr;
       }
@@ -2069,8 +2076,9 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
       ty = expr_ty->UnwrapRef();
       if (!(ty->IsAnyOf<sem::F32, sem::I32>() ||
             ty->is_signed_integer_vector() || ty->is_float_vector())) {
-        AddError("cannot negate expression of type '" + TypeNameOf(expr_ty),
-                 unary->expr->source);
+        AddError(
+            "cannot negate expression of type '" + sem_.TypeNameOf(expr_ty),
+            unary->expr->source);
         return nullptr;
       }
       break;
@@ -2086,9 +2094,10 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
 
         auto* array = unary->expr->As<ast::IndexAccessorExpression>();
         auto* member = unary->expr->As<ast::MemberAccessorExpression>();
-        if ((array && TypeOf(array->object)->UnwrapRef()->Is<sem::Vector>()) ||
+        if ((array &&
+             sem_.TypeOf(array->object)->UnwrapRef()->Is<sem::Vector>()) ||
             (member &&
-             TypeOf(member->structure)->UnwrapRef()->Is<sem::Vector>())) {
+             sem_.TypeOf(member->structure)->UnwrapRef()->Is<sem::Vector>())) {
           AddError("cannot take the address of a vector component",
                    unary->expr->source);
           return nullptr;
@@ -2108,7 +2117,7 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
             ptr->StoreType(), ptr->StorageClass(), ptr->Access());
       } else {
         AddError("cannot dereference expression of type '" +
-                     TypeNameOf(expr_ty) + "'",
+                     sem_.TypeNameOf(expr_ty) + "'",
                  unary->expr->source);
         return nullptr;
       }
@@ -2140,41 +2149,6 @@ sem::Type* Resolver::TypeDecl(const ast::TypeDecl* named_type) {
   return result;
 }
 
-sem::Type* Resolver::TypeOf(const ast::Expression* expr) {
-  auto* sem = Sem(expr);
-  return sem ? const_cast<sem::Type*>(sem->Type()) : nullptr;
-}
-
-std::string Resolver::TypeNameOf(const sem::Type* ty) {
-  return RawTypeNameOf(ty->UnwrapRef());
-}
-
-std::string Resolver::RawTypeNameOf(const sem::Type* ty) {
-  return ty->FriendlyName(builder_->Symbols());
-}
-
-sem::Type* Resolver::TypeOf(const ast::LiteralExpression* lit) {
-  return Switch(
-      lit,
-      [&](const ast::SintLiteralExpression*) {
-        return builder_->create<sem::I32>();
-      },
-      [&](const ast::UintLiteralExpression*) {
-        return builder_->create<sem::U32>();
-      },
-      [&](const ast::FloatLiteralExpression*) {
-        return builder_->create<sem::F32>();
-      },
-      [&](const ast::BoolLiteralExpression*) {
-        return builder_->create<sem::Bool>();
-      },
-      [&](Default) {
-        TINT_UNREACHABLE(Resolver, diagnostics_)
-            << "Unhandled literal type: " << lit->TypeInfo().name;
-        return nullptr;
-      });
-}
-
 sem::Array* Resolver::Array(const ast::Array* arr) {
   auto source = arr->source;
 
@@ -2183,8 +2157,9 @@ sem::Array* Resolver::Array(const ast::Array* arr) {
     return nullptr;
   }
 
-  if (!IsPlain(elem_type)) {  // Check must come before GetDefaultAlignAndSize()
-    AddError(TypeNameOf(elem_type) +
+  if (!validator_.IsPlain(
+          elem_type)) {  // Check must come before GetDefaultAlignAndSize()
+    AddError(sem_.TypeNameOf(elem_type) +
                  " cannot be used as an element type of an array",
              source);
     return nullptr;
@@ -2193,7 +2168,7 @@ sem::Array* Resolver::Array(const ast::Array* arr) {
   uint32_t el_align = elem_type->Align();
   uint32_t el_size = elem_type->Size();
 
-  if (!ValidateNoDuplicateAttributes(arr->attributes)) {
+  if (!validator_.NoDuplicateAttributes(arr->attributes)) {
     return nullptr;
   }
 
@@ -2203,7 +2178,7 @@ sem::Array* Resolver::Array(const ast::Array* arr) {
     Mark(attr);
     if (auto* sd = attr->As<ast::StrideAttribute>()) {
       explicit_stride = sd->stride;
-      if (!ValidateArrayStrideAttribute(sd, el_size, el_align, source)) {
+      if (!validator_.ArrayStrideAttribute(sd, el_size, el_align, source)) {
         return nullptr;
       }
       continue;
@@ -2237,7 +2212,7 @@ sem::Array* Resolver::Array(const ast::Array* arr) {
 
     if (auto* ident = count_expr->As<ast::IdentifierExpression>()) {
       // Make sure the identifier is a non-overridable module-scope constant.
-      auto* var = ResolvedSymbol<sem::GlobalVariable>(ident);
+      auto* var = sem_.ResolvedSymbol<sem::GlobalVariable>(ident);
       if (!var || !var->Declaration()->is_const) {
         AddError("array size identifier must be a module-scope constant",
                  size_source);
@@ -2293,7 +2268,7 @@ sem::Array* Resolver::Array(const ast::Array* arr) {
       elem_type, count, el_align, static_cast<uint32_t>(size),
       static_cast<uint32_t>(stride), static_cast<uint32_t>(implicit_stride));
 
-  if (!ValidateArray(out, source)) {
+  if (!validator_.Array(out, source)) {
     return nullptr;
   }
 
@@ -2314,14 +2289,14 @@ sem::Type* Resolver::Alias(const ast::Alias* alias) {
   if (!ty) {
     return nullptr;
   }
-  if (!ValidateAlias(alias)) {
+  if (!validator_.Alias(alias)) {
     return nullptr;
   }
   return ty;
 }
 
 sem::Struct* Resolver::Structure(const ast::Struct* str) {
-  if (!ValidateNoDuplicateAttributes(str->attributes)) {
+  if (!validator_.NoDuplicateAttributes(str->attributes)) {
     return nullptr;
   }
   for (auto* attr : str->attributes) {
@@ -2362,9 +2337,9 @@ sem::Struct* Resolver::Structure(const ast::Struct* str) {
       return nullptr;
     }
 
-    // Validate member type
-    if (!IsPlain(type)) {
-      AddError(TypeNameOf(type) +
+    // validator_.Validate member type
+    if (!validator_.IsPlain(type)) {
+      AddError(sem_.TypeNameOf(type) +
                    " cannot be used as the type of a structure member",
                member->source);
       return nullptr;
@@ -2374,7 +2349,7 @@ sem::Struct* Resolver::Structure(const ast::Struct* str) {
     uint64_t align = type->Align();
     uint64_t size = type->Size();
 
-    if (!ValidateNoDuplicateAttributes(member->attributes)) {
+    if (!validator_.NoDuplicateAttributes(member->attributes)) {
       return nullptr;
     }
 
@@ -2477,7 +2452,10 @@ sem::Struct* Resolver::Structure(const ast::Struct* str) {
     }
   }
 
-  if (!ValidateStructure(out)) {
+  auto stage = current_function_
+                   ? current_function_->Declaration()->PipelineStage()
+                   : ast::PipelineStage::kNone;
+  if (!validator_.Structure(out, stage)) {
     return nullptr;
   }
 
@@ -2501,7 +2479,10 @@ sem::Statement* Resolver::ReturnStatement(const ast::ReturnStatement* stmt) {
 
     // Validate after processing the return value expression so that its type
     // is available for validation.
-    return ValidateReturn(stmt);
+    auto* ret_type = stmt->value ? sem_.TypeOf(stmt->value)->UnwrapRef()
+                                 : builder_->create<sem::Void>();
+    return validator_.Return(stmt, current_function_->ReturnType(), ret_type,
+                             current_statement_);
   });
 }
 
@@ -2532,7 +2513,7 @@ sem::SwitchStatement* Resolver::SwitchStatement(
     }
     behaviors.Remove(sem::Behavior::kBreak, sem::Behavior::kFallthrough);
 
-    return ValidateSwitch(stmt);
+    return validator_.SwitchStatement(stmt);
   });
 }
 
@@ -2564,7 +2545,7 @@ sem::Statement* Resolver::VariableDeclStatement(
       sem->Behaviors() = ctor->Behaviors();
     }
 
-    return ValidateVariable(var);
+    return validator_.Variable(var);
   });
 }
 
@@ -2589,7 +2570,7 @@ sem::Statement* Resolver::AssignmentStatement(
       behaviors.Add(lhs->Behaviors());
     }
 
-    return ValidateAssignment(stmt, TypeOf(stmt->rhs));
+    return validator_.Assignment(stmt, sem_.TypeOf(stmt->rhs));
   });
 }
 
@@ -2599,7 +2580,7 @@ sem::Statement* Resolver::BreakStatement(const ast::BreakStatement* stmt) {
   return StatementScope(stmt, sem, [&] {
     sem->Behaviors() = sem::Behavior::kBreak;
 
-    return ValidateBreakStatement(sem);
+    return validator_.BreakStatement(sem, current_statement_);
   });
 }
 
@@ -2637,12 +2618,12 @@ sem::Statement* Resolver::CompoundAssignmentStatement(
     auto* ty = BinaryOpType(lhs_ty, rhs_ty, stmt->op);
     if (!ty) {
       AddError("compound assignment operand types are invalid: " +
-                   TypeNameOf(lhs_ty) + " " + FriendlyName(stmt->op) + " " +
-                   TypeNameOf(rhs_ty),
+                   sem_.TypeNameOf(lhs_ty) + " " + FriendlyName(stmt->op) +
+                   " " + sem_.TypeNameOf(rhs_ty),
                stmt->source);
       return false;
     }
-    return ValidateAssignment(stmt, ty);
+    return validator_.Assignment(stmt, ty);
   });
 }
 
@@ -2661,7 +2642,7 @@ sem::Statement* Resolver::ContinueStatement(
       }
     }
 
-    return ValidateContinueStatement(sem);
+    return validator_.ContinueStatement(sem, current_statement_);
   });
 }
 
@@ -2672,7 +2653,7 @@ sem::Statement* Resolver::DiscardStatement(const ast::DiscardStatement* stmt) {
     sem->Behaviors() = sem::Behavior::kDiscard;
     current_function_->SetHasDiscard();
 
-    return ValidateDiscardStatement(sem);
+    return validator_.DiscardStatement(sem, current_statement_);
   });
 }
 
@@ -2683,7 +2664,7 @@ sem::Statement* Resolver::FallthroughStatement(
   return StatementScope(stmt, sem, [&] {
     sem->Behaviors() = sem::Behavior::kFallthrough;
 
-    return ValidateFallthroughStatement(sem);
+    return validator_.FallthroughStatement(sem);
   });
 }
 
@@ -2698,7 +2679,7 @@ sem::Statement* Resolver::IncrementDecrementStatement(
     }
     sem->Behaviors() = lhs->Behaviors();
 
-    return ValidateIncrementDecrementStatement(stmt);
+    return validator_.IncrementDecrementStatement(stmt);
   });
 }
 
@@ -2717,7 +2698,8 @@ bool Resolver::ApplyStorageClassUsageToType(ast::StorageClass sc,
     for (auto* member : str->Members()) {
       if (!ApplyStorageClassUsageToType(sc, member->Type(), usage)) {
         std::stringstream err;
-        err << "while analysing structure member " << TypeNameOf(str) << "."
+        err << "while analysing structure member " << sem_.TypeNameOf(str)
+            << "."
             << builder_->Symbols().NameFor(member->Declaration()->symbol);
         AddNote(err.str(), member->Declaration()->source);
         return false;
@@ -2739,10 +2721,11 @@ bool Resolver::ApplyStorageClassUsageToType(ast::StorageClass sc,
         sc, const_cast<sem::Type*>(arr->ElemType()), usage);
   }
 
-  if (ast::IsHostShareable(sc) && !IsHostShareable(ty)) {
+  if (ast::IsHostShareable(sc) && !validator_.IsHostShareable(ty)) {
     std::stringstream err;
-    err << "Type '" << TypeNameOf(ty) << "' cannot be used in storage class '"
-        << sc << "' as it is non-host-shareable";
+    err << "Type '" << sem_.TypeNameOf(ty)
+        << "' cannot be used in storage class '" << sc
+        << "' as it is non-host-shareable";
     AddError(err.str(), usage);
     return false;
   }
@@ -2774,12 +2757,6 @@ SEM* Resolver::StatementScope(const ast::Statement* ast,
   return sem;
 }
 
-std::string Resolver::VectorPretty(uint32_t size,
-                                   const sem::Type* element_type) {
-  sem::Vector vec_type(element_type, size);
-  return vec_type.FriendlyName(builder_->Symbols());
-}
-
 bool Resolver::Mark(const ast::Node* node) {
   if (node == nullptr) {
     TINT_ICE(Resolver, diagnostics_) << "Resolver::Mark() called with nullptr";
@@ -2808,62 +2785,6 @@ void Resolver::AddNote(const std::string& msg, const Source& source) const {
   diagnostics_.add_note(diag::System::Resolver, msg, source);
 }
 
-// https://gpuweb.github.io/gpuweb/wgsl/#plain-types-section
-bool Resolver::IsPlain(const sem::Type* type) const {
-  return type->is_scalar() ||
-         type->IsAnyOf<sem::Atomic, sem::Vector, sem::Matrix, sem::Array,
-                       sem::Struct>();
-}
-
-// https://gpuweb.github.io/gpuweb/wgsl/#fixed-footprint-types
-bool Resolver::IsFixedFootprint(const sem::Type* type) const {
-  return Switch(
-      type,                                      //
-      [&](const sem::Vector*) { return true; },  //
-      [&](const sem::Matrix*) { return true; },  //
-      [&](const sem::Atomic*) { return true; },
-      [&](const sem::Array* arr) {
-        return !arr->IsRuntimeSized() && IsFixedFootprint(arr->ElemType());
-      },
-      [&](const sem::Struct* str) {
-        for (auto* member : str->Members()) {
-          if (!IsFixedFootprint(member->Type())) {
-            return false;
-          }
-        }
-        return true;
-      },
-      [&](Default) { return type->is_scalar(); });
-}
-
-// https://gpuweb.github.io/gpuweb/wgsl.html#storable-types
-bool Resolver::IsStorable(const sem::Type* type) const {
-  return IsPlain(type) || type->IsAnyOf<sem::Texture, sem::Sampler>();
-}
-
-// https://gpuweb.github.io/gpuweb/wgsl.html#host-shareable-types
-bool Resolver::IsHostShareable(const sem::Type* type) const {
-  if (type->IsAnyOf<sem::I32, sem::U32, sem::F32>()) {
-    return true;
-  }
-  return Switch(
-      type,  //
-      [&](const sem::Vector* vec) { return IsHostShareable(vec->type()); },
-      [&](const sem::Matrix* mat) { return IsHostShareable(mat->type()); },
-      [&](const sem::Array* arr) { return IsHostShareable(arr->ElemType()); },
-      [&](const sem::Struct* str) {
-        for (auto* member : str->Members()) {
-          if (!IsHostShareable(member->Type())) {
-            return false;
-          }
-        }
-        return true;
-      },
-      [&](const sem::Atomic* atomic) {
-        return IsHostShareable(atomic->Type());
-      });
-}
-
 bool Resolver::IsBuiltin(Symbol symbol) const {
   std::string name = builder_->Symbols().NameFor(symbol);
   return sem::ParseBuiltinType(name) != sem::BuiltinType::kNone;
@@ -2873,26 +2794,6 @@ bool Resolver::IsCallStatement(const ast::Expression* expr) const {
   return current_statement_ &&
          Is<ast::CallStatement>(current_statement_->Declaration(),
                                 [&](auto* stmt) { return stmt->expr == expr; });
-}
-
-const ast::Statement* Resolver::ClosestContinuing(bool stop_at_loop) const {
-  for (const auto* s = current_statement_; s != nullptr; s = s->Parent()) {
-    if (stop_at_loop && s->Is<sem::LoopStatement>()) {
-      break;
-    }
-    if (s->Is<sem::LoopContinuingBlockStatement>()) {
-      return s->Declaration();
-    }
-    if (auto* f = As<sem::ForLoopStatement>(s->Parent())) {
-      if (f->Declaration()->continuing == s->Declaration()) {
-        return s->Declaration();
-      }
-      if (stop_at_loop) {
-        break;
-      }
-    }
-  }
-  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -14,6 +14,10 @@
 
 #include "dawn/native/d3d12/CommandBufferD3D12.h"
 
+#include <algorithm>
+#include <utility>
+#include <vector>
+
 #include "dawn/native/BindGroupTracker.h"
 #include "dawn/native/CommandValidation.h"
 #include "dawn/native/DynamicUploader.h"
@@ -145,19 +149,10 @@ namespace dawn::native::d3d12 {
             if (!firstOffsetInfo.usesVertexIndex && !firstOffsetInfo.usesInstanceIndex) {
                 return;
             }
-            std::array<uint32_t, 2> offsets{};
-            uint32_t count = 0;
-            if (firstOffsetInfo.usesVertexIndex) {
-                offsets[firstOffsetInfo.vertexIndexOffset / sizeof(uint32_t)] = firstVertex;
-                ++count;
-            }
-            if (firstOffsetInfo.usesInstanceIndex) {
-                offsets[firstOffsetInfo.instanceIndexOffset / sizeof(uint32_t)] = firstInstance;
-                ++count;
-            }
+            std::array<uint32_t, 2> offsets{firstVertex, firstInstance};
             PipelineLayout* layout = ToBackend(pipeline->GetLayout());
             commandList->SetGraphicsRoot32BitConstants(layout->GetFirstIndexOffsetParameterIndex(),
-                                                       count, offsets.data(), 0);
+                                                       offsets.size(), offsets.data(), 0);
         }
 
         bool ShouldCopyUsingTemporaryBuffer(DeviceBase* device,
@@ -312,7 +307,7 @@ namespace dawn::native::d3d12 {
         using Base = BindGroupTrackerBase;
 
       public:
-        BindGroupStateTracker(Device* device)
+        explicit BindGroupStateTracker(Device* device)
             : BindGroupTrackerBase(),
               mDevice(device),
               mViewAllocator(device->GetViewShaderVisibleDescriptorAllocator()),
@@ -1400,7 +1395,8 @@ namespace dawn::native::d3d12 {
             uint32_t height = renderPass->height;
             D3D12_VIEWPORT viewport = {
                 0.f, 0.f, static_cast<float>(width), static_cast<float>(height), 0.f, 1.f};
-            D3D12_RECT scissorRect = {0, 0, static_cast<long>(width), static_cast<long>(height)};
+            D3D12_RECT scissorRect = {0, 0, static_cast<int32_t>(width),
+                                      static_cast<int32_t>(height)};
             commandList->RSSetViewports(1, &viewport);
             commandList->RSSetScissorRects(1, &scissorRect);
 
@@ -1446,13 +1442,9 @@ namespace dawn::native::d3d12 {
                     DAWN_TRY(bindingTracker->Apply(commandContext));
                     vertexBufferTracker.Apply(commandList, lastPipeline);
 
-                    // TODO(dawn:548): remove this once builtins are emulated for indirect draws.
-                    // Zero the index offset values to avoid reusing values from the previous draw
-                    RecordFirstIndexOffset(commandList, lastPipeline, 0, 0);
-
                     Buffer* buffer = ToBackend(draw->indirectBuffer.Get());
                     ComPtr<ID3D12CommandSignature> signature =
-                        ToBackend(GetDevice())->GetDrawIndirectSignature();
+                        lastPipeline->GetDrawIndirectCommandSignature();
                     commandList->ExecuteIndirect(signature.Get(), 1, buffer->GetD3D12Resource(),
                                                  draw->indirectOffset, nullptr, 0);
                     break;
@@ -1464,15 +1456,11 @@ namespace dawn::native::d3d12 {
                     DAWN_TRY(bindingTracker->Apply(commandContext));
                     vertexBufferTracker.Apply(commandList, lastPipeline);
 
-                    // TODO(dawn:548): remove this once builtins are emulated for indirect draws.
-                    // Zero the index offset values to avoid reusing values from the previous draw
-                    RecordFirstIndexOffset(commandList, lastPipeline, 0, 0);
-
                     Buffer* buffer = ToBackend(draw->indirectBuffer.Get());
                     ASSERT(buffer != nullptr);
 
                     ComPtr<ID3D12CommandSignature> signature =
-                        ToBackend(GetDevice())->GetDrawIndexedIndirectSignature();
+                        lastPipeline->GetDrawIndexedIndirectCommandSignature();
                     commandList->ExecuteIndirect(signature.Get(), 1, buffer->GetD3D12Resource(),
                                                  draw->indirectOffset, nullptr, 0);
                     break;

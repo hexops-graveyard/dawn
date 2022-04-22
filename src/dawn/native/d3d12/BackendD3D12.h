@@ -15,6 +15,9 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_BACKENDD3D12_H_
 #define SRC_DAWN_NATIVE_D3D12_BACKENDD3D12_H_
 
+#include <memory>
+#include <vector>
+
 #include "dawn/native/BackendConnection.h"
 
 #include "dawn/native/d3d12/d3d12_platform.h"
@@ -25,7 +28,7 @@ namespace dawn::native::d3d12 {
 
     class Backend : public BackendConnection {
       public:
-        Backend(InstanceBase* instance);
+        explicit Backend(InstanceBase* instance);
 
         MaybeError Initialize();
 

@@ -15,12 +15,13 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_SAMPLERHEAPCACHED3D12_H_
 #define SRC_DAWN_NATIVE_D3D12_SAMPLERHEAPCACHED3D12_H_
 
+#include <unordered_set>
+#include <vector>
+
 #include "dawn/common/RefCounted.h"
 #include "dawn/native/BindingInfo.h"
 #include "dawn/native/d3d12/CPUDescriptorHeapAllocationD3D12.h"
 #include "dawn/native/d3d12/GPUDescriptorHeapAllocationD3D12.h"
-
-#include <unordered_set>
 
 // |SamplerHeapCacheEntry| maintains a cache of sampler descriptor heap allocations.
 // Each entry represents one or more sampler descriptors that co-exist in a CPU and
@@ -45,7 +46,7 @@ namespace dawn::native::d3d12 {
     class SamplerHeapCacheEntry : public RefCounted {
       public:
         SamplerHeapCacheEntry() = default;
-        SamplerHeapCacheEntry(std::vector<Sampler*> samplers);
+        explicit SamplerHeapCacheEntry(std::vector<Sampler*> samplers);
         SamplerHeapCacheEntry(SamplerHeapCache* cache,
                               StagingDescriptorAllocator* allocator,
                               std::vector<Sampler*> samplers,
@@ -83,7 +84,7 @@ namespace dawn::native::d3d12 {
     // BindGroup.
     class SamplerHeapCache {
       public:
-        SamplerHeapCache(Device* device);
+        explicit SamplerHeapCache(Device* device);
         ~SamplerHeapCache();
 
         ResultOrError<Ref<SamplerHeapCacheEntry>> GetOrCreate(

@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/unittests/validation/ValidationTest.h"
-
-#include <gmock/gmock.h>
-
+#include <limits>
 #include <memory>
 
-using namespace testing;
+#include "gmock/gmock.h"
+#include "dawn/tests/unittests/validation/ValidationTest.h"
+
+using testing::_;
+using testing::InvokeWithoutArgs;
 
 class MockBufferMapAsyncCallback {
   public:

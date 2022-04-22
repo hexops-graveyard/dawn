@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+#include <memory>
 
 #include "dawn/common/PlacementAllocated.h"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-using namespace testing;
+using testing::InSequence;
+using testing::StrictMock;
 
 namespace {
 
@@ -33,7 +35,7 @@ namespace {
 
     std::unique_ptr<StrictMock<MockDestructor>> mockDestructor;
 
-    class PlacementAllocatedTests : public Test {
+    class PlacementAllocatedTests : public testing::Test {
         void SetUp() override {
             mockDestructor = std::make_unique<StrictMock<MockDestructor>>();
         }

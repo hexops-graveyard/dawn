@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
+#include <cstring>
+#include <memory>
+#include <string>
 
-#include <gmock/gmock.h>
+#include "gmock/gmock.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/tests/MockCallback.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
-#include <cstring>
-
-using namespace testing;
+using testing::_;
+using testing::Exactly;
+using testing::MockCallback;
 
 class MockDeviceLostCallback {
   public:
@@ -388,8 +391,8 @@ TEST_P(DeviceLostTest, GetMappedRange_MapAsyncWriting) {
     ASSERT_EQ(buffer.GetConstMappedRange(), rangeBeforeLoss);
 }
 
-// TODO mapasync read + resolve + loss getmappedrange != nullptr.
-// TODO mapasync write + resolve + loss getmappedrange != nullptr.
+// TODO(dawn:929): mapasync read + resolve + loss getmappedrange != nullptr.
+// TODO(dawn:929): mapasync write + resolve + loss getmappedrange != nullptr.
 
 // Test that Command Encoder Finish fails when device lost
 TEST_P(DeviceLostTest, CommandEncoderFinishFails) {

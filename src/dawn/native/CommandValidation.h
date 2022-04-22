@@ -15,11 +15,11 @@
 #ifndef SRC_DAWN_NATIVE_COMMANDVALIDATION_H_
 #define SRC_DAWN_NATIVE_COMMANDVALIDATION_H_
 
+#include <vector>
+
 #include "dawn/native/CommandAllocator.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/Texture.h"
-
-#include <vector>
 
 namespace dawn::native {
 
@@ -37,6 +37,13 @@ namespace dawn::native {
                                    const BufferBase* buffer,
                                    uint64_t bufferOffset,
                                    uint64_t size);
+
+    template <typename A, typename B>
+    DAWN_FORCE_INLINE uint64_t Safe32x32(A a, B b) {
+        static_assert(std::is_same<A, uint32_t>::value, "'a' must be uint32_t");
+        static_assert(std::is_same<B, uint32_t>::value, "'b' must be uint32_t");
+        return uint64_t(a) * uint64_t(b);
+    }
 
     ResultOrError<uint64_t> ComputeRequiredBytesInCopy(const TexelBlockInfo& blockInfo,
                                                        const Extent3D& copySize,

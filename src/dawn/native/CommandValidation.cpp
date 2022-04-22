@@ -14,6 +14,10 @@
 
 #include "dawn/native/CommandValidation.h"
 
+#include <algorithm>
+#include <limits>
+#include <utility>
+
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/native/BindGroup.h"
 #include "dawn/native/Buffer.h"
@@ -105,13 +109,6 @@ namespace dawn::native {
         uint32_t minStart = std::min(startA, startB);
         return static_cast<uint64_t>(minStart) + static_cast<uint64_t>(length) >
                static_cast<uint64_t>(maxStart);
-    }
-
-    template <typename A, typename B>
-    DAWN_FORCE_INLINE uint64_t Safe32x32(A a, B b) {
-        static_assert(std::is_same<A, uint32_t>::value, "'a' must be uint32_t");
-        static_assert(std::is_same<B, uint32_t>::value, "'b' must be uint32_t");
-        return uint64_t(a) * uint64_t(b);
     }
 
     ResultOrError<uint64_t> ComputeRequiredBytesInCopy(const TexelBlockInfo& blockInfo,

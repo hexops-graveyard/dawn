@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/tests/DawnTest.h"
+#include <vector>
 
 #include "dawn/native/Buffer.h"
 #include "dawn/native/CommandEncoder.h"
 #include "dawn/native/QueryHelper.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
 namespace {
@@ -61,8 +62,8 @@ namespace {
                     continue;
                 }
 
-                float errorRate =
-                    abs(static_cast<int64_t>(mExpected[i] - actual[i])) / float(mExpected[i]);
+                float errorRate = abs(static_cast<int64_t>(mExpected[i] - actual[i])) /
+                                  static_cast<float>(mExpected[i]);
                 if (errorRate > kErrorToleranceRatio) {
                     return testing::AssertionFailure()
                            << "Expected data[" << i << "] to be " << mExpected[i] << ", actual "

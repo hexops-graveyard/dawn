@@ -15,13 +15,17 @@
 #ifndef SRC_DAWN_NATIVE_QUEUE_H_
 #define SRC_DAWN_NATIVE_QUEUE_H_
 
+#include <memory>
+
 #include "dawn/common/SerialQueue.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/Forward.h"
 #include "dawn/native/IntegerTypes.h"
 #include "dawn/native/ObjectBase.h"
 
+#include "dawn/native/DawnNative.h"
 #include "dawn/native/dawn_platform.h"
+#include "dawn/platform/DawnPlatform.h"
 
 namespace dawn::native {
 
@@ -29,7 +33,7 @@ namespace dawn::native {
       public:
         struct TaskInFlight {
             virtual ~TaskInFlight();
-            virtual void Finish() = 0;
+            virtual void Finish(dawn::platform::Platform* platform, ExecutionSerial serial) = 0;
             virtual void HandleDeviceLoss() = 0;
         };
 

@@ -15,10 +15,10 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_TEXTUREMOCK_H_
 #define SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_TEXTUREMOCK_H_
 
+#include "gmock/gmock.h"
+
 #include "dawn/native/Device.h"
 #include "dawn/native/Texture.h"
-
-#include <gmock/gmock.h>
 
 namespace dawn::native {
 
@@ -37,7 +37,7 @@ namespace dawn::native {
 
     class TextureViewMock : public TextureViewBase {
       public:
-        TextureViewMock(TextureBase* texture) : TextureViewBase(texture) {
+        explicit TextureViewMock(TextureBase* texture) : TextureViewBase(texture) {
         }
         ~TextureViewMock() override = default;
 

@@ -15,6 +15,12 @@
 #ifndef SRC_DAWN_NATIVE_DEVICE_H_
 #define SRC_DAWN_NATIVE_DEVICE_H_
 
+#include <memory>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "dawn/native/CacheKey.h"
 #include "dawn/native/Commands.h"
 #include "dawn/native/ComputePipeline.h"
@@ -31,26 +37,20 @@
 #include "dawn/native/DawnNative.h"
 #include "dawn/native/dawn_platform.h"
 
-#include <mutex>
-#include <utility>
-
 namespace dawn::platform {
     class WorkerTaskPool;
 }  // namespace dawn::platform
 
 namespace dawn::native {
-    class AdapterBase;
     class AsyncTaskManager;
     class AttachmentState;
     class AttachmentStateBlueprint;
-    class BindGroupLayoutBase;
+    class BlobCache;
     class CallbackTaskManager;
     class DynamicUploader;
     class ErrorScopeStack;
-    class ExternalTextureBase;
     class OwnedCompilationMessages;
     class PersistentCache;
-    class StagingBufferBase;
     struct CallbackTask;
     struct InternalPipelineStore;
     struct ShaderModuleParseResult;
@@ -172,7 +172,7 @@ namespace dawn::native {
 
         void UncacheComputePipeline(ComputePipelineBase* obj);
 
-        ResultOrError<Ref<TextureViewBase>> GetOrCreateDummyTextureViewForExternalTexture();
+        ResultOrError<Ref<TextureViewBase>> GetOrCreatePlaceholderTextureViewForExternalTexture();
 
         ResultOrError<Ref<PipelineLayoutBase>> GetOrCreatePipelineLayout(
             const PipelineLayoutDescriptor* descriptor);
@@ -276,7 +276,9 @@ namespace dawn::native {
 
         MaybeError ValidateIsAlive() const;
 
+        // TODO(dawn:549): Deprecate PersistentCache, once it's usage in D3D12 shaders is removed.
         PersistentCache* GetPersistentCache();
+        BlobCache* GetBlobCache();
 
         virtual ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(
             size_t size) = 0;
@@ -353,6 +355,11 @@ namespace dawn::native {
 
         virtual bool ShouldDuplicateNumWorkgroupsForDispatchIndirect(
             ComputePipelineBase* computePipeline) const;
+
+        virtual bool MayRequireDuplicationOfIndirectParameters() const;
+
+        virtual bool ShouldDuplicateParametersForDrawIndirect(
+            const RenderPipelineBase* renderPipelineBase) const;
 
         const CombinedLimits& GetLimits() const;
 
@@ -512,7 +519,7 @@ namespace dawn::native {
 
         Ref<BindGroupLayoutBase> mEmptyBindGroupLayout;
 
-        Ref<TextureViewBase> mExternalTextureDummyView;
+        Ref<TextureViewBase> mExternalTexturePlaceholderView;
 
         std::unique_ptr<DynamicUploader> mDynamicUploader;
         std::unique_ptr<AsyncTaskManager> mAsyncTaskManager;
@@ -543,6 +550,7 @@ namespace dawn::native {
 
         std::unique_ptr<InternalPipelineStore> mInternalPipelineStore;
 
+        // TODO(dawn:549): Deprecate PersistentCache, once it's usage in D3D12 shaders is removed.
         std::unique_ptr<PersistentCache> mPersistentCache;
 
         std::unique_ptr<CallbackTaskManager> mCallbackTaskManager;

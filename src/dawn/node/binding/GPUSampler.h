@@ -15,9 +15,10 @@
 #ifndef SRC_DAWN_NODE_BINDING_GPUSAMPLER_H_
 #define SRC_DAWN_NODE_BINDING_GPUSAMPLER_H_
 
+#include <string>
+
 #include "dawn/native/DawnNative.h"
 #include "dawn/webgpu_cpp.h"
-
 #include "src/dawn/node/interop/Napi.h"
 #include "src/dawn/node/interop/WebGPU.h"
 
@@ -25,7 +26,7 @@ namespace wgpu::binding {
     // GPUSampler is an implementation of interop::GPUSampler that wraps a wgpu::Sampler.
     class GPUSampler final : public interop::GPUSampler {
       public:
-        GPUSampler(wgpu::Sampler sampler);
+        explicit GPUSampler(wgpu::Sampler sampler);
 
         // Implicit cast operator to Dawn GPU object
         inline operator const wgpu::Sampler&() const {

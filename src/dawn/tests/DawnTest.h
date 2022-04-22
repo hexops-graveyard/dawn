@@ -15,25 +15,26 @@
 #ifndef SRC_DAWN_TESTS_DAWNTEST_H_
 #define SRC_DAWN_TESTS_DAWNTEST_H_
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "dawn/common/Log.h"
 #include "dawn/common/Platform.h"
 #include "dawn/common/Preprocessor.h"
 #include "dawn/dawn_proc_table.h"
 #include "dawn/native/DawnNative.h"
+#include "dawn/platform/DawnPlatform.h"
 #include "dawn/tests/ParamGenerator.h"
 #include "dawn/tests/ToggleParser.h"
 #include "dawn/utils/ScopedAutoreleasePool.h"
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/webgpu_cpp.h"
 #include "dawn/webgpu_cpp_print.h"
-
-#include <dawn/platform/DawnPlatform.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
-#include <memory>
-#include <unordered_map>
-#include <vector>
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
 // Getting data back from Dawn is done in an async manners so all expectations are "deferred"
 // until the end of the test. Also expectations use a copy to a MapRead buffer to get the data
@@ -273,7 +274,7 @@ class DawnTestBase {
     friend class DawnPerfTestBase;
 
   public:
-    DawnTestBase(const AdapterTestParam& param);
+    explicit DawnTestBase(const AdapterTestParam& param);
     virtual ~DawnTestBase();
 
     void SetUp();
@@ -327,7 +328,7 @@ class DawnTestBase {
     virtual std::unique_ptr<dawn::platform::Platform> CreateTestPlatform();
 
     struct PrintToStringParamName {
-        PrintToStringParamName(const char* test);
+        explicit PrintToStringParamName(const char* test);
         std::string SanitizeParamName(std::string paramName, size_t index) const;
 
         template <class ParamType>
@@ -680,7 +681,7 @@ using DawnTest = DawnTestWithParams<>;
 // AdapterTestParam, and whose constructor looks like:
 //     Param(AdapterTestParam, ABorC, 12or3, ..., otherParams... )
 //     You must also teach GTest how to print this struct.
-//     https://github.com/google/googletest/blob/master/docs/advanced.md#teaching-googletest-how-to-print-your-values
+//     https://github.com/google/googletest/blob/main/docs/advanced.md#teaching-googletest-how-to-print-your-values
 // Macro DAWN_TEST_PARAM_STRUCT can help generate this struct.
 #define DAWN_INSTANTIATE_TEST_P(testName, ...)                                                 \
     INSTANTIATE_TEST_SUITE_P(                                                                  \
@@ -750,7 +751,7 @@ namespace detail {
     template <typename T, typename U>
     class ExpectEq : public Expectation {
       public:
-        ExpectEq(T singleValue, T tolerance = {});
+        explicit ExpectEq(T singleValue, T tolerance = {});
         ExpectEq(const T* values, const unsigned int count, T tolerance = {});
 
         testing::AssertionResult Check(const void* data, size_t size) override;

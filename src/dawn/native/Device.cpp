@@ -14,12 +14,18 @@
 
 #include "dawn/native/Device.h"
 
+#include <algorithm>
+#include <array>
+#include <mutex>
+#include <unordered_set>
+
 #include "dawn/common/Log.h"
 #include "dawn/native/Adapter.h"
 #include "dawn/native/AsyncTask.h"
 #include "dawn/native/AttachmentState.h"
 #include "dawn/native/BindGroup.h"
 #include "dawn/native/BindGroupLayout.h"
+#include "dawn/native/BlobCache.h"
 #include "dawn/native/Buffer.h"
 #include "dawn/native/ChainUtils_autogen.h"
 #include "dawn/native/CommandBuffer.h"
@@ -47,10 +53,6 @@
 #include "dawn/native/utils/WGPUHelpers.h"
 #include "dawn/platform/DawnPlatform.h"
 #include "dawn/platform/tracing/TraceEvent.h"
-
-#include <array>
-#include <mutex>
-#include <unordered_set>
 
 namespace dawn::native {
 
@@ -160,9 +162,9 @@ namespace dawn::native {
             if (descriptor.layout == nullptr) {
                 // Ref will keep the pipeline layout alive until the end of the function where
                 // the pipeline will take another reference.
-                DAWN_TRY_ASSIGN(layoutRef,
-                                PipelineLayoutBase::CreateDefault(
-                                    device, GetRenderStagesAndSetDummyShader(device, &descriptor)));
+                DAWN_TRY_ASSIGN(layoutRef, PipelineLayoutBase::CreateDefault(
+                                               device, GetRenderStagesAndSetPlaceholderShader(
+                                                           device, &descriptor)));
                 outDescriptor->layout = layoutRef.Get();
             }
 
@@ -267,8 +269,8 @@ namespace dawn::native {
 
         DAWN_TRY_ASSIGN(mEmptyBindGroupLayout, CreateEmptyBindGroupLayout());
 
-        // If dummy fragment shader module is needed, initialize it
-        if (IsToggleEnabled(Toggle::UseDummyFragmentInVertexOnlyPipeline)) {
+        // If placeholder fragment shader module is needed, initialize it
+        if (IsToggleEnabled(Toggle::UsePlaceholderFragmentInVertexOnlyPipeline)) {
             // The empty fragment shader, used as a work around for vertex-only render pipeline
             constexpr char kEmptyFragmentShader[] = R"(
                 @stage(fragment) fn fs_empty_main() {}
@@ -278,7 +280,7 @@ namespace dawn::native {
             wgslDesc.source = kEmptyFragmentShader;
             descriptor.nextInChain = &wgslDesc;
 
-            DAWN_TRY_ASSIGN(mInternalPipelineStore->dummyFragmentShader,
+            DAWN_TRY_ASSIGN(mInternalPipelineStore->placeholderFragmentShader,
                             CreateShaderModule(&descriptor));
         }
 
@@ -414,7 +416,7 @@ namespace dawn::native {
         mPersistentCache = nullptr;
         mEmptyBindGroupLayout = nullptr;
         mInternalPipelineStore = nullptr;
-        mExternalTextureDummyView = nullptr;
+        mExternalTexturePlaceholderView = nullptr;
 
         AssumeCommandsComplete();
 
@@ -575,6 +577,10 @@ namespace dawn::native {
     PersistentCache* DeviceBase::GetPersistentCache() {
         ASSERT(mPersistentCache.get() != nullptr);
         return mPersistentCache.get();
+    }
+
+    BlobCache* DeviceBase::GetBlobCache() {
+        return mInstance->GetBlobCache();
     }
 
     MaybeError DeviceBase::ValidateObject(const ApiObjectBase* object) const {
@@ -811,17 +817,17 @@ namespace dawn::native {
     }
 
     ResultOrError<Ref<TextureViewBase>>
-    DeviceBase::GetOrCreateDummyTextureViewForExternalTexture() {
-        if (!mExternalTextureDummyView.Get()) {
-            Ref<TextureBase> externalTextureDummy;
+    DeviceBase::GetOrCreatePlaceholderTextureViewForExternalTexture() {
+        if (!mExternalTexturePlaceholderView.Get()) {
+            Ref<TextureBase> externalTexturePlaceholder;
             TextureDescriptor textureDesc;
             textureDesc.dimension = wgpu::TextureDimension::e2D;
             textureDesc.format = wgpu::TextureFormat::RGBA8Unorm;
-            textureDesc.label = "Dawn_External_Texture_Dummy_Texture";
+            textureDesc.label = "Dawn_External_Texture_Placeholder_Texture";
             textureDesc.size = {1, 1, 1};
             textureDesc.usage = wgpu::TextureUsage::TextureBinding;
 
-            DAWN_TRY_ASSIGN(externalTextureDummy, CreateTexture(&textureDesc));
+            DAWN_TRY_ASSIGN(externalTexturePlaceholder, CreateTexture(&textureDesc));
 
             TextureViewDescriptor textureViewDesc;
             textureViewDesc.arrayLayerCount = 1;
@@ -829,14 +835,14 @@ namespace dawn::native {
             textureViewDesc.baseArrayLayer = 0;
             textureViewDesc.dimension = wgpu::TextureViewDimension::e2D;
             textureViewDesc.format = wgpu::TextureFormat::RGBA8Unorm;
-            textureViewDesc.label = "Dawn_External_Texture_Dummy_Texture_View";
+            textureViewDesc.label = "Dawn_External_Texture_Placeholder_Texture_View";
             textureViewDesc.mipLevelCount = 1;
 
-            DAWN_TRY_ASSIGN(mExternalTextureDummyView,
-                            CreateTextureView(externalTextureDummy.Get(), &textureViewDesc));
+            DAWN_TRY_ASSIGN(mExternalTexturePlaceholderView,
+                            CreateTextureView(externalTexturePlaceholder.Get(), &textureViewDesc));
         }
 
-        return mExternalTextureDummyView;
+        return mExternalTexturePlaceholderView;
     }
 
     ResultOrError<Ref<PipelineLayoutBase>> DeviceBase::GetOrCreatePipelineLayout(
@@ -1158,6 +1164,10 @@ namespace dawn::native {
         if (IsLost() || ConsumedError(Tick())) {
             return false;
         }
+
+        TRACE_EVENT1(GetPlatform(), General, "DeviceBase::APITick::IsDeviceIdle", "isDeviceIdle",
+                     IsDeviceIdle());
+
         return !IsDeviceIdle();
     }
 
@@ -1817,6 +1827,15 @@ namespace dawn::native {
 
     bool DeviceBase::ShouldDuplicateNumWorkgroupsForDispatchIndirect(
         ComputePipelineBase* computePipeline) const {
+        return false;
+    }
+
+    bool DeviceBase::MayRequireDuplicationOfIndirectParameters() const {
+        return false;
+    }
+
+    bool DeviceBase::ShouldDuplicateParametersForDrawIndirect(
+        const RenderPipelineBase* renderPipelineBase) const {
         return false;
     }
 

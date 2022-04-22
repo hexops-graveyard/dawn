@@ -15,6 +15,7 @@
 #include "src/dawn/node/binding/GPUAdapter.h"
 
 #include <unordered_set>
+#include <vector>
 
 #include "src/dawn/node/binding/Errors.h"
 #include "src/dawn/node/binding/Flags.h"
@@ -87,7 +88,7 @@ namespace wgpu::binding {
         ////////////////////////////////////////////////////////////////////////////////
         class Features : public interop::GPUSupportedFeatures {
           public:
-            Features(WGPUDeviceProperties properties) {
+            explicit Features(WGPUDeviceProperties properties) {
                 if (properties.depth24UnormStencil8) {
                     enabled_.emplace(interop::GPUFeatureName::kDepth24UnormStencil8);
                 }

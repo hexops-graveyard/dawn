@@ -15,14 +15,15 @@
 #ifndef SRC_DAWN_NATIVE_D3D12_RESOURCEALLOCATORMANAGERD3D12_H_
 #define SRC_DAWN_NATIVE_D3D12_RESOURCEALLOCATORMANAGERD3D12_H_
 
+#include <array>
+#include <memory>
+
 #include "dawn/common/SerialQueue.h"
 #include "dawn/native/BuddyMemoryAllocator.h"
 #include "dawn/native/IntegerTypes.h"
 #include "dawn/native/PooledResourceMemoryAllocator.h"
 #include "dawn/native/d3d12/HeapAllocatorD3D12.h"
 #include "dawn/native/d3d12/ResourceHeapAllocationD3D12.h"
-
-#include <array>
 
 namespace dawn::native::d3d12 {
 
@@ -32,7 +33,6 @@ namespace dawn::native::d3d12 {
     // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_flags
     // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_heap_type
     enum ResourceHeapKind {
-
         // Resource heap tier 2
         // Allows resource heaps to contain all buffer and textures types.
         // This enables better heap re-use by avoiding the need for separate heaps and
@@ -58,7 +58,7 @@ namespace dawn::native::d3d12 {
     // multiple allocation methods.
     class ResourceAllocatorManager {
       public:
-        ResourceAllocatorManager(Device* device);
+        explicit ResourceAllocatorManager(Device* device);
 
         ResultOrError<ResourceHeapAllocation> AllocateMemory(
             D3D12_HEAP_TYPE heapType,

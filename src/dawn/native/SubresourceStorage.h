@@ -15,15 +15,15 @@
 #ifndef SRC_DAWN_NATIVE_SUBRESOURCESTORAGE_H_
 #define SRC_DAWN_NATIVE_SUBRESOURCESTORAGE_H_
 
-#include "dawn/common/Assert.h"
-#include "dawn/common/TypeTraits.h"
-#include "dawn/native/EnumMaskIterator.h"
-#include "dawn/native/Subresource.h"
-
 #include <array>
 #include <limits>
 #include <memory>
 #include <vector>
+
+#include "dawn/common/Assert.h"
+#include "dawn/common/TypeTraits.h"
+#include "dawn/native/EnumMaskIterator.h"
+#include "dawn/native/Subresource.h"
 
 namespace dawn::native {
 
@@ -91,7 +91,7 @@ namespace dawn::native {
     // The implementation of functions in this file can have a lot of control flow and corner cases
     // so each modification should come with extensive tests and ensure 100% code coverage of the
     // modified functions. See instructions at
-    // https://chromium.googlesource.com/chromium/src/+/master/docs/testing/code_coverage.md#local-coverage-script
+    // https://chromium.googlesource.com/chromium/src/+/main/docs/testing/code_coverage.md#local-coverage-script
     // to run the test with code coverage. A command line that worked in the past (with the right
     // GN args for the out/coverage directory in a Chromium checkout) is:
     //

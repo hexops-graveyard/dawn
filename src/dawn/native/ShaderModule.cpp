@@ -14,6 +14,9 @@
 
 #include "dawn/native/ShaderModule.h"
 
+#include <algorithm>
+#include <sstream>
+
 #include "absl/strings/str_format.h"
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/common/Constants.h"
@@ -28,9 +31,7 @@
 #include "dawn/native/RenderPipeline.h"
 #include "dawn/native/TintUtils.h"
 
-#include <tint/tint.h>
-
-#include <sstream>
+#include "tint/tint.h"
 
 namespace dawn::native {
 

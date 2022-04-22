@@ -15,6 +15,12 @@
 #ifndef SRC_DAWN_NATIVE_PIPELINE_H_
 #define SRC_DAWN_NATIVE_PIPELINE_H_
 
+#include <array>
+#include <bitset>
+#include <map>
+#include <string>
+#include <vector>
+
 #include "dawn/native/CachedObject.h"
 #include "dawn/native/Forward.h"
 #include "dawn/native/ObjectBase.h"
@@ -23,9 +29,6 @@
 #include "dawn/native/ShaderModule.h"
 
 #include "dawn/native/dawn_platform.h"
-
-#include <array>
-#include <bitset>
 
 namespace dawn::native {
 

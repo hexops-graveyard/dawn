@@ -15,6 +15,10 @@
 #ifndef SRC_DAWN_NATIVE_COMMANDS_H_
 #define SRC_DAWN_NATIVE_COMMANDS_H_
 
+#include <array>
+#include <bitset>
+#include <vector>
+
 #include "dawn/common/Constants.h"
 
 #include "dawn/native/AttachmentState.h"
@@ -22,9 +26,6 @@
 #include "dawn/native/Texture.h"
 
 #include "dawn/native/dawn_platform.h"
-
-#include <array>
-#include <bitset>
 
 namespace dawn::native {
 
@@ -187,10 +188,7 @@ namespace dawn::native {
         uint64_t indirectOffset;
     };
 
-    struct DrawIndexedIndirectCmd {
-        Ref<BufferBase> indirectBuffer;
-        uint64_t indirectOffset;
-    };
+    struct DrawIndexedIndirectCmd : DrawIndirectCmd {};
 
     struct EndComputePassCmd {
         std::vector<TimestampWrite> timestampWrites;

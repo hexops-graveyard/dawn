@@ -14,6 +14,8 @@
 
 #include "dawn/native/DawnNative.h"
 
+#include <vector>
+
 #include "dawn/common/Log.h"
 #include "dawn/native/BindGroupLayout.h"
 #include "dawn/native/Buffer.h"
@@ -238,6 +240,7 @@ namespace dawn::native {
         mImpl->EnableBeginCaptureOnStartup(beginCaptureOnStartup);
     }
 
+    // TODO(dawn:1374) Deprecate this once it is passed via the descriptor.
     void Instance::SetPlatform(dawn::platform::Platform* platform) {
         mImpl->SetPlatform(platform);
     }

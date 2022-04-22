@@ -15,11 +15,13 @@
 #ifndef SRC_DAWN_NATIVE_PASSRESOURCEUSAGETRACKER_H_
 #define SRC_DAWN_NATIVE_PASSRESOURCEUSAGETRACKER_H_
 
+#include <map>
+#include <set>
+#include <vector>
+
 #include "dawn/native/PassResourceUsage.h"
 
 #include "dawn/native/dawn_platform.h"
-
-#include <map>
 
 namespace dawn::native {
 
