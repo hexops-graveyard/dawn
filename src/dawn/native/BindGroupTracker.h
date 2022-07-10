@@ -133,9 +133,7 @@ namespace dawn::native {
         static void SetDynamicOffsets(uint32_t* data,
                                       uint32_t dynamicOffsetCount,
                                       uint32_t* dynamicOffsets) {
-            if (dynamicOffsetCount > 0) {
-                memcpy(data, dynamicOffsets, sizeof(uint32_t) * dynamicOffsetCount);
-            }
+            memcpy(data, dynamicOffsets, sizeof(uint32_t) * dynamicOffsetCount);
         }
     };
 
