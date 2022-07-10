@@ -67,7 +67,7 @@ namespace dawn::native::d3d12 {
         // rendering.
         const PlatformFunctions* functions = GetBackend()->GetFunctions();
         if (FAILED(functions->d3d12CreateDevice(GetHardwareAdapter(), D3D_FEATURE_LEVEL_11_0,
-                                                __uuidof(ID3D12Device), &mD3d12Device))) {
+                                                _uuidof(ID3D12Device), &mD3d12Device))) {
             return DAWN_INTERNAL_ERROR("D3D12CreateDevice failed");
         }
 
