@@ -812,7 +812,7 @@ namespace dawn::native::d3d12 {
         // non-simultaneous-access texture: NON_PIXEL_SHADER_RESOURCE,
         // PIXEL_SHADER_RESOURCE, COPY_SRC, COPY_DEST.
         {
-            static D3D12_RESOURCE_STATES kD3D12PromotableReadOnlyStates =
+            static constexpr D3D12_RESOURCE_STATES kD3D12PromotableReadOnlyStates =
                 D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
 
