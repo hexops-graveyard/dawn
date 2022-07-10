@@ -34,6 +34,8 @@ ninja -C ./out/Debug \
     webgpu_dawn_native_proc_gen \
     mock_webgpu_gen \
     gen \
+    dawn_version_gen \
+    dawn_gpu_info_gen \
     opengl_loader_gen \
     third_party/vulkan-deps/spirv-tools/src:spvtools_language_header_debuginfo \
     third_party/vulkan-deps/spirv-tools/src:spvtools_language_header_cldebuginfo100 \
