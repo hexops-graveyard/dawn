@@ -18,9 +18,9 @@
 #include <utility>
 #include <vector>
 
-#include "dawn/tests/DawnTest.h"
 #include "dawn/common/Assert.h"
 #include "dawn/common/Math.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
@@ -30,8 +30,7 @@
 class ExpectFloatWithTolerance : public detail::Expectation {
   public:
     ExpectFloatWithTolerance(std::vector<float> expected, float tolerance)
-        : mExpected(std::move(expected)), mTolerance(tolerance) {
-    }
+        : mExpected(std::move(expected)), mTolerance(tolerance) {}
 
     testing::AssertionResult Check(const void* data, size_t size) override {
         ASSERT(size == sizeof(float) * mExpected.size());
@@ -78,8 +77,7 @@ class ExpectFloatWithTolerance : public detail::Expectation {
 // An expectation for float16 buffers that can correctly compare NaNs (all NaNs are equivalent).
 class ExpectFloat16 : public detail::Expectation {
   public:
-    explicit ExpectFloat16(std::vector<uint16_t> expected) : mExpected(std::move(expected)) {
-    }
+    explicit ExpectFloat16(std::vector<uint16_t> expected) : mExpected(std::move(expected)) {}
 
     testing::AssertionResult Check(const void* data, size_t size) override {
         ASSERT(size == sizeof(uint16_t) * mExpected.size());
@@ -145,7 +143,7 @@ class TextureFormatTest : public DawnTest {
         utils::ComboRenderPipelineDescriptor desc;
 
         wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, R"(
-            @stage(vertex)
+            @vertex
             fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4<f32> {
                 var pos = array<vec2<f32>, 3>(
                     vec2<f32>(-3.0, -1.0),
@@ -163,7 +161,7 @@ class TextureFormatTest : public DawnTest {
         fsSource << "struct FragmentOut {\n";
         fsSource << "   @location(0) color : vec4<" << type << ">\n";
         fsSource << R"(}
-            @stage(fragment)
+            @fragment
             fn main(@builtin(position) FragCoord : vec4<f32>) -> FragmentOut {
                 var output : FragmentOut;
                 output.color = textureLoad(myTexture, vec2<i32>(FragCoord.xy), 0);
@@ -458,8 +456,12 @@ TEST_P(TextureFormatTest, RGBA8Unorm) {
 
 // Test the BGRA8Unorm format
 TEST_P(TextureFormatTest, BGRA8Unorm) {
-    // TODO(crbug.com/dawn/596): BGRA is unsupported on OpenGL ES; add workaround or validation
-    DAWN_SUPPRESS_TEST_IF(IsOpenGLES());
+    DAWN_TEST_UNSUPPORTED_IF(HasToggleEnabled("disable_bgra_read"));
+
+    // Intel's implementation of BGRA on ES is broken: it claims to support
+    // GL_EXT_texture_format_BGRA8888, but won't accept GL_BGRA or GL_BGRA8_EXT as internalFormat.
+    DAWN_SUPPRESS_TEST_IF(IsIntel() && IsOpenGLES() && IsLinux());
+
     uint8_t maxValue = std::numeric_limits<uint8_t>::max();
     std::vector<uint8_t> textureData = {maxValue, 1, 0, maxValue};
     std::vector<float> uncompressedData = {0.0f, 1.0f / maxValue, 1.0f, 1.0f};

@@ -20,18 +20,18 @@
 #include "dawn/utils/WGPUHelpers.h"
 
 namespace {
-    // https://github.com/gpuweb/gpuweb/issues/108
-    // Vulkan, Metal, and D3D11 have the same standard multisample pattern. D3D12 is the same as
-    // D3D11 but it was left out of the documentation.
-    // {0.375, 0.125}, {0.875, 0.375}, {0.125 0.625}, {0.625, 0.875}
-    // In this test, we store them in -1 to 1 space because it makes it
-    // simpler to upload vertex data. Y is flipped because there is a flip between clip space and
-    // rasterization space.
-    static constexpr std::array<std::array<float, 2>, 4> kSamplePositions = {
-        {{0.375 * 2 - 1, 1 - 0.125 * 2},
-         {0.875 * 2 - 1, 1 - 0.375 * 2},
-         {0.125 * 2 - 1, 1 - 0.625 * 2},
-         {0.625 * 2 - 1, 1 - 0.875 * 2}}};
+// https://github.com/gpuweb/gpuweb/issues/108
+// Vulkan, Metal, and D3D11 have the same standard multisample pattern. D3D12 is the same as
+// D3D11 but it was left out of the documentation.
+// {0.375, 0.125}, {0.875, 0.375}, {0.125 0.625}, {0.625, 0.875}
+// In this test, we store them in -1 to 1 space because it makes it
+// simpler to upload vertex data. Y is flipped because there is a flip between clip space and
+// rasterization space.
+static constexpr std::array<std::array<float, 2>, 4> kSamplePositions = {
+    {{0.375 * 2 - 1, 1 - 0.125 * 2},
+     {0.875 * 2 - 1, 1 - 0.375 * 2},
+     {0.125 * 2 - 1, 1 - 0.625 * 2},
+     {0.625 * 2 - 1, 1 - 0.875 * 2}}};
 }  // anonymous namespace
 
 class MultisampledSamplingTest : public DawnTest {
@@ -55,7 +55,7 @@ class MultisampledSamplingTest : public DawnTest {
             utils::ComboRenderPipelineDescriptor desc;
 
             desc.vertex.module = utils::CreateShaderModule(device, R"(
-                @stage(vertex)
+                @vertex
                 fn main(@location(0) pos : vec2<f32>) -> @builtin(position) vec4<f32> {
                     return vec4<f32>(pos, 0.0, 1.0);
                 })");
@@ -66,7 +66,7 @@ class MultisampledSamplingTest : public DawnTest {
                     @builtin(frag_depth) depth : f32,
                 }
 
-                @stage(fragment) fn main() -> FragmentOut {
+                @fragment fn main() -> FragmentOut {
                     var output : FragmentOut;
                     output.color = 1.0;
                     output.depth = 0.7;
@@ -103,7 +103,7 @@ class MultisampledSamplingTest : public DawnTest {
                 }
                 @group(0) @binding(2) var<storage, read_write> results : Results;
 
-                @stage(compute) @workgroup_size(1) fn main() {
+                @compute @workgroup_size(1) fn main() {
                     for (var i : i32 = 0; i < 4; i = i + 1) {
                         results.colorSamples[i] = textureLoad(texture0, vec2<i32>(0, 0), i).x;
                         results.depthSamples[i] = textureLoad(texture1, vec2<i32>(0, 0), i);
@@ -215,7 +215,7 @@ TEST_P(MultisampledSamplingTest, SamplePositions) {
                        {{0, colorView},
                         {1, depthView},
                         {2, outputBuffer, alignedResultSize * sampleOffset, kResultSize}}));
-            computePassEncoder.Dispatch(1);
+            computePassEncoder.DispatchWorkgroups(1);
             computePassEncoder.End();
         }
     }

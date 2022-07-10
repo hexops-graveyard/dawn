@@ -56,7 +56,7 @@ struct Buf {
 
 @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-@stage(compute) @workgroup_size(1) fn main() {
+@compute @workgroup_size(1) fn main() {
     let factor : f32 = 1.0001;
 
     buf.data[0] = u32(log2(1.0 * factor));
@@ -91,7 +91,7 @@ struct Buf {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();
@@ -115,7 +115,7 @@ I am an invalid shader and should never pass validation!
 // can compile and link successfully.
 TEST_P(ShaderTests, WGSLParamIO) {
     std::string vertexShader = R"(
-@stage(vertex)
+@vertex
 fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4<f32> {
     var pos = array<vec2<f32>, 3>(
         vec2<f32>(-1.0,  1.0),
@@ -126,7 +126,7 @@ fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4<f32
     wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, vertexShader.c_str());
 
     std::string fragmentShader = R"(
-@stage(fragment)
+@fragment
 fn main(@builtin(position) fragCoord : vec4<f32>) -> @location(0) vec4<f32> {
     return vec4<f32>(fragCoord.xy, 0.0, 1.0);
 })";
@@ -152,7 +152,7 @@ struct VertexOut {
     @builtin(position) position : vec4<f32>,
 }
 
-@stage(vertex)
+@vertex
 fn main(input : VertexIn) -> VertexOut {
     var output : VertexOut;
     output.position = vec4<f32>(input.position, 1.0);
@@ -162,7 +162,7 @@ fn main(input : VertexIn) -> VertexOut {
     wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, vertexShader.c_str());
 
     std::string fragmentShader = R"(
-@stage(fragment)
+@fragment
 fn main(@location(0) color : vec4<f32>) -> @location(0) vec4<f32> {
     return color;
 })";
@@ -195,7 +195,7 @@ struct VertexOut {
     @builtin(position) position : vec4<f32>,
 }
 
-@stage(vertex)
+@vertex
 fn main(input : VertexIn) -> VertexOut {
     var output : VertexOut;
     output.position = vec4<f32>(input.position, 1.0);
@@ -210,7 +210,7 @@ struct FragmentIn {
     @builtin(position) fragCoord : vec4<f32>,
 }
 
-@stage(fragment)
+@fragment
 fn main(input : FragmentIn) -> @location(0) vec4<f32> {
     return input.color * input.fragCoord;
 })";
@@ -242,7 +242,7 @@ struct VertexOut {
     @location(0) color : vec4<f32>,
 }
 
-@stage(vertex)
+@vertex
 fn main(input : VertexIn) -> VertexOut {
     var output : VertexOut;
     output.position = vec4<f32>(input.position, 1.0);
@@ -257,7 +257,7 @@ struct FragmentIn {
     @builtin(position) fragCoord : vec4<f32>,
 }
 
-@stage(fragment)
+@fragment
 fn main(input : FragmentIn) -> @location(0) vec4<f32> {
     return input.color * input.fragCoord;
 })";
@@ -289,7 +289,7 @@ struct VertexOut {
     @builtin(position) position : vec4<f32>,
 }
 
-@stage(vertex)
+@vertex
 fn vertexMain(input : VertexIn) -> VertexOut {
     var output : VertexOut;
     output.position = vec4<f32>(input.position, 1.0);
@@ -297,7 +297,7 @@ fn vertexMain(input : VertexIn) -> VertexOut {
     return output;
 }
 
-@stage(fragment)
+@fragment
 fn fragmentMain(input : VertexOut) -> @location(0) vec4<f32> {
     return input.color;
 })";
@@ -338,12 +338,12 @@ struct Inputs {
 struct S1 { data : array<vec4<u32>, 20> }
 @group(0) @binding(1) var<uniform> providedData1 : S1;
 
-@stage(vertex) fn vsMain(input : Inputs) -> @builtin(position) vec4<f32> {
+@vertex fn vsMain(input : Inputs) -> @builtin(position) vec4<f32> {
   _ = providedData1.data[input.vertexIndex][0];
   return vec4<f32>();
 }
 
-@stage(fragment) fn fsMain() -> @location(0) vec4<f32> {
+@fragment fn fsMain() -> @location(0) vec4<f32> {
   return vec4<f32>();
 }
     )";
@@ -364,14 +364,18 @@ struct S1 { data : array<vec4<u32>, 20> }
 
 // Test that WGSL built-in variable @sample_index can be used in fragment shaders.
 TEST_P(ShaderTests, SampleIndex) {
+    // TODO(crbug.com/dawn/673): Work around or enforce via validation that sample variables are not
+    // supported on some platforms.
+    DAWN_TEST_UNSUPPORTED_IF(HasToggleEnabled("disable_sample_variables"));
+
     wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, R"(
-@stage(vertex)
+@vertex
 fn main(@location(0) pos : vec4<f32>) -> @builtin(position) vec4<f32> {
     return pos;
 })");
 
     wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
-@stage(fragment) fn main(@builtin(sample_index) sampleIndex : u32)
+@fragment fn main(@builtin(sample_index) sampleIndex : u32)
     -> @location(0) vec4<f32> {
     return vec4<f32>(f32(sampleIndex), 1.0, 0.0, 1.0);
 })");
@@ -418,7 +422,7 @@ struct Buf {
 
 @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-@stage(compute) @workgroup_size(1) fn main() {
+@compute @workgroup_size(1) fn main() {
     buf.data[0] = u32(c0);
     buf.data[1] = u32(c1);
     buf.data[2] = u32(c2);
@@ -456,7 +460,7 @@ struct Buf {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();
@@ -488,7 +492,7 @@ struct Buf {
 
 @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-@stage(compute) @workgroup_size(1) fn main() {
+@compute @workgroup_size(1) fn main() {
     buf.data[0] = c1;
     buf.data[1] = c2;
     buf.data[2] = c3;
@@ -512,7 +516,7 @@ struct Buf {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();
@@ -545,7 +549,7 @@ struct Buf {
 
 @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-@stage(compute) @workgroup_size(1) fn main() {
+@compute @workgroup_size(1) fn main() {
     buf.data[0] = c1;
     buf.data[1] = c2;
 })";
@@ -564,7 +568,7 @@ struct Buf {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();
@@ -599,15 +603,15 @@ struct Buf {
 
 @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-@stage(compute) @workgroup_size(1) fn main1() {
+@compute @workgroup_size(1) fn main1() {
     buf.data[0] = c1;
 }
 
-@stage(compute) @workgroup_size(1) fn main2() {
+@compute @workgroup_size(1) fn main2() {
     buf.data[0] = c2;
 }
 
-@stage(compute) @workgroup_size(1) fn main3() {
+@compute @workgroup_size(1) fn main3() {
     buf.data[0] = 3u;
 }
 )";
@@ -651,15 +655,15 @@ struct Buf {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline1);
         pass.SetBindGroup(0, bindGroup1);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
 
         pass.SetPipeline(pipeline2);
         pass.SetBindGroup(0, bindGroup2);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
 
         pass.SetPipeline(pipeline3);
         pass.SetBindGroup(0, bindGroup3);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
 
         pass.End();
 
@@ -683,7 +687,7 @@ TEST_P(ShaderTests, OverridableConstantsRenderPipeline) {
     wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, R"(
 @id(1111) override xright: f32;
 @id(2222) override ytop: f32;
-@stage(vertex)
+@vertex
 fn main(@builtin(vertex_index) VertexIndex : u32)
      -> @builtin(position) vec4<f32> {
   var pos = array<vec2<f32>, 3>(
@@ -696,7 +700,7 @@ fn main(@builtin(vertex_index) VertexIndex : u32)
 
     wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
 @id(1000) override intensity: f32 = 0.0;
-@stage(fragment) fn main()
+@fragment fn main()
     -> @location(0) vec4<f32> {
     return vec4<f32>(intensity, intensity, intensity, 1.0);
 })");
@@ -730,6 +734,35 @@ fn main(@builtin(vertex_index) VertexIndex : u32)
     queue.Submit(1, &commands);
 
     EXPECT_PIXEL_RGBA8_EQ(RGBA8(255, 255, 255, 255), renderPass.color, 0, 0);
+}
+
+// This is a regression test for crbug.com/dawn:1363 where the BindingRemapper transform was run
+// before the SingleEntryPoint transform, causing one of the other entry points to have conflicting
+// bindings.
+TEST_P(ShaderTests, ConflictingBindingsDueToTransformOrder) {
+    wgpu::ShaderModule module = utils::CreateShaderModule(device, R"(
+        @group(0) @binding(0) var<uniform> b0 : u32;
+        @group(0) @binding(1) var<uniform> b1 : u32;
+
+        @vertex fn vertex() -> @builtin(position) vec4<f32> {
+            _ = b0;
+            return vec4<f32>(0.0);
+        }
+
+        @fragment fn fragment() -> @location(0) vec4<f32> {
+            _ = b0;
+            _ = b1;
+            return vec4<f32>(0.0);
+        }
+    )");
+
+    utils::ComboRenderPipelineDescriptor desc;
+    desc.vertex.module = module;
+    desc.vertex.entryPoint = "vertex";
+    desc.cFragment.module = module;
+    desc.cFragment.entryPoint = "fragment";
+
+    device.CreateRenderPipeline(&desc);
 }
 
 // TODO(tint:1155): Test overridable constants used for workgroup size

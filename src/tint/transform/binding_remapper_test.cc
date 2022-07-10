@@ -24,48 +24,48 @@ namespace {
 using BindingRemapperTest = TransformTest;
 
 TEST_F(BindingRemapperTest, ShouldRunNoRemappings) {
-  auto* src = R"()";
+    auto* src = R"()";
 
-  EXPECT_FALSE(ShouldRun<BindingRemapper>(src));
+    EXPECT_FALSE(ShouldRun<BindingRemapper>(src));
 }
 
 TEST_F(BindingRemapperTest, ShouldRunEmptyRemappings) {
-  auto* src = R"()";
+    auto* src = R"()";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
-                                        BindingRemapper::AccessControls{});
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
+                                          BindingRemapper::AccessControls{});
 
-  EXPECT_FALSE(ShouldRun<BindingRemapper>(src, data));
+    EXPECT_FALSE(ShouldRun<BindingRemapper>(src, data));
 }
 
 TEST_F(BindingRemapperTest, ShouldRunBindingPointRemappings) {
-  auto* src = R"()";
+    auto* src = R"()";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{
-          {{2, 1}, {1, 2}},
-      },
-      BindingRemapper::AccessControls{});
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{
+            {{2, 1}, {1, 2}},
+        },
+        BindingRemapper::AccessControls{});
 
-  EXPECT_TRUE(ShouldRun<BindingRemapper>(src, data));
+    EXPECT_TRUE(ShouldRun<BindingRemapper>(src, data));
 }
 
 TEST_F(BindingRemapperTest, ShouldRunAccessControlRemappings) {
-  auto* src = R"()";
+    auto* src = R"()";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
-                                        BindingRemapper::AccessControls{
-                                            {{2, 1}, ast::Access::kWrite},
-                                        });
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
+                                          BindingRemapper::AccessControls{
+                                              {{2, 1}, ast::Access::kWrite},
+                                          });
 
-  EXPECT_TRUE(ShouldRun<BindingRemapper>(src, data));
+    EXPECT_TRUE(ShouldRun<BindingRemapper>(src, data));
 }
 
 TEST_F(BindingRemapperTest, NoRemappings) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   a : f32,
 }
@@ -74,23 +74,23 @@ struct S {
 
 @group(3) @binding(2) var<storage, read> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
-                                        BindingRemapper::AccessControls{});
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(BindingRemapper::BindingPoints{},
+                                          BindingRemapper::AccessControls{});
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, RemapBindingPoints) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   a : f32,
 };
@@ -99,12 +99,12 @@ struct S {
 
 @group(3) @binding(2) var<storage, read> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   a : f32,
 }
@@ -113,72 +113,72 @@ struct S {
 
 @group(3) @binding(2) var<storage, read> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{
-          {{2, 1}, {1, 2}},  // Remap
-          {{4, 5}, {6, 7}},  // Not found
-                             // Keep @group(3) @binding(2) as is
-      },
-      BindingRemapper::AccessControls{});
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{
+            {{2, 1}, {1, 2}},  // Remap
+            {{4, 5}, {6, 7}},  // Not found
+                               // Keep @group(3) @binding(2) as is
+        },
+        BindingRemapper::AccessControls{});
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, RemapAccessControls) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   a : f32,
 };
 
-@group(2) @binding(1) var<storage, read> a : S;
+@group(2) @binding(1) var<storage, read_write> a : S;
 
-@group(3) @binding(2) var<storage, write> b : S;
+@group(3) @binding(2) var<storage, read_write> b : S;
 
 @group(4) @binding(3) var<storage, read> c : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   a : f32,
 }
 
-@group(2) @binding(1) var<storage, write> a : S;
+@group(2) @binding(1) var<storage, read_write> a : S;
 
-@group(3) @binding(2) var<storage, write> b : S;
+@group(3) @binding(2) var<storage, read_write> b : S;
 
 @group(4) @binding(3) var<storage, read> c : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{},
-      BindingRemapper::AccessControls{
-          {{2, 1}, ast::Access::kWrite},  // Modify access control
-          // Keep @group(3) @binding(2) as is
-          {{4, 3}, ast::Access::kRead},  // Add access control
-      });
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{},
+        BindingRemapper::AccessControls{
+            {{2, 1}, ast::Access::kReadWrite},  // Modify access control
+            // Keep @group(3) @binding(2) as is
+            {{4, 3}, ast::Access::kRead},  // Add access control
+        });
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, RemapAll) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   a : f32,
 };
@@ -187,42 +187,42 @@ struct S {
 
 @group(3) @binding(2) var<storage, read> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   a : f32,
 }
 
-@group(4) @binding(5) var<storage, write> a : S;
+@group(4) @binding(5) var<storage, read_write> a : S;
 
-@group(6) @binding(7) var<storage, write> b : S;
+@group(6) @binding(7) var<storage, read_write> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{
-          {{2, 1}, {4, 5}},
-          {{3, 2}, {6, 7}},
-      },
-      BindingRemapper::AccessControls{
-          {{2, 1}, ast::Access::kWrite},
-          {{3, 2}, ast::Access::kWrite},
-      });
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{
+            {{2, 1}, {4, 5}},
+            {{3, 2}, {6, 7}},
+        },
+        BindingRemapper::AccessControls{
+            {{2, 1}, ast::Access::kReadWrite},
+            {{3, 2}, ast::Access::kReadWrite},
+        });
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, BindingCollisionsSameEntryPoint) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   i : i32,
 };
@@ -235,13 +235,13 @@ struct S {
 
 @group(5) @binding(4) var<storage, read> d : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
   let x : i32 = (((a.i + b.i) + c.i) + d.i);
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   i : i32,
 }
@@ -254,27 +254,27 @@ struct S {
 
 @internal(disable_validation__binding_point_collision) @group(5) @binding(4) var<storage, read> d : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
   let x : i32 = (((a.i + b.i) + c.i) + d.i);
 }
 )";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{
-          {{2, 1}, {1, 1}},
-          {{3, 2}, {1, 1}},
-          {{4, 3}, {5, 4}},
-      },
-      BindingRemapper::AccessControls{}, true);
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{
+            {{2, 1}, {1, 1}},
+            {{3, 2}, {1, 1}},
+            {{4, 3}, {5, 4}},
+        },
+        BindingRemapper::AccessControls{}, true);
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, BindingCollisionsDifferentEntryPoints) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   i : i32,
 };
@@ -287,18 +287,18 @@ struct S {
 
 @group(5) @binding(4) var<storage, read> d : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f1() {
   let x : i32 = (a.i + c.i);
 }
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f2() {
   let x : i32 = (b.i + d.i);
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   i : i32,
 }
@@ -311,32 +311,32 @@ struct S {
 
 @group(5) @binding(4) var<storage, read> d : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f1() {
   let x : i32 = (a.i + c.i);
 }
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f2() {
   let x : i32 = (b.i + d.i);
 }
 )";
 
-  DataMap data;
-  data.Add<BindingRemapper::Remappings>(
-      BindingRemapper::BindingPoints{
-          {{2, 1}, {1, 1}},
-          {{3, 2}, {1, 1}},
-          {{4, 3}, {5, 4}},
-      },
-      BindingRemapper::AccessControls{}, true);
-  auto got = Run<BindingRemapper>(src, data);
+    DataMap data;
+    data.Add<BindingRemapper::Remappings>(
+        BindingRemapper::BindingPoints{
+            {{2, 1}, {1, 1}},
+            {{3, 2}, {1, 1}},
+            {{4, 3}, {5, 4}},
+        },
+        BindingRemapper::AccessControls{}, true);
+    auto got = Run<BindingRemapper>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(BindingRemapperTest, NoData) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   a : f32,
 }
@@ -345,16 +345,16 @@ struct S {
 
 @group(3) @binding(2) var<storage, read> b : S;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  auto got = Run<BindingRemapper>(src);
+    auto got = Run<BindingRemapper>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 }  // namespace

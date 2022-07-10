@@ -9,7 +9,7 @@
 
 @group(0) @binding(0) var<storage, read> firstMatrix : Matrix;
 @group(0) @binding(1) var<storage, read> secondMatrix : Matrix;
-@group(0) @binding(2) var<storage, write> resultMatrix : Matrix;
+@group(0) @binding(2) var<storage, read_write> resultMatrix : Matrix;
 @group(0) @binding(3) var<uniform> uniforms : Uniforms;
 
 fn mm_readA(row : u32, col : u32) -> f32  {
@@ -38,14 +38,14 @@ fn mm_write(row : u32, col : u32, value : f32) {
     }
 }
 
-let RowPerThread : u32 = 4u;
-let ColPerThread : u32 = 4u;
-let TileAOuter : u32 = 64u;
-let TileBOuter : u32 = 64u;
-let TileInner : u32 = 64u;
+const RowPerThread : u32 = 4u;
+const ColPerThread : u32 = 4u;
+const TileAOuter : u32 = 64u;
+const TileBOuter : u32 = 64u;
+const TileInner : u32 = 64u;
 var<workgroup> mm_Asub : array<array<f32, 64>, 64>;
 var<workgroup> mm_Bsub : array<array<f32, 64>, 64>;
-@stage(compute) @workgroup_size(16, 16, 1)
+@compute @workgroup_size(16, 16, 1)
 fn main(@builtin(local_invocation_id) local_id : vec3<u32>,
         @builtin(global_invocation_id) global_id  : vec3<u32>) {
     let tileRow : u32 = local_id.y * RowPerThread;

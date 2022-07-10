@@ -5,7 +5,7 @@ void unused_entry_point() {
   return;
 }
 void f() {
-  mat4 m = mat4(vec4(1.0f, 1.0f, 1.0f, 1.0f), vec4(1.0f, 1.0f, 1.0f, 1.0f), vec4(1.0f, 1.0f, 1.0f, 1.0f), vec4(1.0f, 1.0f, 1.0f, 1.0f));
+  mat4 m = mat4(vec4(1.0f), vec4(1.0f), vec4(1.0f), vec4(1.0f));
   vec4 v1 = m[0];
   float a = v1[0];
 }

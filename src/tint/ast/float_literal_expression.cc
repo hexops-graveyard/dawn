@@ -24,16 +24,27 @@ namespace tint::ast {
 
 FloatLiteralExpression::FloatLiteralExpression(ProgramID pid,
                                                const Source& src,
-                                               float val)
-    : Base(pid, src), value(val) {}
+                                               double val,
+                                               Suffix suf)
+    : Base(pid, src), value(val), suffix(suf) {}
 
 FloatLiteralExpression::~FloatLiteralExpression() = default;
 
-const FloatLiteralExpression* FloatLiteralExpression::Clone(
-    CloneContext* ctx) const {
-  // Clone arguments outside of create() call to have deterministic ordering
-  auto src = ctx->Clone(source);
-  return ctx->dst->create<FloatLiteralExpression>(src, value);
+const FloatLiteralExpression* FloatLiteralExpression::Clone(CloneContext* ctx) const {
+    // Clone arguments outside of create() call to have deterministic ordering
+    auto src = ctx->Clone(source);
+    return ctx->dst->create<FloatLiteralExpression>(src, value, suffix);
+}
+
+std::ostream& operator<<(std::ostream& out, FloatLiteralExpression::Suffix suffix) {
+    switch (suffix) {
+        default:
+            return out;
+        case FloatLiteralExpression::Suffix::kF:
+            return out << "f";
+        case FloatLiteralExpression::Suffix::kH:
+            return out << "h";
+    }
 }
 
 }  // namespace tint::ast

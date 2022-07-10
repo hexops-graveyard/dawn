@@ -20,10 +20,11 @@ vec4 tint_symbol(VertexInputs0 inputs0, uint loc1, uint instance_index, VertexIn
   uint u = loc1;
   float f = inputs1.loc2;
   vec4 v = inputs1.loc3;
-  return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+  return vec4(0.0f);
 }
 
 void main() {
+  gl_PointSize = 1.0;
   VertexInputs0 tint_symbol_1 = VertexInputs0(uint(gl_VertexID), loc0_1);
   VertexInputs1 tint_symbol_2 = VertexInputs1(loc2_1, loc3_1);
   vec4 inner_result = tint_symbol(tint_symbol_1, loc1_1, uint(gl_InstanceID), tint_symbol_2);

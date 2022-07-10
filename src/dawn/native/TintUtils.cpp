@@ -20,37 +20,42 @@
 
 namespace dawn::native {
 
-    namespace {
+namespace {
 
-        thread_local DeviceBase* tlDevice = nullptr;
+thread_local DeviceBase* tlDevice = nullptr;
 
-        void TintICEReporter(const tint::diag::List& diagnostics) {
-            if (tlDevice) {
-                tlDevice->HandleError(InternalErrorType::Validation, diagnostics.str().c_str());
-            }
-        }
-
-        bool InitializeTintErrorReporter() {
-            tint::SetInternalCompilerErrorReporter(&TintICEReporter);
-            return true;
-        }
-
-    }  // namespace
-
-    ScopedTintICEHandler::ScopedTintICEHandler(DeviceBase* device) {
-        // Call tint::SetInternalCompilerErrorReporter() the first time
-        // this constructor is called. Static initialization is
-        // guaranteed to be thread-safe, and only occur once.
-        static bool init_once_tint_error_reporter = InitializeTintErrorReporter();
-        (void)init_once_tint_error_reporter;
-
-        // Shouldn't have overlapping instances of this handler.
-        ASSERT(tlDevice == nullptr);
-        tlDevice = device;
+void TintICEReporter(const tint::diag::List& diagnostics) {
+    if (tlDevice) {
+        tlDevice->HandleError(InternalErrorType::Validation, diagnostics.str().c_str());
     }
+}
 
-    ScopedTintICEHandler::~ScopedTintICEHandler() {
-        tlDevice = nullptr;
-    }
+bool InitializeTintErrorReporter() {
+    tint::SetInternalCompilerErrorReporter(&TintICEReporter);
+    return true;
+}
+
+}  // namespace
+
+ScopedTintICEHandler::ScopedTintICEHandler(DeviceBase* device) {
+    // Call tint::SetInternalCompilerErrorReporter() the first time
+    // this constructor is called. Static initialization is
+    // guaranteed to be thread-safe, and only occur once.
+    static bool init_once_tint_error_reporter = InitializeTintErrorReporter();
+    (void)init_once_tint_error_reporter;
+
+    // Shouldn't have overlapping instances of this handler.
+    ASSERT(tlDevice == nullptr);
+    tlDevice = device;
+}
+
+ScopedTintICEHandler::~ScopedTintICEHandler() {
+    tlDevice = nullptr;
+}
 
 }  // namespace dawn::native
+
+bool std::less<tint::sem::BindingPoint>::operator()(const tint::sem::BindingPoint& a,
+                                                    const tint::sem::BindingPoint& b) const {
+    return std::tie(a.group, a.binding) < std::tie(b.group, b.binding);
+}

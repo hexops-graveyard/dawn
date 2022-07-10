@@ -1,3 +1,6 @@
+warning: parameter 'dimInner' of 'mm_matMul_i1_i1_i1_' must be uniform
+note: 'workgroupBarrier' must only be called from uniform control flow
+note: reading from module-scope private variable 'dimInner_1' may result in a non-uniform value
 #version 310 es
 
 struct Uniforms {
@@ -37,7 +40,7 @@ bool coordsInBounds_vi2_vi2_(inout ivec2 coord, inout ivec2 shape) {
   bool x_87 = false;
   bool x_88_phi = false;
   ivec2 x_76 = coord;
-  bool x_81 = all(greaterThanEqual(x_76, ivec2(0, 0)));
+  bool x_81 = all(greaterThanEqual(x_76, ivec2(0)));
   x_88_phi = x_81;
   if (x_81) {
     ivec2 x_84 = coord;

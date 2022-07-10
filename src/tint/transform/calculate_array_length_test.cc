@@ -24,13 +24,13 @@ namespace {
 using CalculateArrayLengthTest = TransformTest;
 
 TEST_F(CalculateArrayLengthTest, ShouldRunEmptyModule) {
-  auto* src = R"()";
+    auto* src = R"()";
 
-  EXPECT_FALSE(ShouldRun<CalculateArrayLength>(src));
+    EXPECT_FALSE(ShouldRun<CalculateArrayLength>(src));
 }
 
 TEST_F(CalculateArrayLengthTest, ShouldRunNoArrayLength) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -38,16 +38,16 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
 }
 )";
 
-  EXPECT_FALSE(ShouldRun<CalculateArrayLength>(src));
+    EXPECT_FALSE(ShouldRun<CalculateArrayLength>(src));
 }
 
 TEST_F(CalculateArrayLengthTest, ShouldRunWithArrayLength) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -55,47 +55,47 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var len : u32 = arrayLength(&sb.arr);
 }
 )";
 
-  EXPECT_TRUE(ShouldRun<CalculateArrayLength>(src));
+    EXPECT_TRUE(ShouldRun<CalculateArrayLength>(src));
 }
 
 TEST_F(CalculateArrayLengthTest, BasicArray) {
-  auto* src = R"(
+    auto* src = R"(
 @group(0) @binding(0) var<storage, read> sb : array<i32>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var len : u32 = arrayLength(&sb);
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<i32>, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<i32>, read>, result : ptr<function, u32>)
 
 @group(0) @binding(0) var<storage, read> sb : array<i32>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb, &(tint_symbol_1));
+  tint_symbol(&(sb), &(tint_symbol_1));
   let tint_symbol_2 : u32 = (tint_symbol_1 / 4u);
   var len : u32 = tint_symbol_2;
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, BasicInStruct) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -103,15 +103,15 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var len : u32 = arrayLength(&sb.arr);
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB, read>, result : ptr<function, u32>)
 
 struct SB {
   x : i32,
@@ -120,36 +120,36 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb, &(tint_symbol_1));
+  tint_symbol(&(sb), &(tint_symbol_1));
   let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
   var len : u32 = tint_symbol_2;
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, ArrayOfStruct) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   f : f32,
 }
 
 @group(0) @binding(0) var<storage, read> arr : array<S>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   let len = arrayLength(&arr);
 }
 )";
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<S>, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<S>, read>, result : ptr<function, u32>)
 
 struct S {
   f : f32,
@@ -157,36 +157,36 @@ struct S {
 
 @group(0) @binding(0) var<storage, read> arr : array<S>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(arr, &(tint_symbol_1));
+  tint_symbol(&(arr), &(tint_symbol_1));
   let tint_symbol_2 : u32 = (tint_symbol_1 / 4u);
   let len = tint_symbol_2;
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, ArrayOfArrayOfStruct) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   f : f32,
 }
 
 @group(0) @binding(0) var<storage, read> arr : array<array<S, 4>>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   let len = arrayLength(&arr);
 }
 )";
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<array<S, 4u>>, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<array<S, 4u>>, read>, result : ptr<function, u32>)
 
 struct S {
   f : f32,
@@ -194,25 +194,25 @@ struct S {
 
 @group(0) @binding(0) var<storage, read> arr : array<array<S, 4>>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(arr, &(tint_symbol_1));
+  tint_symbol(&(arr), &(tint_symbol_1));
   let tint_symbol_2 : u32 = (tint_symbol_1 / 16u);
   let len = tint_symbol_2;
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, InSameBlock) {
-  auto* src = R"(
+    auto* src = R"(
 @group(0) @binding(0) var<storage, read> sb : array<i32>;;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var a : u32 = arrayLength(&sb);
   var b : u32 = arrayLength(&sb);
@@ -220,16 +220,16 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<i32>, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<i32>, read>, result : ptr<function, u32>)
 
 @group(0) @binding(0) var<storage, read> sb : array<i32>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb, &(tint_symbol_1));
+  tint_symbol(&(sb), &(tint_symbol_1));
   let tint_symbol_2 : u32 = (tint_symbol_1 / 4u);
   var a : u32 = tint_symbol_2;
   var b : u32 = tint_symbol_2;
@@ -237,13 +237,13 @@ fn main() {
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, InSameBlock_Struct) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -251,7 +251,7 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var a : u32 = arrayLength(&sb.arr);
   var b : u32 = arrayLength(&sb.arr);
@@ -259,9 +259,9 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB, read>, result : ptr<function, u32>)
 
 struct SB {
   x : i32,
@@ -270,10 +270,10 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb, &(tint_symbol_1));
+  tint_symbol(&(sb), &(tint_symbol_1));
   let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
   var a : u32 = tint_symbol_2;
   var b : u32 = tint_symbol_2;
@@ -281,13 +281,13 @@ fn main() {
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, Nested) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -295,7 +295,7 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   if (true) {
     var len : u32 = arrayLength(&sb.arr);
@@ -307,9 +307,9 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB, read>, result : ptr<function, u32>)
 
 struct SB {
   x : i32,
@@ -318,17 +318,17 @@ struct SB {
 
 @group(0) @binding(0) var<storage, read> sb : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   if (true) {
     var tint_symbol_1 : u32 = 0u;
-    tint_symbol(sb, &(tint_symbol_1));
+    tint_symbol(&(sb), &(tint_symbol_1));
     let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
     var len : u32 = tint_symbol_2;
   } else {
     if (true) {
       var tint_symbol_3 : u32 = 0u;
-      tint_symbol(sb, &(tint_symbol_3));
+      tint_symbol(&(sb), &(tint_symbol_3));
       let tint_symbol_4 : u32 = ((tint_symbol_3 - 4u) / 4u);
       var len : u32 = tint_symbol_4;
     }
@@ -336,13 +336,13 @@ fn main() {
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, MultipleStorageBuffers) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB1 {
   x : i32,
   arr1 : array<i32>,
@@ -359,7 +359,7 @@ struct SB2 {
 
 @group(0) @binding(2) var<storage, read> sb3 : array<i32>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var len1 : u32 = arrayLength(&(sb1.arr1));
   var len2 : u32 = arrayLength(&(sb2.arr2));
@@ -368,15 +368,15 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB1, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB1, read>, result : ptr<function, u32>)
 
 @internal(intrinsic_buffer_size)
-fn tint_symbol_3(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB2, result : ptr<function, u32>)
+fn tint_symbol_3(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB2, read>, result : ptr<function, u32>)
 
 @internal(intrinsic_buffer_size)
-fn tint_symbol_6(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<i32>, result : ptr<function, u32>)
+fn tint_symbol_6(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<i32>, read>, result : ptr<function, u32>)
 
 struct SB1 {
   x : i32,
@@ -394,16 +394,16 @@ struct SB2 {
 
 @group(0) @binding(2) var<storage, read> sb3 : array<i32>;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb1, &(tint_symbol_1));
+  tint_symbol(&(sb1), &(tint_symbol_1));
   let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
   var tint_symbol_4 : u32 = 0u;
-  tint_symbol_3(sb2, &(tint_symbol_4));
+  tint_symbol_3(&(sb2), &(tint_symbol_4));
   let tint_symbol_5 : u32 = ((tint_symbol_4 - 16u) / 16u);
   var tint_symbol_7 : u32 = 0u;
-  tint_symbol_6(sb3, &(tint_symbol_7));
+  tint_symbol_6(&(sb3), &(tint_symbol_7));
   let tint_symbol_8 : u32 = (tint_symbol_7 / 4u);
   var len1 : u32 = tint_symbol_2;
   var len2 : u32 = tint_symbol_5;
@@ -412,13 +412,13 @@ fn main() {
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, Shadowing) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   x : i32,
   arr : array<i32>,
@@ -427,7 +427,7 @@ struct SB {
 @group(0) @binding(0) var<storage, read> a : SB;
 @group(0) @binding(1) var<storage, read> b : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   let x = &a;
   var a : u32 = arrayLength(&a.arr);
@@ -437,10 +437,10 @@ fn main() {
 }
 )";
 
-  auto* expect =
-      R"(
+    auto* expect =
+        R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB, read>, result : ptr<function, u32>)
 
 struct SB {
   x : i32,
@@ -451,29 +451,29 @@ struct SB {
 
 @group(0) @binding(1) var<storage, read> b : SB;
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(a, &(tint_symbol_1));
+  tint_symbol(&(a), &(tint_symbol_1));
   let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
   var a_1 : u32 = tint_symbol_2;
   {
     var tint_symbol_3 : u32 = 0u;
-    tint_symbol(a, &(tint_symbol_3));
+    tint_symbol(&(a), &(tint_symbol_3));
     let tint_symbol_4 : u32 = ((tint_symbol_3 - 4u) / 4u);
     var b_1 : u32 = tint_symbol_4;
   }
 }
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(CalculateArrayLengthTest, OutOfOrder) {
-  auto* src = R"(
-@stage(compute) @workgroup_size(1)
+    auto* src = R"(
+@compute @workgroup_size(1)
 fn main() {
   var len1 : u32 = arrayLength(&(sb1.arr1));
   var len2 : u32 = arrayLength(&(sb2.arr2));
@@ -498,26 +498,26 @@ struct SB2 {
 @group(0) @binding(2) var<storage, read> sb3 : array<i32>;
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @internal(intrinsic_buffer_size)
-fn tint_symbol(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB1, result : ptr<function, u32>)
+fn tint_symbol(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB1, read>, result : ptr<function, u32>)
 
 @internal(intrinsic_buffer_size)
-fn tint_symbol_3(@internal(disable_validation__ignore_constructible_function_parameter) buffer : SB2, result : ptr<function, u32>)
+fn tint_symbol_3(@internal(disable_validation__function_parameter) buffer : ptr<storage, SB2, read>, result : ptr<function, u32>)
 
 @internal(intrinsic_buffer_size)
-fn tint_symbol_6(@internal(disable_validation__ignore_constructible_function_parameter) buffer : array<i32>, result : ptr<function, u32>)
+fn tint_symbol_6(@internal(disable_validation__function_parameter) buffer : ptr<storage, array<i32>, read>, result : ptr<function, u32>)
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   var tint_symbol_1 : u32 = 0u;
-  tint_symbol(sb1, &(tint_symbol_1));
+  tint_symbol(&(sb1), &(tint_symbol_1));
   let tint_symbol_2 : u32 = ((tint_symbol_1 - 4u) / 4u);
   var tint_symbol_4 : u32 = 0u;
-  tint_symbol_3(sb2, &(tint_symbol_4));
+  tint_symbol_3(&(sb2), &(tint_symbol_4));
   let tint_symbol_5 : u32 = ((tint_symbol_4 - 16u) / 16u);
   var tint_symbol_7 : u32 = 0u;
-  tint_symbol_6(sb3, &(tint_symbol_7));
+  tint_symbol_6(&(sb3), &(tint_symbol_7));
   let tint_symbol_8 : u32 = (tint_symbol_7 / 4u);
   var len1 : u32 = tint_symbol_2;
   var len2 : u32 = tint_symbol_5;
@@ -542,9 +542,9 @@ struct SB2 {
 @group(0) @binding(2) var<storage, read> sb3 : array<i32>;
 )";
 
-  auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
+    auto got = Run<Unshadow, SimplifyPointers, CalculateArrayLength>(src);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 }  // namespace

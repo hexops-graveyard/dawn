@@ -53,7 +53,7 @@ struct GlobalLights {
 
 @group(0) @binding(3) var<storage, read> globalLights : GlobalLights;
 
-let tileCount = vec3(32u, 18u, 48u);
+const tileCount = vec3(32u, 18u, 48u);
 
 fn linearDepth(depthSample : f32) -> f32 {
   return ((camera.zFar * camera.zNear) / fma(depthSample, (camera.zNear - camera.zFar), camera.zFar));
@@ -85,7 +85,7 @@ fn sqDistPointAABB(point : vec3<f32>, minAABB : vec3<f32>, maxAABB : vec3<f32>) 
   return sqDist;
 }
 
-@stage(compute) @workgroup_size(4, 2, 4)
+@compute @workgroup_size(4, 2, 4)
 fn computeMain(@builtin(global_invocation_id) global_id : vec3<u32>) {
   let tileIndex = ((global_id.x + (global_id.y * tileCount.x)) + ((global_id.z * tileCount.x) * tileCount.y));
   var clusterLightCount = 0u;

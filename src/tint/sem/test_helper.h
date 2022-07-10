@@ -25,17 +25,17 @@ namespace tint::sem {
 /// Helper class for testing
 template <typename BASE>
 class TestHelperBase : public BASE, public ProgramBuilder {
- public:
-  /// Builds and returns the program. Must only be called once per test
-  /// @return the built program
-  Program Build() {
-    diag::Formatter formatter;
-    [&]() {
-      ASSERT_TRUE(IsValid()) << "Builder program is not valid\n"
-                             << formatter.format(Diagnostics());
-    }();
-    return Program(std::move(*this));
-  }
+  public:
+    /// Builds and returns the program. Must only be called once per test
+    /// @return the built program
+    Program Build() {
+        diag::Formatter formatter;
+        [&]() {
+            ASSERT_TRUE(IsValid()) << "Builder program is not valid\n"
+                                   << formatter.format(Diagnostics());
+        }();
+        return Program(std::move(*this));
+    }
 };
 using TestHelper = TestHelperBase<testing::Test>;
 
@@ -43,5 +43,17 @@ template <typename T>
 using TestParamHelper = TestHelperBase<testing::TestWithParam<T>>;
 
 }  // namespace tint::sem
+
+/// Helper macro for testing that a semantic type was as expected
+#define EXPECT_TYPE(GOT, EXPECT)                                         \
+    do {                                                                 \
+        const sem::Type* got = GOT;                                      \
+        const sem::Type* expect = EXPECT;                                \
+        if (got != expect) {                                             \
+            ADD_FAILURE() << #GOT " != " #EXPECT "\n"                    \
+                          << "  " #GOT ": " << FriendlyName(got) << "\n" \
+                          << "  " #EXPECT ": " << FriendlyName(expect);  \
+        }                                                                \
+    } while (false)
 
 #endif  // SRC_TINT_SEM_TEST_HELPER_H_

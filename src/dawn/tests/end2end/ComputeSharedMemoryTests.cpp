@@ -56,7 +56,7 @@ void ComputeSharedMemoryTests::BasicTest(const char* shader) {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();
@@ -78,10 +78,10 @@ TEST_P(ComputeSharedMemoryTests, Basic) {
             x : u32
         }
 
-        @group(0) @binding(0) var<storage, write> dst : Dst;
+        @group(0) @binding(0) var<storage, read_write> dst : Dst;
         var<workgroup> tmp : u32;
 
-        @stage(compute) @workgroup_size(4,4,1)
+        @compute @workgroup_size(4,4,1)
         fn main(@builtin(local_invocation_id) LocalInvocationID : vec3<u32>) {
             let index : u32 = LocalInvocationID.y * kTileSize + LocalInvocationID.x;
             if (index == 0u) {
@@ -117,14 +117,14 @@ TEST_P(ComputeSharedMemoryTests, AssortedTypes) {
             d_vector : vec4<f32>,
         }
 
-        @group(0) @binding(0) var<storage, write> dst : Dst;
+        @group(0) @binding(0) var<storage, read_write> dst : Dst;
 
         var<workgroup> wg_struct : StructValues;
         var<workgroup> wg_matrix : mat2x2<f32>;
         var<workgroup> wg_array : array<u32, 4>;
         var<workgroup> wg_vector : vec4<f32>;
 
-        @stage(compute) @workgroup_size(4,1,1)
+        @compute @workgroup_size(4,1,1)
         fn main(@builtin(local_invocation_id) LocalInvocationID : vec3<u32>) {
 
             let i = 4u * LocalInvocationID.x;
@@ -178,7 +178,7 @@ TEST_P(ComputeSharedMemoryTests, AssortedTypes) {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
 
         commands = encoder.Finish();

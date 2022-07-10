@@ -17,21 +17,23 @@
 
 #include <vector>
 
+#include "dawn/common/DynamicLib.h"
 #include "dawn/native/BackendConnection.h"
 
 namespace dawn::native::opengl {
 
-    class Backend : public BackendConnection {
-      public:
-        Backend(InstanceBase* instance, wgpu::BackendType backendType);
+class Backend : public BackendConnection {
+  public:
+    Backend(InstanceBase* instance, wgpu::BackendType backendType);
 
-        std::vector<Ref<AdapterBase>> DiscoverDefaultAdapters() override;
-        ResultOrError<std::vector<Ref<AdapterBase>>> DiscoverAdapters(
-            const AdapterDiscoveryOptionsBase* options) override;
+    std::vector<Ref<AdapterBase>> DiscoverDefaultAdapters() override;
+    ResultOrError<std::vector<Ref<AdapterBase>>> DiscoverAdapters(
+        const AdapterDiscoveryOptionsBase* options) override;
 
-      private:
-        bool mCreatedAdapter = false;
-    };
+  private:
+    bool mCreatedAdapter = false;
+    DynamicLib mLibEGL;
+};
 
 }  // namespace dawn::native::opengl
 

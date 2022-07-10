@@ -17,23 +17,23 @@
 #include "dawn/common/Assert.h"
 #include "dawn/common/Log.h"
 
-#if defined(DAWN_PLATFORM_WINDOWS)
-#    include <Windows.h>
-#    include <vector>
-#elif defined(DAWN_PLATFORM_LINUX)
-#    include <dlfcn.h>
-#    include <limits.h>
-#    include <unistd.h>
-#    include <cstdlib>
-#elif defined(DAWN_PLATFORM_MACOS) || defined(DAWN_PLATFORM_IOS)
-#    include <dlfcn.h>
-#    include <mach-o/dyld.h>
-#    include <vector>
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include <Windows.h>
+#include <vector>
+#elif DAWN_PLATFORM_IS(LINUX)
+#include <dlfcn.h>
+#include <limits.h>
+#include <unistd.h>
+#include <cstdlib>
+#elif DAWN_PLATFORM_IS(MACOS) || DAWN_PLATFORM_IS(IOS)
+#include <dlfcn.h>
+#include <mach-o/dyld.h>
+#include <vector>
 #endif
 
 #include <array>
 
-#if defined(DAWN_PLATFORM_WINDOWS)
+#if DAWN_PLATFORM_IS(WINDOWS)
 const char* GetPathSeparator() {
     return "\\";
 }
@@ -66,7 +66,7 @@ std::pair<std::string, bool> GetEnvironmentVar(const char* variableName) {
 bool SetEnvironmentVar(const char* variableName, const char* value) {
     return SetEnvironmentVariableA(variableName, value) == TRUE;
 }
-#elif defined(DAWN_PLATFORM_POSIX)
+#elif DAWN_PLATFORM_IS(POSIX)
 const char* GetPathSeparator() {
     return "/";
 }
@@ -84,10 +84,10 @@ bool SetEnvironmentVar(const char* variableName, const char* value) {
     return setenv(variableName, value, 1) == 0;
 }
 #else
-#    error "Implement Get/SetEnvironmentVar for your platform."
+#error "Implement Get/SetEnvironmentVar for your platform."
 #endif
 
-#if defined(DAWN_PLATFORM_WINDOWS)
+#if DAWN_PLATFORM_IS(WINDOWS)
 std::optional<std::string> GetHModulePath(HMODULE module) {
     std::array<char, MAX_PATH> executableFileBuf;
     DWORD executablePathLen = GetModuleFileNameA(nullptr, executableFileBuf.data(),
@@ -100,7 +100,7 @@ std::optional<std::string> GetHModulePath(HMODULE module) {
 std::optional<std::string> GetExecutablePath() {
     return GetHModulePath(nullptr);
 }
-#elif defined(DAWN_PLATFORM_LINUX)
+#elif DAWN_PLATFORM_IS(LINUX)
 std::optional<std::string> GetExecutablePath() {
     std::array<char, PATH_MAX> path;
     ssize_t result = readlink("/proc/self/exe", path.data(), PATH_MAX - 1);
@@ -111,7 +111,7 @@ std::optional<std::string> GetExecutablePath() {
     path[result] = '\0';
     return path.data();
 }
-#elif defined(DAWN_PLATFORM_MACOS) || defined(DAWN_PLATFORM_IOS)
+#elif DAWN_PLATFORM_IS(MACOS) || DAWN_PLATFORM_IS(IOS)
 std::optional<std::string> GetExecutablePath() {
     uint32_t size = 0;
     _NSGetExecutablePath(nullptr, &size);
@@ -124,17 +124,17 @@ std::optional<std::string> GetExecutablePath() {
     buffer[size] = '\0';
     return buffer.data();
 }
-#elif defined(DAWN_PLATFORM_FUCHSIA)
+#elif DAWN_PLATFORM_IS(FUCHSIA)
 std::optional<std::string> GetExecutablePath() {
-    UNIMPLEMENTED();
+    // UNIMPLEMENTED
     return {};
 }
-#elif defined(DAWN_PLATFORM_EMSCRIPTEN)
+#elif DAWN_PLATFORM_IS(EMSCRIPTEN)
 std::optional<std::string> GetExecutablePath() {
     return {};
 }
 #else
-#    error "Implement GetExecutablePath for your platform."
+#error "Implement GetExecutablePath for your platform."
 #endif
 
 std::optional<std::string> GetExecutableDirectory() {
@@ -149,7 +149,7 @@ std::optional<std::string> GetExecutableDirectory() {
     return exePath->substr(0, lastPathSepLoc + 1);
 }
 
-#if defined(DAWN_PLATFORM_LINUX) || defined(DAWN_PLATFORM_MACOS) || defined(DAWN_PLATFORM_IOS)
+#if DAWN_PLATFORM_IS(LINUX) || DAWN_PLATFORM_IS(MACOS) || DAWN_PLATFORM_IS(IOS)
 std::optional<std::string> GetModulePath() {
     static int placeholderSymbol = 0;
     Dl_info dlInfo;
@@ -163,32 +163,32 @@ std::optional<std::string> GetModulePath() {
     }
     return absolutePath.data();
 }
-#elif defined(DAWN_PLATFORM_WINDOWS)
+#elif DAWN_PLATFORM_IS(WINDOWS)
 std::optional<std::string> GetModulePath() {
     static int placeholderSymbol = 0;
     HMODULE module = nullptr;
 // GetModuleHandleEx is unavailable on UWP
-#    if defined(DAWN_IS_WINUWP)
+#if defined(DAWN_IS_WINUWP)
     return {};
-#    else
+#else
     if (!GetModuleHandleExA(
             GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
             reinterpret_cast<LPCSTR>(&placeholderSymbol), &module)) {
         return {};
     }
-#    endif
+#endif
     return GetHModulePath(module);
 }
-#elif defined(DAWN_PLATFORM_FUCHSIA)
+#elif DAWN_PLATFORM_IS(FUCHSIA)
 std::optional<std::string> GetModulePath() {
     return {};
 }
-#elif defined(DAWN_PLATFORM_EMSCRIPTEN)
+#elif DAWN_PLATFORM_IS(EMSCRIPTEN)
 std::optional<std::string> GetModulePath() {
     return {};
 }
 #else
-#    error "Implement GetModulePath for your platform."
+#error "Implement GetModulePath for your platform."
 #endif
 
 std::optional<std::string> GetModuleDirectory() {
@@ -205,11 +205,12 @@ std::optional<std::string> GetModuleDirectory() {
 
 // ScopedEnvironmentVar
 
+ScopedEnvironmentVar::ScopedEnvironmentVar() = default;
+
 ScopedEnvironmentVar::ScopedEnvironmentVar(const char* variableName, const char* value)
     : mName(variableName),
       mOriginalValue(GetEnvironmentVar(variableName)),
-      mIsSet(SetEnvironmentVar(variableName, value)) {
-}
+      mIsSet(SetEnvironmentVar(variableName, value)) {}
 
 ScopedEnvironmentVar::~ScopedEnvironmentVar() {
     if (mIsSet) {

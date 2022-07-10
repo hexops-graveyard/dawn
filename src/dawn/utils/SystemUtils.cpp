@@ -16,26 +16,26 @@
 
 #include "dawn/common/Platform.h"
 
-#if defined(DAWN_PLATFORM_WINDOWS)
-#    include <Windows.h>
-#elif defined(DAWN_PLATFORM_POSIX)
-#    include <unistd.h>
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include <Windows.h>
+#elif DAWN_PLATFORM_IS(POSIX)
+#include <unistd.h>
 #else
-#    error "Unsupported platform."
+#error "Unsupported platform."
 #endif
 
 namespace utils {
 
-#if defined(DAWN_PLATFORM_WINDOWS)
-    void USleep(unsigned int usecs) {
-        Sleep(static_cast<DWORD>(usecs / 1000));
-    }
-#elif defined(DAWN_PLATFORM_POSIX)
-    void USleep(unsigned int usecs) {
-        usleep(usecs);
-    }
+#if DAWN_PLATFORM_IS(WINDOWS)
+void USleep(unsigned int usecs) {
+    Sleep(static_cast<DWORD>(usecs / 1000));
+}
+#elif DAWN_PLATFORM_IS(POSIX)
+void USleep(unsigned int usecs) {
+    usleep(usecs);
+}
 #else
-#    error "Implement USleep for your platform."
+#error "Implement USleep for your platform."
 #endif
 
 }  // namespace utils

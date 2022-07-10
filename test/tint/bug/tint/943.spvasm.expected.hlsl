@@ -1,3 +1,6 @@
+warning: parameter 'dimInner' of 'mm_matMul_i1_i1_i1_' must be uniform
+note: 'workgroupBarrier' must only be called from uniform control flow
+note: reading from module-scope private variable 'dimInner_1' may result in a non-uniform value
 static int dimAOuter_1 = 0;
 cbuffer cbuffer_x_48 : register(b3, space0) {
   uint4 x_48[5];
@@ -17,7 +20,7 @@ bool coordsInBounds_vi2_vi2_(inout int2 coord, inout int2 shape) {
   bool x_87 = false;
   bool x_88_phi = false;
   const int2 x_76 = coord;
-  const bool x_81 = all((x_76 >= int2(0, 0)));
+  const bool x_81 = all((x_76 >= (0).xx));
   x_88_phi = x_81;
   if (x_81) {
     const int2 x_84 = coord;

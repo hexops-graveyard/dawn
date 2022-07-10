@@ -23,7 +23,7 @@
 // TODO(crbug.com/dawn/685):
 // For now, only expose these tiers until metrics can determine better ones.
 #define LIMITS_WORKGROUP_STORAGE_SIZE(X)                                  \
-    X(Maximum, maxComputeWorkgroupStorageSize, 16352, 32768, 49152, 65536)
+    X(Maximum, maxComputeWorkgroupStorageSize, 16384, 32768, 49152, 65536)
 
 #define LIMITS_STORAGE_BUFFER_BINDING_SIZE(X)                                             \
     X(Maximum, maxStorageBufferBindingSize, 134217728, 1073741824, 2147483647, 4294967295)
@@ -51,6 +51,8 @@
     X(Maximum,                         maxVertexAttributes,    16,    16) \
     X(Maximum,                  maxVertexBufferArrayStride,  2048,  2048) \
     X(Maximum,               maxInterStageShaderComponents,    60,    60) \
+    X(Maximum,               maxInterStageShaderVariables,     16,    16) \
+    X(Maximum,                         maxColorAttachments,     8,     8) \
     X(Maximum,           maxComputeInvocationsPerWorkgroup,   256,   256) \
     X(Maximum,                    maxComputeWorkgroupSizeX,   256,   256) \
     X(Maximum,                    maxComputeWorkgroupSizeY,   256,   256) \
@@ -69,88 +71,88 @@
     LIMITS_OTHER(X)
 
 namespace dawn::native {
-    namespace {
-        template <uint32_t A, uint32_t B>
-        constexpr void StaticAssertSame() {
-            static_assert(A == B, "Mismatching tier count in limit group.");
-        }
+namespace {
+template <uint32_t A, uint32_t B>
+constexpr void StaticAssertSame() {
+    static_assert(A == B, "Mismatching tier count in limit group.");
+}
 
-        template <uint32_t I, uint32_t... Is>
-        constexpr uint32_t ReduceSameValue(std::integer_sequence<uint32_t, I, Is...>) {
-            int unused[] = {0, (StaticAssertSame<I, Is>(), 0)...};
-            DAWN_UNUSED(unused);
-            return I;
-        }
+template <uint32_t I, uint32_t... Is>
+constexpr uint32_t ReduceSameValue(std::integer_sequence<uint32_t, I, Is...>) {
+    int unused[] = {0, (StaticAssertSame<I, Is>(), 0)...};
+    DAWN_UNUSED(unused);
+    return I;
+}
 
-        enum class LimitClass {
-            Alignment,
-            Maximum,
-        };
+enum class LimitClass {
+    Alignment,
+    Maximum,
+};
 
-        template <LimitClass C>
-        struct CheckLimit;
+template <LimitClass C>
+struct CheckLimit;
 
-        template <>
-        struct CheckLimit<LimitClass::Alignment> {
-            template <typename T>
-            static bool IsBetter(T lhs, T rhs) {
-                return lhs < rhs;
-            }
-
-            template <typename T>
-            static MaybeError Validate(T supported, T required) {
-                DAWN_INVALID_IF(IsBetter(required, supported),
-                                "Required limit (%u) is lower than the supported limit (%u).",
-                                required, supported);
-                DAWN_INVALID_IF(!IsPowerOfTwo(required),
-                                "Required limit (%u) is not a power of two.", required);
-                return {};
-            }
-        };
-
-        template <>
-        struct CheckLimit<LimitClass::Maximum> {
-            template <typename T>
-            static bool IsBetter(T lhs, T rhs) {
-                return lhs > rhs;
-            }
-
-            template <typename T>
-            static MaybeError Validate(T supported, T required) {
-                DAWN_INVALID_IF(IsBetter(required, supported),
-                                "Required limit (%u) is greater than the supported limit (%u).",
-                                required, supported);
-                return {};
-            }
-        };
-
-        template <typename T>
-        bool IsLimitUndefined(T value) {
-            static_assert(sizeof(T) != sizeof(T), "IsLimitUndefined not implemented for this type");
-            return false;
-        }
-
-        template <>
-        bool IsLimitUndefined<uint32_t>(uint32_t value) {
-            return value == wgpu::kLimitU32Undefined;
-        }
-
-        template <>
-        bool IsLimitUndefined<uint64_t>(uint64_t value) {
-            return value == wgpu::kLimitU64Undefined;
-        }
-
-    }  // namespace
-
-    void GetDefaultLimits(Limits* limits) {
-        ASSERT(limits != nullptr);
-#define X(Better, limitName, base, ...) limits->limitName = base;
-        LIMITS(X)
-#undef X
+template <>
+struct CheckLimit<LimitClass::Alignment> {
+    template <typename T>
+    static bool IsBetter(T lhs, T rhs) {
+        return lhs < rhs;
     }
 
-    Limits ReifyDefaultLimits(const Limits& limits) {
-        Limits out;
+    template <typename T>
+    static MaybeError Validate(T supported, T required) {
+        DAWN_INVALID_IF(IsBetter(required, supported),
+                        "Required limit (%u) is lower than the supported limit (%u).", required,
+                        supported);
+        DAWN_INVALID_IF(!IsPowerOfTwo(required), "Required limit (%u) is not a power of two.",
+                        required);
+        return {};
+    }
+};
+
+template <>
+struct CheckLimit<LimitClass::Maximum> {
+    template <typename T>
+    static bool IsBetter(T lhs, T rhs) {
+        return lhs > rhs;
+    }
+
+    template <typename T>
+    static MaybeError Validate(T supported, T required) {
+        DAWN_INVALID_IF(IsBetter(required, supported),
+                        "Required limit (%u) is greater than the supported limit (%u).", required,
+                        supported);
+        return {};
+    }
+};
+
+template <typename T>
+bool IsLimitUndefined(T value) {
+    static_assert(sizeof(T) != sizeof(T), "IsLimitUndefined not implemented for this type");
+    return false;
+}
+
+template <>
+bool IsLimitUndefined<uint32_t>(uint32_t value) {
+    return value == wgpu::kLimitU32Undefined;
+}
+
+template <>
+bool IsLimitUndefined<uint64_t>(uint64_t value) {
+    return value == wgpu::kLimitU64Undefined;
+}
+
+}  // namespace
+
+void GetDefaultLimits(Limits* limits) {
+    ASSERT(limits != nullptr);
+#define X(Better, limitName, base, ...) limits->limitName = base;
+    LIMITS(X)
+#undef X
+}
+
+Limits ReifyDefaultLimits(const Limits& limits) {
+    Limits out;
 #define X(Class, limitName, base, ...)                                                         \
     if (IsLimitUndefined(limits.limitName) ||                                                  \
         CheckLimit<LimitClass::Class>::IsBetter(static_cast<decltype(limits.limitName)>(base), \
@@ -160,24 +162,24 @@ namespace dawn::native {
     } else {                                                                                   \
         out.limitName = limits.limitName;                                                      \
     }
-        LIMITS(X)
+    LIMITS(X)
 #undef X
-        return out;
-    }
+    return out;
+}
 
-    MaybeError ValidateLimits(const Limits& supportedLimits, const Limits& requiredLimits) {
+MaybeError ValidateLimits(const Limits& supportedLimits, const Limits& requiredLimits) {
 #define X(Class, limitName, ...)                                                            \
     if (!IsLimitUndefined(requiredLimits.limitName)) {                                      \
         DAWN_TRY_CONTEXT(CheckLimit<LimitClass::Class>::Validate(supportedLimits.limitName, \
                                                                  requiredLimits.limitName), \
                          "validating " #limitName);                                         \
     }
-        LIMITS(X)
+    LIMITS(X)
 #undef X
-        return {};
-    }
+    return {};
+}
 
-    Limits ApplyLimitTiers(Limits limits) {
+Limits ApplyLimitTiers(Limits limits) {
 #define X_TIER_COUNT(Better, limitName, ...) , std::integer_sequence<uint64_t, __VA_ARGS__>{}.size()
 #define GET_TIER_COUNT(LIMIT_GROUP) \
     ReduceSameValue(std::integer_sequence<uint32_t LIMIT_GROUP(X_TIER_COUNT)>{})
@@ -205,12 +207,12 @@ namespace dawn::native {
         }                                                                                 \
     }
 
-        LIMITS_EACH_GROUP(X_EACH_GROUP)
+    LIMITS_EACH_GROUP(X_EACH_GROUP)
 #undef X_CHECK_BETTER
 #undef X_EACH_GROUP
 #undef GET_TIER_COUNT
 #undef X_TIER_COUNT
-        return limits;
-    }
+    return limits;
+}
 
 }  // namespace dawn::native

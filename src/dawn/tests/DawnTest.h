@@ -16,6 +16,7 @@
 #define SRC_DAWN_TESTS_DAWNTEST_H_
 
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +28,7 @@
 #include "dawn/dawn_proc_table.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/platform/DawnPlatform.h"
+#include "dawn/tests/MockCallback.h"
 #include "dawn/tests/ParamGenerator.h"
 #include "dawn/tests/ToggleParser.h"
 #include "dawn/utils/ScopedAutoreleasePool.h"
@@ -100,23 +102,27 @@
 #define EXPECT_TEXTURE_FLOAT16_EQ(...) \
     AddTextureExpectation<float, uint16_t>(__FILE__, __LINE__, __VA_ARGS__)
 
-#define ASSERT_DEVICE_ERROR_MSG(statement, matcher)             \
-    StartExpectDeviceError(matcher);                            \
-    statement;                                                  \
-    FlushWire();                                                \
-    if (!EndExpectDeviceError()) {                              \
-        FAIL() << "Expected device error in:\n " << #statement; \
-    }                                                           \
-    do {                                                        \
+#define ASSERT_DEVICE_ERROR_MSG_ON(device, statement, matcher)                    \
+    FlushWire();                                                                  \
+    EXPECT_CALL(mDeviceErrorCallback,                                             \
+                Call(testing::Ne(WGPUErrorType_NoError), matcher, device.Get())); \
+    statement;                                                                    \
+    FlushWire();                                                                  \
+    testing::Mock::VerifyAndClearExpectations(&mDeviceErrorCallback);             \
+    do {                                                                          \
     } while (0)
+
+#define ASSERT_DEVICE_ERROR_MSG(statement, matcher) \
+    ASSERT_DEVICE_ERROR_MSG_ON(this->device, statement, matcher)
+
+#define ASSERT_DEVICE_ERROR_ON(device, statement) \
+    ASSERT_DEVICE_ERROR_MSG_ON(device, statement, testing::_)
 
 #define ASSERT_DEVICE_ERROR(statement) ASSERT_DEVICE_ERROR_MSG(statement, testing::_)
 
 struct RGBA8 {
-    constexpr RGBA8() : RGBA8(0, 0, 0, 0) {
-    }
-    constexpr RGBA8(uint8_t r, uint8_t g, uint8_t b, uint8_t a) : r(r), g(g), b(b), a(a) {
-    }
+    constexpr RGBA8() : RGBA8(0, 0, 0, 0) {}
+    constexpr RGBA8(uint8_t r, uint8_t g, uint8_t b, uint8_t a) : r(r), g(g), b(b), a(a) {}
     bool operator==(const RGBA8& other) const;
     bool operator!=(const RGBA8& other) const;
     bool operator<=(const RGBA8& other) const;
@@ -187,25 +193,25 @@ BackendTestConfig VulkanBackend(std::initializer_list<const char*> forceEnabledW
 struct GLFWwindow;
 
 namespace utils {
-    class PlatformDebugLogger;
-    class TerribleCommandBuffer;
-    class WireHelper;
+class PlatformDebugLogger;
+class TerribleCommandBuffer;
+class WireHelper;
 }  // namespace utils
 
 namespace detail {
-    class Expectation;
-    class CustomTextureExpectation;
+class Expectation;
+class CustomTextureExpectation;
 
-    template <typename T, typename U = T>
-    class ExpectEq;
-    template <typename T>
-    class ExpectBetweenColors;
+template <typename T, typename U = T>
+class ExpectEq;
+template <typename T>
+class ExpectBetweenColors;
 }  // namespace detail
 
 namespace dawn::wire {
-    class CommandHandler;
-    class WireClient;
-    class WireServer;
+class CommandHandler;
+class WireClient;
+class WireServer;
 }  // namespace dawn::wire
 
 void InitDawnEnd2EndTestEnvironment(int argc, char** argv);
@@ -252,6 +258,7 @@ class DawnTestEnvironment : public testing::Environment {
     bool mUseWire = false;
     dawn::native::BackendValidationLevel mBackendValidationLevel =
         dawn::native::BackendValidationLevel::Disabled;
+    std::string mANGLEBackend;
     bool mBeginCaptureOnStartup = false;
     bool mHasVendorIdFilter = false;
     uint32_t mVendorIdFilter = 0;
@@ -266,8 +273,6 @@ class DawnTestEnvironment : public testing::Environment {
     std::vector<TestAdapterProperties> mAdapterProperties;
 
     std::unique_ptr<utils::PlatformDebugLogger> mPlatformDebugLogger;
-    GLFWwindow* mOpenGLWindow;
-    GLFWwindow* mOpenGLESWindow;
 };
 
 class DawnTestBase {
@@ -303,6 +308,7 @@ class DawnTestBase {
 
     bool UsesWire() const;
     bool IsBackendValidationEnabled() const;
+    bool IsFullBackendValidationEnabled() const;
     bool RunSuppressedTests() const;
 
     bool IsDXC() const;
@@ -311,10 +317,8 @@ class DawnTestBase {
 
     bool HasToggleEnabled(const char* workaround) const;
 
-    void StartExpectDeviceError(testing::Matcher<std::string> errorMatcher = testing::_);
-    bool EndExpectDeviceError();
-
-    void ExpectDeviceDestruction();
+    void DestroyDevice(wgpu::Device device = nullptr);
+    void LoseDeviceForTesting(wgpu::Device device = nullptr);
 
     bool HasVendorIdFilter() const;
     uint32_t GetVendorIdFilter() const;
@@ -339,6 +343,10 @@ class DawnTestBase {
         std::string mTest;
     };
 
+    // Resolve all the deferred expectations in mDeferredExpectations now to avoid letting
+    // mDeferredExpectations get too big.
+    void ResolveDeferredExpectationsNow();
+
   protected:
     wgpu::Device device;
     wgpu::Queue queue;
@@ -347,6 +355,12 @@ class DawnTestBase {
     WGPUDevice backendDevice = nullptr;
 
     size_t mLastWarningCount = 0;
+
+    // Mock callbacks tracking errors and destruction. These are strict mocks because any errors or
+    // device loss that aren't expected should result in test failures and not just some warnings
+    // printed to stdout.
+    testing::StrictMock<testing::MockCallback<WGPUErrorCallback>> mDeviceErrorCallback;
+    testing::StrictMock<testing::MockCallback<WGPUDeviceLostCallback>> mDeviceLostCallback;
 
     // Helper methods to implement the EXPECT_ macros
     std::ostringstream& AddBufferExpectation(const char* file,
@@ -512,6 +526,9 @@ class DawnTestBase {
 
     bool SupportsFeatures(const std::vector<wgpu::FeatureName>& features);
 
+    // Exposed device creation helper for tests to use when needing more than 1 device.
+    wgpu::Device CreateDevice(std::string isolationKey = "");
+
     // Called in SetUp() to get the features required to be enabled in the tests. The tests must
     // check if the required features are supported by the adapter in this function and guarantee
     // the returned features are all supported by the adapter. The tests may provide different
@@ -522,23 +539,21 @@ class DawnTestBase {
 
     const wgpu::AdapterProperties& GetAdapterProperties() const;
 
-    // TODO(crbug.com/dawn/689): Use limits returned from the wire
-    // This is implemented here because tests need to always query
-    // the |backendDevice| since limits are not implemented in the wire.
     wgpu::SupportedLimits GetSupportedLimits();
 
   private:
     utils::ScopedAutoreleasePool mObjCAutoreleasePool;
     AdapterTestParam mParam;
     std::unique_ptr<utils::WireHelper> mWireHelper;
+    wgpu::Instance mInstance;
+    wgpu::Adapter mAdapter;
 
-    // Tracking for validation errors
-    static void OnDeviceError(WGPUErrorType type, const char* message, void* userdata);
-    static void OnDeviceLost(WGPUDeviceLostReason reason, const char* message, void* userdata);
-    bool mExpectError = false;
-    bool mError = false;
-    testing::Matcher<std::string> mErrorMatcher;
-    bool mExpectDestruction = false;
+    // Isolation keys are not exposed to the wire client. Device creation in the tests from
+    // the client first push the key into this queue, which is then consumed by the server.
+    std::queue<std::string> mNextIsolationKeyQueue;
+
+    // Internal device creation function for default device creation with some optional overrides.
+    WGPUDevice CreateDeviceImpl(std::string isolationKey);
 
     std::ostringstream& AddTextureExpectationImpl(const char* file,
                                                   int line,
@@ -586,8 +601,8 @@ class DawnTestBase {
         size_t readbackSlot;
         uint64_t readbackOffset;
         uint64_t size;
-        uint32_t rowBytes;
-        uint32_t bytesPerRow;
+        uint32_t rowBytes = 0;
+        uint32_t bytesPerRow = 0;
         std::unique_ptr<detail::Expectation> expectation;
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54316
         // Use unique_ptr because of missing move/copy constructors on std::basic_ostringstream
@@ -599,6 +614,7 @@ class DawnTestBase {
     void ResolveExpectations();
 
     dawn::native::Adapter mBackendAdapter;
+    WGPUDevice mLastCreatedBackendDevice;
 
     std::unique_ptr<dawn::platform::Platform> mTestPlatform;
 };
@@ -647,18 +663,13 @@ class DawnTestWithParams : public DawnTestBase, public ::testing::TestWithParam<
     DawnTestWithParams();
     ~DawnTestWithParams() override = default;
 
-    void SetUp() override {
-        DawnTestBase::SetUp();
-    }
+    void SetUp() override { DawnTestBase::SetUp(); }
 
-    void TearDown() override {
-        DawnTestBase::TearDown();
-    }
+    void TearDown() override { DawnTestBase::TearDown(); }
 };
 
 template <typename Params>
-DawnTestWithParams<Params>::DawnTestWithParams() : DawnTestBase(this->GetParam()) {
-}
+DawnTestWithParams<Params>::DawnTestWithParams() : DawnTestBase(this->GetParam()) {}
 
 using DawnTest = DawnTestWithParams<>;
 
@@ -719,8 +730,7 @@ using DawnTest = DawnTestWithParams<>;
         template <typename... Args>                                                                \
         StructName(const AdapterTestParam& param, Args&&... args)                                  \
             : AdapterTestParam(param),                                                             \
-              DAWN_PP_CONCATENATE(_Dawn_, StructName){std::forward<Args>(args)...} {               \
-        }                                                                                          \
+              DAWN_PP_CONCATENATE(_Dawn_, StructName){std::forward<Args>(args)...} {}              \
     };                                                                                             \
     std::ostream& operator<<(std::ostream& o, const StructName& param) {                           \
         o << static_cast<const AdapterTestParam&>(param);                                          \
@@ -730,69 +740,69 @@ using DawnTest = DawnTestWithParams<>;
     static_assert(true, "require semicolon")
 
 namespace detail {
-    // Helper functions used for DAWN_INSTANTIATE_TEST
-    std::vector<AdapterTestParam> GetAvailableAdapterTestParamsForBackends(
-        const BackendTestConfig* params,
-        size_t numParams);
+// Helper functions used for DAWN_INSTANTIATE_TEST
+std::vector<AdapterTestParam> GetAvailableAdapterTestParamsForBackends(
+    const BackendTestConfig* params,
+    size_t numParams);
 
-    // All classes used to implement the deferred expectations should inherit from this.
-    class Expectation {
-      public:
-        virtual ~Expectation() = default;
+// All classes used to implement the deferred expectations should inherit from this.
+class Expectation {
+  public:
+    virtual ~Expectation() = default;
 
-        // Will be called with the buffer or texture data the expectation should check.
-        virtual testing::AssertionResult Check(const void* data, size_t size) = 0;
-    };
+    // Will be called with the buffer or texture data the expectation should check.
+    virtual testing::AssertionResult Check(const void* data, size_t size) = 0;
+};
 
-    // Expectation that checks the data is equal to some expected values.
-    // T - expected value Type
-    // U - actual value Type (defaults = T)
-    // This is expanded for float16 mostly where T=float, U=uint16_t
-    template <typename T, typename U>
-    class ExpectEq : public Expectation {
-      public:
-        explicit ExpectEq(T singleValue, T tolerance = {});
-        ExpectEq(const T* values, const unsigned int count, T tolerance = {});
+// Expectation that checks the data is equal to some expected values.
+// T - expected value Type
+// U - actual value Type (defaults = T)
+// This is expanded for float16 mostly where T=float, U=uint16_t
+template <typename T, typename U>
+class ExpectEq : public Expectation {
+  public:
+    explicit ExpectEq(T singleValue, T tolerance = {});
+    ExpectEq(const T* values, const unsigned int count, T tolerance = {});
 
-        testing::AssertionResult Check(const void* data, size_t size) override;
+    testing::AssertionResult Check(const void* data, size_t size) override;
 
-      private:
-        std::vector<T> mExpected;
-        T mTolerance;
-    };
-    extern template class ExpectEq<uint8_t>;
-    extern template class ExpectEq<int16_t>;
-    extern template class ExpectEq<uint32_t>;
-    extern template class ExpectEq<uint64_t>;
-    extern template class ExpectEq<RGBA8>;
-    extern template class ExpectEq<float>;
-    extern template class ExpectEq<float, uint16_t>;
+  private:
+    std::vector<T> mExpected;
+    T mTolerance;
+};
+extern template class ExpectEq<uint8_t>;
+extern template class ExpectEq<int16_t>;
+extern template class ExpectEq<uint32_t>;
+extern template class ExpectEq<uint64_t>;
+extern template class ExpectEq<RGBA8>;
+extern template class ExpectEq<float>;
+extern template class ExpectEq<float, uint16_t>;
 
-    template <typename T>
-    class ExpectBetweenColors : public Expectation {
-      public:
-        // Inclusive for now
-        ExpectBetweenColors(T value0, T value1);
-        testing::AssertionResult Check(const void* data, size_t size) override;
+template <typename T>
+class ExpectBetweenColors : public Expectation {
+  public:
+    // Inclusive for now
+    ExpectBetweenColors(T value0, T value1);
+    testing::AssertionResult Check(const void* data, size_t size) override;
 
-      private:
-        std::vector<T> mLowerColorChannels;
-        std::vector<T> mHigherColorChannels;
+  private:
+    std::vector<T> mLowerColorChannels;
+    std::vector<T> mHigherColorChannels;
 
-        // used for printing error
-        std::vector<T> mValues0;
-        std::vector<T> mValues1;
-    };
-    // A color is considered between color0 and color1 when all channel values are within range of
-    // each counterparts. It doesn't matter which value is higher or lower. Essentially color =
-    // lerp(color0, color1, t) where t is [0,1]. But I don't want to be too strict here.
-    extern template class ExpectBetweenColors<RGBA8>;
+    // used for printing error
+    std::vector<T> mValues0;
+    std::vector<T> mValues1;
+};
+// A color is considered between color0 and color1 when all channel values are within range of
+// each counterparts. It doesn't matter which value is higher or lower. Essentially color =
+// lerp(color0, color1, t) where t is [0,1]. But I don't want to be too strict here.
+extern template class ExpectBetweenColors<RGBA8>;
 
-    class CustomTextureExpectation : public Expectation {
-      public:
-        virtual ~CustomTextureExpectation() = default;
-        virtual uint32_t DataSize() = 0;
-    };
+class CustomTextureExpectation : public Expectation {
+  public:
+    ~CustomTextureExpectation() override = default;
+    virtual uint32_t DataSize() = 0;
+};
 
 }  // namespace detail
 

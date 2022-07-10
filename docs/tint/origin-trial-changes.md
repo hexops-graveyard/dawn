@@ -1,5 +1,43 @@
 # Tint changes during Origin Trial
 
+## Changes for M105
+
+### New features
+
+* Module-scope `var<private>` can now infer the storage type, like function-scope `var`. [tint:1584](crbug.com/tint/1584)
+* The `acosh`, `asinh`, and `atanh` builtin functions are now supported [tint:1465](crbug.com/tint/1465)
+
+### Breaking changes
+
+* The `smoothStep()` builtin has been removed (use `smoothstep` instead). [tint:1483](crbug.com/tint/1483)
+* Module-scope `let` has been replaced with module-scope `const`. [tint:1580](crbug.com/tint/1584)
+  * Note: Module-scope `const` does not support structure types. Use `var<private>` if you need a module-scope structure type.
+* Struct members can no longer be separated with semicolons (use commas instead). [tint:1475](crbug.com/tint/1475)
+
+### Deprecated Features
+
+* The `@stage` attribute has been deprecated. The short forms should be used
+  instead (`@vertex`, `@fragment`, or `@compute`). [tint:1503](crbug.com/tint/1503)
+
+## Changes for M104
+
+### New features
+
+* Tint now supports abstract-numerics, removing the need to always suffix unsigned integers with `u` [tint:1504](crbug.com/tint/1504)
+* Parsing of `@compute`, `@fragment` and `@vertex` added.
+
+## Changes for M103
+
+### New features
+
+* Produce warnings for when calling barriers, textureSample, and derivative
+builtins in non-uniform control flow [tint:880](crbug.com/tint/880)
+* Matrix identity constructors and constructors for a single scalar value are now supported [tint:1545](crbug.com/tint/1545)
+
+### Breaking changes
+
+* Builtin `atomicCompareExchangeWeak` returns a struct instead of a vec2. [tint:1185](crbug.com/tint/1185)
+
 ## Changes for M102
 
 ### New Features

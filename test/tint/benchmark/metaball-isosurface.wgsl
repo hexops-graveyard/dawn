@@ -14,25 +14,25 @@ struct IsosurfaceVolume {
   values : array<f32>,
 }
 
-@group(0) @binding(1) var<storage, write> volume : IsosurfaceVolume;
+@group(0) @binding(1) var<storage, read_write> volume : IsosurfaceVolume;
 
 struct PositionBuffer {
   values : array<f32>,
 }
 
-@group(0) @binding(2) var<storage, write> positionsOut : PositionBuffer;
+@group(0) @binding(2) var<storage, read_write> positionsOut : PositionBuffer;
 
 struct NormalBuffer {
   values : array<f32>,
 }
 
-@group(0) @binding(3) var<storage, write> normalsOut : NormalBuffer;
+@group(0) @binding(3) var<storage, read_write> normalsOut : NormalBuffer;
 
 struct IndexBuffer {
   tris : array<u32>,
 }
 
-@group(0) @binding(4) var<storage, write> indicesOut : IndexBuffer;
+@group(0) @binding(4) var<storage, read_write> indicesOut : IndexBuffer;
 
 struct DrawIndirectArgs {
   vc : u32,
@@ -102,7 +102,7 @@ fn interpZ(index : u32, i : vec3<u32>, va : f32, vb : f32) {
   cubeVerts = (cubeVerts + 1u);
 }
 
-@stage(compute) @workgroup_size(4, 4, 4)
+@compute @workgroup_size(4, 4, 4)
 fn computeMain(@builtin(global_invocation_id) global_id : vec3<u32>) {
   let i0 = global_id;
   let i1 = (global_id + vec3<u32>(1u, 0u, 0u));

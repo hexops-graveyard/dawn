@@ -2,7 +2,7 @@
 
 vec4 tint_symbol = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 void main_1() {
-  tint_symbol = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+  tint_symbol = vec4(0.0f);
   return;
 }
 
@@ -17,6 +17,7 @@ main_out tint_symbol_1() {
 }
 
 void main() {
+  gl_PointSize = 1.0;
   main_out inner_result = tint_symbol_1();
   gl_Position = inner_result.tint_symbol;
   gl_Position.y = -(gl_Position.y);

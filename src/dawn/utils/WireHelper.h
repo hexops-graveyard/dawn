@@ -21,24 +21,29 @@
 
 #include "dawn/webgpu_cpp.h"
 
+struct DawnProcTable;
+
 namespace utils {
 
-    class WireHelper {
-      public:
-        virtual ~WireHelper();
+class WireHelper {
+  public:
+    virtual ~WireHelper();
 
-        // Registers the device on the wire, if present.
-        // Returns a pair of the client device and backend device.
-        // The function should take ownership of |backendDevice|.
-        virtual std::pair<wgpu::Device, WGPUDevice> RegisterDevice(WGPUDevice backendDevice) = 0;
+    // Registers the instance on the wire, if present.
+    // Returns the wgpu::Instance which is the client instance on the wire, and
+    // the backend instance without the wire.
+    // The function should not take ownership of |backendInstance|.
+    virtual wgpu::Instance RegisterInstance(WGPUInstance backendInstance) = 0;
 
-        virtual void BeginWireTrace(const char* name) = 0;
+    virtual void BeginWireTrace(const char* name) = 0;
 
-        virtual bool FlushClient() = 0;
-        virtual bool FlushServer() = 0;
-    };
+    virtual bool FlushClient() = 0;
+    virtual bool FlushServer() = 0;
+};
 
-    std::unique_ptr<WireHelper> CreateWireHelper(bool useWire, const char* wireTraceDir = nullptr);
+std::unique_ptr<WireHelper> CreateWireHelper(const DawnProcTable& procs,
+                                             bool useWire,
+                                             const char* wireTraceDir = nullptr);
 
 }  // namespace utils
 

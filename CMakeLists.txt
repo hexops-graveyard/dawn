@@ -82,6 +82,7 @@ set(ENABLE_METAL OFF)
 set(ENABLE_OPENGLES OFF)
 set(ENABLE_DESKTOP_GL OFF)
 set(ENABLE_VULKAN OFF)
+set(USE_WAYLAND OFF)
 set(USE_X11 OFF)
 set(BUILD_SAMPLES OFF)
 if (WIN32)
@@ -123,7 +124,9 @@ option_if_not_defined(DAWN_ENABLE_NULL "Enable compilation of the Null backend" 
 option_if_not_defined(DAWN_ENABLE_DESKTOP_GL "Enable compilation of the OpenGL backend" ${ENABLE_DESKTOP_GL})
 option_if_not_defined(DAWN_ENABLE_OPENGLES "Enable compilation of the OpenGL ES backend" ${ENABLE_OPENGLES})
 option_if_not_defined(DAWN_ENABLE_VULKAN "Enable compilation of the Vulkan backend" ${ENABLE_VULKAN})
+
 option_if_not_defined(DAWN_ALWAYS_ASSERT "Enable assertions on all build types" OFF)
+option_if_not_defined(DAWN_USE_WAYLAND "Enable support for Wayland surface" ${USE_WAYLAND})
 option_if_not_defined(DAWN_USE_X11 "Enable support for X11 surface" ${USE_X11})
 
 option_if_not_defined(DAWN_BUILD_SAMPLES "Enables building Dawn's samples" ${BUILD_SAMPLES})
@@ -132,14 +135,46 @@ option_if_not_defined(DAWN_ENABLE_SWIFTSHADER "Enables building Swiftshader as p
 
 option_if_not_defined(DAWN_ENABLE_PIC "Build with Position-Independent-Code enabled" OFF)
 
-set_if_not_defined(DAWN_THIRD_PARTY_DIR "${Dawn_SOURCE_DIR}/third_party" "Directory in which to find third-party dependencies.")
+if (DAWN_ENABLE_OPENGLES OR DAWN_ENABLE_DESKTOP_GL)
+  set(TINT_DEFAULT_GLSL ON)
+else()
+  set(TINT_DEFAULT_GLSL OFF)
+endif()
+
+option_if_not_defined(TINT_BUILD_SAMPLES "Build samples" ${DAWN_BUILD_SAMPLES})
+option_if_not_defined(TINT_BUILD_DOCS "Build documentation" ON)
+option_if_not_defined(TINT_DOCS_WARN_AS_ERROR "When building documentation, treat warnings as errors" OFF)
+
+option_if_not_defined(TINT_BUILD_SPV_READER "Build the SPIR-V input reader" ${DAWN_ENABLE_VULKAN})
+option_if_not_defined(TINT_BUILD_WGSL_READER "Build the WGSL input reader" ON)
+option_if_not_defined(TINT_BUILD_GLSL_WRITER "Build the GLSL output writer" ${TINT_DEFAULT_GLSL})
+option_if_not_defined(TINT_BUILD_HLSL_WRITER "Build the HLSL output writer" ${DAWN_ENABLE_D3D12})
+option_if_not_defined(TINT_BUILD_MSL_WRITER "Build the MSL output writer" ${DAWN_ENABLE_METAL})
+option_if_not_defined(TINT_BUILD_SPV_WRITER "Build the SPIR-V output writer" ${DAWN_ENABLE_VULKAN})
+option_if_not_defined(TINT_BUILD_WGSL_WRITER "Build the WGSL output writer" ON)
+
+option_if_not_defined(TINT_BUILD_FUZZERS "Build fuzzers" OFF)
+option_if_not_defined(TINT_BUILD_SPIRV_TOOLS_FUZZER "Build SPIRV-Tools fuzzer" OFF)
+option_if_not_defined(TINT_BUILD_AST_FUZZER "Build AST fuzzer" OFF)
+option_if_not_defined(TINT_BUILD_REGEX_FUZZER "Build regex fuzzer" OFF)
+option_if_not_defined(TINT_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option_if_not_defined(TINT_BUILD_TESTS "Build tests" ON)
+option_if_not_defined(TINT_BUILD_AS_OTHER_OS "Override OS detection to force building of *_other.cc files" OFF)
+option_if_not_defined(TINT_BUILD_REMOTE_COMPILE "Build the remote-compile tool for validating shaders on a remote machine" OFF)
+
+option_if_not_defined(TINT_ENABLE_BREAK_IN_DEBUGGER "Enable tint::debugger::Break()" OFF)
+option_if_not_defined(TINT_EMIT_COVERAGE "Emit code coverage information" OFF)
+option_if_not_defined(TINT_CHECK_CHROMIUM_STYLE "Check for [chromium-style] issues during build" OFF)
+option_if_not_defined(TINT_SYMBOL_STORE_DEBUG_NAME "Enable storing of name in tint::ast::Symbol to help debugging the AST" OFF)
 
 # Recommended setting for compability with future abseil releases.
 set(ABSL_PROPAGATE_CXX_STD ON)
 
+set_if_not_defined(DAWN_THIRD_PARTY_DIR "${Dawn_SOURCE_DIR}/third_party" "Directory in which to find third-party dependencies.")
 set_if_not_defined(DAWN_ABSEIL_DIR "${DAWN_THIRD_PARTY_DIR}/abseil-cpp" "Directory in which to find Abseil")
 set_if_not_defined(DAWN_GLFW_DIR "${DAWN_THIRD_PARTY_DIR}/glfw" "Directory in which to find GLFW")
 set_if_not_defined(DAWN_JINJA2_DIR "${DAWN_THIRD_PARTY_DIR}/jinja2" "Directory in which to find Jinja2")
+set_if_not_defined(DAWN_KHRONOS_DIR "${DAWN_THIRD_PARTY_DIR}/khronos" "Directory in which to find Khronos GL headers")
 set_if_not_defined(DAWN_SPIRV_HEADERS_DIR "${DAWN_THIRD_PARTY_DIR}/vulkan-deps/spirv-headers/src" "Directory in which to find SPIRV-Headers")
 set_if_not_defined(DAWN_SPIRV_TOOLS_DIR "${DAWN_THIRD_PARTY_DIR}/vulkan-deps/spirv-tools/src" "Directory in which to find SPIRV-Tools")
 set_if_not_defined(DAWN_SWIFTSHADER_DIR "${DAWN_THIRD_PARTY_DIR}/swiftshader" "Directory in which to find swiftshader")
@@ -163,6 +198,110 @@ if(DAWN_ENABLE_PIC)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
+if (${TINT_BUILD_SPIRV_TOOLS_FUZZER})
+  message(STATUS "TINT_BUILD_SPIRV_TOOLS_FUZZER is ON - setting
+      TINT_BUILD_FUZZERS
+      TINT_BUILD_SPV_READER
+      TINT_BUILD_SPV_WRITER
+      TINT_BUILD_WGSL_READER
+      TINT_BUILD_WGSL_WRITER
+      TINT_BUILD_GLSL_WRITER
+      TINT_BUILD_HLSL_WRITER
+      TINT_BUILD_MSL_WRITER to ON")
+  set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
+  set(TINT_BUILD_SPV_READER ON CACHE BOOL "Build SPIR-V reader" FORCE)
+  set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
+  set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
+  set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
+  set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
+  set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
+  set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
+endif()
+
+if (${TINT_BUILD_AST_FUZZER})
+  message(STATUS "TINT_BUILD_AST_FUZZER is ON - setting
+      TINT_BUILD_FUZZERS
+      TINT_BUILD_WGSL_READER
+      TINT_BUILD_WGSL_WRITER
+      TINT_BUILD_SPV_WRITER
+      TINT_BUILD_MSL_WRITER
+      TINT_BUILD_GLSL_WRITER
+      TINT_BUILD_HLSL_WRITER to ON")
+  set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
+  set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
+  set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
+  set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
+  set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
+  set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build GLSL writer" FORCE)
+  set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
+endif()
+
+if (${TINT_BUILD_REGEX_FUZZER})
+  message(STATUS "TINT_BUILD_REGEX_FUZZER is ON - setting
+      TINT_BUILD_FUZZERS
+      TINT_BUILD_WGSL_READER
+      TINT_BUILD_WGSL_WRITER
+      TINT_BUILD_SPV_WRITER
+      TINT_BUILD_MSL_WRITER
+      TINT_BUILD_GLSL_WRITER
+      TINT_BUILD_HLSL_WRITER to ON")
+      set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
+      set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
+      set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
+      set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
+      set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
+      set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build GLSL writer" FORCE)
+      set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
+endif()
+
+message(STATUS "Dawn build D3D12 backend: ${DAWN_ENABLE_D3D12}")
+message(STATUS "Dawn build Metal backend: ${DAWN_ENABLE_METAL}")
+message(STATUS "Dawn build Vulkan backend: ${DAWN_ENABLE_VULKAN}")
+message(STATUS "Dawn build OpenGL backend: ${DAWN_ENABLE_DESKTOP_GL}")
+message(STATUS "Dawn build OpenGL ES backend: ${DAWN_ENABLE_OPENGLES}")
+message(STATUS "Dawn build Null backend: ${DAWN_ENABLE_NULL}")
+
+message(STATUS "Dawn build with asserts in all configurations: ${DAWN_ALWAYS_ASSERT}")
+message(STATUS "Dawn build Wayland support: ${DAWN_USE_WAYLAND}")
+message(STATUS "Dawn build X11 support: ${DAWN_USE_X11}")
+
+message(STATUS "Dawn build samples: ${DAWN_BUILD_SAMPLES}")
+message(STATUS "Dawn build Node bindings: ${DAWN_BUILD_NODE_BINDINGS}")
+message(STATUS "Dawn build Swiftshader: ${DAWN_ENABLE_SWIFTSHADER}")
+
+message(STATUS "Dawn build PIC: ${DAWN_ENABLE_PIC}")
+
+message(STATUS "Dawn build with ASAN: ${DAWN_ENABLE_ASAN}")
+message(STATUS "Dawn build with MSAN: ${DAWN_ENABLE_MSAN}")
+message(STATUS "Dawn build with UBSAN: ${DAWN_ENABLE_UBSAN}")
+
+message(STATUS "Tint build samples: ${TINT_BUILD_SAMPLES}")
+message(STATUS "Tint build docs: ${TINT_BUILD_DOCS}")
+message(STATUS "Tint build docs with warn as error: ${TINT_DOCS_WARN_AS_ERROR}")
+message(STATUS "Tint build SPIR-V reader: ${TINT_BUILD_SPV_READER}")
+message(STATUS "Tint build WGSL reader: ${TINT_BUILD_WGSL_READER}")
+message(STATUS "Tint build GLSL writer: ${TINT_BUILD_GLSL_WRITER}")
+message(STATUS "Tint build HLSL writer: ${TINT_BUILD_HLSL_WRITER}")
+message(STATUS "Tint build MSL writer: ${TINT_BUILD_MSL_WRITER}")
+message(STATUS "Tint build SPIR-V writer: ${TINT_BUILD_SPV_WRITER}")
+message(STATUS "Tint build WGSL writer: ${TINT_BUILD_WGSL_WRITER}")
+message(STATUS "Tint build fuzzers: ${TINT_BUILD_FUZZERS}")
+message(STATUS "Tint build SPIRV-Tools fuzzer: ${TINT_BUILD_SPIRV_TOOLS_FUZZER}")
+message(STATUS "Tint build AST fuzzer: ${TINT_BUILD_AST_FUZZER}")
+message(STATUS "Tint build regex fuzzer: ${TINT_BUILD_REGEX_FUZZER}")
+message(STATUS "Tint build benchmarks: ${TINT_BUILD_BENCHMARKS}")
+message(STATUS "Tint build tests: ${TINT_BUILD_TESTS}")
+message(STATUS "Tint build checking [chromium-style]: ${TINT_CHECK_CHROMIUM_STYLE}")
+message(STATUS "Tint build remote-compile tool: ${TINT_BUILD_REMOTE_COMPILE}")
+
+if (NOT ${TINT_LIB_FUZZING_ENGINE_LINK_OPTIONS} STREQUAL "")
+  message(STATUS "Using provided LIB_FUZZING_ENGINE options: ${TINT_LIB_FUZZING_ENGINE_LINK_OPTIONS}")
+endif()
+
+message(STATUS "Using python3")
+find_package(PythonInterp 3 REQUIRED)
+
+
 ################################################################################
 # common_compile_options - sets compiler and linker options common for dawn and
 # tint on the given target
@@ -172,6 +311,7 @@ function(common_compile_options TARGET)
     target_compile_options(${TARGET} PRIVATE
       -fno-exceptions
       -fno-rtti
+      -fvisibility-inlines-hidden
     )
 
     if (${DAWN_ENABLE_MSAN})
@@ -231,6 +371,9 @@ endif()
 if (DAWN_ENABLE_VULKAN)
     target_compile_definitions(dawn_internal_config INTERFACE "DAWN_ENABLE_BACKEND_VULKAN")
 endif()
+if (DAWN_USE_WAYLAND)
+    target_compile_definitions(dawn_internal_config INTERFACE "DAWN_USE_WAYLAND")
+endif()
 if (DAWN_USE_X11)
     target_compile_definitions(dawn_internal_config INTERFACE "DAWN_USE_X11")
 endif()
@@ -244,134 +387,7 @@ set(CMAKE_CXX_STANDARD "17")
 # Tint
 ################################################################################
 
-# TINT_IS_SUBPROJECT is 1 if added via add_subdirectory() from another project.
-get_directory_property(TINT_IS_SUBPROJECT PARENT_DIRECTORY)
-if(TINT_IS_SUBPROJECT)
-  set(TINT_IS_SUBPROJECT 1)
-
-  # If tint is used as a subproject, default to disabling the building of
-  # documentation and tests. These are unlikely to be desirable, but can be
-  # enabled.
-  set(TINT_BUILD_DOCS_DEFAULT OFF)
-  set(TINT_BUILD_TESTS_DEFAULT OFF)
-else()
-  set(TINT_BUILD_DOCS_DEFAULT ON)
-  set(TINT_BUILD_TESTS_DEFAULT ON)
-endif()
-
-option_if_not_defined(TINT_BUILD_SAMPLES "Build samples" ON)
-option_if_not_defined(TINT_BUILD_DOCS "Build documentation" ${TINT_BUILD_DOCS_DEFAULT})
-option_if_not_defined(TINT_DOCS_WARN_AS_ERROR "When building documentation, treat warnings as errors" OFF)
-option_if_not_defined(TINT_BUILD_SPV_READER "Build the SPIR-V input reader" ON)
-option_if_not_defined(TINT_BUILD_WGSL_READER "Build the WGSL input reader" ON)
-option_if_not_defined(TINT_BUILD_GLSL_WRITER "Build the GLSL output writer" ON)
-option_if_not_defined(TINT_BUILD_HLSL_WRITER "Build the HLSL output writer" ON)
-option_if_not_defined(TINT_BUILD_MSL_WRITER "Build the MSL output writer" ON)
-option_if_not_defined(TINT_BUILD_SPV_WRITER "Build the SPIR-V output writer" ON)
-option_if_not_defined(TINT_BUILD_WGSL_WRITER "Build the WGSL output writer" ON)
-option_if_not_defined(TINT_BUILD_FUZZERS "Build fuzzers" OFF)
-option_if_not_defined(TINT_BUILD_SPIRV_TOOLS_FUZZER "Build SPIRV-Tools fuzzer" OFF)
-option_if_not_defined(TINT_BUILD_AST_FUZZER "Build AST fuzzer" OFF)
-option_if_not_defined(TINT_BUILD_REGEX_FUZZER "Build regex fuzzer" OFF)
-option_if_not_defined(TINT_BUILD_BENCHMARKS "Build benchmarks" OFF)
-option_if_not_defined(TINT_BUILD_TESTS "Build tests" ${TINT_BUILD_TESTS_DEFAULT})
-option_if_not_defined(TINT_BUILD_AS_OTHER_OS "Override OS detection to force building of *_other.cc files" OFF)
-option_if_not_defined(TINT_BUILD_REMOTE_COMPILE "Build the remote-compile tool for validating shaders on a remote machine" OFF)
-
 set(TINT_LIB_FUZZING_ENGINE_LINK_OPTIONS "" CACHE STRING "Used by OSS-Fuzz to control, via link options, which fuzzing engine should be used")
-
-option_if_not_defined(TINT_ENABLE_BREAK_IN_DEBUGGER "Enable tint::debugger::Break()" OFF)
-
-option_if_not_defined(TINT_EMIT_COVERAGE "Emit code coverage information" OFF)
-
-option_if_not_defined(TINT_CHECK_CHROMIUM_STYLE "Check for [chromium-style] issues during build" OFF)
-
-option_if_not_defined(TINT_SYMBOL_STORE_DEBUG_NAME "Enable storing of name in tint::ast::Symbol to help debugging the AST" OFF)
-
-message(STATUS "Tint build samples: ${TINT_BUILD_SAMPLES}")
-message(STATUS "Tint build docs: ${TINT_BUILD_DOCS}")
-message(STATUS "Tint build docs with warn as error: ${TINT_DOCS_WARN_AS_ERROR}")
-message(STATUS "Tint build SPIR-V reader: ${TINT_BUILD_SPV_READER}")
-message(STATUS "Tint build WGSL reader: ${TINT_BUILD_WGSL_READER}")
-message(STATUS "Tint build GLSL writer: ${TINT_BUILD_GLSL_WRITER}")
-message(STATUS "Tint build HLSL writer: ${TINT_BUILD_HLSL_WRITER}")
-message(STATUS "Tint build MSL writer: ${TINT_BUILD_MSL_WRITER}")
-message(STATUS "Tint build SPIR-V writer: ${TINT_BUILD_SPV_WRITER}")
-message(STATUS "Tint build WGSL writer: ${TINT_BUILD_WGSL_WRITER}")
-message(STATUS "Tint build fuzzers: ${TINT_BUILD_FUZZERS}")
-message(STATUS "Tint build SPIRV-Tools fuzzer: ${TINT_BUILD_SPIRV_TOOLS_FUZZER}")
-message(STATUS "Tint build AST fuzzer: ${TINT_BUILD_AST_FUZZER}")
-message(STATUS "Tint build regex fuzzer: ${TINT_BUILD_REGEX_FUZZER}")
-message(STATUS "Tint build benchmarks: ${TINT_BUILD_BENCHMARKS}")
-message(STATUS "Tint build tests: ${TINT_BUILD_TESTS}")
-message(STATUS "Tint build with ASAN: ${DAWN_ENABLE_ASAN}")
-message(STATUS "Tint build with MSAN: ${DAWN_ENABLE_MSAN}")
-message(STATUS "Tint build with UBSAN: ${DAWN_ENABLE_UBSAN}")
-message(STATUS "Tint build checking [chromium-style]: ${TINT_CHECK_CHROMIUM_STYLE}")
-message(STATUS "Tint build remote-compile tool: ${TINT_BUILD_REMOTE_COMPILE}")
-
-if (NOT ${TINT_LIB_FUZZING_ENGINE_LINK_OPTIONS} STREQUAL "")
-  message(STATUS "Using provided LIB_FUZZING_ENGINE options: ${TINT_LIB_FUZZING_ENGINE_LINK_OPTIONS}")
-endif()
-
-message(STATUS "Using python3")
-find_package(PythonInterp 3 REQUIRED)
-
-if (${TINT_BUILD_SPIRV_TOOLS_FUZZER})
-  message(STATUS "TINT_BUILD_SPIRV_TOOLS_FUZZER is ON - setting
-      TINT_BUILD_FUZZERS
-      TINT_BUILD_SPV_READER
-      TINT_BUILD_SPV_WRITER
-      TINT_BUILD_WGSL_READER
-      TINT_BUILD_WGSL_WRITER
-      TINT_BUILD_GLSL_WRITER
-      TINT_BUILD_HLSL_WRITER
-      TINT_BUILD_MSL_WRITER to ON")
-  set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
-  set(TINT_BUILD_SPV_READER ON CACHE BOOL "Build SPIR-V reader" FORCE)
-  set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
-  set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
-  set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
-  set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
-  set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
-  set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
-endif()
-
-if (${TINT_BUILD_AST_FUZZER})
-  message(STATUS "TINT_BUILD_AST_FUZZER is ON - setting
-      TINT_BUILD_FUZZERS
-      TINT_BUILD_WGSL_READER
-      TINT_BUILD_WGSL_WRITER
-      TINT_BUILD_SPV_WRITER
-      TINT_BUILD_MSL_WRITER
-      TINT_BUILD_GLSL_WRITER
-      TINT_BUILD_HLSL_WRITER to ON")
-  set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
-  set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
-  set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
-  set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
-  set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
-  set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build GLSL writer" FORCE)
-  set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
-endif()
-
-if (${TINT_BUILD_REGEX_FUZZER})
-  message(STATUS "TINT_BUILD_REGEX_FUZZER is ON - setting
-      TINT_BUILD_FUZZERS
-      TINT_BUILD_WGSL_READER
-      TINT_BUILD_WGSL_WRITER
-      TINT_BUILD_SPV_WRITER
-      TINT_BUILD_MSL_WRITER
-      TINT_BUILD_GLSL_WRITER
-      TINT_BUILD_HLSL_WRITER to ON")
-      set(TINT_BUILD_FUZZERS ON CACHE BOOL "Build tint fuzzers" FORCE)
-      set(TINT_BUILD_WGSL_READER ON CACHE BOOL "Build WGSL reader" FORCE)
-      set(TINT_BUILD_WGSL_WRITER ON CACHE BOOL "Build WGSL writer" FORCE)
-      set(TINT_BUILD_SPV_WRITER ON CACHE BOOL "Build SPIR-V writer" FORCE)
-      set(TINT_BUILD_MSL_WRITER ON CACHE BOOL "Build MSL writer" FORCE)
-      set(TINT_BUILD_GLSL_WRITER ON CACHE BOOL "Build GLSL writer" FORCE)
-      set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "Build HLSL writer" FORCE)
-endif()
 
 set(TINT_ROOT_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 
@@ -564,7 +580,14 @@ endfunction()
 ################################################################################
 
 add_subdirectory(third_party)
+
+# TODO(crbug.com/tint/455): Tint does not currently build with CMake when
+# BUILD_SHARED_LIBS=1, so always build it as static for now.
+set(BUILD_SHARED_LIBS_SAVED ${BUILD_SHARED_LIBS})
+set(BUILD_SHARED_LIBS 0)
 add_subdirectory(src/tint)
+set(BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS_SAVED})
+
 add_subdirectory(generator)
 add_subdirectory(src/dawn)
 

@@ -22,27 +22,25 @@
 
 namespace wgpu::binding {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // wgpu::bindings::GPUComputePipeline
-    ////////////////////////////////////////////////////////////////////////////////
-    GPUComputePipeline::GPUComputePipeline(wgpu::ComputePipeline pipeline)
-        : pipeline_(std::move(pipeline)) {
-    }
+////////////////////////////////////////////////////////////////////////////////
+// wgpu::bindings::GPUComputePipeline
+////////////////////////////////////////////////////////////////////////////////
+GPUComputePipeline::GPUComputePipeline(wgpu::ComputePipeline pipeline)
+    : pipeline_(std::move(pipeline)) {}
 
-    interop::Interface<interop::GPUBindGroupLayout> GPUComputePipeline::getBindGroupLayout(
-        Napi::Env env,
-        uint32_t index) {
-        return interop::GPUBindGroupLayout::Create<GPUBindGroupLayout>(
-            env, pipeline_.GetBindGroupLayout(index));
-    }
+interop::Interface<interop::GPUBindGroupLayout> GPUComputePipeline::getBindGroupLayout(
+    Napi::Env env,
+    uint32_t index) {
+    return interop::GPUBindGroupLayout::Create<GPUBindGroupLayout>(
+        env, pipeline_.GetBindGroupLayout(index));
+}
 
-    std::variant<std::string, interop::UndefinedType> GPUComputePipeline::getLabel(Napi::Env) {
-        UNIMPLEMENTED();
-    }
+std::string GPUComputePipeline::getLabel(Napi::Env) {
+    UNIMPLEMENTED();
+}
 
-    void GPUComputePipeline::setLabel(Napi::Env,
-                                      std::variant<std::string, interop::UndefinedType> value) {
-        UNIMPLEMENTED();
-    }
+void GPUComputePipeline::setLabel(Napi::Env, std::string value) {
+    UNIMPLEMENTED();
+}
 
 }  // namespace wgpu::binding

@@ -16,9 +16,9 @@
 #include <array>
 #include <vector>
 
-#include "dawn/tests/DawnTest.h"
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/TestUtils.h"
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
@@ -325,13 +325,13 @@ class CopyTests_B2T : public CopyTests, public DawnTest {
 };
 
 namespace {
-    // The CopyTests Texture to Texture in this class will validate both CopyTextureToTexture and
-    // CopyTextureToTextureInternal.
-    using UsageCopySrc = bool;
-    DAWN_TEST_PARAM_STRUCT(CopyTestsParams, UsageCopySrc);
+// The CopyTests Texture to Texture in this class will validate both CopyTextureToTexture and
+// CopyTextureToTextureInternal.
+using UsageCopySrc = bool;
+DAWN_TEST_PARAM_STRUCT(CopyTestsParams, UsageCopySrc);
 
-    using SrcColorFormat = wgpu::TextureFormat;
-    DAWN_TEST_PARAM_STRUCT(SrcColorFormatParams, SrcColorFormat);
+using SrcColorFormat = wgpu::TextureFormat;
+DAWN_TEST_PARAM_STRUCT(SrcColorFormatParams, SrcColorFormat);
 }  // namespace
 
 template <typename Parent>
@@ -1024,6 +1024,10 @@ TEST_P(CopyTests_T2B, BytesPerRowShouldNotCauseBufferOOBIfCopyHeightIsOne) {
 // A regression test for a bug on D3D12 backend that causes crash when doing texture-to-texture
 // copy one row with the texture format Depth32Float.
 TEST_P(CopyTests_T2B, CopyOneRowWithDepth32Float) {
+    // TODO(crbug.com/dawn/667): Work around the fact that some platforms do not support reading
+    // depth.
+    DAWN_TEST_UNSUPPORTED_IF(HasToggleEnabled("disable_depth_read"));
+
     // TODO(crbug.com/dawn/727): currently this test fails on many D3D12 drivers.
     DAWN_SUPPRESS_TEST_IF(IsD3D12());
 
@@ -2181,9 +2185,6 @@ TEST_P(CopyTests_T2T, CopyFromNonZeroMipLevelWithTexelBlockSizeLessThan4Bytes) {
     // try bots.
     DAWN_SUPPRESS_TEST_IF(IsVulkan() && IsWindows() && IsIntel());
 
-    // This test also fails on D3D12 on Intel Windows. See http://crbug.com/1312066 for details.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsWindows() && IsIntel());
-
     constexpr std::array<wgpu::TextureFormat, 11> kFormats = {
         {wgpu::TextureFormat::RG8Sint, wgpu::TextureFormat::RG8Uint, wgpu::TextureFormat::RG8Snorm,
          wgpu::TextureFormat::RG8Unorm, wgpu::TextureFormat::R16Float, wgpu::TextureFormat::R16Sint,
@@ -2231,6 +2232,10 @@ TEST_P(CopyTests_T2T, CopyFromNonZeroMipLevelWithTexelBlockSizeLessThan4Bytes) {
                     DoTest(srcSpec, dstSpec, kUploadSize);
                 }
             }
+
+            // Resolve all the deferred expectations now to avoid allocating too much memory
+            // in mDeferredExpectations.
+            ResolveDeferredExpectationsNow();
         }
     }
 }
@@ -2286,6 +2291,9 @@ TEST_P(CopyTests_T2T, Texture3DSameTextureDifferentMipLevels) {
 
 // Test that copying whole 3D texture to a 2D array in one texture-to-texture-copy works.
 TEST_P(CopyTests_T2T, Texture3DTo2DArrayFull) {
+    // TODO(crbug.com/dawn/1425): Remove this suppression.
+    DAWN_SUPPRESS_TEST_IF(IsANGLE() && IsWindows() && IsIntel());
+
     constexpr uint32_t kWidth = 256;
     constexpr uint32_t kHeight = 128;
     constexpr uint32_t kDepth = 6u;
@@ -2302,6 +2310,9 @@ TEST_P(CopyTests_T2T, Texture3DTo2DArrayFull) {
 TEST_P(CopyTests_T2T, Texture3DAnd2DArraySubRegion) {
     // TODO(crbug.com/dawn/1216): Remove this suppression.
     DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsNvidia());
+
+    // TODO(crbug.com/dawn/1426): Remove this suppression.
+    DAWN_SUPPRESS_TEST_IF(IsANGLE() && IsWindows() && IsIntel());
 
     constexpr uint32_t kWidth = 8;
     constexpr uint32_t kHeight = 4;

@@ -24,52 +24,57 @@
 
 namespace dawn::native {
 
-    class TextureViewBase;
+class TextureViewBase;
 
-    struct ExternalTextureParams {
-        uint32_t numPlanes;
-        std::array<uint32_t, 3> padding;
-        std::array<float, 12> yuvToRgbConversion;
-    };
+struct ExternalTextureParams {
+    uint32_t numPlanes;
+    // TODO(crbug.com/dawn/1466): Only go as few steps as necessary.
+    uint32_t doYuvToRgbConversionOnly;
+    std::array<uint32_t, 2> padding;
+    std::array<float, 12> yuvToRgbConversionMatrix;
+    std::array<float, 8> gammaDecodingParams = {};
+    std::array<float, 8> gammaEncodingParams = {};
+    std::array<float, 12> gamutConversionMatrix = {};
+};
 
-    MaybeError ValidateExternalTextureDescriptor(const DeviceBase* device,
-                                                 const ExternalTextureDescriptor* descriptor);
+MaybeError ValidateExternalTextureDescriptor(const DeviceBase* device,
+                                             const ExternalTextureDescriptor* descriptor);
 
-    class ExternalTextureBase : public ApiObjectBase {
-      public:
-        static ResultOrError<Ref<ExternalTextureBase>> Create(
-            DeviceBase* device,
-            const ExternalTextureDescriptor* descriptor);
+class ExternalTextureBase : public ApiObjectBase {
+  public:
+    static ResultOrError<Ref<ExternalTextureBase>> Create(
+        DeviceBase* device,
+        const ExternalTextureDescriptor* descriptor);
 
-        BufferBase* GetParamsBuffer() const;
-        const std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat>& GetTextureViews() const;
-        ObjectType GetType() const override;
+    BufferBase* GetParamsBuffer() const;
+    const std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat>& GetTextureViews() const;
+    ObjectType GetType() const override;
 
-        MaybeError ValidateCanUseInSubmitNow() const;
-        static ExternalTextureBase* MakeError(DeviceBase* device);
+    MaybeError ValidateCanUseInSubmitNow() const;
+    static ExternalTextureBase* MakeError(DeviceBase* device);
 
-        void APIDestroy();
+    void APIDestroy();
 
-      protected:
-        // Constructor used only for mocking and testing.
-        explicit ExternalTextureBase(DeviceBase* device);
-        void DestroyImpl() override;
+  protected:
+    // Constructor used only for mocking and testing.
+    explicit ExternalTextureBase(DeviceBase* device);
+    void DestroyImpl() override;
 
-        ~ExternalTextureBase() override;
+    ~ExternalTextureBase() override;
 
-      private:
-        ExternalTextureBase(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
+  private:
+    ExternalTextureBase(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
 
-        enum class ExternalTextureState { Alive, Destroyed };
-        ExternalTextureBase(DeviceBase* device, ObjectBase::ErrorTag tag);
-        MaybeError Initialize(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
+    enum class ExternalTextureState { Alive, Destroyed };
+    ExternalTextureBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+    MaybeError Initialize(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
 
-        Ref<TextureBase> mPlaceholderTexture;
-        Ref<BufferBase> mParamsBuffer;
-        std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat> mTextureViews;
+    Ref<TextureBase> mPlaceholderTexture;
+    Ref<BufferBase> mParamsBuffer;
+    std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat> mTextureViews;
 
-        ExternalTextureState mState;
-    };
+    ExternalTextureState mState;
+};
 }  // namespace dawn::native
 
 #endif  // SRC_DAWN_NATIVE_EXTERNALTEXTURE_H_

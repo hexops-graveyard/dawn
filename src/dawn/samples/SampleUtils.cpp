@@ -78,7 +78,7 @@ static wgpu::BackendType backendType = wgpu::BackendType::OpenGLES;
 #elif defined(DAWN_ENABLE_BACKEND_DESKTOP_GL)
 static wgpu::BackendType backendType = wgpu::BackendType::OpenGL;
 #else
-#    error
+#error
 #endif
 
 static CmdBufType cmdBufType = CmdBufType::Terrible;
@@ -103,8 +103,8 @@ wgpu::Device CreateCppDawnDevice() {
         return wgpu::Device();
     }
 
-    // Create the test window and discover adapters using it (esp. for OpenGL)
-    utils::SetupGLFWWindowHintsForBackend(backendType);
+    // Create the test window with no client API.
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_FALSE);
     window = glfwCreateWindow(640, 480, "Dawn window", nullptr, nullptr);
     if (!window) {

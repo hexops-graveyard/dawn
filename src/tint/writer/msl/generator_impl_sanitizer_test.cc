@@ -26,36 +26,49 @@ using ::testing::HasSubstr;
 using MslSanitizerTest = TestHelper;
 
 TEST_F(MslSanitizerTest, Call_ArrayLength) {
-  auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
-  Global("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(1),
-             create<ast::GroupAttribute>(2),
+    auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
+    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(1u),
+                  create<ast::GroupAttribute>(2u),
+              });
+
+    Func("a_func", {}, ty.void_(),
+         {
+             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
+                      Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
+         },
+         {
+             Stage(ast::PipelineStage::kFragment),
          });
 
-  Func("a_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
-                    Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
-       },
-       ast::AttributeList{
-           Stage(ast::PipelineStage::kFragment),
-       });
+    GeneratorImpl& gen = SanitizeAndBuild();
 
-  GeneratorImpl& gen = SanitizeAndBuild();
+    ASSERT_TRUE(gen.Generate()) << gen.error();
 
-  ASSERT_TRUE(gen.Generate()) << gen.error();
-
-  auto got = gen.result();
-  auto* expect = R"(#include <metal_stdlib>
+    auto got = gen.result();
+    auto* expect = R"(#include <metal_stdlib>
 
 using namespace metal;
+
+template<typename T, size_t N>
+struct tint_array {
+    const constant T& operator[](size_t i) const constant { return elements[i]; }
+    device T& operator[](size_t i) device { return elements[i]; }
+    const device T& operator[](size_t i) const device { return elements[i]; }
+    thread T& operator[](size_t i) thread { return elements[i]; }
+    const thread T& operator[](size_t i) const thread { return elements[i]; }
+    threadgroup T& operator[](size_t i) threadgroup { return elements[i]; }
+    const threadgroup T& operator[](size_t i) const threadgroup { return elements[i]; }
+    T elements[N];
+};
+
 struct tint_symbol {
-  /* 0x0000 */ uint4 buffer_size[1];
+  /* 0x0000 */ tint_array<uint4, 1> buffer_size;
 };
 
 struct my_struct {
-  float a[1];
+  tint_array<float, 1> a;
 };
 
 fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
@@ -64,44 +77,57 @@ fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
 }
 
 )";
-  EXPECT_EQ(expect, got);
+    EXPECT_EQ(expect, got);
 }
 
 TEST_F(MslSanitizerTest, Call_ArrayLength_OtherMembersInStruct) {
-  auto* s = Structure("my_struct", {
-                                       Member(0, "z", ty.f32()),
-                                       Member(4, "a", ty.array<f32>(4)),
-                                   });
-  Global("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(1),
-             create<ast::GroupAttribute>(2),
+    auto* s = Structure("my_struct", {
+                                         Member(0, "z", ty.f32()),
+                                         Member(4, "a", ty.array<f32>(4)),
+                                     });
+    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(1u),
+                  create<ast::GroupAttribute>(2u),
+              });
+
+    Func("a_func", {}, ty.void_(),
+         {
+             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
+                      Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
+         },
+         {
+             Stage(ast::PipelineStage::kFragment),
          });
 
-  Func("a_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
-                    Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
-       },
-       ast::AttributeList{
-           Stage(ast::PipelineStage::kFragment),
-       });
+    GeneratorImpl& gen = SanitizeAndBuild();
 
-  GeneratorImpl& gen = SanitizeAndBuild();
+    ASSERT_TRUE(gen.Generate()) << gen.error();
 
-  ASSERT_TRUE(gen.Generate()) << gen.error();
-
-  auto got = gen.result();
-  auto* expect = R"(#include <metal_stdlib>
+    auto got = gen.result();
+    auto* expect = R"(#include <metal_stdlib>
 
 using namespace metal;
+
+template<typename T, size_t N>
+struct tint_array {
+    const constant T& operator[](size_t i) const constant { return elements[i]; }
+    device T& operator[](size_t i) device { return elements[i]; }
+    const device T& operator[](size_t i) const device { return elements[i]; }
+    thread T& operator[](size_t i) thread { return elements[i]; }
+    const thread T& operator[](size_t i) const thread { return elements[i]; }
+    threadgroup T& operator[](size_t i) threadgroup { return elements[i]; }
+    const threadgroup T& operator[](size_t i) const threadgroup { return elements[i]; }
+    T elements[N];
+};
+
 struct tint_symbol {
-  /* 0x0000 */ uint4 buffer_size[1];
+  /* 0x0000 */ tint_array<uint4, 1> buffer_size;
 };
 
 struct my_struct {
   float z;
-  float a[1];
+  tint_array<float, 1> a;
 };
 
 fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
@@ -111,45 +137,57 @@ fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
 
 )";
 
-  EXPECT_EQ(expect, got);
+    EXPECT_EQ(expect, got);
 }
 
 TEST_F(MslSanitizerTest, Call_ArrayLength_ViaLets) {
-  auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
-  Global("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(1),
-             create<ast::GroupAttribute>(2),
+    auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
+    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(1u),
+                  create<ast::GroupAttribute>(2u),
+              });
+
+    auto* p = Let("p", nullptr, AddressOf("b"));
+    auto* p2 = Let("p2", nullptr, AddressOf(MemberAccessor(Deref(p), "a")));
+
+    Func("a_func", {}, ty.void_(),
+         {
+             Decl(p),
+             Decl(p2),
+             Decl(Var("len", ty.u32(), ast::StorageClass::kNone, Call("arrayLength", p2))),
+         },
+         {
+             Stage(ast::PipelineStage::kFragment),
          });
 
-  auto* p = Const("p", nullptr, AddressOf("b"));
-  auto* p2 = Const("p2", nullptr, AddressOf(MemberAccessor(Deref(p), "a")));
+    GeneratorImpl& gen = SanitizeAndBuild();
 
-  Func("a_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Decl(p),
-           Decl(p2),
-           Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
-                    Call("arrayLength", p2))),
-       },
-       ast::AttributeList{
-           Stage(ast::PipelineStage::kFragment),
-       });
+    ASSERT_TRUE(gen.Generate()) << gen.error();
 
-  GeneratorImpl& gen = SanitizeAndBuild();
-
-  ASSERT_TRUE(gen.Generate()) << gen.error();
-
-  auto got = gen.result();
-  auto* expect = R"(#include <metal_stdlib>
+    auto got = gen.result();
+    auto* expect = R"(#include <metal_stdlib>
 
 using namespace metal;
+
+template<typename T, size_t N>
+struct tint_array {
+    const constant T& operator[](size_t i) const constant { return elements[i]; }
+    device T& operator[](size_t i) device { return elements[i]; }
+    const device T& operator[](size_t i) const device { return elements[i]; }
+    thread T& operator[](size_t i) thread { return elements[i]; }
+    const thread T& operator[](size_t i) const thread { return elements[i]; }
+    threadgroup T& operator[](size_t i) threadgroup { return elements[i]; }
+    const threadgroup T& operator[](size_t i) const threadgroup { return elements[i]; }
+    T elements[N];
+};
+
 struct tint_symbol {
-  /* 0x0000 */ uint4 buffer_size[1];
+  /* 0x0000 */ tint_array<uint4, 1> buffer_size;
 };
 
 struct my_struct {
-  float a[1];
+  tint_array<float, 1> a;
 };
 
 fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
@@ -159,53 +197,63 @@ fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(30)]]) {
 
 )";
 
-  EXPECT_EQ(expect, got);
+    EXPECT_EQ(expect, got);
 }
 
 TEST_F(MslSanitizerTest, Call_ArrayLength_ArrayLengthFromUniform) {
-  auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
-  Global("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(1),
-             create<ast::GroupAttribute>(0),
+    auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
+    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(1u),
+                  create<ast::GroupAttribute>(0u),
+              });
+    GlobalVar("c", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(2u),
+                  create<ast::GroupAttribute>(0u),
+              });
+
+    Func("a_func", {}, ty.void_(),
+         {
+             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
+                      Add(Call("arrayLength", AddressOf(MemberAccessor("b", "a"))),
+                          Call("arrayLength", AddressOf(MemberAccessor("c", "a")))))),
+         },
+         {
+             Stage(ast::PipelineStage::kFragment),
          });
-  Global("c", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(2),
-             create<ast::GroupAttribute>(0),
-         });
 
-  Func("a_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Decl(Var(
-               "len", ty.u32(), ast::StorageClass::kNone,
-               Add(Call("arrayLength", AddressOf(MemberAccessor("b", "a"))),
-                   Call("arrayLength", AddressOf(MemberAccessor("c", "a")))))),
-       },
-       ast::AttributeList{
-           Stage(ast::PipelineStage::kFragment),
-       });
+    Options options;
+    options.array_length_from_uniform.ubo_binding = {0, 29};
+    options.array_length_from_uniform.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 1}, 7u);
+    options.array_length_from_uniform.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 2}, 2u);
+    GeneratorImpl& gen = SanitizeAndBuild(options);
 
-  Options options;
-  options.array_length_from_uniform.ubo_binding = {0, 29};
-  options.array_length_from_uniform.bindpoint_to_size_index.emplace(
-      sem::BindingPoint{0, 1}, 7u);
-  options.array_length_from_uniform.bindpoint_to_size_index.emplace(
-      sem::BindingPoint{0, 2}, 2u);
-  GeneratorImpl& gen = SanitizeAndBuild(options);
+    ASSERT_TRUE(gen.Generate()) << gen.error();
 
-  ASSERT_TRUE(gen.Generate()) << gen.error();
-
-  auto got = gen.result();
-  auto* expect = R"(#include <metal_stdlib>
+    auto got = gen.result();
+    auto* expect = R"(#include <metal_stdlib>
 
 using namespace metal;
+
+template<typename T, size_t N>
+struct tint_array {
+    const constant T& operator[](size_t i) const constant { return elements[i]; }
+    device T& operator[](size_t i) device { return elements[i]; }
+    const device T& operator[](size_t i) const device { return elements[i]; }
+    thread T& operator[](size_t i) thread { return elements[i]; }
+    const thread T& operator[](size_t i) const thread { return elements[i]; }
+    threadgroup T& operator[](size_t i) threadgroup { return elements[i]; }
+    const threadgroup T& operator[](size_t i) const threadgroup { return elements[i]; }
+    T elements[N];
+};
+
 struct tint_symbol {
-  /* 0x0000 */ uint4 buffer_size[2];
+  /* 0x0000 */ tint_array<uint4, 2> buffer_size;
 };
 
 struct my_struct {
-  float a[1];
+  tint_array<float, 1> a;
 };
 
 fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(29)]]) {
@@ -214,43 +262,39 @@ fragment void a_func(const constant tint_symbol* tint_symbol_2 [[buffer(29)]]) {
 }
 
 )";
-  EXPECT_EQ(expect, got);
+    EXPECT_EQ(expect, got);
 }
 
-TEST_F(MslSanitizerTest,
-       Call_ArrayLength_ArrayLengthFromUniformMissingBinding) {
-  auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
-  Global("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(1),
-             create<ast::GroupAttribute>(0),
+TEST_F(MslSanitizerTest, Call_ArrayLength_ArrayLengthFromUniformMissingBinding) {
+    auto* s = Structure("my_struct", {Member(0, "a", ty.array<f32>(4))});
+    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(1u),
+                  create<ast::GroupAttribute>(0u),
+              });
+    GlobalVar("c", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
+              ast::AttributeList{
+                  create<ast::BindingAttribute>(2u),
+                  create<ast::GroupAttribute>(0u),
+              });
+
+    Func("a_func", {}, ty.void_(),
+         {
+             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
+                      Add(Call("arrayLength", AddressOf(MemberAccessor("b", "a"))),
+                          Call("arrayLength", AddressOf(MemberAccessor("c", "a")))))),
+         },
+         {
+             Stage(ast::PipelineStage::kFragment),
          });
-  Global("c", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-         ast::AttributeList{
-             create<ast::BindingAttribute>(2),
-             create<ast::GroupAttribute>(0),
-         });
 
-  Func("a_func", ast::VariableList{}, ty.void_(),
-       ast::StatementList{
-           Decl(Var(
-               "len", ty.u32(), ast::StorageClass::kNone,
-               Add(Call("arrayLength", AddressOf(MemberAccessor("b", "a"))),
-                   Call("arrayLength", AddressOf(MemberAccessor("c", "a")))))),
-       },
-       ast::AttributeList{
-           Stage(ast::PipelineStage::kFragment),
-       });
+    Options options;
+    options.array_length_from_uniform.ubo_binding = {0, 29};
+    options.array_length_from_uniform.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 2}, 2u);
+    GeneratorImpl& gen = SanitizeAndBuild(options);
 
-  Options options;
-  options.array_length_from_uniform.ubo_binding = {0, 29};
-  options.array_length_from_uniform.bindpoint_to_size_index.emplace(
-      sem::BindingPoint{0, 2}, 2u);
-  GeneratorImpl& gen = SanitizeAndBuild(options);
-
-  ASSERT_FALSE(gen.Generate());
-  EXPECT_THAT(gen.error(),
-              HasSubstr("Unable to translate builtin: arrayLength"));
+    ASSERT_FALSE(gen.Generate());
+    EXPECT_THAT(gen.error(), HasSubstr("Unable to translate builtin: arrayLength"));
 }
 
 }  // namespace

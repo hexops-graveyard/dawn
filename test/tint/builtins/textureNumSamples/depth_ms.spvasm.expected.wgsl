@@ -3,7 +3,7 @@
 var<private> tint_symbol_1 : vec4<f32> = vec4<f32>();
 
 fn textureNumSamples_a3c8a0() {
-  var res : i32 = 0;
+  var res : i32 = 0i;
   let x_16 : i32 = textureNumSamples(arg_0);
   res = x_16;
   return;
@@ -25,7 +25,7 @@ struct vertex_main_out {
   tint_symbol_1_1 : vec4<f32>,
 }
 
-@stage(vertex)
+@vertex
 fn vertex_main() -> vertex_main_out {
   vertex_main_1();
   return vertex_main_out(tint_symbol_1);
@@ -36,7 +36,7 @@ fn fragment_main_1() {
   return;
 }
 
-@stage(fragment)
+@fragment
 fn fragment_main() {
   fragment_main_1();
 }
@@ -46,7 +46,7 @@ fn compute_main_1() {
   return;
 }
 
-@stage(compute) @workgroup_size(1, 1, 1)
+@compute @workgroup_size(1i, 1i, 1i)
 fn compute_main() {
   compute_main_1();
 }

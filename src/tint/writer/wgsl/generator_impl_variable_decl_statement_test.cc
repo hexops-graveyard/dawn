@@ -15,38 +15,224 @@
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
+using namespace tint::number_suffixes;  // NOLINT
+
 namespace tint::writer::wgsl {
 namespace {
 
 using WgslGeneratorImplTest = TestHelper;
 
 TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement) {
-  auto* var = Var("a", ty.f32());
+    auto* var = Var("a", ty.f32());
 
-  auto* stmt = Decl(var);
-  WrapInFunction(stmt);
+    auto* stmt = Decl(var);
+    WrapInFunction(stmt);
 
-  GeneratorImpl& gen = Build();
+    GeneratorImpl& gen = Build();
 
-  gen.increment_indent();
+    gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
-  EXPECT_EQ(gen.result(), "  var a : f32;\n");
+    ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
+    EXPECT_EQ(gen.result(), "  var a : f32;\n");
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_InferredType) {
-  auto* var = Var("a", nullptr, ast::StorageClass::kNone, Expr(123));
+    auto* var = Var("a", nullptr, ast::StorageClass::kNone, Expr(123_i));
 
-  auto* stmt = Decl(var);
-  WrapInFunction(stmt);
+    auto* stmt = Decl(var);
+    WrapInFunction(stmt);
 
-  GeneratorImpl& gen = Build();
+    GeneratorImpl& gen = Build();
 
-  gen.increment_indent();
+    gen.increment_indent();
 
-  ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
-  EXPECT_EQ(gen.result(), "  var a = 123;\n");
+    ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
+    EXPECT_EQ(gen.result(), "  var a = 123i;\n");
 }
 
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_AInt) {
+    auto* C = Const("C", nullptr, Expr(1_a));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = 1;
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_AFloat) {
+    auto* C = Const("C", nullptr, Expr(1._a));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = 1.0;
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_i32) {
+    auto* C = Const("C", nullptr, Expr(1_i));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = 1i;
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_u32) {
+    auto* C = Const("C", nullptr, Expr(1_u));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = 1u;
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_f32) {
+    auto* C = Const("C", nullptr, Expr(1_f));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = 1.0f;
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_vec3_AInt) {
+    auto* C = Const("C", nullptr, Construct(ty.vec3(nullptr), 1_a, 2_a, 3_a));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = vec3(1, 2, 3);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_vec3_AFloat) {
+    auto* C = Const("C", nullptr, Construct(ty.vec3(nullptr), 1._a, 2._a, 3._a));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = vec3(1.0, 2.0, 3.0);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_vec3_f32) {
+    auto* C = Const("C", nullptr, vec3<f32>(1_f, 2_f, 3_f));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = vec3<f32>(1.0f, 2.0f, 3.0f);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_mat2x3_AFloat) {
+    auto* C =
+        Const("C", nullptr, Construct(ty.mat(nullptr, 2, 3), 1._a, 2._a, 3._a, 4._a, 5._a, 6._a));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = mat2x3(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_mat2x3_f32) {
+    auto* C = Const("C", nullptr, mat2x3<f32>(1_f, 2_f, 3_f, 4_f, 5_f, 6_f));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = mat2x3<f32>(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_arr_f32) {
+    auto* C = Const("C", nullptr, Construct(ty.array<f32, 3>(), 1_f, 2_f, 3_f));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = array<f32, 3u>(1.0f, 2.0f, 3.0f);
+  let l = C;
+}
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_VariableDeclStatement_Const_arr_vec2_bool) {
+    auto* C = Const("C", nullptr,
+                    Construct(ty.array(ty.vec2<bool>(), 3_u),  //
+                              vec2<bool>(true, false),         //
+                              vec2<bool>(false, true),         //
+                              vec2<bool>(true, true)));
+    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(fn f() {
+  const C = array<vec2<bool>, 3u>(vec2<bool>(true, false), vec2<bool>(false, true), vec2<bool>(true, true));
+  let l = C;
+}
+)");
+}
 }  // namespace
 }  // namespace tint::writer::wgsl

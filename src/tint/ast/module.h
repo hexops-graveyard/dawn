@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 
+#include "src/tint/ast/enable.h"
 #include "src/tint/ast/function.h"
 #include "src/tint/ast/type.h"
 
@@ -28,94 +29,111 @@ class TypeDecl;
 /// Module holds the top-level AST types, functions and global variables used by
 /// a Program.
 class Module final : public Castable<Module, Node> {
- public:
-  /// Constructor
-  /// @param pid the identifier of the program that owns this node
-  /// @param src the source of this node
-  Module(ProgramID pid, const Source& src);
+  public:
+    /// Constructor
+    /// @param pid the identifier of the program that owns this node
+    /// @param src the source of this node
+    Module(ProgramID pid, const Source& src);
 
-  /// Constructor
-  /// @param pid the identifier of the program that owns this node
-  /// @param src the source of this node
-  /// @param global_decls the list of global types, functions, and variables, in
-  /// the order they were declared in the source program
-  Module(ProgramID pid,
-         const Source& src,
-         std::vector<const Node*> global_decls);
+    /// Constructor
+    /// @param pid the identifier of the program that owns this node
+    /// @param src the source of this node
+    /// @param global_decls the list of global types, functions, and variables, in
+    /// the order they were declared in the source program
+    Module(ProgramID pid, const Source& src, std::vector<const Node*> global_decls);
 
-  /// Destructor
-  ~Module() override;
+    /// Destructor
+    ~Module() override;
 
-  /// @returns the declaration-ordered global declarations for the module
-  const std::vector<const Node*>& GlobalDeclarations() const {
-    return global_declarations_;
-  }
+    /// @returns the declaration-ordered global declarations for the module
+    const std::vector<const Node*>& GlobalDeclarations() const { return global_declarations_; }
 
-  /// Add a global variable to the Builder
-  /// @param var the variable to add
-  void AddGlobalVariable(const Variable* var);
+    /// Add a enable directive to the Builder
+    /// @param ext the enable directive to add
+    void AddEnable(const Enable* ext);
 
-  /// @returns true if the module has the global declaration `decl`
-  /// @param decl the declaration to check
-  bool HasGlobalDeclaration(Node* decl) const {
-    for (auto* d : global_declarations_) {
-      if (d == decl) {
-        return true;
-      }
+    /// Add a global variable to the Builder
+    /// @param var the variable to add
+    void AddGlobalVariable(const Variable* var);
+
+    /// @returns true if the module has the global declaration `decl`
+    /// @param decl the declaration to check
+    bool HasGlobalDeclaration(Node* decl) const {
+        for (auto* d : global_declarations_) {
+            if (d == decl) {
+                return true;
+            }
+        }
+        return false;
     }
-    return false;
-  }
 
-  /// Adds a global declaration to the Builder.
-  /// @param decl the declaration to add
-  void AddGlobalDeclaration(const tint::ast::Node* decl);
+    /// Adds a global declaration to the Builder.
+    /// @param decl the declaration to add
+    void AddGlobalDeclaration(const tint::ast::Node* decl);
 
-  /// @returns the global variables for the module
-  const VariableList& GlobalVariables() const { return global_variables_; }
+    /// @returns the global variables for the module
+    const VariableList& GlobalVariables() const { return global_variables_; }
 
-  /// @returns the global variables for the module
-  VariableList& GlobalVariables() { return global_variables_; }
+    /// @returns the global variables for the module
+    VariableList& GlobalVariables() { return global_variables_; }
 
-  /// Adds a type declaration to the Builder.
-  /// @param decl the type declaration to add
-  void AddTypeDecl(const TypeDecl* decl);
+    /// @returns the global variable declarations of kind 'T' for the module
+    template <typename T, typename = traits::EnableIfIsType<T, ast::Variable>>
+    std::vector<const T*> Globals() const {
+        std::vector<const T*> out;
+        out.reserve(global_variables_.size());
+        for (auto* global : global_variables_) {
+            if (auto* var = global->As<T>()) {
+                out.emplace_back(var);
+            }
+        }
+        return out;
+    }
 
-  /// @returns the TypeDecl registered as a TypeDecl()
-  /// @param name the name of the type to search for
-  const TypeDecl* LookupType(Symbol name) const;
+    /// @returns the extension set for the module
+    const EnableList& Enables() const { return enables_; }
 
-  /// @returns the declared types in the module
-  const std::vector<const TypeDecl*>& TypeDecls() const { return type_decls_; }
+    /// Adds a type declaration to the Builder.
+    /// @param decl the type declaration to add
+    void AddTypeDecl(const TypeDecl* decl);
 
-  /// Add a function to the Builder
-  /// @param func the function to add
-  void AddFunction(const Function* func);
+    /// @returns the TypeDecl registered as a TypeDecl()
+    /// @param name the name of the type to search for
+    const TypeDecl* LookupType(Symbol name) const;
 
-  /// @returns the functions declared in the module
-  const FunctionList& Functions() const { return functions_; }
+    /// @returns the declared types in the module
+    const std::vector<const TypeDecl*>& TypeDecls() const { return type_decls_; }
 
-  /// Clones this node and all transitive child nodes using the `CloneContext`
-  /// `ctx`.
-  /// @param ctx the clone context
-  /// @return the newly cloned node
-  const Module* Clone(CloneContext* ctx) const override;
+    /// Add a function to the Builder
+    /// @param func the function to add
+    void AddFunction(const Function* func);
 
-  /// Copy copies the content of the Module src into this module.
-  /// @param ctx the clone context
-  /// @param src the module to copy into this module
-  void Copy(CloneContext* ctx, const Module* src);
+    /// @returns the functions declared in the module
+    const FunctionList& Functions() const { return functions_; }
 
- private:
-  /// Adds `decl` to either:
-  /// * #global_declarations_
-  /// * #type_decls_
-  /// * #functions_
-  void BinGlobalDeclaration(const tint::ast::Node* decl, diag::List& diags);
+    /// Clones this node and all transitive child nodes using the `CloneContext`
+    /// `ctx`.
+    /// @param ctx the clone context
+    /// @return the newly cloned node
+    const Module* Clone(CloneContext* ctx) const override;
 
-  std::vector<const Node*> global_declarations_;
-  std::vector<const TypeDecl*> type_decls_;
-  FunctionList functions_;
-  VariableList global_variables_;
+    /// Copy copies the content of the Module src into this module.
+    /// @param ctx the clone context
+    /// @param src the module to copy into this module
+    void Copy(CloneContext* ctx, const Module* src);
+
+  private:
+    /// Adds `decl` to either:
+    /// * #global_declarations_
+    /// * #type_decls_
+    /// * #functions_
+    void BinGlobalDeclaration(const tint::ast::Node* decl, diag::List& diags);
+
+    std::vector<const Node*> global_declarations_;
+    std::vector<const TypeDecl*> type_decls_;
+    FunctionList functions_;
+    VariableList global_variables_;
+    EnableList enables_;
 };
 
 }  // namespace tint::ast

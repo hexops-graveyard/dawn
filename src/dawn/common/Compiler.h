@@ -16,7 +16,7 @@
 #define SRC_DAWN_COMMON_COMPILER_H_
 
 // Defines macros for compiler-specific functionality
-//  - DAWN_COMPILER_[CLANG|GCC|MSVC]: Compiler detection
+//  - DAWN_COMPILER_IS(CLANG|GCC|MSVC): Compiler detection
 //  - DAWN_BREAKPOINT(): Raises an exception and breaks in the debugger
 //  - DAWN_BUILTIN_UNREACHABLE(): Hints the compiler that a code path is unreachable
 //  - DAWN_(UN)?LIKELY(EXPR): Where available, hints the compiler that the expression will be true
@@ -29,51 +29,68 @@
 
 // Clang and GCC, check for __clang__ too to catch clang-cl masquarading as MSVC
 #if defined(__GNUC__) || defined(__clang__)
-#    if defined(__clang__)
-#        define DAWN_COMPILER_CLANG
-#    else
-#        define DAWN_COMPILER_GCC
-#    endif
+#if defined(__clang__)
+#define DAWN_COMPILER_IS_CLANG 1
+#else
+#define DAWN_COMPILER_IS_GCC 1
+#endif
 
-#    if defined(__i386__) || defined(__x86_64__)
-#        define DAWN_BREAKPOINT() __asm__ __volatile__("int $3\n\t")
-#    else
+#if defined(__i386__) || defined(__x86_64__)
+#define DAWN_BREAKPOINT() __asm__ __volatile__("int $3\n\t")
+#else
 // TODO(cwallez@chromium.org): Implement breakpoint on all supported architectures
-#        define DAWN_BREAKPOINT()
-#    endif
+#define DAWN_BREAKPOINT()
+#endif
 
-#    define DAWN_BUILTIN_UNREACHABLE() __builtin_unreachable()
-#    define DAWN_LIKELY(x) __builtin_expect(!!(x), 1)
-#    define DAWN_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define DAWN_BUILTIN_UNREACHABLE() __builtin_unreachable()
+#define DAWN_LIKELY(x) __builtin_expect(!!(x), 1)
+#define DAWN_UNLIKELY(x) __builtin_expect(!!(x), 0)
 
-#    if !defined(__has_cpp_attribute)
-#        define __has_cpp_attribute(name) 0
-#    endif
+#if !defined(__has_cpp_attribute)
+#define __has_cpp_attribute(name) 0
+#endif
 
-#    define DAWN_DECLARE_UNUSED __attribute__((unused))
-#    if defined(NDEBUG)
-#        define DAWN_FORCE_INLINE inline __attribute__((always_inline))
-#    endif
-#    define DAWN_NOINLINE __attribute__((noinline))
+#define DAWN_DECLARE_UNUSED __attribute__((unused))
+#if defined(NDEBUG)
+#define DAWN_FORCE_INLINE inline __attribute__((always_inline))
+#endif
+#define DAWN_NOINLINE __attribute__((noinline))
 
 // MSVC
 #elif defined(_MSC_VER)
-#    define DAWN_COMPILER_MSVC
+#define DAWN_COMPILER_IS_MSVC 1
 
 extern void __cdecl __debugbreak(void);
-#    define DAWN_BREAKPOINT() __debugbreak()
+#define DAWN_BREAKPOINT() __debugbreak()
 
-#    define DAWN_BUILTIN_UNREACHABLE() __assume(false)
+#define DAWN_BUILTIN_UNREACHABLE() __assume(false)
 
-#    define DAWN_DECLARE_UNUSED
-#    if defined(NDEBUG)
-#        define DAWN_FORCE_INLINE __forceinline
-#    endif
-#    define DAWN_NOINLINE __declspec(noinline)
+#define DAWN_DECLARE_UNUSED
+#if defined(NDEBUG)
+#define DAWN_FORCE_INLINE __forceinline
+#endif
+#define DAWN_NOINLINE __declspec(noinline)
 
 #else
-#    error "Unsupported compiler"
+#error "Unsupported compiler"
 #endif
+
+// This section defines other compiler macros to 0 to avoid undefined macro usage error.
+#if !defined(DAWN_COMPILER_IS_CLANG)
+#define DAWN_COMPILER_IS_CLANG 0
+#endif
+#if !defined(DAWN_COMPILER_IS_GCC)
+#define DAWN_COMPILER_IS_GCC 0
+#endif
+#if !defined(DAWN_COMPILER_IS_MSVC)
+#define DAWN_COMPILER_IS_MSVC 0
+#endif
+
+// Use #if DAWN_COMPILER_IS(XXX) for compiler specific code.
+// Do not use #ifdef or the naked macro DAWN_COMPILER_IS_XXX.
+// This can help avoid common mistakes like not including "Compiler.h" and falling into unwanted
+// code block as usage of undefined macro "function" will be blocked by the compiler.
+#define DAWN_COMPILER_IS(X) (1 == DAWN_COMPILER_IS_##X)
 
 // It seems that (void) EXPR works on all compilers to silence the unused variable warning.
 #define DAWN_UNUSED(EXPR) (void)EXPR
@@ -82,16 +99,16 @@ extern void __cdecl __debugbreak(void);
 
 // Add noop replacements for macros for features that aren't supported by the compiler.
 #if !defined(DAWN_LIKELY)
-#    define DAWN_LIKELY(X) X
+#define DAWN_LIKELY(X) X
 #endif
 #if !defined(DAWN_UNLIKELY)
-#    define DAWN_UNLIKELY(X) X
+#define DAWN_UNLIKELY(X) X
 #endif
 #if !defined(DAWN_FORCE_INLINE)
-#    define DAWN_FORCE_INLINE inline
+#define DAWN_FORCE_INLINE inline
 #endif
 #if !defined(DAWN_NOINLINE)
-#    define DAWN_NOINLINE
+#define DAWN_NOINLINE
 #endif
 
 #endif  // SRC_DAWN_COMMON_COMPILER_H_

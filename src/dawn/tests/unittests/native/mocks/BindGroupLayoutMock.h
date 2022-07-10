@@ -22,17 +22,13 @@
 
 namespace dawn::native {
 
-    class BindGroupLayoutMock final : public BindGroupLayoutBase {
-      public:
-        explicit BindGroupLayoutMock(DeviceBase* device) : BindGroupLayoutBase(device) {
-            ON_CALL(*this, DestroyImpl).WillByDefault([this]() {
-                this->BindGroupLayoutBase::DestroyImpl();
-            });
-        }
-        ~BindGroupLayoutMock() override = default;
+class BindGroupLayoutMock final : public BindGroupLayoutBase {
+  public:
+    explicit BindGroupLayoutMock(DeviceBase* device);
+    ~BindGroupLayoutMock() override;
 
-        MOCK_METHOD(void, DestroyImpl, (), (override));
-    };
+    MOCK_METHOD(void, DestroyImpl, (), (override));
+};
 
 }  // namespace dawn::native
 

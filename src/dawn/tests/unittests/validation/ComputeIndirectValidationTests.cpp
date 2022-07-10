@@ -23,7 +23,7 @@ class ComputeIndirectValidationTest : public ValidationTest {
         ValidationTest::SetUp();
 
         wgpu::ShaderModule computeModule = utils::CreateShaderModule(device, R"(
-            @stage(compute) @workgroup_size(1) fn main() {
+            @compute @workgroup_size(1) fn main() {
             })");
 
         // Set up compute pipeline
@@ -54,7 +54,7 @@ class ComputeIndirectValidationTest : public ValidationTest {
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
-        pass.DispatchIndirect(indirectBuffer, indirectOffset);
+        pass.DispatchWorkgroupsIndirect(indirectBuffer, indirectOffset);
         pass.End();
 
         ValidateExpectation(encoder, expectation);

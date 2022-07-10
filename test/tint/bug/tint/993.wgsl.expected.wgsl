@@ -8,7 +8,7 @@ struct Result {
   value : u32,
 }
 
-@group(1) @binding(1) var<storage, write> result : Result;
+@group(1) @binding(1) var<storage, read_write> result : Result;
 
 struct TestData {
   data : array<atomic<i32>, 3>,
@@ -20,7 +20,7 @@ fn runTest() -> i32 {
   return atomicLoad(&(s.data[(0u + u32(constants.zero))]));
 }
 
-@stage(compute) @workgroup_size(1)
+@compute @workgroup_size(1)
 fn main() {
   result.value = u32(runTest());
 }

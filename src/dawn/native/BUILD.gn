@@ -19,15 +19,6 @@ import("${dawn_root}/generator/dawn_generator.gni")
 import("${dawn_root}/scripts/dawn_component.gni")
 import("${dawn_root}/scripts/dawn_features.gni")
 
-# Import mac_deployment_target
-if (is_mac) {
-  if (dawn_has_build) {
-    import("//build/config/mac/mac_sdk.gni")
-  } else {
-    mac_deployment_target = "10.11.0"
-  }
-}
-
 # The VVLs are an optional dependency, only use it if the path has been set.
 enable_vulkan_validation_layers = dawn_enable_vulkan_validation_layers &&
                                   dawn_vulkan_validation_layers_dir != ""
@@ -60,26 +51,15 @@ group("abseil") {
   if (build_with_chromium) {
     public_deps = [ "$dawn_abseil_dir:absl" ]
   } else {
-    public_deps = [ "${dawn_root}/third_party/gn/abseil-cpp:str_format" ]
+    public_deps = [
+      "${dawn_root}/third_party/gn/abseil-cpp:str_format",
+      "${dawn_root}/third_party/gn/abseil-cpp:strings",
+    ]
   }
 }
 
 config("internal") {
   configs = [ "${dawn_root}/src/dawn/common:internal_config" ]
-
-  # Suppress warnings that Metal isn't in the deployment target of Chrome:
-  # initialization of the Metal backend is behind a IsMetalSupported check so
-  # Dawn won't call Metal functions on macOS 10.10.
-  # At the time this is written Chromium supports 10.10.0 and above, so if we
-  # aren't on 10.11 it means we are on 10.11 and above, and Metal is available.
-  # Skipping this check on 10.11 and above is important as it allows getting
-  # proper compilation warning when using 10.12 and above feature for example.
-  # TODO(crbug.com/1004024): Consider using API_AVAILABLE annotations on all
-  # metal code in dawn once crbug.com/1004024 is sorted out if Chromium still
-  # supports 10.10 then.
-  if (is_mac && mac_deployment_target == "10.10.0") {
-    cflags_objcc = [ "-Wno-unguarded-availability" ]
-  }
 }
 
 config("weak_framework") {
@@ -177,6 +157,12 @@ source_set("sources") {
 
   configs += [ ":internal" ]
 
+  # Enable -Wglobal-constructors here only, instead of in internal_config,
+  # because gtest and some other targets don't build with it.
+  if (is_clang) {
+    cflags = [ "-Wglobal-constructors" ]
+  }
+
   # Dependencies that are needed to compile dawn native entry points in
   # FooBackend.cpp need to be public deps so they are propagated to the
   # dawn native target
@@ -202,6 +188,8 @@ source_set("sources") {
     "BindGroupTracker.h",
     "BindingInfo.cpp",
     "BindingInfo.h",
+    "Blob.cpp",
+    "Blob.h",
     "BlobCache.cpp",
     "BlobCache.h",
     "BuddyAllocator.cpp",
@@ -212,6 +200,10 @@ source_set("sources") {
     "Buffer.h",
     "CacheKey.cpp",
     "CacheKey.h",
+    "CacheKeyImplTint.cpp",
+    "CacheRequest.cpp",
+    "CacheRequest.h",
+    "CacheResult.h",
     "CachedObject.cpp",
     "CachedObject.h",
     "CallbackTaskManager.cpp",
@@ -276,15 +268,16 @@ source_set("sources") {
     "ObjectBase.h",
     "ObjectContentHasher.cpp",
     "ObjectContentHasher.h",
+    "PassResourceUsage.cpp",
     "PassResourceUsage.h",
     "PassResourceUsageTracker.cpp",
     "PassResourceUsageTracker.h",
     "PerStage.cpp",
     "PerStage.h",
-    "PersistentCache.cpp",
-    "PersistentCache.h",
     "Pipeline.cpp",
     "Pipeline.h",
+    "PipelineCache.cpp",
+    "PipelineCache.h",
     "PipelineLayout.cpp",
     "PipelineLayout.h",
     "PooledResourceMemoryAllocator.cpp",
@@ -297,6 +290,8 @@ source_set("sources") {
     "QuerySet.h",
     "Queue.cpp",
     "Queue.h",
+    "RefCountedWithExternalCount.cpp",
+    "RefCountedWithExternalCount.h",
     "RenderBundle.cpp",
     "RenderBundle.h",
     "RenderBundleEncoder.cpp",
@@ -385,10 +380,13 @@ source_set("sources") {
       "d3d12/BindGroupD3D12.h",
       "d3d12/BindGroupLayoutD3D12.cpp",
       "d3d12/BindGroupLayoutD3D12.h",
+      "d3d12/BlobD3D12.cpp",
+      "d3d12/BlobD3D12.h",
       "d3d12/BufferD3D12.cpp",
       "d3d12/BufferD3D12.h",
       "d3d12/CPUDescriptorHeapAllocationD3D12.cpp",
       "d3d12/CPUDescriptorHeapAllocationD3D12.h",
+      "d3d12/CacheKeyD3D12.cpp",
       "d3d12/CommandAllocatorManager.cpp",
       "d3d12/CommandAllocatorManager.h",
       "d3d12/CommandBufferD3D12.cpp",
@@ -529,6 +527,8 @@ source_set("sources") {
     ]
     sources += get_target_outputs(":opengl_loader_gen")
     sources += [
+      "opengl/AdapterGL.cpp",
+      "opengl/AdapterGL.h",
       "opengl/BackendGL.cpp",
       "opengl/BackendGL.h",
       "opengl/BindGroupGL.cpp",
@@ -541,8 +541,12 @@ source_set("sources") {
       "opengl/CommandBufferGL.h",
       "opengl/ComputePipelineGL.cpp",
       "opengl/ComputePipelineGL.h",
+      "opengl/ContextEGL.cpp",
+      "opengl/ContextEGL.h",
       "opengl/DeviceGL.cpp",
       "opengl/DeviceGL.h",
+      "opengl/EGLFunctions.cpp",
+      "opengl/EGLFunctions.h",
       "opengl/Forward.h",
       "opengl/GLFormat.cpp",
       "opengl/GLFormat.h",
@@ -572,10 +576,13 @@ source_set("sources") {
       "opengl/SwapChainGL.h",
       "opengl/TextureGL.cpp",
       "opengl/TextureGL.h",
+      "opengl/UtilsEGL.cpp",
+      "opengl/UtilsEGL.h",
       "opengl/UtilsGL.cpp",
       "opengl/UtilsGL.h",
       "opengl/opengl_platform.h",
     ]
+    include_dirs = [ "//third_party/khronos" ]
   }
 
   if (dawn_enable_vulkan) {
@@ -611,6 +618,8 @@ source_set("sources") {
       "vulkan/Forward.h",
       "vulkan/NativeSwapChainImplVk.cpp",
       "vulkan/NativeSwapChainImplVk.h",
+      "vulkan/PipelineCacheVk.cpp",
+      "vulkan/PipelineCacheVk.h",
       "vulkan/PipelineLayoutVk.cpp",
       "vulkan/PipelineLayoutVk.h",
       "vulkan/QuerySetVk.cpp",

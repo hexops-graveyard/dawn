@@ -24,11 +24,11 @@
 
 namespace dawn::native {
 
-    // This is similar to DAWN_TRY_ASSIGN but produces a fatal GTest error if EXPR is an error.
+// This is similar to DAWN_TRY_ASSIGN but produces a fatal GTest error if EXPR is an error.
 #define DAWN_ASSERT_AND_ASSIGN(VAR, EXPR) \
     DAWN_TRY_ASSIGN_WITH_CLEANUP(VAR, EXPR, {}, AddFatalDawnFailure(#EXPR, error.get()))
 
-    void AddFatalDawnFailure(const char* expression, const ErrorData* error);
+void AddFatalDawnFailure(const char* expression, const ErrorData* error);
 
 }  // namespace dawn::native
 
@@ -38,12 +38,13 @@ class DawnNativeTest : public ::testing::Test {
     ~DawnNativeTest() override;
 
     void SetUp() override;
-    void TearDown() override;
 
+    virtual std::unique_ptr<dawn::platform::Platform> CreateTestPlatform();
     virtual WGPUDevice CreateTestDevice();
 
   protected:
     std::unique_ptr<dawn::native::Instance> instance;
+    std::unique_ptr<dawn::platform::Platform> platform;
     dawn::native::Adapter adapter;
     wgpu::Device device;
 

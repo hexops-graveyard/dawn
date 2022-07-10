@@ -15,65 +15,61 @@
 #ifndef SRC_DAWN_NATIVE_BLOBCACHE_H_
 #define SRC_DAWN_NATIVE_BLOBCACHE_H_
 
-#include <memory>
 #include <mutex>
 
+#include "dawn/common/Platform.h"
+#include "dawn/native/Blob.h"
+#include "dawn/native/CacheResult.h"
+
 namespace dawn::platform {
-    class CachingInterface;
+class CachingInterface;
 }
 
 namespace dawn::native {
 
-    class BlobCache;
-    class CacheKey;
-    class InstanceBase;
+class CacheKey;
+class InstanceBase;
 
-    class CachedBlob {
-      public:
-        explicit CachedBlob(size_t size = 0);
+// This class should always be thread-safe because it may be called asynchronously. Its purpose
+// is to wrap the CachingInterface provided via a platform.
+class BlobCache {
+  public:
+    explicit BlobCache(dawn::platform::CachingInterface* cachingInterface = nullptr);
 
-        bool Empty() const;
-        const uint8_t* Data() const;
-        uint8_t* Data();
-        size_t Size() const;
-        void Reset(size_t size);
+    // Returns empty blob if the key is not found in the cache.
+    Blob Load(const CacheKey& key);
 
-      private:
-        std::unique_ptr<uint8_t[]> mData = nullptr;
-        size_t mSize = 0;
-    };
+    // Value to store must be non-empty/non-null.
+    void Store(const CacheKey& key, size_t valueSize, const void* value);
+    void Store(const CacheKey& key, const Blob& value);
 
-    // This class should always be thread-safe because it may be called asynchronously. Its purpose
-    // is to wrap the CachingInterface provided via a platform.
-    // TODO(dawn:549): This is a "re-declaration" of the current PersistentCache since there are
-    //   some dependencies on that one for the semi-implemented D3D12 shader cache and some changes
-    //   introduced here are breaking. Eventually the goal is to unify the two, but for development
-    //   purposes, we are splitting these for now and will re-merge them in a later change.
-    class BlobCache {
-      public:
-        explicit BlobCache(dawn::platform::CachingInterface* cachingInterface = nullptr);
+    // Other types may specialize BlobCache::Store<T> to define how T is serialized into the cache.
+    template <typename T>
+    void Store(const CacheKey& key, const T& value);
 
-        // Returns empty blob if the key is not found in the cache.
-        CachedBlob Load(const CacheKey& key);
+    // Store a CacheResult into the cache if it isn't cached yet.
+    // Calls Store<T> which should be defined elsewhere.
+    template <typename T>
+    void EnsureStored(const CacheResult<T>& cacheResult) {
+        if (!cacheResult.IsCached()) {
+            Store(cacheResult.GetCacheKey(), *cacheResult);
+        }
+    }
 
-        // Value to store must be non-empty/non-null.
-        void Store(const CacheKey& key, size_t valueSize, const void* value);
-        void Store(const CacheKey& key, const CachedBlob& value);
+  private:
+    // Non-thread safe internal implementations of load and store. Exposed callers that use
+    // these helpers need to make sure that these are entered with `mMutex` held.
+    Blob LoadInternal(const CacheKey& key);
+    void StoreInternal(const CacheKey& key, size_t valueSize, const void* value);
 
-      private:
-        // Non-thread safe internal implementations of load and store. Exposed callers that use
-        // these helpers need to make sure that these are entered with `mMutex` held.
-        CachedBlob LoadInternal(const CacheKey& key);
-        void StoreInternal(const CacheKey& key, size_t valueSize, const void* value);
+    // Validates the cache key for this version of Dawn. At the moment, this is naively checking
+    // that the cache key contains the dawn version string in it.
+    bool ValidateCacheKey(const CacheKey& key);
 
-        // Protects thread safety of access to mCache.
-        std::mutex mMutex;
-
-        // TODO(dawn:549): Current CachingInterface declaration requires passing a device to each
-        //   call, but this might be unnecessary. This class just passes nullptr for those calls
-        //   right now. Eventually we can just change the interface to be more generic.
-        dawn::platform::CachingInterface* mCache;
-    };
+    // Protects thread safety of access to mCache.
+    std::mutex mMutex;
+    dawn::platform::CachingInterface* mCache;
+};
 
 }  // namespace dawn::native
 

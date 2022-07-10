@@ -29,104 +29,115 @@
 #include "dawn/native/opengl/OpenGLFunctions.h"
 
 // Remove windows.h macros after glad's include of windows.h
-#if defined(DAWN_PLATFORM_WINDOWS)
-#    include "dawn/common/windows_with_undefs.h"
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include "dawn/common/windows_with_undefs.h"
 #endif
 
 typedef void* EGLImage;
 
 namespace dawn::native::opengl {
 
-    class Device final : public DeviceBase {
+class Device final : public DeviceBase {
+  public:
+    class Context;
+    static ResultOrError<Ref<Device>> Create(AdapterBase* adapter,
+                                             const DeviceDescriptor* descriptor,
+                                             const OpenGLFunctions& functions,
+                                             std::unique_ptr<Context> context);
+    ~Device() override;
+
+    MaybeError Initialize(const DeviceDescriptor* descriptor);
+
+    // Returns all the OpenGL entry points and ensures that the associated
+    // Context is current.
+    const OpenGLFunctions& GetGL() const;
+
+    const GLFormat& GetGLFormat(const Format& format);
+
+    void SubmitFenceSync();
+
+    MaybeError ValidateEGLImageCanBeWrapped(const TextureDescriptor* descriptor, ::EGLImage image);
+    TextureBase* CreateTextureWrappingEGLImage(const ExternalImageDescriptor* descriptor,
+                                               ::EGLImage image);
+
+    ResultOrError<Ref<CommandBufferBase>> CreateCommandBuffer(
+        CommandEncoder* encoder,
+        const CommandBufferDescriptor* descriptor) override;
+
+    MaybeError TickImpl() override;
+
+    ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
+    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
+                                       uint64_t sourceOffset,
+                                       BufferBase* destination,
+                                       uint64_t destinationOffset,
+                                       uint64_t size) override;
+
+    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
+                                        const TextureDataLayout& src,
+                                        TextureCopy* dst,
+                                        const Extent3D& copySizePixels) override;
+
+    uint32_t GetOptimalBytesPerRowAlignment() const override;
+    uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
+
+    float GetTimestampPeriodInNS() const override;
+
+    class Context {
       public:
-        static ResultOrError<Ref<Device>> Create(AdapterBase* adapter,
-                                                 const DeviceDescriptor* descriptor,
-                                                 const OpenGLFunctions& functions);
-        ~Device() override;
-
-        MaybeError Initialize(const DeviceDescriptor* descriptor);
-
-        // Contains all the OpenGL entry points, glDoFoo is called via device->gl.DoFoo.
-        const OpenGLFunctions gl;
-
-        const GLFormat& GetGLFormat(const Format& format);
-
-        void SubmitFenceSync();
-
-        MaybeError ValidateEGLImageCanBeWrapped(const TextureDescriptor* descriptor,
-                                                ::EGLImage image);
-        TextureBase* CreateTextureWrappingEGLImage(const ExternalImageDescriptor* descriptor,
-                                                   ::EGLImage image);
-
-        ResultOrError<Ref<CommandBufferBase>> CreateCommandBuffer(
-            CommandEncoder* encoder,
-            const CommandBufferDescriptor* descriptor) override;
-
-        MaybeError TickImpl() override;
-
-        ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
-        MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
-                                           uint64_t sourceOffset,
-                                           BufferBase* destination,
-                                           uint64_t destinationOffset,
-                                           uint64_t size) override;
-
-        MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                            const TextureDataLayout& src,
-                                            TextureCopy* dst,
-                                            const Extent3D& copySizePixels) override;
-
-        uint32_t GetOptimalBytesPerRowAlignment() const override;
-        uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
-
-        float GetTimestampPeriodInNS() const override;
-
-      private:
-        Device(AdapterBase* adapter,
-               const DeviceDescriptor* descriptor,
-               const OpenGLFunctions& functions);
-
-        ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
-            const BindGroupDescriptor* descriptor) override;
-        ResultOrError<Ref<BindGroupLayoutBase>> CreateBindGroupLayoutImpl(
-            const BindGroupLayoutDescriptor* descriptor,
-            PipelineCompatibilityToken pipelineCompatibilityToken) override;
-        ResultOrError<Ref<BufferBase>> CreateBufferImpl(
-            const BufferDescriptor* descriptor) override;
-        ResultOrError<Ref<PipelineLayoutBase>> CreatePipelineLayoutImpl(
-            const PipelineLayoutDescriptor* descriptor) override;
-        ResultOrError<Ref<QuerySetBase>> CreateQuerySetImpl(
-            const QuerySetDescriptor* descriptor) override;
-        ResultOrError<Ref<SamplerBase>> CreateSamplerImpl(
-            const SamplerDescriptor* descriptor) override;
-        ResultOrError<Ref<ShaderModuleBase>> CreateShaderModuleImpl(
-            const ShaderModuleDescriptor* descriptor,
-            ShaderModuleParseResult* parseResult) override;
-        ResultOrError<Ref<SwapChainBase>> CreateSwapChainImpl(
-            const SwapChainDescriptor* descriptor) override;
-        ResultOrError<Ref<NewSwapChainBase>> CreateSwapChainImpl(
-            Surface* surface,
-            NewSwapChainBase* previousSwapChain,
-            const SwapChainDescriptor* descriptor) override;
-        ResultOrError<Ref<TextureBase>> CreateTextureImpl(
-            const TextureDescriptor* descriptor) override;
-        ResultOrError<Ref<TextureViewBase>> CreateTextureViewImpl(
-            TextureBase* texture,
-            const TextureViewDescriptor* descriptor) override;
-        Ref<ComputePipelineBase> CreateUninitializedComputePipelineImpl(
-            const ComputePipelineDescriptor* descriptor) override;
-        Ref<RenderPipelineBase> CreateUninitializedRenderPipelineImpl(
-            const RenderPipelineDescriptor* descriptor) override;
-
-        void InitTogglesFromDriver();
-        ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
-        void DestroyImpl() override;
-        MaybeError WaitForIdleForDestruction() override;
-
-        std::queue<std::pair<GLsync, ExecutionSerial>> mFencesInFlight;
-
-        GLFormatTable mFormatTable;
+        virtual ~Context() {}
+        virtual void MakeCurrent() = 0;
     };
+
+  private:
+    Device(AdapterBase* adapter,
+           const DeviceDescriptor* descriptor,
+           const OpenGLFunctions& functions,
+           std::unique_ptr<Context> context);
+
+    ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
+        const BindGroupDescriptor* descriptor) override;
+    ResultOrError<Ref<BindGroupLayoutBase>> CreateBindGroupLayoutImpl(
+        const BindGroupLayoutDescriptor* descriptor,
+        PipelineCompatibilityToken pipelineCompatibilityToken) override;
+    ResultOrError<Ref<BufferBase>> CreateBufferImpl(const BufferDescriptor* descriptor) override;
+    ResultOrError<Ref<PipelineLayoutBase>> CreatePipelineLayoutImpl(
+        const PipelineLayoutDescriptor* descriptor) override;
+    ResultOrError<Ref<QuerySetBase>> CreateQuerySetImpl(
+        const QuerySetDescriptor* descriptor) override;
+    ResultOrError<Ref<SamplerBase>> CreateSamplerImpl(const SamplerDescriptor* descriptor) override;
+    ResultOrError<Ref<ShaderModuleBase>> CreateShaderModuleImpl(
+        const ShaderModuleDescriptor* descriptor,
+        ShaderModuleParseResult* parseResult,
+        OwnedCompilationMessages* compilationMessages) override;
+    ResultOrError<Ref<SwapChainBase>> CreateSwapChainImpl(
+        const SwapChainDescriptor* descriptor) override;
+    ResultOrError<Ref<NewSwapChainBase>> CreateSwapChainImpl(
+        Surface* surface,
+        NewSwapChainBase* previousSwapChain,
+        const SwapChainDescriptor* descriptor) override;
+    ResultOrError<Ref<TextureBase>> CreateTextureImpl(const TextureDescriptor* descriptor) override;
+    ResultOrError<Ref<TextureViewBase>> CreateTextureViewImpl(
+        TextureBase* texture,
+        const TextureViewDescriptor* descriptor) override;
+    Ref<ComputePipelineBase> CreateUninitializedComputePipelineImpl(
+        const ComputePipelineDescriptor* descriptor) override;
+    Ref<RenderPipelineBase> CreateUninitializedRenderPipelineImpl(
+        const RenderPipelineDescriptor* descriptor) override;
+
+    void InitTogglesFromDriver();
+    GLenum GetBGRAInternalFormat() const;
+    ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
+    void DestroyImpl() override;
+    MaybeError WaitForIdleForDestruction() override;
+
+    const OpenGLFunctions mGL;
+
+    std::queue<std::pair<GLsync, ExecutionSerial>> mFencesInFlight;
+
+    GLFormatTable mFormatTable;
+    std::unique_ptr<Context> mContext = nullptr;
+};
 
 }  // namespace dawn::native::opengl
 

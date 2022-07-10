@@ -24,13 +24,11 @@ sem::IfStatement {
     sem::BlockStatement {
         statement_a
     }
-    sem::ElseStatement {
+    sem::IfStatement {
         condition_b
         sem::BlockStatement {
             statement_b
         }
-    }
-    sem::ElseStatement {
         sem::BlockStatement {
             statement_c
         }
@@ -53,6 +51,26 @@ sem::ForLoopStatement {
     sem::Statement  initializer
     sem::Expression condition
     sem::Statement  continuing
+
+    sem::LoopBlockStatement {
+        sem::Statement statement
+    }
+}
+```
+
+## while
+
+WGSL:
+```
+while (condition) {
+    statement;
+}
+```
+
+Semantic tree:
+```
+sem::WhileStatement {
+    sem::Expression condition
 
     sem::LoopBlockStatement {
         sem::Statement statement

@@ -18,33 +18,13 @@
 #include "dawn/wire/ChunkedCommandHandler.h"
 #include "dawn/wire/WireCmd_autogen.h"
 #include "dawn/wire/client/ApiObjects.h"
-#include "dawn/wire/client/ObjectAllocator.h"
 
 namespace dawn::wire::client {
 
     class ClientBase : public ChunkedCommandHandler, public ObjectIdProvider {
       public:
         ClientBase() = default;
-        virtual ~ClientBase() = default;
-
-        {% for type in by_category["object"] %}
-            const ObjectAllocator<{{type.name.CamelCase()}}>& {{type.name.CamelCase()}}Allocator() const {
-                return m{{type.name.CamelCase()}}Allocator;
-            }
-            ObjectAllocator<{{type.name.CamelCase()}}>& {{type.name.CamelCase()}}Allocator() {
-                return m{{type.name.CamelCase()}}Allocator;
-            }
-        {% endfor %}
-
-        void FreeObject(ObjectType objectType, ObjectBase* obj) {
-            switch (objectType) {
-                {% for type in by_category["object"] %}
-                    case ObjectType::{{type.name.CamelCase()}}:
-                        m{{type.name.CamelCase()}}Allocator.Free(static_cast<{{type.name.CamelCase()}}*>(obj));
-                        break;
-                {% endfor %}
-            }
-        }
+        ~ClientBase() override = default;
 
       private:
         // Implementation of the ObjectIdProvider interface
@@ -54,18 +34,14 @@ namespace dawn::wire::client {
                 if (object == nullptr) {
                     return WireResult::FatalError;
                 }
-                *out = reinterpret_cast<{{as_wireType(type)}}>(object)->id;
+                *out = reinterpret_cast<{{as_wireType(type)}}>(object)->GetWireId();
                 return WireResult::Success;
             }
             WireResult GetOptionalId({{as_cType(type.name)}} object, ObjectId* out) const final {
                 ASSERT(out != nullptr);
-                *out = (object == nullptr ? 0 : reinterpret_cast<{{as_wireType(type)}}>(object)->id);
+                *out = (object == nullptr ? 0 : reinterpret_cast<{{as_wireType(type)}}>(object)->GetWireId());
                 return WireResult::Success;
             }
-        {% endfor %}
-
-        {% for type in by_category["object"] %}
-            ObjectAllocator<{{type.name.CamelCase()}}> m{{type.name.CamelCase()}}Allocator;
         {% endfor %}
     };
 

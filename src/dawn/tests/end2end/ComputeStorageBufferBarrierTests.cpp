@@ -39,7 +39,7 @@ TEST_P(ComputeStorageBufferBarrierTests, AddIncrement) {
 
         @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-        @stage(compute) @workgroup_size(1)
+        @compute @workgroup_size(1)
         fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3<u32>) {
             buf.data[GlobalInvocationID.x] = buf.data[GlobalInvocationID.x] + 0x1234u;
         }
@@ -58,7 +58,7 @@ TEST_P(ComputeStorageBufferBarrierTests, AddIncrement) {
     pass.SetPipeline(pipeline);
     pass.SetBindGroup(0, bindGroup);
     for (uint32_t i = 0; i < kIterations; ++i) {
-        pass.Dispatch(kNumValues);
+        pass.DispatchWorkgroups(kNumValues);
     }
     pass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
@@ -90,7 +90,7 @@ TEST_P(ComputeStorageBufferBarrierTests, AddPingPong) {
         @group(0) @binding(0) var<storage, read_write> src : Buf;
         @group(0) @binding(1) var<storage, read_write> dst : Buf;
 
-        @stage(compute) @workgroup_size(1)
+        @compute @workgroup_size(1)
         fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3<u32>) {
             dst.data[GlobalInvocationID.x] = src.data[GlobalInvocationID.x] + 0x1234u;
         }
@@ -121,9 +121,9 @@ TEST_P(ComputeStorageBufferBarrierTests, AddPingPong) {
 
     for (uint32_t i = 0; i < kIterations / 2; ++i) {
         pass.SetBindGroup(0, bindGroups[0]);
-        pass.Dispatch(kNumValues);
+        pass.DispatchWorkgroups(kNumValues);
         pass.SetBindGroup(0, bindGroups[1]);
-        pass.Dispatch(kNumValues);
+        pass.DispatchWorkgroups(kNumValues);
     }
     pass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
@@ -156,7 +156,7 @@ TEST_P(ComputeStorageBufferBarrierTests, StorageAndReadonlyStoragePingPongInOneP
         @group(0) @binding(0) var<storage, read> src : Buf;
         @group(0) @binding(1) var<storage, read_write> dst : Buf;
 
-        @stage(compute) @workgroup_size(1)
+        @compute @workgroup_size(1)
         fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3<u32>) {
             dst.data[GlobalInvocationID.x] = src.data[GlobalInvocationID.x] + 0x1234u;
         }
@@ -187,9 +187,9 @@ TEST_P(ComputeStorageBufferBarrierTests, StorageAndReadonlyStoragePingPongInOneP
 
     for (uint32_t i = 0; i < kIterations / 2; ++i) {
         pass.SetBindGroup(0, bindGroups[0]);
-        pass.Dispatch(kNumValues);
+        pass.DispatchWorkgroups(kNumValues);
         pass.SetBindGroup(0, bindGroups[1]);
-        pass.Dispatch(kNumValues);
+        pass.DispatchWorkgroups(kNumValues);
     }
     pass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
@@ -224,7 +224,7 @@ TEST_P(ComputeStorageBufferBarrierTests, UniformToStorageAddPingPong) {
         @group(0) @binding(0) var<uniform> src : Buf;
         @group(0) @binding(1) var<storage, read_write> dst : Buf;
 
-        @stage(compute) @workgroup_size(1)
+        @compute @workgroup_size(1)
         fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3<u32>) {
             dst.data[GlobalInvocationID.x] = src.data[GlobalInvocationID.x] +
                 vec4<u32>(0x1234u, 0x1234u, 0x1234u, 0x1234u);
@@ -256,7 +256,7 @@ TEST_P(ComputeStorageBufferBarrierTests, UniformToStorageAddPingPong) {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroups[b]);
-        pass.Dispatch(kNumValues / 4);
+        pass.DispatchWorkgroups(kNumValues / 4);
         pass.End();
     }
 
@@ -292,7 +292,7 @@ TEST_P(ComputeStorageBufferBarrierTests, UniformToStorageAddPingPongInOnePass) {
         @group(0) @binding(0) var<uniform> src : Buf;
         @group(0) @binding(1) var<storage, read_write> dst : Buf;
 
-        @stage(compute) @workgroup_size(1)
+        @compute @workgroup_size(1)
         fn main(@builtin(global_invocation_id) GlobalInvocationID : vec3<u32>) {
             dst.data[GlobalInvocationID.x] = src.data[GlobalInvocationID.x] +
                 vec4<u32>(0x1234u, 0x1234u, 0x1234u, 0x1234u);
@@ -323,7 +323,7 @@ TEST_P(ComputeStorageBufferBarrierTests, UniformToStorageAddPingPongInOnePass) {
     for (uint32_t i = 0, b = 0; i < kIterations; ++i, b = 1 - b) {
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroups[b]);
-        pass.Dispatch(kNumValues / 4);
+        pass.DispatchWorkgroups(kNumValues / 4);
     }
     pass.End();
 
@@ -348,7 +348,7 @@ TEST_P(ComputeStorageBufferBarrierTests, IndirectBufferCorrectBarrier) {
         }
         @group(0) @binding(0) var<storage, read_write> buf : Buf;
 
-        @stage(compute) @workgroup_size(1) fn main() {
+        @compute @workgroup_size(1) fn main() {
             buf.data = array<u32, 3>(1u, 1u, 1u);
         }
     )");
@@ -367,7 +367,7 @@ TEST_P(ComputeStorageBufferBarrierTests, IndirectBufferCorrectBarrier) {
         }
         @group(0) @binding(1) var<storage, read_write> result : Result;
 
-        @stage(compute) @workgroup_size(1) fn main() {
+        @compute @workgroup_size(1) fn main() {
             result.data = 2u;
             if (buf.data[0] == 1u && buf.data[1] == 1u && buf.data[2] == 1u) {
                 result.data = 1u;
@@ -389,7 +389,7 @@ TEST_P(ComputeStorageBufferBarrierTests, IndirectBufferCorrectBarrier) {
 
     pass.SetPipeline(step2Pipeline);
     pass.SetBindGroup(0, step2Group);
-    pass.Dispatch(1);
+    pass.DispatchWorkgroups(1);
 
     //  3 - Use the indirect buffer in a Dispatch while also reading its data.
     wgpu::Buffer resultBuffer = utils::CreateBufferFromData<uint32_t>(
@@ -399,7 +399,7 @@ TEST_P(ComputeStorageBufferBarrierTests, IndirectBufferCorrectBarrier) {
 
     pass.SetPipeline(step3Pipeline);
     pass.SetBindGroup(0, step3Group);
-    pass.DispatchIndirect(buf, 0);
+    pass.DispatchWorkgroupsIndirect(buf, 0);
 
     pass.End();
     wgpu::CommandBuffer commands = encoder.Finish();

@@ -15,9 +15,13 @@
 #ifndef COMMON_VERISON_AUTOGEN_H_
 #define COMMON_VERISON_AUTOGEN_H_
 
+#include <string_view>
+
 namespace dawn {
 
-static constexpr char kGitHash[] = "{{get_gitHash()}}";
+// The version string should either be a valid git hash or empty.
+static constexpr std::string_view kDawnVersion("{{get_version()}}");
+static_assert(kDawnVersion.size() == 40 || kDawnVersion.size() == 0);
 
 } // namespace dawn
 

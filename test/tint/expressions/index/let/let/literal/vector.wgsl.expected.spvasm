@@ -26,6 +26,6 @@
                OpFunctionEnd
           %f = OpFunction %float None %5
           %8 = OpLabel
-         %16 = OpCompositeExtract %float %13 1
+         %16 = OpVectorExtractDynamic %float %13 %int_1
                OpReturnValue %16
                OpFunctionEnd

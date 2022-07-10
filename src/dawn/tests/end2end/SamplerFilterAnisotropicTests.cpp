@@ -15,20 +15,20 @@
 #include <cmath>
 #include <vector>
 
-#include "dawn/tests/DawnTest.h"
 #include "dawn/common/Assert.h"
 #include "dawn/common/Constants.h"
+#include "dawn/tests/DawnTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
 constexpr static unsigned int kRTSize = 16;
 
 namespace {
-    // MipLevel colors, ordering from base level to high level
-    // each mipmap of the texture is having a different color
-    // so we can check if the sampler anisotropic filtering is fetching
-    // from the correct miplevel
-    const std::array<RGBA8, 3> colors = {RGBA8::kRed, RGBA8::kGreen, RGBA8::kBlue};
+// MipLevel colors, ordering from base level to high level
+// each mipmap of the texture is having a different color
+// so we can check if the sampler anisotropic filtering is fetching
+// from the correct miplevel
+const std::array<RGBA8, 3> colors = {RGBA8::kRed, RGBA8::kGreen, RGBA8::kBlue};
 }  // namespace
 
 class SamplerFilterAnisotropicTest : public DawnTest {
@@ -54,7 +54,7 @@ class SamplerFilterAnisotropicTest : public DawnTest {
                 @builtin(position) position : vec4<f32>,
             }
 
-            @stage(vertex)
+            @vertex
             fn main(input : VertexIn) -> VertexOut {
                 var output : VertexOut;
                 output.uv = input.uv;
@@ -71,7 +71,7 @@ class SamplerFilterAnisotropicTest : public DawnTest {
                 @builtin(position) fragCoord : vec4<f32>,
             }
 
-            @stage(fragment)
+            @fragment
             fn main(input : FragmentIn) -> @location(0) vec4<f32> {
                 return textureSample(texture0, sampler0, input.uv);
             })");

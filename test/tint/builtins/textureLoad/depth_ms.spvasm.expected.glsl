@@ -1,10 +1,10 @@
 #version 310 es
 
-vec4 tint_symbol_1 = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+vec4 tint_symbol_1 = vec4(0.0f);
 uniform highp sampler2DMS arg_0_1;
 void textureLoad_6273b1() {
   float res = 0.0f;
-  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0, 0), 1).x, 0.0f, 0.0f, 0.0f);
+  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0), 1).x, 0.0f, 0.0f, 0.0f);
   res = x_17.x;
   return;
 }
@@ -16,7 +16,7 @@ void tint_symbol_2(vec4 tint_symbol) {
 
 void vertex_main_1() {
   textureLoad_6273b1();
-  tint_symbol_2(vec4(0.0f, 0.0f, 0.0f, 0.0f));
+  tint_symbol_2(vec4(0.0f));
   return;
 }
 
@@ -31,6 +31,7 @@ vertex_main_out vertex_main() {
 }
 
 void main() {
+  gl_PointSize = 1.0;
   vertex_main_out inner_result = vertex_main();
   gl_Position = inner_result.tint_symbol_1_1;
   gl_Position.y = -(gl_Position.y);
@@ -43,7 +44,7 @@ precision mediump float;
 uniform highp sampler2DMS arg_0_1;
 void textureLoad_6273b1() {
   float res = 0.0f;
-  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0, 0), 1).x, 0.0f, 0.0f, 0.0f);
+  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0), 1).x, 0.0f, 0.0f, 0.0f);
   res = x_17.x;
   return;
 }
@@ -70,7 +71,7 @@ void main() {
 uniform highp sampler2DMS arg_0_1;
 void textureLoad_6273b1() {
   float res = 0.0f;
-  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0, 0), 1).x, 0.0f, 0.0f, 0.0f);
+  vec4 x_17 = vec4(texelFetch(arg_0_1, ivec2(0), 1).x, 0.0f, 0.0f, 0.0f);
   res = x_17.x;
   return;
 }

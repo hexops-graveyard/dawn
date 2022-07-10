@@ -6,15 +6,16 @@ ivec4 textureLoad2d(highp isampler2D tint_symbol_1, ivec2 coords, int level) {
 
 uniform highp isampler2D arg_0_1;
 void doTextureLoad() {
-  ivec4 res = textureLoad2d(arg_0_1, ivec2(0, 0), 0);
+  ivec4 res = textureLoad2d(arg_0_1, ivec2(0), 0);
 }
 
 vec4 vertex_main() {
   doTextureLoad();
-  return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+  return vec4(0.0f);
 }
 
 void main() {
+  gl_PointSize = 1.0;
   vec4 inner_result = vertex_main();
   gl_Position = inner_result;
   gl_Position.y = -(gl_Position.y);
@@ -30,7 +31,7 @@ ivec4 textureLoad2d(highp isampler2D tint_symbol_1, ivec2 coords, int level) {
 
 uniform highp isampler2D arg_0_1;
 void doTextureLoad() {
-  ivec4 res = textureLoad2d(arg_0_1, ivec2(0, 0), 0);
+  ivec4 res = textureLoad2d(arg_0_1, ivec2(0), 0);
 }
 
 void fragment_main() {
@@ -49,7 +50,7 @@ ivec4 textureLoad2d(highp isampler2D tint_symbol_1, ivec2 coords, int level) {
 
 uniform highp isampler2D arg_0_1;
 void doTextureLoad() {
-  ivec4 res = textureLoad2d(arg_0_1, ivec2(0, 0), 0);
+  ivec4 res = textureLoad2d(arg_0_1, ivec2(0), 0);
 }
 
 void compute_main() {

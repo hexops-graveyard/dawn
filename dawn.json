@@ -128,6 +128,8 @@
         "extensible": "out",
         "members": [
             {"name": "vendor ID", "type": "uint32_t"},
+            {"name": "vendor name", "type": "char", "annotation": "const*", "length": "strlen"},
+            {"name": "architecture", "type": "char", "annotation": "const*", "length": "strlen"},
             {"name": "device ID", "type": "uint32_t"},
             {"name": "name", "type": "char", "annotation": "const*", "length": "strlen"},
             {"name": "driver description", "type": "char", "annotation": "const*", "length": "strlen"},
@@ -413,7 +415,7 @@
                 "returns": "void *",
                 "args": [
                     {"name": "offset", "type": "size_t", "default": 0},
-                    {"name": "size", "type": "size_t", "default": 0}
+                    {"name": "size", "type": "size_t", "default": "WGPU_WHOLE_MAP_SIZE"}
                 ]
             },
             {
@@ -421,7 +423,7 @@
                 "returns": "void const *",
                 "args": [
                     {"name": "offset", "type": "size_t", "default": 0},
-                    {"name": "size", "type": "size_t", "default": 0}
+                    {"name": "size", "type": "size_t", "default": "WGPU_WHOLE_MAP_SIZE"}
                 ]
             },
             {
@@ -430,6 +432,14 @@
                 "args": [
                     {"name": "label", "type": "char", "annotation": "const*", "length": "strlen"}
                 ]
+            },
+            {
+                "name": "get usage",
+                "returns": "buffer usage"
+            },
+            {
+                "name": "get size",
+                "returns": "uint64_t"
             },
             {
                 "name": "unmap"
@@ -796,6 +806,15 @@
             },
             {
                 "name": "dispatch",
+                "tags": ["deprecated"],
+                "args": [
+                    {"name": "workgroupCountX", "type": "uint32_t"},
+                    {"name": "workgroupCountY", "type": "uint32_t", "default": "1"},
+                    {"name": "workgroupCountZ", "type": "uint32_t", "default": "1"}
+                ]
+            },
+            {
+                "name": "dispatch workgroups",
                 "args": [
                     {"name": "workgroupCountX", "type": "uint32_t"},
                     {"name": "workgroupCountY", "type": "uint32_t", "default": "1"},
@@ -804,6 +823,14 @@
             },
             {
                 "name": "dispatch indirect",
+                "tags": ["deprecated"],
+                "args": [
+                  {"name": "indirect buffer", "type": "buffer"},
+                  {"name": "indirect offset", "type": "uint64_t"}
+                ]
+            },
+            {
+                "name": "dispatch workgroups indirect",
                 "args": [
                   {"name": "indirect buffer", "type": "buffer"},
                   {"name": "indirect offset", "type": "uint64_t"}
@@ -996,6 +1023,11 @@
                 ]
             },
             {
+                "name": "create error external texture",
+                "returns": "external texture",
+                "tags": ["dawn"]
+            },
+            {
                 "name": "create pipeline layout",
                 "returns": "pipeline layout",
                 "args": [
@@ -1048,9 +1080,19 @@
             },
             {
                 "name": "create swap chain",
+                "tags": ["dawn"],
                 "returns": "swap chain",
                 "args": [
                     {"name": "surface", "type": "surface", "optional": true},
+                    {"name": "descriptor", "type": "swap chain descriptor", "annotation": "const*"}
+                ]
+            },
+            {
+                "name": "create swap chain",
+                "tags": ["upstream", "emscripten"],
+                "returns": "swap chain",
+                "args": [
+                    {"name": "surface", "type": "surface"},
                     {"name": "descriptor", "type": "swap chain descriptor", "annotation": "const*"}
                 ]
             },
@@ -1166,30 +1208,6 @@
             {"value": 1, "name": "destroyed"}
         ]
     },
-    "device properties": {
-        "category": "structure",
-        "extensible": false,
-        "tags": ["dawn"],
-        "members": [
-            {"name": "device ID", "type": "uint32_t"},
-            {"name": "vendor ID", "type": "uint32_t"},
-            {"name": "adapter type", "type": "adapter type"},
-            {"name": "texture compression BC", "type": "bool", "default": "false"},
-            {"name": "texture compression ETC2", "type": "bool", "default": "false"},
-            {"name": "texture compression ASTC", "type": "bool", "default": "false"},
-            {"name": "shader float16", "type": "bool", "default": "false"},
-            {"name": "pipeline statistics query", "type": "bool", "default": "false"},
-            {"name": "timestamp query", "type": "bool", "default": "false"},
-            {"name": "multi planar formats", "type": "bool", "default": "false"},
-            {"name": "depth clamping", "type": "bool", "default": "false"},
-            {"name": "depth24 unorm stencil8", "type": "bool", "default": "false"},
-            {"name": "depth32 float stencil8", "type": "bool", "default": "false"},
-            {"name": "invalid feature", "type": "bool", "default": "false"},
-            {"name": "dawn internal usages", "type": "bool", "default": "false"},
-            {"name": "dawn native", "type": "bool", "default": "false"},
-            {"name": "limits", "type": "supported limits"}
-        ]
-    },
     "double": {
         "category": "native"
     },
@@ -1224,6 +1242,8 @@
             {"name": "max vertex attributes", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max vertex buffer array stride", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max inter stage shader components", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
+            {"name": "max inter stage shader variables", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
+            {"name": "max color attachments", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max compute workgroup storage size", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max compute invocations per workgroup", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max compute workgroup size x", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
@@ -1316,27 +1336,35 @@
             {"name": "label", "type": "char", "annotation": "const*", "length": "strlen", "optional": true},
             {"name": "plane 0", "type": "texture view"},
             {"name": "plane 1", "type": "texture view", "optional": true},
-            {"name": "color space", "type": "predefined color space", "default": "srgb"}
+            {"name": "do yuv to rgb conversion only", "type": "bool", "default": "false"},
+            {"name": "yuv to rgb conversion matrix", "type": "float", "annotation": "const*",
+                "length": 12, "optional": true},
+            {"name": "src transfer function parameters", "type": "float", "annotation": "const*",
+                "length": 7},
+            {"name": "dst transfer function parameters", "type": "float", "annotation": "const*",
+                "length": 7},
+            {"name": "gamut conversion matrix", "type": "float", "annotation": "const*",
+                "length": 9}
         ]
     },
     "feature name": {
         "category": "enum",
         "values": [
             {"value": 0, "name": "undefined", "jsrepr": "undefined"},
-            {"value": 1, "name": "depth clip control", "tags": ["upstream", "emscripten"]},
-            {"value": 2, "name": "depth24 unorm stencil8"},
-            {"value": 3, "name": "depth32 float stencil8"},
-            {"value": 4, "name": "timestamp query"},
-            {"value": 5, "name": "pipeline statistics query"},
-            {"value": 6, "name": "texture compression BC"},
-            {"value": 7, "name": "texture compression ETC2"},
-            {"value": 8, "name": "texture compression ASTC"},
-            {"value": 9, "name": "indirect first instance"},
+            {"value": 1, "name": "depth clip control"},
+            {"value": 2, "name": "depth32 float stencil8"},
+            {"value": 3, "name": "timestamp query"},
+            {"value": 4, "name": "pipeline statistics query"},
+            {"value": 5, "name": "texture compression BC"},
+            {"value": 6, "name": "texture compression ETC2"},
+            {"value": 7, "name": "texture compression ASTC"},
+            {"value": 8, "name": "indirect first instance"},
             {"value": 1000, "name": "depth clamping", "tags": ["emscripten", "dawn"]},
             {"value": 1001, "name": "dawn shader float 16", "tags": ["dawn"]},
             {"value": 1002, "name": "dawn internal usages", "tags": ["dawn"]},
             {"value": 1003, "name": "dawn multi planar formats", "tags": ["dawn"]},
-            {"value": 1004, "name": "dawn native", "tags": ["dawn", "native"]}
+            {"value": 1004, "name": "dawn native", "tags": ["dawn", "native"]},
+            {"value": 1005, "name": "chromium experimental dp4a", "tags": ["dawn"]}
         ]
     },
     "filter mode": {
@@ -1443,12 +1471,12 @@
         "category": "enum",
         "values": [
             {"value": 0, "name": "vertex"},
-            {"value": 1, "name": "instance"}
+            {"value": 1, "name": "instance"},
+            {"value": 2, "name": "vertex buffer not used"}
         ]
     },
     "load op": {
         "category": "enum",
-        "emscripten_no_enum_table": true,
         "values": [
             {"value": 0, "name": "undefined", "jsrepr": "undefined"},
             {"value": 1, "name": "clear"},
@@ -1526,13 +1554,6 @@
             {"value": 2, "name": "high performance"}
         ]
     },
-    "predefined color space": {
-        "category": "enum",
-        "values": [
-            {"value": 0, "name": "undefined", "jsrepr": "undefined"},
-            {"value": 1, "name": "srgb"}
-        ]
-    },
     "present mode": {
         "category": "enum",
         "emscripten_no_enum_table": true,
@@ -1571,6 +1592,14 @@
                 "args": [
                     {"name": "label", "type": "char", "annotation": "const*", "length": "strlen"}
                 ]
+            },
+            {
+                "name": "get type",
+                "returns": "query type"
+            },
+            {
+                "name": "get count",
+                "returns": "uint32_t"
             },
             {
                 "name": "destroy"
@@ -1857,6 +1886,13 @@
             {"name": "timestamp writes", "type": "render pass timestamp write", "annotation": "const*", "length": "timestamp write count"}
         ]
     },
+    "render pass descriptor max draw count": {
+        "category": "structure",
+        "chained": "in",
+        "members": [
+            {"name": "max draw count", "type": "uint64_t", "default": 50000000}
+        ]
+    },
     "render pass encoder": {
         "category": "object",
         "methods": [
@@ -2118,7 +2154,6 @@
     "primitive depth clip control": {
         "category": "structure",
         "chained": "in",
-        "tags": ["upstream", "emscripten"],
         "members": [
             {"name": "unclipped depth", "type": "bool", "default": "false"}
         ]
@@ -2446,7 +2481,7 @@
             {"value": 4, "name": "surface descriptor from canvas HTML selector"},
             {"value": 5, "name": "shader module SPIRV descriptor"},
             {"value": 6, "name": "shader module WGSL descriptor"},
-            {"value": 7, "name": "primitive depth clip control", "tags": ["upstream", "emscripten"]},
+            {"value": 7, "name": "primitive depth clip control"},
             {"value": 8, "name": "surface descriptor from wayland surface", "tags": ["native"]},
             {"value": 9, "name": "surface descriptor from android native window", "tags": ["native"]},
             {"value": 10, "name": "surface descriptor from xcb window", "tags": ["upstream"]},
@@ -2454,6 +2489,7 @@
             {"value": 12, "name": "external texture binding entry", "tags": ["dawn"]},
             {"value": 13, "name": "external texture binding layout", "tags": ["dawn"]},
             {"value": 14, "name": "surface descriptor from windows swap chain panel", "tags": ["dawn"]},
+            {"value": 15, "name": "render pass descriptor max draw count"},
             {"value": 1000, "name": "dawn texture internal usage descriptor", "tags": ["dawn"]},
             {"value": 1001, "name": "primitive depth clamping state", "tags": ["dawn", "emscripten"]},
             {"value": 1002, "name": "dawn toggles device descriptor", "tags": ["dawn", "native"]},
@@ -2478,6 +2514,38 @@
                 "args": [
                     {"name": "label", "type": "char", "annotation": "const*", "length": "strlen"}
                 ]
+            },
+            {
+                "name": "get width",
+                "returns": "uint32_t"
+            },
+            {
+                "name": "get height",
+                "returns": "uint32_t"
+            },
+            {
+                "name": "get depth or array layers",
+                "returns": "uint32_t"
+            },
+            {
+                "name": "get mip level count",
+                "returns": "uint32_t"
+            },
+            {
+                "name": "get sample count",
+                "returns": "uint32_t"
+            },
+            {
+                "name": "get dimension",
+                "returns": "texture dimension"
+            },
+            {
+                "name": "get format",
+                "returns": "texture format"
+            },
+            {
+                "name": "get usage",
+                "returns": "texture usage"
             },
             {
                 "name": "destroy"
@@ -2585,66 +2653,65 @@
             {"value": 38, "name": "depth16 unorm"},
             {"value": 39, "name": "depth24 plus"},
             {"value": 40, "name": "depth24 plus stencil8"},
-            {"value": 41, "name": "depth24 unorm stencil8"},
-            {"value": 42, "name": "depth32 float"},
-            {"value": 43, "name": "depth32 float stencil8"},
+            {"value": 41, "name": "depth32 float"},
+            {"value": 42, "name": "depth32 float stencil8"},
 
-            {"value": 44, "name": "BC1 RGBA unorm",         "jsrepr": "'bc1-rgba-unorm'"},
-            {"value": 45, "name": "BC1 RGBA unorm srgb",    "jsrepr": "'bc1-rgba-unorm-srgb'"},
-            {"value": 46, "name": "BC2 RGBA unorm",         "jsrepr": "'bc2-rgba-unorm'"},
-            {"value": 47, "name": "BC2 RGBA unorm srgb",    "jsrepr": "'bc2-rgba-unorm-srgb'"},
-            {"value": 48, "name": "BC3 RGBA unorm",         "jsrepr": "'bc3-rgba-unorm'"},
-            {"value": 49, "name": "BC3 RGBA unorm srgb",    "jsrepr": "'bc3-rgba-unorm-srgb'"},
-            {"value": 50, "name": "BC4 R unorm",            "jsrepr": "'bc4-r-unorm'"},
-            {"value": 51, "name": "BC4 R snorm",            "jsrepr": "'bc4-r-snorm'"},
-            {"value": 52, "name": "BC5 RG unorm",           "jsrepr": "'bc5-rg-unorm'"},
-            {"value": 53, "name": "BC5 RG snorm",           "jsrepr": "'bc5-rg-snorm'"},
-            {"value": 54, "name": "BC6H RGB ufloat",        "jsrepr": "'bc6h-rgb-ufloat'"},
-            {"value": 55, "name": "BC6H RGB float",         "jsrepr": "'bc6h-rgb-float'"},
-            {"value": 56, "name": "BC7 RGBA unorm",         "jsrepr": "'bc7-rgba-unorm'"},
-            {"value": 57, "name": "BC7 RGBA unorm srgb",    "jsrepr": "'bc7-rgba-unorm-srgb'"},
+            {"value": 43, "name": "BC1 RGBA unorm",         "jsrepr": "'bc1-rgba-unorm'"},
+            {"value": 44, "name": "BC1 RGBA unorm srgb",    "jsrepr": "'bc1-rgba-unorm-srgb'"},
+            {"value": 45, "name": "BC2 RGBA unorm",         "jsrepr": "'bc2-rgba-unorm'"},
+            {"value": 46, "name": "BC2 RGBA unorm srgb",    "jsrepr": "'bc2-rgba-unorm-srgb'"},
+            {"value": 47, "name": "BC3 RGBA unorm",         "jsrepr": "'bc3-rgba-unorm'"},
+            {"value": 48, "name": "BC3 RGBA unorm srgb",    "jsrepr": "'bc3-rgba-unorm-srgb'"},
+            {"value": 49, "name": "BC4 R unorm",            "jsrepr": "'bc4-r-unorm'"},
+            {"value": 50, "name": "BC4 R snorm",            "jsrepr": "'bc4-r-snorm'"},
+            {"value": 51, "name": "BC5 RG unorm",           "jsrepr": "'bc5-rg-unorm'"},
+            {"value": 52, "name": "BC5 RG snorm",           "jsrepr": "'bc5-rg-snorm'"},
+            {"value": 53, "name": "BC6H RGB ufloat",        "jsrepr": "'bc6h-rgb-ufloat'"},
+            {"value": 54, "name": "BC6H RGB float",         "jsrepr": "'bc6h-rgb-float'"},
+            {"value": 55, "name": "BC7 RGBA unorm",         "jsrepr": "'bc7-rgba-unorm'"},
+            {"value": 56, "name": "BC7 RGBA unorm srgb",    "jsrepr": "'bc7-rgba-unorm-srgb'"},
 
-            {"value": 58, "name": "ETC2 RGB8 unorm",        "jsrepr": "'etc2-rgb8unorm'"},
-            {"value": 59, "name": "ETC2 RGB8 unorm srgb",   "jsrepr": "'etc2-rgb8unorm-srgb'"},
-            {"value": 60, "name": "ETC2 RGB8A1 unorm",      "jsrepr": "'etc2-rgb8a1unorm'"},
-            {"value": 61, "name": "ETC2 RGB8A1 unorm srgb", "jsrepr": "'etc2-rgb8a1unorm-srgb'"},
-            {"value": 62, "name": "ETC2 RGBA8 unorm",       "jsrepr": "'etc2-rgba8unorm'"},
-            {"value": 63, "name": "ETC2 RGBA8 unorm srgb",  "jsrepr": "'etc2-rgba8unorm-srgb'"},
-            {"value": 64, "name": "EAC R11 unorm",          "jsrepr": "'eac-r11unorm'"},
-            {"value": 65, "name": "EAC R11 snorm",          "jsrepr": "'eac-r11snorm'"},
-            {"value": 66, "name": "EAC RG11 unorm",         "jsrepr": "'eac-rg11unorm'"},
-            {"value": 67, "name": "EAC RG11 snorm",         "jsrepr": "'eac-rg11snorm'"},
+            {"value": 57, "name": "ETC2 RGB8 unorm",        "jsrepr": "'etc2-rgb8unorm'"},
+            {"value": 58, "name": "ETC2 RGB8 unorm srgb",   "jsrepr": "'etc2-rgb8unorm-srgb'"},
+            {"value": 59, "name": "ETC2 RGB8A1 unorm",      "jsrepr": "'etc2-rgb8a1unorm'"},
+            {"value": 60, "name": "ETC2 RGB8A1 unorm srgb", "jsrepr": "'etc2-rgb8a1unorm-srgb'"},
+            {"value": 61, "name": "ETC2 RGBA8 unorm",       "jsrepr": "'etc2-rgba8unorm'"},
+            {"value": 62, "name": "ETC2 RGBA8 unorm srgb",  "jsrepr": "'etc2-rgba8unorm-srgb'"},
+            {"value": 63, "name": "EAC R11 unorm",          "jsrepr": "'eac-r11unorm'"},
+            {"value": 64, "name": "EAC R11 snorm",          "jsrepr": "'eac-r11snorm'"},
+            {"value": 65, "name": "EAC RG11 unorm",         "jsrepr": "'eac-rg11unorm'"},
+            {"value": 66, "name": "EAC RG11 snorm",         "jsrepr": "'eac-rg11snorm'"},
 
-            {"value": 68, "name": "ASTC 4x4 unorm",         "jsrepr": "'astc-4x4-unorm'"},
-            {"value": 69, "name": "ASTC 4x4 unorm srgb",    "jsrepr": "'astc-4x4-unorm-srgb'"},
-            {"value": 70, "name": "ASTC 5x4 unorm",         "jsrepr": "'astc-5x4-unorm'"},
-            {"value": 71, "name": "ASTC 5x4 unorm srgb",    "jsrepr": "'astc-5x4-unorm-srgb'"},
-            {"value": 72, "name": "ASTC 5x5 unorm",         "jsrepr": "'astc-5x5-unorm'"},
-            {"value": 73, "name": "ASTC 5x5 unorm srgb",    "jsrepr": "'astc-5x5-unorm-srgb'"},
-            {"value": 74, "name": "ASTC 6x5 unorm",         "jsrepr": "'astc-6x5-unorm'"},
-            {"value": 75, "name": "ASTC 6x5 unorm srgb",    "jsrepr": "'astc-6x5-unorm-srgb'"},
-            {"value": 76, "name": "ASTC 6x6 unorm",         "jsrepr": "'astc-6x6-unorm'"},
-            {"value": 77, "name": "ASTC 6x6 unorm srgb",    "jsrepr": "'astc-6x6-unorm-srgb'"},
-            {"value": 78, "name": "ASTC 8x5 unorm",         "jsrepr": "'astc-8x5-unorm'"},
-            {"value": 79, "name": "ASTC 8x5 unorm srgb",    "jsrepr": "'astc-8x5-unorm-srgb'"},
-            {"value": 80, "name": "ASTC 8x6 unorm",         "jsrepr": "'astc-8x6-unorm'"},
-            {"value": 81, "name": "ASTC 8x6 unorm srgb",    "jsrepr": "'astc-8x6-unorm-srgb'"},
-            {"value": 82, "name": "ASTC 8x8 unorm",         "jsrepr": "'astc-8x8-unorm'"},
-            {"value": 83, "name": "ASTC 8x8 unorm srgb",    "jsrepr": "'astc-8x8-unorm-srgb'"},
-            {"value": 84, "name": "ASTC 10x5 unorm",        "jsrepr": "'astc-10x5-unorm'"},
-            {"value": 85, "name": "ASTC 10x5 unorm srgb",   "jsrepr": "'astc-10x5-unorm-srgb'"},
-            {"value": 86, "name": "ASTC 10x6 unorm",        "jsrepr": "'astc-10x6-unorm'"},
-            {"value": 87, "name": "ASTC 10x6 unorm srgb",   "jsrepr": "'astc-10x6-unorm-srgb'"},
-            {"value": 88, "name": "ASTC 10x8 unorm",        "jsrepr": "'astc-10x8-unorm'"},
-            {"value": 89, "name": "ASTC 10x8 unorm srgb",   "jsrepr": "'astc-10x8-unorm-srgb'"},
-            {"value": 90, "name": "ASTC 10x10 unorm",       "jsrepr": "'astc-10x10-unorm'"},
-            {"value": 91, "name": "ASTC 10x10 unorm srgb",  "jsrepr": "'astc-10x10-unorm-srgb'"},
-            {"value": 92, "name": "ASTC 12x10 unorm",       "jsrepr": "'astc-12x10-unorm'"},
-            {"value": 93, "name": "ASTC 12x10 unorm srgb",  "jsrepr": "'astc-12x10-unorm-srgb'"},
-            {"value": 94, "name": "ASTC 12x12 unorm",       "jsrepr": "'astc-12x12-unorm'"},
-            {"value": 95, "name": "ASTC 12x12 unorm srgb",  "jsrepr": "'astc-12x12-unorm-srgb'"},
+            {"value": 67, "name": "ASTC 4x4 unorm",         "jsrepr": "'astc-4x4-unorm'"},
+            {"value": 68, "name": "ASTC 4x4 unorm srgb",    "jsrepr": "'astc-4x4-unorm-srgb'"},
+            {"value": 69, "name": "ASTC 5x4 unorm",         "jsrepr": "'astc-5x4-unorm'"},
+            {"value": 70, "name": "ASTC 5x4 unorm srgb",    "jsrepr": "'astc-5x4-unorm-srgb'"},
+            {"value": 71, "name": "ASTC 5x5 unorm",         "jsrepr": "'astc-5x5-unorm'"},
+            {"value": 72, "name": "ASTC 5x5 unorm srgb",    "jsrepr": "'astc-5x5-unorm-srgb'"},
+            {"value": 73, "name": "ASTC 6x5 unorm",         "jsrepr": "'astc-6x5-unorm'"},
+            {"value": 74, "name": "ASTC 6x5 unorm srgb",    "jsrepr": "'astc-6x5-unorm-srgb'"},
+            {"value": 75, "name": "ASTC 6x6 unorm",         "jsrepr": "'astc-6x6-unorm'"},
+            {"value": 76, "name": "ASTC 6x6 unorm srgb",    "jsrepr": "'astc-6x6-unorm-srgb'"},
+            {"value": 77, "name": "ASTC 8x5 unorm",         "jsrepr": "'astc-8x5-unorm'"},
+            {"value": 78, "name": "ASTC 8x5 unorm srgb",    "jsrepr": "'astc-8x5-unorm-srgb'"},
+            {"value": 79, "name": "ASTC 8x6 unorm",         "jsrepr": "'astc-8x6-unorm'"},
+            {"value": 80, "name": "ASTC 8x6 unorm srgb",    "jsrepr": "'astc-8x6-unorm-srgb'"},
+            {"value": 81, "name": "ASTC 8x8 unorm",         "jsrepr": "'astc-8x8-unorm'"},
+            {"value": 82, "name": "ASTC 8x8 unorm srgb",    "jsrepr": "'astc-8x8-unorm-srgb'"},
+            {"value": 83, "name": "ASTC 10x5 unorm",        "jsrepr": "'astc-10x5-unorm'"},
+            {"value": 84, "name": "ASTC 10x5 unorm srgb",   "jsrepr": "'astc-10x5-unorm-srgb'"},
+            {"value": 85, "name": "ASTC 10x6 unorm",        "jsrepr": "'astc-10x6-unorm'"},
+            {"value": 86, "name": "ASTC 10x6 unorm srgb",   "jsrepr": "'astc-10x6-unorm-srgb'"},
+            {"value": 87, "name": "ASTC 10x8 unorm",        "jsrepr": "'astc-10x8-unorm'"},
+            {"value": 88, "name": "ASTC 10x8 unorm srgb",   "jsrepr": "'astc-10x8-unorm-srgb'"},
+            {"value": 89, "name": "ASTC 10x10 unorm",       "jsrepr": "'astc-10x10-unorm'"},
+            {"value": 90, "name": "ASTC 10x10 unorm srgb",  "jsrepr": "'astc-10x10-unorm-srgb'"},
+            {"value": 91, "name": "ASTC 12x10 unorm",       "jsrepr": "'astc-12x10-unorm'"},
+            {"value": 92, "name": "ASTC 12x10 unorm srgb",  "jsrepr": "'astc-12x10-unorm-srgb'"},
+            {"value": 93, "name": "ASTC 12x12 unorm",       "jsrepr": "'astc-12x12-unorm'"},
+            {"value": 94, "name": "ASTC 12x12 unorm srgb",  "jsrepr": "'astc-12x12-unorm-srgb'"},
 
-            {"value": 96, "name": "R8 BG8 Biplanar 420 unorm", "tags": ["dawn"]}
+            {"value": 95, "name": "R8 BG8 Biplanar 420 unorm", "tags": ["dawn"]}
         ]
     },
     "texture usage": {

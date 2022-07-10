@@ -75,13 +75,25 @@ func (p *Patchset) RegisterFlags(defaultHost, defaultProject string) {
 	flag.IntVar(&p.Patchset, "ps", 0, "gerrit patchset id")
 }
 
+// RefsChanges returns the gerrit 'refs/changes/X/Y/Z' string for the patchset
+func (p Patchset) RefsChanges() string {
+	// https://gerrit-review.googlesource.com/Documentation/intro-user.html
+	// A change ref has the format refs/changes/X/Y/Z where X is the last two
+	// digits of the change number, Y is the entire change number, and Z is the
+	// patch set. For example, if the change number is 263270, the ref would be
+	// refs/changes/70/263270/2 for the second patch set.
+	shortChange := fmt.Sprintf("%.2v", p.Change)
+	shortChange = shortChange[len(shortChange)-2:]
+	return fmt.Sprintf("refs/changes/%v/%v/%v", shortChange, p.Change, p.Patchset)
+}
+
 // LoadCredentials attempts to load the gerrit credentials for the given gerrit
 // URL from the git cookies file. Returns an empty Credentials on failure.
 func LoadCredentials(url string) Credentials {
 	cookiesFile := os.Getenv("HOME") + "/.gitcookies"
 	if cookies, err := ioutil.ReadFile(cookiesFile); err == nil {
-		url := strings.TrimPrefix(url, "https://")
-		re := regexp.MustCompile(url + `\s+(?:FALSE|TRUE)[\s/]+(?:FALSE|TRUE)\s+[0-9]+\s+.\s+(.*)=(.*)`)
+		url := strings.TrimSuffix(strings.TrimPrefix(url, "https://"), "/")
+		re := regexp.MustCompile(url + `/?\s+(?:FALSE|TRUE)[\s/]+(?:FALSE|TRUE)\s+[0-9]+\s+.\s+(.*)=(.*)`)
 		match := re.FindStringSubmatch(string(cookies))
 		if len(match) == 3 {
 			return Credentials{match[1], match[2]}
@@ -156,10 +168,10 @@ func (g *Gerrit) CreateChange(project, branch, subject string, wip bool) (*Chang
 	return change, nil
 }
 
-// EditFiles replaces the content of the files in the given change.
+// EditFiles replaces the content of the files in the given change. It deletes deletedFiles.
 // If newCommitMsg is not an empty string, then the commit message is replaced
 // with the string value.
-func (g *Gerrit) EditFiles(changeID, newCommitMsg string, files map[string]string) (Patchset, error) {
+func (g *Gerrit) EditFiles(changeID, newCommitMsg string, files map[string]string, deletedFiles []string) (Patchset, error) {
 	if newCommitMsg != "" {
 		resp, err := g.client.Changes.ChangeCommitMessageInChangeEdit(changeID, &gerrit.ChangeEditMessageInput{
 			Message: newCommitMsg,
@@ -170,6 +182,12 @@ func (g *Gerrit) EditFiles(changeID, newCommitMsg string, files map[string]strin
 	}
 	for path, content := range files {
 		resp, err := g.client.Changes.ChangeFileContentInChangeEdit(changeID, path, content)
+		if err != nil && resp.StatusCode != 409 { // 409 no changes were made
+			return Patchset{}, g.maybeWrapError(err)
+		}
+	}
+	for _, path := range deletedFiles {
+		resp, err := g.client.Changes.DeleteFileInChangeEdit(changeID, path)
 		if err != nil && resp.StatusCode != 409 { // 409 no changes were made
 			return Patchset{}, g.maybeWrapError(err)
 		}
@@ -200,19 +218,67 @@ func (g *Gerrit) LatestPatchest(changeID string) (Patchset, error) {
 	return ps, nil
 }
 
+// CommentSide is an enumerator for specifying which side code-comments should
+// be shown.
+type CommentSide int
+
+const (
+	// Left is used to specifiy that code comments should appear on the parent
+	// change
+	Left CommentSide = iota
+	// Right is used to specifiy that code comments should appear on the new
+	// change
+	Right
+)
+
+// FileComment describes a single comment on a file
+type FileComment struct {
+	Path    string      // The file path
+	Side    CommentSide // Which side the comment should appear
+	Line    int         // The 1-based line number for the comment
+	Message string      // The comment message
+}
+
 // Comment posts a review comment on the given patchset.
-func (g *Gerrit) Comment(ps Patchset, msg string) error {
-	_, _, err := g.client.Changes.SetReview(
-		strconv.Itoa(ps.Change),
-		strconv.Itoa(ps.Patchset),
-		&gerrit.ReviewInput{
-			Message: msg,
-		})
+// If comments is an optional list of file-comments to include in the comment.
+func (g *Gerrit) Comment(ps Patchset, msg string, comments []FileComment) error {
+	input := &gerrit.ReviewInput{
+		Message: msg,
+	}
+	if len(comments) > 0 {
+		input.Comments = map[string][]gerrit.CommentInput{}
+		for _, c := range comments {
+			ci := gerrit.CommentInput{
+				Line: c.Line,
+				// Updated: &gerrit.Timestamp{Time: time.Now()},
+				Message: c.Message,
+			}
+			if c.Side == Left {
+				ci.Side = "PARENT"
+			} else {
+				ci.Side = "REVISION"
+			}
+			input.Comments[c.Path] = append(input.Comments[c.Path], ci)
+		}
+	}
+	_, _, err := g.client.Changes.SetReview(strconv.Itoa(ps.Change), strconv.Itoa(ps.Patchset), input)
 	if err != nil {
 		return g.maybeWrapError(err)
 	}
 	return nil
 }
+
+// SetReadyForReview marks the change as ready for review.
+func (g *Gerrit) SetReadyForReview(changeID, message string) error {
+	resp, err := g.client.Changes.SetReadyForReview(changeID, &gerrit.ReadyForReviewInput{
+		Message: message,
+	})
+	if err != nil && resp.StatusCode != 409 { // 409: already ready
+		return g.maybeWrapError(err)
+	}
+	return nil
+}
+
 func (g *Gerrit) maybeWrapError(err error) error {
 	if err != nil && !g.authenticated {
 		return fmt.Errorf(`query failed, possibly because of authentication.

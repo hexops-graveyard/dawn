@@ -41,7 +41,7 @@ TEST_P(MaxLimitTests, MaxComputeWorkgroupStorageSize) {
             value1 : u32,
         }
 
-        @group(0) @binding(0) var<storage, write> dst : Dst;
+        @group(0) @binding(0) var<storage, read_write> dst : Dst;
 
         struct WGData {
           value0 : u32,
@@ -52,7 +52,7 @@ TEST_P(MaxLimitTests, MaxComputeWorkgroupStorageSize) {
         }
         var<workgroup> wg_data : WGData;
 
-        @stage(compute) @workgroup_size(2,1,1)
+        @compute @workgroup_size(2,1,1)
         fn main(@builtin(local_invocation_index) LocalInvocationIndex : u32) {
             if (LocalInvocationIndex == 0u) {
                 // Put data into the first and last byte of workgroup memory.
@@ -91,7 +91,7 @@ TEST_P(MaxLimitTests, MaxComputeWorkgroupStorageSize) {
     wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
     pass.SetPipeline(pipeline);
     pass.SetBindGroup(0, bindGroup);
-    pass.Dispatch(1);
+    pass.DispatchWorkgroups(1);
     pass.End();
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
@@ -122,7 +122,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
                 maxBufferBindingSize =
                     std::min(maxBufferBindingSize, uint64_t(2) * 1024 * 1024 * 1024);
                 // With WARP or on 32-bit platforms, such large buffer allocations often fail.
-#ifdef DAWN_PLATFORM_32_BIT
+#if DAWN_PLATFORM_IS(32_BIT)
                 if (IsWindows()) {
                     continue;
                 }
@@ -142,9 +142,9 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
                   }
 
                   @group(0) @binding(0) var<storage, read> buf : Buf;
-                  @group(0) @binding(1) var<storage, write> result : Result;
+                  @group(0) @binding(1) var<storage, read_write> result : Result;
 
-                  @stage(compute) @workgroup_size(1,1,1)
+                  @compute @workgroup_size(1,1,1)
                   fn main() {
                       result.value0 = buf.values[0];
                       result.value1 = buf.values[arrayLength(&buf.values) - 1u];
@@ -173,9 +173,9 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
                   }
 
                   @group(0) @binding(0) var<uniform> buf : Buf;
-                  @group(0) @binding(1) var<storage, write> result : Result;
+                  @group(0) @binding(1) var<storage, read_write> result : Result;
 
-                  @stage(compute) @workgroup_size(1,1,1)
+                  @compute @workgroup_size(1,1,1)
                   fn main() {
                       result.value0 = buf.value0;
                       result.value1 = buf.value1;
@@ -225,7 +225,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(pipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
         wgpu::CommandBuffer commands = encoder.Finish();
         queue.Submit(1, &commands);

@@ -24,27 +24,33 @@
 
 namespace wgpu::binding {
 
-    // GPUTexture is an implementation of interop::GPUTexture that wraps a wgpu::Texture.
-    class GPUTexture final : public interop::GPUTexture {
-      public:
-        explicit GPUTexture(wgpu::Texture texture);
+// GPUTexture is an implementation of interop::GPUTexture that wraps a wgpu::Texture.
+class GPUTexture final : public interop::GPUTexture {
+  public:
+    explicit GPUTexture(wgpu::Texture texture);
 
-        // Implicit cast operator to Dawn GPU object
-        inline operator const wgpu::Texture&() const {
-            return texture_;
-        }
+    // Implicit cast operator to Dawn GPU object
+    inline operator const wgpu::Texture&() const { return texture_; }
 
-        // interop::GPUTexture interface compliance
-        interop::Interface<interop::GPUTextureView> createView(
-            Napi::Env,
-            interop::GPUTextureViewDescriptor descriptor) override;
-        void destroy(Napi::Env) override;
-        std::variant<std::string, interop::UndefinedType> getLabel(Napi::Env) override;
-        void setLabel(Napi::Env, std::variant<std::string, interop::UndefinedType> value) override;
+    // interop::GPUTexture interface compliance
+    interop::Interface<interop::GPUTextureView> createView(
+        Napi::Env,
+        interop::GPUTextureViewDescriptor descriptor) override;
+    void destroy(Napi::Env) override;
+    interop::GPUIntegerCoordinate getWidth(Napi::Env) override;
+    interop::GPUIntegerCoordinate getHeight(Napi::Env) override;
+    interop::GPUIntegerCoordinate getDepthOrArrayLayers(Napi::Env) override;
+    interop::GPUIntegerCoordinate getMipLevelCount(Napi::Env) override;
+    interop::GPUSize32 getSampleCount(Napi::Env) override;
+    interop::GPUTextureDimension getDimension(Napi::Env) override;
+    interop::GPUTextureFormat getFormat(Napi::Env) override;
+    interop::GPUTextureUsageFlags getUsage(Napi::Env) override;
+    std::string getLabel(Napi::Env) override;
+    void setLabel(Napi::Env, std::string value) override;
 
-      private:
-        wgpu::Texture texture_;
-    };
+  private:
+    wgpu::Texture texture_;
+};
 
 }  // namespace wgpu::binding
 

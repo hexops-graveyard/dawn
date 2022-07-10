@@ -16,80 +16,100 @@
 #define SRC_DAWN_WIRE_CLIENT_CLIENT_H_
 
 #include <memory>
+#include <utility>
 
-#include "dawn/webgpu.h"
-#include "dawn/wire/Wire.h"
 #include "dawn/common/LinkedList.h"
 #include "dawn/common/NonCopyable.h"
+#include "dawn/webgpu.h"
 #include "dawn/wire/ChunkedCommandSerializer.h"
+#include "dawn/wire/Wire.h"
 #include "dawn/wire/WireClient.h"
 #include "dawn/wire/WireCmd_autogen.h"
 #include "dawn/wire/WireDeserializeAllocator.h"
 #include "dawn/wire/client/ClientBase_autogen.h"
+#include "dawn/wire/client/ObjectStore.h"
 
 namespace dawn::wire::client {
 
-    class Device;
-    class MemoryTransferService;
+class Device;
+class MemoryTransferService;
 
-    class Client : public ClientBase {
-      public:
-        Client(CommandSerializer* serializer, MemoryTransferService* memoryTransferService);
-        ~Client() override;
+class Client : public ClientBase {
+  public:
+    Client(CommandSerializer* serializer, MemoryTransferService* memoryTransferService);
+    ~Client() override;
 
-        // ChunkedCommandHandler implementation
-        const volatile char* HandleCommandsImpl(const volatile char* commands,
-                                                size_t size) override;
+    // Make<T>(arg1, arg2, arg3) creates a new T, calling a constructor of the form:
+    //
+    //   T::T(ObjectBaseParams, arg1, arg2, arg3)
+    template <typename T, typename... Args>
+    T* Make(Args&&... args) {
+        constexpr ObjectType type = ObjectTypeToTypeEnum<T>;
 
-        MemoryTransferService* GetMemoryTransferService() const {
-            return mMemoryTransferService;
-        }
+        ObjectBaseParams params = {this, mObjectStores[type].ReserveHandle()};
+        T* object = new T(params, std::forward<Args>(args)...);
 
-        ReservedTexture ReserveTexture(WGPUDevice device);
-        ReservedSwapChain ReserveSwapChain(WGPUDevice device);
-        ReservedDevice ReserveDevice();
-        ReservedInstance ReserveInstance();
+        mObjects[type].Append(object);
+        mObjectStores[type].Insert(std::unique_ptr<T>(object));
+        return object;
+    }
 
-        void ReclaimTextureReservation(const ReservedTexture& reservation);
-        void ReclaimSwapChainReservation(const ReservedSwapChain& reservation);
-        void ReclaimDeviceReservation(const ReservedDevice& reservation);
-        void ReclaimInstanceReservation(const ReservedInstance& reservation);
+    template <typename T>
+    void Free(T* obj) {
+        Free(obj, ObjectTypeToTypeEnum<T>);
+    }
+    void Free(ObjectBase* obj, ObjectType type);
 
-        template <typename Cmd>
-        void SerializeCommand(const Cmd& cmd) {
-            mSerializer.SerializeCommand(cmd, *this);
-        }
+    template <typename T>
+    T* Get(ObjectId id) {
+        return static_cast<T*>(mObjectStores[ObjectTypeToTypeEnum<T>].Get(id));
+    }
 
-        template <typename Cmd, typename ExtraSizeSerializeFn>
-        void SerializeCommand(const Cmd& cmd,
-                              size_t extraSize,
-                              ExtraSizeSerializeFn&& SerializeExtraSize) {
-            mSerializer.SerializeCommand(cmd, *this, extraSize, SerializeExtraSize);
-        }
+    // ChunkedCommandHandler implementation
+    const volatile char* HandleCommandsImpl(const volatile char* commands, size_t size) override;
 
-        void Disconnect();
-        bool IsDisconnected() const;
+    MemoryTransferService* GetMemoryTransferService() const { return mMemoryTransferService; }
 
-        template <typename T>
-        void TrackObject(T* object) {
-            mObjects[ObjectTypeToTypeEnum<T>::value].Append(object);
-        }
+    ReservedTexture ReserveTexture(WGPUDevice device, const WGPUTextureDescriptor* descriptor);
+    ReservedSwapChain ReserveSwapChain(WGPUDevice device);
+    ReservedDevice ReserveDevice();
+    ReservedInstance ReserveInstance();
 
-      private:
-        void DestroyAllObjects();
+    void ReclaimTextureReservation(const ReservedTexture& reservation);
+    void ReclaimSwapChainReservation(const ReservedSwapChain& reservation);
+    void ReclaimDeviceReservation(const ReservedDevice& reservation);
+    void ReclaimInstanceReservation(const ReservedInstance& reservation);
+
+    template <typename Cmd>
+    void SerializeCommand(const Cmd& cmd) {
+        mSerializer.SerializeCommand(cmd, *this);
+    }
+
+    template <typename Cmd, typename ExtraSizeSerializeFn>
+    void SerializeCommand(const Cmd& cmd,
+                          size_t extraSize,
+                          ExtraSizeSerializeFn&& SerializeExtraSize) {
+        mSerializer.SerializeCommand(cmd, *this, extraSize, SerializeExtraSize);
+    }
+
+    void Disconnect();
+    bool IsDisconnected() const;
+
+  private:
+    void DestroyAllObjects();
 
 #include "dawn/wire/client/ClientPrototypes_autogen.inc"
 
-        ChunkedCommandSerializer mSerializer;
-        WireDeserializeAllocator mAllocator;
-        MemoryTransferService* mMemoryTransferService = nullptr;
-        std::unique_ptr<MemoryTransferService> mOwnedMemoryTransferService = nullptr;
+    ChunkedCommandSerializer mSerializer;
+    WireDeserializeAllocator mWireCommandAllocator;
+    PerObjectType<ObjectStore> mObjectStores;
+    MemoryTransferService* mMemoryTransferService = nullptr;
+    std::unique_ptr<MemoryTransferService> mOwnedMemoryTransferService = nullptr;
+    PerObjectType<LinkedList<ObjectBase>> mObjects;
+    bool mDisconnected = false;
+};
 
-        PerObjectType<LinkedList<ObjectBase>> mObjects;
-        bool mDisconnected = false;
-    };
-
-    std::unique_ptr<MemoryTransferService> CreateInlineMemoryTransferService();
+std::unique_ptr<MemoryTransferService> CreateInlineMemoryTransferService();
 
 }  // namespace dawn::wire::client
 

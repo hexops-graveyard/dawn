@@ -1,8 +1,8 @@
-let slen = 4;
+const slen = 4;
 
-let ulen = 4u;
+const ulen = 4u;
 
-@stage(fragment)
+@fragment
 fn main() {
   var signed_literal : array<f32, 4>;
   var unsigned_literal : array<f32, 4u>;

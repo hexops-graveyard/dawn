@@ -58,8 +58,8 @@ namespace dawn::wire::client {
 
                     //* For object creation, store the object ID the client will use for the result.
                     {% if method.return_type.category == "object" %}
-                        auto* allocation = self->client->{{method.return_type.name.CamelCase()}}Allocator().New(self->client);
-                        cmd.result = ObjectHandle{allocation->object->id, allocation->generation};
+                        auto* returnObject = self->GetClient()->Make<{{method.return_type.name.CamelCase()}}>();
+                        cmd.result = returnObject->GetWireHandle();
                     {% endif %}
 
                     {% for arg in method.arguments %}
@@ -69,10 +69,10 @@ namespace dawn::wire::client {
                     {% endfor %}
 
                     //* Allocate space to send the command and copy the value args over.
-                    self->client->SerializeCommand(cmd);
+                    self->GetClient()->SerializeCommand(cmd);
 
                     {% if method.return_type.category == "object" %}
-                        return reinterpret_cast<{{as_cType(method.return_type.name)}}>(allocation->object.get());
+                        return ToAPI(returnObject);
                     {% endif %}
                 {% else %}
                     return self->{{method.name.CamelCase()}}(
@@ -86,23 +86,22 @@ namespace dawn::wire::client {
         //* When an object's refcount reaches 0, notify the server side of it and delete it.
         void Client{{as_MethodSuffix(type.name, Name("release"))}}({{cType}} cObj) {
             {{Type}}* obj = reinterpret_cast<{{Type}}*>(cObj);
-            obj->refcount --;
 
-            if (obj->refcount > 0) {
+            if (!obj->Release()) {
                 return;
             }
 
             DestroyObjectCmd cmd;
             cmd.objectType = ObjectType::{{type.name.CamelCase()}};
-            cmd.objectId = obj->id;
+            cmd.objectId = obj->GetWireId();
 
-            obj->client->SerializeCommand(cmd);
-            obj->client->{{type.name.CamelCase()}}Allocator().Free(obj);
+            Client* client = obj->GetClient();
+            client->SerializeCommand(cmd);
+            client->Free(obj);
         }
 
         void Client{{as_MethodSuffix(type.name, Name("reference"))}}({{cType}} cObj) {
-            {{Type}}* obj = reinterpret_cast<{{Type}}*>(cObj);
-            obj->refcount ++;
+            reinterpret_cast<{{Type}}*>(cObj)->Reference();
         }
     {% endfor %}
 

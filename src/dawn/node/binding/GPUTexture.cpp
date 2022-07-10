@@ -23,44 +23,102 @@
 
 namespace wgpu::binding {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // wgpu::bindings::GPUTexture
-    ////////////////////////////////////////////////////////////////////////////////
-    GPUTexture::GPUTexture(wgpu::Texture texture) : texture_(std::move(texture)) {
+////////////////////////////////////////////////////////////////////////////////
+// wgpu::bindings::GPUTexture
+////////////////////////////////////////////////////////////////////////////////
+GPUTexture::GPUTexture(wgpu::Texture texture) : texture_(std::move(texture)) {}
+
+interop::Interface<interop::GPUTextureView> GPUTexture::createView(
+    Napi::Env env,
+    interop::GPUTextureViewDescriptor descriptor) {
+    if (!texture_) {
+        Errors::OperationError(env).ThrowAsJavaScriptException();
+        return {};
     }
 
-    interop::Interface<interop::GPUTextureView> GPUTexture::createView(
-        Napi::Env env,
-        interop::GPUTextureViewDescriptor descriptor) {
-        if (!texture_) {
-            Errors::OperationError(env).ThrowAsJavaScriptException();
-            return {};
-        }
+    wgpu::TextureViewDescriptor desc{};
+    Converter conv(env);
+    if (!conv(desc.baseMipLevel, descriptor.baseMipLevel) ||        //
+        !conv(desc.mipLevelCount, descriptor.mipLevelCount) ||      //
+        !conv(desc.baseArrayLayer, descriptor.baseArrayLayer) ||    //
+        !conv(desc.arrayLayerCount, descriptor.arrayLayerCount) ||  //
+        !conv(desc.format, descriptor.format) ||                    //
+        !conv(desc.dimension, descriptor.dimension) ||              //
+        !conv(desc.aspect, descriptor.aspect)) {
+        return {};
+    }
+    return interop::GPUTextureView::Create<GPUTextureView>(env, texture_.CreateView(&desc));
+}
 
-        wgpu::TextureViewDescriptor desc{};
-        Converter conv(env);
-        if (!conv(desc.baseMipLevel, descriptor.baseMipLevel) ||        //
-            !conv(desc.mipLevelCount, descriptor.mipLevelCount) ||      //
-            !conv(desc.baseArrayLayer, descriptor.baseArrayLayer) ||    //
-            !conv(desc.arrayLayerCount, descriptor.arrayLayerCount) ||  //
-            !conv(desc.format, descriptor.format) ||                    //
-            !conv(desc.dimension, descriptor.dimension) ||              //
-            !conv(desc.aspect, descriptor.aspect)) {
-            return {};
-        }
-        return interop::GPUTextureView::Create<GPUTextureView>(env, texture_.CreateView(&desc));
+void GPUTexture::destroy(Napi::Env) {
+    texture_.Destroy();
+}
+
+interop::GPUIntegerCoordinate GPUTexture::getWidth(Napi::Env) {
+    return texture_.GetWidth();
+}
+
+interop::GPUIntegerCoordinate GPUTexture::getHeight(Napi::Env) {
+    return texture_.GetHeight();
+}
+
+interop::GPUIntegerCoordinate GPUTexture::getDepthOrArrayLayers(Napi::Env) {
+    return texture_.GetDepthOrArrayLayers();
+}
+
+interop::GPUIntegerCoordinate GPUTexture::getMipLevelCount(Napi::Env) {
+    return texture_.GetMipLevelCount();
+}
+
+interop::GPUSize32 GPUTexture::getSampleCount(Napi::Env) {
+    return texture_.GetSampleCount();
+}
+
+interop::GPUTextureDimension GPUTexture::getDimension(Napi::Env env) {
+    interop::GPUTextureDimension result;
+
+    Converter conv(env);
+    if (!conv(result, texture_.GetDimension())) {
+        Napi::Error::New(env, "Couldn't convert dimension to a JavaScript value.")
+            .ThrowAsJavaScriptException();
+        return interop::GPUTextureDimension::k1D;  // Doesn't get used.
     }
 
-    void GPUTexture::destroy(Napi::Env) {
-        texture_.Destroy();
+    return result;
+}
+
+interop::GPUTextureFormat GPUTexture::getFormat(Napi::Env env) {
+    interop::GPUTextureFormat result;
+
+    Converter conv(env);
+    if (!conv(result, texture_.GetFormat())) {
+        Napi::Error::New(env, "Couldn't convert format to a JavaScript value.")
+            .ThrowAsJavaScriptException();
+        return interop::GPUTextureFormat::kR32Float;  // Doesn't get used.
     }
 
-    std::variant<std::string, interop::UndefinedType> GPUTexture::getLabel(Napi::Env) {
-        UNIMPLEMENTED();
+    return result;
+}
+
+interop::GPUTextureUsageFlags GPUTexture::getUsage(Napi::Env env) {
+    interop::GPUTextureUsageFlags result;
+
+    Converter conv(env);
+    if (!conv(result, texture_.GetUsage())) {
+        Napi::Error::New(env, "Couldn't convert usage to a JavaScript value.")
+            .ThrowAsJavaScriptException();
+        return {0u};  // Doesn't get used.
     }
 
-    void GPUTexture::setLabel(Napi::Env, std::variant<std::string, interop::UndefinedType> value) {
-        UNIMPLEMENTED();
-    }
+    return result;
+}
+
+std::string GPUTexture::getLabel(Napi::Env) {
+    UNIMPLEMENTED();
+}
+
+void GPUTexture::setLabel(Napi::Env, std::string value) {
+    UNIMPLEMENTED();
+}
 
 }  // namespace wgpu::binding

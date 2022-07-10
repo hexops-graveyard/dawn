@@ -24,18 +24,18 @@
 #include "gtest/gtest.h"
 
 // Include windows.h before GLFW so GLFW's APIENTRY macro doesn't conflict with windows.h's.
-#if defined(DAWN_PLATFORM_WINDOWS)
-#    include "dawn/common/windows_with_undefs.h"
-#endif  // defined(DAWN_PLATFORM_WINDOWS)
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include "dawn/common/windows_with_undefs.h"
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
 
 #include "GLFW/glfw3.h"
 
 #if defined(DAWN_USE_X11)
-#    include "dawn/common/xlib_with_undefs.h"
+#include "dawn/common/xlib_with_undefs.h"
 #endif  // defined(DAWN_USE_X11)
 
 #if defined(DAWN_ENABLE_BACKEND_METAL)
-#    include "dawn/utils/ObjCUtils.h"
+#include "dawn/utils/ObjCUtils.h"
 #endif  // defined(DAWN_ENABLE_BACKEND_METAL)
 
 #include "GLFW/glfw3native.h"
@@ -63,13 +63,12 @@ class WindowSurfaceInstanceTests : public testing::Test {
     }
 
     void AssertSurfaceCreation(const wgpu::SurfaceDescriptor* descriptor, bool succeeds) {
-        ASSERT_EQ(mInstance.CreateSurface(descriptor).Get() != nullptr, succeeds);
+        wgpu::Surface surface = mInstance.CreateSurface(descriptor);
+        ASSERT_EQ(dawn::native::CheckIsErrorForTesting(surface.Get()), !succeeds);
     }
 
     GLFWwindow* CreateWindow() {
-        // The WindowSurfaceInstance tests don't create devices so we don't need to call
-        // SetupGLFWWindowHintsForBackend. Set GLFW_NO_API anyway to avoid GLFW bringing up a GL
-        // context that we won't use.
+        // Set GLFW_NO_API to avoid GLFW bringing up a GL context that we won't use.
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         mWindow = glfwCreateWindow(400, 400, "WindowSurfaceInstanceTests window", nullptr, nullptr);
         return mWindow;
@@ -138,7 +137,7 @@ TEST_F(WindowSurfaceInstanceTests, TwoChainedDescriptors) {
     AssertSurfaceCreation(&descriptor, false);
 }
 
-#if defined(DAWN_PLATFORM_WINDOWS)
+#if DAWN_PLATFORM_IS(WINDOWS)
 
 // Tests that GLFWUtils returns a descriptor of HWND type
 TEST_F(WindowSurfaceInstanceTests, CorrectSTypeHWND) {
@@ -159,7 +158,7 @@ TEST_F(WindowSurfaceInstanceTests, InvalidHWND) {
     AssertSurfaceCreation(&descriptor, false);
 }
 
-#else  // defined(DAWN_PLATFORM_WINDOWS)
+#else  // DAWN_PLATFORM_IS(WINDOWS)
 
 // Test using HWND when it is not supported
 TEST_F(WindowSurfaceInstanceTests, HWNDSurfacesAreInvalid) {
@@ -172,7 +171,7 @@ TEST_F(WindowSurfaceInstanceTests, HWNDSurfacesAreInvalid) {
     AssertSurfaceCreation(&descriptor, false);
 }
 
-#endif  // defined(DAWN_PLATFORM_WINDOWS)
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
 
 #if defined(DAWN_USE_X11)
 

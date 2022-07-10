@@ -37,13 +37,13 @@ class DrawIndexedIndirectTest : public DawnTest {
         renderPass = utils::CreateBasicRenderPass(device, kRTSize, kRTSize);
 
         wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, R"(
-            @stage(vertex)
+            @vertex
             fn main(@location(0) pos : vec4<f32>) -> @builtin(position) vec4<f32> {
                 return pos;
             })");
 
         wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
-            @stage(fragment) fn main() -> @location(0) vec4<f32> {
+            @fragment fn main() -> @location(0) vec4<f32> {
                 return vec4<f32>(0.0, 1.0, 0.0, 1.0);
             })");
 
@@ -663,8 +663,8 @@ TEST_P(DrawIndexedIndirectTest, ValidateReusedBundleWithChangingParams) {
                 firstIndex: u32,
             }
             @group(0) @binding(0) var<uniform> input: Input;
-            @group(0) @binding(1) var<storage, write> params: Params;
-            @stage(compute) @workgroup_size(1) fn main() {
+            @group(0) @binding(1) var<storage, read_write> params: Params;
+            @compute @workgroup_size(1) fn main() {
                 params.indexCount = 3u;
                 params.instanceCount = 1u;
                 params.firstIndex = input.firstIndex;
@@ -687,7 +687,7 @@ TEST_P(DrawIndexedIndirectTest, ValidateReusedBundleWithChangingParams) {
         wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
         pass.SetPipeline(computePipeline);
         pass.SetBindGroup(0, bindGroup);
-        pass.Dispatch(1);
+        pass.DispatchWorkgroups(1);
         pass.End();
     };
 

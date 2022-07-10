@@ -22,17 +22,17 @@ namespace {
 using PromoteSideEffectsToDeclTest = TransformTest;
 
 TEST_F(PromoteSideEffectsToDeclTest, EmptyModule) {
-  auto* src = "";
-  auto* expect = "";
+    auto* src = "";
+    auto* expect = "";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Unary_Arith_SE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -42,16 +42,16 @@ fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_BothSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -65,7 +65,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -81,14 +81,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_LeftSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -99,7 +99,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -111,14 +111,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -129,7 +129,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -142,14 +142,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_LeftmostSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -162,7 +162,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -176,14 +176,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_RightmostSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -196,7 +196,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -211,14 +211,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_MiddleSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -232,7 +232,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -248,14 +248,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_ThreeSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(v : i32) -> i32 {
   return v;
 }
@@ -265,7 +265,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(v : i32) -> i32 {
   return v;
 }
@@ -278,14 +278,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Constants_NoRecvSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -295,7 +295,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -306,14 +306,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Constants_RecvSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -324,7 +324,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -338,14 +338,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Constants_ConstAndSEAndVar) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -357,7 +357,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -370,14 +370,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Constants_VarAndSEAndConst) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -388,7 +388,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -401,15 +401,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       Binary_Arith_Constants_SEAndVarAndConstAndVar) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Constants_SEAndVarAndConstAndVar) {
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -421,7 +420,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -434,14 +433,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Builtins_WithSE) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   a : atomic<i32>,
 }
@@ -454,7 +453,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct SB {
   a : atomic<i32>,
 }
@@ -468,14 +467,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Builtins_NoSEAndVar) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   a : atomic<i32>,
 }
@@ -488,16 +487,16 @@ fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Builtins_NoSEAndSE) {
-  auto* src = R"(
+    auto* src = R"(
 struct SB {
   a : atomic<i32>,
 }
@@ -514,7 +513,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct SB {
   a : atomic<i32>,
 }
@@ -533,14 +532,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_Vector_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -552,7 +551,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a() -> i32 {
   return 1;
 }
@@ -567,14 +566,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InCall) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -589,7 +588,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -609,14 +608,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InTypeCtor) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> i32 {
   return 1;
@@ -628,7 +627,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -646,14 +645,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InTypeConversion) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> i32 {
   return 1;
@@ -665,7 +664,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -680,14 +679,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InIntrinsic) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> i32 {
   return i;
@@ -699,7 +698,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -717,14 +716,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InMemberAccessor) {
-  auto* src = R"(
+    auto* src = R"(
 
 struct S {
   v : i32,
@@ -740,7 +739,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   v : i32,
 }
@@ -758,14 +757,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InUnary) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -776,7 +775,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -790,14 +789,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InBitcast) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -808,7 +807,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -821,14 +820,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InForLoopInit) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -842,7 +841,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -857,14 +856,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InForLoopCond) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -877,7 +876,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -896,14 +895,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InForLoopCont) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -918,7 +917,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -940,14 +939,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InForLoopInitCondCont) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -963,7 +962,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -994,14 +993,53 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
+}
+
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InWhileCond) {
+    auto* src = R"(
+fn a(i : i32) -> i32 {
+  return i;
+}
+
+fn f() {
+  var b = 1;
+  while(a(0) + b > 0) {
+    var marker = 0;
+  }
+}
+)";
+
+    auto* expect = R"(
+fn a(i : i32) -> i32 {
+  return i;
+}
+
+fn f() {
+  var b = 1;
+  loop {
+    let tint_symbol = a(0);
+    if (!(((tint_symbol + b) > 0))) {
+      break;
+    }
+    {
+      var marker = 0;
+    }
+  }
+}
+)";
+
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
+
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InElseIf) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1016,7 +1054,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1034,14 +1072,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InElseIfChain) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1064,7 +1102,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1094,14 +1132,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InReturn) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1112,7 +1150,7 @@ fn f() -> i32 {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1125,14 +1163,14 @@ fn f() -> i32 {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InSwitch) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1146,7 +1184,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -1162,14 +1200,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_LeftSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1180,7 +1218,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1195,14 +1233,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1213,7 +1251,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1228,14 +1266,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_BothSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1245,7 +1283,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1259,14 +1297,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_LeftmostSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1279,7 +1317,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1304,14 +1342,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_RightmostSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1324,7 +1362,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1341,14 +1379,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_MiddleSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1361,7 +1399,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1386,14 +1424,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_Constants_NoRecvSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1403,7 +1441,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1425,14 +1463,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_Constants_RecvSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1443,7 +1481,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1466,15 +1504,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       Binary_Logical_Constants_ConstAndSEAndVar) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_Constants_ConstAndSEAndVar) {
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1486,7 +1523,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1506,15 +1543,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       Binary_Logical_Constants_VarAndSEAndConst) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_Constants_VarAndSEAndConst) {
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1525,7 +1561,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1544,15 +1580,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       Binary_Logical_Constants_SEAndVarAndConstAndVar) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_Constants_SEAndVarAndConstAndVar) {
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1564,7 +1599,7 @@ fn main() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1588,14 +1623,14 @@ fn main() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_MixedSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1608,7 +1643,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1645,14 +1680,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_NestedAnds) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1662,7 +1697,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1692,14 +1727,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_NestedOrs) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1709,7 +1744,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1739,14 +1774,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_MultipleStatements) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1758,7 +1793,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1778,14 +1813,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InCall) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1800,7 +1835,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1819,14 +1854,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InTypeCtor) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> bool {
   return true;
@@ -1838,7 +1873,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1866,14 +1901,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InTypeConversion) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> i32 {
   return 1;
@@ -1885,7 +1920,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -1906,16 +1941,16 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 // Make sure we process logical binary expressions of non-logical binary
 // expressions.
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_OfNonLogical) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> i32 {
   return 1;
@@ -1927,7 +1962,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -1944,14 +1979,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InIntrinsic) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> bool {
   return true;
@@ -1963,7 +1998,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -1991,14 +2026,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InMemberAccessor) {
-  auto* src = R"(
+    auto* src = R"(
 
 struct S {
   v : bool,
@@ -2014,7 +2049,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   v : bool,
 }
@@ -2039,14 +2074,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InUnary) {
-  auto* src = R"(
+    auto* src = R"(
 
 fn a(i : i32) -> bool {
   return true;
@@ -2058,7 +2093,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2073,14 +2108,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InBitcast) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2091,7 +2126,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2106,14 +2141,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InForLoopInit) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2127,7 +2162,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2145,14 +2180,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InForLoopCond) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2165,7 +2200,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2187,14 +2222,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InForLoopCont) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2209,7 +2244,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2234,14 +2269,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InForLoopInitCondCont) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2257,7 +2292,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2297,14 +2332,56 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
+}
+
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InWhileCond) {
+    auto* src = R"(
+fn a(i : i32) -> bool {
+  return true;
+}
+
+fn f() {
+  var b = true;
+  while(a(0) && b) {
+    var marker = 0;
+  }
+}
+)";
+
+    auto* expect = R"(
+fn a(i : i32) -> bool {
+  return true;
+}
+
+fn f() {
+  var b = true;
+  loop {
+    var tint_symbol = a(0);
+    if (tint_symbol) {
+      tint_symbol = b;
+    }
+    if (!(tint_symbol)) {
+      break;
+    }
+    {
+      var marker = 0;
+    }
+  }
+}
+)";
+
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
+
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InElseIf) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2319,7 +2396,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2340,14 +2417,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InElseIfChain) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2370,7 +2447,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> bool {
   return true;
 }
@@ -2405,14 +2482,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_NoSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2428,16 +2505,16 @@ fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_OneSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2452,7 +2529,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2468,14 +2545,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_AllSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2489,7 +2566,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2506,14 +2583,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_MiddleNotSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2529,7 +2606,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2547,14 +2624,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_InBinary) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2571,7 +2648,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2593,14 +2670,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_2D_LeftSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2612,7 +2689,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2625,14 +2702,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_2D_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2646,7 +2723,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2660,14 +2737,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_2D_BothSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2678,7 +2755,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2691,14 +2768,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToPhony) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2708,7 +2785,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2718,14 +2795,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToArray1D) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2736,7 +2813,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2749,14 +2826,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToArray2D) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2767,7 +2844,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2781,14 +2858,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToArray3D) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2799,7 +2876,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2814,14 +2891,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToArray_FromArray) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2834,7 +2911,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2851,14 +2928,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToVec_BothSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2869,7 +2946,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2882,14 +2959,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToVec_LeftSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2901,7 +2978,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2915,14 +2992,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Assignment_ToVec_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2934,7 +3011,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2947,14 +3024,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Struct) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2970,7 +3047,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -2989,14 +3066,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Array1D) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -3006,7 +3083,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -3019,14 +3096,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Array2D) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -3036,7 +3113,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 1;
 }
@@ -3052,14 +3129,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, MemberAccessor_Vec) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> vec3<i32> {
   return vec3<i32>();
 }
@@ -3069,7 +3146,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> vec3<i32> {
   return vec3<i32>();
 }
@@ -3081,14 +3158,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, MemberAccessor_Struct) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   x : i32,
   y : i32,
@@ -3103,7 +3180,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   x : i32,
   y : i32,
@@ -3120,14 +3197,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, MemberAccessor_Struct_Mixed) {
-  auto* src = R"(
+    auto* src = R"(
 struct S {
   x : i32,
   y : i32,
@@ -3152,7 +3229,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 struct S {
   x : i32,
   y : i32,
@@ -3184,14 +3261,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_Plus_SE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3202,7 +3279,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3215,14 +3292,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_Of_SE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3233,7 +3310,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3245,14 +3322,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor2_Of_LeftSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3263,7 +3340,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3275,14 +3352,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor2_Of_RightSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3293,7 +3370,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3305,14 +3382,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor2_Of_SEAndVar) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3324,7 +3401,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3337,14 +3414,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor2_Of_VarAndSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3356,7 +3433,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3370,14 +3447,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessorOfVar_Plus_SE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3389,7 +3466,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3404,14 +3481,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessor_Plus_IndexAccessorOfSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3422,7 +3499,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3435,15 +3512,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       AssignTo_IndexAccessorOfIndexAccessorOfSE) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, AssignTo_IndexAccessorOfIndexAccessorOfSE) {
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3455,7 +3531,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3468,15 +3544,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest,
-       AssignTo_IndexAccessorOfIndexAccessorOfLiteralPlusSE) {
-  auto* src = R"(
+TEST_F(PromoteSideEffectsToDeclTest, AssignTo_IndexAccessorOfIndexAccessorOfLiteralPlusSE) {
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3488,7 +3563,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3502,15 +3577,15 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest,
        AssignTo_IndexAccessorOfIndexAccessorOfLiteralPlusIndexAccessorOfSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3522,7 +3597,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3536,14 +3611,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, IndexAccessorOfLhsSERhsSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3557,7 +3632,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3573,14 +3648,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, BinaryIndexAccessorOfLhsSERhsSE) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3594,7 +3669,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return i;
 }
@@ -3610,16 +3685,16 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, BinaryMemberAccessorPlusSE) {
-  // bclayton@'s example:
-  // https://dawn-review.googlesource.com/c/tint/+/78620/6..8/src/transform/promote_side_effects_to_decl.cc#b490
-  auto* src = R"(
+    // bclayton@'s example:
+    // https://dawn-review.googlesource.com/c/tint/+/78620/6..8/src/transform/promote_side_effects_to_decl.cc#b490
+    auto* src = R"(
 fn modify_vec(p : ptr<function, vec4<i32>>) -> i32 {
   (*p).x = 42;
   return 0;
@@ -3632,7 +3707,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn modify_vec(p : ptr<function, vec4<i32>>) -> i32 {
   (*(p)).x = 42;
   return 0;
@@ -3646,15 +3721,15 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_ReadOnlyArgAndSE) {
-  // Make sure that read-only args don't get hoisted (tex and samp)
-  auto* src = R"(
+    // Make sure that read-only args don't get hoisted (tex and samp)
+    auto* src = R"(
 @group(1) @binding(1) var tex: texture_2d_array<u32>;
 @group(1) @binding(2) var samp: sampler;
 
@@ -3667,7 +3742,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 @group(1) @binding(1) var tex : texture_2d_array<u32>;
 
 @group(1) @binding(2) var samp : sampler;
@@ -3682,15 +3757,15 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Call_PtrArgAndSE) {
-  // Make sure that read-only args don't get hoisted (tex and samp)
-  auto* src = R"(
+    // Make sure that read-only args don't get hoisted (tex and samp)
+    auto* src = R"(
 
 var<private> b : i32 = 0;
 
@@ -3710,7 +3785,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 var<private> b : i32 = 0;
 
 fn a(i : i32) -> i32 {
@@ -3728,14 +3803,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, TypeCtor_VarPlusI32CtorPlusVar) {
-  auto* src = R"(
+    auto* src = R"(
 fn f() {
   var b = 0;
   var c = 0;
@@ -3744,16 +3819,16 @@ fn f() {
 }
 )";
 
-  auto* expect = src;
+    auto* expect = src;
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Mixed_ArithPlusLogical) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3771,7 +3846,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3795,14 +3870,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Mixed_LogicalPlusArith) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3820,7 +3895,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3844,14 +3919,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Mixed_ArithAndLogicalArgs) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3869,7 +3944,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3892,14 +3967,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Mixed_LogicalAndArithArgs) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3917,7 +3992,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3940,14 +4015,14 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 
 TEST_F(PromoteSideEffectsToDeclTest, Binary_Mixed_Complex) {
-  auto* src = R"(
+    auto* src = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -3969,7 +4044,7 @@ fn f() {
 }
 )";
 
-  auto* expect = R"(
+    auto* expect = R"(
 fn a(i : i32) -> i32 {
   return 0;
 }
@@ -4001,10 +4076,10 @@ fn f() {
 }
 )";
 
-  DataMap data;
-  auto got = Run<PromoteSideEffectsToDecl>(src, data);
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
 
-  EXPECT_EQ(expect, str(got));
+    EXPECT_EQ(expect, str(got));
 }
 }  // namespace
 }  // namespace tint::transform

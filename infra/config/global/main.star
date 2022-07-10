@@ -128,7 +128,7 @@ def get_builder_executable():
     return luci.recipe(
         name = "dawn",
         cipd_package = "infra/recipe_bundles/chromium.googlesource.com/chromium/tools/build",
-        cipd_version = "refs/heads/master",
+        cipd_version = "refs/heads/main",
     )
 
 def get_presubmit_executable():
@@ -140,7 +140,7 @@ def get_presubmit_executable():
     return luci.recipe(
         name = "run_presubmit",
         cipd_package = "infra/recipe_bundles/chromium.googlesource.com/chromium/tools/build",
-        cipd_version = "refs/heads/master",
+        cipd_version = "refs/heads/main",
     )
 
 def get_os_from_arg(arg):
@@ -226,6 +226,7 @@ def get_default_properties(os, clang, debug, cpu, fuzzer):
         goma_props.update({
             "server_host": "goma.chromium.org",
             "rpc_extra_params": "?prod",
+            "use_luci_auth": True,
         })
         if os.category != os_category.MAC:
             goma_props["enable_ats"] = True

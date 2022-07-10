@@ -15,8 +15,8 @@
 #include <limits>
 #include <memory>
 
-#include "gmock/gmock.h"
 #include "dawn/tests/unittests/validation/ValidationTest.h"
+#include "gmock/gmock.h"
 
 using testing::_;
 using testing::InvokeWithoutArgs;
@@ -859,6 +859,14 @@ TEST_F(BufferValidationTest, GetMappedRange_OffsetSizeOOB) {
         EXPECT_NE(buffer.GetMappedRange(0, 8), nullptr);
     }
 
+    // Valid case: full range is ok with defaulted MapAsync size and defaulted GetMappedRangeSize
+    {
+        wgpu::Buffer buffer = CreateMapWriteBuffer(8);
+        buffer.MapAsync(wgpu::MapMode::Write, 0, wgpu::kWholeMapSize, nullptr, nullptr);
+        WaitForAllOperations(device);
+        EXPECT_NE(buffer.GetMappedRange(0, wgpu::kWholeMapSize), nullptr);
+    }
+
     // Valid case: empty range at the end is ok
     {
         wgpu::Buffer buffer = CreateMapWriteBuffer(8);
@@ -882,6 +890,17 @@ TEST_F(BufferValidationTest, GetMappedRange_OffsetSizeOOB) {
         WaitForAllOperations(device);
         EXPECT_EQ(buffer.GetMappedRange(9, 0), nullptr);
         EXPECT_EQ(buffer.GetMappedRange(16, 0), nullptr);
+        EXPECT_EQ(buffer.GetMappedRange(std::numeric_limits<size_t>::max(), 0), nullptr);
+    }
+
+    // Error case: offset is larger than the buffer size (even with size = 0)
+    {
+        wgpu::Buffer buffer = CreateMapWriteBuffer(16);
+        buffer.MapAsync(wgpu::MapMode::Write, 8, 8, nullptr, nullptr);
+        WaitForAllOperations(device);
+        EXPECT_EQ(buffer.GetMappedRange(16, 4), nullptr);
+        EXPECT_EQ(buffer.GetMappedRange(24, 0), nullptr);
+        EXPECT_EQ(buffer.GetMappedRange(std::numeric_limits<size_t>::max(), 0), nullptr);
     }
 
     // Error case: offset + size is larger than the mapped range
@@ -898,15 +917,97 @@ TEST_F(BufferValidationTest, GetMappedRange_OffsetSizeOOB) {
         wgpu::Buffer buffer = CreateMapWriteBuffer(12);
         buffer.MapAsync(wgpu::MapMode::Write, 0, 12, nullptr, nullptr);
         WaitForAllOperations(device);
-        EXPECT_EQ(buffer.GetMappedRange(8, std::numeric_limits<size_t>::max()), nullptr);
+        // set size to (max - 1) to avoid being equal to kWholeMapSize
+        EXPECT_EQ(buffer.GetMappedRange(8, std::numeric_limits<size_t>::max() - 1), nullptr);
     }
 
-    // Error case: offset is before the start of the range
+    // Error case: size is larger than the mapped range when using default kWholeMapSize
+    {
+        wgpu::Buffer buffer = CreateMapWriteBuffer(12);
+        buffer.MapAsync(wgpu::MapMode::Write, 0, 8, nullptr, nullptr);
+        WaitForAllOperations(device);
+        EXPECT_EQ(buffer.GetMappedRange(0), nullptr);
+    }
+
+    // Error case: offset is before the start of the range (even with size = 0)
     {
         wgpu::Buffer buffer = CreateMapWriteBuffer(12);
         buffer.MapAsync(wgpu::MapMode::Write, 8, 4, nullptr, nullptr);
         WaitForAllOperations(device);
         EXPECT_EQ(buffer.GetMappedRange(7, 4), nullptr);
         EXPECT_EQ(buffer.GetMappedRange(0, 4), nullptr);
+        EXPECT_EQ(buffer.GetMappedRange(0, 12), nullptr);
+        EXPECT_EQ(buffer.GetMappedRange(0, 0), nullptr);
     }
+}
+
+// Test that the buffer creation parameters are correctly reflected for succesfully created buffers.
+TEST_F(BufferValidationTest, CreationParameterReflectionForValidBuffer) {
+    // Test reflection on two succesfully created but different buffers. The reflected data should
+    // be different!
+    {
+        wgpu::BufferDescriptor desc;
+        desc.size = 16;
+        desc.usage = wgpu::BufferUsage::Uniform;
+        wgpu::Buffer buf = device.CreateBuffer(&desc);
+
+        EXPECT_EQ(wgpu::BufferUsage::Uniform, buf.GetUsage());
+        EXPECT_EQ(16u, buf.GetSize());
+    }
+    {
+        wgpu::BufferDescriptor desc;
+        desc.size = 32;
+        desc.usage = wgpu::BufferUsage::Storage;
+        wgpu::Buffer buf = device.CreateBuffer(&desc);
+
+        EXPECT_EQ(wgpu::BufferUsage::Storage, buf.GetUsage());
+        EXPECT_EQ(32u, buf.GetSize());
+    }
+}
+
+// Test that the buffer creation parameters are correctly reflected for buffers invalid because of
+// validation errors.
+TEST_F(BufferValidationTest, CreationParameterReflectionForErrorBuffer) {
+    wgpu::BufferDescriptor desc;
+    desc.usage = wgpu::BufferUsage::Uniform;
+    desc.size = 19;
+    desc.mappedAtCreation = true;
+
+    // Error! MappedAtCreation requires size % 4 == 0.
+    wgpu::Buffer buf;
+    ASSERT_DEVICE_ERROR(buf = device.CreateBuffer(&desc));
+
+    // Reflection data is still exactly what was in the descriptor.
+    EXPECT_EQ(wgpu::BufferUsage::Uniform, buf.GetUsage());
+    EXPECT_EQ(19u, buf.GetSize());
+}
+
+// Test that the buffer creation parameters are correctly reflected for buffers invalid because of
+// OOM.
+TEST_F(BufferValidationTest, CreationParameterReflectionForOOMBuffer) {
+    constexpr uint64_t kAmazinglyLargeSize = 0x1234'5678'90AB'CDEF;
+    wgpu::BufferDescriptor desc;
+    desc.usage = wgpu::BufferUsage::Storage;
+    desc.size = kAmazinglyLargeSize;
+
+    // OOM!
+    wgpu::Buffer buf;
+    ASSERT_DEVICE_ERROR(buf = device.CreateBuffer(&desc));
+
+    // Reflection data is still exactly what was in the descriptor.
+    EXPECT_EQ(wgpu::BufferUsage::Storage, buf.GetUsage());
+    EXPECT_EQ(kAmazinglyLargeSize, buf.GetSize());
+}
+
+// Test that buffer reflection doesn't show internal usages
+TEST_F(BufferValidationTest, CreationParameterReflectionNoInternalUsage) {
+    wgpu::BufferDescriptor desc;
+    desc.size = 16;
+    // QueryResolve also adds kInternalStorageBuffer for processing of queries.
+    desc.usage = wgpu::BufferUsage::QueryResolve;
+    wgpu::Buffer buf = device.CreateBuffer(&desc);
+
+    // The reflection shouldn't show kInternalStorageBuffer
+    EXPECT_EQ(wgpu::BufferUsage::QueryResolve, buf.GetUsage());
+    EXPECT_EQ(16u, buf.GetSize());
 }

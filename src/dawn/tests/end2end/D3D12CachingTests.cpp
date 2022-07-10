@@ -17,16 +17,22 @@
 #include <utility>
 
 #include "dawn/tests/DawnTest.h"
-#include "dawn/tests/end2end/mocks/CachingInterfaceMock.h"
+#include "dawn/tests/mocks/platform/CachingInterfaceMock.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
 namespace {
-    using ::testing::NiceMock;
+using ::testing::NiceMock;
 }  // namespace
 
 class D3D12CachingTests : public DawnTest {
   protected:
+    void SetUp() override {
+        DawnTest::SetUp();
+        // TODO(dawn:1341) Re-enable tests once shader caching is re-implemented.
+        DAWN_SKIP_TEST_IF_BASE(true, "suppressed", "TODO(dawn:1341)");
+    }
+
     std::unique_ptr<dawn::platform::Platform> CreateTestPlatform() override {
         return std::make_unique<DawnCachingMockPlatform>(&mMockCache);
     }
@@ -39,11 +45,11 @@ TEST_P(D3D12CachingTests, SameShaderNoCache) {
     mMockCache.Disable();
 
     wgpu::ShaderModule module = utils::CreateShaderModule(device, R"(
-        @stage(vertex) fn vertex_main() -> @builtin(position) vec4<f32> {
+        @vertex fn vertex_main() -> @builtin(position) vec4<f32> {
             return vec4<f32>(0.0, 0.0, 0.0, 1.0);
         }
 
-        @stage(fragment) fn fragment_main() -> @location(0) vec4<f32> {
+        @fragment fn fragment_main() -> @location(0) vec4<f32> {
           return vec4<f32>(1.0, 0.0, 0.0, 1.0);
         }
     )");
@@ -76,11 +82,11 @@ TEST_P(D3D12CachingTests, SameShaderNoCache) {
 // entrypoints)
 TEST_P(D3D12CachingTests, ReuseShaderWithMultipleEntryPointsPerStage) {
     wgpu::ShaderModule module = utils::CreateShaderModule(device, R"(
-        @stage(vertex) fn vertex_main() -> @builtin(position) vec4<f32> {
+        @vertex fn vertex_main() -> @builtin(position) vec4<f32> {
             return vec4<f32>(0.0, 0.0, 0.0, 1.0);
         }
 
-        @stage(fragment) fn fragment_main() -> @location(0) vec4<f32> {
+        @fragment fn fragment_main() -> @location(0) vec4<f32> {
           return vec4<f32>(1.0, 0.0, 0.0, 1.0);
         }
     )");
@@ -109,11 +115,11 @@ TEST_P(D3D12CachingTests, ReuseShaderWithMultipleEntryPointsPerStage) {
 
     // Modify the WGSL shader functions and make sure it doesn't hit.
     wgpu::ShaderModule newModule = utils::CreateShaderModule(device, R"(
-      @stage(vertex) fn vertex_main() -> @builtin(position) vec4<f32> {
+      @vertex fn vertex_main() -> @builtin(position) vec4<f32> {
           return vec4<f32>(1.0, 1.0, 1.0, 1.0);
       }
 
-      @stage(fragment) fn fragment_main() -> @location(0) vec4<f32> {
+      @fragment fn fragment_main() -> @location(0) vec4<f32> {
         return vec4<f32>(1.0, 1.0, 1.0, 1.0);
       }
   )");
@@ -138,11 +144,11 @@ TEST_P(D3D12CachingTests, ReuseShaderWithMultipleEntryPoints) {
         }
         @binding(0) @group(0) var<storage, read_write> data : Data;
 
-        @stage(compute) @workgroup_size(1) fn write1() {
+        @compute @workgroup_size(1) fn write1() {
             data.data = 1u;
         }
 
-        @stage(compute) @workgroup_size(1) fn write42() {
+        @compute @workgroup_size(1) fn write42() {
             data.data = 42u;
         }
     )");

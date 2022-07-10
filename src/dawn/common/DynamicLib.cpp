@@ -18,15 +18,15 @@
 
 #include "dawn/common/Platform.h"
 
-#if DAWN_PLATFORM_WINDOWS
-#    include "dawn/common/windows_with_undefs.h"
-#    if DAWN_PLATFORM_WINUWP
-#        include "dawn/common/WindowsUtils.h"
-#    endif
-#elif DAWN_PLATFORM_POSIX
-#    include <dlfcn.h>
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include "dawn/common/windows_with_undefs.h"
+#if DAWN_PLATFORM_IS(WINUWP)
+#include "dawn/common/WindowsUtils.h"
+#endif
+#elif DAWN_PLATFORM_IS(POSIX)
+#include <dlfcn.h>
 #else
-#    error "Unsupported platform for DynamicLib"
+#error "Unsupported platform for DynamicLib"
 #endif
 
 DynamicLib::~DynamicLib() {
@@ -47,23 +47,23 @@ bool DynamicLib::Valid() const {
 }
 
 bool DynamicLib::Open(const std::string& filename, std::string* error) {
-#if DAWN_PLATFORM_WINDOWS
-#    if DAWN_PLATFORM_WINUWP
+#if DAWN_PLATFORM_IS(WINDOWS)
+#if DAWN_PLATFORM_IS(WINUWP)
     mHandle = LoadPackagedLibrary(UTF8ToWStr(filename.c_str()).c_str(), 0);
-#    else
+#else
     mHandle = LoadLibraryA(filename.c_str());
-#    endif
+#endif
     if (mHandle == nullptr && error != nullptr) {
         *error = "Windows Error: " + std::to_string(GetLastError());
     }
-#elif DAWN_PLATFORM_POSIX
+#elif DAWN_PLATFORM_IS(POSIX)
     mHandle = dlopen(filename.c_str(), RTLD_NOW);
 
     if (mHandle == nullptr && error != nullptr) {
         *error = dlerror();
     }
 #else
-#    error "Unsupported platform for DynamicLib"
+#error "Unsupported platform for DynamicLib"
 #endif
 
     return mHandle != nullptr;
@@ -74,12 +74,12 @@ void DynamicLib::Close() {
         return;
     }
 
-#if DAWN_PLATFORM_WINDOWS
+#if DAWN_PLATFORM_IS(WINDOWS)
     FreeLibrary(static_cast<HMODULE>(mHandle));
-#elif DAWN_PLATFORM_POSIX
+#elif DAWN_PLATFORM_IS(POSIX)
     dlclose(mHandle);
 #else
-#    error "Unsupported platform for DynamicLib"
+#error "Unsupported platform for DynamicLib"
 #endif
 
     mHandle = nullptr;
@@ -88,20 +88,20 @@ void DynamicLib::Close() {
 void* DynamicLib::GetProc(const std::string& procName, std::string* error) const {
     void* proc = nullptr;
 
-#if DAWN_PLATFORM_WINDOWS
+#if DAWN_PLATFORM_IS(WINDOWS)
     proc = reinterpret_cast<void*>(GetProcAddress(static_cast<HMODULE>(mHandle), procName.c_str()));
 
     if (proc == nullptr && error != nullptr) {
         *error = "Windows Error: " + std::to_string(GetLastError());
     }
-#elif DAWN_PLATFORM_POSIX
+#elif DAWN_PLATFORM_IS(POSIX)
     proc = reinterpret_cast<void*>(dlsym(mHandle, procName.c_str()));
 
     if (proc == nullptr && error != nullptr) {
         *error = dlerror();
     }
 #else
-#    error "Unsupported platform for DynamicLib"
+#error "Unsupported platform for DynamicLib"
 #endif
 
     return proc;

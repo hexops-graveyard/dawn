@@ -157,19 +157,32 @@ source_set("native_mocks_sources") {
   configs += [ "${dawn_root}/src/dawn/native:internal" ]
 
   sources = [
+    "unittests/native/mocks/BindGroupLayoutMock.cpp",
     "unittests/native/mocks/BindGroupLayoutMock.h",
+    "unittests/native/mocks/BindGroupMock.cpp",
     "unittests/native/mocks/BindGroupMock.h",
+    "unittests/native/mocks/BufferMock.cpp",
+    "unittests/native/mocks/BufferMock.h",
+    "unittests/native/mocks/CommandBufferMock.cpp",
     "unittests/native/mocks/CommandBufferMock.h",
+    "unittests/native/mocks/ComputePipelineMock.cpp",
     "unittests/native/mocks/ComputePipelineMock.h",
     "unittests/native/mocks/DeviceMock.h",
+    "unittests/native/mocks/ExternalTextureMock.cpp",
     "unittests/native/mocks/ExternalTextureMock.h",
+    "unittests/native/mocks/PipelineLayoutMock.cpp",
     "unittests/native/mocks/PipelineLayoutMock.h",
+    "unittests/native/mocks/QuerySetMock.cpp",
     "unittests/native/mocks/QuerySetMock.h",
+    "unittests/native/mocks/RenderPipelineMock.cpp",
     "unittests/native/mocks/RenderPipelineMock.h",
+    "unittests/native/mocks/SamplerMock.cpp",
     "unittests/native/mocks/SamplerMock.h",
     "unittests/native/mocks/ShaderModuleMock.cpp",
     "unittests/native/mocks/ShaderModuleMock.h",
+    "unittests/native/mocks/SwapChainMock.cpp",
     "unittests/native/mocks/SwapChainMock.h",
+    "unittests/native/mocks/TextureMock.cpp",
     "unittests/native/mocks/TextureMock.h",
   ]
 }
@@ -179,6 +192,7 @@ dawn_test("dawn_unittests") {
     ":gmock_and_gtest",
     ":mock_webgpu_gen",
     ":native_mocks_sources",
+    ":platform_mocks_sources",
     "${dawn_root}/src/dawn:cpp",
     "${dawn_root}/src/dawn:proc",
     "${dawn_root}/src/dawn/common",
@@ -238,8 +252,9 @@ dawn_test("dawn_unittests") {
     "unittests/SystemUtilsTests.cpp",
     "unittests/ToBackendTests.cpp",
     "unittests/TypedIntegerTests.cpp",
-    "unittests/VersionTests.cpp",
+    "unittests/native/BlobTests.cpp",
     "unittests/native/CacheKeyTests.cpp",
+    "unittests/native/CacheRequestTests.cpp",
     "unittests/native/CommandBufferEncodingTests.cpp",
     "unittests/native/CreatePipelineAsyncTaskTests.cpp",
     "unittests/native/DestroyObjectTests.cpp",
@@ -294,7 +309,6 @@ dawn_test("dawn_unittests") {
     "unittests/wire/WireBasicTests.cpp",
     "unittests/wire/WireBufferMappingTests.cpp",
     "unittests/wire/WireCreatePipelineAsyncTests.cpp",
-    "unittests/wire/WireDestroyObjectTests.cpp",
     "unittests/wire/WireDisconnectTests.cpp",
     "unittests/wire/WireErrorCallbackTests.cpp",
     "unittests/wire/WireExtensionTests.cpp",
@@ -309,7 +323,6 @@ dawn_test("dawn_unittests") {
     "unittests/wire/WireShaderModuleTests.cpp",
     "unittests/wire/WireTest.cpp",
     "unittests/wire/WireTest.h",
-    "unittests/wire/WireWGPUDevicePropertiesTests.cpp",
   ]
 
   if (is_win) {
@@ -368,20 +381,21 @@ source_set("test_infra_sources") {
 # Dawn end2end tests targets
 ###############################################################################
 
-# Source code for mocks used for end2end testing are separated from the rest of
+# Source code for mocks used for platform testing are separated from the rest of
 # sources so that they aren't included in non-test builds.
-source_set("end2end_mocks_sources") {
+source_set("platform_mocks_sources") {
   configs += [ "${dawn_root}/src/dawn/native:internal" ]
   testonly = true
 
   deps = [
     ":gmock_and_gtest",
+    "${dawn_root}/src/dawn/common",
     "${dawn_root}/src/dawn/platform",
   ]
 
   sources = [
-    "end2end/mocks/CachingInterfaceMock.cpp",
-    "end2end/mocks/CachingInterfaceMock.h",
+    "mocks/platform/CachingInterfaceMock.cpp",
+    "mocks/platform/CachingInterfaceMock.h",
   ]
 }
 
@@ -389,7 +403,7 @@ source_set("end2end_tests_sources") {
   testonly = true
 
   deps = [
-    ":end2end_mocks_sources",
+    ":platform_mocks_sources",
     ":test_infra_sources",
     "${dawn_root}/src/dawn:cpp",
     "${dawn_root}/src/dawn:proc",
@@ -427,6 +441,7 @@ source_set("end2end_tests_sources") {
     "end2end/DepthStencilStateTests.cpp",
     "end2end/DestroyTests.cpp",
     "end2end/DeviceInitializationTests.cpp",
+    "end2end/DeviceLifetimeTests.cpp",
     "end2end/DeviceLostTests.cpp",
     "end2end/DrawIndexedIndirectTests.cpp",
     "end2end/DrawIndexedTests.cpp",
@@ -434,6 +449,7 @@ source_set("end2end_tests_sources") {
     "end2end/DrawTests.cpp",
     "end2end/DynamicBufferOffsetTests.cpp",
     "end2end/EntryPointTests.cpp",
+    "end2end/ExperimentalDP4aTests.cpp",
     "end2end/ExternalTextureTests.cpp",
     "end2end/FirstIndexOffsetTests.cpp",
     "end2end/GpuMemorySynchronizationTests.cpp",
@@ -446,6 +462,7 @@ source_set("end2end_tests_sources") {
     "end2end/NonzeroTextureCreationTests.cpp",
     "end2end/ObjectCachingTests.cpp",
     "end2end/OpArrayLengthTests.cpp",
+    "end2end/PipelineCachingTests.cpp",
     "end2end/PipelineLayoutTests.cpp",
     "end2end/PrimitiveStateTests.cpp",
     "end2end/PrimitiveTopologyTests.cpp",
@@ -466,6 +483,7 @@ source_set("end2end_tests_sources") {
     "end2end/StorageTextureTests.cpp",
     "end2end/SubresourceRenderAttachmentTests.cpp",
     "end2end/Texture3DTests.cpp",
+    "end2end/TextureCorruptionTests.cpp",
     "end2end/TextureFormatTests.cpp",
     "end2end/TextureSubresourceTests.cpp",
     "end2end/TextureViewTests.cpp",
@@ -475,12 +493,6 @@ source_set("end2end_tests_sources") {
     "end2end/VertexStateTests.cpp",
     "end2end/ViewportOrientationTests.cpp",
     "end2end/ViewportTests.cpp",
-  ]
-
-  # Validation tests that need OS windows live in end2end tests.
-  sources += [
-    "unittests/validation/ValidationTest.cpp",
-    "unittests/validation/ValidationTest.h",
   ]
 
   libs = []
@@ -587,9 +599,9 @@ source_set("white_box_tests_sources") {
     sources += [ "white_box/MetalAutoreleasePoolTests.mm" ]
   }
 
-  if (dawn_enable_opengles && defined(dawn_angle_dir)) {
+  if (dawn_enable_opengles) {
     sources += [ "white_box/EGLImageWrappingTests.cpp" ]
-    deps += [ "${dawn_angle_dir}:libEGL" ]
+    include_dirs = [ "//third_party/khronos" ]
   }
 
   libs = []

@@ -20,16 +20,18 @@
 #include "dawn/common/Assert.h"
 #include "dawn/dawn_proc.h"
 #include "dawn/native/ErrorData.h"
+#include "dawn/native/Instance.h"
+#include "dawn/native/dawn_platform.h"
+#include "dawn/platform/DawnPlatform.h"
 
 namespace dawn::native {
 
-    void AddFatalDawnFailure(const char* expression, const ErrorData* error) {
-        const auto& backtrace = error->GetBacktrace();
-        GTEST_MESSAGE_AT_(
-            backtrace.at(0).file, backtrace.at(0).line,
-            absl::StrCat(expression, " returned error: ", error->GetMessage()).c_str(),
-            ::testing::TestPartResult::kFatalFailure);
-    }
+void AddFatalDawnFailure(const char* expression, const ErrorData* error) {
+    const auto& backtrace = error->GetBacktrace();
+    GTEST_MESSAGE_AT_(backtrace.at(0).file, backtrace.at(0).line,
+                      absl::StrCat(expression, " returned error: ", error->GetMessage()).c_str(),
+                      ::testing::TestPartResult::kFatalFailure);
+}
 
 }  // namespace dawn::native
 
@@ -44,6 +46,9 @@ DawnNativeTest::~DawnNativeTest() {
 
 void DawnNativeTest::SetUp() {
     instance = std::make_unique<dawn::native::Instance>();
+    platform = CreateTestPlatform();
+    dawn::native::FromAPI(instance->Get())->SetPlatformForTesting(platform.get());
+
     instance->DiscoverDefaultAdapters();
 
     std::vector<dawn::native::Adapter> adapters = instance->GetAdapters();
@@ -63,11 +68,12 @@ void DawnNativeTest::SetUp() {
 
     ASSERT(foundNullAdapter);
 
-    device = wgpu::Device(CreateTestDevice());
+    device = wgpu::Device::Acquire(CreateTestDevice());
     device.SetUncapturedErrorCallback(DawnNativeTest::OnDeviceError, nullptr);
 }
 
-void DawnNativeTest::TearDown() {
+std::unique_ptr<dawn::platform::Platform> DawnNativeTest::CreateTestPlatform() {
+    return nullptr;
 }
 
 WGPUDevice DawnNativeTest::CreateTestDevice() {

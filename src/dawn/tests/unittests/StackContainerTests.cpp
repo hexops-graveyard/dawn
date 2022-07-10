@@ -8,25 +8,21 @@
 #include <cstddef>
 #include <vector>
 
-#include "gtest/gtest.h"
 #include "dawn/common/RefCounted.h"
 #include "dawn/common/StackContainer.h"
+#include "gtest/gtest.h"
 
 namespace {
 
-    class Placeholder : public RefCounted {
-      public:
-        explicit Placeholder(int* alive) : mAlive(alive) {
-            ++*mAlive;
-        }
+class Placeholder : public RefCounted {
+  public:
+    explicit Placeholder(int* alive) : mAlive(alive) { ++*mAlive; }
 
-      private:
-        ~Placeholder() {
-            --*mAlive;
-        }
+  private:
+    ~Placeholder() override { --*mAlive; }
 
-        int* const mAlive;
-    };
+    int* const mAlive;
+};
 
 }  // namespace
 
@@ -51,8 +47,9 @@ TEST(StackContainer, Vector) {
     }
 
     // The array should still be in order.
-    for (int i = 0; i < stack_size * 2; i++)
+    for (int i = 0; i < stack_size * 2; i++) {
         EXPECT_EQ(i, vect.container()[i]);
+    }
 
     // Resize to smaller. Our STL implementation won't reallocate in this case,
     // otherwise it might use our stack buffer. We reserve right after the resize
@@ -68,8 +65,9 @@ TEST(StackContainer, Vector) {
     std::vector<int, StackAllocator<int, stack_size>> other(vect.container());
     EXPECT_EQ(stack_buffer, &other.front());
     EXPECT_TRUE(vect.stack_data().used_stack_buffer_);
-    for (int i = 0; i < stack_size; i++)
+    for (int i = 0; i < stack_size; i++) {
         EXPECT_EQ(i, other[i]);
+    }
 }
 
 TEST(StackContainer, VectorDoubleDelete) {
@@ -98,17 +96,15 @@ TEST(StackContainer, VectorDoubleDelete) {
 
 namespace {
 
-    template <size_t alignment>
-    class AlignedData {
-      public:
-        AlignedData() {
-            memset(data_, 0, alignment);
-        }
-        ~AlignedData() = default;
-        AlignedData(const AlignedData&) = default;
-        AlignedData& operator=(const AlignedData&) = default;
-        alignas(alignment) char data_[alignment];
-    };
+template <size_t alignment>
+class AlignedData {
+  public:
+    AlignedData() { memset(data_, 0, alignment); }
+    ~AlignedData() = default;
+    AlignedData(const AlignedData&) = default;
+    AlignedData& operator=(const AlignedData&) = default;
+    alignas(alignment) char data_[alignment];
+};
 
 }  // anonymous namespace
 
@@ -127,7 +123,7 @@ TEST(StackContainer, BufferAlignment) {
     aligned16->push_back(AlignedData<16>());
     EXPECT_ALIGNED(&aligned16[0], 16);
 
-#if !defined(DAWN_COMPILER_GCC) || defined(__x86_64__) || defined(__i386__)
+#if !DAWN_COMPILER_IS(GCC) || defined(__x86_64__) || defined(__i386__)
     // It seems that non-X86 gcc doesn't respect greater than 16 byte alignment.
     // See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=33721 for details.
     // TODO(sbc): Re-enable this if GCC starts respecting higher alignments.

@@ -15,6 +15,8 @@
 #ifndef SRC_TINT_SEM_SWITCH_STATEMENT_H_
 #define SRC_TINT_SEM_SWITCH_STATEMENT_H_
 
+#include <vector>
+
 #include "src/tint/sem/block_statement.h"
 
 // Forward declarations
@@ -22,53 +24,72 @@ namespace tint::ast {
 class CaseStatement;
 class SwitchStatement;
 }  // namespace tint::ast
+namespace tint::sem {
+class CaseStatement;
+class Expression;
+}  // namespace tint::sem
 
 namespace tint::sem {
 
 /// Holds semantic information about an switch statement
-class SwitchStatement final
-    : public Castable<SwitchStatement, CompoundStatement> {
- public:
-  /// Constructor
-  /// @param declaration the AST node for this switch statement
-  /// @param parent the owning statement
-  /// @param function the owning function
-  SwitchStatement(const ast::SwitchStatement* declaration,
-                  const CompoundStatement* parent,
-                  const sem::Function* function);
+class SwitchStatement final : public Castable<SwitchStatement, CompoundStatement> {
+  public:
+    /// Constructor
+    /// @param declaration the AST node for this switch statement
+    /// @param parent the owning statement
+    /// @param function the owning function
+    SwitchStatement(const ast::SwitchStatement* declaration,
+                    const CompoundStatement* parent,
+                    const sem::Function* function);
 
-  /// Destructor
-  ~SwitchStatement() override;
+    /// Destructor
+    ~SwitchStatement() override;
 
-  /// @return the AST node for this statement
-  const ast::SwitchStatement* Declaration() const;
+    /// @return the AST node for this statement
+    const ast::SwitchStatement* Declaration() const;
+
+    /// @returns the case statements for this switch
+    std::vector<const CaseStatement*>& Cases() { return cases_; }
+
+    /// @returns the case statements for this switch
+    const std::vector<const CaseStatement*>& Cases() const { return cases_; }
+
+  private:
+    std::vector<const CaseStatement*> cases_;
 };
 
 /// Holds semantic information about a switch case statement
 class CaseStatement final : public Castable<CaseStatement, CompoundStatement> {
- public:
-  /// Constructor
-  /// @param declaration the AST node for this case statement
-  /// @param parent the owning statement
-  /// @param function the owning function
-  CaseStatement(const ast::CaseStatement* declaration,
-                const CompoundStatement* parent,
-                const sem::Function* function);
+  public:
+    /// Constructor
+    /// @param declaration the AST node for this case statement
+    /// @param parent the owning statement
+    /// @param function the owning function
+    CaseStatement(const ast::CaseStatement* declaration,
+                  const CompoundStatement* parent,
+                  const sem::Function* function);
 
-  /// Destructor
-  ~CaseStatement() override;
+    /// Destructor
+    ~CaseStatement() override;
 
-  /// @return the AST node for this statement
-  const ast::CaseStatement* Declaration() const;
+    /// @return the AST node for this statement
+    const ast::CaseStatement* Declaration() const;
 
-  /// @param body the case body block statement
-  void SetBlock(const BlockStatement* body) { body_ = body; }
+    /// @param body the case body block statement
+    void SetBlock(const BlockStatement* body) { body_ = body; }
 
-  /// @returns the case body block statement
-  const BlockStatement* Body() const { return body_; }
+    /// @returns the case body block statement
+    const BlockStatement* Body() const { return body_; }
 
- private:
-  const BlockStatement* body_ = nullptr;
+    /// @returns the selectors for the case
+    std::vector<const Expression*>& Selectors() { return selectors_; }
+
+    /// @returns the selectors for the case
+    const std::vector<const Expression*>& Selectors() const { return selectors_; }
+
+  private:
+    const BlockStatement* body_ = nullptr;
+    std::vector<const Expression*> selectors_;
 };
 
 }  // namespace tint::sem

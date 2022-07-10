@@ -30,6 +30,7 @@
 #include "dawn/common/Platform.h"
 #include "dawn/common/SystemUtils.h"
 #include "dawn/dawn_proc.h"
+#include "dawn/native/Device.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/dawn_platform.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
@@ -43,67 +44,68 @@
 #include "dawn/wire/WireServer.h"
 
 #if defined(DAWN_ENABLE_BACKEND_OPENGL)
-#    include "GLFW/glfw3.h"
-#    include "dawn/native/OpenGLBackend.h"
+#include "GLFW/glfw3.h"
+#include "dawn/native/OpenGLBackend.h"
 #endif  // DAWN_ENABLE_BACKEND_OPENGL
 
 namespace {
 
-    std::string ParamName(wgpu::BackendType type) {
-        switch (type) {
-            case wgpu::BackendType::D3D12:
-                return "D3D12";
-            case wgpu::BackendType::Metal:
-                return "Metal";
-            case wgpu::BackendType::Null:
-                return "Null";
-            case wgpu::BackendType::OpenGL:
-                return "OpenGL";
-            case wgpu::BackendType::OpenGLES:
-                return "OpenGLES";
-            case wgpu::BackendType::Vulkan:
-                return "Vulkan";
-            default:
-                UNREACHABLE();
+std::string ParamName(wgpu::BackendType type) {
+    switch (type) {
+        case wgpu::BackendType::D3D12:
+            return "D3D12";
+        case wgpu::BackendType::Metal:
+            return "Metal";
+        case wgpu::BackendType::Null:
+            return "Null";
+        case wgpu::BackendType::OpenGL:
+            return "OpenGL";
+        case wgpu::BackendType::OpenGLES:
+            return "OpenGLES";
+        case wgpu::BackendType::Vulkan:
+            return "Vulkan";
+        default:
+            UNREACHABLE();
+    }
+}
+
+const char* AdapterTypeName(wgpu::AdapterType type) {
+    switch (type) {
+        case wgpu::AdapterType::DiscreteGPU:
+            return "Discrete GPU";
+        case wgpu::AdapterType::IntegratedGPU:
+            return "Integrated GPU";
+        case wgpu::AdapterType::CPU:
+            return "CPU";
+        case wgpu::AdapterType::Unknown:
+            return "Unknown";
+        default:
+            UNREACHABLE();
+    }
+}
+
+struct MapReadUserdata {
+    DawnTestBase* test;
+    size_t slot;
+};
+
+DawnTestEnvironment* gTestEnv = nullptr;
+DawnTestBase* gCurrentTest = nullptr;
+
+template <typename T>
+void printBuffer(testing::AssertionResult& result, const T* buffer, const size_t count) {
+    static constexpr unsigned int kBytes = sizeof(T);
+
+    for (size_t index = 0; index < count; ++index) {
+        auto byteView = reinterpret_cast<const uint8_t*>(buffer + index);
+        for (unsigned int b = 0; b < kBytes; ++b) {
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02X ", byteView[b]);
+            result << buf;
         }
     }
-
-    const char* AdapterTypeName(wgpu::AdapterType type) {
-        switch (type) {
-            case wgpu::AdapterType::DiscreteGPU:
-                return "Discrete GPU";
-            case wgpu::AdapterType::IntegratedGPU:
-                return "Integrated GPU";
-            case wgpu::AdapterType::CPU:
-                return "CPU";
-            case wgpu::AdapterType::Unknown:
-                return "Unknown";
-            default:
-                UNREACHABLE();
-        }
-    }
-
-    struct MapReadUserdata {
-        DawnTestBase* test;
-        size_t slot;
-    };
-
-    DawnTestEnvironment* gTestEnv = nullptr;
-
-    template <typename T>
-    void printBuffer(testing::AssertionResult& result, const T* buffer, const size_t count) {
-        static constexpr unsigned int kBytes = sizeof(T);
-
-        for (size_t index = 0; index < count; ++index) {
-            auto byteView = reinterpret_cast<const uint8_t*>(buffer + index);
-            for (unsigned int b = 0; b < kBytes; ++b) {
-                char buf[4];
-                snprintf(buf, sizeof(buf), "%02X ", byteView[b]);
-                result << buf;
-            }
-        }
-        result << std::endl;
-    }
+    result << std::endl;
+}
 
 }  // anonymous namespace
 
@@ -120,8 +122,7 @@ BackendTestConfig::BackendTestConfig(wgpu::BackendType backendType,
                                      std::initializer_list<const char*> forceDisabledWorkarounds)
     : backendType(backendType),
       forceEnabledWorkarounds(forceEnabledWorkarounds),
-      forceDisabledWorkarounds(forceDisabledWorkarounds) {
-}
+      forceDisabledWorkarounds(forceDisabledWorkarounds) {}
 
 BackendTestConfig D3D12Backend(std::initializer_list<const char*> forceEnabledWorkarounds,
                                std::initializer_list<const char*> forceDisabledWorkarounds) {
@@ -161,15 +162,13 @@ BackendTestConfig VulkanBackend(std::initializer_list<const char*> forceEnabledW
 
 TestAdapterProperties::TestAdapterProperties(const wgpu::AdapterProperties& properties,
                                              bool selected)
-    : wgpu::AdapterProperties(properties), adapterName(properties.name), selected(selected) {
-}
+    : wgpu::AdapterProperties(properties), adapterName(properties.name), selected(selected) {}
 
 AdapterTestParam::AdapterTestParam(const BackendTestConfig& config,
                                    const TestAdapterProperties& adapterProperties)
     : adapterProperties(adapterProperties),
       forceEnabledWorkarounds(config.forceEnabledWorkarounds),
-      forceDisabledWorkarounds(config.forceDisabledWorkarounds) {
-}
+      forceDisabledWorkarounds(config.forceDisabledWorkarounds) {}
 
 std::ostream& operator<<(std::ostream& os, const AdapterTestParam& param) {
     os << ParamName(param.adapterProperties.backendType) << " "
@@ -192,8 +191,7 @@ std::ostream& operator<<(std::ostream& os, const AdapterTestParam& param) {
     return os;
 }
 
-DawnTestBase::PrintToStringParamName::PrintToStringParamName(const char* test) : mTest(test) {
-}
+DawnTestBase::PrintToStringParamName::PrintToStringParamName(const char* test) : mTest(test) {}
 
 std::string DawnTestBase::PrintToStringParamName::SanitizeParamName(std::string paramName,
                                                                     size_t index) const {
@@ -316,6 +314,13 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             continue;
         }
 
+        constexpr const char kUseAngleArg[] = "--use-angle=";
+        argLen = sizeof(kUseAngleArg) - 1;
+        if (strncmp(argv[i], kUseAngleArg, argLen) == 0) {
+            mANGLEBackend = argv[i] + argLen;
+            continue;
+        }
+
         constexpr const char kExclusiveDeviceTypePreferenceArg[] =
             "--exclusive-device-type-preference=";
         argLen = sizeof(kExclusiveDeviceTypePreferenceArg) - 1;
@@ -417,64 +422,26 @@ std::unique_ptr<dawn::native::Instance> DawnTestEnvironment::CreateInstanceAndDi
     auto instance = std::make_unique<dawn::native::Instance>();
     instance->EnableBeginCaptureOnStartup(mBeginCaptureOnStartup);
     instance->SetBackendValidationLevel(mBackendValidationLevel);
-    instance->DiscoverDefaultAdapters();
-
-#ifdef DAWN_ENABLE_BACKEND_DESKTOP_GL
-    if (!glfwInit()) {
-        return instance;
-    }
-    glfwDefaultWindowHints();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-
-    mOpenGLWindow = glfwCreateWindow(400, 400, "Dawn OpenGL test window", nullptr, nullptr);
-    if (mOpenGLWindow != nullptr) {
-        glfwMakeContextCurrent(mOpenGLWindow);
-        dawn::native::opengl::AdapterDiscoveryOptions adapterOptions;
-        adapterOptions.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
-        instance->DiscoverAdapters(&adapterOptions);
-    }
-#endif  // DAWN_ENABLE_BACKEND_DESKTOP_GL
 
 #ifdef DAWN_ENABLE_BACKEND_OPENGLES
-
-    ScopedEnvironmentVar angleDefaultPlatform;
     if (GetEnvironmentVar("ANGLE_DEFAULT_PLATFORM").first.empty()) {
-        angleDefaultPlatform.Set("ANGLE_DEFAULT_PLATFORM", "swiftshader");
-    }
-
-    if (!glfwInit()) {
-        return instance;
-    }
-    glfwDefaultWindowHints();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-
-    mOpenGLESWindow = glfwCreateWindow(400, 400, "Dawn OpenGLES test window", nullptr, nullptr);
-    if (mOpenGLESWindow != nullptr) {
-        glfwMakeContextCurrent(mOpenGLESWindow);
-        dawn::native::opengl::AdapterDiscoveryOptionsES adapterOptionsES;
-        adapterOptionsES.getProc = reinterpret_cast<void* (*)(const char*)>(glfwGetProcAddress);
-        instance->DiscoverAdapters(&adapterOptionsES);
-        glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+        const char* platform;
+        if (!mANGLEBackend.empty()) {
+            platform = mANGLEBackend.c_str();
+        } else {
+#if DAWN_PLATFORM_IS(WINDOWS)
+            platform = "d3d11";
+#else
+            platform = "swiftshader";
+#endif
+        }
+        SetEnvironmentVar("ANGLE_DEFAULT_PLATFORM", platform);
     }
 #endif  // DAWN_ENABLE_BACKEND_OPENGLES
 
+    instance->DiscoverDefaultAdapters();
+
     return instance;
-}
-
-GLFWwindow* DawnTestEnvironment::GetOpenGLWindow() const {
-    return mOpenGLWindow;
-}
-
-GLFWwindow* DawnTestEnvironment::GetOpenGLESWindow() const {
-    return mOpenGLESWindow;
 }
 
 void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::Instance* instance) {
@@ -535,6 +502,16 @@ void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::I
                 // Swiftshader as a CPU adapter when we have Swiftshader tests.
                 (properties.backendType == wgpu::BackendType::Null);
         }
+
+#if DAWN_PLATFORM_IS(WINDOWS)
+        if (selected && !mRunSuppressedTests &&
+            properties.backendType == wgpu::BackendType::Vulkan &&
+            gpu_info::IsIntel(properties.vendorID)) {
+            dawn::WarningLog()
+                << "Deselecting Windows Intel Vulkan adapter. See https://crbug.com/1338622.";
+            selected &= false;
+        }
+#endif
 
         // In Windows Remote Desktop sessions we may be able to discover multiple adapters that
         // have the same name and backend type. We will just choose one adapter from them in our
@@ -634,6 +611,11 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
             << ", backend: " << ParamName(properties.backendType) << "\n"
             << "   vendorId: 0x" << vendorId.str() << ", deviceId: 0x" << deviceId.str()
             << (properties.selected ? " [Selected]" : "") << "\n";
+
+        if (strlen(properties.vendorName) || strlen(properties.architecture)) {
+            log << "   vendorName: " << properties.vendorName
+                << ", architecture: " << properties.architecture << "\n";
+        }
     }
 }
 
@@ -697,16 +679,68 @@ const std::vector<std::string>& DawnTestEnvironment::GetDisabledToggles() const 
 
 // Implementation of DawnTest
 
-DawnTestBase::DawnTestBase(const AdapterTestParam& param)
-    : mParam(param),
-      mWireHelper(utils::CreateWireHelper(gTestEnv->UsesWire(), gTestEnv->GetWireTraceDir())) {
+DawnTestBase::DawnTestBase(const AdapterTestParam& param) : mParam(param) {
+    gCurrentTest = this;
+
+    DawnProcTable procs = dawn::native::GetProcs();
+    // Override procs to provide harness-specific behavior to always select the null adapter,
+    // and to allow fixture-specific overriding of the test device with CreateDeviceImpl.
+    procs.instanceRequestAdapter = [](WGPUInstance instance, const WGPURequestAdapterOptions*,
+                                      WGPURequestAdapterCallback callback, void* userdata) {
+        ASSERT(gCurrentTest);
+
+        // Find the adapter that exactly matches our adapter properties.
+        const auto& adapters = gTestEnv->GetInstance()->GetAdapters();
+        const auto& it = std::find_if(
+            adapters.begin(), adapters.end(), [&](const dawn::native::Adapter& adapter) {
+                wgpu::AdapterProperties properties;
+                adapter.GetProperties(&properties);
+
+                const auto& param = gCurrentTest->mParam;
+                return (param.adapterProperties.selected &&
+                        properties.deviceID == param.adapterProperties.deviceID &&
+                        properties.vendorID == param.adapterProperties.vendorID &&
+                        properties.adapterType == param.adapterProperties.adapterType &&
+                        properties.backendType == param.adapterProperties.backendType &&
+                        strcmp(properties.name, param.adapterProperties.adapterName.c_str()) == 0);
+            });
+        ASSERT(it != adapters.end());
+        gCurrentTest->mBackendAdapter = *it;
+
+        WGPUAdapter cAdapter = it->Get();
+        ASSERT(cAdapter);
+        dawn::native::GetProcs().adapterReference(cAdapter);
+        callback(WGPURequestAdapterStatus_Success, cAdapter, nullptr, userdata);
+    };
+
+    procs.adapterRequestDevice = [](WGPUAdapter adapter, const WGPUDeviceDescriptor*,
+                                    WGPURequestDeviceCallback callback, void* userdata) {
+        ASSERT(gCurrentTest);
+
+        // Isolation keys may be enqueued by CreateDevice(std::string isolationKey).
+        // CreateDevice calls requestAdapter, so consume them there and forward them
+        // to CreateDeviceImpl.
+        std::string isolationKey;
+        if (!gCurrentTest->mNextIsolationKeyQueue.empty()) {
+            isolationKey = std::move(gCurrentTest->mNextIsolationKeyQueue.front());
+            gCurrentTest->mNextIsolationKeyQueue.pop();
+        }
+        WGPUDevice cDevice = gCurrentTest->CreateDeviceImpl(std::move(isolationKey));
+        ASSERT(cDevice != nullptr);
+
+        gCurrentTest->mLastCreatedBackendDevice = cDevice;
+        callback(WGPURequestDeviceStatus_Success, cDevice, nullptr, userdata);
+    };
+
+    mWireHelper = utils::CreateWireHelper(procs, gTestEnv->UsesWire(), gTestEnv->GetWireTraceDir());
 }
 
 DawnTestBase::~DawnTestBase() {
-    // We need to destroy child objects before the Device
     mReadbackSlots.clear();
-    queue = wgpu::Queue();
-    device = wgpu::Device();
+    queue = nullptr;
+    device = nullptr;
+    mAdapter = nullptr;
+    mInstance = nullptr;
 
     // D3D12's GPU-based validation will accumulate objects over time if the backend device is not
     // destroyed and recreated, so we reset it here.
@@ -714,6 +748,11 @@ DawnTestBase::~DawnTestBase() {
         mBackendAdapter.ResetInternalDeviceForTesting();
     }
     mWireHelper.reset();
+
+    // Check that all devices were destructed.
+    EXPECT_EQ(gTestEnv->GetInstance()->GetDeviceCountForTesting(), 0u);
+
+    gCurrentTest = nullptr;
 }
 
 bool DawnTestBase::IsD3D12() const {
@@ -765,8 +804,8 @@ bool DawnTestBase::IsQualcomm() const {
 }
 
 bool DawnTestBase::IsSwiftshader() const {
-    return gpu_info::IsSwiftshader(mParam.adapterProperties.vendorID,
-                                   mParam.adapterProperties.deviceID);
+    return gpu_info::IsGoogleSwiftshader(mParam.adapterProperties.vendorID,
+                                         mParam.adapterProperties.deviceID);
 }
 
 bool DawnTestBase::IsANGLE() const {
@@ -774,11 +813,12 @@ bool DawnTestBase::IsANGLE() const {
 }
 
 bool DawnTestBase::IsWARP() const {
-    return gpu_info::IsWARP(mParam.adapterProperties.vendorID, mParam.adapterProperties.deviceID);
+    return gpu_info::IsMicrosoftWARP(mParam.adapterProperties.vendorID,
+                                     mParam.adapterProperties.deviceID);
 }
 
 bool DawnTestBase::IsWindows() const {
-#ifdef DAWN_PLATFORM_WINDOWS
+#if DAWN_PLATFORM_IS(WINDOWS)
     return true;
 #else
     return false;
@@ -786,7 +826,7 @@ bool DawnTestBase::IsWindows() const {
 }
 
 bool DawnTestBase::IsLinux() const {
-#ifdef DAWN_PLATFORM_LINUX
+#if DAWN_PLATFORM_IS(LINUX)
     return true;
 #else
     return false;
@@ -794,7 +834,7 @@ bool DawnTestBase::IsLinux() const {
 }
 
 bool DawnTestBase::IsMacOS(int32_t majorVersion, int32_t minorVersion) const {
-#ifdef DAWN_PLATFORM_MACOS
+#if DAWN_PLATFORM_IS(MACOS)
     if (majorVersion == -1 && minorVersion == -1) {
         return true;
     }
@@ -813,6 +853,10 @@ bool DawnTestBase::UsesWire() const {
 
 bool DawnTestBase::IsBackendValidationEnabled() const {
     return gTestEnv->GetBackendValidationLevel() != dawn::native::BackendValidationLevel::Disabled;
+}
+
+bool DawnTestBase::IsFullBackendValidationEnabled() const {
+    return gTestEnv->GetBackendValidationLevel() == dawn::native::BackendValidationLevel::Full;
 }
 
 bool DawnTestBase::RunSuppressedTests() const {
@@ -875,10 +919,9 @@ const wgpu::AdapterProperties& DawnTestBase::GetAdapterProperties() const {
 }
 
 wgpu::SupportedLimits DawnTestBase::GetSupportedLimits() {
-    WGPUSupportedLimits supportedLimits;
-    supportedLimits.nextInChain = nullptr;
-    dawn::native::GetProcs().deviceGetLimits(backendDevice, &supportedLimits);
-    return *reinterpret_cast<wgpu::SupportedLimits*>(&supportedLimits);
+    wgpu::SupportedLimits supportedLimits = {};
+    device.GetLimits(&supportedLimits);
+    return supportedLimits;
 }
 
 bool DawnTestBase::SupportsFeatures(const std::vector<wgpu::FeatureName>& features) {
@@ -903,32 +946,7 @@ bool DawnTestBase::SupportsFeatures(const std::vector<wgpu::FeatureName>& featur
     return true;
 }
 
-void DawnTestBase::SetUp() {
-    {
-        // Find the adapter that exactly matches our adapter properties.
-        const auto& adapters = gTestEnv->GetInstance()->GetAdapters();
-        const auto& it = std::find_if(
-            adapters.begin(), adapters.end(), [&](const dawn::native::Adapter& adapter) {
-                wgpu::AdapterProperties properties;
-                adapter.GetProperties(&properties);
-
-                return (mParam.adapterProperties.selected &&
-                        properties.deviceID == mParam.adapterProperties.deviceID &&
-                        properties.vendorID == mParam.adapterProperties.vendorID &&
-                        properties.adapterType == mParam.adapterProperties.adapterType &&
-                        properties.backendType == mParam.adapterProperties.backendType &&
-                        strcmp(properties.name, mParam.adapterProperties.adapterName.c_str()) == 0);
-            });
-        ASSERT(it != adapters.end());
-        mBackendAdapter = *it;
-    }
-
-    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform. This is
-    // NOT a thread-safe operation and is allowed here for testing only.
-    mTestPlatform = CreateTestPlatform();
-    dawn::native::FromAPI(gTestEnv->GetInstance()->Get())
-        ->SetPlatformForTesting(mTestPlatform.get());
-
+WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey) {
     // Create the device from the adapter
     for (const char* forceEnabledWorkaround : mParam.forceEnabledWorkarounds) {
         ASSERT(gTestEnv->GetInstance()->GetToggleInfo(forceEnabledWorkaround) != nullptr);
@@ -975,31 +993,42 @@ void DawnTestBase::SetUp() {
     togglesDesc.forceDisabledToggles = forceDisabledToggles.data();
     togglesDesc.forceDisabledTogglesCount = forceDisabledToggles.size();
 
-    std::tie(device, backendDevice) =
-        mWireHelper->RegisterDevice(mBackendAdapter.CreateDevice(&deviceDescriptor));
-    ASSERT_NE(nullptr, backendDevice);
+    wgpu::DawnCacheDeviceDescriptor cacheDesc = {};
+    togglesDesc.nextInChain = &cacheDesc;
+    cacheDesc.isolationKey = isolationKey.c_str();
 
-    std::string traceName =
-        std::string(::testing::UnitTest::GetInstance()->current_test_info()->test_suite_name()) +
-        "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name();
-    mWireHelper->BeginWireTrace(traceName.c_str());
+    return mBackendAdapter.CreateDevice(&deviceDescriptor);
+}
 
-    queue = device.GetQueue();
+wgpu::Device DawnTestBase::CreateDevice(std::string isolationKey) {
+    wgpu::Device apiDevice;
 
-    device.SetUncapturedErrorCallback(OnDeviceError, this);
-    device.SetDeviceLostCallback(OnDeviceLost, this);
-#if defined(DAWN_ENABLE_BACKEND_DESKTOP_GL)
-    if (IsOpenGL()) {
-        glfwMakeContextCurrent(gTestEnv->GetOpenGLWindow());
-    }
-#endif  // defined(DAWN_ENABLE_BACKEND_DESKTOP_GL)
-#if defined(DAWN_ENABLE_BACKEND_OPENGLES)
-    if (IsOpenGLES()) {
-        glfwMakeContextCurrent(gTestEnv->GetOpenGLESWindow());
-    }
-#endif  // defined(DAWN_ENABLE_BACKEND_OPENGLES)
+    // The isolation key will be consumed inside adapterRequestDevice and passed
+    // to CreateDeviceImpl.
+    mNextIsolationKeyQueue.push(std::move(isolationKey));
 
-    device.SetLoggingCallback(
+    // This descriptor doesn't matter since device selection is overriden by CreateDeviceImpl.
+    wgpu::DeviceDescriptor deviceDesc = {};
+    mAdapter.RequestDevice(
+        &deviceDesc,
+        [](WGPURequestDeviceStatus, WGPUDevice cDevice, const char*, void* userdata) {
+            *static_cast<wgpu::Device*>(userdata) = wgpu::Device::Acquire(cDevice);
+        },
+        &apiDevice);
+    FlushWire();
+    ASSERT(apiDevice);
+
+    // Set up the mocks for uncaptured errors and device loss. The loss of the device is expected
+    // to happen at the end of the test so at it directly.
+    apiDevice.SetUncapturedErrorCallback(mDeviceErrorCallback.Callback(),
+                                         mDeviceErrorCallback.MakeUserdata(apiDevice.Get()));
+    apiDevice.SetDeviceLostCallback(mDeviceLostCallback.Callback(),
+                                    mDeviceLostCallback.MakeUserdata(apiDevice.Get()));
+    EXPECT_CALL(mDeviceLostCallback,
+                Call(WGPUDeviceLostReason_Destroyed, testing::_, apiDevice.Get()))
+        .Times(testing::AtMost(1));
+
+    apiDevice.SetLoggingCallback(
         [](WGPULoggingType type, char const* message, void*) {
             switch (type) {
                 case WGPULoggingType_Verbose:
@@ -1017,66 +1046,73 @@ void DawnTestBase::SetUp() {
             }
         },
         nullptr);
+
+    return apiDevice;
+}
+
+void DawnTestBase::SetUp() {
+    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform. This is
+    // NOT a thread-safe operation and is allowed here for testing only.
+    mTestPlatform = CreateTestPlatform();
+    dawn::native::FromAPI(gTestEnv->GetInstance()->Get())
+        ->SetPlatformForTesting(mTestPlatform.get());
+
+    mInstance = mWireHelper->RegisterInstance(gTestEnv->GetInstance()->Get());
+
+    std::string traceName =
+        std::string(::testing::UnitTest::GetInstance()->current_test_info()->test_suite_name()) +
+        "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name();
+    mWireHelper->BeginWireTrace(traceName.c_str());
+
+    // These options are unused since adapter selection is overriden to use the test params
+    wgpu::RequestAdapterOptions options = {};
+    mInstance.RequestAdapter(
+        &options,
+        [](WGPURequestAdapterStatus, WGPUAdapter cAdapter, const char*, void* userdata) {
+            *static_cast<wgpu::Adapter*>(userdata) = wgpu::Adapter::Acquire(cAdapter);
+        },
+        &mAdapter);
+    FlushWire();
+    ASSERT(mAdapter);
+
+    device = CreateDevice();
+    backendDevice = mLastCreatedBackendDevice;
+    ASSERT(backendDevice);
+    ASSERT(device);
+
+    queue = device.GetQueue();
 }
 
 void DawnTestBase::TearDown() {
-    FlushWire();
+    ResolveDeferredExpectationsNow();
 
-    MapSlotsSynchronously();
-    ResolveExpectations();
-
-    for (size_t i = 0; i < mReadbackSlots.size(); ++i) {
-        mReadbackSlots[i].buffer.Unmap();
-    }
-
-    if (!UsesWire()) {
+    if (!UsesWire() && device) {
         EXPECT_EQ(mLastWarningCount,
                   dawn::native::GetDeprecationWarningCountForTesting(device.Get()));
     }
-
-    // The device will be destroyed soon after, so we want to set the expectation.
-    ExpectDeviceDestruction();
 }
 
-void DawnTestBase::StartExpectDeviceError(testing::Matcher<std::string> errorMatcher) {
-    mExpectError = true;
-    mError = false;
-    mErrorMatcher = errorMatcher;
-}
-
-bool DawnTestBase::EndExpectDeviceError() {
-    mExpectError = false;
-    mErrorMatcher = testing::_;
-    return mError;
-}
-
-void DawnTestBase::ExpectDeviceDestruction() {
-    mExpectDestruction = true;
-}
-
-// static
-void DawnTestBase::OnDeviceError(WGPUErrorType type, const char* message, void* userdata) {
-    ASSERT(type != WGPUErrorType_NoError);
-    DawnTestBase* self = static_cast<DawnTestBase*>(userdata);
-
-    ASSERT_TRUE(self->mExpectError) << "Got unexpected device error: " << message;
-    ASSERT_FALSE(self->mError) << "Got two errors in expect block";
-    if (self->mExpectError) {
-        ASSERT_THAT(message, self->mErrorMatcher);
+void DawnTestBase::DestroyDevice(wgpu::Device device) {
+    wgpu::Device resolvedDevice = device;
+    if (resolvedDevice == nullptr) {
+        resolvedDevice = this->device;
     }
-    self->mError = true;
+
+    // No expectation is added because the expectations for this kind of destruction is set up as
+    // soon as the device is created.
+    resolvedDevice.Destroy();
 }
 
-void DawnTestBase::OnDeviceLost(WGPUDeviceLostReason reason, const char* message, void* userdata) {
-    DawnTestBase* self = static_cast<DawnTestBase*>(userdata);
-    if (self->mExpectDestruction) {
-        EXPECT_EQ(reason, WGPUDeviceLostReason_Destroyed);
-        return;
+void DawnTestBase::LoseDeviceForTesting(wgpu::Device device) {
+    wgpu::Device resolvedDevice = device;
+    if (resolvedDevice == nullptr) {
+        resolvedDevice = this->device;
     }
-    // Using ADD_FAILURE + ASSERT instead of FAIL to prevent the current test from continuing with a
-    // corrupt state.
-    ADD_FAILURE() << "Device lost during test: " << message;
-    ASSERT(false);
+
+    EXPECT_CALL(mDeviceLostCallback,
+                Call(WGPUDeviceLostReason_Undefined, testing::_, resolvedDevice.Get()))
+        .Times(1);
+    resolvedDevice.LoseForTesting();
 }
 
 std::ostringstream& DawnTestBase::AddBufferExpectation(const char* file,
@@ -1085,12 +1121,13 @@ std::ostringstream& DawnTestBase::AddBufferExpectation(const char* file,
                                                        uint64_t offset,
                                                        uint64_t size,
                                                        detail::Expectation* expectation) {
-    auto readback = ReserveReadback(size);
+    uint64_t alignedSize = Align(size, uint64_t(4));
+    auto readback = ReserveReadback(alignedSize);
 
     // We need to enqueue the copy immediately because by the time we resolve the expectation,
     // the buffer might have been modified.
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
-    encoder.CopyBufferToBuffer(buffer, offset, readback.buffer, readback.offset, size);
+    encoder.CopyBufferToBuffer(buffer, offset, readback.buffer, readback.offset, alignedSize);
 
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
@@ -1101,8 +1138,6 @@ std::ostringstream& DawnTestBase::AddBufferExpectation(const char* file,
     deferred.readbackSlot = readback.slot;
     deferred.readbackOffset = readback.offset;
     deferred.size = size;
-    deferred.rowBytes = size;
-    deferred.bytesPerRow = size;
     deferred.expectation.reset(expectation);
 
     mDeferredExpectations.push_back(std::move(deferred));
@@ -1199,7 +1234,7 @@ std::ostringstream& DawnTestBase::ExpectSampledFloatDataImpl(wgpu::TextureView t
         }
     }
     shaderSource << R"(
-        @stage(compute) @workgroup_size(1) fn main(
+        @compute @workgroup_size(1) fn main(
             @builtin(global_invocation_id) GlobalInvocationId : vec3<u32>
         ) {
             let baseOutIndex = GlobalInvocationId.y * width + GlobalInvocationId.x;
@@ -1237,7 +1272,7 @@ std::ostringstream& DawnTestBase::ExpectSampledFloatDataImpl(wgpu::TextureView t
     wgpu::ComputePassEncoder pass = commandEncoder.BeginComputePass();
     pass.SetPipeline(pipeline);
     pass.SetBindGroup(0, bindGroup);
-    pass.Dispatch(width, height);
+    pass.DispatchWorkgroups(width, height);
     pass.End();
     wgpu::CommandBuffer commands = commandEncoder.Finish();
     queue.Submit(1, &commands);
@@ -1343,7 +1378,7 @@ std::ostringstream& DawnTestBase::ExpectAttachmentDepthStencilTestData(
     utils::ComboRenderPipelineDescriptor pipelineDescriptor;
 
     pipelineDescriptor.vertex.module = utils::CreateShaderModule(device, R"(
-        @stage(vertex)
+        @vertex
         fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4<f32> {
             var pos = array<vec2<f32>, 3>(
                 vec2<f32>(-1.0, -1.0),
@@ -1363,7 +1398,7 @@ std::ostringstream& DawnTestBase::ExpectAttachmentDepthStencilTestData(
                 @builtin(frag_depth) fragDepth : f32,
             }
 
-            @stage(fragment)
+            @fragment
             fn main(@builtin(position) FragCoord : vec4<f32>) -> FragmentOut {
                 var output : FragmentOut;
                 output.result = 1u;
@@ -1372,7 +1407,7 @@ std::ostringstream& DawnTestBase::ExpectAttachmentDepthStencilTestData(
             })");
     } else {
         pipelineDescriptor.cFragment.module = utils::CreateShaderModule(device, R"(
-            @stage(fragment)
+            @fragment
             fn main() -> @location(0) u32 {
                 return 1u;
             })");
@@ -1439,7 +1474,9 @@ std::ostringstream& DawnTestBase::ExpectAttachmentDepthStencilTestData(
 }
 
 void DawnTestBase::WaitABit() {
-    device.Tick();
+    if (device) {
+        device.Tick();
+    }
     FlushWire();
 
     utils::USleep(100);
@@ -1561,6 +1598,18 @@ std::unique_ptr<dawn::platform::Platform> DawnTestBase::CreateTestPlatform() {
     return nullptr;
 }
 
+void DawnTestBase::ResolveDeferredExpectationsNow() {
+    FlushWire();
+
+    MapSlotsSynchronously();
+    ResolveExpectations();
+
+    mDeferredExpectations.clear();
+    for (size_t i = 0; i < mReadbackSlots.size(); ++i) {
+        mReadbackSlots[i].buffer.Unmap();
+    }
+}
+
 bool RGBA8::operator==(const RGBA8& other) const {
     return r == other.r && g == other.g && b == other.b && a == other.a;
 }
@@ -1583,154 +1632,153 @@ std::ostream& operator<<(std::ostream& stream, const RGBA8& color) {
 }
 
 namespace detail {
-    std::vector<AdapterTestParam> GetAvailableAdapterTestParamsForBackends(
-        const BackendTestConfig* params,
-        size_t numParams) {
-        ASSERT(gTestEnv != nullptr);
-        return gTestEnv->GetAvailableAdapterTestParamsForBackends(params, numParams);
+std::vector<AdapterTestParam> GetAvailableAdapterTestParamsForBackends(
+    const BackendTestConfig* params,
+    size_t numParams) {
+    ASSERT(gTestEnv != nullptr);
+    return gTestEnv->GetAvailableAdapterTestParamsForBackends(params, numParams);
+}
+
+// Helper classes to set expectations
+
+template <typename T, typename U>
+ExpectEq<T, U>::ExpectEq(T singleValue, T tolerance) : mTolerance(tolerance) {
+    mExpected.push_back(singleValue);
+}
+
+template <typename T, typename U>
+ExpectEq<T, U>::ExpectEq(const T* values, const unsigned int count, T tolerance)
+    : mTolerance(tolerance) {
+    mExpected.assign(values, values + count);
+}
+
+namespace {
+
+template <typename T, typename U = T>
+testing::AssertionResult CheckImpl(const T& expected, const U& actual, const T& tolerance) {
+    ASSERT(tolerance == T{});
+    if (expected != actual) {
+        return testing::AssertionFailure() << expected << ", actual " << actual;
     }
+    return testing::AssertionSuccess();
+}
 
-    // Helper classes to set expectations
-
-    template <typename T, typename U>
-    ExpectEq<T, U>::ExpectEq(T singleValue, T tolerance) : mTolerance(tolerance) {
-        mExpected.push_back(singleValue);
+template <>
+testing::AssertionResult CheckImpl<float>(const float& expected,
+                                          const float& actual,
+                                          const float& tolerance) {
+    if (abs(expected - actual) > tolerance) {
+        return tolerance == 0.0 ? testing::AssertionFailure() << expected << ", actual " << actual
+                                : testing::AssertionFailure() << "within " << tolerance << " of "
+                                                              << expected << ", actual " << actual;
     }
+    return testing::AssertionSuccess();
+}
 
-    template <typename T, typename U>
-    ExpectEq<T, U>::ExpectEq(const T* values, const unsigned int count, T tolerance)
-        : mTolerance(tolerance) {
-        mExpected.assign(values, values + count);
+// Interpret uint16_t as float16
+// This is mostly for reading float16 output from textures
+template <>
+testing::AssertionResult CheckImpl<float, uint16_t>(const float& expected,
+                                                    const uint16_t& actual,
+                                                    const float& tolerance) {
+    float actualF32 = Float16ToFloat32(actual);
+    if (abs(expected - actualF32) > tolerance) {
+        return tolerance == 0.0
+                   ? testing::AssertionFailure() << expected << ", actual " << actualF32
+                   : testing::AssertionFailure() << "within " << tolerance << " of " << expected
+                                                 << ", actual " << actualF32;
     }
+    return testing::AssertionSuccess();
+}
 
-    namespace {
+}  // namespace
 
-        template <typename T, typename U = T>
-        testing::AssertionResult CheckImpl(const T& expected, const U& actual, const T& tolerance) {
-            ASSERT(tolerance == T{});
-            if (expected != actual) {
-                return testing::AssertionFailure() << expected << ", actual " << actual;
+template <typename T, typename U>
+testing::AssertionResult ExpectEq<T, U>::Check(const void* data, size_t size) {
+    DAWN_ASSERT(size == sizeof(U) * mExpected.size());
+    const U* actual = static_cast<const U*>(data);
+
+    for (size_t i = 0; i < mExpected.size(); ++i) {
+        testing::AssertionResult check = CheckImpl(mExpected[i], actual[i], mTolerance);
+        if (!check) {
+            testing::AssertionResult result = testing::AssertionFailure()
+                                              << "Expected data[" << i << "] to be "
+                                              << check.message() << std::endl;
+
+            if (mExpected.size() <= 1024) {
+                result << "Expected:" << std::endl;
+                printBuffer(result, mExpected.data(), mExpected.size());
+
+                result << "Actual:" << std::endl;
+                printBuffer(result, actual, mExpected.size());
             }
-            return testing::AssertionSuccess();
-        }
 
-        template <>
-        testing::AssertionResult CheckImpl<float>(const float& expected,
-                                                  const float& actual,
-                                                  const float& tolerance) {
-            if (abs(expected - actual) > tolerance) {
-                return tolerance == 0.0
-                           ? testing::AssertionFailure() << expected << ", actual " << actual
-                           : testing::AssertionFailure() << "within " << tolerance << " of "
-                                                         << expected << ", actual " << actual;
+            return result;
+        }
+    }
+    return testing::AssertionSuccess();
+}
+
+template class ExpectEq<uint8_t>;
+template class ExpectEq<uint16_t>;
+template class ExpectEq<uint32_t>;
+template class ExpectEq<uint64_t>;
+template class ExpectEq<RGBA8>;
+template class ExpectEq<float>;
+template class ExpectEq<float, uint16_t>;
+
+template <typename T>
+ExpectBetweenColors<T>::ExpectBetweenColors(T value0, T value1) {
+    T l, h;
+    l.r = std::min(value0.r, value1.r);
+    l.g = std::min(value0.g, value1.g);
+    l.b = std::min(value0.b, value1.b);
+    l.a = std::min(value0.a, value1.a);
+
+    h.r = std::max(value0.r, value1.r);
+    h.g = std::max(value0.g, value1.g);
+    h.b = std::max(value0.b, value1.b);
+    h.a = std::max(value0.a, value1.a);
+
+    mLowerColorChannels.push_back(l);
+    mHigherColorChannels.push_back(h);
+
+    mValues0.push_back(value0);
+    mValues1.push_back(value1);
+}
+
+template <typename T>
+testing::AssertionResult ExpectBetweenColors<T>::Check(const void* data, size_t size) {
+    DAWN_ASSERT(size == sizeof(T) * mLowerColorChannels.size());
+    DAWN_ASSERT(mHigherColorChannels.size() == mLowerColorChannels.size());
+    DAWN_ASSERT(mValues0.size() == mValues1.size());
+    DAWN_ASSERT(mValues0.size() == mLowerColorChannels.size());
+
+    const T* actual = static_cast<const T*>(data);
+
+    for (size_t i = 0; i < mLowerColorChannels.size(); ++i) {
+        if (!(actual[i] >= mLowerColorChannels[i] && actual[i] <= mHigherColorChannels[i])) {
+            testing::AssertionResult result = testing::AssertionFailure()
+                                              << "Expected data[" << i << "] to be between "
+                                              << mValues0[i] << " and " << mValues1[i]
+                                              << ", actual " << actual[i] << std::endl;
+
+            if (mLowerColorChannels.size() <= 1024) {
+                result << "Expected between:" << std::endl;
+                printBuffer(result, mValues0.data(), mLowerColorChannels.size());
+                result << "and" << std::endl;
+                printBuffer(result, mValues1.data(), mLowerColorChannels.size());
+
+                result << "Actual:" << std::endl;
+                printBuffer(result, actual, mLowerColorChannels.size());
             }
-            return testing::AssertionSuccess();
+
+            return result;
         }
-
-        // Interpret uint16_t as float16
-        // This is mostly for reading float16 output from textures
-        template <>
-        testing::AssertionResult CheckImpl<float, uint16_t>(const float& expected,
-                                                            const uint16_t& actual,
-                                                            const float& tolerance) {
-            float actualF32 = Float16ToFloat32(actual);
-            if (abs(expected - actualF32) > tolerance) {
-                return tolerance == 0.0
-                           ? testing::AssertionFailure() << expected << ", actual " << actualF32
-                           : testing::AssertionFailure() << "within " << tolerance << " of "
-                                                         << expected << ", actual " << actualF32;
-            }
-            return testing::AssertionSuccess();
-        }
-
-    }  // namespace
-
-    template <typename T, typename U>
-    testing::AssertionResult ExpectEq<T, U>::Check(const void* data, size_t size) {
-        DAWN_ASSERT(size == sizeof(U) * mExpected.size());
-        const U* actual = static_cast<const U*>(data);
-
-        for (size_t i = 0; i < mExpected.size(); ++i) {
-            testing::AssertionResult check = CheckImpl(mExpected[i], actual[i], mTolerance);
-            if (!check) {
-                testing::AssertionResult result = testing::AssertionFailure()
-                                                  << "Expected data[" << i << "] to be "
-                                                  << check.message() << std::endl;
-
-                if (mExpected.size() <= 1024) {
-                    result << "Expected:" << std::endl;
-                    printBuffer(result, mExpected.data(), mExpected.size());
-
-                    result << "Actual:" << std::endl;
-                    printBuffer(result, actual, mExpected.size());
-                }
-
-                return result;
-            }
-        }
-        return testing::AssertionSuccess();
     }
 
-    template class ExpectEq<uint8_t>;
-    template class ExpectEq<uint16_t>;
-    template class ExpectEq<uint32_t>;
-    template class ExpectEq<uint64_t>;
-    template class ExpectEq<RGBA8>;
-    template class ExpectEq<float>;
-    template class ExpectEq<float, uint16_t>;
+    return testing::AssertionSuccess();
+}
 
-    template <typename T>
-    ExpectBetweenColors<T>::ExpectBetweenColors(T value0, T value1) {
-        T l, h;
-        l.r = std::min(value0.r, value1.r);
-        l.g = std::min(value0.g, value1.g);
-        l.b = std::min(value0.b, value1.b);
-        l.a = std::min(value0.a, value1.a);
-
-        h.r = std::max(value0.r, value1.r);
-        h.g = std::max(value0.g, value1.g);
-        h.b = std::max(value0.b, value1.b);
-        h.a = std::max(value0.a, value1.a);
-
-        mLowerColorChannels.push_back(l);
-        mHigherColorChannels.push_back(h);
-
-        mValues0.push_back(value0);
-        mValues1.push_back(value1);
-    }
-
-    template <typename T>
-    testing::AssertionResult ExpectBetweenColors<T>::Check(const void* data, size_t size) {
-        DAWN_ASSERT(size == sizeof(T) * mLowerColorChannels.size());
-        DAWN_ASSERT(mHigherColorChannels.size() == mLowerColorChannels.size());
-        DAWN_ASSERT(mValues0.size() == mValues1.size());
-        DAWN_ASSERT(mValues0.size() == mLowerColorChannels.size());
-
-        const T* actual = static_cast<const T*>(data);
-
-        for (size_t i = 0; i < mLowerColorChannels.size(); ++i) {
-            if (!(actual[i] >= mLowerColorChannels[i] && actual[i] <= mHigherColorChannels[i])) {
-                testing::AssertionResult result = testing::AssertionFailure()
-                                                  << "Expected data[" << i << "] to be between "
-                                                  << mValues0[i] << " and " << mValues1[i]
-                                                  << ", actual " << actual[i] << std::endl;
-
-                if (mLowerColorChannels.size() <= 1024) {
-                    result << "Expected between:" << std::endl;
-                    printBuffer(result, mValues0.data(), mLowerColorChannels.size());
-                    result << "and" << std::endl;
-                    printBuffer(result, mValues1.data(), mLowerColorChannels.size());
-
-                    result << "Actual:" << std::endl;
-                    printBuffer(result, actual, mLowerColorChannels.size());
-                }
-
-                return result;
-            }
-        }
-
-        return testing::AssertionSuccess();
-    }
-
-    template class ExpectBetweenColors<RGBA8>;
+template class ExpectBetweenColors<RGBA8>;
 }  // namespace detail

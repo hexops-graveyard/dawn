@@ -18,33 +18,44 @@
 #include "dawn/webgpu.h"
 
 #include "dawn/common/LinkedList.h"
-#include "dawn/wire/ObjectType_autogen.h"
+#include "dawn/wire/ObjectHandle.h"
 
 namespace dawn::wire::client {
 
-    class Client;
+class Client;
 
-    // All objects on the client side have:
-    //  - A pointer to the Client to get where to serialize commands
-    //  - The external reference count
-    //  - An ID that is used to refer to this object when talking with the server side
-    //  - A next/prev pointer. They are part of a linked list of objects of the same type.
-    struct ObjectBase : public LinkNode<ObjectBase> {
-        ObjectBase(Client* client, uint32_t refcount, uint32_t id)
-            : client(client), refcount(refcount), id(id) {
-        }
+struct ObjectBaseParams {
+    Client* client;
+    ObjectHandle handle;
+};
 
-        ~ObjectBase() {
-            RemoveFromList();
-        }
+// All objects on the client side have:
+//  - A pointer to the Client to get where to serialize commands
+//  - The external reference count, starting at 1.
+//  - An ID that is used to refer to this object when talking with the server side
+//  - A next/prev pointer. They are part of a linked list of objects of the same type.
+class ObjectBase : public LinkNode<ObjectBase> {
+  public:
+    explicit ObjectBase(const ObjectBaseParams& params);
+    virtual ~ObjectBase();
 
-        virtual void CancelCallbacksForDisconnect() {
-        }
+    virtual void CancelCallbacksForDisconnect() {}
 
-        Client* const client;
-        uint32_t refcount;
-        const uint32_t id;
-    };
+    const ObjectHandle& GetWireHandle() const;
+    ObjectId GetWireId() const;
+    ObjectGeneration GetWireGeneration() const;
+    Client* GetClient() const;
+
+    void Reference();
+    // Returns true if it was the last reference, indicating that the caller must destroy the
+    // object.
+    [[nodiscard]] bool Release();
+
+  private:
+    Client* const mClient;
+    const ObjectHandle mHandle;
+    uint32_t mRefcount;
+};
 
 }  // namespace dawn::wire::client
 

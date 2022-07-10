@@ -15,127 +15,62 @@
 #ifndef SRC_TINT_SEM_CONSTANT_H_
 #define SRC_TINT_SEM_CONSTANT_H_
 
-#include <vector>
+#include <variant>
 
-#include "src/tint/program_builder.h"
-#include "src/tint/sem/type.h"
+#include "src/tint/number.h"
+
+// Forward declarations
+namespace tint::sem {
+class Type;
+}
 
 namespace tint::sem {
 
-/// A Constant is compile-time known expression value, expressed as a flattened
-/// list of scalar values. Value may be of a scalar or vector type.
+/// Constant is the interface to a compile-time evaluated expression value.
 class Constant {
-  using i32 = ProgramBuilder::i32;
-  using u32 = ProgramBuilder::u32;
-  using f32 = ProgramBuilder::f32;
+  public:
+    /// Constructor
+    Constant();
 
- public:
-  /// Scalar holds a single constant scalar value, as a union of an i32, u32,
-  /// f32 or boolean.
-  union Scalar {
-    /// The scalar value as a i32
-    int32_t i32;
-    /// The scalar value as a u32
-    uint32_t u32;
-    /// The scalar value as a f32
-    float f32;
-    /// The scalar value as a bool
-    bool bool_;
+    /// Destructor
+    virtual ~Constant();
 
-    /// Constructs the scalar with the i32 value `v`
-    /// @param v the value of the Scalar
-    Scalar(ProgramBuilder::i32 v) : i32(v) {}  // NOLINT
+    /// @returns the type of the constant
+    virtual const sem::Type* Type() const = 0;
 
-    /// Constructs the scalar with the u32 value `v`
-    /// @param v the value of the Scalar
-    Scalar(ProgramBuilder::u32 v) : u32(v) {}  // NOLINT
+    /// @returns the value of this Constant, if this constant is of a scalar value or abstract
+    /// numeric, otherwsie std::monostate.
+    virtual std::variant<std::monostate, AInt, AFloat> Value() const = 0;
 
-    /// Constructs the scalar with the f32 value `v`
-    /// @param v the value of the Scalar
-    Scalar(ProgramBuilder::f32 v) : f32(v) {}  // NOLINT
+    /// @returns the child constant element with the given index, or nullptr if the constant has no
+    /// children, or the index is out of bounds.
+    virtual const Constant* Index(size_t) const = 0;
 
-    /// Constructs the scalar with the bool value `v`
-    /// @param v the value of the Scalar
-    Scalar(bool v) : bool_(v) {}  // NOLINT
-  };
+    /// @returns true if child elements of this constant are positive-zero valued.
+    virtual bool AllZero() const = 0;
 
-  /// Scalars is a list of scalar values
-  using Scalars = std::vector<Scalar>;
+    /// @returns true if any child elements of this constant are positive-zero valued.
+    virtual bool AnyZero() const = 0;
 
-  /// Constructs an invalid Constant
-  Constant();
+    /// @returns true if all child elements of this constant have the same value and type.
+    virtual bool AllEqual() const = 0;
 
-  /// Constructs a Constant of the given type and element values
-  /// @param ty the Constant type
-  /// @param els the Constant element values
-  Constant(const Type* ty, Scalars els);
+    /// @returns a hash of the constant.
+    virtual size_t Hash() const = 0;
 
-  /// Copy constructor
-  Constant(const Constant&);
-
-  /// Destructor
-  ~Constant();
-
-  /// Copy assignment
-  /// @param other the Constant to copy
-  /// @returns this Constant
-  Constant& operator=(const Constant& other);
-
-  /// @returns true if the Constant has been initialized
-  bool IsValid() const { return type_ != nullptr; }
-
-  /// @return true if the Constant has been initialized
-  operator bool() const { return IsValid(); }
-
-  /// @returns the type of the Constant
-  const sem::Type* Type() const { return type_; }
-
-  /// @returns the element type of the Constant
-  const sem::Type* ElementType() const { return elem_type_; }
-
-  /// @returns the constant's scalar elements
-  const Scalars& Elements() const { return elems_; }
-
-  /// @returns true if any scalar element is zero
-  bool AnyZero() const;
-
-  /// Calls `func(s)` with s being the current scalar value at `index`.
-  /// `func` is typically a lambda of the form '[](auto&& s)'.
-  /// @param index the index of the scalar value
-  /// @param func a function with signature `T(S)`
-  /// @return the value returned by func.
-  template <typename Func>
-  auto WithScalarAt(size_t index, Func&& func) const {
-    auto* elem_type = ElementType();
-    if (elem_type->Is<I32>()) {
-      return func(elems_[index].i32);
+    /// @returns the value of the constant as the given scalar or abstract value.
+    template <typename T>
+    T As() const {
+        return std::visit(
+            [](auto v) {
+                if constexpr (std::is_same_v<decltype(v), std::monostate>) {
+                    return T(0);
+                } else {
+                    return static_cast<T>(v);
+                }
+            },
+            Value());
     }
-    if (elem_type->Is<U32>()) {
-      return func(elems_[index].u32);
-    }
-    if (elem_type->Is<F32>()) {
-      return func(elems_[index].f32);
-    }
-    if (elem_type->Is<Bool>()) {
-      return func(elems_[index].bool_);
-    }
-    diag::List diags;
-    TINT_UNREACHABLE(Semantic, diags)
-        << "invalid scalar type " << type_->TypeInfo().name;
-    return func(~0);
-  }
-
-  /// @param index the index of the scalar value
-  /// @return the value of the scalar `static_cast` to type T.
-  template <typename T>
-  T ElementAs(size_t index) const {
-    return WithScalarAt(index, [](auto val) { return static_cast<T>(val); });
-  }
-
- private:
-  const sem::Type* type_ = nullptr;
-  const sem::Type* elem_type_ = nullptr;
-  Scalars elems_;
 };
 
 }  // namespace tint::sem

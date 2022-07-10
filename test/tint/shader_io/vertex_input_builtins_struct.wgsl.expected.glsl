@@ -7,10 +7,11 @@ struct VertexInputs {
 
 vec4 tint_symbol(VertexInputs inputs) {
   uint foo = (inputs.vertex_index + inputs.instance_index);
-  return vec4(0.0f, 0.0f, 0.0f, 0.0f);
+  return vec4(0.0f);
 }
 
 void main() {
+  gl_PointSize = 1.0;
   VertexInputs tint_symbol_1 = VertexInputs(uint(gl_VertexID), uint(gl_InstanceID));
   vec4 inner_result = tint_symbol(tint_symbol_1);
   gl_Position = inner_result;

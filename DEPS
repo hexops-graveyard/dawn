@@ -26,16 +26,19 @@ vars = {
 
   # GN variable required by //testing that will be output in the gclient_args.gni
   'generate_location_tags': False,
+
+  # Fetch clang-tidy into the same bin/ directory as our clang binary.
+  'checkout_clang_tidy': False,
 }
 
 deps = {
   # Dependencies required to use GN/Clang in standalone
   'build': {
-    'url': '{chromium_git}/chromium/src/build@c7876b5a44308b94074287939244bc562007de69',
+    'url': '{chromium_git}/chromium/src/build@87b04ad66530e4a571cef36d6e71ef737d23a887',
     'condition': 'dawn_standalone',
   },
   'buildtools': {
-    'url': '{chromium_git}/chromium/src/buildtools@e1471b21ee9c6765ee95e9db0c76fe997ccad35c',
+    'url': '{chromium_git}/chromium/src/buildtools@f0d740e4e2f803e39dfd5d8d11f7d87bdf489514',
     'condition': 'dawn_standalone',
   },
   'buildtools/clang_format/script': {
@@ -78,7 +81,7 @@ deps = {
   },
 
   'tools/clang': {
-    'url': '{chromium_git}/chromium/src/tools/clang@df9b14e26c163dd8e2c0ab081e2689f038ae7141',
+    'url': '{chromium_git}/chromium/src/tools/clang@3c4a622d9f0b0ce5ec2a438189d46c695216b324',
     'condition': 'dawn_standalone',
   },
   'tools/clang/dsymutil': {
@@ -96,7 +99,7 @@ deps = {
     'condition': 'dawn_standalone',
   },
   'third_party/googletest': {
-    'url': '{chromium_git}/external/github.com/google/googletest@6b74da4757a549563d7c37c8fae3e704662a043b',
+    'url': '{chromium_git}/external/github.com/google/googletest@bda85449f48f2d80a494c8c07766b6aba3170f3b',
     'condition': 'dawn_standalone',
   },
   # This is a dependency of //testing
@@ -117,8 +120,7 @@ deps = {
 
   # GLFW for tests and samples
   'third_party/glfw': {
-    'url': '{chromium_git}/external/github.com/glfw/glfw@94773111300fee0453844a4c9407af7e880b4df8',
-    'condition': 'dawn_standalone',
+    'url': '{chromium_git}/external/github.com/glfw/glfw@62e175ef9fae75335575964c845a302447c012c7',
   },
 
   'third_party/vulkan_memory_allocator': {
@@ -127,17 +129,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@0439d9cd25b4227864c14ee575dc87abae4922a0',
+    'url': '{chromium_git}/angle/angle@adcc645392e248a569cf53676ac44f37c5bdbd23',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@71f3089b729c0bd3383905ae43080af1e7946e40',
+    'url': '{swiftshader_git}/SwiftShader@16e026a959f1bc80ff237aa81b4a63b52517dec1',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@df3a617e75565695119c234ec5f82295ef5ae443',
+    'url': '{chromium_git}/vulkan-deps@c119749eff1fe3211a5de116640b7120e579a6a6',
     'condition': 'dawn_standalone',
   },
 
@@ -147,13 +149,13 @@ deps = {
   },
 
   'third_party/abseil-cpp': {
-    'url': '{chromium_git}/chromium/src/third_party/abseil-cpp@789af048b388657987c59d4da406859034fe310f',
+    'url': '{chromium_git}/chromium/src/third_party/abseil-cpp@e44b3e77a90112bba1ebe91aca5f9af8e5afab84',
     'condition': 'dawn_standalone',
   },
 
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
   'third_party/webgpu-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@45d2ccd250b736d686a1f251bc4b8484d50e17de',
+    'url': '{chromium_git}/external/github.com/gpuweb/cts@8cfc317e23c7f7a73f3c7caf5203a55542471f56',
     'condition': 'build_with_chromium',
   },
 
@@ -167,12 +169,8 @@ deps = {
     'condition': 'dawn_node',
   },
   'third_party/gpuweb': {
-    'url': '{github_git}/gpuweb/gpuweb.git@881403b5fda2d9ac9ffc5daa24e34738205bf155',
+    'url': '{github_git}/gpuweb/gpuweb.git@3c4734b09c68eb800b15da5e9ecefeca735fa7df',
     'condition': 'dawn_node',
-  },
-  'third_party/gpuweb-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@45d2ccd250b736d686a1f251bc4b8484d50e17de',
-    'condition': 'dawn_standalone',
   },
 
   'tools/golang': {
@@ -241,6 +239,15 @@ hooks = [
     'pattern': '.',
     'action': ['python3', 'tools/clang/scripts/update.py'],
     'condition': 'dawn_standalone',
+  },
+  {
+    # This is also supposed to support the same set of platforms as 'clang'
+    # above. LLVM ToT support isn't provided at the moment.
+    'name': 'clang_tidy',
+    'pattern': '.',
+    'condition': 'dawn_standalone and checkout_clang_tidy',
+    'action': ['python3', 'tools/clang/scripts/update.py',
+               '--package=clang-tidy'],
   },
   {
     # Pull rc binaries using checked-in hashes.

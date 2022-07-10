@@ -19,10 +19,37 @@ namespace {
 
 using FloatLiteralExpressionTest = TestHelper;
 
-TEST_F(FloatLiteralExpressionTest, Value) {
-  auto* f = create<FloatLiteralExpression>(47.2f);
-  ASSERT_TRUE(f->Is<FloatLiteralExpression>());
-  EXPECT_EQ(f->value, 47.2f);
+TEST_F(FloatLiteralExpressionTest, SuffixNone) {
+    auto* i = create<FloatLiteralExpression>(42.0, FloatLiteralExpression::Suffix::kNone);
+    ASSERT_TRUE(i->Is<FloatLiteralExpression>());
+    EXPECT_EQ(i->value, 42);
+    EXPECT_EQ(i->suffix, FloatLiteralExpression::Suffix::kNone);
+}
+
+TEST_F(FloatLiteralExpressionTest, SuffixF) {
+    auto* i = create<FloatLiteralExpression>(42.0, FloatLiteralExpression::Suffix::kF);
+    ASSERT_TRUE(i->Is<FloatLiteralExpression>());
+    EXPECT_EQ(i->value, 42);
+    EXPECT_EQ(i->suffix, FloatLiteralExpression::Suffix::kF);
+}
+
+TEST_F(FloatLiteralExpressionTest, SuffixH) {
+    auto* i = create<FloatLiteralExpression>(42.0, FloatLiteralExpression::Suffix::kH);
+    ASSERT_TRUE(i->Is<FloatLiteralExpression>());
+    EXPECT_EQ(i->value, 42);
+    EXPECT_EQ(i->suffix, FloatLiteralExpression::Suffix::kH);
+}
+
+TEST_F(FloatLiteralExpressionTest, SuffixStringStream) {
+    auto to_str = [](FloatLiteralExpression::Suffix suffix) {
+        std::stringstream ss;
+        ss << suffix;
+        return ss.str();
+    };
+
+    EXPECT_EQ("", to_str(FloatLiteralExpression::Suffix::kNone));
+    EXPECT_EQ("f", to_str(FloatLiteralExpression::Suffix::kF));
+    EXPECT_EQ("h", to_str(FloatLiteralExpression::Suffix::kH));
 }
 
 }  // namespace

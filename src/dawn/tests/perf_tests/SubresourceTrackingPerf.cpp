@@ -23,8 +23,7 @@ struct SubresourceTrackingParams : AdapterTestParam {
                               uint32_t mipLevelCountIn)
         : AdapterTestParam(param),
           arrayLayerCount(arrayLayerCountIn),
-          mipLevelCount(mipLevelCountIn) {
-    }
+          mipLevelCount(mipLevelCountIn) {}
     uint32_t arrayLayerCount;
     uint32_t mipLevelCount;
 };
@@ -44,8 +43,7 @@ class SubresourceTrackingPerf : public DawnPerfTestWithParams<SubresourceTrackin
   public:
     static constexpr unsigned int kNumIterations = 50;
 
-    SubresourceTrackingPerf() : DawnPerfTestWithParams(kNumIterations, 1) {
-    }
+    SubresourceTrackingPerf() : DawnPerfTestWithParams(kNumIterations, 1) {}
     ~SubresourceTrackingPerf() override = default;
 
     void SetUp() override {
@@ -70,13 +68,13 @@ class SubresourceTrackingPerf : public DawnPerfTestWithParams<SubresourceTrackin
 
         utils::ComboRenderPipelineDescriptor pipelineDesc;
         pipelineDesc.vertex.module = utils::CreateShaderModule(device, R"(
-            @stage(vertex) fn main() -> @builtin(position) vec4<f32> {
+            @vertex fn main() -> @builtin(position) vec4<f32> {
                 return vec4<f32>(1.0, 0.0, 0.0, 1.0);
             }
         )");
         pipelineDesc.cFragment.module = utils::CreateShaderModule(device, R"(
             @group(0) @binding(0) var materials : texture_2d<f32>;
-            @stage(fragment) fn main() -> @location(0) vec4<f32> {
+            @fragment fn main() -> @location(0) vec4<f32> {
                 let foo : vec2<i32> = textureDimensions(materials);
                 return vec4<f32>(1.0, 0.0, 0.0, 1.0);
             }

@@ -29,39 +29,36 @@
 
 namespace {
 
-    class DevNull : public dawn::wire::CommandSerializer {
-      public:
-        size_t GetMaximumAllocationSize() const override {
-            // Some fuzzer bots have a 2GB allocation limit. Pick a value reasonably below that.
-            return 1024 * 1024 * 1024;
-        }
-        void* GetCmdSpace(size_t size) override {
-            if (size > buf.size()) {
-                buf.resize(size);
-            }
-            return buf.data();
-        }
-        bool Flush() override {
-            return true;
-        }
-
-      private:
-        std::vector<char> buf;
-    };
-
-    std::unique_ptr<dawn::native::Instance> sInstance;
-    WGPUProcDeviceCreateSwapChain sOriginalDeviceCreateSwapChain = nullptr;
-
-    bool sCommandsComplete = false;
-
-    WGPUSwapChain ErrorDeviceCreateSwapChain(WGPUDevice device,
-                                             WGPUSurface surface,
-                                             const WGPUSwapChainDescriptor*) {
-        WGPUSwapChainDescriptor desc = {};
-        // A 0 implementation will trigger a swapchain creation error.
-        desc.implementation = 0;
-        return sOriginalDeviceCreateSwapChain(device, surface, &desc);
+class DevNull : public dawn::wire::CommandSerializer {
+  public:
+    size_t GetMaximumAllocationSize() const override {
+        // Some fuzzer bots have a 2GB allocation limit. Pick a value reasonably below that.
+        return 1024 * 1024 * 1024;
     }
+    void* GetCmdSpace(size_t size) override {
+        if (size > buf.size()) {
+            buf.resize(size);
+        }
+        return buf.data();
+    }
+    bool Flush() override { return true; }
+
+  private:
+    std::vector<char> buf;
+};
+
+std::unique_ptr<dawn::native::Instance> sInstance;
+WGPUProcDeviceCreateSwapChain sOriginalDeviceCreateSwapChain = nullptr;
+static bool (*sAdapterSupported)(const dawn::native::Adapter&) = nullptr;
+
+WGPUSwapChain ErrorDeviceCreateSwapChain(WGPUDevice device,
+                                         WGPUSurface surface,
+                                         const WGPUSwapChainDescriptor*) {
+    WGPUSwapChainDescriptor desc = {};
+    // A 0 implementation will trigger a swapchain creation error.
+    desc.implementation = 0;
+    return sOriginalDeviceCreateSwapChain(device, surface, &desc);
+}
 
 }  // namespace
 
@@ -77,7 +74,7 @@ int DawnWireServerFuzzer::Initialize(int* argc, char*** argv) {
 
 int DawnWireServerFuzzer::Run(const uint8_t* data,
                               size_t size,
-                              MakeDeviceFn MakeDevice,
+                              bool (*AdapterSupported)(const dawn::native::Adapter&),
                               bool supportsErrorInjection) {
     // We require at least the injected error index.
     if (size < sizeof(uint64_t)) {
@@ -98,6 +95,8 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
         dawn::native::InjectErrorAt(injectedErrorIndex);
     }
 
+    sAdapterSupported = AdapterSupported;
+
     DawnProcTable procs = dawn::native::GetProcs();
 
     // Swapchains receive a pointer to an implementation. The fuzzer will pass garbage in so we
@@ -107,14 +106,23 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
     sOriginalDeviceCreateSwapChain = procs.deviceCreateSwapChain;
     procs.deviceCreateSwapChain = ErrorDeviceCreateSwapChain;
 
-    dawnProcSetProcs(&procs);
+    // Override requestAdapter to find an adapter that the fuzzer supports.
+    procs.instanceRequestAdapter = [](WGPUInstance cInstance,
+                                      const WGPURequestAdapterOptions* options,
+                                      WGPURequestAdapterCallback callback, void* userdata) {
+        std::vector<dawn::native::Adapter> adapters = sInstance->GetAdapters();
+        for (dawn::native::Adapter adapter : adapters) {
+            if (sAdapterSupported(adapter)) {
+                WGPUAdapter cAdapter = adapter.Get();
+                dawn::native::GetProcs().adapterReference(cAdapter);
+                callback(WGPURequestAdapterStatus_Success, cAdapter, nullptr, userdata);
+                return;
+            }
+        }
+        callback(WGPURequestAdapterStatus_Unavailable, nullptr, "No supported adapter.", userdata);
+    };
 
-    wgpu::Device device = MakeDevice(sInstance.get());
-    if (!device) {
-        // We should only ever fail device creation if an error was injected.
-        ASSERT(supportsErrorInjection);
-        return 0;
-    }
+    dawnProcSetProcs(&procs);
 
     DevNull devNull;
     dawn::wire::WireServerDescriptor serverDesc = {};
@@ -122,21 +130,11 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
     serverDesc.serializer = &devNull;
 
     std::unique_ptr<dawn::wire::WireServer> wireServer(new dawn_wire::WireServer(serverDesc));
-    wireServer->InjectDevice(device.Get(), 1, 0);
-
+    wireServer->InjectInstance(sInstance->Get(), 1, 0);
     wireServer->HandleCommands(reinterpret_cast<const char*>(data), size);
 
-    // Wait for all previous commands before destroying the server.
-    // TODO(enga): Improve this when we improve/finalize how processing events happens.
-    {
-        device.GetQueue().OnSubmittedWorkDone(
-            0u, [](WGPUQueueWorkDoneStatus, void*) { sCommandsComplete = true; }, nullptr);
-        while (!sCommandsComplete) {
-            device.Tick();
-            utils::USleep(100);
-        }
-    }
-
+    // Note: Deleting the server will release all created objects.
+    // Deleted devices will wait for idle on destruction.
     wireServer = nullptr;
     return 0;
 }

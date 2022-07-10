@@ -16,32 +16,32 @@
 
 namespace dawn::native::opengl {
 
-    GLFormatTable BuildGLFormatTable() {
-        GLFormatTable table;
+GLFormatTable BuildGLFormatTable(GLenum internalFormatForBGRA) {
+    GLFormatTable table;
 
-        using Type = GLFormat::ComponentType;
+    using Type = GLFormat::ComponentType;
 
-        auto AddFormat = [&table](wgpu::TextureFormat dawnFormat, GLenum internalFormat,
-                                  GLenum format, GLenum type, Type componentType) {
-            FormatIndex index = ComputeFormatIndex(dawnFormat);
-            ASSERT(index < table.size());
+    auto AddFormat = [&table](wgpu::TextureFormat dawnFormat, GLenum internalFormat, GLenum format,
+                              GLenum type, Type componentType) {
+        FormatIndex index = ComputeFormatIndex(dawnFormat);
+        ASSERT(index < table.size());
 
-            table[index].internalFormat = internalFormat;
-            table[index].format = format;
-            table[index].type = type;
-            table[index].componentType = componentType;
-            table[index].isSupportedOnBackend = true;
-        };
+        table[index].internalFormat = internalFormat;
+        table[index].format = format;
+        table[index].type = type;
+        table[index].componentType = componentType;
+        table[index].isSupportedOnBackend = true;
+    };
 
-        // It's dangerous to go alone, take this:
-        //
-        //     [ANGLE's formatutils.cpp]
-        //     [ANGLE's formatutilsgl.cpp]
-        //
-        // The format tables in these files are extremely complete and the best reference on GL
-        // format support, enums, etc.
+    // It's dangerous to go alone, take this:
+    //
+    //     [ANGLE's formatutils.cpp]
+    //     [ANGLE's formatutilsgl.cpp]
+    //
+    // The format tables in these files are extremely complete and the best reference on GL
+    // format support, enums, etc.
 
-        // clang-format off
+    // clang-format off
 
         // 1 byte color formats
         AddFormat(wgpu::TextureFormat::R8Unorm, GL_R8, GL_RED, GL_UNSIGNED_BYTE, Type::Float);
@@ -71,8 +71,7 @@ namespace dawn::native::opengl {
         AddFormat(wgpu::TextureFormat::RGBA8Uint, GL_RGBA8UI, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, Type::Uint);
         AddFormat(wgpu::TextureFormat::RGBA8Sint, GL_RGBA8I, GL_RGBA_INTEGER, GL_BYTE, Type::Int);
 
-        // This doesn't have an enum for the internal format in OpenGL, so use RGBA8.
-        AddFormat(wgpu::TextureFormat::BGRA8Unorm, GL_RGBA8, GL_BGRA, GL_UNSIGNED_BYTE, Type::Float);
+        AddFormat(wgpu::TextureFormat::BGRA8Unorm, internalFormatForBGRA, GL_BGRA, GL_UNSIGNED_BYTE, Type::Float);
         AddFormat(wgpu::TextureFormat::RGB10A2Unorm, GL_RGB10_A2, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, Type::Float);
         AddFormat(wgpu::TextureFormat::RG11B10Ufloat, GL_R11F_G11F_B10F, GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV, Type::Float);
         AddFormat(wgpu::TextureFormat::RGB9E5Ufloat, GL_RGB9_E5, GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, Type::Float);
@@ -93,7 +92,6 @@ namespace dawn::native::opengl {
         // Depth stencil formats
         AddFormat(wgpu::TextureFormat::Depth32Float, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, Type::DepthStencil);
         AddFormat(wgpu::TextureFormat::Depth24Plus, GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT, Type::DepthStencil);
-        AddFormat(wgpu::TextureFormat::Depth24UnormStencil8, GL_DEPTH24_STENCIL8, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, Type::DepthStencil);
         AddFormat(wgpu::TextureFormat::Depth24PlusStencil8, GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, Type::DepthStencil);
         AddFormat(wgpu::TextureFormat::Depth16Unorm, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, Type::DepthStencil);
         AddFormat(wgpu::TextureFormat::Stencil8, GL_STENCIL_INDEX8, GL_STENCIL, GL_UNSIGNED_BYTE, Type::DepthStencil);
@@ -114,9 +112,9 @@ namespace dawn::native::opengl {
         AddFormat(wgpu::TextureFormat::BC7RGBAUnorm, GL_COMPRESSED_RGBA_BPTC_UNORM, GL_RGBA, GL_UNSIGNED_BYTE, Type::Float);
         AddFormat(wgpu::TextureFormat::BC7RGBAUnormSrgb, GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM, GL_RGBA, GL_UNSIGNED_BYTE, Type::Float);
 
-        // clang-format on
+    // clang-format on
 
-        return table;
-    }
+    return table;
+}
 
 }  // namespace dawn::native::opengl

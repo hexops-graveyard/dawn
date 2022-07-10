@@ -50,6 +50,9 @@ function status {
     echo ""
     echo "*****************************************************************"
     echo "* $@"
+    echo "*"
+    echo "* df:"
+    df
     echo "*****************************************************************"
     echo ""
     task_begin $@
@@ -90,7 +93,7 @@ status "Checking for CRLF"
 ./tools/check-no-crlf
 
 status "Fetching dependencies"
-cp scripts/standalone.gclient .gclient
+cp scripts/standalone-with-node.gclient .gclient
 with_retry gclient sync
 
 status "Linting"
@@ -119,6 +122,13 @@ if [ "$BUILD_SYSTEM" == "cmake" ]; then
     COMMON_CMAKE_FLAGS+=" -DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
     COMMON_CMAKE_FLAGS+=" -DTINT_DOCS_WARN_AS_ERROR=1"
     COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_BENCHMARKS=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_SPV_READER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_WGSL_READER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_GLSL_WRITER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_HLSL_WRITER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_MSL_WRITER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_SPV_WRITER=1"
+    COMMON_CMAKE_FLAGS+=" -DTINT_BUILD_WGSL_WRITER=1"
 
     if [ "$BUILD_TOOLCHAIN" == "clang" ]; then
         using clang-10.0.0
@@ -139,9 +149,7 @@ if [ "$BUILD_SYSTEM" == "cmake" ]; then
 
     status "Running go tool unittests"
     show_cmds
-        pushd tools/src
-            go test ./...
-        popd
+        go test ./...
     hide_cmds
 
     cd ${BUILD_DIR}
@@ -160,6 +168,12 @@ if [ "$BUILD_SYSTEM" == "cmake" ]; then
     status "Building dawn in '${BUILD_DIR}'"
     show_cmds
         cmake ${SRC_DIR} ${CMAKE_FLAGS} ${COMMON_CMAKE_FLAGS}
+        cmake --build . -- --jobs=$(nproc)
+    hide_cmds
+
+    status "Re-building dawn in '${BUILD_DIR}' with dawn/node enabled"
+    show_cmds
+        cmake ${SRC_DIR} ${CMAKE_FLAGS} ${COMMON_CMAKE_FLAGS} -DDAWN_BUILD_NODE_BINDINGS=1 -DDAWN_ENABLE_PIC=1 -DDAWN_USE_X11=OFF
         cmake --build . -- --jobs=$(nproc)
     hide_cmds
 

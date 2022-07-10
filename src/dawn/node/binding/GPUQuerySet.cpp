@@ -16,26 +16,43 @@
 
 #include <utility>
 
+#include "src/dawn/node/binding/Converter.h"
 #include "src/dawn/node/utils/Debug.h"
 
 namespace wgpu::binding {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    // wgpu::bindings::GPUQuerySet
-    ////////////////////////////////////////////////////////////////////////////////
-    GPUQuerySet::GPUQuerySet(wgpu::QuerySet query_set) : query_set_(std::move(query_set)) {
+////////////////////////////////////////////////////////////////////////////////
+// wgpu::bindings::GPUQuerySet
+////////////////////////////////////////////////////////////////////////////////
+GPUQuerySet::GPUQuerySet(wgpu::QuerySet query_set) : query_set_(std::move(query_set)) {}
+
+void GPUQuerySet::destroy(Napi::Env) {
+    query_set_.Destroy();
+}
+
+interop::GPUQueryType GPUQuerySet::getType(Napi::Env env) {
+    interop::GPUQueryType result;
+
+    Converter conv(env);
+    if (!conv(result, query_set_.GetType())) {
+        Napi::Error::New(env, "Couldn't convert type to a JavaScript value.")
+            .ThrowAsJavaScriptException();
+        return interop::GPUQueryType::kOcclusion;  // Doesn't get used.
     }
 
-    void GPUQuerySet::destroy(Napi::Env) {
-        query_set_.Destroy();
-    }
+    return result;
+}
 
-    std::variant<std::string, interop::UndefinedType> GPUQuerySet::getLabel(Napi::Env) {
-        UNIMPLEMENTED();
-    }
+interop::GPUSize32 GPUQuerySet::getCount(Napi::Env) {
+    return query_set_.GetCount();
+}
 
-    void GPUQuerySet::setLabel(Napi::Env, std::variant<std::string, interop::UndefinedType> value) {
-        UNIMPLEMENTED();
-    }
+std::string GPUQuerySet::getLabel(Napi::Env) {
+    UNIMPLEMENTED();
+}
+
+void GPUQuerySet::setLabel(Napi::Env, std::string value) {
+    UNIMPLEMENTED();
+}
 
 }  // namespace wgpu::binding

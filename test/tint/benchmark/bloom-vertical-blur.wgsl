@@ -1,4 +1,4 @@
-let bloomDir = vec2(0.0, 1.0);
+const bloomDir = vec2(0.0, 1.0);
 
 var<private> offsets : array<f32, 3> = array<f32, 3>(0.0, 1.384615421, 3.230769157);
 
@@ -34,7 +34,7 @@ fn getGaussianBlur(texCoord : vec2<f32>) -> vec4<f32> {
 
 @group(0) @binding(3) var prevTexture : texture_2d<f32>;
 
-@stage(fragment)
+@fragment
 fn fragmentMain(input : FragmentInput) -> @location(0) vec4<f32> {
   let blurColor = getGaussianBlur(input.texCoord);
   let dimColor = (textureSample(prevTexture, bloomSampler, input.texCoord) * bloom.dim);

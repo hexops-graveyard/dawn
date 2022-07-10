@@ -17,8 +17,8 @@
 
 #include "dawn/common/Platform.h"
 
-#if !defined(DAWN_PLATFORM_WINDOWS)
-#    error "windows_with_undefs.h included on non-Windows"
+#if !DAWN_PLATFORM_IS(WINDOWS)
+#error "windows_with_undefs.h included on non-Windows"
 #endif
 
 // This header includes <windows.h> but removes all the extra defines that conflict with identifiers
