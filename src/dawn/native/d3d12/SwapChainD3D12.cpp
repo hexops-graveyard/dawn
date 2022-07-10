@@ -14,7 +14,9 @@
 
 #include "dawn/native/d3d12/SwapChainD3D12.h"
 
+#if defined(DAWN_USE_WINDOWS_UI)
 #include <windows.ui.xaml.media.dxinterop.h>
+#endif  // defined(DAWN_USE_WINDOWS_UI)
 
 #include <utility>
 
@@ -257,6 +259,7 @@ MaybeError SwapChain::InitializeSwapChainFromScratch() {
                 "Creating the IDXGISwapChain1"));
             break;
         }
+#if defined(DAWN_USE_WINDOWS_UI)
         case Surface::Type::WindowsCoreWindow: {
             DAWN_TRY(CheckHRESULT(
                 factory2->CreateSwapChainForCoreWindow(device->GetCommandQueue().Get(),
@@ -278,6 +281,7 @@ MaybeError SwapChain::InitializeSwapChainFromScratch() {
                                   "Setting SwapChain"));
             break;
         }
+#endif // defined(DAWN_USE_WINDOWS_UI)
         default:
             UNREACHABLE();
     }
