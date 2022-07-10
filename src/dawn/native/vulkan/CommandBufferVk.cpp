@@ -207,7 +207,7 @@ namespace dawn::native::vulkan {
             // Query a VkRenderPass from the cache
             VkRenderPass renderPassVK = VK_NULL_HANDLE;
             {
-                RenderPassCacheQuery query{};
+                RenderPassCacheQuery query;
 
                 for (ColorAttachmentIndex i :
                      IterateBitSet(renderPass->attachmentState->GetColorAttachmentsMask())) {

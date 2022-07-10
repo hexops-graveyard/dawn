@@ -520,7 +520,7 @@ namespace dawn::native::vulkan {
         // so set them both to false.
         VkRenderPass renderPass = VK_NULL_HANDLE;
         {
-            RenderPassCacheQuery query{};
+            RenderPassCacheQuery query;
 
             for (ColorAttachmentIndex i : IterateBitSet(GetColorAttachmentsMask())) {
                 query.SetColor(i, GetColorAttachmentFormat(i), wgpu::LoadOp::Load,
