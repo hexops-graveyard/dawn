@@ -15,9 +15,12 @@
 #ifndef SRC_TINT_INSPECTOR_ENTRY_POINT_H_
 #define SRC_TINT_INSPECTOR_ENTRY_POINT_H_
 
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
+
+#include "tint/override_id.h"
 
 #include "src/tint/ast/interpolate_attribute.h"
 #include "src/tint/ast/pipeline_stage.h"
@@ -92,14 +95,13 @@ InterpolationType ASTToInspectorInterpolationType(ast::InterpolationType ast_typ
 /// @returns the publicly visible equivalent
 InterpolationSampling ASTToInspectorInterpolationSampling(ast::InterpolationSampling sampling);
 
-/// Reflection data about a pipeline overridable constant referenced by an entry
-/// point
-struct OverridableConstant {
-    /// Name of the constant
+/// Reflection data about an override variable referenced by an entry point
+struct Override {
+    /// Name of the override
     std::string name;
 
-    /// ID of the constant
-    uint16_t numeric_id;
+    /// ID of the override
+    OverrideId id;
 
     /// Type of the scalar
     enum class Type {
@@ -112,12 +114,24 @@ struct OverridableConstant {
     /// Type of the scalar
     Type type;
 
-    /// Does this pipeline overridable constant have an initializer?
+    /// Does this override have an initializer?
     bool is_initialized = false;
 
-    /// Does this pipeline overridable constant have a numeric ID specified
-    /// explicitly?
-    bool is_numeric_id_specified = false;
+    /// Does this override have a numeric ID specified explicitly?
+    bool is_id_specified = false;
+};
+
+/// The pipeline stage
+enum class PipelineStage { kVertex, kFragment, kCompute };
+
+/// WorkgroupSize describes the dimensions of the workgroup grid for a compute shader.
+struct WorkgroupSize {
+    /// The 'x' dimension of the workgroup grid
+    uint32_t x = 1;
+    /// The 'y' dimension of the workgroup grid
+    uint32_t y = 1;
+    /// The 'z' dimension of the workgroup grid
+    uint32_t z = 1;
 };
 
 /// Reflection data for an entry point in the shader.
@@ -135,19 +149,17 @@ struct EntryPoint {
     /// Remapped entry point name in the backend
     std::string remapped_name;
     /// The entry point stage
-    ast::PipelineStage stage = ast::PipelineStage::kNone;
-    /// The workgroup x size
-    uint32_t workgroup_size_x = 0;
-    /// The workgroup y size
-    uint32_t workgroup_size_y = 0;
-    /// The workgroup z size
-    uint32_t workgroup_size_z = 0;
+    PipelineStage stage;
+    /// The workgroup size. If PipelineStage is kCompute and this holds no value, then the workgroup
+    /// size is derived from an override-expression. In this situation you first need to run the
+    /// tint::transform::SubstituteOverride transform before using the inspector.
+    std::optional<WorkgroupSize> workgroup_size;
     /// List of the input variable accessed via this entry point.
     std::vector<StageVariable> input_variables;
     /// List of the output variable accessed via this entry point.
     std::vector<StageVariable> output_variables;
     /// List of the pipeline overridable constants accessed via this entry point.
-    std::vector<OverridableConstant> overridable_constants;
+    std::vector<Override> overrides;
     /// Does the entry point use the sample_mask builtin as an input builtin
     /// variable.
     bool input_sample_mask_used = false;
@@ -163,12 +175,6 @@ struct EntryPoint {
     bool sample_index_used = false;
     /// Does the entry point use the num_workgroups builtin
     bool num_workgroups_used = false;
-
-    /// @returns the size of the workgroup in {x,y,z} format
-    std::tuple<uint32_t, uint32_t, uint32_t> workgroup_size() {
-        return std::tuple<uint32_t, uint32_t, uint32_t>(workgroup_size_x, workgroup_size_y,
-                                                        workgroup_size_z);
-    }
 };
 
 }  // namespace tint::inspector

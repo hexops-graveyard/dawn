@@ -581,10 +581,21 @@ MaybeError Texture::InitializeAsInternalTexture() {
     resourceDescriptor.Height = size.height;
     resourceDescriptor.DepthOrArraySize = size.depthOrArrayLayers;
 
+    Device* device = ToBackend(GetDevice());
+    bool applyForceClearCopyableDepthStencilTextureOnCreationToggle =
+        device->IsToggleEnabled(Toggle::D3D12ForceClearCopyableDepthStencilTextureOnCreation) &&
+        GetFormat().HasDepthOrStencil() && (GetInternalUsage() & wgpu::TextureUsage::CopyDst);
+    if (applyForceClearCopyableDepthStencilTextureOnCreationToggle) {
+        AddInternalUsage(wgpu::TextureUsage::RenderAttachment);
+    }
+
     // This will need to be much more nuanced when WebGPU has
     // texture view compatibility rules.
-    const bool needsTypelessFormat = GetFormat().HasDepthOrStencil() &&
-                                     (GetInternalUsage() & wgpu::TextureUsage::TextureBinding) != 0;
+    const bool needsTypelessFormat =
+        (GetDevice()->IsToggleEnabled(Toggle::D3D12AlwaysUseTypelessFormatsForCastableTexture) &&
+         GetViewFormats().any()) ||
+        (GetFormat().HasDepthOrStencil() &&
+         (GetInternalUsage() & wgpu::TextureUsage::TextureBinding) != 0);
 
     DXGI_FORMAT dxgiFormat = needsTypelessFormat ? D3D12TypelessTextureFormat(GetFormat().format)
                                                  : D3D12TextureFormat(GetFormat().format);
@@ -598,13 +609,16 @@ MaybeError Texture::InitializeAsInternalTexture() {
     mD3D12ResourceFlags = resourceDescriptor.Flags;
 
     DAWN_TRY_ASSIGN(mResourceAllocation,
-                    ToBackend(GetDevice())
-                        ->AllocateMemory(D3D12_HEAP_TYPE_DEFAULT, resourceDescriptor,
-                                         D3D12_RESOURCE_STATE_COMMON));
+                    device->AllocateMemory(D3D12_HEAP_TYPE_DEFAULT, resourceDescriptor,
+                                           D3D12_RESOURCE_STATE_COMMON));
 
     SetLabelImpl();
 
-    Device* device = ToBackend(GetDevice());
+    if (applyForceClearCopyableDepthStencilTextureOnCreationToggle) {
+        CommandRecordingContext* commandContext;
+        DAWN_TRY_ASSIGN(commandContext, device->GetPendingCommandContext());
+        DAWN_TRY(ClearTexture(commandContext, GetAllSubresources(), TextureBase::ClearValue::Zero));
+    }
 
     if (device->IsToggleEnabled(Toggle::NonzeroClearResourcesOnCreationForTesting)) {
         CommandRecordingContext* commandContext;
@@ -667,7 +681,15 @@ void Texture::DestroyImpl() {
 
     // Signal the fence on destroy after all uses of the texture.
     if (mD3D12Fence != nullptr && mFenceSignalValue != 0) {
-        device->GetCommandQueue()->Signal(mD3D12Fence.Get(), mFenceSignalValue);
+        // Enqueue a fence wait if we haven't already; otherwise the fence signal will be racy.
+        if (mFenceWaitValue != UINT64_MAX) {
+            device->ConsumedError(
+                CheckHRESULT(device->GetCommandQueue()->Wait(mD3D12Fence.Get(), mFenceWaitValue),
+                             "D3D12 fence wait"));
+        }
+        device->ConsumedError(
+            CheckHRESULT(device->GetCommandQueue()->Signal(mD3D12Fence.Get(), mFenceSignalValue),
+                         "D3D12 fence signal"));
     }
 
     // Now that the texture has been destroyed. It should release the refptr of the d3d11on12
@@ -682,6 +704,10 @@ DXGI_FORMAT Texture::GetD3D12Format() const {
 
 ID3D12Resource* Texture::GetD3D12Resource() const {
     return mResourceAllocation.GetD3D12Resource();
+}
+
+D3D12_RESOURCE_FLAGS Texture::GetD3D12ResourceFlags() const {
+    return mD3D12ResourceFlags;
 }
 
 DXGI_FORMAT Texture::GetD3D12CopyableSubresourceFormat(Aspect aspect) const {

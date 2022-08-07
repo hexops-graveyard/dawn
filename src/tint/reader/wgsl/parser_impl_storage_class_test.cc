@@ -26,40 +26,35 @@ inline std::ostream& operator<<(std::ostream& out, StorageClassData data) {
     return out;
 }
 
-class StorageClassTest : public ParserImplTestWithParam<StorageClassData> {};
+class ParserStorageClassTest : public ParserImplTestWithParam<StorageClassData> {};
 
-TEST_P(StorageClassTest, Parses) {
+TEST_P(ParserStorageClassTest, Parses) {
     auto params = GetParam();
     auto p = parser(params.input);
 
-    auto sc = p->expect_storage_class("test");
+    auto sc = p->expect_address_space("test");
     EXPECT_FALSE(sc.errored);
     EXPECT_FALSE(p->has_error());
     EXPECT_EQ(sc.value, params.result);
 
-    auto t = p->next();
+    auto& t = p->next();
     EXPECT_TRUE(t.IsEof());
 }
 INSTANTIATE_TEST_SUITE_P(
     ParserImplTest,
-    StorageClassTest,
+    ParserStorageClassTest,
     testing::Values(StorageClassData{"uniform", ast::StorageClass::kUniform},
                     StorageClassData{"workgroup", ast::StorageClass::kWorkgroup},
                     StorageClassData{"storage", ast::StorageClass::kStorage},
-                    StorageClassData{"storage_buffer", ast::StorageClass::kStorage},
                     StorageClassData{"private", ast::StorageClass::kPrivate},
                     StorageClassData{"function", ast::StorageClass::kFunction}));
 
 TEST_F(ParserImplTest, StorageClass_NoMatch) {
     auto p = parser("not-a-storage-class");
-    auto sc = p->expect_storage_class("test");
+    auto sc = p->expect_address_space("test");
     EXPECT_EQ(sc.errored, true);
     EXPECT_TRUE(p->has_error());
     EXPECT_EQ(p->error(), "1:1: invalid storage class for test");
-
-    auto t = p->next();
-    EXPECT_TRUE(t.IsIdentifier());
-    EXPECT_EQ(t.to_str(), "not");
 }
 
 }  // namespace

@@ -14,6 +14,8 @@
 
 #include "src/tint/ast/const.h"
 
+#include <utility>
+
 #include "src/tint/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Const);
@@ -21,12 +23,13 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::Const);
 namespace tint::ast {
 
 Const::Const(ProgramID pid,
+             NodeID nid,
              const Source& src,
              const Symbol& sym,
              const ast::Type* ty,
              const Expression* ctor,
-             AttributeList attrs)
-    : Base(pid, src, sym, ty, ctor, attrs) {
+             utils::VectorRef<const Attribute*> attrs)
+    : Base(pid, nid, src, sym, ty, ctor, std::move(attrs)) {
     TINT_ASSERT(AST, ctor != nullptr);
 }
 
@@ -44,7 +47,7 @@ const Const* Const::Clone(CloneContext* ctx) const {
     auto* ty = ctx->Clone(type);
     auto* ctor = ctx->Clone(constructor);
     auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Const>(src, sym, ty, ctor, attrs);
+    return ctx->dst->create<Const>(src, sym, ty, ctor, std::move(attrs));
 }
 
 }  // namespace tint::ast

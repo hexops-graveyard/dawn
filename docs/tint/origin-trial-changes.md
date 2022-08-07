@@ -1,5 +1,16 @@
 # Tint changes during Origin Trial
 
+## Changes for M106
+
+### New features
+
+* `array()` constructor can now infer type and count. [tint:1628](crbug.com/tint/1628)
+* `static_assert` statement has been added. [tint:1625](crbug.com/tint/1625)
+
+### Deprecated Features
+
+* The list of reserved words has been sync'd to the WGSL specification. [tint:1463](crbug.com/tint/1463)
+
 ## Changes for M105
 
 ### New features
@@ -13,6 +24,7 @@
 * Module-scope `let` has been replaced with module-scope `const`. [tint:1580](crbug.com/tint/1584)
   * Note: Module-scope `const` does not support structure types. Use `var<private>` if you need a module-scope structure type.
 * Struct members can no longer be separated with semicolons (use commas instead). [tint:1475](crbug.com/tint/1475)
+* Single scalar matrix constructors have been removed. These were never part of the WGSL spec. [tint:1597](crbug.com/tint/1597)
 
 ### Deprecated Features
 

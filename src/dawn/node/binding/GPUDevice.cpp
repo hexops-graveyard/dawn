@@ -41,6 +41,53 @@ namespace wgpu::binding {
 
 namespace {
 
+// Returns a string representation of the WGPULoggingType
+const char* str(WGPULoggingType ty) {
+    switch (ty) {
+        case WGPULoggingType_Verbose:
+            return "verbose";
+        case WGPULoggingType_Info:
+            return "info";
+        case WGPULoggingType_Warning:
+            return "warning";
+        case WGPULoggingType_Error:
+            return "error";
+        default:
+            return "unknown";
+    }
+}
+
+// Returns a string representation of the WGPUErrorType
+const char* str(WGPUErrorType ty) {
+    switch (ty) {
+        case WGPUErrorType_NoError:
+            return "no error";
+        case WGPUErrorType_Validation:
+            return "validation";
+        case WGPUErrorType_OutOfMemory:
+            return "out of memory";
+        case WGPUErrorType_Unknown:
+            return "unknown";
+        case WGPUErrorType_DeviceLost:
+            return "device lost";
+        default:
+            return "unknown";
+    }
+}
+
+// There's something broken with Node when attempting to write more than 65536 bytes to cout.
+// Split the string up into writes of 4k chunks .
+// Likely related: https://github.com/nodejs/node/issues/12921
+void chunkedWrite(const char* msg) {
+    while (true) {
+        auto n = printf("%.4096s", msg);
+        if (n == 0) {
+            break;
+        }
+        msg += n;
+    }
+}
+
 class DeviceLostInfo : public interop::GPUDeviceLostInfo {
   public:
     DeviceLostInfo(interop::GPUDeviceLostReason reason, std::string message)
@@ -88,12 +135,14 @@ GPUDevice::GPUDevice(Napi::Env env, wgpu::Device device)
       lost_promise_(env, PROMISE_INFO) {
     device_.SetLoggingCallback(
         [](WGPULoggingType type, char const* message, void* userdata) {
-            std::cout << type << ": " << message << std::endl;
+            printf("%s:\n", str(type));
+            chunkedWrite(message);
         },
         nullptr);
     device_.SetUncapturedErrorCallback(
         [](WGPUErrorType type, char const* message, void* userdata) {
-            std::cout << type << ": " << message << std::endl;
+            printf("%s:\n", str(type));
+            chunkedWrite(message);
         },
         nullptr);
 
@@ -118,7 +167,15 @@ GPUDevice::GPUDevice(Napi::Env env, wgpu::Device device)
         this);
 }
 
-GPUDevice::~GPUDevice() {}
+GPUDevice::~GPUDevice() {
+    // A bit of a fudge to work around the fact that the CTS doesn't destroy GPU devices.
+    // Without this, we'll get a 'Promise not resolved or rejected' fatal message as the
+    // lost_promise_ is left hanging. We'll also not clean up any GPU objects before terminating the
+    // process, which is not a good idea.
+    if (!destroyed_) {
+        destroy(env_);
+    }
+}
 
 interop::Interface<interop::GPUSupportedFeatures> GPUDevice::getFeatures(Napi::Env env) {
     class Features : public interop::GPUSupportedFeatures {
@@ -147,6 +204,7 @@ void GPUDevice::destroy(Napi::Env env) {
             env_, interop::GPUDeviceLostReason::kDestroyed, "device was destroyed"));
     }
     device_.Destroy();
+    destroyed_ = true;
 }
 
 interop::Interface<interop::GPUBuffer> GPUDevice::createBuffer(

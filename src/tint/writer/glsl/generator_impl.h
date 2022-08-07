@@ -16,6 +16,7 @@
 #define SRC_TINT_WRITER_GLSL_GENERATOR_IMPL_H_
 
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -125,11 +126,11 @@ class GeneratorImpl : public TextGenerator {
     /// Emits a list of statements
     /// @param stmts the statement list
     /// @returns true if the statements were emitted successfully
-    bool EmitStatements(const ast::StatementList& stmts);
+    bool EmitStatements(utils::VectorRef<const ast::Statement*> stmts);
     /// Emits a list of statements with an indentation
     /// @param stmts the statement list
     /// @returns true if the statements were emitted successfully
-    bool EmitStatementsWithIndent(const ast::StatementList& stmts);
+    bool EmitStatementsWithIndent(utils::VectorRef<const ast::Statement*> stmts);
     /// Handles a block statement
     /// @param stmt the statement to emit
     /// @returns true if the statement was emitted successfully
@@ -328,12 +329,13 @@ class GeneratorImpl : public TextGenerator {
     /// Handles emitting interpolation qualifiers
     /// @param out the output of the expression stream
     /// @param attrs the attributes
-    void EmitInterpolationQualifiers(std::ostream& out, const ast::AttributeList& attrs);
+    void EmitInterpolationQualifiers(std::ostream& out,
+                                     utils::VectorRef<const ast::Attribute*> attrs);
     /// Handles emitting attributes
     /// @param out the output of the expression stream
     /// @param attrs the attributes
     /// @returns true if the attributes were emitted
-    bool EmitAttributes(std::ostream& out, const ast::AttributeList& attrs);
+    bool EmitAttributes(std::ostream& out, utils::VectorRef<const ast::Attribute*> attrs);
     /// Handles emitting the entry point function
     /// @param func the entry point
     /// @returns true if the entry point function was emitted
@@ -464,11 +466,11 @@ class GeneratorImpl : public TextGenerator {
     /// @param builtin the builtin to convert
     /// @param stage pipeline stage in which this builtin is used
     /// @returns the string name of the builtin or blank on error
-    const char* builtin_to_string(ast::Builtin builtin, ast::PipelineStage stage);
+    const char* builtin_to_string(ast::BuiltinValue builtin, ast::PipelineStage stage);
     /// Converts a builtin to a sem::Type appropriate for GLSL.
     /// @param builtin the builtin to convert
     /// @returns the appropriate semantic type or null on error.
-    sem::Type* builtin_type(ast::Builtin builtin);
+    sem::Type* builtin_type(ast::BuiltinValue builtin);
 
   private:
     enum class VarType { kIn, kOut };
@@ -478,19 +480,9 @@ class GeneratorImpl : public TextGenerator {
         std::string var_name;
     };
 
-    struct DMAIntrinsic {
-        transform::DecomposeMemoryAccess::Intrinsic::Op op;
-        transform::DecomposeMemoryAccess::Intrinsic::DataType type;
-        bool operator==(const DMAIntrinsic& rhs) const { return op == rhs.op && type == rhs.type; }
-        /// Hasher is a std::hash function for DMAIntrinsic
-        struct Hasher {
-            /// @param i the DMAIntrinsic to hash
-            /// @returns the hash of `i`
-            inline std::size_t operator()(const DMAIntrinsic& i) const {
-                return utils::Hash(i.op, i.type);
-            }
-        };
-    };
+    /// The map key for two semantic types.
+    using BinaryOperandType =
+        utils::UnorderedKeyWrapper<std::tuple<const sem::Type*, const sem::Type*>>;
 
     /// CallBuiltinHelper will call the builtin helper function, creating it
     /// if it hasn't been built already. If the builtin needs to be built then
@@ -518,15 +510,14 @@ class GeneratorImpl : public TextGenerator {
 
     TextBuffer helpers_;  // Helper functions emitted at the top of the output
     std::function<bool()> emit_continuing_;
-    std::unordered_map<DMAIntrinsic, std::string, DMAIntrinsic::Hasher> dma_intrinsics_;
     std::unordered_map<const sem::Builtin*, std::string> builtins_;
-    std::unordered_map<const sem::Struct*, std::string> structure_builders_;
     std::unordered_map<const sem::Vector*, std::string> dynamic_vector_write_;
     std::unordered_map<const sem::Vector*, std::string> int_dot_funcs_;
-    std::unordered_map<const sem::Type*, std::string> float_modulo_funcs_;
+    std::unordered_map<BinaryOperandType, std::string> float_modulo_funcs_;
     std::unordered_set<const sem::Struct*> emitted_structs_;
     bool requires_oes_sample_variables_ = false;
     bool requires_default_precision_qualifier_ = false;
+    bool requires_f16_extension_ = false;
     Version version_;
 };
 

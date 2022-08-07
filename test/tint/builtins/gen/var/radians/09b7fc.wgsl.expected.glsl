@@ -1,12 +1,12 @@
 #version 310 es
 
 vec4 tint_radians(vec4 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_09b7fc() {
-  vec4 arg_0 = vec4(0.0f);
+  vec4 arg_0 = vec4(1.0f);
   vec4 res = tint_radians(arg_0);
 }
 
@@ -27,12 +27,12 @@ void main() {
 precision mediump float;
 
 vec4 tint_radians(vec4 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_09b7fc() {
-  vec4 arg_0 = vec4(0.0f);
+  vec4 arg_0 = vec4(1.0f);
   vec4 res = tint_radians(arg_0);
 }
 
@@ -47,12 +47,12 @@ void main() {
 #version 310 es
 
 vec4 tint_radians(vec4 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_09b7fc() {
-  vec4 arg_0 = vec4(0.0f);
+  vec4 arg_0 = vec4(1.0f);
   vec4 res = tint_radians(arg_0);
 }
 

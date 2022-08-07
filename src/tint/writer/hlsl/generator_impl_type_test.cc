@@ -94,6 +94,17 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_Bool) {
     EXPECT_EQ(out.str(), "bool");
 }
 
+TEST_F(HlslGeneratorImplTest_Type, EmitType_F16) {
+    auto* f16 = create<sem::F16>();
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitType(out, f16, ast::StorageClass::kNone, ast::Access::kReadWrite, ""))
+        << gen.error();
+    EXPECT_EQ(out.str(), "float16_t");
+}
+
 TEST_F(HlslGeneratorImplTest_Type, EmitType_F32) {
     auto* f32 = create<sem::F32>();
 
@@ -116,7 +127,20 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_I32) {
     EXPECT_EQ(out.str(), "int");
 }
 
-TEST_F(HlslGeneratorImplTest_Type, EmitType_Matrix) {
+TEST_F(HlslGeneratorImplTest_Type, EmitType_Matrix_F16) {
+    auto* f16 = create<sem::F16>();
+    auto* vec3 = create<sem::Vector>(f16, 3u);
+    auto* mat2x3 = create<sem::Matrix>(vec3, 2u);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitType(out, mat2x3, ast::StorageClass::kNone, ast::Access::kReadWrite, ""))
+        << gen.error();
+    EXPECT_EQ(out.str(), "matrix<float16_t, 2, 3>");
+}
+
+TEST_F(HlslGeneratorImplTest_Type, EmitType_Matrix_F32) {
     auto* f32 = create<sem::F32>();
     auto* vec3 = create<sem::Vector>(f32, 3u);
     auto* mat2x3 = create<sem::Matrix>(vec3, 2u);
@@ -130,7 +154,7 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_Matrix) {
 }
 
 TEST_F(HlslGeneratorImplTest_Type, EmitType_StructDecl) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
@@ -149,12 +173,12 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_StructDecl) {
 }
 
 TEST_F(HlslGeneratorImplTest_Type, EmitType_StructDecl_OmittedIfStorageBuffer) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
     GlobalVar("g", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -166,7 +190,7 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_StructDecl_OmittedIfStorageBuffer) {
 }
 
 TEST_F(HlslGeneratorImplTest_Type, EmitType_Struct) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
@@ -182,7 +206,7 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_Struct) {
 }
 
 TEST_F(HlslGeneratorImplTest_Type, EmitType_Struct_NameCollision) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("double", ty.i32()),
                                  Member("float", ty.f32()),
                              });
@@ -199,9 +223,9 @@ TEST_F(HlslGeneratorImplTest_Type, EmitType_Struct_NameCollision) {
 }
 
 TEST_F(HlslGeneratorImplTest_Type, EmitType_Struct_WithOffsetAttributes) {
-    auto* s = Structure("S", {
-                                 Member("a", ty.i32(), {MemberOffset(0)}),
-                                 Member("b", ty.f32(), {MemberOffset(8)}),
+    auto* s = Structure("S", utils::Vector{
+                                 Member("a", ty.i32(), utils::Vector{MemberOffset(0)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberOffset(8)}),
                              });
     GlobalVar("g", ty.Of(s), ast::StorageClass::kPrivate);
 
@@ -288,13 +312,18 @@ TEST_P(HlslDepthTexturesTest, Emit) {
     auto* t = ty.depth_texture(params.dim);
 
     GlobalVar("tex", t,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(1u),
                   create<ast::GroupAttribute>(2u),
               });
 
-    Func("main", {}, ty.void_(), {CallStmt(Call("textureDimensions", "tex"))},
-         {Stage(ast::PipelineStage::kFragment)});
+    Func("main", utils::Empty, ty.void_(),
+         utils::Vector{
+             CallStmt(Call("textureDimensions", "tex")),
+         },
+         utils::Vector{
+             Stage(ast::PipelineStage::kFragment),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -318,13 +347,18 @@ TEST_F(HlslDepthMultisampledTexturesTest, Emit) {
     auto* t = ty.depth_multisampled_texture(ast::TextureDimension::k2d);
 
     GlobalVar("tex", t,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(1u),
                   create<ast::GroupAttribute>(2u),
               });
 
-    Func("main", {}, ty.void_(), {CallStmt(Call("textureDimensions", "tex"))},
-         {Stage(ast::PipelineStage::kFragment)});
+    Func("main", utils::Empty, ty.void_(),
+         utils::Vector{
+             CallStmt(Call("textureDimensions", "tex")),
+         },
+         utils::Vector{
+             Stage(ast::PipelineStage::kFragment),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -361,13 +395,18 @@ TEST_P(HlslSampledTexturesTest, Emit) {
     auto* t = ty.sampled_texture(params.dim, datatype);
 
     GlobalVar("tex", t,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(1u),
                   create<ast::GroupAttribute>(2u),
               });
 
-    Func("main", {}, ty.void_(), {CallStmt(Call("textureDimensions", "tex"))},
-         {Stage(ast::PipelineStage::kFragment)});
+    Func("main", utils::Empty, ty.void_(),
+         utils::Vector{
+             CallStmt(Call("textureDimensions", "tex")),
+         },
+         utils::Vector{
+             Stage(ast::PipelineStage::kFragment),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -495,10 +534,18 @@ TEST_P(HlslStorageTexturesTest, Emit) {
 
     auto* t = ty.storage_texture(params.dim, params.imgfmt, ast::Access::kWrite);
 
-    GlobalVar("tex", t, ast::AttributeList{GroupAndBinding(2, 1)});
+    GlobalVar("tex", t,
+              utils::Vector{
+                  GroupAndBinding(2, 1),
+              });
 
-    Func("main", {}, ty.void_(), {CallStmt(Call("textureDimensions", "tex"))},
-         {Stage(ast::PipelineStage::kFragment)});
+    Func("main", utils::Empty, ty.void_(),
+         utils::Vector{
+             CallStmt(Call("textureDimensions", "tex")),
+         },
+         utils::Vector{
+             Stage(ast::PipelineStage::kFragment),
+         });
 
     GeneratorImpl& gen = Build();
 

@@ -182,9 +182,8 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Split texture-to-texture copy into two copies: copy from source texture into a temporary "
       "buffer, and copy from the temporary buffer into the destination texture under specific "
       "situations. This workaround is by default enabled on some Intel GPUs which have a driver "
-      "bug "
-      "in the execution of CopyTextureRegion() when we copy with the formats whose texel block "
-      "sizes are less than 4 bytes from a greater mip level to a smaller mip level on D3D12 "
+      "bug in the execution of CopyTextureRegion() when we copy with the formats whose texel "
+      "block sizes are less than 4 bytes from a greater mip level to a smaller mip level on D3D12 "
       "backends.",
       "https://crbug.com/1161355"}},
     {Toggle::EmitHLSLDebugSymbols,
@@ -203,8 +202,6 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Dump shaders for debugging purposes. Dumped shaders will be log via EmitLog, thus printed "
       "in Chrome console or consumed by user-defined callback function.",
       "https://crbug.com/dawn/792"}},
-    {Toggle::DEPRECATED_DumpTranslatedShaders,
-     {"dump_translated_shaders", "Deprecated. Use dump_shaders", "https://crbug.com/dawn/792"}},
     {Toggle::ForceWGSLStep,
      {"force_wgsl_step",
       "When ingesting SPIR-V shaders, force a first conversion to WGSL. This allows testing Tint's "
@@ -268,24 +265,47 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Enables usage of the blob cache (backed by the platform cache if set/passed). Necessary for "
       "any persistent caching capabilities, i.e. pipeline caching.",
       "https://crbug.com/dawn/549"}},
+    {Toggle::D3D12ForceClearCopyableDepthStencilTextureOnCreation,
+     {"d3d12_force_clear_copyable_depth_stencil_texture_on_creation",
+      "Always clearing copyable depth stencil textures when creating them instead of skipping the "
+      "initialization when the entire subresource is the copy destination as a workaround on Intel "
+      "D3D12 drivers.",
+      "https://crbug.com/dawn/1487"}},
+    {Toggle::D3D12DontSetClearValueOnDepthTextureCreation,
+     {"d3d12_dont_set_clear_value_on_depth_texture_creation",
+      "Don't set D3D12_CLEAR_VALUE when creating depth textures with CreatePlacedResource() or "
+      "CreateCommittedResource() as a workaround on Intel Gen12 D3D12 drivers.",
+      "https://crbug.com/dawn/1487"}},
+    {Toggle::D3D12AlwaysUseTypelessFormatsForCastableTexture,
+     {"d3d12_always_use_typeless_formats_for_castable_texture",
+      "Always use the typeless DXGI format when we create a texture with valid viewFormat. This "
+      "Toggle is enabled by default on the D3D12 platforms where CastingFullyTypedFormatSupported "
+      "is false.",
+      "https://crbug.com/dawn/1276"}},
+    {Toggle::D3D12AllocateExtraMemoryFor2DArrayTexture,
+     {"d3d12_allocate_extra_memory_for_2d_array_texture",
+      "Memory allocation for 2D array texture may be smaller than it should be on D3D12 on some "
+      "Intel devices. So texture access can be out-of-bound, which may cause critical security "
+      "issue. We can workaround this security issue via allocating extra memory and limiting its "
+      "access in itself.",
+      "https://crbug.com/dawn/949"}},
+    {Toggle::D3D12UseTempBufferInDepthStencilTextureAndBufferCopyWithNonZeroBufferOffset,
+     {"d3d12_use_temp_buffer_in_depth_stencil_texture_and_buffer_copy_with_non_zero_buffer_offset",
+      "Split buffer-texture copy into two copies: do first copy with a temporary buffer at offset "
+      "0, then copy from the temporary buffer to the destination. Now this toggle must be enabled "
+      "on the D3D12 platforms where programmable MSAA is not supported.",
+      "https://crbug.com/dawn/727"}},
     // Comment to separate the }} so it is clearer what to copy-paste to add a toggle.
 }};
 }  // anonymous namespace
 
 void TogglesSet::Set(Toggle toggle, bool enabled) {
-    if (toggle == Toggle::DEPRECATED_DumpTranslatedShaders) {
-        Set(Toggle::DumpShaders, enabled);
-        return;
-    }
     ASSERT(toggle != Toggle::InvalidEnum);
     const size_t toggleIndex = static_cast<size_t>(toggle);
     toggleBitset.set(toggleIndex, enabled);
 }
 
 bool TogglesSet::Has(Toggle toggle) const {
-    if (toggle == Toggle::DEPRECATED_DumpTranslatedShaders) {
-        return Has(Toggle::DumpShaders);
-    }
     ASSERT(toggle != Toggle::InvalidEnum);
     const size_t toggleIndex = static_cast<size_t>(toggle);
     return toggleBitset.test(toggleIndex);

@@ -66,7 +66,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const) {
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_AInt) {
     auto* C = Const("C", nullptr, Expr(1_a));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -80,7 +84,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_AInt
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_AFloat) {
     auto* C = Const("C", nullptr, Expr(1._a));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -94,7 +102,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_AFlo
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_i32) {
     auto* C = Const("C", nullptr, Expr(1_i));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -108,7 +120,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_i32)
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_u32) {
     auto* C = Const("C", nullptr, Expr(1_u));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -122,7 +138,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_u32)
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_f32) {
     auto* C = Const("C", nullptr, Expr(1_f));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -134,9 +154,33 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_f32)
 )");
 }
 
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_f16) {
+    Enable(ast::Extension::kF16);
+
+    auto* C = Const("C", nullptr, Expr(1_h));
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(void f() {
+  const float16_t l = float16_t(1.0h);
+}
+)");
+}
+
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3_AInt) {
     auto* C = Const("C", nullptr, Construct(ty.vec3(nullptr), 1_a, 2_a, 3_a));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -150,7 +194,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3_AFloat) {
     auto* C = Const("C", nullptr, Construct(ty.vec3(nullptr), 1._a, 2._a, 3._a));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -164,7 +212,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3_f32) {
     auto* C = Const("C", nullptr, vec3<f32>(1_f, 2_f, 3_f));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -176,10 +228,34 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3
 )");
 }
 
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_vec3_f16) {
+    Enable(ast::Extension::kF16);
+
+    auto* C = Const("C", nullptr, vec3<f16>(1_h, 2_h, 3_h));
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(void f() {
+  const vector<float16_t, 3> l = vector<float16_t, 3>(float16_t(1.0h), float16_t(2.0h), float16_t(3.0h));
+}
+)");
+}
+
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_mat2x3_AFloat) {
     auto* C =
         Const("C", nullptr, Construct(ty.mat(nullptr, 2, 3), 1._a, 2._a, 3._a, 4._a, 5._a, 6._a));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -193,7 +269,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_mat2
 
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_mat2x3_f32) {
     auto* C = Const("C", nullptr, mat2x3<f32>(1_f, 2_f, 3_f, 4_f, 5_f, 6_f));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -205,9 +285,33 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_mat2
 )");
 }
 
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_mat2x3_f16) {
+    Enable(ast::Extension::kF16);
+
+    auto* C = Const("C", nullptr, mat2x3<f16>(1_h, 2_h, 3_h, 4_h, 5_h, 6_h));
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+
+    EXPECT_EQ(gen.result(), R"(void f() {
+  const matrix<float16_t, 2, 3> l = matrix<float16_t, 2, 3>(vector<float16_t, 3>(float16_t(1.0h), float16_t(2.0h), float16_t(3.0h)), vector<float16_t, 3>(float16_t(4.0h), float16_t(5.0h), float16_t(6.0h)));
+}
+)");
+}
+
 TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_arr_f32) {
     auto* C = Const("C", nullptr, Construct(ty.array<f32, 3>(), 1_f, 2_f, 3_f));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -225,7 +329,11 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Const_arr_
                               vec2<bool>(true, false),         //
                               vec2<bool>(false, true),         //
                               vec2<bool>(true, true)));
-    Func("f", {}, ty.void_(), {Decl(C), Decl(Let("l", nullptr, Expr(C)))});
+    Func("f", utils::Empty, ty.void_(),
+         utils::Vector{
+             Decl(C),
+             Decl(Let("l", nullptr, Expr(C))),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -263,7 +371,7 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Private) {
     EXPECT_THAT(gen.result(), HasSubstr("  static float a = 0.0f;\n"));
 }
 
-TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroVec) {
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroVec_F32) {
     auto* var = Var("a", ty.vec3<f32>(), ast::StorageClass::kNone, vec3<f32>());
 
     auto* stmt = Decl(var);
@@ -276,7 +384,22 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initialize
 )");
 }
 
-TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroMat) {
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroVec_F16) {
+    Enable(ast::Extension::kF16);
+
+    auto* var = Var("a", ty.vec3<f16>(), ast::StorageClass::kNone, vec3<f16>());
+
+    auto* stmt = Decl(var);
+    WrapInFunction(stmt);
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
+    EXPECT_EQ(gen.result(), R"(vector<float16_t, 3> a = (float16_t(0.0h)).xxx;
+)");
+}
+
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroMat_F32) {
     auto* var = Var("a", ty.mat2x3<f32>(), ast::StorageClass::kNone, mat2x3<f32>());
 
     auto* stmt = Decl(var);
@@ -287,6 +410,23 @@ TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initialize
     ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
     EXPECT_EQ(gen.result(),
               R"(float2x3 a = float2x3((0.0f).xxx, (0.0f).xxx);
+)");
+}
+
+TEST_F(HlslGeneratorImplTest_VariableDecl, Emit_VariableDeclStatement_Initializer_ZeroMat_F16) {
+    Enable(ast::Extension::kF16);
+
+    auto* var = Var("a", ty.mat2x3<f16>(), ast::StorageClass::kNone, mat2x3<f16>());
+
+    auto* stmt = Decl(var);
+    WrapInFunction(stmt);
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.EmitStatement(stmt)) << gen.error();
+    EXPECT_EQ(
+        gen.result(),
+        R"(matrix<float16_t, 2, 3> a = matrix<float16_t, 2, 3>((float16_t(0.0h)).xxx, (float16_t(0.0h)).xxx);
 )");
 }
 

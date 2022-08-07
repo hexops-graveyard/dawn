@@ -15,9 +15,8 @@
 #ifndef SRC_TINT_SEM_MEMBER_ACCESSOR_EXPRESSION_H_
 #define SRC_TINT_SEM_MEMBER_ACCESSOR_EXPRESSION_H_
 
-#include <vector>
-
 #include "src/tint/sem/expression.h"
+#include "src/tint/utils/vector.h"
 
 // Forward declarations
 namespace tint::ast {
@@ -37,6 +36,7 @@ class MemberAccessorExpression : public Castable<MemberAccessorExpression, Expre
     /// Constructor
     /// @param declaration the AST node
     /// @param type the resolved type of the expression
+    /// @param stage the earliest evaluation stage for the expression
     /// @param statement the statement that owns this expression
     /// @param constant the constant value of the expression. May be null.
     /// @param object the object that holds the member being accessed
@@ -44,6 +44,7 @@ class MemberAccessorExpression : public Castable<MemberAccessorExpression, Expre
     /// @param source_var the (optional) source variable for this expression
     MemberAccessorExpression(const ast::MemberAccessorExpression* declaration,
                              const sem::Type* type,
+                             EvaluationStage stage,
                              const Statement* statement,
                              const Constant* constant,
                              const Expression* object,
@@ -111,7 +112,7 @@ class Swizzle final : public Castable<Swizzle, MemberAccessorExpression> {
             const Statement* statement,
             const Constant* constant,
             const Expression* object,
-            std::vector<uint32_t> indices,
+            utils::VectorRef<uint32_t> indices,
             bool has_side_effects,
             const Variable* source_var = nullptr);
 
@@ -119,10 +120,10 @@ class Swizzle final : public Castable<Swizzle, MemberAccessorExpression> {
     ~Swizzle() override;
 
     /// @return the swizzle indices, if this is a vector swizzle
-    const std::vector<uint32_t>& Indices() const { return indices_; }
+    const auto& Indices() const { return indices_; }
 
   private:
-    std::vector<uint32_t> const indices_;
+    utils::Vector<uint32_t, 4> const indices_;
 };
 
 }  // namespace tint::sem

@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+
 #include "src/tint/val/val.h"
 
 #include "src/tint/utils/io/command.h"
 #include "src/tint/utils/io/tmpfile.h"
+#include "src/tint/utils/string.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -31,7 +34,7 @@ namespace tint::val {
 Result HlslUsingDXC(const std::string& dxc_path,
                     const std::string& source,
                     const EntryPointList& entry_points,
-                    const std::vector<std::string>& overrides) {
+                    bool require_16bit_types) {
     Result result;
 
     auto dxc = utils::Command(dxc_path);
@@ -41,11 +44,14 @@ Result HlslUsingDXC(const std::string& dxc_path,
         return result;
     }
 
+    // Native 16-bit types, e.g. float16_t, require SM6.2. Otherwise we use SM6.0.
+    const char* shader_model_version = require_16bit_types ? "6_2" : "6_0";
+
     utils::TmpFile file;
     file << source;
 
     for (auto ep : entry_points) {
-        const char* profile = "";
+        const char* stage_prefix = "";
 
         switch (ep.second) {
             case ast::PipelineStage::kNone:
@@ -53,30 +59,26 @@ Result HlslUsingDXC(const std::string& dxc_path,
                 result.failed = true;
                 return result;
             case ast::PipelineStage::kVertex:
-                profile = "-T vs_6_0";
+                stage_prefix = "vs";
                 break;
             case ast::PipelineStage::kFragment:
-                profile = "-T ps_6_0";
+                stage_prefix = "ps";
                 break;
             case ast::PipelineStage::kCompute:
-                profile = "-T cs_6_0";
+                stage_prefix = "cs";
                 break;
         }
 
         // Match Dawn's compile flags
         // See dawn\src\dawn_native\d3d12\RenderPipelineD3D12.cpp
         // and dawn_native\d3d12\ShaderModuleD3D12.cpp (GetDXCArguments)
-        const char* compileFlags =
-            "/Zpr "  // D3DCOMPILE_PACK_MATRIX_ROW_MAJOR
-            "/Gis";  // D3DCOMPILE_IEEE_STRICTNESS
-
-        std::string defs;
-        defs.reserve(overrides.size() * 20);
-        for (auto& o : overrides) {
-            defs += "/D" + o + " ";
-        }
-
-        auto res = dxc(profile, "-E " + ep.first, compileFlags, file.Path(), defs);
+        auto res = dxc(
+            "-T " + std::string(stage_prefix) + "_" + std::string(shader_model_version),  // Profile
+            "-E " + ep.first,                                  // Entry point
+            "/Zpr",                                            // D3DCOMPILE_PACK_MATRIX_ROW_MAJOR
+            "/Gis",                                            // D3DCOMPILE_IEEE_STRICTNESS
+            require_16bit_types ? "-enable-16bit-types" : "",  // Enable 16-bit if required
+            file.Path());
         if (!res.out.empty()) {
             if (!result.output.empty()) {
                 result.output += "\n";
@@ -90,6 +92,9 @@ Result HlslUsingDXC(const std::string& dxc_path,
             result.output += res.err;
         }
         result.failed = (res.error_code != 0);
+
+        // Remove the temporary file name from the output to keep output deterministic
+        result.output = utils::ReplaceAll(result.output, file.Path(), "shader.hlsl");
     }
 
     if (entry_points.empty()) {
@@ -102,25 +107,33 @@ Result HlslUsingDXC(const std::string& dxc_path,
 }
 
 #ifdef _WIN32
-Result HlslUsingFXC(const std::string& source,
-                    const EntryPointList& entry_points,
-                    const std::vector<std::string>& overrides) {
+Result HlslUsingFXC(const std::string& fxc_path,
+                    const std::string& source,
+                    const EntryPointList& entry_points) {
     Result result;
 
     // This library leaks if an error happens in this function, but it is ok
     // because it is loaded at most once, and the executables using HlslUsingFXC
     // are short-lived.
-    HMODULE fxcLib = LoadLibraryA("d3dcompiler_47.dll");
+    HMODULE fxcLib = LoadLibraryA(fxc_path.c_str());
     if (fxcLib == nullptr) {
         result.output = "Couldn't load FXC";
         result.failed = true;
         return result;
     }
 
-    pD3DCompile d3dCompile = reinterpret_cast<pD3DCompile>(
+    auto* d3dCompile = reinterpret_cast<pD3DCompile>(
         reinterpret_cast<void*>(GetProcAddress(fxcLib, "D3DCompile")));
+    auto* d3dDisassemble = reinterpret_cast<pD3DDisassemble>(
+        reinterpret_cast<void*>(GetProcAddress(fxcLib, "D3DDisassemble")));
+
     if (d3dCompile == nullptr) {
         result.output = "Couldn't load D3DCompile from FXC";
+        result.failed = true;
+        return result;
+    }
+    if (d3dDisassemble == nullptr) {
+        result.output = "Couldn't load D3DDisassemble from FXC";
         result.failed = true;
         return result;
     }
@@ -148,37 +161,32 @@ Result HlslUsingFXC(const std::string& source,
         UINT compileFlags = D3DCOMPILE_OPTIMIZATION_LEVEL0 | D3DCOMPILE_PACK_MATRIX_ROW_MAJOR |
                             D3DCOMPILE_IEEE_STRICTNESS;
 
-        auto overrides_copy = overrides;  // Copy so that we can replace '=' with '\0'
-        std::vector<D3D_SHADER_MACRO> macros;
-        macros.reserve(overrides_copy.size() * 2);
-        for (auto& o : overrides_copy) {
-            if (auto sep = o.find_first_of('='); sep != std::string::npos) {
-                // Replace '=' with '\0' so we can point directly into the allocated string buffer
-                o[sep] = '\0';
-                macros.push_back(D3D_SHADER_MACRO{&o[0], &o[sep + 1]});
-            } else {
-                macros.emplace_back(D3D_SHADER_MACRO{o.c_str(), NULL});
-            }
-        }
-        macros.emplace_back(D3D_SHADER_MACRO{NULL, NULL});
-
         ComPtr<ID3DBlob> compiledShader;
         ComPtr<ID3DBlob> errors;
-        HRESULT cr = d3dCompile(source.c_str(),    // pSrcData
-                                source.length(),   // SrcDataSize
-                                nullptr,           // pSourceName
-                                macros.data(),     // pDefines
-                                nullptr,           // pInclude
-                                ep.first.c_str(),  // pEntrypoint
-                                profile,           // pTarget
-                                compileFlags,      // Flags1
-                                0,                 // Flags2
-                                &compiledShader,   // ppCode
-                                &errors);          // ppErrorMsgs
-        if (FAILED(cr)) {
+        HRESULT res = d3dCompile(source.c_str(),    // pSrcData
+                                 source.length(),   // SrcDataSize
+                                 nullptr,           // pSourceName
+                                 nullptr,           // pDefines
+                                 nullptr,           // pInclude
+                                 ep.first.c_str(),  // pEntrypoint
+                                 profile,           // pTarget
+                                 compileFlags,      // Flags1
+                                 0,                 // Flags2
+                                 &compiledShader,   // ppCode
+                                 &errors);          // ppErrorMsgs
+        if (FAILED(res)) {
             result.output = static_cast<char*>(errors->GetBufferPointer());
             result.failed = true;
             return result;
+        } else {
+            ComPtr<ID3DBlob> disassembly;
+            res = d3dDisassemble(compiledShader->GetBufferPointer(),
+                                 compiledShader->GetBufferSize(), 0, "", &disassembly);
+            if (FAILED(res)) {
+                result.output = "failed to disassemble shader";
+            } else {
+                result.output = static_cast<char*>(disassembly->GetBufferPointer());
+            }
         }
     }
 

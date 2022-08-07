@@ -105,10 +105,11 @@ DecomposeStridedMatrix::~DecomposeStridedMatrix() = default;
 
 bool DecomposeStridedMatrix::ShouldRun(const Program* program, const DataMap&) const {
     bool should_run = false;
-    GatherCustomStrideMatrixMembers(program, [&](const sem::StructMember*, sem::Matrix*, uint32_t) {
-        should_run = true;
-        return GatherResult::kStop;
-    });
+    GatherCustomStrideMatrixMembers(program,
+                                    [&](const sem::StructMember*, const sem::Matrix*, uint32_t) {
+                                        should_run = true;
+                                        return GatherResult::kStop;
+                                    });
     return should_run;
 }
 
@@ -118,7 +119,7 @@ void DecomposeStridedMatrix::Run(CloneContext& ctx, const DataMap&, DataMap&) co
     // and populate the `decomposed` map with the members that have been replaced.
     std::unordered_map<const ast::StructMember*, MatrixInfo> decomposed;
     GatherCustomStrideMatrixMembers(
-        ctx.src, [&](const sem::StructMember* member, sem::Matrix* matrix, uint32_t stride) {
+        ctx.src, [&](const sem::StructMember* member, const sem::Matrix* matrix, uint32_t stride) {
             // We've got ourselves a struct member of a matrix type with a custom
             // stride. Replace this with an array of column vectors.
             MatrixInfo info{stride, matrix};
@@ -169,16 +170,16 @@ void DecomposeStridedMatrix::Run(CloneContext& ctx, const DataMap&, DataMap&) co
                 auto array = [&] { return info.array(ctx.dst); };
 
                 auto mat = ctx.dst->Sym("m");
-                ast::ExpressionList columns(info.matrix->columns());
-                for (uint32_t i = 0; i < static_cast<uint32_t>(columns.size()); i++) {
-                    columns[i] = ctx.dst->IndexAccessor(mat, u32(i));
+                utils::Vector<const ast::Expression*, 4> columns;
+                for (uint32_t i = 0; i < static_cast<uint32_t>(info.matrix->columns()); i++) {
+                    columns.Push(ctx.dst->IndexAccessor(mat, u32(i)));
                 }
                 ctx.dst->Func(name,
-                              {
+                              utils::Vector{
                                   ctx.dst->Param(mat, matrix()),
                               },
                               array(),
-                              {
+                              utils::Vector{
                                   ctx.dst->Return(ctx.dst->Construct(array(), columns)),
                               });
                 return name;
@@ -210,16 +211,16 @@ void DecomposeStridedMatrix::Run(CloneContext& ctx, const DataMap&, DataMap&) co
                 auto array = [&] { return info.array(ctx.dst); };
 
                 auto arr = ctx.dst->Sym("arr");
-                ast::ExpressionList columns(info.matrix->columns());
-                for (uint32_t i = 0; i < static_cast<uint32_t>(columns.size()); i++) {
-                    columns[i] = ctx.dst->IndexAccessor(arr, u32(i));
+                utils::Vector<const ast::Expression*, 4> columns;
+                for (uint32_t i = 0; i < static_cast<uint32_t>(info.matrix->columns()); i++) {
+                    columns.Push(ctx.dst->IndexAccessor(arr, u32(i)));
                 }
                 ctx.dst->Func(name,
-                              {
+                              utils::Vector{
                                   ctx.dst->Param(arr, array()),
                               },
                               matrix(),
-                              {
+                              utils::Vector{
                                   ctx.dst->Return(ctx.dst->Construct(matrix(), columns)),
                               });
                 return name;

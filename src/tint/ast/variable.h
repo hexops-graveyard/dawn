@@ -54,18 +54,20 @@ struct VariableBindingPoint {
 class Variable : public Castable<Variable, Node> {
   public:
     /// Constructor
-    /// @param program_id the identifier of the program that owns this node
+    /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param source the variable source
     /// @param sym the variable symbol
     /// @param type the declared variable type
     /// @param constructor the constructor expression
     /// @param attributes the variable attributes
-    Variable(ProgramID program_id,
+    Variable(ProgramID pid,
+             NodeID nid,
              const Source& source,
              const Symbol& sym,
              const ast::Type* type,
              const Expression* constructor,
-             AttributeList attributes);
+             utils::VectorRef<const Attribute*> attributes);
 
     /// Move constructor
     Variable(Variable&&);
@@ -93,11 +95,8 @@ class Variable : public Castable<Variable, Node> {
     const Expression* const constructor;
 
     /// The attributes attached to this variable
-    const AttributeList attributes;
+    const utils::Vector<const Attribute*, 2> attributes;
 };
-
-/// A list of variables
-using VariableList = std::vector<const Variable*>;
 
 }  // namespace tint::ast
 

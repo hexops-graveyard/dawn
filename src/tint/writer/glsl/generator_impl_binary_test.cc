@@ -59,6 +59,34 @@ TEST_P(GlslBinaryTest, Emit_f32) {
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
     EXPECT_EQ(out.str(), params.result);
 }
+TEST_P(GlslBinaryTest, Emit_f16) {
+    auto params = GetParam();
+
+    // Skip ops that are illegal for this type
+    if (params.op == ast::BinaryOp::kAnd || params.op == ast::BinaryOp::kOr ||
+        params.op == ast::BinaryOp::kXor || params.op == ast::BinaryOp::kShiftLeft ||
+        params.op == ast::BinaryOp::kShiftRight || params.op == ast::BinaryOp::kModulo) {
+        return;
+    }
+
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("left", ty.f16(), ast::StorageClass::kPrivate);
+    GlobalVar("right", ty.f16(), ast::StorageClass::kPrivate);
+
+    auto* left = Expr("left");
+    auto* right = Expr("right");
+
+    auto* expr = create<ast::BinaryExpression>(params.op, left, right);
+
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), params.result);
+}
 TEST_P(GlslBinaryTest, Emit_u32) {
     auto params = GetParam();
 
@@ -122,7 +150,7 @@ INSTANTIATE_TEST_SUITE_P(
                     BinaryData{"(left / right)", ast::BinaryOp::kDivide},
                     BinaryData{"(left % right)", ast::BinaryOp::kModulo}));
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorScalar) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorScalar_f32) {
     auto* lhs = vec3<f32>(1_f, 1_f, 1_f);
     auto* rhs = Expr(1_f);
 
@@ -137,7 +165,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorScalar) {
     EXPECT_EQ(out.str(), "(vec3(1.0f) * 1.0f)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarVector) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorScalar_f16) {
+    Enable(ast::Extension::kF16);
+
+    auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* rhs = Expr(1_h);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(f16vec3(1.0hf) * 1.0hf)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarVector_f32) {
     auto* lhs = Expr(1_f);
     auto* rhs = vec3<f32>(1_f, 1_f, 1_f);
 
@@ -152,7 +197,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarVector) {
     EXPECT_EQ(out.str(), "(1.0f * vec3(1.0f))");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixScalar) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarVector_f16) {
+    Enable(ast::Extension::kF16);
+
+    auto* lhs = Expr(1_h);
+    auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(1.0hf * f16vec3(1.0hf))");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = Expr(1_f);
@@ -167,7 +229,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixScalar) {
     EXPECT_EQ(out.str(), "(mat * 1.0f)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarMatrix) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    auto* lhs = Expr("mat");
+    auto* rhs = Expr(1_h);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(mat * 1.0hf)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
     auto* lhs = Expr(1_f);
     auto* rhs = Expr("mat");
@@ -182,7 +261,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarMatrix) {
     EXPECT_EQ(out.str(), "(1.0f * mat)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixVector) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    auto* lhs = Expr(1_h);
+    auto* rhs = Expr("mat");
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(1.0hf * mat)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixVector_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = vec3<f32>(1_f, 1_f, 1_f);
@@ -197,7 +293,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixVector) {
     EXPECT_EQ(out.str(), "(mat * vec3(1.0f))");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorMatrix) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixVector_f16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    auto* lhs = Expr("mat");
+    auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(mat * f16vec3(1.0hf))");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
     auto* lhs = vec3<f32>(1_f, 1_f, 1_f);
     auto* rhs = Expr("mat");
@@ -212,7 +325,24 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorMatrix) {
     EXPECT_EQ(out.str(), "(vec3(1.0f) * mat)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixMatrix) {
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* rhs = Expr("mat");
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(f16vec3(1.0hf) * mat)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f32) {
     GlobalVar("lhs", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
     GlobalVar("rhs", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
 
@@ -226,28 +356,41 @@ TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixMatrix) {
     EXPECT_EQ(out.str(), "(lhs * rhs)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, Logical_And) {
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
+TEST_F(GlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f16) {
+    Enable(ast::Extension::kF16);
 
-    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b"));
+    GlobalVar("lhs", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("rhs", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr("lhs"), Expr("rhs"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(lhs * rhs)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModF32) {
+    GlobalVar("a", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f32(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "(tint_tmp)");
-    EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
-if (tint_tmp) {
-  tint_tmp = b;
-}
-)");
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
 }
 
-TEST_F(GlslGeneratorImplTest_Binary, ModF32) {
-    GlobalVar("a", ty.f32(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.f32(), ast::StorageClass::kPrivate);
+TEST_F(GlslGeneratorImplTest_Binary, ModF16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("a", ty.f16(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f16(), ast::StorageClass::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
     WrapInFunction(expr);
@@ -271,6 +414,188 @@ TEST_F(GlslGeneratorImplTest_Binary, ModVec3F32) {
     std::stringstream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
     EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModVec3F16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("a", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModVec3F32ScalarF32) {
+    GlobalVar("a", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f32(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModVec3F16ScalarF16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("a", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f16(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModScalarF32Vec3F32) {
+    GlobalVar("a", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModScalarF16Vec3F16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("a", ty.f16(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "tint_float_modulo(a, b)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModMixedVec3ScalarF32) {
+    GlobalVar("a", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f32(), ast::StorageClass::kPrivate);
+
+    auto* expr_vec_mod_vec =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("a"));
+    auto* expr_vec_mod_scalar =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    auto* expr_scalar_mod_vec =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("b"), Expr("a"));
+    WrapInFunction(expr_vec_mod_vec, expr_vec_mod_scalar, expr_scalar_mod_vec);
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+vec3 tint_float_modulo(vec3 lhs, vec3 rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+vec3 tint_float_modulo_1(vec3 lhs, float rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+vec3 tint_float_modulo_2(float lhs, vec3 rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+
+vec3 a = vec3(0.0f, 0.0f, 0.0f);
+float b = 0.0f;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void test_function() {
+  vec3 tint_symbol = tint_float_modulo(a, a);
+  vec3 tint_symbol_1 = tint_float_modulo_1(a, b);
+  vec3 tint_symbol_2 = tint_float_modulo_2(b, a);
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, ModMixedVec3ScalarF16) {
+    Enable(ast::Extension::kF16);
+
+    GlobalVar("a", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.f16(), ast::StorageClass::kPrivate);
+
+    auto* expr_vec_mod_vec =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("a"));
+    auto* expr_vec_mod_scalar =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("a"), Expr("b"));
+    auto* expr_scalar_mod_vec =
+        create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr("b"), Expr("a"));
+    WrapInFunction(expr_vec_mod_vec, expr_vec_mod_scalar, expr_scalar_mod_vec);
+
+    GeneratorImpl& gen = Build();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+#extension GL_AMD_gpu_shader_half_float : require
+
+f16vec3 tint_float_modulo(f16vec3 lhs, f16vec3 rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+f16vec3 tint_float_modulo_1(f16vec3 lhs, float16_t rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+f16vec3 tint_float_modulo_2(float16_t lhs, f16vec3 rhs) {
+  return (lhs - rhs * trunc(lhs / rhs));
+}
+
+
+f16vec3 a = f16vec3(0.0hf, 0.0hf, 0.0hf);
+float16_t b = 0.0hf;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void test_function() {
+  f16vec3 tint_symbol = tint_float_modulo(a, a);
+  f16vec3 tint_symbol_1 = tint_float_modulo_1(a, b);
+  f16vec3 tint_symbol_2 = tint_float_modulo_2(b, a);
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Binary, Logical_And) {
+    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
+
+    auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b"));
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "(tint_tmp)");
+    EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
+if (tint_tmp) {
+  tint_tmp = b;
+}
+)");
 }
 
 TEST_F(GlslGeneratorImplTest_Binary, Logical_Multi) {
@@ -343,7 +668,7 @@ TEST_F(GlslGeneratorImplTest_Binary, If_WithLogical) {
            Block(Return(1_i)),
            Else(If(create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("b"), Expr("c")),
                    Block(Return(2_i)), Else(Block(Return(3_i))))));
-    Func("func", {}, ty.i32(), {WrapInStatement(expr)});
+    Func("func", utils::Empty, ty.i32(), utils::Vector{WrapInStatement(expr)});
 
     GeneratorImpl& gen = Build();
 
@@ -379,7 +704,7 @@ TEST_F(GlslGeneratorImplTest_Binary, Return_WithLogical) {
         ast::BinaryOp::kLogicalOr,
         create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b")),
         Expr("c")));
-    Func("func", {}, ty.bool_(), {WrapInStatement(expr)});
+    Func("func", utils::Empty, ty.bool_(), utils::Vector{WrapInStatement(expr)});
 
     GeneratorImpl& gen = Build();
 
@@ -463,26 +788,25 @@ TEST_F(GlslGeneratorImplTest_Binary, Call_WithLogical) {
     // foo(a && b, c || d, (a || c) && (b || d))
 
     Func("foo",
-         {
+         utils::Vector{
              Param(Sym(), ty.bool_()),
              Param(Sym(), ty.bool_()),
              Param(Sym(), ty.bool_()),
          },
-         ty.void_(), ast::StatementList{}, ast::AttributeList{});
+         ty.void_(), utils::Empty, utils::Empty);
     GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
     GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
     GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
     GlobalVar("d", ty.bool_(), ast::StorageClass::kPrivate);
 
-    ast::ExpressionList params;
-    params.push_back(
-        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b")));
-    params.push_back(
-        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("c"), Expr("d")));
-    params.push_back(create<ast::BinaryExpression>(
-        ast::BinaryOp::kLogicalAnd,
-        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("a"), Expr("c")),
-        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("b"), Expr("d"))));
+    utils::Vector params{
+        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b")),
+        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("c"), Expr("d")),
+        create<ast::BinaryExpression>(
+            ast::BinaryOp::kLogicalAnd,
+            create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("a"), Expr("c")),
+            create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("b"), Expr("d"))),
+    };
 
     auto* expr = CallStmt(Call("foo", params));
     WrapInFunction(expr);

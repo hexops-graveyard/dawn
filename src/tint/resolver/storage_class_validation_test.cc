@@ -55,7 +55,7 @@ TEST_F(ResolverStorageClassValidationTest, Private_RuntimeArray) {
 }
 
 TEST_F(ResolverStorageClassValidationTest, Private_RuntimeArrayInStruct) {
-    auto* s = Structure("S", {Member("m", ty.array(ty.i32()))});
+    auto* s = Structure("S", utils::Vector{Member("m", ty.array(ty.i32()))});
     GlobalVar(Source{{12, 34}}, "v", ty.Of(s), ast::StorageClass::kPrivate);
 
     EXPECT_FALSE(r()->Resolve());
@@ -75,7 +75,7 @@ TEST_F(ResolverStorageClassValidationTest, Workgroup_RuntimeArray) {
 }
 
 TEST_F(ResolverStorageClassValidationTest, Workgroup_RuntimeArrayInStruct) {
-    auto* s = Structure("S", {Member("m", ty.array(ty.i32()))});
+    auto* s = Structure("S", utils::Vector{Member("m", ty.array(ty.i32()))});
     GlobalVar(Source{{12, 34}}, "v", ty.Of(s), ast::StorageClass::kWorkgroup);
 
     EXPECT_FALSE(r()->Resolve());
@@ -88,7 +88,7 @@ note: while analysing structure member S.m
 TEST_F(ResolverStorageClassValidationTest, StorageBufferBool) {
     // var<storage> g : bool;
     GlobalVar(Source{{56, 78}}, "g", ty.bool_(), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -106,7 +106,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferBoolAlias) {
     // var<storage, read> g : a;
     auto* a = Alias("a", ty.bool_());
     GlobalVar(Source{{56, 78}}, "g", ty.Of(a), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -126,7 +126,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferF16_TemporallyBan) {
     Enable(ast::Extension::kF16);
 
     GlobalVar("g", ty.f16(Source{{56, 78}}), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -134,7 +134,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferF16_TemporallyBan) {
     ASSERT_FALSE(r()->Resolve());
 
     EXPECT_EQ(r()->error(),
-              "56:78 error: using f16 types in 'uniform' or 'storage' storage class is not "
+              "56:78 error: using f16 types in 'storage' storage class is not "
               "implemented yet");
 }
 
@@ -145,7 +145,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferF16Alias_TemporallyBan) 
 
     auto* a = Alias("a", ty.f16());
     GlobalVar("g", ty.type_name(Source{{56, 78}}, a->name), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -153,7 +153,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferF16Alias_TemporallyBan) 
     ASSERT_FALSE(r()->Resolve());
 
     EXPECT_EQ(r()->error(),
-              "56:78 error: using f16 types in 'uniform' or 'storage' storage class is not "
+              "56:78 error: using f16 types in 'storage' storage class is not "
               "implemented yet");
 }
 
@@ -161,7 +161,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferVectorF16_TemporallyBan)
     // var<storage> g : vec4<f16>;
     Enable(ast::Extension::kF16);
     GlobalVar("g", ty.vec(Source{{56, 78}}, ty.Of<f16>(), 4u), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -169,7 +169,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferVectorF16_TemporallyBan)
     ASSERT_FALSE(r()->Resolve());
 
     EXPECT_EQ(r()->error(),
-              "56:78 error: using f16 types in 'uniform' or 'storage' storage class is not "
+              "56:78 error: using f16 types in 'storage' storage class is not "
               "implemented yet");
 }
 
@@ -178,19 +178,18 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferArrayF16_TemporallyBan) 
     // var<storage, read> g : array<S, 3u>;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("a", ty.f16(Source{{56, 78}}))});
+    auto* s = Structure("S", utils::Vector{Member("a", ty.f16(Source{{56, 78}}))});
     auto* a = ty.array(ty.Of(s), 3_u);
     GlobalVar("g", a, ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("56:78 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("56:78 error: using f16 types in 'storage' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, StorageBufferStructF16_TemporallyBan) {
@@ -198,18 +197,17 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferStructF16_TemporallyBan)
     // var<storage, read> g : S;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("x", ty.f16(Source{{12, 34}}))});
+    auto* s = Structure("S", utils::Vector{Member("x", ty.f16(Source{{12, 34}}))});
     GlobalVar("g", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("12:34 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("12:34 error: using f16 types in 'storage' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, StorageBufferNoErrorStructF16Aliases_TemporallyBan) {
@@ -218,27 +216,26 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferNoErrorStructF16Aliases_
     // var<storage, read> g : a1;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("x", ty.f16(Source{{12, 34}}))});
+    auto* s = Structure("S", utils::Vector{Member("x", ty.f16(Source{{12, 34}}))});
     auto* a1 = Alias("a1", ty.Of(s));
     auto* a2 = Alias("a2", ty.Of(a1));
     GlobalVar("g", ty.Of(a2), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("12:34 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("12:34 error: using f16 types in 'storage' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, StorageBufferPointer) {
     // var<storage> g : ptr<private, f32>;
     GlobalVar(Source{{56, 78}}, "g", ty.pointer(ty.f32(), ast::StorageClass::kPrivate),
               ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -254,7 +251,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferPointer) {
 TEST_F(ResolverStorageClassValidationTest, StorageBufferIntScalar) {
     // var<storage> g : i32;
     GlobalVar(Source{{56, 78}}, "g", ty.i32(), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -265,7 +262,7 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferIntScalar) {
 TEST_F(ResolverStorageClassValidationTest, StorageBufferVectorF32) {
     // var<storage> g : vec4<f32>;
     GlobalVar(Source{{56, 78}}, "g", ty.vec4<f32>(), ast::StorageClass::kStorage,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -275,10 +272,10 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferVectorF32) {
 
 TEST_F(ResolverStorageClassValidationTest, StorageBufferArrayF32) {
     // var<storage, read> g : array<S, 3u>;
-    auto* s = Structure("S", {Member("a", ty.f32())});
+    auto* s = Structure("S", utils::Vector{Member("a", ty.f32())});
     auto* a = ty.array(ty.Of(s), 3_u);
     GlobalVar(Source{{56, 78}}, "g", a, ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -327,9 +324,9 @@ TEST_F(ResolverStorageClassValidationTest, Storage_WriteAccessMode) {
 TEST_F(ResolverStorageClassValidationTest, StorageBufferStructI32) {
     // struct S { x : i32 };
     // var<storage, read> g : S;
-    auto* s = Structure("S", {Member(Source{{12, 34}}, "x", ty.i32())});
+    auto* s = Structure("S", utils::Vector{Member(Source{{12, 34}}, "x", ty.i32())});
     GlobalVar(Source{{56, 78}}, "g", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -341,11 +338,11 @@ TEST_F(ResolverStorageClassValidationTest, StorageBufferNoErrorStructI32Aliases)
     // struct S { x : i32 };
     // type a1 = S;
     // var<storage, read> g : a1;
-    auto* s = Structure("S", {Member(Source{{12, 34}}, "x", ty.i32())});
+    auto* s = Structure("S", utils::Vector{Member(Source{{12, 34}}, "x", ty.i32())});
     auto* a1 = Alias("a1", ty.Of(s));
     auto* a2 = Alias("a2", ty.Of(a1));
     GlobalVar(Source{{56, 78}}, "g", ty.Of(a2), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -357,10 +354,10 @@ TEST_F(ResolverStorageClassValidationTest, UniformBuffer_Struct_Runtime) {
     // struct S { m:  array<f32>; };
     // @group(0) @binding(0) var<uniform, > svar : S;
 
-    auto* s = Structure(Source{{12, 34}}, "S", {Member("m", ty.array<i32>())});
+    auto* s = Structure(Source{{12, 34}}, "S", utils::Vector{Member("m", ty.array<i32>())});
 
     GlobalVar(Source{{56, 78}}, "svar", ty.Of(s), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -375,7 +372,7 @@ note: while analysing structure member S.m
 TEST_F(ResolverStorageClassValidationTest, UniformBufferBool) {
     // var<uniform> g : bool;
     GlobalVar(Source{{56, 78}}, "g", ty.bool_(), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -393,7 +390,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferBoolAlias) {
     // var<uniform> g : a;
     auto* a = Alias("a", ty.bool_());
     GlobalVar(Source{{56, 78}}, "g", ty.Of(a), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -413,7 +410,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferF16_TemporallyBan) {
     Enable(ast::Extension::kF16);
 
     GlobalVar("g", ty.f16(Source{{56, 78}}), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -421,7 +418,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferF16_TemporallyBan) {
     ASSERT_FALSE(r()->Resolve());
 
     EXPECT_EQ(r()->error(),
-              "56:78 error: using f16 types in 'uniform' or 'storage' storage class is not "
+              "56:78 error: using f16 types in 'uniform' storage class is not "
               "implemented yet");
 }
 
@@ -432,7 +429,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferF16Alias_TemporallyBan) 
 
     auto* a = Alias("a", ty.f16());
     GlobalVar("g", ty.type_name(Source{{56, 78}}, a->name), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -440,7 +437,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferF16Alias_TemporallyBan) 
     ASSERT_FALSE(r()->Resolve());
 
     EXPECT_EQ(r()->error(),
-              "56:78 error: using f16 types in 'uniform' or 'storage' storage class is not "
+              "56:78 error: using f16 types in 'uniform' storage class is not "
               "implemented yet");
 }
 
@@ -448,16 +445,15 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferVectorF16_TemporallyBan)
     // var<uniform> g : vec4<f16>;
     Enable(ast::Extension::kF16);
     GlobalVar("g", ty.vec(Source{{56, 78}}, ty.Of<f16>(), 4u), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("56:78 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("56:78 error: using f16 types in 'uniform' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, UniformBufferArrayF16_TemporallyBan) {
@@ -467,19 +463,19 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferArrayF16_TemporallyBan) 
     // var<uniform> g : array<S, 3u>;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("a", ty.f16(Source{{56, 78}}), {MemberSize(16)})});
+    auto* s = Structure(
+        "S", utils::Vector{Member("a", ty.f16(Source{{56, 78}}), utils::Vector{MemberSize(16)})});
     auto* a = ty.array(ty.Of(s), 3_u);
     GlobalVar("g", a, ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("56:78 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("56:78 error: using f16 types in 'uniform' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, UniformBufferStructF16_TemporallyBan) {
@@ -487,18 +483,17 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferStructF16_TemporallyBan)
     // var<uniform> g :  S;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("x", ty.f16(Source{{12, 34}}))});
+    auto* s = Structure("S", utils::Vector{Member("x", ty.f16(Source{{12, 34}}))});
     GlobalVar("g", ty.Of(s), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("12:34 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("12:34 error: using f16 types in 'uniform' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, UniformBufferStructF16Aliases_TemporallyBan) {
@@ -507,26 +502,25 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferStructF16Aliases_Tempora
     // var<uniform> g : a1;
     Enable(ast::Extension::kF16);
 
-    auto* s = Structure("S", {Member("x", ty.f16(Source{{12, 34}}))});
+    auto* s = Structure("S", utils::Vector{Member("x", ty.f16(Source{{12, 34}}))});
     auto* a1 = Alias("a1", ty.Of(s));
     GlobalVar("g", ty.Of(a1), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_FALSE(r()->Resolve());
 
-    EXPECT_THAT(r()->error(),
-                HasSubstr("12:34 error: using f16 types in 'uniform' or 'storage' storage "
-                          "class is not implemented yet"));
+    EXPECT_THAT(r()->error(), HasSubstr("12:34 error: using f16 types in 'uniform' storage "
+                                        "class is not implemented yet"));
 }
 
 TEST_F(ResolverStorageClassValidationTest, UniformBufferPointer) {
     // var<uniform> g : ptr<private, f32>;
     GlobalVar(Source{{56, 78}}, "g", ty.pointer(ty.f32(), ast::StorageClass::kPrivate),
               ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -542,7 +536,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferPointer) {
 TEST_F(ResolverStorageClassValidationTest, UniformBufferIntScalar) {
     // var<uniform> g : i32;
     GlobalVar(Source{{56, 78}}, "g", ty.i32(), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -553,7 +547,7 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferIntScalar) {
 TEST_F(ResolverStorageClassValidationTest, UniformBufferVectorF32) {
     // var<uniform> g : vec4<f32>;
     GlobalVar(Source{{56, 78}}, "g", ty.vec4<f32>(), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -566,10 +560,10 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferArrayF32) {
     //   @size(16) f : f32;
     // }
     // var<uniform> g : array<S, 3u>;
-    auto* s = Structure("S", {Member("a", ty.f32(), {MemberSize(16)})});
+    auto* s = Structure("S", utils::Vector{Member("a", ty.f32(), utils::Vector{MemberSize(16)})});
     auto* a = ty.array(ty.Of(s), 3_u);
     GlobalVar(Source{{56, 78}}, "g", a, ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -580,9 +574,9 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferArrayF32) {
 TEST_F(ResolverStorageClassValidationTest, UniformBufferStructI32) {
     // struct S { x : i32 };
     // var<uniform> g :  S;
-    auto* s = Structure("S", {Member(Source{{12, 34}}, "x", ty.i32())});
+    auto* s = Structure("S", utils::Vector{Member(Source{{12, 34}}, "x", ty.i32())});
     GlobalVar(Source{{56, 78}}, "g", ty.Of(s), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -594,15 +588,99 @@ TEST_F(ResolverStorageClassValidationTest, UniformBufferStructI32Aliases) {
     // struct S { x : i32 };
     // type a1 = S;
     // var<uniform> g : a1;
-    auto* s = Structure("S", {Member(Source{{12, 34}}, "x", ty.i32())});
+    auto* s = Structure("S", utils::Vector{Member(Source{{12, 34}}, "x", ty.i32())});
     auto* a1 = Alias("a1", ty.Of(s));
     GlobalVar(Source{{56, 78}}, "g", ty.Of(a1), ast::StorageClass::kUniform,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantBool) {
+    // enable chromium_experimental_push_constant;
+    // var<push_constant> g : bool;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar(Source{{56, 78}}, "g", ty.bool_(), ast::StorageClass::kPushConstant);
+
+    ASSERT_FALSE(r()->Resolve());
+    EXPECT_EQ(
+        r()->error(),
+        R"(56:78 error: Type 'bool' cannot be used in storage class 'push_constant' as it is non-host-shareable
+56:78 note: while instantiating 'var' g)");
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantF16) {
+    // enable chromium_experimental_push_constant;
+    // enable f16;
+    // var<push_constant> g : f16;
+    Enable(ast::Extension::kF16);
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar("g", ty.f16(Source{{56, 78}}), ast::StorageClass::kPushConstant);
+
+    ASSERT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(),
+              "56:78 error: using f16 types in 'push_constant' storage class is not "
+              "implemented yet");
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantPointer) {
+    // enable chromium_experimental_push_constant;
+    // var<push_constant> g : ptr<private, f32>;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar(Source{{56, 78}}, "g", ty.pointer(ty.f32(), ast::StorageClass::kPrivate),
+              ast::StorageClass::kPushConstant);
+
+    ASSERT_FALSE(r()->Resolve());
+    EXPECT_EQ(
+        r()->error(),
+        R"(56:78 error: Type 'ptr<private, f32, read_write>' cannot be used in storage class 'push_constant' as it is non-host-shareable
+56:78 note: while instantiating 'var' g)");
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantIntScalar) {
+    // enable chromium_experimental_push_constant;
+    // var<push_constant> g : i32;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar("g", ty.i32(), ast::StorageClass::kPushConstant);
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantVectorF32) {
+    // enable chromium_experimental_push_constant;
+    // var<push_constant> g : vec4<f32>;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar("g", ty.vec4<f32>(), ast::StorageClass::kPushConstant);
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantArrayF32) {
+    // enable chromium_experimental_push_constant;
+    // struct S { a : f32}
+    // var<push_constant> g : array<S, 3u>;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    auto* s = Structure("S", utils::Vector{Member("a", ty.f32())});
+    auto* a = ty.array(ty.Of(s), 3_u);
+    GlobalVar("g", a, ast::StorageClass::kPushConstant);
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+}
+
+TEST_F(ResolverStorageClassValidationTest, PushConstantWithInitializer) {
+    // enable chromium_experimental_push_constant;
+    // var<push_constant> a : u32 = 0u;
+    Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    GlobalVar(Source{{1u, 2u}}, "a", ty.u32(), ast::StorageClass::kPushConstant,
+              Expr(Source{{3u, 4u}}, u32(0)));
+
+    ASSERT_FALSE(r()->Resolve());
+    EXPECT_EQ(
+        r()->error(),
+        R"(1:2 error: var of storage class 'push_constant' cannot have an initializer. var initializers are only supported for the storage classes 'private' and 'function')");
 }
 
 }  // namespace

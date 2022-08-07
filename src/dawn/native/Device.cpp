@@ -209,8 +209,8 @@ DeviceBase::DeviceBase(AdapterBase* adapter, const DeviceDescriptor* descriptor)
     // Record the cache key from the properties. Note that currently, if a new extension
     // descriptor is added (and probably handled here), the cache key recording needs to be
     // updated.
-    mDeviceCacheKey.Record(kDawnVersion, adapterProperties, mEnabledFeatures.featuresBitSet,
-                           mEnabledToggles.toggleBitset, cacheDesc);
+    StreamIn(&mDeviceCacheKey, kDawnVersion, adapterProperties, mEnabledFeatures.featuresBitSet,
+             mEnabledToggles.toggleBitset, cacheDesc);
 }
 
 DeviceBase::DeviceBase() : mState(State::Alive) {
@@ -1231,6 +1231,10 @@ ExternalTextureBase* DeviceBase::APICreateErrorExternalTexture() {
     return ExternalTextureBase::MakeError(this);
 }
 
+TextureBase* DeviceBase::APICreateErrorTexture(const TextureDescriptor* desc) {
+    return TextureBase::MakeError(this, desc);
+}
+
 // Other Device API methods
 
 // Returns true if future ticking is needed.
@@ -1407,12 +1411,12 @@ QueueBase* DeviceBase::GetQueue() const {
 
 // Implementation details of object creation
 
-ResultOrError<Ref<BindGroupBase>> DeviceBase::CreateBindGroup(
-    const BindGroupDescriptor* descriptor) {
+ResultOrError<Ref<BindGroupBase>> DeviceBase::CreateBindGroup(const BindGroupDescriptor* descriptor,
+                                                              UsageValidationMode mode) {
     DAWN_TRY(ValidateIsAlive());
     if (IsValidationEnabled()) {
-        DAWN_TRY_CONTEXT(ValidateBindGroupDescriptor(this, descriptor), "validating %s against %s",
-                         descriptor, descriptor->layout);
+        DAWN_TRY_CONTEXT(ValidateBindGroupDescriptor(this, descriptor, mode),
+                         "validating %s against %s", descriptor, descriptor->layout);
     }
     return CreateBindGroupImpl(descriptor);
 }

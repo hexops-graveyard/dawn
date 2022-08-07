@@ -59,7 +59,6 @@ enum class Toggle {
     EmitHLSLDebugSymbols,
     DisallowSpirv,
     DumpShaders,
-    DEPRECATED_DumpTranslatedShaders,  // Use DumpShaders
     ForceWGSLStep,
     DisableWorkgroupInit,
     DisableSymbolRenaming,
@@ -72,6 +71,11 @@ enum class Toggle {
     D3D12SplitBufferTextureCopyForRowsPerImagePaddings,
     MetalRenderR8RG8UnormSmallMipToTempTexture,
     EnableBlobCache,
+    D3D12ForceClearCopyableDepthStencilTextureOnCreation,
+    D3D12DontSetClearValueOnDepthTextureCreation,
+    D3D12AlwaysUseTypelessFormatsForCastableTexture,
+    D3D12AllocateExtraMemoryFor2DArrayTexture,
+    D3D12UseTempBufferInDepthStencilTextureAndBufferCopyWithNonZeroBufferOffset,
 
     EnumCount,
     InvalidEnum = EnumCount,

@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "dawn/common/GPUInfo.h"
+#include "dawn/native/D3D12Backend.h"
 #include "dawn/native/DynamicUploader.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/d3d12/AdapterD3D12.h"
@@ -31,6 +32,7 @@
 #include "dawn/native/d3d12/ComputePipelineD3D12.h"
 #include "dawn/native/d3d12/D3D11on12Util.h"
 #include "dawn/native/d3d12/D3D12Error.h"
+#include "dawn/native/d3d12/ExternalImageDXGIImpl.h"
 #include "dawn/native/d3d12/PipelineLayoutD3D12.h"
 #include "dawn/native/d3d12/PlatformFunctions.h"
 #include "dawn/native/d3d12/QuerySetD3D12.h"
@@ -532,6 +534,59 @@ ResultOrError<ResourceHeapAllocation> Device::AllocateMemory(
     return mResourceAllocatorManager->AllocateMemory(heapType, resourceDescriptor, initialUsage);
 }
 
+std::unique_ptr<ExternalImageDXGIImpl> Device::CreateExternalImageDXGIImpl(
+    const ExternalImageDescriptorDXGISharedHandle* descriptor) {
+    // Use sharedHandle as a fallback until Chromium code is changed to set textureSharedHandle.
+    HANDLE textureSharedHandle = descriptor->textureSharedHandle;
+    if (!textureSharedHandle) {
+        textureSharedHandle = descriptor->sharedHandle;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> d3d12Resource;
+    if (FAILED(GetD3D12Device()->OpenSharedHandle(textureSharedHandle,
+                                                  IID_PPV_ARGS(&d3d12Resource)))) {
+        return nullptr;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Fence> d3d12Fence;
+    if (descriptor->fenceSharedHandle &&
+        FAILED(GetD3D12Device()->OpenSharedHandle(descriptor->fenceSharedHandle,
+                                                  IID_PPV_ARGS(&d3d12Fence)))) {
+        return nullptr;
+    }
+
+    const TextureDescriptor* textureDescriptor = FromAPI(descriptor->cTextureDescriptor);
+
+    if (ConsumedError(ValidateTextureDescriptor(this, textureDescriptor))) {
+        return nullptr;
+    }
+
+    if (ConsumedError(ValidateTextureDescriptorCanBeWrapped(textureDescriptor),
+                      "validating that a D3D12 external image can be wrapped with %s",
+                      textureDescriptor)) {
+        return nullptr;
+    }
+
+    if (ConsumedError(ValidateD3D12TextureCanBeWrapped(d3d12Resource.Get(), textureDescriptor))) {
+        return nullptr;
+    }
+
+    // Shared handle is assumed to support resource sharing capability. The resource
+    // shared capability tier must agree to share resources between D3D devices.
+    const Format* format = GetInternalFormat(textureDescriptor->format).AcquireSuccess();
+    if (format->IsMultiPlanar()) {
+        if (ConsumedError(ValidateD3D12VideoTextureCanBeShared(
+                this, D3D12TextureFormat(textureDescriptor->format)))) {
+            return nullptr;
+        }
+    }
+
+    auto impl = std::make_unique<ExternalImageDXGIImpl>(
+        this, std::move(d3d12Resource), std::move(d3d12Fence), descriptor->cTextureDescriptor);
+    mExternalImageList.Append(impl.get());
+    return impl;
+}
+
 Ref<TextureBase> Device::CreateD3D12ExternalTexture(
     const TextureDescriptor* descriptor,
     ComPtr<ID3D12Resource> d3d12Texture,
@@ -582,6 +637,14 @@ void Device::InitTogglesFromDriver() {
     SetToggle(Toggle::UseD3D12RenderPass, GetDeviceInfo().supportsRenderPass);
     SetToggle(Toggle::UseD3D12ResidencyManagement, true);
     SetToggle(Toggle::UseDXC, false);
+    SetToggle(Toggle::D3D12AlwaysUseTypelessFormatsForCastableTexture,
+              !GetDeviceInfo().supportsCastingFullyTypedFormat);
+
+    // The restriction on the source box specifying a portion of the depth stencil texture in
+    // CopyTextureRegion() is only available on the D3D12 platforms which doesn't support
+    // programmable sample positions.
+    SetToggle(Toggle::D3D12UseTempBufferInDepthStencilTextureAndBufferCopyWithNonZeroBufferOffset,
+              GetDeviceInfo().programmableSamplePositionsTier == 0);
 
     // Disable optimizations when using FXC
     // See https://crbug.com/dawn/1203
@@ -600,10 +663,35 @@ void Device::InitTogglesFromDriver() {
                   true);
     }
 
+    // Currently this workaround is only needed on Intel GPUs.
+    // See http://crbug.com/dawn/1487 for more information.
+    if (gpu_info::IsIntel(vendorId)) {
+        SetToggle(Toggle::D3D12ForceClearCopyableDepthStencilTextureOnCreation, true);
+    }
+
+    // Currently this workaround is only needed on Intel Gen12 GPUs.
+    // See http://crbug.com/dawn/1487 for more information.
+    if (gpu_info::IsIntelGen12LP(vendorId, deviceId) ||
+        gpu_info::IsIntelGen12HP(vendorId, deviceId)) {
+        SetToggle(Toggle::D3D12DontSetClearValueOnDepthTextureCreation, true);
+    }
+
     // Currently this workaround is needed on any D3D12 backend for some particular situations.
     // But we may need to limit it if D3D12 runtime fixes the bug on its new release. See
     // https://crbug.com/dawn/1289 for more information.
+    // TODO(dawn:1289): Unset this toggle when we skip the split on the buffer-texture copy
+    // on the platforms where UnrestrictedBufferTextureCopyPitchSupported is true.
     SetToggle(Toggle::D3D12SplitBufferTextureCopyForRowsPerImagePaddings, true);
+
+    // This workaround is only needed on Intel Gen12LP with driver prior to 30.0.101.1960.
+    // See http://crbug.com/dawn/949 for more information.
+    if (gpu_info::IsIntelGen12LP(vendorId, deviceId)) {
+        const gpu_info::D3DDriverVersion version = {30, 0, 101, 1960};
+        if (gpu_info::CompareD3DDriverVersion(vendorId, ToBackend(GetAdapter())->GetDriverVersion(),
+                                              version) == -1) {
+            SetToggle(Toggle::D3D12AllocateExtraMemoryFor2DArrayTexture, true);
+        }
+    }
 }
 
 MaybeError Device::WaitForIdleForDestruction() {
@@ -700,6 +788,12 @@ void Device::AppendDebugLayerMessages(ErrorData* error) {
 
 void Device::DestroyImpl() {
     ASSERT(GetState() == State::Disconnected);
+
+    while (!mExternalImageList.empty()) {
+        ExternalImageDXGIImpl* externalImage = mExternalImageList.head()->value();
+        // ExternalImageDXGIImpl::Destroy() calls RemoveFromList().
+        externalImage->Destroy();
+    }
 
     mZeroBuffer = nullptr;
 

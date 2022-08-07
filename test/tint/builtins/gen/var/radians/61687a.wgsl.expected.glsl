@@ -1,12 +1,12 @@
 #version 310 es
 
 vec2 tint_radians(vec2 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_61687a() {
-  vec2 arg_0 = vec2(0.0f);
+  vec2 arg_0 = vec2(1.0f);
   vec2 res = tint_radians(arg_0);
 }
 
@@ -27,12 +27,12 @@ void main() {
 precision mediump float;
 
 vec2 tint_radians(vec2 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_61687a() {
-  vec2 arg_0 = vec2(0.0f);
+  vec2 arg_0 = vec2(1.0f);
   vec2 res = tint_radians(arg_0);
 }
 
@@ -47,12 +47,12 @@ void main() {
 #version 310 es
 
 vec2 tint_radians(vec2 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295474f;
 }
 
 
 void radians_61687a() {
-  vec2 arg_0 = vec2(0.0f);
+  vec2 arg_0 = vec2(1.0f);
   vec2 res = tint_radians(arg_0);
 }
 

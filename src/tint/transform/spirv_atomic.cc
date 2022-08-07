@@ -116,15 +116,16 @@ struct SpirvAtomic::State {
                     const auto& forked = it->second;
 
                     // Re-create the structure swapping in the atomic-flavoured members
-                    std::vector<const ast::StructMember*> members(str->members.size());
-                    for (size_t i = 0; i < str->members.size(); i++) {
+                    utils::Vector<const ast::StructMember*, 8> members;
+                    members.Reserve(str->members.Length());
+                    for (size_t i = 0; i < str->members.Length(); i++) {
                         auto* member = str->members[i];
                         if (forked.atomic_members.count(i)) {
                             auto* type = AtomicTypeFor(ctx.src->Sem().Get(member)->Type());
                             auto name = ctx.src->Symbols().NameFor(member->symbol);
-                            members[i] = b.Member(name, type, ctx.Clone(member->attributes));
+                            members.Push(b.Member(name, type, ctx.Clone(member->attributes)));
                         } else {
-                            members[i] = ctx.Clone(member);
+                            members.Push(ctx.Clone(member));
                         }
                     }
                     b.Structure(forked.name, std::move(members));
@@ -273,14 +274,16 @@ struct SpirvAtomic::State {
 SpirvAtomic::SpirvAtomic() = default;
 SpirvAtomic::~SpirvAtomic() = default;
 
-SpirvAtomic::Stub::Stub(ProgramID pid, sem::BuiltinType b) : Base(pid), builtin(b) {}
+SpirvAtomic::Stub::Stub(ProgramID pid, ast::NodeID nid, sem::BuiltinType b)
+    : Base(pid, nid), builtin(b) {}
 SpirvAtomic::Stub::~Stub() = default;
 std::string SpirvAtomic::Stub::InternalName() const {
     return "@internal(spirv-atomic " + std::string(sem::str(builtin)) + ")";
 }
 
 const SpirvAtomic::Stub* SpirvAtomic::Stub::Clone(CloneContext* ctx) const {
-    return ctx->dst->ASTNodes().Create<SpirvAtomic::Stub>(ctx->dst->ID(), builtin);
+    return ctx->dst->ASTNodes().Create<SpirvAtomic::Stub>(ctx->dst->ID(),
+                                                          ctx->dst->AllocateNodeID(), builtin);
 }
 
 bool SpirvAtomic::ShouldRun(const Program* program, const DataMap&) const {

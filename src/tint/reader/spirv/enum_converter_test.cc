@@ -125,8 +125,8 @@ INSTANTIATE_TEST_SUITE_P(
     EnumConverterGood,
     SpvStorageClassTest,
     testing::Values(
-        StorageClassCase{SpvStorageClassInput, true, ast::StorageClass::kInput},
-        StorageClassCase{SpvStorageClassOutput, true, ast::StorageClass::kOutput},
+        StorageClassCase{SpvStorageClassInput, true, ast::StorageClass::kIn},
+        StorageClassCase{SpvStorageClassOutput, true, ast::StorageClass::kOut},
         StorageClassCase{SpvStorageClassUniform, true, ast::StorageClass::kUniform},
         StorageClassCase{SpvStorageClassWorkgroup, true, ast::StorageClass::kWorkgroup},
         StorageClassCase{SpvStorageClassUniformConstant, true, ast::StorageClass::kNone},
@@ -144,7 +144,7 @@ INSTANTIATE_TEST_SUITE_P(EnumConverterBad,
 struct BuiltinCase {
     SpvBuiltIn builtin;
     bool expect_success;
-    ast::Builtin expected;
+    ast::BuiltinValue expected;
 };
 inline std::ostream& operator<<(std::ostream& out, BuiltinCase bc) {
     out << "BuiltinCase{ SpvBuiltIn:" << int(bc.builtin)
@@ -184,30 +184,30 @@ INSTANTIATE_TEST_SUITE_P(
     EnumConverterGood_Input,
     SpvBuiltinTest,
     testing::Values(
-        BuiltinCase{SpvBuiltInPosition, true, ast::Builtin::kPosition},
-        BuiltinCase{SpvBuiltInInstanceIndex, true, ast::Builtin::kInstanceIndex},
-        BuiltinCase{SpvBuiltInFrontFacing, true, ast::Builtin::kFrontFacing},
-        BuiltinCase{SpvBuiltInFragCoord, true, ast::Builtin::kPosition},
-        BuiltinCase{SpvBuiltInLocalInvocationId, true, ast::Builtin::kLocalInvocationId},
-        BuiltinCase{SpvBuiltInLocalInvocationIndex, true, ast::Builtin::kLocalInvocationIndex},
-        BuiltinCase{SpvBuiltInGlobalInvocationId, true, ast::Builtin::kGlobalInvocationId},
-        BuiltinCase{SpvBuiltInWorkgroupId, true, ast::Builtin::kWorkgroupId},
-        BuiltinCase{SpvBuiltInSampleId, true, ast::Builtin::kSampleIndex},
-        BuiltinCase{SpvBuiltInSampleMask, true, ast::Builtin::kSampleMask}));
+        BuiltinCase{SpvBuiltInPosition, true, ast::BuiltinValue::kPosition},
+        BuiltinCase{SpvBuiltInInstanceIndex, true, ast::BuiltinValue::kInstanceIndex},
+        BuiltinCase{SpvBuiltInFrontFacing, true, ast::BuiltinValue::kFrontFacing},
+        BuiltinCase{SpvBuiltInFragCoord, true, ast::BuiltinValue::kPosition},
+        BuiltinCase{SpvBuiltInLocalInvocationId, true, ast::BuiltinValue::kLocalInvocationId},
+        BuiltinCase{SpvBuiltInLocalInvocationIndex, true, ast::BuiltinValue::kLocalInvocationIndex},
+        BuiltinCase{SpvBuiltInGlobalInvocationId, true, ast::BuiltinValue::kGlobalInvocationId},
+        BuiltinCase{SpvBuiltInWorkgroupId, true, ast::BuiltinValue::kWorkgroupId},
+        BuiltinCase{SpvBuiltInSampleId, true, ast::BuiltinValue::kSampleIndex},
+        BuiltinCase{SpvBuiltInSampleMask, true, ast::BuiltinValue::kSampleMask}));
 
 INSTANTIATE_TEST_SUITE_P(
     EnumConverterGood_Output,
     SpvBuiltinTest,
-    testing::Values(BuiltinCase{SpvBuiltInPosition, true, ast::Builtin::kPosition},
-                    BuiltinCase{SpvBuiltInFragDepth, true, ast::Builtin::kFragDepth},
-                    BuiltinCase{SpvBuiltInSampleMask, true, ast::Builtin::kSampleMask}));
+    testing::Values(BuiltinCase{SpvBuiltInPosition, true, ast::BuiltinValue::kPosition},
+                    BuiltinCase{SpvBuiltInFragDepth, true, ast::BuiltinValue::kFragDepth},
+                    BuiltinCase{SpvBuiltInSampleMask, true, ast::BuiltinValue::kSampleMask}));
 
 INSTANTIATE_TEST_SUITE_P(
     EnumConverterBad,
     SpvBuiltinTest,
-    testing::Values(BuiltinCase{static_cast<SpvBuiltIn>(9999), false, ast::Builtin::kNone},
-                    BuiltinCase{static_cast<SpvBuiltIn>(9999), false, ast::Builtin::kNone},
-                    BuiltinCase{SpvBuiltInNumWorkgroups, false, ast::Builtin::kNone}));
+    testing::Values(BuiltinCase{static_cast<SpvBuiltIn>(9999), false, ast::BuiltinValue::kInvalid},
+                    BuiltinCase{static_cast<SpvBuiltIn>(9999), false, ast::BuiltinValue::kInvalid},
+                    BuiltinCase{SpvBuiltInNumWorkgroups, false, ast::BuiltinValue::kInvalid}));
 
 // Dim
 
@@ -326,7 +326,7 @@ INSTANTIATE_TEST_SUITE_P(
     SpvImageFormatTest,
     testing::Values(
         // Unknown.  This is used for sampled images.
-        TexelFormatCase{SpvImageFormatUnknown, true, ast::TexelFormat::kNone},
+        TexelFormatCase{SpvImageFormatUnknown, true, ast::TexelFormat::kInvalid},
         // 8 bit channels
         TexelFormatCase{SpvImageFormatRgba8, true, ast::TexelFormat::kRgba8Unorm},
         TexelFormatCase{SpvImageFormatRgba8Snorm, true, ast::TexelFormat::kRgba8Snorm},
@@ -355,23 +355,23 @@ INSTANTIATE_TEST_SUITE_P(
     SpvImageFormatTest,
     testing::Values(
         // Scanning in order from the SPIR-V spec.
-        TexelFormatCase{SpvImageFormatRg16f, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatR11fG11fB10f, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatR16f, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRgb10A2, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg16, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg8, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatR16, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatR8, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRgba16Snorm, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg16Snorm, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg8Snorm, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg16i, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg8i, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatR8i, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRgb10a2ui, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg16ui, false, ast::TexelFormat::kNone},
-        TexelFormatCase{SpvImageFormatRg8ui, false, ast::TexelFormat::kNone}));
+        TexelFormatCase{SpvImageFormatRg16f, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatR11fG11fB10f, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatR16f, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRgb10A2, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg16, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg8, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatR16, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatR8, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRgba16Snorm, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg16Snorm, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg8Snorm, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg16i, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg8i, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatR8i, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRgb10a2ui, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg16ui, false, ast::TexelFormat::kInvalid},
+        TexelFormatCase{SpvImageFormatRg8ui, false, ast::TexelFormat::kInvalid}));
 
 }  // namespace
 }  // namespace tint::reader::spirv

@@ -16,11 +16,12 @@
 #define SRC_TINT_AST_MODULE_H_
 
 #include <string>
-#include <vector>
 
 #include "src/tint/ast/enable.h"
 #include "src/tint/ast/function.h"
+#include "src/tint/ast/static_assert.h"
 #include "src/tint/ast/type.h"
+#include "src/tint/utils/vector.h"
 
 namespace tint::ast {
 
@@ -32,27 +33,28 @@ class Module final : public Castable<Module, Node> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
-    Module(ProgramID pid, const Source& src);
+    Module(ProgramID pid, NodeID nid, const Source& src);
 
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param global_decls the list of global types, functions, and variables, in
     /// the order they were declared in the source program
-    Module(ProgramID pid, const Source& src, std::vector<const Node*> global_decls);
+    Module(ProgramID pid,
+           NodeID nid,
+           const Source& src,
+           utils::VectorRef<const ast::Node*> global_decls);
 
     /// Destructor
     ~Module() override;
 
     /// @returns the declaration-ordered global declarations for the module
-    const std::vector<const Node*>& GlobalDeclarations() const { return global_declarations_; }
+    const auto& GlobalDeclarations() const { return global_declarations_; }
 
-    /// Add a enable directive to the Builder
-    /// @param ext the enable directive to add
-    void AddEnable(const Enable* ext);
-
-    /// Add a global variable to the Builder
+    /// Add a global variable to the module
     /// @param var the variable to add
     void AddGlobalVariable(const Variable* var);
 
@@ -67,33 +69,44 @@ class Module final : public Castable<Module, Node> {
         return false;
     }
 
-    /// Adds a global declaration to the Builder.
+    /// Adds a global declaration to the module.
     /// @param decl the declaration to add
     void AddGlobalDeclaration(const tint::ast::Node* decl);
 
     /// @returns the global variables for the module
-    const VariableList& GlobalVariables() const { return global_variables_; }
+    const auto& GlobalVariables() const { return global_variables_; }
 
     /// @returns the global variables for the module
-    VariableList& GlobalVariables() { return global_variables_; }
+    auto& GlobalVariables() { return global_variables_; }
 
     /// @returns the global variable declarations of kind 'T' for the module
     template <typename T, typename = traits::EnableIfIsType<T, ast::Variable>>
-    std::vector<const T*> Globals() const {
-        std::vector<const T*> out;
-        out.reserve(global_variables_.size());
+    auto Globals() const {
+        utils::Vector<const T*, 32> out;
+        out.Reserve(global_variables_.Length());
         for (auto* global : global_variables_) {
             if (auto* var = global->As<T>()) {
-                out.emplace_back(var);
+                out.Push(var);
             }
         }
         return out;
     }
 
-    /// @returns the extension set for the module
-    const EnableList& Enables() const { return enables_; }
+    /// Add a enable directive to the module
+    /// @param ext the enable directive to add
+    void AddEnable(const Enable* ext);
 
-    /// Adds a type declaration to the Builder.
+    /// @returns the extension set for the module
+    const auto& Enables() const { return enables_; }
+
+    /// Add a global static assertion to the module
+    /// @param assertion the static assert to add
+    void AddStaticAssert(const StaticAssert* assertion);
+
+    /// @returns the list of global static assertions
+    const auto& StaticAsserts() const { return static_asserts_; }
+
+    /// Adds a type declaration to the module
     /// @param decl the type declaration to add
     void AddTypeDecl(const TypeDecl* decl);
 
@@ -102,9 +115,9 @@ class Module final : public Castable<Module, Node> {
     const TypeDecl* LookupType(Symbol name) const;
 
     /// @returns the declared types in the module
-    const std::vector<const TypeDecl*>& TypeDecls() const { return type_decls_; }
+    const auto& TypeDecls() const { return type_decls_; }
 
-    /// Add a function to the Builder
+    /// Add a function to the module
     /// @param func the function to add
     void AddFunction(const Function* func);
 
@@ -129,11 +142,12 @@ class Module final : public Castable<Module, Node> {
     /// * #functions_
     void BinGlobalDeclaration(const tint::ast::Node* decl, diag::List& diags);
 
-    std::vector<const Node*> global_declarations_;
-    std::vector<const TypeDecl*> type_decls_;
+    utils::Vector<const Node*, 64> global_declarations_;
+    utils::Vector<const TypeDecl*, 16> type_decls_;
     FunctionList functions_;
-    VariableList global_variables_;
-    EnableList enables_;
+    utils::Vector<const Variable*, 32> global_variables_;
+    utils::Vector<const Enable*, 8> enables_;
+    utils::Vector<const StaticAssert*, 8> static_asserts_;
 };
 
 }  // namespace tint::ast

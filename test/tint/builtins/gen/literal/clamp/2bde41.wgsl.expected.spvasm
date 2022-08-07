@@ -1,10 +1,9 @@
 ; SPIR-V
 ; Version: 1.3
 ; Generator: Google Tint Compiler; 0
-; Bound: 31
+; Bound: 30
 ; Schema: 0
                OpCapability Shader
-         %14 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical GLSL450
                OpEntryPoint Vertex %vertex_main "vertex_main" %value %vertex_point_size
                OpEntryPoint Fragment %fragment_main "fragment_main"
@@ -31,14 +30,14 @@
 %vertex_point_size = OpVariable %_ptr_Output_float Output %8
        %void = OpTypeVoid
           %9 = OpTypeFunction %void
+    %float_1 = OpConstant %float 1
+         %14 = OpConstantComposite %v4float %float_1 %float_1 %float_1 %float_1
 %_ptr_Function_v4float = OpTypePointer Function %v4float
          %17 = OpTypeFunction %v4float
-    %float_1 = OpConstant %float 1
 %clamp_2bde41 = OpFunction %void None %9
          %12 = OpLabel
         %res = OpVariable %_ptr_Function_v4float Function %5
-         %13 = OpExtInst %v4float %14 NClamp %5 %5 %5
-               OpStore %res %13
+               OpStore %res %14
                OpReturn
                OpFunctionEnd
 %vertex_main_inner = OpFunction %v4float None %17
@@ -54,12 +53,12 @@
                OpReturn
                OpFunctionEnd
 %fragment_main = OpFunction %void None %9
-         %26 = OpLabel
-         %27 = OpFunctionCall %void %clamp_2bde41
+         %25 = OpLabel
+         %26 = OpFunctionCall %void %clamp_2bde41
                OpReturn
                OpFunctionEnd
 %compute_main = OpFunction %void None %9
-         %29 = OpLabel
-         %30 = OpFunctionCall %void %clamp_2bde41
+         %28 = OpLabel
+         %29 = OpFunctionCall %void %clamp_2bde41
                OpReturn
                OpFunctionEnd

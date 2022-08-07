@@ -1,17 +1,20 @@
 {{- /*
 --------------------------------------------------------------------------------
-Template file for use with tools/builtin-gen to generate builtin_table.inl
+Template file for use with tools/src/cmd/gen to generate builtin_table.inl
 Used by BuiltinTable.cc for builtin overload resolution.
 
+To update the generated file, run:
+    ./tools/run gen
+
 See:
-* tools/cmd/intrinsic-gen/gen for structures used by this template
+* tools/src/cmd/gen for structures used by this template
 * https://golang.org/pkg/text/template/ for documentation on the template syntax
 --------------------------------------------------------------------------------
 */ -}}
 
 // clang-format off
 
-{{  with .Sem -}}
+{{  with Sem -}}
 {{    range .Types -}}
 {{      template "Type" . }}
 {{    end -}}
@@ -103,7 +106,7 @@ constexpr OverloadInfo kOverloads[] = {
 {{-   end }}
 {{-   if $o.IsDeprecated}}, OverloadFlag::kIsDeprecated{{end }}),
     /* const eval */
-{{-   if $o.ConstEvalFunction }} const_eval::{{$o.ConstEvalFunction}},
+{{-   if $o.ConstEvalFunction }} {{template "ConstEvalFn" $o}},
 {{-   else                    }} nullptr,
 {{-   end }}
   },
@@ -137,7 +140,7 @@ constexpr IntrinsicInfo kUnaryOperators[] = {
 };
 
 {{- range $i, $o := .UnaryOperators }}
-constexpr uint8_t kUnaryOperator{{template "OperatorName" $o.Name}} = {{$i}};
+constexpr uint8_t kUnaryOperator{{ template "ExpandName" $o.Name}} = {{$i}};
 {{- end }}
 
 constexpr IntrinsicInfo kBinaryOperators[] = {
@@ -154,7 +157,7 @@ constexpr IntrinsicInfo kBinaryOperators[] = {
 };
 
 {{- range $i, $o := .BinaryOperators }}
-constexpr uint8_t kBinaryOperator{{template "OperatorName" $o.Name}} = {{$i}};
+constexpr uint8_t kBinaryOperator{{ template "ExpandName" $o.Name}} = {{$i}};
 {{- end }}
 
 constexpr IntrinsicInfo kConstructorsAndConverters[] = {
@@ -179,7 +182,6 @@ constexpr IntrinsicInfo kConstructorsAndConverters[] = {
 {{- $class := PascalCase .Name -}}
 /// TypeMatcher for 'type {{.Name}}'
 {{- if .Decl.Source.S.Filepath  }}
-/// @see {{.Decl.Source}}
 {{- end  }}
 class {{$class}} : public TypeMatcher {
  public:
@@ -234,7 +236,6 @@ std::string {{$class}}::String(MatchState*{{if .TemplateParams}} state{{end}}) c
 {{- $class := PascalCase .Name -}}
 /// TypeMatcher for 'match {{.Name}}'
 {{- if .Decl.Source.S.Filepath  }}
-/// @see {{.Decl.Source}}
 {{- end  }}
 class {{$class}} : public TypeMatcher {
  public:
@@ -282,7 +283,6 @@ std::string {{$class}}::String(MatchState*) const {
 {{- $enum := PascalCase .Enum.Name -}}
 /// EnumMatcher for 'match {{.Name}}'
 {{- if .Decl.Source.S.Filepath  }}
-/// @see {{.Decl.Source}}
 {{- end  }}
 class {{$class}} : public NumberMatcher {
  public:
@@ -339,27 +339,27 @@ class Matchers {
  private:
 {{- $t_names := Map -}}
 {{- $n_names := Map -}}
-{{- range Iterate .Sem.MaxTemplateTypes -}}
+{{- range Iterate Sem.MaxTemplateTypes -}}
 {{-   $name := printf "template_type_%v" . -}}
 {{-   $t_names.Put . $name }}
   TemplateTypeMatcher {{$name}}_{ {{- . -}} };
 {{- end }}
-{{- range Iterate .Sem.MaxTemplateNumbers -}}
+{{- range Iterate Sem.MaxTemplateNumbers -}}
 {{-   $name := printf "template_number_%v" . -}}
 {{-   $n_names.Put . $name }}
   TemplateNumberMatcher {{$name}}_{ {{- . -}} };
 {{- end }}
-{{- range .Sem.Types -}}
+{{- range Sem.Types -}}
 {{-   $name := PascalCase .Name -}}
 {{-   $t_names.Put . $name }}
   {{$name}} {{$name}}_;
 {{- end }}
-{{- range .Sem.TypeMatchers -}}
+{{- range Sem.TypeMatchers -}}
 {{-   $name := PascalCase .Name -}}
 {{-   $t_names.Put . $name }}
   {{$name}} {{$name}}_;
 {{- end }}
-{{- range .Sem.EnumMatchers -}}
+{{- range Sem.EnumMatchers -}}
 {{-   $name := PascalCase .Name -}}
 {{-   $n_names.Put . $name }}
   {{$name}} {{$name}}_;
@@ -455,7 +455,7 @@ Matchers::~Matchers() = default;
 {{- end -}}
 
 {{- /* ------------------------------------------------------------------ */ -}}
-{{-                          define "OperatorName"                           -}}
+{{-                           define "ExpandName"                            -}}
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-        if eq . "<<" -}}ShiftLeft
 {{-   else if eq . "&"  -}}And
@@ -478,6 +478,16 @@ Matchers::~Matchers() = default;
 {{-   else if eq . "*"  -}}Star
 {{-   else if eq . "/"  -}}Divide
 {{-   else if eq . "%"  -}}Modulo
-{{-   else -}}<unknown-{{.}}>
+{{-   else              -}}{{.}}
 {{-   end -}}
 {{- end -}}
+
+
+{{- /* ------------------------------------------------------------------ */ -}}
+{{-                           define "ConstEvalFn"                           -}}
+{{- /* ------------------------------------------------------------------ */ -}}
+  &ConstEval::
+{{-   if eq .Kind "operator" -}}Op{{end -}}
+  {{template "ExpandName" .ConstEvalFunction}}
+{{- end -}}
+

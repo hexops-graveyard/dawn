@@ -35,7 +35,8 @@ namespace tint::ast {
 class Function final : public Castable<Function, Node> {
   public:
     /// Create a function
-    /// @param program_id the identifier of the program that owns this node
+    /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param source the variable source
     /// @param symbol the function symbol
     /// @param params the function parameters
@@ -43,14 +44,15 @@ class Function final : public Castable<Function, Node> {
     /// @param body the function body
     /// @param attributes the function attributes
     /// @param return_type_attributes the return type attributes
-    Function(ProgramID program_id,
+    Function(ProgramID pid,
+             NodeID nid,
              const Source& source,
              Symbol symbol,
-             ParameterList params,
+             utils::VectorRef<const Parameter*> params,
              const Type* return_type,
              const BlockStatement* body,
-             AttributeList attributes,
-             AttributeList return_type_attributes);
+             utils::VectorRef<const Attribute*> attributes,
+             utils::VectorRef<const Attribute*> return_type_attributes);
     /// Move constructor
     Function(Function&&);
 
@@ -72,7 +74,7 @@ class Function final : public Castable<Function, Node> {
     const Symbol symbol;
 
     /// The function params
-    const ParameterList params;
+    const utils::Vector<const Parameter*, 8> params;
 
     /// The function return type
     const Type* const return_type;
@@ -81,18 +83,18 @@ class Function final : public Castable<Function, Node> {
     const BlockStatement* const body;
 
     /// The attributes attached to this function
-    const AttributeList attributes;
+    const utils::Vector<const Attribute*, 2> attributes;
 
     /// The attributes attached to the function return type.
-    const AttributeList return_type_attributes;
+    const utils::Vector<const Attribute*, 2> return_type_attributes;
 };
 
 /// A list of functions
-class FunctionList : public std::vector<const Function*> {
+class FunctionList : public utils::Vector<const Function*, 8> {
   public:
     /// Appends f to the end of the list
     /// @param f the function to append to this list
-    void Add(const Function* f) { this->emplace_back(f); }
+    void Add(const Function* f) { this->Push(f); }
 
     /// Returns the function with the given name
     /// @param sym the function symbol to search for

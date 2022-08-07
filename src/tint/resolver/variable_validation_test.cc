@@ -40,6 +40,24 @@ TEST_F(ResolverVariableValidationTest, GlobalVarNoInitializerNoType) {
     EXPECT_EQ(r()->error(), "12:34 error: var declaration requires a type or initializer");
 }
 
+TEST_F(ResolverVariableValidationTest, VarInitializerNoReturnValueBuiltin) {
+    // fn f() { var a = storageBarrier(); }
+    auto* NoReturnValueBuiltin = Call(Source{{12, 34}}, "storageBarrier");
+    WrapInFunction(Var("a", nullptr, ast::StorageClass::kNone, NoReturnValueBuiltin));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), "12:34 error: builtin 'storageBarrier' does not return a value");
+}
+
+TEST_F(ResolverVariableValidationTest, GlobalVarInitializerNoReturnValueBuiltin) {
+    // var a = storageBarrier();
+    auto* NoReturnValueBuiltin = Call(Source{{12, 34}}, "storageBarrier");
+    GlobalVar("a", nullptr, ast::StorageClass::kNone, NoReturnValueBuiltin);
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), "12:34 error: builtin 'storageBarrier' does not return a value");
+}
+
 TEST_F(ResolverVariableValidationTest, GlobalVarUsedAtModuleScope) {
     // var<private> a : i32;
     // var<private> b : i32 = a;
@@ -59,18 +77,50 @@ TEST_F(ResolverVariableValidationTest, OverrideNoInitializerNoType) {
     EXPECT_EQ(r()->error(), "12:34 error: override declaration requires a type or initializer");
 }
 
-TEST_F(ResolverVariableValidationTest, VarTypeNotStorable) {
+TEST_F(ResolverVariableValidationTest, OverrideExceedsIDLimit_LastUnreserved) {
+    // override o0 : i32;
+    // override o1 : i32;
+    // ...
+    // override bang : i32;
+    constexpr size_t kLimit = std::numeric_limits<decltype(OverrideId::value)>::max();
+    for (size_t i = 0; i <= kLimit; i++) {
+        Override("o" + std::to_string(i), ty.i32(), nullptr);
+    }
+    Override(Source{{12, 34}}, "bang", ty.i32(), nullptr);
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), "12:34 error: number of 'override' variables exceeded limit of 65535");
+}
+
+TEST_F(ResolverVariableValidationTest, OverrideExceedsIDLimit_LastReserved) {
+    // override o0 : i32;
+    // override o1 : i32;
+    // ...
+    // @id(N) override oN : i32;
+    constexpr size_t kLimit = std::numeric_limits<decltype(OverrideId::value)>::max();
+    Override("reserved", ty.i32(), nullptr,
+             utils::Vector{
+                 Id(kLimit),
+             });
+    for (size_t i = 0; i < kLimit; i++) {
+        Override("o" + std::to_string(i), ty.i32(), nullptr);
+    }
+    Override(Source{{12, 34}}, "bang", ty.i32(), nullptr);
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), "12:34 error: number of 'override' variables exceeded limit of 65535");
+}
+
+TEST_F(ResolverVariableValidationTest, VarTypeNotConstructible) {
     // var i : i32;
     // var p : pointer<function, i32> = &v;
     auto* i = Var("i", ty.i32(), ast::StorageClass::kNone);
-    auto* p = Var(Source{{56, 78}}, "a", ty.pointer<i32>(ast::StorageClass::kFunction),
+    auto* p = Var("a", ty.pointer<i32>(Source{{56, 78}}, ast::StorageClass::kFunction),
                   ast::StorageClass::kNone, AddressOf(Source{{12, 34}}, "i"));
     WrapInFunction(i, p);
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(),
-              "56:78 error: ptr<function, i32, read_write> cannot be used as the "
-              "type of a var");
+    EXPECT_EQ(r()->error(), "56:78 error: function-scope 'var' must have a constructible type");
 }
 
 TEST_F(ResolverVariableValidationTest, LetTypeNotConstructible) {
@@ -241,10 +291,14 @@ TEST_F(ResolverVariableValidationTest, InferredPtrStorageAccessMismatch) {
     // fn f() {
     //   let p : pointer<storage, i32, read_write> = &s.inner.arr[2i];
     // }
-    auto* inner = Structure("Inner", {Member("arr", ty.array<i32, 4>())});
-    auto* buf = Structure("S", {Member("inner", ty.Of(inner))});
+    auto* inner = Structure("Inner", utils::Vector{
+                                         Member("arr", ty.array<i32, 4>()),
+                                     });
+    auto* buf = Structure("S", utils::Vector{
+                                   Member("inner", ty.Of(inner)),
+                               });
     auto* storage = GlobalVar("s", ty.Of(buf), ast::StorageClass::kStorage,
-                              ast::AttributeList{
+                              utils::Vector{
                                   create<ast::BindingAttribute>(0u),
                                   create<ast::GroupAttribute>(0u),
                               });
@@ -272,7 +326,9 @@ TEST_F(ResolverVariableValidationTest, NonConstructibleType_Atomic) {
 }
 
 TEST_F(ResolverVariableValidationTest, NonConstructibleType_RuntimeArray) {
-    auto* s = Structure("S", {Member(Source{{56, 78}}, "m", ty.array(ty.i32()))});
+    auto* s = Structure("S", utils::Vector{
+                                 Member(Source{{56, 78}}, "m", ty.array(ty.i32())),
+                             });
     auto* v = Var(Source{{12, 34}}, "v", ty.Of(s));
     WrapInFunction(v);
 
@@ -284,7 +340,9 @@ TEST_F(ResolverVariableValidationTest, NonConstructibleType_RuntimeArray) {
 }
 
 TEST_F(ResolverVariableValidationTest, NonConstructibleType_Struct_WithAtomic) {
-    auto* s = Structure("S", {Member("m", ty.atomic(ty.i32()))});
+    auto* s = Structure("S", utils::Vector{
+                                 Member("m", ty.atomic(ty.i32())),
+                             });
     auto* v = Var("v", ty.Of(s));
     WrapInFunction(v);
 
@@ -363,23 +421,6 @@ TEST_F(ResolverVariableValidationTest, MatrixVarNoType) {
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), "12:34 error: missing matrix element type");
-}
-
-TEST_F(ResolverVariableValidationTest, ConstStructure) {
-    auto* s = Structure("S", {Member("m", ty.i32())});
-    auto* c = Const("c", ty.Of(s), Construct(Source{{12, 34}}, ty.Of(s)));
-    WrapInFunction(c);
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(12:34 error: 'const' initializer must be constant expression)");
-}
-
-TEST_F(ResolverVariableValidationTest, GlobalConstStructure) {
-    auto* s = Structure("S", {Member("m", ty.i32())});
-    GlobalConst("c", ty.Of(s), Construct(Source{{12, 34}}, ty.Of(s)));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(12:34 error: 'const' initializer must be constant expression)");
 }
 
 TEST_F(ResolverVariableValidationTest, ConstInitWithVar) {

@@ -33,19 +33,17 @@ class Attribute : public Castable<Attribute, Node> {
   protected:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
-    Attribute(ProgramID pid, const Source& src) : Base(pid, src) {}
+    Attribute(ProgramID pid, NodeID nid, const Source& src) : Base(pid, nid, src) {}
 };
-
-/// A list of attributes
-using AttributeList = std::vector<const Attribute*>;
 
 /// @param attributes the list of attributes to search
 /// @returns true if `attributes` includes a attribute of type `T`
-template <typename T>
-bool HasAttribute(const AttributeList& attributes) {
+template <typename... Ts>
+bool HasAttribute(utils::VectorRef<const Attribute*> attributes) {
     for (auto* attr : attributes) {
-        if (attr->Is<T>()) {
+        if (attr->IsAnyOf<Ts...>()) {
             return true;
         }
     }
@@ -55,7 +53,7 @@ bool HasAttribute(const AttributeList& attributes) {
 /// @param attributes the list of attributes to search
 /// @returns a pointer to `T` from `attributes` if found, otherwise nullptr.
 template <typename T>
-const T* GetAttribute(const AttributeList& attributes) {
+const T* GetAttribute(utils::VectorRef<const Attribute*> attributes) {
     for (auto* attr : attributes) {
         if (attr->Is<T>()) {
             return attr->As<T>();

@@ -20,7 +20,7 @@
 namespace tint::ast {
 
 /// An integer literal. The literal may have an 'i', 'u' or no suffix.
-class IntLiteralExpression : public Castable<IntLiteralExpression, LiteralExpression> {
+class IntLiteralExpression final : public Castable<IntLiteralExpression, LiteralExpression> {
   public:
     /// Literal suffix
     enum class Suffix {
@@ -34,10 +34,11 @@ class IntLiteralExpression : public Castable<IntLiteralExpression, LiteralExpres
 
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param val the literal value
     /// @param suf the literal suffix
-    IntLiteralExpression(ProgramID pid, const Source& src, int64_t val, Suffix suf);
+    IntLiteralExpression(ProgramID pid, NodeID nid, const Source& src, int64_t val, Suffix suf);
 
     ~IntLiteralExpression() override;
 

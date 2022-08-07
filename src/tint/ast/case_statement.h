@@ -22,27 +22,26 @@
 
 namespace tint::ast {
 
-/// A list of case literals
-using CaseSelectorList = std::vector<const IntLiteralExpression*>;
-
 /// A case statement
 class CaseStatement final : public Castable<CaseStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param selectors the case selectors
     /// @param body the case body
     CaseStatement(ProgramID pid,
+                  NodeID nid,
                   const Source& src,
-                  CaseSelectorList selectors,
+                  utils::VectorRef<const IntLiteralExpression*> selectors,
                   const BlockStatement* body);
     /// Move constructor
     CaseStatement(CaseStatement&&);
     ~CaseStatement() override;
 
     /// @returns true if this is a default statement
-    bool IsDefault() const { return selectors.empty(); }
+    bool IsDefault() const { return selectors.IsEmpty(); }
 
     /// Clones this node and all transitive child nodes using the `CloneContext`
     /// `ctx`.
@@ -51,14 +50,11 @@ class CaseStatement final : public Castable<CaseStatement, Statement> {
     const CaseStatement* Clone(CloneContext* ctx) const override;
 
     /// The case selectors, empty if none set
-    const CaseSelectorList selectors;
+    const utils::Vector<const IntLiteralExpression*, 4> selectors;
 
     /// The case body
     const BlockStatement* const body;
 };
-
-/// A list of case statements
-using CaseStatementList = std::vector<const CaseStatement*>;
 
 }  // namespace tint::ast
 

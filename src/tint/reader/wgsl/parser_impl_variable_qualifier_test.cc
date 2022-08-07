@@ -40,7 +40,7 @@ TEST_P(VariableQualifierTest, ParsesStorageClass) {
     EXPECT_EQ(sc->storage_class, params.storage_class);
     EXPECT_EQ(sc->access, params.access);
 
-    auto t = p->next();
+    auto& t = p->next();
     EXPECT_TRUE(t.IsEof());
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -50,7 +50,6 @@ INSTANTIATE_TEST_SUITE_P(
         VariableStorageData{"uniform", ast::StorageClass::kUniform, ast::Access::kUndefined},
         VariableStorageData{"workgroup", ast::StorageClass::kWorkgroup, ast::Access::kUndefined},
         VariableStorageData{"storage", ast::StorageClass::kStorage, ast::Access::kUndefined},
-        VariableStorageData{"storage_buffer", ast::StorageClass::kStorage, ast::Access::kUndefined},
         VariableStorageData{"private", ast::StorageClass::kPrivate, ast::Access::kUndefined},
         VariableStorageData{"function", ast::StorageClass::kFunction, ast::Access::kUndefined},
         VariableStorageData{"storage, read", ast::StorageClass::kStorage, ast::Access::kRead},
@@ -73,7 +72,7 @@ TEST_F(ParserImplTest, VariableQualifier_Empty) {
     EXPECT_TRUE(p->has_error());
     EXPECT_TRUE(sc.errored);
     EXPECT_FALSE(sc.matched);
-    EXPECT_EQ(p->error(), "1:2: invalid storage class for variable declaration");
+    EXPECT_EQ(p->error(), "1:2: expected identifier for storage class");
 }
 
 TEST_F(ParserImplTest, VariableQualifier_MissingLessThan) {
@@ -83,8 +82,8 @@ TEST_F(ParserImplTest, VariableQualifier_MissingLessThan) {
     EXPECT_FALSE(sc.errored);
     EXPECT_FALSE(sc.matched);
 
-    auto t = p->next();
-    ASSERT_TRUE(t.Is(Token::Type::kPrivate));
+    auto& t = p->next();
+    ASSERT_TRUE(t.Is(Token::Type::kIdentifier));
 }
 
 TEST_F(ParserImplTest, VariableQualifier_MissingLessThan_AfterSC) {
@@ -94,8 +93,8 @@ TEST_F(ParserImplTest, VariableQualifier_MissingLessThan_AfterSC) {
     EXPECT_FALSE(sc.errored);
     EXPECT_FALSE(sc.matched);
 
-    auto t = p->next();
-    ASSERT_TRUE(t.Is(Token::Type::kPrivate));
+    auto& t = p->next();
+    ASSERT_TRUE(t.Is(Token::Type::kIdentifier));
 }
 
 TEST_F(ParserImplTest, VariableQualifier_MissingGreaterThan) {

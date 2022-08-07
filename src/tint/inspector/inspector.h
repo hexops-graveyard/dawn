@@ -23,6 +23,8 @@
 #include <utility>
 #include <vector>
 
+#include "tint/override_id.h"
+
 #include "src/tint/inspector/entry_point.h"
 #include "src/tint/inspector/resource_binding.h"
 #include "src/tint/inspector/scalar.h"
@@ -53,11 +55,11 @@ class Inspector {
     /// @returns vector of entry point information
     std::vector<EntryPoint> GetEntryPoints();
 
-    /// @returns map of const_id to initial value
-    std::map<uint32_t, Scalar> GetConstantIDs();
+    /// @returns map of override identifier to initial value
+    std::map<OverrideId, Scalar> GetOverrideDefaultValues();
 
     /// @returns map of module-constant name to pipeline constant ID
-    std::map<std::string, uint32_t> GetConstantNameToIdMap();
+    std::map<std::string, OverrideId> GetNamedOverrideIds();
 
     /// @param entry_point name of the entry point to get information about.
     /// @returns the total size of shared storage required by an entry point,
@@ -168,15 +170,15 @@ class Inspector {
     /// @param variables the list to add the variables to
     void AddEntryPointInOutVariables(std::string name,
                                      const sem::Type* type,
-                                     const ast::AttributeList& attributes,
+                                     utils::VectorRef<const ast::Attribute*> attributes,
                                      std::vector<StageVariable>& variables) const;
 
     /// Recursively determine if the type contains builtin.
     /// If `type` is a struct, recurse into members to check for the attribute.
     /// Otherwise, check `attributes` for the attribute.
-    bool ContainsBuiltin(ast::Builtin builtin,
+    bool ContainsBuiltin(ast::BuiltinValue builtin,
                          const sem::Type* type,
-                         const ast::AttributeList& attributes) const;
+                         utils::VectorRef<const ast::Attribute*> attributes) const;
 
     /// Gathers all the texture resource bindings of the given type for the given
     /// entry point.

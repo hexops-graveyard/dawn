@@ -91,6 +91,19 @@ TEST_F(WgslGeneratorImplTest, EmitType_F32) {
     EXPECT_EQ(out.str(), "f32");
 }
 
+TEST_F(WgslGeneratorImplTest, EmitType_F16) {
+    Enable(ast::Extension::kF16);
+
+    auto* f16 = ty.f16();
+    Alias("make_type_reachable", f16);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitType(out, f16)) << gen.error();
+    EXPECT_EQ(out.str(), "f16");
+}
+
 TEST_F(WgslGeneratorImplTest, EmitType_I32) {
     auto* i32 = ty.i32();
     Alias("make_type_reachable", i32);
@@ -102,7 +115,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_I32) {
     EXPECT_EQ(out.str(), "i32");
 }
 
-TEST_F(WgslGeneratorImplTest, EmitType_Matrix) {
+TEST_F(WgslGeneratorImplTest, EmitType_Matrix_F32) {
     auto* mat2x3 = ty.mat2x3<f32>();
     Alias("make_type_reachable", mat2x3);
 
@@ -111,6 +124,19 @@ TEST_F(WgslGeneratorImplTest, EmitType_Matrix) {
     std::stringstream out;
     ASSERT_TRUE(gen.EmitType(out, mat2x3)) << gen.error();
     EXPECT_EQ(out.str(), "mat2x3<f32>");
+}
+
+TEST_F(WgslGeneratorImplTest, EmitType_Matrix_F16) {
+    Enable(ast::Extension::kF16);
+
+    auto* mat2x3 = ty.mat2x3<f16>();
+    Alias("make_type_reachable", mat2x3);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitType(out, mat2x3)) << gen.error();
+    EXPECT_EQ(out.str(), "mat2x3<f16>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Pointer) {
@@ -136,7 +162,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_PointerAccessMode) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Struct) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
@@ -151,9 +177,9 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl) {
-    auto* s = Structure("S", {
-                                 Member("a", ty.i32(), {MemberOffset(8)}),
-                                 Member("b", ty.f32(), {MemberOffset(16)}),
+    auto* s = Structure("S", utils::Vector{
+                                 Member("a", ty.i32(), utils::Vector{MemberOffset(8)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberOffset(16)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -171,10 +197,11 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
-    auto* s = Structure("S", {
-                                 Member("tint_0_padding", ty.i32(), {MemberOffset(8)}),
-                                 Member("tint_2_padding", ty.f32(), {MemberOffset(16)}),
-                             });
+    auto* s =
+        Structure("S", utils::Vector{
+                           Member("tint_0_padding", ty.i32(), utils::Vector{MemberOffset(8)}),
+                           Member("tint_2_padding", ty.f32(), utils::Vector{MemberOffset(16)}),
+                       });
 
     GeneratorImpl& gen = Build();
 
@@ -191,9 +218,9 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructAlignDecl) {
-    auto* s = Structure("S", {
-                                 Member("a", ty.i32(), {MemberAlign(8)}),
-                                 Member("b", ty.f32(), {MemberAlign(16)}),
+    auto* s = Structure("S", utils::Vector{
+                                 Member("a", ty.i32(), utils::Vector{MemberAlign(8)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberAlign(16)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -209,9 +236,9 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructAlignDecl) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructSizeDecl) {
-    auto* s = Structure("S", {
-                                 Member("a", ty.i32(), {MemberSize(16)}),
-                                 Member("b", ty.f32(), {MemberSize(32)}),
+    auto* s = Structure("S", utils::Vector{
+                                 Member("a", ty.i32(), utils::Vector{MemberSize(16)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberSize(32)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -227,9 +254,9 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructSizeDecl) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithAttribute) {
-    auto* s = Structure("S", {
+    auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
-                                 Member("b", ty.f32(), {MemberAlign(8)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberAlign(8)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -245,8 +272,10 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithAttribute) {
 
 TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithEntryPointAttributes) {
     auto* s = Structure(
-        "S", ast::StructMemberList{Member("a", ty.u32(), {Builtin(ast::Builtin::kVertexIndex)}),
-                                   Member("b", ty.f32(), {Location(2u)})});
+        "S", utils::Vector{
+                 Member("a", ty.u32(), utils::Vector{Builtin(ast::BuiltinValue::kVertexIndex)}),
+                 Member("b", ty.f32(), utils::Vector{Location(2u)}),
+             });
 
     GeneratorImpl& gen = Build();
 
@@ -271,7 +300,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_U32) {
     EXPECT_EQ(out.str(), "u32");
 }
 
-TEST_F(WgslGeneratorImplTest, EmitType_Vector) {
+TEST_F(WgslGeneratorImplTest, EmitType_Vector_F32) {
     auto* vec3 = ty.vec3<f32>();
     Alias("make_type_reachable", vec3);
 
@@ -280,6 +309,19 @@ TEST_F(WgslGeneratorImplTest, EmitType_Vector) {
     std::stringstream out;
     ASSERT_TRUE(gen.EmitType(out, vec3)) << gen.error();
     EXPECT_EQ(out.str(), "vec3<f32>");
+}
+
+TEST_F(WgslGeneratorImplTest, EmitType_Vector_F16) {
+    Enable(ast::Extension::kF16);
+
+    auto* vec3 = ty.vec3<f16>();
+    Alias("make_type_reachable", vec3);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitType(out, vec3)) << gen.error();
+    EXPECT_EQ(out.str(), "vec3<f16>");
 }
 
 struct TextureData {
@@ -421,7 +463,7 @@ TEST_P(WgslGenerator_StorageTextureTest, EmitType_StorageTexture) {
 
     auto* t = ty.storage_texture(param.dim, param.fmt, param.access);
     GlobalVar("g", t,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(1u),
                   create<ast::GroupAttribute>(2u),
               });

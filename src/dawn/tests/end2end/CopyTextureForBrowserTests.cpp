@@ -181,25 +181,22 @@ class CopyTextureForBrowserTests : public Parent {
                     // Source textures will have variable pixel data to cover cases like
                     // flipY.
                     if (textureRole == TextureCopyRole::SOURCE) {
-                        if (srcAlphaMode != dstAlphaMode) {
-                            if (dstAlphaMode == wgpu::AlphaMode::Premultiplied) {
-                                // For premultiply alpha test cases, we expect each channel in dst
-                                // texture will equal to the alpha channel value.
-                                ASSERT(srcAlphaMode == wgpu::AlphaMode::Unpremultiplied);
-                                textureData[sliceOffset + rowOffset + x] = RGBA8(
-                                    static_cast<uint8_t>(255), static_cast<uint8_t>(255),
-                                    static_cast<uint8_t>(255), static_cast<uint8_t>(alpha[x % 4]));
-                            } else {
-                                // For unpremultiply alpha test cases, we expect each channel in dst
-                                // texture will equal to 1.0.
-                                ASSERT(srcAlphaMode == wgpu::AlphaMode::Premultiplied);
-                                textureData[sliceOffset + rowOffset + x] =
-                                    RGBA8(static_cast<uint8_t>(alpha[x % 4]),
-                                          static_cast<uint8_t>(alpha[x % 4]),
-                                          static_cast<uint8_t>(alpha[x % 4]),
-                                          static_cast<uint8_t>(alpha[x % 4]));
-                            }
-
+                        if (srcAlphaMode == wgpu::AlphaMode::Unpremultiplied &&
+                            dstAlphaMode == wgpu::AlphaMode::Premultiplied) {
+                            // We expect each channel in dst
+                            // texture will equal to the alpha channel value.
+                            textureData[sliceOffset + rowOffset + x] = RGBA8(
+                                static_cast<uint8_t>(255), static_cast<uint8_t>(255),
+                                static_cast<uint8_t>(255), static_cast<uint8_t>(alpha[x % 4]));
+                        } else if (srcAlphaMode == wgpu::AlphaMode::Premultiplied &&
+                                   dstAlphaMode == wgpu::AlphaMode::Unpremultiplied) {
+                            // We expect each channel in dst
+                            // texture will equal to 1.0.
+                            textureData[sliceOffset + rowOffset + x] =
+                                RGBA8(static_cast<uint8_t>(alpha[x % 4]),
+                                      static_cast<uint8_t>(alpha[x % 4]),
+                                      static_cast<uint8_t>(alpha[x % 4]),
+                                      static_cast<uint8_t>(alpha[x % 4]));
                         } else {
                             textureData[sliceOffset + rowOffset + x] =
                                 RGBA8(static_cast<uint8_t>((x + layer * x) % 256),
@@ -300,17 +297,18 @@ class CopyTextureForBrowserTests : public Parent {
                     // after premultiply.
                     let premultiplied = 0u;
                     let unpremultiplied = 1u;
-                    if (uniforms.srcAlphaMode != uniforms.dstAlphaMode) {
-                        if (uniforms.dstAlphaMode == premultiplied) {
-                            // srcAlphaMode == unpremultiplied
-                            srcColor = vec4<f32>(srcColor.rgb * srcColor.a, srcColor.a);
-                        }
+                    let opaque = 2u;
+                    if (uniforms.srcAlphaMode == opaque) {
+                        srcColor.a = 1.0;
+                    }
 
-                        if (uniforms.dstAlphaMode == unpremultiplied) {
-                            // srcAlphaMode == premultiplied
-                            if (srcColor.a != 0.0) {
-                                srcColor = vec4<f32>(srcColor.rgb / srcColor.a, srcColor.a);
-                            }
+                    if (uniforms.srcAlphaMode == unpremultiplied && uniforms.dstAlphaMode == premultiplied) {
+                        srcColor = vec4<f32>(srcColor.rgb * srcColor.a, srcColor.a);
+                    }
+
+                    if (uniforms.srcAlphaMode == premultiplied && uniforms.dstAlphaMode == unpremultiplied) {
+                        if (srcColor.a != 0.0) {
+                            srcColor = vec4<f32>(srcColor.rgb / srcColor.a, srcColor.a);
                         }
                     }
 
@@ -583,20 +581,14 @@ class CopyTextureForBrowser_Formats
         }
     }
 
-    void DoColorConversionTest() {
-        TextureSpec srcTextureSpec;
-        srcTextureSpec.format = GetParam().mSrcFormat;
-
-        TextureSpec dstTextureSpec;
-        dstTextureSpec.format = GetParam().mDstFormat;
-
-        wgpu::Extent3D copySize = {kDefaultTextureWidth, kDefaultTextureHeight};
-        wgpu::CopyTextureForBrowserOptions options = {};
-
+    wgpu::Texture CreateAndInitSourceTextureForColorFormatConversion(
+        const TextureSpec& srcSpec,
+        wgpu::TextureUsage srcUsage,
+        utils::TextureDataCopyLayout srcCopyLayout) {
         // Create and init source texture.
         // This fixed source texture data is for color conversion tests.
         // The source data can fill a texture in default width and height.
-        std::vector<RGBA8> srcTextureArrayCopyData{
+        std::vector<RGBA8> srcRGBA8UnormTextureArrayCopyData{
             // Take RGBA8Unorm as example:
             // R channel has different values
             RGBA8(0, 255, 255, 255),    // r = 0.0
@@ -617,18 +609,87 @@ class CopyTextureForBrowser_Formats
             RGBA8(255, 255, 255, 0)  // a = 0
         };
 
+        std::vector<uint16_t> srcRGBA16FloatTextureArrayCopyData{
+            // R channel has different values
+            // r = 0.0
+            Float32ToFloat16(0.0), Float32ToFloat16(1.0), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // r = 0.4
+            Float32ToFloat16(0.4), Float32ToFloat16(1.0), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // r = 0.6
+            Float32ToFloat16(0.6), Float32ToFloat16(1.0), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // G channel has different values
+            // g = 0.0
+            Float32ToFloat16(1.0), Float32ToFloat16(0.0), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // g = 0.4
+            Float32ToFloat16(1.0), Float32ToFloat16(0.4), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // g = 0.6
+            Float32ToFloat16(1.0), Float32ToFloat16(0.6), Float32ToFloat16(1.0),
+            Float32ToFloat16(1.0),
+
+            // B channel has different values
+            // b = 0.0
+            Float32ToFloat16(1.0), Float32ToFloat16(1.0), Float32ToFloat16(0.0),
+            Float32ToFloat16(1.0),
+
+            // b = 0.4
+            Float32ToFloat16(1.0), Float32ToFloat16(1.0), Float32ToFloat16(0.4),
+            Float32ToFloat16(1.0),
+
+            // b = 0.6
+            Float32ToFloat16(1.0), Float32ToFloat16(1.0), Float32ToFloat16(0.6),
+            Float32ToFloat16(1.0),
+
+            // A channel set to 0
+            // a = 0
+            Float32ToFloat16(1.0), Float32ToFloat16(1.0), Float32ToFloat16(1.0),
+            Float32ToFloat16(0.0)};
+
+        switch (srcSpec.format) {
+            case wgpu::TextureFormat::RGBA8Unorm:
+            case wgpu::TextureFormat::BGRA8Unorm:
+                return CreateAndInitTexture(
+                    srcSpec, srcUsage, srcCopyLayout, srcRGBA8UnormTextureArrayCopyData.data(),
+                    srcRGBA8UnormTextureArrayCopyData.size() * sizeof(RGBA8));
+            case wgpu::TextureFormat::RGBA16Float:
+                return CreateAndInitTexture(
+                    srcSpec, srcUsage, srcCopyLayout, srcRGBA16FloatTextureArrayCopyData.data(),
+                    srcRGBA16FloatTextureArrayCopyData.size() * sizeof(uint16_t));
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    void DoColorConversionTest() {
+        TextureSpec srcTextureSpec;
+        srcTextureSpec.format = GetParam().mSrcFormat;
+
+        TextureSpec dstTextureSpec;
+        dstTextureSpec.format = GetParam().mDstFormat;
+
+        wgpu::Extent3D copySize = {kDefaultTextureWidth, kDefaultTextureHeight};
+        wgpu::CopyTextureForBrowserOptions options = {};
+
         const utils::TextureDataCopyLayout srcCopyLayout =
             utils::GetTextureDataCopyLayoutForTextureAtLevel(
-                kTextureFormat,
+                srcTextureSpec.format,
                 {srcTextureSpec.textureSize.width, srcTextureSpec.textureSize.height,
                  copySize.depthOrArrayLayers},
                 srcTextureSpec.level);
 
         wgpu::TextureUsage srcUsage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst |
                                       wgpu::TextureUsage::TextureBinding;
-        wgpu::Texture srcTexture = CreateAndInitTexture(
-            srcTextureSpec, srcUsage, srcCopyLayout, srcTextureArrayCopyData.data(),
-            srcTextureArrayCopyData.size() * sizeof(RGBA8));
+        wgpu::Texture srcTexture = CreateAndInitSourceTextureForColorFormatConversion(
+            srcTextureSpec, srcUsage, srcCopyLayout);
 
         // Create dst texture.
         wgpu::Texture dstTexture = CreateTexture(
@@ -1084,7 +1145,8 @@ DAWN_INSTANTIATE_TEST_P(
     CopyTextureForBrowser_Formats,
     {D3D12Backend(), MetalBackend(), OpenGLBackend(), OpenGLESBackend(), VulkanBackend()},
     std::vector<wgpu::TextureFormat>({wgpu::TextureFormat::RGBA8Unorm,
-                                      wgpu::TextureFormat::BGRA8Unorm}),
+                                      wgpu::TextureFormat::BGRA8Unorm,
+                                      wgpu::TextureFormat::RGBA16Float}),
     std::vector<wgpu::TextureFormat>(
         {wgpu::TextureFormat::R8Unorm, wgpu::TextureFormat::R16Float, wgpu::TextureFormat::R32Float,
          wgpu::TextureFormat::RG8Unorm, wgpu::TextureFormat::RG16Float,
@@ -1134,13 +1196,13 @@ TEST_P(CopyTextureForBrowser_AlphaMode, alphaMode) {
     DoAlphaModeTest();
 }
 
-DAWN_INSTANTIATE_TEST_P(CopyTextureForBrowser_AlphaMode,
-                        {D3D12Backend(), MetalBackend(), OpenGLBackend(), OpenGLESBackend(),
-                         VulkanBackend()},
-                        std::vector<wgpu::AlphaMode>({wgpu::AlphaMode::Premultiplied,
-                                                      wgpu::AlphaMode::Unpremultiplied}),
-                        std::vector<wgpu::AlphaMode>({wgpu::AlphaMode::Premultiplied,
-                                                      wgpu::AlphaMode::Unpremultiplied}));
+DAWN_INSTANTIATE_TEST_P(
+    CopyTextureForBrowser_AlphaMode,
+    {D3D12Backend(), MetalBackend(), OpenGLBackend(), OpenGLESBackend(), VulkanBackend()},
+    std::vector<wgpu::AlphaMode>({wgpu::AlphaMode::Premultiplied, wgpu::AlphaMode::Unpremultiplied,
+                                  wgpu::AlphaMode::Opaque}),
+    std::vector<wgpu::AlphaMode>({wgpu::AlphaMode::Premultiplied, wgpu::AlphaMode::Unpremultiplied,
+                                  wgpu::AlphaMode::Opaque}));
 
 // Verify |CopyTextureForBrowser| doing color space conversion.
 TEST_P(CopyTextureForBrowser_ColorSpace, colorSpaceConversion) {

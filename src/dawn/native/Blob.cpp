@@ -17,6 +17,7 @@
 #include "dawn/common/Assert.h"
 #include "dawn/common/Math.h"
 #include "dawn/native/Blob.h"
+#include "dawn/native/stream/Stream.h"
 
 namespace dawn::native {
 
@@ -53,6 +54,7 @@ Blob::Blob(uint8_t* data, size_t size, std::function<void()> deleter)
 
 Blob::Blob(Blob&& rhs) : mData(rhs.mData), mSize(rhs.mSize) {
     mDeleter = std::move(rhs.mDeleter);
+    rhs.mDeleter = nullptr;
 }
 
 Blob& Blob::operator=(Blob&& rhs) {
@@ -62,6 +64,7 @@ Blob& Blob::operator=(Blob&& rhs) {
         mDeleter();
     }
     mDeleter = std::move(rhs.mDeleter);
+    rhs.mDeleter = nullptr;
     return *this;
 }
 
@@ -95,6 +98,31 @@ void Blob::AlignTo(size_t alignment) {
     Blob blob = CreateBlob(mSize, alignment);
     memcpy(blob.Data(), mData, mSize);
     *this = std::move(blob);
+}
+
+template <>
+void stream::Stream<Blob>::Write(stream::Sink* s, const Blob& b) {
+    size_t size = b.Size();
+    StreamIn(s, size);
+    if (size > 0) {
+        void* ptr = s->GetSpace(size);
+        memcpy(ptr, b.Data(), size);
+    }
+}
+
+template <>
+MaybeError stream::Stream<Blob>::Read(stream::Source* s, Blob* b) {
+    size_t size;
+    DAWN_TRY(StreamOut(s, &size));
+    if (size > 0) {
+        const void* ptr;
+        DAWN_TRY(s->Read(&ptr, size));
+        *b = CreateBlob(size);
+        memcpy(b->Data(), ptr, size);
+    } else {
+        *b = Blob();
+    }
+    return {};
 }
 
 }  // namespace dawn::native

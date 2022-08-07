@@ -37,97 +37,15 @@ namespace dawn::native {
 
 namespace {
 
-tint::transform::VertexFormat ToTintVertexFormat(wgpu::VertexFormat format) {
-    switch (format) {
-        case wgpu::VertexFormat::Uint8x2:
-            return tint::transform::VertexFormat::kUint8x2;
-        case wgpu::VertexFormat::Uint8x4:
-            return tint::transform::VertexFormat::kUint8x4;
-        case wgpu::VertexFormat::Sint8x2:
-            return tint::transform::VertexFormat::kSint8x2;
-        case wgpu::VertexFormat::Sint8x4:
-            return tint::transform::VertexFormat::kSint8x4;
-        case wgpu::VertexFormat::Unorm8x2:
-            return tint::transform::VertexFormat::kUnorm8x2;
-        case wgpu::VertexFormat::Unorm8x4:
-            return tint::transform::VertexFormat::kUnorm8x4;
-        case wgpu::VertexFormat::Snorm8x2:
-            return tint::transform::VertexFormat::kSnorm8x2;
-        case wgpu::VertexFormat::Snorm8x4:
-            return tint::transform::VertexFormat::kSnorm8x4;
-        case wgpu::VertexFormat::Uint16x2:
-            return tint::transform::VertexFormat::kUint16x2;
-        case wgpu::VertexFormat::Uint16x4:
-            return tint::transform::VertexFormat::kUint16x4;
-        case wgpu::VertexFormat::Sint16x2:
-            return tint::transform::VertexFormat::kSint16x2;
-        case wgpu::VertexFormat::Sint16x4:
-            return tint::transform::VertexFormat::kSint16x4;
-        case wgpu::VertexFormat::Unorm16x2:
-            return tint::transform::VertexFormat::kUnorm16x2;
-        case wgpu::VertexFormat::Unorm16x4:
-            return tint::transform::VertexFormat::kUnorm16x4;
-        case wgpu::VertexFormat::Snorm16x2:
-            return tint::transform::VertexFormat::kSnorm16x2;
-        case wgpu::VertexFormat::Snorm16x4:
-            return tint::transform::VertexFormat::kSnorm16x4;
-        case wgpu::VertexFormat::Float16x2:
-            return tint::transform::VertexFormat::kFloat16x2;
-        case wgpu::VertexFormat::Float16x4:
-            return tint::transform::VertexFormat::kFloat16x4;
-        case wgpu::VertexFormat::Float32:
-            return tint::transform::VertexFormat::kFloat32;
-        case wgpu::VertexFormat::Float32x2:
-            return tint::transform::VertexFormat::kFloat32x2;
-        case wgpu::VertexFormat::Float32x3:
-            return tint::transform::VertexFormat::kFloat32x3;
-        case wgpu::VertexFormat::Float32x4:
-            return tint::transform::VertexFormat::kFloat32x4;
-        case wgpu::VertexFormat::Uint32:
-            return tint::transform::VertexFormat::kUint32;
-        case wgpu::VertexFormat::Uint32x2:
-            return tint::transform::VertexFormat::kUint32x2;
-        case wgpu::VertexFormat::Uint32x3:
-            return tint::transform::VertexFormat::kUint32x3;
-        case wgpu::VertexFormat::Uint32x4:
-            return tint::transform::VertexFormat::kUint32x4;
-        case wgpu::VertexFormat::Sint32:
-            return tint::transform::VertexFormat::kSint32;
-        case wgpu::VertexFormat::Sint32x2:
-            return tint::transform::VertexFormat::kSint32x2;
-        case wgpu::VertexFormat::Sint32x3:
-            return tint::transform::VertexFormat::kSint32x3;
-        case wgpu::VertexFormat::Sint32x4:
-            return tint::transform::VertexFormat::kSint32x4;
-
-        case wgpu::VertexFormat::Undefined:
-            break;
-    }
-    UNREACHABLE();
-}
-
-tint::transform::VertexStepMode ToTintVertexStepMode(wgpu::VertexStepMode mode) {
-    switch (mode) {
-        case wgpu::VertexStepMode::Vertex:
-            return tint::transform::VertexStepMode::kVertex;
-        case wgpu::VertexStepMode::Instance:
-            return tint::transform::VertexStepMode::kInstance;
-        case wgpu::VertexStepMode::VertexBufferNotUsed:
-            break;
-    }
-    UNREACHABLE();
-}
-
-ResultOrError<SingleShaderStage> TintPipelineStageToShaderStage(tint::ast::PipelineStage stage) {
+ResultOrError<SingleShaderStage> TintPipelineStageToShaderStage(
+    tint::inspector::PipelineStage stage) {
     switch (stage) {
-        case tint::ast::PipelineStage::kVertex:
+        case tint::inspector::PipelineStage::kVertex:
             return SingleShaderStage::Vertex;
-        case tint::ast::PipelineStage::kFragment:
+        case tint::inspector::PipelineStage::kFragment:
             return SingleShaderStage::Fragment;
-        case tint::ast::PipelineStage::kCompute:
+        case tint::inspector::PipelineStage::kCompute:
             return SingleShaderStage::Compute;
-        case tint::ast::PipelineStage::kNone:
-            break;
     }
     UNREACHABLE();
 }
@@ -359,17 +277,16 @@ ResultOrError<InterpolationSampling> TintInterpolationSamplingToInterpolationSam
     UNREACHABLE();
 }
 
-EntryPointMetadata::OverridableConstant::Type FromTintOverridableConstantType(
-    tint::inspector::OverridableConstant::Type type) {
+EntryPointMetadata::Override::Type FromTintOverrideType(tint::inspector::Override::Type type) {
     switch (type) {
-        case tint::inspector::OverridableConstant::Type::kBool:
-            return EntryPointMetadata::OverridableConstant::Type::Boolean;
-        case tint::inspector::OverridableConstant::Type::kFloat32:
-            return EntryPointMetadata::OverridableConstant::Type::Float32;
-        case tint::inspector::OverridableConstant::Type::kInt32:
-            return EntryPointMetadata::OverridableConstant::Type::Int32;
-        case tint::inspector::OverridableConstant::Type::kUint32:
-            return EntryPointMetadata::OverridableConstant::Type::Uint32;
+        case tint::inspector::Override::Type::kBool:
+            return EntryPointMetadata::Override::Type::Boolean;
+        case tint::inspector::Override::Type::kFloat32:
+            return EntryPointMetadata::Override::Type::Float32;
+        case tint::inspector::Override::Type::kInt32:
+            return EntryPointMetadata::Override::Type::Int32;
+        case tint::inspector::Override::Type::kUint32:
+            return EntryPointMetadata::Override::Type::Uint32;
     }
     UNREACHABLE();
 }
@@ -611,17 +528,17 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
         return invalid;                                                             \
     })()
 
-    if (!entryPoint.overridable_constants.empty()) {
+    if (!entryPoint.overrides.empty()) {
         DAWN_INVALID_IF(device->IsToggleEnabled(Toggle::DisallowUnsafeAPIs),
                         "Pipeline overridable constants are disallowed because they "
                         "are partially implemented.");
 
-        const auto& name2Id = inspector->GetConstantNameToIdMap();
-        const auto& id2Scalar = inspector->GetConstantIDs();
+        const auto& name2Id = inspector->GetNamedOverrideIds();
+        const auto& id2Scalar = inspector->GetOverrideDefaultValues();
 
-        for (auto& c : entryPoint.overridable_constants) {
-            uint32_t id = name2Id.at(c.name);
-            OverridableConstantScalar defaultValue;
+        for (auto& c : entryPoint.overrides) {
+            auto id = name2Id.at(c.name);
+            OverrideScalar defaultValue;
             if (c.is_initialized) {
                 // if it is initialized, the scalar must exist
                 const auto& scalar = id2Scalar.at(id);
@@ -637,21 +554,19 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
                     UNREACHABLE();
                 }
             }
-            EntryPointMetadata::OverridableConstant constant = {
-                id, FromTintOverridableConstantType(c.type), c.is_initialized, defaultValue};
+            EntryPointMetadata::Override override = {id.value, FromTintOverrideType(c.type),
+                                                     c.is_initialized, defaultValue};
 
-            std::string identifier =
-                c.is_numeric_id_specified ? std::to_string(constant.id) : c.name;
-            metadata->overridableConstants[identifier] = constant;
+            std::string identifier = c.is_id_specified ? std::to_string(override.id) : c.name;
+            metadata->overrides[identifier] = override;
 
             if (!c.is_initialized) {
                 auto [_, inserted] =
-                    metadata->uninitializedOverridableConstants.emplace(std::move(identifier));
+                    metadata->uninitializedOverrides.emplace(std::move(identifier));
                 // The insertion should have taken place
                 ASSERT(inserted);
             } else {
-                auto [_, inserted] =
-                    metadata->initializedOverridableConstants.emplace(std::move(identifier));
+                auto [_, inserted] = metadata->initializedOverrides.emplace(std::move(identifier));
                 // The insertion should have taken place
                 ASSERT(inserted);
             }
@@ -661,19 +576,24 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
     DAWN_TRY_ASSIGN(metadata->stage, TintPipelineStageToShaderStage(entryPoint.stage));
 
     if (metadata->stage == SingleShaderStage::Compute) {
-        DelayedInvalidIf(entryPoint.workgroup_size_x > limits.v1.maxComputeWorkgroupSizeX ||
-                             entryPoint.workgroup_size_y > limits.v1.maxComputeWorkgroupSizeY ||
-                             entryPoint.workgroup_size_z > limits.v1.maxComputeWorkgroupSizeZ,
+        auto workgroup_size = entryPoint.workgroup_size;
+        DAWN_INVALID_IF(
+            !workgroup_size.has_value(),
+            "TODO(crbug.com/dawn/1504): Dawn does not currently support @workgroup_size "
+            "attributes using override-expressions");
+        DelayedInvalidIf(workgroup_size->x > limits.v1.maxComputeWorkgroupSizeX ||
+                             workgroup_size->y > limits.v1.maxComputeWorkgroupSizeY ||
+                             workgroup_size->z > limits.v1.maxComputeWorkgroupSizeZ,
                          "Entry-point uses workgroup_size(%u, %u, %u) that exceeds the "
                          "maximum allowed (%u, %u, %u).",
-                         entryPoint.workgroup_size_x, entryPoint.workgroup_size_y,
-                         entryPoint.workgroup_size_z, limits.v1.maxComputeWorkgroupSizeX,
-                         limits.v1.maxComputeWorkgroupSizeY, limits.v1.maxComputeWorkgroupSizeZ);
+                         workgroup_size->x, workgroup_size->y, workgroup_size->z,
+                         limits.v1.maxComputeWorkgroupSizeX, limits.v1.maxComputeWorkgroupSizeY,
+                         limits.v1.maxComputeWorkgroupSizeZ);
 
         // Dimensions have already been validated against their individual limits above.
         // Cast to uint64_t to avoid overflow in this multiplication.
-        uint64_t numInvocations = static_cast<uint64_t>(entryPoint.workgroup_size_x) *
-                                  entryPoint.workgroup_size_y * entryPoint.workgroup_size_z;
+        uint64_t numInvocations =
+            static_cast<uint64_t>(workgroup_size->x) * workgroup_size->y * workgroup_size->z;
         DelayedInvalidIf(numInvocations > limits.v1.maxComputeInvocationsPerWorkgroup,
                          "The total number of workgroup invocations (%u) exceeds the "
                          "maximum allowed (%u).",
@@ -685,9 +605,9 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
                          "the maximum allowed (%u bytes).",
                          workgroupStorageSize, limits.v1.maxComputeWorkgroupStorageSize);
 
-        metadata->localWorkgroupSize.x = entryPoint.workgroup_size_x;
-        metadata->localWorkgroupSize.y = entryPoint.workgroup_size_y;
-        metadata->localWorkgroupSize.z = entryPoint.workgroup_size_z;
+        metadata->localWorkgroupSize.x = workgroup_size->x;
+        metadata->localWorkgroupSize.y = workgroup_size->y;
+        metadata->localWorkgroupSize.z = workgroup_size->z;
 
         metadata->usesNumWorkgroups = entryPoint.num_workgroups_used;
     }
@@ -1087,39 +1007,6 @@ ResultOrError<tint::Program> RunTransforms(tint::transform::Transform* transform
     return std::move(output.program);
 }
 
-void AddVertexPullingTransformConfig(const RenderPipelineBase& renderPipeline,
-                                     const std::string& entryPoint,
-                                     BindGroupIndex pullingBufferBindingSet,
-                                     tint::transform::DataMap* transformInputs) {
-    tint::transform::VertexPulling::Config cfg;
-    cfg.entry_point_name = entryPoint;
-    cfg.pulling_group = static_cast<uint32_t>(pullingBufferBindingSet);
-
-    cfg.vertex_state.resize(renderPipeline.GetVertexBufferCount());
-    for (VertexBufferSlot slot : IterateBitSet(renderPipeline.GetVertexBufferSlotsUsed())) {
-        const VertexBufferInfo& dawnInfo = renderPipeline.GetVertexBuffer(slot);
-        tint::transform::VertexBufferLayoutDescriptor* tintInfo =
-            &cfg.vertex_state[static_cast<uint8_t>(slot)];
-
-        tintInfo->array_stride = dawnInfo.arrayStride;
-        tintInfo->step_mode = ToTintVertexStepMode(dawnInfo.stepMode);
-    }
-
-    for (VertexAttributeLocation location :
-         IterateBitSet(renderPipeline.GetAttributeLocationsUsed())) {
-        const VertexAttributeInfo& dawnInfo = renderPipeline.GetAttribute(location);
-        tint::transform::VertexAttributeDescriptor tintInfo;
-        tintInfo.format = ToTintVertexFormat(dawnInfo.format);
-        tintInfo.offset = dawnInfo.offset;
-        tintInfo.shader_location = static_cast<uint32_t>(static_cast<uint8_t>(location));
-
-        uint8_t vertexBufferSlot = static_cast<uint8_t>(dawnInfo.vertexBufferSlot);
-        cfg.vertex_state[vertexBufferSlot].attributes.push_back(tintInfo);
-    }
-
-    transformInputs->Add<tint::transform::VertexPulling::Config>(cfg);
-}
-
 MaybeError ValidateCompatibilityWithPipelineLayout(DeviceBase* device,
                                                    const EntryPointMetadata& entryPoint,
                                                    const PipelineLayoutBase* layout) {
@@ -1303,29 +1190,6 @@ void ShaderModuleBase::InjectCompilationMessages(
 
 OwnedCompilationMessages* ShaderModuleBase::GetCompilationMessages() const {
     return mCompilationMessages.get();
-}
-
-// static
-void ShaderModuleBase::AddExternalTextureTransform(const PipelineLayoutBase* layout,
-                                                   tint::transform::Manager* transformManager,
-                                                   tint::transform::DataMap* transformInputs) {
-    tint::transform::MultiplanarExternalTexture::BindingsMap newBindingsMap;
-    for (BindGroupIndex i : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
-        const BindGroupLayoutBase* bgl = layout->GetBindGroupLayout(i);
-
-        for (const auto& expansion : bgl->GetExternalTextureBindingExpansionMap()) {
-            newBindingsMap[{static_cast<uint32_t>(i),
-                            static_cast<uint32_t>(expansion.second.plane0)}] = {
-                {static_cast<uint32_t>(i), static_cast<uint32_t>(expansion.second.plane1)},
-                {static_cast<uint32_t>(i), static_cast<uint32_t>(expansion.second.params)}};
-        }
-    }
-
-    if (!newBindingsMap.empty()) {
-        transformManager->Add<tint::transform::MultiplanarExternalTexture>();
-        transformInputs->Add<tint::transform::MultiplanarExternalTexture::NewBindingPoints>(
-            newBindingsMap);
-    }
 }
 
 MaybeError ShaderModuleBase::InitializeBase(ShaderModuleParseResult* parseResult,

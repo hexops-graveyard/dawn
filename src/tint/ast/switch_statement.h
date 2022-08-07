@@ -25,13 +25,15 @@ class SwitchStatement final : public Castable<SwitchStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param condition the switch condition
     /// @param body the switch body
     SwitchStatement(ProgramID pid,
+                    NodeID nid,
                     const Source& src,
                     const Expression* condition,
-                    CaseStatementList body);
+                    utils::VectorRef<const CaseStatement*> body);
     /// Move constructor
     SwitchStatement(SwitchStatement&&);
     ~SwitchStatement() override;
@@ -49,7 +51,7 @@ class SwitchStatement final : public Castable<SwitchStatement, Statement> {
     const Expression* const condition;
 
     /// The Switch body
-    const CaseStatementList body;
+    const utils::Vector<const CaseStatement*, 4> body;
     SwitchStatement(const SwitchStatement&) = delete;
 };
 

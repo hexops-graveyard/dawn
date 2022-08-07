@@ -340,7 +340,7 @@ MaybeError ValidateTextureDescriptor(const DeviceBase* device,
 
     DAWN_INVALID_IF(
         internalUsageDesc != nullptr && !device->IsFeatureEnabled(Feature::DawnInternalUsages),
-        "The dawn-internal-usages feature is not enabled");
+        "The internalUsageDesc is not empty while the dawn-internal-usages feature is not enabled");
 
     const Format* format;
     DAWN_TRY_ASSIGN(format, device->GetInternalFormat(descriptor->format));
@@ -649,6 +649,10 @@ wgpu::TextureUsage TextureBase::GetUsage() const {
 wgpu::TextureUsage TextureBase::GetInternalUsage() const {
     ASSERT(!IsError());
     return mInternalUsage;
+}
+void TextureBase::AddInternalUsage(wgpu::TextureUsage usage) {
+    ASSERT(!IsError());
+    mInternalUsage |= usage;
 }
 
 TextureBase::TextureState TextureBase::GetTextureState() const {

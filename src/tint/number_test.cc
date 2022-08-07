@@ -26,38 +26,19 @@ using namespace tint::number_suffixes;  // NOLINT
 namespace tint {
 namespace {
 
-constexpr int64_t kHighestI32 = static_cast<int64_t>(std::numeric_limits<int32_t>::max());
-constexpr int64_t kHighestU32 = static_cast<int64_t>(std::numeric_limits<uint32_t>::max());
-constexpr int64_t kLowestI32 = static_cast<int64_t>(std::numeric_limits<int32_t>::min());
-constexpr int64_t kLowestU32 = static_cast<int64_t>(std::numeric_limits<uint32_t>::min());
-
-// Highest float32 value.
-constexpr double kHighestF32 = 0x1.fffffep+127;
-
 // Next ULP up from kHighestF32 for a float64.
 constexpr double kHighestF32NextULP = 0x1.fffffe0000001p+127;
-
-// Smallest positive normal float32 value.
-constexpr double kSmallestF32 = 0x1p-126;
 
 // Highest subnormal value for a float32.
 constexpr double kHighestF32Subnormal = 0x0.fffffep-126;
 
-// Highest float16 value.
-constexpr double kHighestF16 = 0x1.ffcp+15;
-
 // Next ULP up from kHighestF16 for a float64.
 constexpr double kHighestF16NextULP = 0x1.ffc0000000001p+15;
-
-// Smallest positive normal float16 value.
-constexpr double kSmallestF16 = 0x1p-14;
 
 // Highest subnormal value for a float16.
 constexpr double kHighestF16Subnormal = 0x0.ffcp-14;
 
-constexpr double kLowestF32 = -kHighestF32;
 constexpr double kLowestF32NextULP = -kHighestF32NextULP;
-constexpr double kLowestF16 = -kHighestF16;
 constexpr double kLowestF16NextULP = -kHighestF16NextULP;
 
 // MSVC (only in release builds) can grumble about some of the inlined numerical overflow /
@@ -155,38 +136,38 @@ TEST(NumberTest, CheckedConvertIdentity) {
 }
 
 TEST(NumberTest, CheckedConvertLargestValue) {
-    EXPECT_EQ(CheckedConvert<i32>(AInt(kHighestI32)), i32(kHighestI32));
-    EXPECT_EQ(CheckedConvert<u32>(AInt(kHighestU32)), u32(kHighestU32));
-    EXPECT_EQ(CheckedConvert<u32>(i32(kHighestI32)), u32(kHighestI32));
-    EXPECT_EQ(CheckedConvert<f32>(AFloat(kHighestF32)), f32(kHighestF32));
-    EXPECT_EQ(CheckedConvert<f16>(AFloat(kHighestF16)), f16(kHighestF16));
+    EXPECT_EQ(CheckedConvert<i32>(AInt(i32::Highest())), i32::Highest());
+    EXPECT_EQ(CheckedConvert<u32>(AInt(u32::Highest())), u32::Highest());
+    EXPECT_EQ(CheckedConvert<u32>(i32::Highest()), u32(i32::Highest()));
+    EXPECT_EQ(CheckedConvert<f32>(AFloat(f32::Highest())), f32::Highest());
+    EXPECT_EQ(CheckedConvert<f16>(AFloat(f16::Highest())), f16::Highest());
 }
 
 TEST(NumberTest, CheckedConvertLowestValue) {
-    EXPECT_EQ(CheckedConvert<i32>(AInt(kLowestI32)), i32(kLowestI32));
-    EXPECT_EQ(CheckedConvert<u32>(AInt(kLowestU32)), u32(kLowestU32));
-    EXPECT_EQ(CheckedConvert<f32>(AFloat(kLowestF32)), f32(kLowestF32));
-    EXPECT_EQ(CheckedConvert<f16>(AFloat(kLowestF16)), f16(kLowestF16));
+    EXPECT_EQ(CheckedConvert<i32>(AInt(i32::Lowest())), i32::Lowest());
+    EXPECT_EQ(CheckedConvert<u32>(AInt(u32::Lowest())), u32::Lowest());
+    EXPECT_EQ(CheckedConvert<f32>(AFloat(f32::Lowest())), f32::Lowest());
+    EXPECT_EQ(CheckedConvert<f16>(AFloat(f16::Lowest())), f16::Lowest());
 }
 
 TEST(NumberTest, CheckedConvertSmallestValue) {
     EXPECT_EQ(CheckedConvert<i32>(AInt(0)), i32(0));
     EXPECT_EQ(CheckedConvert<u32>(AInt(0)), u32(0));
-    EXPECT_EQ(CheckedConvert<f32>(AFloat(kSmallestF32)), f32(kSmallestF32));
-    EXPECT_EQ(CheckedConvert<f16>(AFloat(kSmallestF16)), f16(kSmallestF16));
+    EXPECT_EQ(CheckedConvert<f32>(AFloat(f32::Smallest())), f32::Smallest());
+    EXPECT_EQ(CheckedConvert<f16>(AFloat(f16::Smallest())), f16::Smallest());
 }
 
 TEST(NumberTest, CheckedConvertExceedsPositiveLimit) {
-    EXPECT_EQ(CheckedConvert<i32>(AInt(kHighestI32 + 1)), ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<u32>(AInt(kHighestU32 + 1)), ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<i32>(u32(kHighestU32)), ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<i32>(AInt(static_cast<int64_t>(i32::Highest()) + 1)),
+              ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<u32>(AInt(static_cast<uint64_t>(u32::Highest()) + 1)),
+              ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<i32>(u32::Highest()), ConversionFailure::kExceedsPositiveLimit);
     EXPECT_EQ(CheckedConvert<i32>(u32(0x80000000)), ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<u32>(f32(f32::kHighest)), ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<i32>(f32(f32::kHighest)), ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<u32>(AFloat(AFloat::kHighest)),
-              ConversionFailure::kExceedsPositiveLimit);
-    EXPECT_EQ(CheckedConvert<i32>(AFloat(AFloat::kHighest)),
-              ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<u32>(f32::Highest()), ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<i32>(f32::Highest()), ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<u32>(AFloat::Highest()), ConversionFailure::kExceedsPositiveLimit);
+    EXPECT_EQ(CheckedConvert<i32>(AFloat::Highest()), ConversionFailure::kExceedsPositiveLimit);
     EXPECT_EQ(CheckedConvert<f32>(AFloat(kHighestF32NextULP)),
               ConversionFailure::kExceedsPositiveLimit);
     EXPECT_EQ(CheckedConvert<f16>(AFloat(kHighestF16NextULP)),
@@ -194,16 +175,16 @@ TEST(NumberTest, CheckedConvertExceedsPositiveLimit) {
 }
 
 TEST(NumberTest, CheckedConvertExceedsNegativeLimit) {
-    EXPECT_EQ(CheckedConvert<i32>(AInt(kLowestI32 - 1)), ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<u32>(AInt(kLowestU32 - 1)), ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<i32>(AInt(static_cast<int64_t>(i32::Lowest()) - 1)),
+              ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<u32>(AInt(static_cast<uint64_t>(u32::Lowest()) - 1)),
+              ConversionFailure::kExceedsNegativeLimit);
     EXPECT_EQ(CheckedConvert<u32>(i32(-1)), ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<u32>(i32(kLowestI32)), ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<u32>(f32(f32::kLowest)), ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<i32>(f32(f32::kLowest)), ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<u32>(AFloat(AFloat::kLowest)),
-              ConversionFailure::kExceedsNegativeLimit);
-    EXPECT_EQ(CheckedConvert<i32>(AFloat(AFloat::kLowest)),
-              ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<u32>(i32::Lowest()), ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<u32>(f32::Lowest()), ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<i32>(f32::Lowest()), ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<u32>(AFloat::Lowest()), ConversionFailure::kExceedsNegativeLimit);
+    EXPECT_EQ(CheckedConvert<i32>(AFloat::Lowest()), ConversionFailure::kExceedsNegativeLimit);
     EXPECT_EQ(CheckedConvert<f32>(AFloat(kLowestF32NextULP)),
               ConversionFailure::kExceedsNegativeLimit);
     EXPECT_EQ(CheckedConvert<f16>(AFloat(kLowestF16NextULP)),
@@ -375,24 +356,25 @@ INSTANTIATE_TEST_SUITE_P(
         /////////////////////////////////////
     }));
 
-using BinaryCheckedCase = std::tuple<std::optional<AInt>, AInt, AInt>;
-
 #undef OVERFLOW  // corecrt_math.h :(
 #define OVERFLOW \
     {}
 
-using CheckedAddTest = testing::TestWithParam<BinaryCheckedCase>;
-TEST_P(CheckedAddTest, Test) {
+using BinaryCheckedCase_AInt = std::tuple<std::optional<AInt>, AInt, AInt>;
+using BinaryCheckedCase_AFloat = std::tuple<std::optional<AFloat>, AFloat, AFloat>;
+
+using CheckedAddTest_AInt = testing::TestWithParam<BinaryCheckedCase_AInt>;
+TEST_P(CheckedAddTest_AInt, Test) {
     auto expect = std::get<0>(GetParam());
     auto a = std::get<1>(GetParam());
     auto b = std::get<2>(GetParam());
-    EXPECT_EQ(CheckedAdd(a, b), expect) << std::hex << "0x" << a << " * 0x" << b;
-    EXPECT_EQ(CheckedAdd(b, a), expect) << std::hex << "0x" << a << " * 0x" << b;
+    EXPECT_EQ(CheckedAdd(a, b), expect) << std::hex << "0x" << a << " + 0x" << b;
+    EXPECT_EQ(CheckedAdd(b, a), expect) << std::hex << "0x" << a << " + 0x" << b;
 }
 INSTANTIATE_TEST_SUITE_P(
-    CheckedAddTest,
-    CheckedAddTest,
-    testing::ValuesIn(std::vector<BinaryCheckedCase>{
+    CheckedAddTest_AInt,
+    CheckedAddTest_AInt,
+    testing::ValuesIn(std::vector<BinaryCheckedCase_AInt>{
         {AInt(0), AInt(0), AInt(0)},
         {AInt(1), AInt(1), AInt(0)},
         {AInt(2), AInt(1), AInt(1)},
@@ -401,24 +383,53 @@ INSTANTIATE_TEST_SUITE_P(
         {AInt(-1), AInt(-2), AInt(1)},
         {AInt(0x300), AInt(0x100), AInt(0x200)},
         {AInt(0x100), AInt(-0x100), AInt(0x200)},
-        {AInt(AInt::kHighest), AInt(1), AInt(AInt::kHighest - 1)},
-        {AInt(AInt::kLowest), AInt(-1), AInt(AInt::kLowest + 1)},
-        {AInt(AInt::kHighest), AInt(0x7fffffff00000000ll), AInt(0x00000000ffffffffll)},
-        {AInt(AInt::kHighest), AInt(AInt::kHighest), AInt(0)},
-        {AInt(AInt::kLowest), AInt(AInt::kLowest), AInt(0)},
-        {OVERFLOW, AInt(1), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(-1), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(2), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(-2), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(10000), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(-10000), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(AInt::kHighest), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(AInt::kLowest), AInt(AInt::kLowest)},
+        {AInt::Highest(), AInt(1), AInt(AInt::kHighestValue - 1)},
+        {AInt::Lowest(), AInt(-1), AInt(AInt::kLowestValue + 1)},
+        {AInt::Highest(), AInt(0x7fffffff00000000ll), AInt(0x00000000ffffffffll)},
+        {AInt::Highest(), AInt::Highest(), AInt(0)},
+        {AInt::Lowest(), AInt::Lowest(), AInt(0)},
+        {OVERFLOW, AInt(1), AInt::Highest()},
+        {OVERFLOW, AInt(-1), AInt::Lowest()},
+        {OVERFLOW, AInt(2), AInt::Highest()},
+        {OVERFLOW, AInt(-2), AInt::Lowest()},
+        {OVERFLOW, AInt(10000), AInt::Highest()},
+        {OVERFLOW, AInt(-10000), AInt::Lowest()},
+        {OVERFLOW, AInt::Highest(), AInt::Highest()},
+        {OVERFLOW, AInt::Lowest(), AInt::Lowest()},
         ////////////////////////////////////////////////////////////////////////
     }));
 
-using CheckedMulTest = testing::TestWithParam<BinaryCheckedCase>;
-TEST_P(CheckedMulTest, Test) {
+using CheckedAddTest_AFloat = testing::TestWithParam<BinaryCheckedCase_AFloat>;
+TEST_P(CheckedAddTest_AFloat, Test) {
+    auto expect = std::get<0>(GetParam());
+    auto a = std::get<1>(GetParam());
+    auto b = std::get<2>(GetParam());
+    EXPECT_EQ(CheckedAdd(a, b), expect) << std::hex << "0x" << a << " + 0x" << b;
+    EXPECT_EQ(CheckedAdd(b, a), expect) << std::hex << "0x" << a << " + 0x" << b;
+}
+INSTANTIATE_TEST_SUITE_P(
+    CheckedAddTest_AFloat,
+    CheckedAddTest_AFloat,
+    testing::ValuesIn(std::vector<BinaryCheckedCase_AFloat>{
+        {AFloat(0), AFloat(0), AFloat(0)},
+        {AFloat(1), AFloat(1), AFloat(0)},
+        {AFloat(2), AFloat(1), AFloat(1)},
+        {AFloat(0), AFloat(-1), AFloat(1)},
+        {AFloat(3), AFloat(2), AFloat(1)},
+        {AFloat(-1), AFloat(-2), AFloat(1)},
+        {AFloat(0x300), AFloat(0x100), AFloat(0x200)},
+        {AFloat(0x100), AFloat(-0x100), AFloat(0x200)},
+        {AFloat::Highest(), AFloat(1), AFloat(AFloat::kHighestValue - 1)},
+        {AFloat::Lowest(), AFloat(-1), AFloat(AFloat::kLowestValue + 1)},
+        {AFloat::Highest(), AFloat::Highest(), AFloat(0)},
+        {AFloat::Lowest(), AFloat::Lowest(), AFloat(0)},
+        {OVERFLOW, AFloat::Highest(), AFloat::Highest()},
+        {OVERFLOW, AFloat::Lowest(), AFloat::Lowest()},
+        ////////////////////////////////////////////////////////////////////////
+    }));
+
+using CheckedMulTest_AInt = testing::TestWithParam<BinaryCheckedCase_AInt>;
+TEST_P(CheckedMulTest_AInt, Test) {
     auto expect = std::get<0>(GetParam());
     auto a = std::get<1>(GetParam());
     auto b = std::get<2>(GetParam());
@@ -426,9 +437,9 @@ TEST_P(CheckedMulTest, Test) {
     EXPECT_EQ(CheckedMul(b, a), expect) << std::hex << "0x" << a << " * 0x" << b;
 }
 INSTANTIATE_TEST_SUITE_P(
-    CheckedMulTest,
-    CheckedMulTest,
-    testing::ValuesIn(std::vector<BinaryCheckedCase>{
+    CheckedMulTest_AInt,
+    CheckedMulTest_AInt,
+    testing::ValuesIn(std::vector<BinaryCheckedCase_AInt>{
         {AInt(0), AInt(0), AInt(0)},
         {AInt(0), AInt(1), AInt(0)},
         {AInt(1), AInt(1), AInt(1)},
@@ -452,21 +463,21 @@ INSTANTIATE_TEST_SUITE_P(
         {AInt(-0x4000000000000000ll), AInt(0x1000000000000000ll), AInt(-4)},
         {AInt(-0x8000000000000000ll), AInt(0x1000000000000000ll), AInt(-8)},
         {AInt(-0x8000000000000000ll), AInt(-0x1000000000000000ll), AInt(8)},
-        {AInt(0), AInt(AInt::kHighest), AInt(0)},
-        {AInt(0), AInt(AInt::kLowest), AInt(0)},
+        {AInt(0), AInt::Highest(), AInt(0)},
+        {AInt(0), AInt::Lowest(), AInt(0)},
         {OVERFLOW, AInt(0x1000000000000000ll), AInt(8)},
         {OVERFLOW, AInt(-0x1000000000000000ll), AInt(-8)},
         {OVERFLOW, AInt(0x800000000000000ll), AInt(0x10)},
         {OVERFLOW, AInt(0x80000000ll), AInt(0x100000000ll)},
-        {OVERFLOW, AInt(AInt::kHighest), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(AInt::kHighest), AInt(AInt::kLowest)},
+        {OVERFLOW, AInt::Highest(), AInt::Highest()},
+        {OVERFLOW, AInt::Highest(), AInt::Lowest()},
         ////////////////////////////////////////////////////////////////////////
     }));
 
 using TernaryCheckedCase = std::tuple<std::optional<AInt>, AInt, AInt, AInt>;
 
-using CheckedMaddTest = testing::TestWithParam<TernaryCheckedCase>;
-TEST_P(CheckedMaddTest, Test) {
+using CheckedMaddTest_AInt = testing::TestWithParam<TernaryCheckedCase>;
+TEST_P(CheckedMaddTest_AInt, Test) {
     auto expect = std::get<0>(GetParam());
     auto a = std::get<1>(GetParam());
     auto b = std::get<2>(GetParam());
@@ -477,8 +488,8 @@ TEST_P(CheckedMaddTest, Test) {
         << std::hex << "0x" << a << " * 0x" << b << " + 0x" << c;
 }
 INSTANTIATE_TEST_SUITE_P(
-    CheckedMaddTest,
-    CheckedMaddTest,
+    CheckedMaddTest_AInt,
+    CheckedMaddTest_AInt,
     testing::ValuesIn(std::vector<TernaryCheckedCase>{
         {AInt(0), AInt(0), AInt(0), AInt(0)},
         {AInt(0), AInt(1), AInt(0), AInt(0)},
@@ -489,8 +500,8 @@ INSTANTIATE_TEST_SUITE_P(
         {AInt(-1), AInt(-1), AInt(1), AInt(0)},
         {AInt(2), AInt(2), AInt(1), AInt(0)},
         {AInt(-2), AInt(-2), AInt(1), AInt(0)},
-        {AInt(0), AInt(AInt::kHighest), AInt(0), AInt(0)},
-        {AInt(0), AInt(AInt::kLowest), AInt(0), AInt(0)},
+        {AInt(0), AInt::Highest(), AInt(0), AInt(0)},
+        {AInt(0), AInt::Lowest(), AInt(0), AInt(0)},
         {AInt(3), AInt(1), AInt(2), AInt(1)},
         {AInt(0x300), AInt(1), AInt(0x100), AInt(0x200)},
         {AInt(0x100), AInt(1), AInt(-0x100), AInt(0x200)},
@@ -511,27 +522,27 @@ INSTANTIATE_TEST_SUITE_P(
         {AInt(-0x4000000000000000ll), AInt(0x1000000000000000ll), AInt(-4), AInt(0)},
         {AInt(-0x8000000000000000ll), AInt(0x1000000000000000ll), AInt(-8), AInt(0)},
         {AInt(-0x8000000000000000ll), AInt(-0x1000000000000000ll), AInt(8), AInt(0)},
-        {AInt(AInt::kHighest), AInt(1), AInt(1), AInt(AInt::kHighest - 1)},
-        {AInt(AInt::kLowest), AInt(1), AInt(-1), AInt(AInt::kLowest + 1)},
-        {AInt(AInt::kHighest), AInt(1), AInt(0x7fffffff00000000ll), AInt(0x00000000ffffffffll)},
-        {AInt(AInt::kHighest), AInt(1), AInt(AInt::kHighest), AInt(0)},
-        {AInt(AInt::kLowest), AInt(1), AInt(AInt::kLowest), AInt(0)},
+        {AInt::Highest(), AInt(1), AInt(1), AInt(AInt::kHighestValue - 1)},
+        {AInt::Lowest(), AInt(1), AInt(-1), AInt(AInt::kLowestValue + 1)},
+        {AInt::Highest(), AInt(1), AInt(0x7fffffff00000000ll), AInt(0x00000000ffffffffll)},
+        {AInt::Highest(), AInt(1), AInt::Highest(), AInt(0)},
+        {AInt::Lowest(), AInt(1), AInt::Lowest(), AInt(0)},
         {OVERFLOW, AInt(0x1000000000000000ll), AInt(8), AInt(0)},
         {OVERFLOW, AInt(-0x1000000000000000ll), AInt(-8), AInt(0)},
         {OVERFLOW, AInt(0x800000000000000ll), AInt(0x10), AInt(0)},
         {OVERFLOW, AInt(0x80000000ll), AInt(0x100000000ll), AInt(0)},
-        {OVERFLOW, AInt(AInt::kHighest), AInt(AInt::kHighest), AInt(0)},
-        {OVERFLOW, AInt(AInt::kHighest), AInt(AInt::kLowest), AInt(0)},
-        {OVERFLOW, AInt(1), AInt(1), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(1), AInt(-1), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(1), AInt(2), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(1), AInt(-2), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(1), AInt(10000), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(1), AInt(-10000), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(1), AInt(AInt::kHighest), AInt(AInt::kHighest)},
-        {OVERFLOW, AInt(1), AInt(AInt::kLowest), AInt(AInt::kLowest)},
-        {OVERFLOW, AInt(1), AInt(AInt::kHighest), AInt(1)},
-        {OVERFLOW, AInt(1), AInt(AInt::kLowest), AInt(-1)},
+        {OVERFLOW, AInt::Highest(), AInt::Highest(), AInt(0)},
+        {OVERFLOW, AInt::Highest(), AInt::Lowest(), AInt(0)},
+        {OVERFLOW, AInt(1), AInt(1), AInt::Highest()},
+        {OVERFLOW, AInt(1), AInt(-1), AInt::Lowest()},
+        {OVERFLOW, AInt(1), AInt(2), AInt::Highest()},
+        {OVERFLOW, AInt(1), AInt(-2), AInt::Lowest()},
+        {OVERFLOW, AInt(1), AInt(10000), AInt::Highest()},
+        {OVERFLOW, AInt(1), AInt(-10000), AInt::Lowest()},
+        {OVERFLOW, AInt(1), AInt::Highest(), AInt::Highest()},
+        {OVERFLOW, AInt(1), AInt::Lowest(), AInt::Lowest()},
+        {OVERFLOW, AInt(1), AInt::Highest(), AInt(1)},
+        {OVERFLOW, AInt(1), AInt::Lowest(), AInt(-1)},
     }));
 
 TINT_END_DISABLE_WARNING(CONSTANT_OVERFLOW);

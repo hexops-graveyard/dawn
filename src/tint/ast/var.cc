@@ -21,14 +21,15 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::Var);
 namespace tint::ast {
 
 Var::Var(ProgramID pid,
+         NodeID nid,
          const Source& src,
          const Symbol& sym,
          const ast::Type* ty,
          StorageClass storage_class,
          Access access,
          const Expression* ctor,
-         AttributeList attrs)
-    : Base(pid, src, sym, ty, ctor, attrs),
+         utils::VectorRef<const Attribute*> attrs)
+    : Base(pid, nid, src, sym, ty, ctor, std::move(attrs)),
       declared_storage_class(storage_class),
       declared_access(access) {}
 
@@ -47,7 +48,7 @@ const Var* Var::Clone(CloneContext* ctx) const {
     auto* ctor = ctx->Clone(constructor);
     auto attrs = ctx->Clone(attributes);
     return ctx->dst->create<Var>(src, sym, ty, declared_storage_class, declared_access, ctor,
-                                 attrs);
+                                 std::move(attrs));
 }
 
 }  // namespace tint::ast

@@ -14,38 +14,11 @@
 
 #include "dawn/native/CacheKey.h"
 
-#include <iomanip>
-#include <string>
-#include <string_view>
-
 namespace dawn::native {
 
-std::ostream& operator<<(std::ostream& os, const CacheKey& key) {
-    os << std::hex;
-    for (const int b : key) {
-        os << std::setfill('0') << std::setw(2) << b << " ";
-    }
-    os << std::dec;
-    return os;
-}
-
 template <>
-void CacheKeySerializer<std::string>::Serialize(CacheKey* key, const std::string& t) {
-    key->Record(t.length());
-    key->insert(key->end(), t.begin(), t.end());
-}
-
-template <>
-void CacheKeySerializer<std::string_view>::Serialize(CacheKey* key, const std::string_view& t) {
-    key->Record(t.length());
-    key->insert(key->end(), t.begin(), t.end());
-}
-
-template <>
-void CacheKeySerializer<CacheKey>::Serialize(CacheKey* key, const CacheKey& t) {
-    // For nested cache keys, we do not record the length, and just copy the key so that it
-    // appears we just flatten the keys into a single key.
-    key->insert(key->end(), t.begin(), t.end());
+void stream::Stream<CacheKey>::Write(stream::Sink* sink, const CacheKey& t) {
+    StreamIn(sink, static_cast<const ByteVectorSink&>(t));
 }
 
 }  // namespace dawn::native

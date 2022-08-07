@@ -17,13 +17,13 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include "src/tint/ast/binary_expression.h"
 #include "src/tint/ast/unary_op.h"
 #include "src/tint/resolver/const_eval.h"
 #include "src/tint/resolver/ctor_conv_intrinsic.h"
 #include "src/tint/sem/builtin.h"
+#include "src/tint/utils/vector.h"
 
 // Forward declarations
 namespace tint {
@@ -47,7 +47,7 @@ class IntrinsicTable {
         /// The semantic info for the builtin
         const sem::Builtin* sem = nullptr;
         /// The constant evaluation function
-        const_eval::Function* const_eval_fn = nullptr;
+        ConstEval::Function const_eval_fn = nullptr;
     };
 
     /// UnaryOperator describes a resolved unary operator
@@ -56,6 +56,8 @@ class IntrinsicTable {
         const sem::Type* result = nullptr;
         /// The type of the parameter of the unary operator
         const sem::Type* parameter = nullptr;
+        /// The constant evaluation function
+        ConstEval::Function const_eval_fn = nullptr;
     };
 
     /// BinaryOperator describes a resolved binary operator
@@ -66,6 +68,16 @@ class IntrinsicTable {
         const sem::Type* lhs = nullptr;
         /// The type of RHS parameter of the binary operator
         const sem::Type* rhs = nullptr;
+        /// The constant evaluation function
+        ConstEval::Function const_eval_fn = nullptr;
+    };
+
+    /// CtorOrConv describes a resolved type constructor or type conversion
+    struct CtorOrConv {
+        /// The result type of the type constructor or type conversion
+        const sem::CallTarget* target = nullptr;
+        /// The constant evaluation function
+        ConstEval::Function const_eval_fn = nullptr;
     };
 
     /// Lookup looks for the builtin overload with the given signature, raising an error diagnostic
@@ -75,7 +87,7 @@ class IntrinsicTable {
     /// @param source the source of the builtin call
     /// @return the semantic builtin if found, otherwise nullptr
     virtual Builtin Lookup(sem::BuiltinType type,
-                           const std::vector<const sem::Type*>& args,
+                           utils::VectorRef<const sem::Type*> args,
                            const Source& source) = 0;
 
     /// Lookup looks for the unary op overload with the given signature, raising an error
@@ -109,10 +121,10 @@ class IntrinsicTable {
     /// @param args the argument types passed to the constructor / conversion call
     /// @param source the source of the call
     /// @return a sem::TypeConstructor, sem::TypeConversion or nullptr if nothing matched
-    virtual const sem::CallTarget* Lookup(CtorConvIntrinsic type,
-                                          const sem::Type* template_arg,
-                                          const std::vector<const sem::Type*>& args,
-                                          const Source& source) = 0;
+    virtual CtorOrConv Lookup(CtorConvIntrinsic type,
+                              const sem::Type* template_arg,
+                              utils::VectorRef<const sem::Type*> args,
+                              const Source& source) = 0;
 };
 
 }  // namespace tint::resolver

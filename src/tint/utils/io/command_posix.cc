@@ -164,7 +164,7 @@ Command::Output Command::Exec(std::initializer_list<std::string> arguments) cons
     // run the target command.
     //
     // The parent process is responsible for feeding any input to the stdin_pipe
-    // and collectting output from the std[out,err]_pipes.
+    // and collecting output from the std[out,err]_pipes.
 
     int child_id = fork();
     if (child_id < 0) {
@@ -251,7 +251,9 @@ Command::Output Command::Exec(std::initializer_list<std::string> arguments) cons
         std::vector<const char*> args;
         args.emplace_back(path_.c_str());
         for (auto& arg : arguments) {
-            args.emplace_back(arg.c_str());
+            if (!arg.empty()) {
+                args.emplace_back(arg.c_str());
+            }
         }
         args.emplace_back(nullptr);
         auto res = execv(path_.c_str(), const_cast<char* const*>(args.data()));

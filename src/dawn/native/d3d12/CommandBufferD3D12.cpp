@@ -90,10 +90,12 @@ bool CanUseCopyResource(const TextureCopy& src, const TextureCopy& dst, const Ex
            copySize.depthOrArrayLayers == srcSize.depthOrArrayLayers;
 }
 
-void RecordWriteTimestampCmd(ID3D12GraphicsCommandList* commandList, WriteTimestampCmd* cmd) {
-    QuerySet* querySet = ToBackend(cmd->querySet.Get());
-    ASSERT(D3D12QueryType(querySet->GetQueryType()) == D3D12_QUERY_TYPE_TIMESTAMP);
-    commandList->EndQuery(querySet->GetQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP, cmd->queryIndex);
+void RecordWriteTimestampCmd(ID3D12GraphicsCommandList* commandList,
+                             QuerySetBase* querySet,
+                             uint32_t queryIndex) {
+    ASSERT(D3D12QueryType(ToBackend(querySet)->GetQueryType()) == D3D12_QUERY_TYPE_TIMESTAMP);
+    commandList->EndQuery(ToBackend(querySet)->GetQueryHeap(), D3D12_QUERY_TYPE_TIMESTAMP,
+                          queryIndex);
 }
 
 void RecordResolveQuerySetCmd(ID3D12GraphicsCommandList* commandList,
@@ -216,6 +218,87 @@ MaybeError RecordCopyTextureWithTemporaryBuffer(CommandRecordingContext* recordi
     tempBuffer->TrackUsageAndTransitionNow(recordingContext, wgpu::BufferUsage::CopySrc);
     RecordBufferTextureCopy(BufferTextureCopyDirection::B2T, recordingContext->GetCommandList(),
                             bufferCopy, dstCopy, copySize);
+
+    // Save tempBuffer into recordingContext
+    recordingContext->AddToTempBuffers(std::move(tempBuffer));
+
+    return {};
+}
+
+bool ShouldCopyUsingTemporaryBuffer(DeviceBase* device,
+                                    const BufferCopy& bufferCopy,
+                                    const TextureCopy& textureCopy) {
+    // Currently we only need the workaround for some D3D12 platforms.
+    if (device->IsToggleEnabled(
+            Toggle::D3D12UseTempBufferInDepthStencilTextureAndBufferCopyWithNonZeroBufferOffset)) {
+        if ((ToBackend(textureCopy.texture)->GetD3D12ResourceFlags() &
+             D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) &&
+            bufferCopy.offset % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+MaybeError RecordBufferTextureCopyWithTemporaryBuffer(CommandRecordingContext* recordingContext,
+                                                      BufferTextureCopyDirection copyDirection,
+                                                      const BufferCopy& bufferCopy,
+                                                      const TextureCopy& textureCopy,
+                                                      const Extent3D& copySize) {
+    dawn::native::Format format = textureCopy.texture->GetFormat();
+    const TexelBlockInfo& blockInfo = format.GetAspectInfo(textureCopy.aspect).block;
+
+    // Create tempBuffer
+    // The size of temporary buffer isn't needed to be a multiple of 4 because we don't
+    // need to set mappedAtCreation to be true.
+    auto tempBufferSize = ComputeRequiredBytesInCopy(blockInfo, copySize, bufferCopy.bytesPerRow,
+                                                     bufferCopy.rowsPerImage);
+
+    BufferDescriptor tempBufferDescriptor;
+    tempBufferDescriptor.usage = wgpu::BufferUsage::CopySrc | wgpu::BufferUsage::CopyDst;
+    tempBufferDescriptor.size = tempBufferSize.AcquireSuccess();
+    Device* device = ToBackend(textureCopy.texture->GetDevice());
+    Ref<BufferBase> tempBufferBase;
+    DAWN_TRY_ASSIGN(tempBufferBase, device->CreateBuffer(&tempBufferDescriptor));
+    // D3D12 aligns the entire buffer to at least 64KB, so the virtual address of tempBuffer will
+    // always be aligned to D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT (512).
+    Ref<Buffer> tempBuffer = ToBackend(std::move(tempBufferBase));
+    ASSERT(tempBuffer->GetVA() % D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT == 0);
+
+    BufferCopy tempBufferCopy;
+    tempBufferCopy.buffer = tempBuffer;
+    tempBufferCopy.offset = 0;
+    tempBufferCopy.bytesPerRow = bufferCopy.bytesPerRow;
+    tempBufferCopy.rowsPerImage = bufferCopy.rowsPerImage;
+
+    tempBuffer->TrackUsageAndTransitionNow(recordingContext, wgpu::BufferUsage::CopyDst);
+
+    ID3D12GraphicsCommandList* commandList = recordingContext->GetCommandList();
+    switch (copyDirection) {
+        case BufferTextureCopyDirection::B2T: {
+            commandList->CopyBufferRegion(tempBuffer->GetD3D12Resource(), 0,
+                                          ToBackend(bufferCopy.buffer)->GetD3D12Resource(),
+                                          bufferCopy.offset, tempBufferDescriptor.size);
+            tempBuffer->TrackUsageAndTransitionNow(recordingContext, wgpu::BufferUsage::CopySrc);
+            RecordBufferTextureCopy(BufferTextureCopyDirection::B2T,
+                                    recordingContext->GetCommandList(), tempBufferCopy, textureCopy,
+                                    copySize);
+            break;
+        }
+        case BufferTextureCopyDirection::T2B: {
+            RecordBufferTextureCopy(BufferTextureCopyDirection::T2B,
+                                    recordingContext->GetCommandList(), tempBufferCopy, textureCopy,
+                                    copySize);
+            tempBuffer->TrackUsageAndTransitionNow(recordingContext, wgpu::BufferUsage::CopySrc);
+            commandList->CopyBufferRegion(ToBackend(bufferCopy.buffer)->GetD3D12Resource(),
+                                          bufferCopy.offset, tempBuffer->GetD3D12Resource(), 0,
+                                          tempBufferDescriptor.size);
+            break;
+        }
+        default:
+            UNREACHABLE();
+            break;
+    }
 
     // Save tempBuffer into recordingContext
     recordingContext->AddToTempBuffers(std::move(tempBuffer));
@@ -653,11 +736,12 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
     while (mCommands.NextCommandId(&type)) {
         switch (type) {
             case Command::BeginComputePass: {
-                mCommands.NextCommand<BeginComputePassCmd>();
+                BeginComputePassCmd* cmd = mCommands.NextCommand<BeginComputePassCmd>();
 
                 bindingTracker.SetInComputePass(true);
+
                 DAWN_TRY(
-                    RecordComputePass(commandContext, &bindingTracker,
+                    RecordComputePass(commandContext, &bindingTracker, cmd,
                                       GetResourceUsages().computePasses[nextComputePassNumber]));
 
                 nextComputePassNumber++;
@@ -730,6 +814,12 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                 texture->TrackUsageAndTransitionNow(commandContext, wgpu::TextureUsage::CopyDst,
                                                     subresources);
 
+                if (ShouldCopyUsingTemporaryBuffer(GetDevice(), copy->source, copy->destination)) {
+                    DAWN_TRY(RecordBufferTextureCopyWithTemporaryBuffer(
+                        commandContext, BufferTextureCopyDirection::B2T, copy->source,
+                        copy->destination, copy->copySize));
+                    break;
+                }
                 RecordBufferTextureCopy(BufferTextureCopyDirection::B2T, commandList, copy->source,
                                         copy->destination, copy->copySize);
 
@@ -757,6 +847,12 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                                                     subresources);
                 buffer->TrackUsageAndTransitionNow(commandContext, wgpu::BufferUsage::CopyDst);
 
+                if (ShouldCopyUsingTemporaryBuffer(GetDevice(), copy->destination, copy->source)) {
+                    DAWN_TRY(RecordBufferTextureCopyWithTemporaryBuffer(
+                        commandContext, BufferTextureCopyDirection::T2B, copy->destination,
+                        copy->source, copy->copySize));
+                    break;
+                }
                 RecordBufferTextureCopy(BufferTextureCopyDirection::T2B, commandList,
                                         copy->destination, copy->source, copy->copySize);
 
@@ -942,7 +1038,7 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
             case Command::WriteTimestamp: {
                 WriteTimestampCmd* cmd = mCommands.NextCommand<WriteTimestampCmd>();
 
-                RecordWriteTimestampCmd(commandList, cmd);
+                RecordWriteTimestampCmd(commandList, cmd->querySet.Get(), cmd->queryIndex);
                 break;
             }
 
@@ -1023,9 +1119,16 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
 
 MaybeError CommandBuffer::RecordComputePass(CommandRecordingContext* commandContext,
                                             BindGroupStateTracker* bindingTracker,
+                                            BeginComputePassCmd* computePass,
                                             const ComputePassResourceUsage& resourceUsages) {
     uint64_t currentDispatch = 0;
     ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
+
+    // Write timestamp at the beginning of compute pass if it's set.
+    if (computePass->beginTimestamp.querySet.Get() != nullptr) {
+        RecordWriteTimestampCmd(commandList, computePass->beginTimestamp.querySet.Get(),
+                                computePass->beginTimestamp.queryIndex);
+    }
 
     Command type;
     ComputePipeline* lastPipeline = nullptr;
@@ -1068,6 +1171,12 @@ MaybeError CommandBuffer::RecordComputePass(CommandRecordingContext* commandCont
 
             case Command::EndComputePass: {
                 mCommands.NextCommand<EndComputePassCmd>();
+
+                // Write timestamp at the end of compute pass if it's set.
+                if (computePass->endTimestamp.querySet.Get() != nullptr) {
+                    RecordWriteTimestampCmd(commandList, computePass->endTimestamp.querySet.Get(),
+                                            computePass->endTimestamp.queryIndex);
+                }
                 return {};
             }
 
@@ -1136,7 +1245,7 @@ MaybeError CommandBuffer::RecordComputePass(CommandRecordingContext* commandCont
             case Command::WriteTimestamp: {
                 WriteTimestampCmd* cmd = mCommands.NextCommand<WriteTimestampCmd>();
 
-                RecordWriteTimestampCmd(commandList, cmd);
+                RecordWriteTimestampCmd(commandList, cmd->querySet.Get(), cmd->queryIndex);
                 break;
             }
 
@@ -1339,6 +1448,12 @@ MaybeError CommandBuffer::RecordRenderPass(CommandRecordingContext* commandConte
 
     ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
 
+    // Write timestamp at the beginning of render pass if it's set.
+    if (renderPass->beginTimestamp.querySet.Get() != nullptr) {
+        RecordWriteTimestampCmd(commandList, renderPass->beginTimestamp.querySet.Get(),
+                                renderPass->beginTimestamp.queryIndex);
+    }
+
     // Set up default dynamic state
     {
         uint32_t width = renderPass->width;
@@ -1511,6 +1626,13 @@ MaybeError CommandBuffer::RecordRenderPass(CommandRecordingContext* commandConte
         switch (type) {
             case Command::EndRenderPass: {
                 mCommands.NextCommand<EndRenderPassCmd>();
+
+                // Write timestamp at the end of render pass if it's set.
+                if (renderPass->endTimestamp.querySet.Get() != nullptr) {
+                    RecordWriteTimestampCmd(commandList, renderPass->endTimestamp.querySet.Get(),
+                                            renderPass->endTimestamp.queryIndex);
+                }
+
                 if (useRenderPass) {
                     commandContext->GetCommandList4()->EndRenderPass();
                 } else if (renderPass->attachmentState->GetSampleCount() > 1) {
@@ -1596,7 +1718,7 @@ MaybeError CommandBuffer::RecordRenderPass(CommandRecordingContext* commandConte
             case Command::WriteTimestamp: {
                 WriteTimestampCmd* cmd = mCommands.NextCommand<WriteTimestampCmd>();
 
-                RecordWriteTimestampCmd(commandList, cmd);
+                RecordWriteTimestampCmd(commandList, cmd->querySet.Get(), cmd->queryIndex);
                 break;
             }
 

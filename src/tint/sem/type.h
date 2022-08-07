@@ -19,6 +19,7 @@
 #include <string>
 
 #include "src/tint/sem/node.h"
+#include "src/tint/utils/vector.h"
 
 // Forward declarations
 namespace tint {
@@ -71,8 +72,6 @@ class Type : public Castable<Type, Node> {
 
     /// @returns true if this type is a scalar
     bool is_scalar() const;
-    /// @returns true if this type is a scalar or an abstract numeric
-    bool is_abstract_or_scalar() const;
     /// @returns true if this type is a numeric scalar
     bool is_numeric_scalar() const;
     /// @returns true if this type is a float scalar
@@ -103,6 +102,14 @@ class Type : public Castable<Type, Node> {
     bool is_signed_scalar_or_vector() const;
     /// @returns true if this type is an integer scalar or vector
     bool is_integer_scalar_or_vector() const;
+    /// @returns true if this type is an abstract integer vector
+    bool is_abstract_integer_vector() const;
+    /// @returns true if this type is an abstract float vector
+    bool is_abstract_float_vector() const;
+    /// @returns true if this type is an abstract integer scalar or vector
+    bool is_abstract_integer_scalar_or_vector() const;
+    /// @returns true if this type is an abstract float scalar or vector
+    bool is_abstract_float_scalar_or_vector() const;
     /// @returns true if this type is a boolean vector
     bool is_bool_vector() const;
     /// @returns true if this type is boolean scalar or vector
@@ -150,20 +157,11 @@ class Type : public Castable<Type, Node> {
     ///   * `nullptr` if `ty` is none of the above
     static const Type* DeepestElementOf(const Type* ty, uint32_t* count = nullptr);
 
-    /// @param types a pointer to a list of `const Type*`.
-    /// @param count the number of types in `types`.
+    /// @param types the list of types
     /// @returns the lowest-ranking type that all types in `types` can be implicitly converted to,
-    /// or nullptr if there is no consistent common type across all types in `types`.
+    ///          or nullptr if there is no consistent common type across all types in `types`.
     /// @see https://www.w3.org/TR/WGSL/#conversion-rank
-    static const sem::Type* Common(Type const* const* types, size_t count);
-
-    /// @param types an initializer_list of `const Type*`.
-    /// @returns the lowest-ranking type that all types in `types` can be implicitly converted to,
-    /// or nullptr if there is no consistent common type across all types in `types`.
-    /// @see https://www.w3.org/TR/WGSL/#conversion-rank
-    static const sem::Type* Common(std::initializer_list<const Type*> types) {
-        return Common(types.begin(), types.size());
-    }
+    static const sem::Type* Common(utils::VectorRef<const Type*> types);
 
   protected:
     Type();

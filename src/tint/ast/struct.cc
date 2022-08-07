@@ -22,8 +22,13 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::Struct);
 
 namespace tint::ast {
 
-Struct::Struct(ProgramID pid, const Source& src, Symbol n, StructMemberList m, AttributeList attrs)
-    : Base(pid, src, n), members(std::move(m)), attributes(std::move(attrs)) {
+Struct::Struct(ProgramID pid,
+               NodeID nid,
+               const Source& src,
+               Symbol n,
+               utils::VectorRef<const ast::StructMember*> m,
+               utils::VectorRef<const ast::Attribute*> attrs)
+    : Base(pid, nid, src, n), members(std::move(m)), attributes(std::move(attrs)) {
     for (auto* mem : members) {
         TINT_ASSERT(AST, mem);
         TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, mem, program_id);
@@ -44,7 +49,7 @@ const Struct* Struct::Clone(CloneContext* ctx) const {
     auto n = ctx->Clone(name);
     auto mem = ctx->Clone(members);
     auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Struct>(src, n, mem, attrs);
+    return ctx->dst->create<Struct>(src, n, std::move(mem), std::move(attrs));
 }
 
 }  // namespace tint::ast

@@ -68,19 +68,15 @@ bool Type::IsConstructible() const {
 }
 
 bool Type::is_scalar() const {
-    return IsAnyOf<F16, F32, U32, I32, Bool>();
-}
-
-bool Type::is_abstract_or_scalar() const {
-    return IsAnyOf<F16, F32, U32, I32, Bool, AbstractNumeric>();
+    return IsAnyOf<F16, F32, U32, I32, AbstractNumeric, Bool>();
 }
 
 bool Type::is_numeric_scalar() const {
-    return IsAnyOf<F16, F32, U32, I32>();
+    return IsAnyOf<F16, F32, U32, I32, AbstractNumeric>();
 }
 
 bool Type::is_float_scalar() const {
-    return IsAnyOf<F16, F32>();
+    return IsAnyOf<F16, F32, AbstractNumeric>();
 }
 
 bool Type::is_float_matrix() const {
@@ -117,7 +113,7 @@ bool Type::is_unsigned_integer_scalar() const {
 }
 
 bool Type::is_signed_integer_vector() const {
-    return Is([](const Vector* v) { return v->type()->Is<I32>(); });
+    return Is([](const Vector* v) { return v->type()->IsAnyOf<I32>(); });
 }
 
 bool Type::is_unsigned_integer_vector() const {
@@ -134,6 +130,22 @@ bool Type::is_signed_scalar_or_vector() const {
 
 bool Type::is_integer_scalar_or_vector() const {
     return is_unsigned_scalar_or_vector() || is_signed_scalar_or_vector();
+}
+
+bool Type::is_abstract_integer_vector() const {
+    return Is([](const Vector* v) { return v->type()->Is<sem::AbstractInt>(); });
+}
+
+bool Type::is_abstract_float_vector() const {
+    return Is([](const Vector* v) { return v->type()->Is<sem::AbstractFloat>(); });
+}
+
+bool Type::is_abstract_integer_scalar_or_vector() const {
+    return Is<sem::AbstractInt>() || is_abstract_integer_vector();
+}
+
+bool Type::is_abstract_float_scalar_or_vector() const {
+    return Is<sem::AbstractFloat>() || is_abstract_float_vector();
 }
 
 bool Type::is_bool_vector() const {
@@ -200,11 +212,19 @@ uint32_t Type::ConversionRank(const Type* from, const Type* to) {
             }
             return kNoConversion;
         },
+        [&](const Array* from_arr) {
+            if (auto* to_arr = to->As<Array>()) {
+                if (from_arr->Count() == to_arr->Count()) {
+                    return ConversionRank(from_arr->ElemType(), to_arr->ElemType());
+                }
+            }
+            return kNoConversion;
+        },
         [&](Default) { return kNoConversion; });
 }
 
 const Type* Type::ElementOf(const Type* ty, uint32_t* count /* = nullptr */) {
-    if (ty->is_abstract_or_scalar()) {
+    if (ty->is_scalar()) {
         if (count) {
             *count = 1;
         }
@@ -252,7 +272,8 @@ const Type* Type::DeepestElementOf(const Type* ty, uint32_t* count /* = nullptr 
     return el_ty;
 }
 
-const sem::Type* Type::Common(Type const* const* types, size_t count) {
+const sem::Type* Type::Common(utils::VectorRef<const Type*> types) {
+    const auto count = types.Length();
     if (count == 0) {
         return nullptr;
     }

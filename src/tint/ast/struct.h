@@ -21,6 +21,7 @@
 #include "src/tint/ast/attribute.h"
 #include "src/tint/ast/struct_member.h"
 #include "src/tint/ast/type_decl.h"
+#include "src/tint/utils/vector.h"
 
 namespace tint::ast {
 
@@ -29,15 +30,17 @@ class Struct final : public Castable<Struct, TypeDecl> {
   public:
     /// Create a new struct statement
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node for the import statement
     /// @param name The name of the structure
     /// @param members The struct members
     /// @param attributes The struct attributes
     Struct(ProgramID pid,
+           NodeID nid,
            const Source& src,
            Symbol name,
-           StructMemberList members,
-           AttributeList attributes);
+           utils::VectorRef<const ast::StructMember*> members,
+           utils::VectorRef<const ast::Attribute*> attributes);
     /// Move constructor
     Struct(Struct&&);
 
@@ -50,10 +53,10 @@ class Struct final : public Castable<Struct, TypeDecl> {
     const Struct* Clone(CloneContext* ctx) const override;
 
     /// The members
-    const StructMemberList members;
+    const utils::Vector<const ast::StructMember*, 8> members;
 
     /// The struct attributes
-    const AttributeList attributes;
+    const utils::Vector<const ast::Attribute*, 4> attributes;
 };
 
 }  // namespace tint::ast

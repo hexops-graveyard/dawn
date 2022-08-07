@@ -14,6 +14,8 @@
 
 #include "src/tint/ast/override.h"
 
+#include <utility>
+
 #include "src/tint/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Override);
@@ -21,12 +23,13 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::Override);
 namespace tint::ast {
 
 Override::Override(ProgramID pid,
+                   NodeID nid,
                    const Source& src,
                    const Symbol& sym,
                    const ast::Type* ty,
                    const Expression* ctor,
-                   AttributeList attrs)
-    : Base(pid, src, sym, ty, ctor, attrs) {}
+                   utils::VectorRef<const Attribute*> attrs)
+    : Base(pid, nid, src, sym, ty, ctor, std::move(attrs)) {}
 
 Override::Override(Override&&) = default;
 
@@ -42,7 +45,14 @@ const Override* Override::Clone(CloneContext* ctx) const {
     auto* ty = ctx->Clone(type);
     auto* ctor = ctx->Clone(constructor);
     auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Override>(src, sym, ty, ctor, attrs);
+    return ctx->dst->create<Override>(src, sym, ty, ctor, std::move(attrs));
+}
+
+std::string Override::Identifier(const SymbolTable& symbols) const {
+    if (auto* id = ast::GetAttribute<ast::IdAttribute>(attributes)) {
+        return std::to_string(id->value);
+    }
+    return symbols.NameFor(symbol);
 }
 
 }  // namespace tint::ast

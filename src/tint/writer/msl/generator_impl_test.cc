@@ -32,8 +32,8 @@ TEST_F(MslGeneratorImplTest, InvalidProgram) {
 }
 
 TEST_F(MslGeneratorImplTest, Generate) {
-    Func("my_func", {}, ty.void_(), {},
-         {
+    Func("my_func", utils::Empty, ty.void_(), utils::Empty,
+         utils::Vector{
              Stage(ast::PipelineStage::kCompute),
              WorkgroupSize(1_i),
          });
@@ -52,7 +52,7 @@ kernel void my_func() {
 }
 
 struct MslBuiltinData {
-    ast::Builtin builtin;
+    ast::BuiltinValue builtin;
     const char* attribute_name;
 };
 inline std::ostream& operator<<(std::ostream& out, MslBuiltinData data) {
@@ -71,25 +71,32 @@ INSTANTIATE_TEST_SUITE_P(
     MslGeneratorImplTest,
     MslBuiltinConversionTest,
     testing::Values(
-        MslBuiltinData{ast::Builtin::kPosition, "position"},
-        MslBuiltinData{ast::Builtin::kVertexIndex, "vertex_id"},
-        MslBuiltinData{ast::Builtin::kInstanceIndex, "instance_id"},
-        MslBuiltinData{ast::Builtin::kFrontFacing, "front_facing"},
-        MslBuiltinData{ast::Builtin::kFragDepth, "depth(any)"},
-        MslBuiltinData{ast::Builtin::kLocalInvocationId, "thread_position_in_threadgroup"},
-        MslBuiltinData{ast::Builtin::kLocalInvocationIndex, "thread_index_in_threadgroup"},
-        MslBuiltinData{ast::Builtin::kGlobalInvocationId, "thread_position_in_grid"},
-        MslBuiltinData{ast::Builtin::kWorkgroupId, "threadgroup_position_in_grid"},
-        MslBuiltinData{ast::Builtin::kNumWorkgroups, "threadgroups_per_grid"},
-        MslBuiltinData{ast::Builtin::kSampleIndex, "sample_id"},
-        MslBuiltinData{ast::Builtin::kSampleMask, "sample_mask"},
-        MslBuiltinData{ast::Builtin::kPointSize, "point_size"}));
+        MslBuiltinData{ast::BuiltinValue::kPosition, "position"},
+        MslBuiltinData{ast::BuiltinValue::kVertexIndex, "vertex_id"},
+        MslBuiltinData{ast::BuiltinValue::kInstanceIndex, "instance_id"},
+        MslBuiltinData{ast::BuiltinValue::kFrontFacing, "front_facing"},
+        MslBuiltinData{ast::BuiltinValue::kFragDepth, "depth(any)"},
+        MslBuiltinData{ast::BuiltinValue::kLocalInvocationId, "thread_position_in_threadgroup"},
+        MslBuiltinData{ast::BuiltinValue::kLocalInvocationIndex, "thread_index_in_threadgroup"},
+        MslBuiltinData{ast::BuiltinValue::kGlobalInvocationId, "thread_position_in_grid"},
+        MslBuiltinData{ast::BuiltinValue::kWorkgroupId, "threadgroup_position_in_grid"},
+        MslBuiltinData{ast::BuiltinValue::kNumWorkgroups, "threadgroups_per_grid"},
+        MslBuiltinData{ast::BuiltinValue::kSampleIndex, "sample_id"},
+        MslBuiltinData{ast::BuiltinValue::kSampleMask, "sample_mask"},
+        MslBuiltinData{ast::BuiltinValue::kPointSize, "point_size"}));
 
 TEST_F(MslGeneratorImplTest, HasInvariantAttribute_True) {
-    auto* out = Structure(
-        "Out", {Member("pos", ty.vec4<f32>(), {Builtin(ast::Builtin::kPosition), Invariant()})});
-    Func("vert_main", {}, ty.Of(out), {Return(Construct(ty.Of(out)))},
-         {Stage(ast::PipelineStage::kVertex)});
+    auto* out = Structure("Out", utils::Vector{
+                                     Member("pos", ty.vec4<f32>(),
+                                            utils::Vector{
+                                                Builtin(ast::BuiltinValue::kPosition),
+                                                Invariant(),
+                                            }),
+                                 });
+    Func("vert_main", utils::Empty, ty.Of(out), utils::Vector{Return(Construct(ty.Of(out)))},
+         utils::Vector{
+             Stage(ast::PipelineStage::kVertex),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -117,10 +124,16 @@ vertex Out vert_main() {
 }
 
 TEST_F(MslGeneratorImplTest, HasInvariantAttribute_False) {
-    auto* out =
-        Structure("Out", {Member("pos", ty.vec4<f32>(), {Builtin(ast::Builtin::kPosition)})});
-    Func("vert_main", {}, ty.Of(out), {Return(Construct(ty.Of(out)))},
-         {Stage(ast::PipelineStage::kVertex)});
+    auto* out = Structure("Out", utils::Vector{
+                                     Member("pos", ty.vec4<f32>(),
+                                            utils::Vector{
+                                                Builtin(ast::BuiltinValue::kPosition),
+                                            }),
+                                 });
+    Func("vert_main", utils::Empty, ty.Of(out), utils::Vector{Return(Construct(ty.Of(out)))},
+         utils::Vector{
+             Stage(ast::PipelineStage::kVertex),
+         });
 
     GeneratorImpl& gen = Build();
 
@@ -142,8 +155,11 @@ vertex Out vert_main() {
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrix) {
     GlobalVar("m", ty.mat2x2<f32>(), ast::StorageClass::kWorkgroup);
-    Func("comp_main", {}, ty.void_(), {Decl(Let("x", nullptr, Expr("m")))},
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
+    Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", nullptr, Expr("m")))},
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -179,8 +195,11 @@ kernel void comp_main(threadgroup tint_symbol_3* tint_symbol_2 [[threadgroup(0)]
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrixInArray) {
     GlobalVar("m", ty.array(ty.mat2x2<f32>(), 4_i), ast::StorageClass::kWorkgroup);
-    Func("comp_main", {}, ty.void_(), {Decl(Let("x", nullptr, Expr("m")))},
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
+    Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", nullptr, Expr("m")))},
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -229,16 +248,19 @@ kernel void comp_main(threadgroup tint_symbol_3* tint_symbol_2 [[threadgroup(0)]
 }
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrixInStruct) {
-    Structure("S1", {
+    Structure("S1", utils::Vector{
                         Member("m1", ty.mat2x2<f32>()),
                         Member("m2", ty.mat4x4<f32>()),
                     });
-    Structure("S2", {
+    Structure("S2", utils::Vector{
                         Member("s", ty.type_name("S1")),
                     });
     GlobalVar("s", ty.type_name("S2"), ast::StorageClass::kWorkgroup);
-    Func("comp_main", {}, ty.void_(), {Decl(Let("x", nullptr, Expr("s")))},
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
+    Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", nullptr, Expr("s")))},
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -292,29 +314,41 @@ TEST_F(MslGeneratorImplTest, WorkgroupMatrix_Multiples) {
     GlobalVar("m7", ty.mat4x2<f32>(), ast::StorageClass::kWorkgroup);
     GlobalVar("m8", ty.mat4x3<f32>(), ast::StorageClass::kWorkgroup);
     GlobalVar("m9", ty.mat4x4<f32>(), ast::StorageClass::kWorkgroup);
-    Func("main1", {}, ty.void_(),
-         {
+    Func("main1", utils::Empty, ty.void_(),
+         utils::Vector{
              Decl(Let("a1", nullptr, Expr("m1"))),
              Decl(Let("a2", nullptr, Expr("m2"))),
              Decl(Let("a3", nullptr, Expr("m3"))),
          },
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
-    Func("main2", {}, ty.void_(),
-         {
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
+    Func("main2", utils::Empty, ty.void_(),
+         utils::Vector{
              Decl(Let("a1", nullptr, Expr("m4"))),
              Decl(Let("a2", nullptr, Expr("m5"))),
              Decl(Let("a3", nullptr, Expr("m6"))),
          },
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
-    Func("main3", {}, ty.void_(),
-         {
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
+    Func("main3", utils::Empty, ty.void_(),
+         utils::Vector{
              Decl(Let("a1", nullptr, Expr("m7"))),
              Decl(Let("a2", nullptr, Expr("m8"))),
              Decl(Let("a3", nullptr, Expr("m9"))),
          },
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
-    Func("main4_no_usages", {}, ty.void_(), {},
-         {Stage(ast::PipelineStage::kCompute), WorkgroupSize(1_i)});
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
+    Func("main4_no_usages", utils::Empty, ty.void_(), utils::Empty,
+         utils::Vector{
+             Stage(ast::PipelineStage::kCompute),
+             WorkgroupSize(1_i),
+         });
 
     GeneratorImpl& gen = SanitizeAndBuild();
 

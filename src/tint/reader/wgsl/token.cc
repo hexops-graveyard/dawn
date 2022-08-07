@@ -37,6 +37,8 @@ std::string_view Token::TypeToName(Type type) {
             return "'i'-suffixed integer literal";
         case Token::Type::kIntLiteral_U:
             return "'u'-suffixed integer literal";
+        case Token::Type::kPlaceholder:
+            return "placeholder";
         case Token::Type::kUninitialized:
             return "uninitialized";
 
@@ -128,6 +130,10 @@ std::string_view Token::TypeToName(Type type) {
             return "|=";
         case Token::Type::kXorEqual:
             return "^=";
+        case Token::Type::kShiftLeftEqual:
+            return "<<=";
+        case Token::Type::kShiftRightEqual:
+            return ">>=";
 
         case Token::Type::kArray:
             return "array";
@@ -167,14 +173,10 @@ std::string_view Token::TypeToName(Type type) {
             return "fn";
         case Token::Type::kFor:
             return "for";
-        case Token::Type::kFunction:
-            return "function";
         case Token::Type::kI32:
             return "i32";
         case Token::Type::kIf:
             return "if";
-        case Token::Type::kImport:
-            return "import";
         case Token::Type::kLet:
             return "let";
         case Token::Type::kLoop:
@@ -199,8 +201,6 @@ std::string_view Token::TypeToName(Type type) {
             return "mat4x4";
         case Token::Type::kOverride:
             return "override";
-        case Token::Type::kPrivate:
-            return "private";
         case Token::Type::kPtr:
             return "ptr";
         case Token::Type::kReturn:
@@ -209,8 +209,8 @@ std::string_view Token::TypeToName(Type type) {
             return "sampler";
         case Token::Type::kComparisonSampler:
             return "sampler_comparison";
-        case Token::Type::kStorage:
-            return "storage";
+        case Token::Type::kStaticAssert:
+            return "static_assert";
         case Token::Type::kStruct:
             return "struct";
         case Token::Type::kSwitch:
@@ -255,8 +255,6 @@ std::string_view Token::TypeToName(Type type) {
             return "type";
         case Token::Type::kU32:
             return "u32";
-        case Token::Type::kUniform:
-            return "uniform";
         case Token::Type::kVar:
             return "var";
         case Token::Type::kVec2:
@@ -267,8 +265,6 @@ std::string_view Token::TypeToName(Type type) {
             return "vec4";
         case Token::Type::kWhile:
             return "while";
-        case Token::Type::kWorkgroup:
-            return "workgroup";
     }
 
     return "<unknown>";
@@ -295,13 +291,9 @@ Token::Token(Type type, const Source& source) : type_(type), source_(source) {}
 
 Token::Token(Token&&) = default;
 
-Token::Token(const Token&) = default;
-
 Token::~Token() = default;
 
-Token& Token::operator=(const Token& rhs) = default;
-
-bool Token::operator==(std::string_view ident) {
+bool Token::operator==(std::string_view ident) const {
     if (type_ != Type::kIdentifier) {
         return false;
     }

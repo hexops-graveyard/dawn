@@ -1,12 +1,12 @@
 #version 310 es
 
 vec3 tint_degrees(vec3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082322865f;
 }
 
 
 void degrees_2af623() {
-  vec3 arg_0 = vec3(0.0f);
+  vec3 arg_0 = vec3(1.0f);
   vec3 res = tint_degrees(arg_0);
 }
 
@@ -27,12 +27,12 @@ void main() {
 precision mediump float;
 
 vec3 tint_degrees(vec3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082322865f;
 }
 
 
 void degrees_2af623() {
-  vec3 arg_0 = vec3(0.0f);
+  vec3 arg_0 = vec3(1.0f);
   vec3 res = tint_degrees(arg_0);
 }
 
@@ -47,12 +47,12 @@ void main() {
 #version 310 es
 
 vec3 tint_degrees(vec3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082322865f;
 }
 
 
 void degrees_2af623() {
-  vec3 arg_0 = vec3(0.0f);
+  vec3 arg_0 = vec3(1.0f);
   vec3 res = tint_degrees(arg_0);
 }
 

@@ -177,6 +177,9 @@ bool ReturnsVoid(ValidTextureOverload texture_overload);
 
 /// Describes a texture builtin overload
 struct TextureOverloadCase {
+    /// Args is a list of ast::Expression used as arguments to the texture overload case.
+    using Args = utils::Vector<const ast::Expression*, 8>;
+
     /// Constructor for textureSample...() functions
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
@@ -185,7 +188,7 @@ struct TextureOverloadCase {
                         ast::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<ExpressionList(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>);
     /// Constructor for textureLoad() functions with non-storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
@@ -193,7 +196,7 @@ struct TextureOverloadCase {
                         ast::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<ExpressionList(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>);
     /// Constructor for textureLoad() with storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
@@ -202,7 +205,7 @@ struct TextureOverloadCase {
                         ast::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<ExpressionList(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>);
     /// Copy constructor
     TextureOverloadCase(const TextureOverloadCase&);
     /// Destructor
@@ -238,7 +241,7 @@ struct TextureOverloadCase {
     Access const access = Access::kReadWrite;
     /// The image format for the storage texture
     /// Used only when texture_kind is kStorage
-    ast::TexelFormat const texel_format = ast::TexelFormat::kNone;
+    ast::TexelFormat const texel_format = ast::TexelFormat::kInvalid;
     /// The dimensions of the texture parameter
     ast::TextureDimension const texture_dimension;
     /// The data type of the texture parameter
@@ -246,7 +249,7 @@ struct TextureOverloadCase {
     /// Name of the function. e.g. `textureSample`, `textureSampleGrad`, etc
     const char* const function;
     /// A function that builds the AST arguments for the overload
-    std::function<ExpressionList(ProgramBuilder*)> const args;
+    std::function<Args(ProgramBuilder*)> const args;
 };
 
 std::ostream& operator<<(std::ostream& out, const TextureOverloadCase& data);

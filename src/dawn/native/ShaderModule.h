@@ -116,12 +116,6 @@ ResultOrError<tint::Program> RunTransforms(tint::transform::Transform* transform
                                            tint::transform::DataMap* outputs,
                                            OwnedCompilationMessages* messages);
 
-/// Creates and adds the tint::transform::VertexPulling::Config to transformInputs.
-void AddVertexPullingTransformConfig(const RenderPipelineBase& renderPipeline,
-                                     const std::string& entryPoint,
-                                     BindGroupIndex pullingBufferBindingSet,
-                                     tint::transform::DataMap* transformInputs);
-
 // Mirrors wgpu::SamplerBindingLayout but instead stores a single boolean
 // for isComparison instead of a wgpu::SamplerBindingType enum.
 struct ShaderSamplerBindingInfo {
@@ -155,8 +149,8 @@ struct ShaderBindingInfo {
 using BindingGroupInfoMap = std::map<BindingNumber, ShaderBindingInfo>;
 using BindingInfoArray = ityp::array<BindGroupIndex, BindingGroupInfoMap, kMaxBindGroups>;
 
-// The WebGPU overridable constants only support these scalar types
-union OverridableConstantScalar {
+// The WebGPU override variables only support these scalar types
+union OverrideScalar {
     // Use int32_t for boolean to initialize the full 32bit
     int32_t b;
     float f32;
@@ -216,9 +210,9 @@ struct EntryPointMetadata {
     // The shader stage for this binding.
     SingleShaderStage stage;
 
-    struct OverridableConstant {
+    struct Override {
         uint32_t id;
-        // Match tint::inspector::OverridableConstant::Type
+        // Match tint::inspector::Override::Type
         // Bool is defined as a macro on linux X11 and cannot compile
         enum class Type { Boolean, Float32, Uint32, Int32 } type;
 
@@ -230,23 +224,23 @@ struct EntryPointMetadata {
         // Store the default initialized value in shader
         // This is used by metal backend as the function_constant does not have dafault values
         // Initialized when isInitialized == true
-        OverridableConstantScalar defaultValue;
+        OverrideScalar defaultValue;
     };
 
-    using OverridableConstantsMap = std::unordered_map<std::string, OverridableConstant>;
+    using OverridesMap = std::unordered_map<std::string, Override>;
 
-    // Map identifier to overridable constant
+    // Map identifier to override variable
     // Identifier is unique: either the variable name or the numeric ID if specified
-    OverridableConstantsMap overridableConstants;
+    OverridesMap overrides;
 
-    // Overridable constants that are not initialized in shaders
+    // Override variables that are not initialized in shaders
     // They need value initialization from pipeline stage or it is a validation error
-    std::unordered_set<std::string> uninitializedOverridableConstants;
+    std::unordered_set<std::string> uninitializedOverrides;
 
     // Store constants with shader initialized values as well
     // This is used by metal backend to set values with default initializers that are not
     // overridden
-    std::unordered_set<std::string> initializedOverridableConstants;
+    std::unordered_set<std::string> initializedOverrides;
 
     bool usesNumWorkgroups = false;
     // Used at render pipeline validation.
@@ -294,10 +288,6 @@ class ShaderModuleBase : public ApiObjectBase, public CachedObject {
 
     MaybeError InitializeBase(ShaderModuleParseResult* parseResult,
                               OwnedCompilationMessages* compilationMessages);
-
-    static void AddExternalTextureTransform(const PipelineLayoutBase* layout,
-                                            tint::transform::Manager* transformManager,
-                                            tint::transform::DataMap* transformInputs);
 
   private:
     ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag);

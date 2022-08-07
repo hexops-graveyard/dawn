@@ -14,12 +14,16 @@
 
 #include "src/tint/sem/type_constructor.h"
 
+#include <utility>
+
 TINT_INSTANTIATE_TYPEINFO(tint::sem::TypeConstructor);
 
 namespace tint::sem {
 
-TypeConstructor::TypeConstructor(const sem::Type* type, const ParameterList& parameters)
-    : Base(type, parameters) {}
+TypeConstructor::TypeConstructor(const sem::Type* type,
+                                 utils::VectorRef<const Parameter*> parameters,
+                                 EvaluationStage stage)
+    : Base(type, std::move(parameters), stage) {}
 
 TypeConstructor::~TypeConstructor() = default;
 

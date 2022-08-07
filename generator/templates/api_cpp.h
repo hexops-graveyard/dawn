@@ -152,7 +152,8 @@ namespace {{metadata.namespace}} {
     };
 
 {% macro render_cpp_default_value(member, is_struct=True) -%}
-    {%- if member.annotation in ["*", "const*"] and member.optional or member.default_value == "nullptr" -%}
+    {%- if member.json_data.get("no_default", false) -%}
+    {%- elif member.annotation in ["*", "const*"] and member.optional or member.default_value == "nullptr" -%}
         {{" "}}= nullptr
     {%- elif member.type.category == "object" and member.optional and is_struct -%}
         {{" "}}= nullptr
@@ -225,6 +226,9 @@ namespace {{metadata.namespace}} {
         {% set Out = "Out" if type.output else "" %}
         {% set const = "const" if not type.output else "" %}
         {% if type.chained %}
+            {% for root in type.chain_roots %}
+                // Can be chained in {{as_cppType(root.name)}}
+            {% endfor %}
             struct {{as_cppType(type.name)}} : ChainedStruct{{Out}} {
                 {{as_cppType(type.name)}}() {
                     sType = SType::{{type.name.CamelCase()}};

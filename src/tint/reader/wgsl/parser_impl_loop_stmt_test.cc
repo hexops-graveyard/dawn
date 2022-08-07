@@ -20,59 +20,59 @@ namespace {
 
 TEST_F(ParserImplTest, LoopStmt_BodyNoContinuing) {
     auto p = parser("loop { discard; }");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_TRUE(e.matched);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
 
-    ASSERT_EQ(e->body->statements.size(), 1u);
+    ASSERT_EQ(e->body->statements.Length(), 1u);
     EXPECT_TRUE(e->body->statements[0]->Is<ast::DiscardStatement>());
 
-    EXPECT_EQ(e->continuing->statements.size(), 0u);
+    EXPECT_EQ(e->continuing->statements.Length(), 0u);
 }
 
 TEST_F(ParserImplTest, LoopStmt_BodyWithContinuing) {
     auto p = parser("loop { discard; continuing { discard; }}");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_TRUE(e.matched);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
 
-    ASSERT_EQ(e->body->statements.size(), 1u);
+    ASSERT_EQ(e->body->statements.Length(), 1u);
     EXPECT_TRUE(e->body->statements[0]->Is<ast::DiscardStatement>());
 
-    EXPECT_EQ(e->continuing->statements.size(), 1u);
+    EXPECT_EQ(e->continuing->statements.Length(), 1u);
     EXPECT_TRUE(e->continuing->statements[0]->Is<ast::DiscardStatement>());
 }
 
 TEST_F(ParserImplTest, LoopStmt_NoBodyNoContinuing) {
     auto p = parser("loop { }");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_TRUE(e.matched);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
-    ASSERT_EQ(e->body->statements.size(), 0u);
-    ASSERT_EQ(e->continuing->statements.size(), 0u);
+    ASSERT_EQ(e->body->statements.Length(), 0u);
+    ASSERT_EQ(e->continuing->statements.Length(), 0u);
 }
 
 TEST_F(ParserImplTest, LoopStmt_NoBodyWithContinuing) {
     auto p = parser("loop { continuing { discard; }}");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_TRUE(e.matched);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
-    ASSERT_EQ(e->body->statements.size(), 0u);
-    ASSERT_EQ(e->continuing->statements.size(), 1u);
+    ASSERT_EQ(e->body->statements.Length(), 0u);
+    ASSERT_EQ(e->continuing->statements.Length(), 1u);
     EXPECT_TRUE(e->continuing->statements[0]->Is<ast::DiscardStatement>());
 }
 
 TEST_F(ParserImplTest, LoopStmt_MissingBracketLeft) {
     auto p = parser("loop discard; }");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_FALSE(e.matched);
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
@@ -82,7 +82,7 @@ TEST_F(ParserImplTest, LoopStmt_MissingBracketLeft) {
 
 TEST_F(ParserImplTest, LoopStmt_MissingBracketRight) {
     auto p = parser("loop { discard; ");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_FALSE(e.matched);
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
@@ -92,7 +92,7 @@ TEST_F(ParserImplTest, LoopStmt_MissingBracketRight) {
 
 TEST_F(ParserImplTest, LoopStmt_InvalidStatements) {
     auto p = parser("loop { discard }");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_FALSE(e.matched);
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
@@ -102,7 +102,7 @@ TEST_F(ParserImplTest, LoopStmt_InvalidStatements) {
 
 TEST_F(ParserImplTest, LoopStmt_InvalidContinuing) {
     auto p = parser("loop { continuing { discard }}");
-    auto e = p->loop_stmt();
+    auto e = p->loop_statement();
     EXPECT_FALSE(e.matched);
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);

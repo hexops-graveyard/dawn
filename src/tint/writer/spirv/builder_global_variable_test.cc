@@ -115,6 +115,36 @@ TEST_F(BuilderTest, GlobalConst_Vec_Constructor) {
     Validate(b);
 }
 
+TEST_F(BuilderTest, GlobalConst_Vec_F16_Constructor) {
+    // const c = vec3<f16>(1h, 2h, 3h);
+    // var v = c;
+    Enable(ast::Extension::kF16);
+
+    auto* c = GlobalConst("c", nullptr, vec3<f16>(1_h, 2_h, 3_h));
+    GlobalVar("v", nullptr, ast::StorageClass::kPrivate, Expr(c));
+
+    spirv::Builder& b = SanitizeAndBuild();
+
+    ASSERT_TRUE(b.Build()) << b.error();
+
+    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 16
+%1 = OpTypeVector %2 3
+%3 = OpConstant %2 0x1p+0
+%4 = OpConstant %2 0x1p+1
+%5 = OpConstant %2 0x1.8p+1
+%6 = OpConstantComposite %1 %3 %4 %5
+%8 = OpTypePointer Private %1
+%7 = OpVariable %8 Private %6
+%10 = OpTypeVoid
+%9 = OpTypeFunction %10
+)");
+    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+)");
+
+    Validate(b);
+}
+
 TEST_F(BuilderTest, GlobalConst_Vec_AInt_Constructor) {
     // const c = vec3(1, 2, 3);
     // var v = c;
@@ -205,7 +235,7 @@ TEST_F(BuilderTest, GlobalConst_Nested_Vec_Constructor) {
 TEST_F(BuilderTest, GlobalVar_WithBindingAndGroup) {
     auto* v =
         GlobalVar("var", ty.sampler(ast::SamplerKind::kSampler), ast::StorageClass::kNone, nullptr,
-                  ast::AttributeList{
+                  utils::Vector{
                       create<ast::BindingAttribute>(2u),
                       create<ast::GroupAttribute>(3u),
                   });
@@ -226,7 +256,7 @@ OpDecorate %1 DescriptorSet 3
 
 TEST_F(BuilderTest, GlobalVar_Override_Bool) {
     auto* v = Override("var", ty.bool_(), Expr(true),
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(1200),
                        });
 
@@ -244,7 +274,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Bool) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Bool_ZeroValue) {
     auto* v = Override("var", ty.bool_(), Construct<bool>(),
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(1200),
                        });
 
@@ -262,7 +292,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Bool_ZeroValue) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Bool_NoConstructor) {
     auto* v = Override("var", ty.bool_(), nullptr,
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(1200),
                        });
 
@@ -280,7 +310,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Bool_NoConstructor) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Scalar) {
     auto* v = Override("var", ty.f32(), Expr(2_f),
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(0),
                        });
 
@@ -298,7 +328,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Scalar) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Scalar_ZeroValue) {
     auto* v = Override("var", ty.f32(), Construct<f32>(),
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(0),
                        });
 
@@ -316,7 +346,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Scalar_ZeroValue) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Scalar_F32_NoConstructor) {
     auto* v = Override("var", ty.f32(), nullptr,
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(0),
                        });
 
@@ -334,7 +364,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Scalar_F32_NoConstructor) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Scalar_I32_NoConstructor) {
     auto* v = Override("var", ty.i32(), nullptr,
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(0),
                        });
 
@@ -352,7 +382,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Scalar_I32_NoConstructor) {
 
 TEST_F(BuilderTest, GlobalVar_Override_Scalar_U32_NoConstructor) {
     auto* v = Override("var", ty.u32(), nullptr,
-                       ast::AttributeList{
+                       utils::Vector{
                            Id(0),
                        });
 
@@ -370,7 +400,7 @@ TEST_F(BuilderTest, GlobalVar_Override_Scalar_U32_NoConstructor) {
 
 TEST_F(BuilderTest, GlobalVar_Override_NoId) {
     auto* var_a = Override("a", ty.bool_(), Expr(true),
-                           ast::AttributeList{
+                           utils::Vector{
                                Id(0),
                            });
     auto* var_b = Override("b", ty.bool_(), Expr(false));
@@ -392,7 +422,7 @@ OpDecorate %3 SpecId 1
 }
 
 struct BuiltinData {
-    ast::Builtin builtin;
+    ast::BuiltinValue builtin;
     ast::StorageClass storage;
     SpvBuiltIn result;
 };
@@ -412,30 +442,31 @@ INSTANTIATE_TEST_SUITE_P(
     BuilderTest_Type,
     BuiltinDataTest,
     testing::Values(
-        BuiltinData{ast::Builtin::kNone, ast::StorageClass::kNone, SpvBuiltInMax},
-        BuiltinData{ast::Builtin::kPosition, ast::StorageClass::kInput, SpvBuiltInFragCoord},
-        BuiltinData{ast::Builtin::kPosition, ast::StorageClass::kOutput, SpvBuiltInPosition},
+        BuiltinData{ast::BuiltinValue::kInvalid, ast::StorageClass::kNone, SpvBuiltInMax},
+        BuiltinData{ast::BuiltinValue::kPosition, ast::StorageClass::kIn, SpvBuiltInFragCoord},
+        BuiltinData{ast::BuiltinValue::kPosition, ast::StorageClass::kOut, SpvBuiltInPosition},
         BuiltinData{
-            ast::Builtin::kVertexIndex,
-            ast::StorageClass::kInput,
+            ast::BuiltinValue::kVertexIndex,
+            ast::StorageClass::kIn,
             SpvBuiltInVertexIndex,
         },
-        BuiltinData{ast::Builtin::kInstanceIndex, ast::StorageClass::kInput,
+        BuiltinData{ast::BuiltinValue::kInstanceIndex, ast::StorageClass::kIn,
                     SpvBuiltInInstanceIndex},
-        BuiltinData{ast::Builtin::kFrontFacing, ast::StorageClass::kInput, SpvBuiltInFrontFacing},
-        BuiltinData{ast::Builtin::kFragDepth, ast::StorageClass::kOutput, SpvBuiltInFragDepth},
-        BuiltinData{ast::Builtin::kLocalInvocationId, ast::StorageClass::kInput,
+        BuiltinData{ast::BuiltinValue::kFrontFacing, ast::StorageClass::kIn, SpvBuiltInFrontFacing},
+        BuiltinData{ast::BuiltinValue::kFragDepth, ast::StorageClass::kOut, SpvBuiltInFragDepth},
+        BuiltinData{ast::BuiltinValue::kLocalInvocationId, ast::StorageClass::kIn,
                     SpvBuiltInLocalInvocationId},
-        BuiltinData{ast::Builtin::kLocalInvocationIndex, ast::StorageClass::kInput,
+        BuiltinData{ast::BuiltinValue::kLocalInvocationIndex, ast::StorageClass::kIn,
                     SpvBuiltInLocalInvocationIndex},
-        BuiltinData{ast::Builtin::kGlobalInvocationId, ast::StorageClass::kInput,
+        BuiltinData{ast::BuiltinValue::kGlobalInvocationId, ast::StorageClass::kIn,
                     SpvBuiltInGlobalInvocationId},
-        BuiltinData{ast::Builtin::kWorkgroupId, ast::StorageClass::kInput, SpvBuiltInWorkgroupId},
-        BuiltinData{ast::Builtin::kNumWorkgroups, ast::StorageClass::kInput,
+        BuiltinData{ast::BuiltinValue::kWorkgroupId, ast::StorageClass::kIn, SpvBuiltInWorkgroupId},
+        BuiltinData{ast::BuiltinValue::kNumWorkgroups, ast::StorageClass::kIn,
                     SpvBuiltInNumWorkgroups},
-        BuiltinData{ast::Builtin::kSampleIndex, ast::StorageClass::kInput, SpvBuiltInSampleId},
-        BuiltinData{ast::Builtin::kSampleMask, ast::StorageClass::kInput, SpvBuiltInSampleMask},
-        BuiltinData{ast::Builtin::kSampleMask, ast::StorageClass::kOutput, SpvBuiltInSampleMask}));
+        BuiltinData{ast::BuiltinValue::kSampleIndex, ast::StorageClass::kIn, SpvBuiltInSampleId},
+        BuiltinData{ast::BuiltinValue::kSampleMask, ast::StorageClass::kIn, SpvBuiltInSampleMask},
+        BuiltinData{ast::BuiltinValue::kSampleMask, ast::StorageClass::kOut,
+                    SpvBuiltInSampleMask}));
 
 TEST_F(BuilderTest, GlobalVar_DeclReadOnly) {
     // struct A {
@@ -443,13 +474,13 @@ TEST_F(BuilderTest, GlobalVar_DeclReadOnly) {
     // };
     // var b<storage, read> : A
 
-    auto* A = Structure("A", {
+    auto* A = Structure("A", utils::Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.i32()),
                              });
 
     GlobalVar("b", ty.Of(A), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -487,10 +518,10 @@ TEST_F(BuilderTest, GlobalVar_TypeAliasDeclReadOnly) {
     // type B = A;
     // var b<storage, read> : B
 
-    auto* A = Structure("A", {Member("a", ty.i32())});
+    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
     auto* B = Alias("B", ty.Of(A));
     GlobalVar("b", ty.Of(B), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -526,10 +557,10 @@ TEST_F(BuilderTest, GlobalVar_TypeAliasAssignReadOnly) {
     // type B = A;
     // var<storage, read> b : B
 
-    auto* A = Structure("A", {Member("a", ty.i32())});
+    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
     auto* B = Alias("B", ty.Of(A));
     GlobalVar("b", ty.Of(B), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::BindingAttribute>(0u),
                   create<ast::GroupAttribute>(0u),
               });
@@ -565,14 +596,14 @@ TEST_F(BuilderTest, GlobalVar_TwoVarDeclReadOnly) {
     // var<storage, read> b : A
     // var<storage, read_write> c : A
 
-    auto* A = Structure("A", {Member("a", ty.i32())});
+    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
     GlobalVar("b", ty.Of(A), ast::StorageClass::kStorage, ast::Access::kRead,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::GroupAttribute>(0u),
                   create<ast::BindingAttribute>(0u),
               });
     GlobalVar("c", ty.Of(A), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-              ast::AttributeList{
+              utils::Vector{
                   create<ast::GroupAttribute>(1u),
                   create<ast::BindingAttribute>(0u),
               });
@@ -613,7 +644,7 @@ TEST_F(BuilderTest, GlobalVar_TextureStorageWriteOnly) {
                                     ast::Access::kWrite);
 
     auto* var_a = GlobalVar("a", type,
-                            ast::AttributeList{
+                            utils::Vector{
                                 create<ast::BindingAttribute>(0u),
                                 create<ast::GroupAttribute>(0u),
                             });
@@ -644,7 +675,7 @@ TEST_F(BuilderTest, DISABLED_GlobalVar_TextureStorageWithDifferentAccess) {
     auto* type_a = ty.storage_texture(ast::TextureDimension::k2d, ast::TexelFormat::kR32Uint,
                                       ast::Access::kReadWrite);
     auto* var_a = GlobalVar("a", type_a, ast::StorageClass::kNone,
-                            ast::AttributeList{
+                            utils::Vector{
                                 create<ast::BindingAttribute>(0u),
                                 create<ast::GroupAttribute>(0u),
                             });
@@ -652,7 +683,7 @@ TEST_F(BuilderTest, DISABLED_GlobalVar_TextureStorageWithDifferentAccess) {
     auto* type_b = ty.storage_texture(ast::TextureDimension::k2d, ast::TexelFormat::kR32Uint,
                                       ast::Access::kWrite);
     auto* var_b = GlobalVar("b", type_b, ast::StorageClass::kNone,
-                            ast::AttributeList{
+                            utils::Vector{
                                 create<ast::BindingAttribute>(1u),
                                 create<ast::GroupAttribute>(0u),
                             });
@@ -687,7 +718,7 @@ TEST_F(BuilderTest, GlobalVar_WorkgroupWithZeroInit) {
     auto* type_array = ty.array<f32, 16>();
     auto* var_array = GlobalVar("b", type_array, ast::StorageClass::kWorkgroup);
 
-    auto* type_struct = Structure("C", {
+    auto* type_struct = Structure("C", utils::Vector{
                                            Member("a", ty.i32()),
                                            Member("b", ty.i32()),
                                        });

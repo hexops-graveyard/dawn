@@ -389,7 +389,7 @@ MaybeError RenderPipeline::Initialize() {
     descriptorD3D12.RasterizerState.DepthBias = GetDepthBias();
     descriptorD3D12.RasterizerState.DepthBiasClamp = GetDepthBiasClamp();
     descriptorD3D12.RasterizerState.SlopeScaledDepthBias = GetDepthBiasSlopeScale();
-    descriptorD3D12.RasterizerState.DepthClipEnable = TRUE;
+    descriptorD3D12.RasterizerState.DepthClipEnable = !HasUnclippedDepth();
     descriptorD3D12.RasterizerState.MultisampleEnable = (GetSampleCount() > 1) ? TRUE : FALSE;
     descriptorD3D12.RasterizerState.AntialiasedLineEnable = FALSE;
     descriptorD3D12.RasterizerState.ForcedSampleCount = 0;
@@ -430,7 +430,7 @@ MaybeError RenderPipeline::Initialize() {
 
     mD3d12PrimitiveTopology = D3D12PrimitiveTopology(GetPrimitiveTopology());
 
-    mCacheKey.Record(descriptorD3D12, *layout->GetRootSignatureBlob());
+    StreamIn(&mCacheKey, descriptorD3D12, *layout->GetRootSignatureBlob());
 
     // Try to see if we have anything in the blob cache.
     Blob blob = device->LoadCachedBlob(GetCacheKey());

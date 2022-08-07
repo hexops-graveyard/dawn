@@ -32,23 +32,25 @@ class Array final : public Castable<Array, Type> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
+    /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param subtype the type of the array elements
-    /// @param count the number of elements in the array. nullptr represents a
-    /// runtime-sized array.
+    /// @param count the number of elements in the array
     /// @param attributes the array attributes
+    /// @note a runtime-sized array is represented by a null count and a non-null type
     Array(ProgramID pid,
+          NodeID nid,
           const Source& src,
           const Type* subtype,
           const Expression* count,
-          AttributeList attributes);
+          utils::VectorRef<const Attribute*> attributes);
     /// Move constructor
     Array(Array&&);
     ~Array() override;
 
     /// @returns true if this is a runtime array.
     /// i.e. the size is determined at runtime
-    bool IsRuntimeArray() const { return count == nullptr; }
+    bool IsRuntimeArray() const { return type != nullptr && count == nullptr; }
 
     /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
@@ -67,7 +69,7 @@ class Array final : public Castable<Array, Type> {
     const Expression* const count;
 
     /// the array attributes
-    const AttributeList attributes;
+    const utils::Vector<const Attribute*, 1> attributes;
 };
 
 }  // namespace tint::ast

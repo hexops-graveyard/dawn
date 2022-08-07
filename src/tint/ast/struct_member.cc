@@ -21,11 +21,12 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::StructMember);
 namespace tint::ast {
 
 StructMember::StructMember(ProgramID pid,
+                           NodeID nid,
                            const Source& src,
                            const Symbol& sym,
                            const ast::Type* ty,
-                           AttributeList attrs)
-    : Base(pid, src), symbol(sym), type(ty), attributes(std::move(attrs)) {
+                           utils::VectorRef<const Attribute*> attrs)
+    : Base(pid, nid, src), symbol(sym), type(ty), attributes(std::move(attrs)) {
     TINT_ASSERT(AST, type);
     TINT_ASSERT(AST, symbol.IsValid());
     TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, symbol, program_id);
@@ -45,7 +46,7 @@ const StructMember* StructMember::Clone(CloneContext* ctx) const {
     auto sym = ctx->Clone(symbol);
     auto* ty = ctx->Clone(type);
     auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<StructMember>(src, sym, ty, attrs);
+    return ctx->dst->create<StructMember>(src, sym, ty, std::move(attrs));
 }
 
 }  // namespace tint::ast

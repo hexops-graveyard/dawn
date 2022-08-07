@@ -1,18 +1,16 @@
 {{- /*
 --------------------------------------------------------------------------------
-Template file for use with tools/builtin-gen to generate the wgsl files in the
+Template file for use with tools/src/cmd/gen to generate the wgsl files in the
 ./literal/...  and ./var/... subdirectories
 
 See:
-* tools/cmd/intrinsic-gen/gen for structures used by this template
+* tools/src/cmd/gen for structures used by this template
 * https://golang.org/pkg/text/template/ for documentation on the template syntax
 --------------------------------------------------------------------------------
 */ -}}
 
 {{- /* For each permutation of each overload of each function... */ -}}
-{{- range .Sem.Builtins -}}
-{{- /* TODO(crbug.com/tint/1536): Remove the bodge below after we support [[extension("extension_name")]] in intrinsics.def */}}
-{{- if not (or (eq .Name "dot4I8Packed") (eq .Name "dot4U8Packed"))}}
+{{- range Sem.Builtins -}}
 {{-   range .Overloads  -}}
 {{-     range Permute . -}}
 {{- /*    Generate a ./literal/<function>/<permuataion-hash>.wgsl file using
@@ -28,7 +26,6 @@ See:
 {{-     end  }}
 {{-   end  }}
 {{- end  }}
-{{- end  }}
 
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-                          define "Permutation"                            -}}
@@ -39,6 +36,9 @@ See:
 {{-   $builtin     := $overload.Intrinsic.Name -}}
 {{-   $permutation := printf "%v_%v" $builtin $overload.Hash -}}
 {{-   $args        := Map -}}
+
+{{- /* Generate enable directives */ -}}
+{{- template "EnableDirectives" $overload -}}
 
 {{- /* Generate RW storage buffer parameters */ -}}
 {{-   $sb_rw_fields := Eval "EmitBufferFields" "overload"    $overload
@@ -115,14 +115,18 @@ struct UB {
 fn {{$permutation}}() {
 {{/* Build the parameters either as 'var' or inline values */ -}}
 {{-   range $i, $p := $overload.Parameters -}}
-{{-     $class := Eval "StorageClass" $p.Type -}}
+{{-     $class       := Eval "StorageClass" $p.Type -}}
+{{-     $is_abstract := DeepestElementType $p.Type | IsAbstract -}}
 {{-     if eq "function" $class -}}
 {{-       if eq "ptr" $p.Type.Target.Name -}}
+{{template "Type" index $p.Type.TemplateArguments 1}};
 {{- /*indent*/}}  var arg_{{$i}}: {{template "Type" index $p.Type.TemplateArguments 1}};
 {{          $args.Put $i (printf "&arg_%v" $i) -}}
 {{-       else if and (not $p.IsConst) (eq "var" $mode) -}}
-{{- /*indent*/}}  var arg_{{$i}} = {{Eval "ArgumentValue" $p}};
-{{          $args.Put $i (printf "arg_%v" $i) -}}
+{{-         if $is_abstract }}  const arg_{{$i}} = {{Eval "ArgumentValue" $p}};
+{{          else            }}  var arg_{{$i}} = {{Eval "ArgumentValue" $p}};
+{{          end             }}
+{{-         $args.Put $i (printf "arg_%v" $i) -}}
 {{-       else -}}
 {{-         $args.Put $i (Eval "ArgumentValue" $p) -}}
 {{-       end -}}
@@ -166,6 +170,26 @@ fn compute_main() {
 
 {{- end -}}
 
+{{- /* ------------------------------------------------------------------ */ -}}
+{{-                        define "EnableDirectives"                         -}}
+{{- /* Emits the required enable directives for a given overload          */ -}}
+{{- /* ------------------------------------------------------------------ */ -}}
+{{-   $permutation  := . -}}
+{{-   $overload := $permutation.Overload -}}
+{{-   $builtin_name := $permutation.Intrinsic.Name -}}
+
+{{- /* Check and emit chromium_experimental_dp4a */ -}}
+{{-   if or (eq "dot4I8Packed" $builtin_name) (eq "dot4U8Packed" $builtin_name)}}
+enable chromium_experimental_dp4a;
+{{    end -}}
+
+{{- /* Check and emit f16 */ -}}
+{{-   if OverloadUsesF16 $overload}}
+enable f16;
+{{    end -}}
+
+{{- end -}}
+
 
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-                       define "EmitBufferFields"                          -}}
@@ -198,6 +222,7 @@ fn compute_main() {
 {{-   end -}}
 {{ end -}}
 
+
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-                           define "StorageClass"                          -}}
 {{- /* Returns the storage class for the given Fully Qualified Name       */ -}}
@@ -222,12 +247,12 @@ fn compute_main() {
 {{- /*  Emit the default for the storage class */ -}}
 {{- /*  https://gpuweb.github.io/gpuweb/wgsl/#storage-class */ -}}
 {{-     $storage := Eval "StorageClass" . -}}
-{{-          if eq $storage "function" -}}read_write
-{{-     else if eq $storage "private" -}}read_write
+{{-          if eq $storage "function"  -}}read_write
+{{-     else if eq $storage "private"   -}}read_write
 {{-     else if eq $storage "workgroup" -}}read_write
-{{-     else if eq $storage "uniform" -}}read
-{{-     else if eq $storage "storage" -}}read
-{{-     else if eq $storage "handle" -}}read
+{{-     else if eq $storage "uniform"   -}}read
+{{-     else if eq $storage "storage"   -}}read
+{{-     else if eq $storage "handle"    -}}read
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
@@ -245,10 +270,23 @@ fn compute_main() {
 {{-     if   eq .Name "level"            -}}0
 {{-     else                             -}}1
 {{-     end                              -}}
-{{-   else if eq $ty.Target.Name "u32" -}}1u
-{{-   else if eq $ty.Target.Name "f32" -}}1.0
-{{-   else                             -}}{{template "Type" $ty}}()
-{{-   end                              -}}
+{{-   else if eq $ty.Target.Name "u32"   -}}1u
+{{-   else if eq $ty.Target.Name "f32"   -}}1.f
+{{-   else if eq $ty.Target.Name "fa"    -}}1
+{{-   else if eq $ty.Target.Name "ia"    -}}1.0
+{{-   else if eq $ty.Target.Name "bool"  -}}true
+{{-   else if eq $ty.Target.Name "vec"   -}}
+{{-     $el := Eval "ArgumentValue" "Type" (ElementType .Type) "Name" ""}}
+{{-     template "Type" $ty}}({{$el}})
+{{-   else if eq $ty.Target.Name "mat"   -}}{{template "Type" $ty}}(
+{{-     $el := Eval "ArgumentValue" "Type" (ElementType .Type) "Name" ""}}
+{{-     range $col := Iterate (index $ty.TemplateArguments 0)     }}
+{{-       range $row := Iterate (index $ty.TemplateArguments 1)   }}
+{{-         if or $col $row -}}, {{end}}{{$el}}
+{{-       end -}}
+{{-     end -}})
+{{-   else -}}{{template "Type" $ty}}()
+{{-   end  -}}
 {{- end -}}
 
 
@@ -257,8 +295,13 @@ fn compute_main() {
 {{- /* Emits the WGSL for the Fully Qualified Name argument               */ -}}
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-   if IsType .Target -}}
-{{-     if      eq .Target.Name "vec" -}}vec{{index .TemplateArguments 0}}<{{template "Type" index .TemplateArguments 1}}>
-{{-     else if eq .Target.Name "mat" -}}mat{{index .TemplateArguments 0}}x{{index .TemplateArguments 1}}<{{template "Type" index .TemplateArguments 2}}>
+{{-     if DeepestElementType . | IsAbstract -}}
+{{-              if eq .Target.Name "vec" -}}vec{{index .TemplateArguments 0}}
+{{-         else if eq .Target.Name "mat" -}}mat{{index .TemplateArguments 0}}x{{index .TemplateArguments 1}}
+{{-         else                          -}}
+{{-         end                           -}}
+{{-     else if eq .Target.Name "vec" -}}vec{{index .TemplateArguments 0}}<{{template "Type" (ElementType .)}}>
+{{-     else if eq .Target.Name "mat" -}}mat{{index .TemplateArguments 0}}x{{index .TemplateArguments 1}}<{{template "Type" (ElementType .)}}>
 {{-     else                          -}}{{.Target.Name}}{{template "TemplateArguments" .TemplateArguments}}
 {{-     end                           -}}
 {{-   else if IsEnumEntry   .Target   -}}{{.Target.Name}}

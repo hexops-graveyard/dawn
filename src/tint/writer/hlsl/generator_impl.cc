@@ -72,6 +72,7 @@
 #include "src/tint/utils/defer.h"
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/scoped_assignment.h"
+#include "src/tint/utils/string.h"
 #include "src/tint/writer/append_vector.h"
 #include "src/tint/writer/float_to_string.h"
 #include "src/tint/writer/generate_external_texture_bindings.h"
@@ -119,6 +120,16 @@ void PrintF32(std::ostream& out, float value) {
         out << "asfloat(0x7fc00000u)";
     } else {
         out << FloatToString(value) << "f";
+    }
+}
+
+bool PrintF16(std::ostream& out, float value) {
+    // Note: Currently inf and nan should not be constructable, don't emit them.
+    if (std::isinf(value) || std::isnan(value)) {
+        return false;
+    } else {
+        out << FloatToString(value) << "h";
+        return true;
     }
 }
 
@@ -264,12 +275,8 @@ bool GeneratorImpl::Generate() {
 
     auto* mod = builder_.Sem().Module();
     for (auto* decl : mod->DependencyOrderedDeclarations()) {
-        if (decl->Is<ast::Alias>()) {
-            continue;  // Ignore aliases.
-        }
-        if (decl->Is<ast::Enable>()) {
-            // Currently we don't have to do anything for using a extension in HLSL.
-            continue;
+        if (decl->IsAnyOf<ast::Alias, ast::Enable, ast::StaticAssert>()) {
+            continue;  // These are not emitted.
         }
 
         // Emit a new line between declarations if the type of declaration has
@@ -910,7 +917,7 @@ bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* e
     return true;
 }
 
-bool GeneratorImpl::EmitStatements(const ast::StatementList& stmts) {
+bool GeneratorImpl::EmitStatements(utils::VectorRef<const ast::Statement*> stmts) {
     for (auto* s : stmts) {
         if (!EmitStatement(s)) {
             return false;
@@ -919,7 +926,7 @@ bool GeneratorImpl::EmitStatements(const ast::StatementList& stmts) {
     return true;
 }
 
-bool GeneratorImpl::EmitStatementsWithIndent(const ast::StatementList& stmts) {
+bool GeneratorImpl::EmitStatementsWithIndent(utils::VectorRef<const ast::Statement*> stmts) {
     ScopedIndent si(this);
     return EmitStatements(stmts);
 }
@@ -1110,13 +1117,13 @@ bool GeneratorImpl::EmitTypeConstructor(std::ostream& out,
 
     // If the type constructor is empty then we need to construct with the zero
     // value for all components.
-    if (call->Arguments().empty()) {
+    if (call->Arguments().IsEmpty()) {
         return EmitZeroValue(out, type);
     }
 
     // Single parameter matrix initializers must be identity constructor.
     // It could also be conversions between f16 and f32 matrix when f16 is properly supported.
-    if (type->Is<sem::Matrix>() && call->Arguments().size() == 1) {
+    if (type->Is<sem::Matrix>() && call->Arguments().Length() == 1) {
         if (!ctor->Parameters()[0]->Type()->UnwrapRef()->is_float_matrix()) {
             TINT_UNREACHABLE(Writer, diagnostics_)
                 << "found a single-parameter matrix constructor that is not identity constructor";
@@ -1129,14 +1136,10 @@ bool GeneratorImpl::EmitTypeConstructor(std::ostream& out,
     // For single-value vector initializers, swizzle the scalar to the right
     // vector dimension using .x
     const bool is_single_value_vector_init = type->is_scalar_vector() &&
-                                             call->Arguments().size() == 1 &&
+                                             call->Arguments().Length() == 1 &&
                                              ctor->Parameters()[0]->Type()->is_scalar();
 
-    auto it = structure_builders_.find(As<sem::Struct>(type));
-    if (it != structure_builders_.end()) {
-        out << it->second << "(";
-        brackets = false;
-    } else if (brackets) {
+    if (brackets) {
         out << "{";
     } else {
         if (!EmitType(out, type, ast::StorageClass::kNone, ast::Access::kReadWrite, "")) {
@@ -1657,7 +1660,7 @@ bool GeneratorImpl::EmitWorkgroupAtomicCall(std::ostream& out,
 
         {
             ScopedParen sp(pre);
-            for (size_t i = 0; i < expr->args.size(); i++) {
+            for (size_t i = 0; i < expr->args.Length(); i++) {
                 auto* arg = expr->args[i];
                 if (i > 0) {
                     pre << ", ";
@@ -1852,16 +1855,15 @@ bool GeneratorImpl::EmitModfCall(std::ostream& out,
                 return false;
             }
 
-            line(b) << "float" << width << " whole;";
-            line(b) << "float" << width << " fract = modf(" << in << ", whole);";
             {
                 auto l = line(b);
                 if (!EmitType(l, builtin->ReturnType(), ast::StorageClass::kNone,
                               ast::Access::kUndefined, "")) {
                     return false;
                 }
-                l << " result = {fract, whole};";
+                l << " result;";
             }
+            line(b) << "result.fract = modf(" << params[0] << ", result.whole);";
             line(b) << "return result;";
             return true;
         });
@@ -1886,8 +1888,15 @@ bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
                 return false;
             }
 
-            line(b) << "float" << width << " exp;";
-            line(b) << "float" << width << " sig = frexp(" << in << ", exp);";
+            std::string member_type;
+            if (Is<sem::F16>(sem::Type::DeepestElementOf(ty))) {
+                member_type = width.empty() ? "float16_t" : ("vector<float16_t, " + width + ">");
+            } else {
+                member_type = "float" + width;
+            }
+
+            line(b) << member_type << " exp;";
+            line(b) << member_type << " sig = frexp(" << in << ", exp);";
             {
                 auto l = line(b);
                 if (!EmitType(l, builtin->ReturnType(), ast::StorageClass::kNone,
@@ -2386,7 +2395,8 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
         auto* zero = builder_.Expr(0_i);
         auto* stmt = builder_.Sem().Get(vector)->Stmt();
         builder_.Sem().Add(
-            zero, builder_.create<sem::Expression>(zero, i32, stmt, /* constant_value */ nullptr,
+            zero, builder_.create<sem::Expression>(zero, i32, sem::EvaluationStage::kRuntime, stmt,
+                                                   /* constant_value */ nullptr,
                                                    /* has_side_effects */ false));
         auto* packed = AppendVector(&builder_, vector, zero);
         return EmitExpression(out, packed->Declaration());
@@ -2564,7 +2574,7 @@ bool GeneratorImpl::EmitCase(const ast::SwitchStatement* s, size_t case_idx) {
                 return false;
             }
             out << ":";
-            if (selector == stmt->selectors.back()) {
+            if (selector == stmt->selectors.Back()) {
                 out << " {";
             }
         }
@@ -2679,7 +2689,7 @@ bool GeneratorImpl::EmitIf(const ast::IfStatement* stmt) {
                 return false;
             }
         } else {
-            if (!EmitStatementsWithIndent({stmt->else_statement})) {
+            if (!EmitStatementsWithIndent(utils::Vector{stmt->else_statement})) {
                 return false;
             }
         }
@@ -2842,10 +2852,16 @@ bool GeneratorImpl::EmitGlobalVariable(const ast::Variable* global) {
                     return EmitPrivateVariable(sem);
                 case ast::StorageClass::kWorkgroup:
                     return EmitWorkgroupVariable(sem);
-                default:
+                case ast::StorageClass::kPushConstant:
+                    diagnostics_.add_error(
+                        diag::System::Writer,
+                        "unhandled storage class " + utils::ToString(sem->StorageClass()));
+                    return false;
+                default: {
                     TINT_ICE(Writer, diagnostics_)
                         << "unhandled storage class " << sem->StorageClass();
                     return false;
+                }
             }
         },
         [&](const ast::Override* override) { return EmitOverride(override); },
@@ -2855,6 +2871,7 @@ bool GeneratorImpl::EmitGlobalVariable(const ast::Variable* global) {
         [&](Default) {
             TINT_ICE(Writer, diagnostics_)
                 << "unhandled global variable type " << global->TypeInfo().name;
+
             return false;
         });
 }
@@ -2974,29 +2991,29 @@ bool GeneratorImpl::EmitWorkgroupVariable(const sem::Variable* var) {
     return true;
 }
 
-std::string GeneratorImpl::builtin_to_attribute(ast::Builtin builtin) const {
+std::string GeneratorImpl::builtin_to_attribute(ast::BuiltinValue builtin) const {
     switch (builtin) {
-        case ast::Builtin::kPosition:
+        case ast::BuiltinValue::kPosition:
             return "SV_Position";
-        case ast::Builtin::kVertexIndex:
+        case ast::BuiltinValue::kVertexIndex:
             return "SV_VertexID";
-        case ast::Builtin::kInstanceIndex:
+        case ast::BuiltinValue::kInstanceIndex:
             return "SV_InstanceID";
-        case ast::Builtin::kFrontFacing:
+        case ast::BuiltinValue::kFrontFacing:
             return "SV_IsFrontFace";
-        case ast::Builtin::kFragDepth:
+        case ast::BuiltinValue::kFragDepth:
             return "SV_Depth";
-        case ast::Builtin::kLocalInvocationId:
+        case ast::BuiltinValue::kLocalInvocationId:
             return "SV_GroupThreadID";
-        case ast::Builtin::kLocalInvocationIndex:
+        case ast::BuiltinValue::kLocalInvocationIndex:
             return "SV_GroupIndex";
-        case ast::Builtin::kGlobalInvocationId:
+        case ast::BuiltinValue::kGlobalInvocationId:
             return "SV_DispatchThreadID";
-        case ast::Builtin::kWorkgroupId:
+        case ast::BuiltinValue::kWorkgroupId:
             return "SV_GroupID";
-        case ast::Builtin::kSampleIndex:
+        case ast::BuiltinValue::kSampleIndex:
             return "SV_SampleIndex";
-        case ast::Builtin::kSampleMask:
+        case ast::BuiltinValue::kSampleMask:
             return "SV_Coverage";
         default:
             break;
@@ -3053,7 +3070,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                         TINT_ICE(Writer, diagnostics_)
                             << "expected a pipeline-overridable constant";
                     }
-                    out << kSpecConstantPrefix << global->ConstantId();
+                    out << kSpecConstantPrefix << global->OverrideId().value;
                 } else {
                     out << std::to_string(wgsize[i].value);
                 }
@@ -3099,7 +3116,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
         }
 
         if (!Is<ast::ReturnStatement>(func->body->Last())) {
-            ast::ReturnStatement ret(ProgramID(), Source{});
+            ast::ReturnStatement ret(ProgramID(), ast::NodeID{}, Source{});
             if (!EmitStatement(&ret)) {
                 return false;
             }
@@ -3121,6 +3138,13 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
         [&](const sem::F32*) {
             PrintF32(out, constant->As<float>());
             return true;
+        },
+        [&](const sem::F16*) {
+            // emit a f16 scalar with explicit float16_t type declaration.
+            out << "float16_t(";
+            bool valid = PrintF16(out, constant->As<float>());
+            out << ")";
+            return valid;
         },
         [&](const sem::I32*) {
             out << constant->As<AInt>();
@@ -3202,6 +3226,30 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
 
             return true;
         },
+        [&](const sem::Struct* s) {
+            if (constant->AllZero()) {
+                out << "(";
+                if (!EmitType(out, s, ast::StorageClass::kNone, ast::Access::kUndefined, "")) {
+                    return false;
+                }
+                out << ")0";
+                return true;
+            }
+
+            out << "{";
+            TINT_DEFER(out << "}");
+
+            for (size_t i = 0; i < s->Members().size(); i++) {
+                if (i > 0) {
+                    out << ", ";
+                }
+                if (!EmitConstant(out, constant->Index(i))) {
+                    return false;
+                }
+            }
+
+            return true;
+        },
         [&](Default) {
             diagnostics_.add_error(
                 diag::System::Writer,
@@ -3218,6 +3266,13 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
             return true;
         },
         [&](const ast::FloatLiteralExpression* l) {
+            if (l->suffix == ast::FloatLiteralExpression::Suffix::kH) {
+                // Emit f16 literal with explicit float16_t type declaration.
+                out << "float16_t(";
+                bool valid = PrintF16(out, static_cast<float>(l->value));
+                out << ")";
+                return valid;
+            }
             PrintF32(out, static_cast<float>(l->value));
             return true;
         },
@@ -3249,6 +3304,10 @@ bool GeneratorImpl::EmitValue(std::ostream& out, const sem::Type* type, int valu
         },
         [&](const sem::F32*) {
             out << value << ".0f";
+            return true;
+        },
+        [&](const sem::F16*) {
+            out << "float16_t(" << value << ".0h)";
             return true;
         },
         [&](const sem::I32*) {
@@ -3589,6 +3648,9 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
                     return false;
                 });
         },
+        [&](const ast::StaticAssert*) {
+            return true;  // Not emitted
+        },
         [&](Default) {  //
             diagnostics_.add_error(diag::System::Writer,
                                    "unknown statement type: " + std::string(stmt->TypeInfo().name));
@@ -3597,7 +3659,7 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
 }
 
 bool GeneratorImpl::EmitDefaultOnlySwitch(const ast::SwitchStatement* stmt) {
-    TINT_ASSERT(Writer, stmt->body.size() == 1 && stmt->body[0]->IsDefault());
+    TINT_ASSERT(Writer, stmt->body.Length() == 1 && stmt->body[0]->IsDefault());
 
     // FXC fails to compile a switch with just a default case, ignoring the
     // default case body. We work around this here by emitting the default case
@@ -3630,7 +3692,7 @@ bool GeneratorImpl::EmitDefaultOnlySwitch(const ast::SwitchStatement* stmt) {
 
 bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
     // BUG(crbug.com/tint/1188): work around default-only switches
-    if (stmt->body.size() == 1 && stmt->body[0]->IsDefault()) {
+    if (stmt->body.Length() == 1 && stmt->body[0]->IsDefault()) {
         return EmitDefaultOnlySwitch(stmt);
     }
 
@@ -3645,7 +3707,7 @@ bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
 
     {
         ScopedIndent si(this);
-        for (size_t i = 0; i < stmt->body.size(); i++) {
+        for (size_t i = 0; i < stmt->body.Length(); i++) {
             if (!EmitCase(stmt, i)) {
                 return false;
             }
@@ -3723,15 +3785,23 @@ bool GeneratorImpl::EmitType(std::ostream& out,
             return true;
         },
         [&](const sem::F16*) {
-            diagnostics_.add_error(diag::System::Writer,
-                                   "Type f16 is not completely implemented yet.");
-            return false;
+            out << "float16_t";
+            return true;
         },
         [&](const sem::I32*) {
             out << "int";
             return true;
         },
         [&](const sem::Matrix* mat) {
+            if (mat->type()->Is<sem::F16>()) {
+                // Use matrix<type, N, M> for f16 matrix
+                out << "matrix<";
+                if (!EmitType(out, mat->type(), storage_class, access, "")) {
+                    return false;
+                }
+                out << ", " << mat->columns() << ", " << mat->rows() << ">";
+                return true;
+            }
             if (!EmitType(out, mat->type(), storage_class, access, "")) {
                 return false;
             }
@@ -3847,6 +3917,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
             } else if (vec->type()->Is<sem::Bool>() && width >= 1 && width <= 4) {
                 out << "bool" << width;
             } else {
+                // For example, use "vector<float16_t, N>" for f16 vector.
                 out << "vector<";
                 if (!EmitType(out, vec->type(), storage_class, access, "")) {
                     return false;
@@ -4042,18 +4113,18 @@ bool GeneratorImpl::EmitOverride(const ast::Override* override) {
     auto* sem = builder_.Sem().Get(override);
     auto* type = sem->Type();
 
-    auto const_id = sem->ConstantId();
+    auto override_id = sem->OverrideId();
 
-    line() << "#ifndef " << kSpecConstantPrefix << const_id;
+    line() << "#ifndef " << kSpecConstantPrefix << override_id.value;
 
     if (override->constructor != nullptr) {
         auto out = line();
-        out << "#define " << kSpecConstantPrefix << const_id << " ";
+        out << "#define " << kSpecConstantPrefix << override_id.value << " ";
         if (!EmitExpression(out, override->constructor)) {
             return false;
         }
     } else {
-        line() << "#error spec constant required for constant id " << const_id;
+        line() << "#error spec constant required for constant id " << override_id.value;
     }
     line() << "#endif";
     {
@@ -4063,7 +4134,7 @@ bool GeneratorImpl::EmitOverride(const ast::Override* override) {
                              builder_.Symbols().NameFor(override->symbol))) {
             return false;
         }
-        out << " = " << kSpecConstantPrefix << const_id << ";";
+        out << " = " << kSpecConstantPrefix << override_id.value << ";";
     }
     return true;
 }

@@ -4,7 +4,6 @@
 ; Bound: 31
 ; Schema: 0
                OpCapability Shader
-         %14 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical GLSL450
                OpEntryPoint Vertex %vertex_main "vertex_main" %value %vertex_point_size
                OpEntryPoint Fragment %fragment_main "fragment_main"
@@ -31,14 +30,15 @@
 %vertex_point_size = OpVariable %_ptr_Output_float Output %8
        %void = OpTypeVoid
           %9 = OpTypeFunction %void
+%float_0_785398185 = OpConstant %float 0.785398185
+         %14 = OpConstantComposite %v4float %float_0_785398185 %float_0_785398185 %float_0_785398185 %float_0_785398185
 %_ptr_Function_v4float = OpTypePointer Function %v4float
          %17 = OpTypeFunction %v4float
     %float_1 = OpConstant %float 1
 %atan2_ae713e = OpFunction %void None %9
          %12 = OpLabel
         %res = OpVariable %_ptr_Function_v4float Function %5
-         %13 = OpExtInst %v4float %14 Atan2 %5 %5
-               OpStore %res %13
+               OpStore %res %14
                OpReturn
                OpFunctionEnd
 %vertex_main_inner = OpFunction %v4float None %17

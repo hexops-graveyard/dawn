@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "src/tint/program_builder.h"
+#include "src/tint/sem/abstract_numeric.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/expression.h"
 #include "src/tint/sem/type_constructor.h"
@@ -36,7 +37,7 @@ bool VectorizeScalarMatrixConstructors::ShouldRun(const Program* program, const 
         if (auto* call = program->Sem().Get<sem::Call>(node)) {
             if (call->Target()->Is<sem::TypeConstructor>() && call->Type()->Is<sem::Matrix>()) {
                 auto& args = call->Arguments();
-                if (args.size() > 0 && args[0]->Type()->UnwrapRef()->is_scalar()) {
+                if (!args.IsEmpty() && args[0]->Type()->UnwrapRef()->is_scalar()) {
                     return true;
                 }
             }
@@ -54,38 +55,45 @@ void VectorizeScalarMatrixConstructors::Run(CloneContext& ctx, const DataMap&, D
         if (!ty_ctor) {
             return nullptr;
         }
-        // Check if this is a matrix constructor with scalar arguments.
         auto* mat_type = call->Type()->As<sem::Matrix>();
         if (!mat_type) {
             return nullptr;
         }
 
         auto& args = call->Arguments();
-        if (args.size() == 0) {
+        if (args.IsEmpty()) {
             return nullptr;
         }
-        if (!args[0]->Type()->UnwrapRef()->is_scalar()) {
+
+        // If the argument type is a matrix, then this is an identity / conversion constructor.
+        // If the argument type is a vector, then we're already column vectors.
+        // If the argument type is abstract, then we're const-expression and there's no need to
+        // adjust this, as it'll be constant folded by the backend.
+        if (args[0]
+                ->Type()
+                ->UnwrapRef()
+                ->IsAnyOf<sem::Matrix, sem::Vector, sem::AbstractNumeric>()) {
             return nullptr;
         }
 
         // Constructs a matrix using vector columns, with the elements constructed using the
         // 'element(uint32_t c, uint32_t r)' callback.
         auto build_mat = [&](auto&& element) {
-            ast::ExpressionList columns(mat_type->columns());
+            utils::Vector<const ast::Expression*, 4> columns;
             for (uint32_t c = 0; c < mat_type->columns(); c++) {
-                ast::ExpressionList row_values(mat_type->rows());
+                utils::Vector<const ast::Expression*, 4> row_values;
                 for (uint32_t r = 0; r < mat_type->rows(); r++) {
-                    row_values[r] = element(c, r);
+                    row_values.Push(element(c, r));
                 }
 
                 // Construct the column vector.
-                columns[c] = ctx.dst->vec(CreateASTTypeFor(ctx, mat_type->type()), mat_type->rows(),
-                                          row_values);
+                columns.Push(ctx.dst->vec(CreateASTTypeFor(ctx, mat_type->type()), mat_type->rows(),
+                                          std::move(row_values)));
             }
             return ctx.dst->Construct(CreateASTTypeFor(ctx, mat_type), columns);
         };
 
-        if (args.size() == 1) {
+        if (args.Length() == 1) {
             // Generate a helper function for constructing the matrix.
             // This is done to ensure that the single argument value is only evaluated once, and
             // with the correct expression evaluation order.
@@ -94,12 +102,12 @@ void VectorizeScalarMatrixConstructors::Run(CloneContext& ctx, const DataMap&, D
                     ctx.dst->Symbols().New("build_mat" + std::to_string(mat_type->columns()) + "x" +
                                            std::to_string(mat_type->rows()));
                 ctx.dst->Func(name,
-                              {
+                              utils::Vector{
                                   // Single scalar parameter
                                   ctx.dst->Param("value", CreateASTTypeFor(ctx, mat_type->type())),
                               },
                               CreateASTTypeFor(ctx, mat_type),
-                              {
+                              utils::Vector{
                                   ctx.dst->Return(build_mat([&](uint32_t, uint32_t) {  //
                                       return ctx.dst->Expr("value");
                                   })),
@@ -109,7 +117,7 @@ void VectorizeScalarMatrixConstructors::Run(CloneContext& ctx, const DataMap&, D
             return ctx.dst->Call(fn, ctx.Clone(args[0]->Declaration()));
         }
 
-        if (args.size() == mat_type->columns() * mat_type->rows()) {
+        if (args.Length() == mat_type->columns() * mat_type->rows()) {
             return build_mat([&](uint32_t c, uint32_t r) {
                 return ctx.Clone(args[c * mat_type->rows() + r]->Declaration());
             });

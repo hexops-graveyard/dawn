@@ -1978,13 +1978,13 @@ fn frag_main(inputs : FragmentInterface) -> FragmentInterface {
 
 @location(3) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<in> vu_3 : vec4<u32>;
 
-@location(0) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> i_4 : i32;
+@location(0) @internal(disable_validation__ignore_storage_class) var<out> i_4 : i32;
 
-@location(1) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> u_4 : u32;
+@location(1) @internal(disable_validation__ignore_storage_class) var<out> u_4 : u32;
 
-@location(2) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> vi_4 : vec4<i32>;
+@location(2) @internal(disable_validation__ignore_storage_class) var<out> vi_4 : vec4<i32>;
 
-@location(3) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> vu_4 : vec4<u32>;
+@location(3) @internal(disable_validation__ignore_storage_class) var<out> vu_4 : vec4<u32>;
 
 struct VertexIn {
   i : i32,
@@ -2108,13 +2108,13 @@ struct FragmentInterface {
 
 @location(3) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<in> vu_3 : vec4<u32>;
 
-@location(0) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> i_4 : i32;
+@location(0) @internal(disable_validation__ignore_storage_class) var<out> i_4 : i32;
 
-@location(1) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> u_4 : u32;
+@location(1) @internal(disable_validation__ignore_storage_class) var<out> u_4 : u32;
 
-@location(2) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> vi_4 : vec4<i32>;
+@location(2) @internal(disable_validation__ignore_storage_class) var<out> vi_4 : vec4<i32>;
 
-@location(3) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<out> vu_4 : vec4<u32>;
+@location(3) @internal(disable_validation__ignore_storage_class) var<out> vu_4 : vec4<u32>;
 
 fn vert_main_inner(in : VertexIn) -> VertexOut {
   return VertexOut(in.i, in.u, in.vi, in.vu, vec4<f32>());
@@ -2344,7 +2344,7 @@ struct tint_symbol_1 {
 }
 
 struct tint_symbol_2 {
-  @location(1) @interpolate(flat)
+  @location(1)
   value : f32,
 }
 
@@ -2397,7 +2397,7 @@ struct tint_symbol_1 {
 }
 
 struct tint_symbol_2 {
-  @location(1) @interpolate(flat)
+  @location(1)
   value : f32,
 }
 
@@ -3163,7 +3163,7 @@ fn vert_main() -> @builtin(position) vec4<f32> {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_storage_class) var<out> value : vec4<f32>;
 
-@builtin(pointsize) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
+@builtin(point_size) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
 
 fn vert_main_inner() -> vec4<f32> {
   return vec4<f32>();
@@ -3197,7 +3197,7 @@ fn vert_main() -> @builtin(position) vec4<f32> {
 struct tint_symbol {
   @builtin(position)
   value : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size : f32,
 }
 
@@ -3238,7 +3238,7 @@ fn vert_main() -> VertOut {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_storage_class) var<out> pos_1 : vec4<f32>;
 
-@builtin(pointsize) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
+@builtin(point_size) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
 
 struct VertOut {
   pos : vec4<f32>,
@@ -3279,7 +3279,7 @@ struct VertOut {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_storage_class) var<out> pos_1 : vec4<f32>;
 
-@builtin(pointsize) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
+@builtin(point_size) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size : f32;
 
 fn vert_main_inner() -> VertOut {
   return VertOut();
@@ -3325,7 +3325,7 @@ struct VertOut {
 struct tint_symbol {
   @builtin(position)
   pos : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size : f32,
 }
 
@@ -3367,7 +3367,7 @@ struct VertOut {
 struct tint_symbol {
   @builtin(position)
   pos : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size : f32,
 }
 
@@ -3432,7 +3432,7 @@ fn vert_main(collide : VertIn1, collide_1 : VertIn2) -> VertOut {
 
 @builtin(position) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_1_1 : vec4<f32>;
 
-@builtin(pointsize) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_4 : f32;
+@builtin(point_size) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_4 : f32;
 
 var<private> vertex_point_size : f32;
 
@@ -3510,7 +3510,7 @@ struct VertOut {
 
 @builtin(position) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_1_1 : vec4<f32>;
 
-@builtin(pointsize) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_4 : f32;
+@builtin(point_size) @internal(disable_validation__ignore_storage_class) var<out> vertex_point_size_4 : f32;
 
 fn vert_main_inner(collide : VertIn1, collide_1 : VertIn2) -> VertOut {
   let x = (collide.collide + collide_1.collide);
@@ -3601,7 +3601,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3664,7 +3664,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3753,7 +3753,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3816,7 +3816,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(pointsize)
+  @builtin(point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3868,9 +3868,9 @@ fn main(@builtin(sample_index) sample_index : u32,
 )";
 
     auto* expect = R"(
-@builtin(sample_index) @internal(disable_validation__ignore_storage_class) var<in> sample_index_1 : u32;
+@builtin(sample_index) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<in> sample_index_1 : u32;
 
-@builtin(sample_mask) @internal(disable_validation__ignore_storage_class) var<in> mask_in_1 : array<u32, 1u>;
+@builtin(sample_mask) @interpolate(flat) @internal(disable_validation__ignore_storage_class) var<in> mask_in_1 : array<u32, 1u>;
 
 @builtin(sample_mask) @internal(disable_validation__ignore_storage_class) var<out> value : array<u32, 1u>;
 

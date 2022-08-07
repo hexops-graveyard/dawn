@@ -15,6 +15,7 @@
 #include "src/tint/ast/array.h"
 
 #include <cmath>
+#include <utility>
 
 #include "src/tint/program_builder.h"
 
@@ -38,11 +39,12 @@ std::string SizeExprToString(const Expression* size, const SymbolTable& symbols)
 }  // namespace
 
 Array::Array(ProgramID pid,
+             NodeID nid,
              const Source& src,
              const Type* subtype,
              const Expression* cnt,
-             AttributeList attrs)
-    : Base(pid, src), type(subtype), count(cnt), attributes(attrs) {}
+             utils::VectorRef<const Attribute*> attrs)
+    : Base(pid, nid, src), type(subtype), count(cnt), attributes(std::move(attrs)) {}
 
 Array::Array(Array&&) = default;
 
@@ -55,11 +57,14 @@ std::string Array::FriendlyName(const SymbolTable& symbols) const {
             out << "@stride(" << stride->stride << ") ";
         }
     }
-    out << "array<" << type->FriendlyName(symbols);
-    if (!IsRuntimeArray()) {
-        out << ", " << SizeExprToString(count, symbols);
+    out << "array";
+    if (type) {
+        out << "<" << type->FriendlyName(symbols);
+        if (count) {
+            out << ", " << SizeExprToString(count, symbols);
+        }
+        out << ">";
     }
-    out << ">";
     return out.str();
 }
 
@@ -69,7 +74,7 @@ const Array* Array::Clone(CloneContext* ctx) const {
     auto* ty = ctx->Clone(type);
     auto* cnt = ctx->Clone(count);
     auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Array>(src, ty, cnt, attrs);
+    return ctx->dst->create<Array>(src, ty, cnt, std::move(attrs));
 }
 
 }  // namespace tint::ast
