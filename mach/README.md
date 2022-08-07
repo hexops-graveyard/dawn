@@ -77,6 +77,19 @@ Alter the above script as needed to include/exclude files. Make sure test files,
 git commit -s -m 'generated: commit vendored dependencies'
 ```
 
-Compare the diff between this generated branch and the prior generated branch to determine if any changes need to be made to the mach/gpu-dawn `build.zig` files. In particular look out for changes to (`BUILD`) `.gn` files, `.gni` files.
+Compare the diffs between the new generated branch and the old generated branch to determine if any changes need to be made to the mach/gpu-dawn `build.zig` files. In particular look out for changes to (`BUILD`) `.gn` files, `.gni` files:
 
-Confirm that `zig build run-dawn-example` works in `mach/gpu-dawn` before updating the hard-coded branch version that `mach/gpu-dawn` uses.
+```
+git diff generated-2022-07-10..generated-2022-08-06 -- '*.gni'
+git diff generated-2022-07-10..generated-2022-08-06 -- '*.gn'
+git diff generated-2022-07-10..generated-2022-08-06 -- 'BUILD'
+```
+
+Then make certain to update `mach/gpu` by reviewing the diff between `webgpu.h` and `dawn.json`:
+
+```
+git diff generated-2022-07-10..generated-2022-08-06 -- 'out/Debug/gen/include/dawn/webgpu.h'
+git diff generated-2022-07-10..generated-2022-08-06 -- 'dawn.json'
+```
+
+Confirm that `zig build run-example` works in `mach/gpu` before updating the hard-coded branch version that `mach/gpu` uses.
