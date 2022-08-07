@@ -19,10 +19,10 @@
 #include "dawn/native/Instance.h"
 #include "dawn/native/SwapChain.h"
 
-#if defined(DAWN_USE_WINDOWS_UI)
+#if DAWN_PLATFORM_IS(WINDOWS)
 #include <windows.ui.core.h>
 #include <windows.ui.xaml.controls.h>
-#endif  // defined(DAWN_USE_WINDOWS_UI)
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
 
 #if defined(DAWN_USE_X11)
 #include "dawn/common/xlib_with_undefs.h"
@@ -98,6 +98,7 @@ MaybeError ValidateSurfaceDescriptor(const InstanceBase* instance,
     }
 #endif  // DAWN_PLATFORM_IS(ANDROID)
 
+#if DAWN_PLATFORM_IS(WINDOWS)
 #if DAWN_PLATFORM_IS(WIN32)
     const SurfaceDescriptorFromWindowsHWND* hwndDesc = nullptr;
     FindInChain(descriptor->nextInChain, &hwndDesc);
@@ -106,7 +107,6 @@ MaybeError ValidateSurfaceDescriptor(const InstanceBase* instance,
         return {};
     }
 #endif  // DAWN_PLATFORM_IS(WIN32)
-#if defined(DAWN_USE_WINDOWS_UI)
     const SurfaceDescriptorFromWindowsCoreWindow* coreWindowDesc = nullptr;
     FindInChain(descriptor->nextInChain, &coreWindowDesc);
     if (coreWindowDesc) {
@@ -129,7 +129,7 @@ MaybeError ValidateSurfaceDescriptor(const InstanceBase* instance,
                         "Invalid SwapChainPanel");
         return {};
     }
-#endif  // defined(DAWN_USE_WINDOWS_UI)
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
 
 #if defined(DAWN_USE_WAYLAND)
     const SurfaceDescriptorFromWaylandSurface* waylandDesc = nullptr;
@@ -203,15 +203,15 @@ Surface::Surface(InstanceBase* instance, const SurfaceDescriptor* descriptor)
         mHInstance = hwndDesc->hinstance;
         mHWND = hwndDesc->hwnd;
     } else if (coreWindowDesc) {
-#if defined(DAWN_USE_WINDOWS_UI)
+#if DAWN_PLATFORM_IS(WINDOWS)
         mType = Type::WindowsCoreWindow;
         mCoreWindow = static_cast<IUnknown*>(coreWindowDesc->coreWindow);
-#endif  // defined(DAWN_USE_WINDOWS_UI)
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
     } else if (swapChainPanelDesc) {
-#if defined(DAWN_USE_WINDOWS_UI)
+#if DAWN_PLATFORM_IS(WINDOWS)
         mType = Type::WindowsSwapChainPanel;
         mSwapChainPanel = static_cast<IUnknown*>(swapChainPanelDesc->swapChainPanel);
-#endif  // defined(DAWN_USE_WINDOWS_UI)
+#endif  // DAWN_PLATFORM_IS(WINDOWS)
     } else if (xDesc) {
         mType = Type::XlibWindow;
         mXDisplay = xDesc->display;
