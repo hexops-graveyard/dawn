@@ -2,14 +2,17 @@
 
 struct Uniforms {
   uint i;
+  uint pad;
+  uint pad_1;
+  uint pad_2;
 };
 
 struct OuterS {
   uint a1[8];
 };
 
-layout(binding = 4) uniform Uniforms_1 {
-  uint i;
+layout(binding = 4, std140) uniform uniforms_block_ubo {
+  Uniforms inner;
 } uniforms;
 
 uint f(uint i) {
@@ -19,8 +22,8 @@ uint f(uint i) {
 void tint_symbol() {
   OuterS s1 = OuterS(uint[8](0u, 0u, 0u, 0u, 0u, 0u, 0u, 0u));
   vec3 v = vec3(0.0f, 0.0f, 0.0f);
-  v[s1.a1[uniforms.i]] = 1.0f;
-  uint tint_symbol_1 = f(s1.a1[uniforms.i]);
+  v[s1.a1[uniforms.inner.i]] = 1.0f;
+  uint tint_symbol_1 = f(s1.a1[uniforms.inner.i]);
   v[tint_symbol_1] = 1.0f;
 }
 

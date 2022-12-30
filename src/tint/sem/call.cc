@@ -26,13 +26,14 @@ Call::Call(const ast::CallExpression* declaration,
            EvaluationStage stage,
            utils::VectorRef<const sem::Expression*> arguments,
            const Statement* statement,
-           const Constant* constant,
+           const constant::Value* constant,
            bool has_side_effects)
     : Base(declaration, target->ReturnType(), stage, statement, constant, has_side_effects),
       target_(target),
       arguments_(std::move(arguments)) {
     // Check that the stage is no earlier than the target supports
-    TINT_ASSERT(Semantic, target->Stage() <= stage);
+    TINT_ASSERT(Semantic,
+                (target->Stage() <= stage) || (stage == sem::EvaluationStage::kNotEvaluated));
 }
 
 Call::~Call() = default;

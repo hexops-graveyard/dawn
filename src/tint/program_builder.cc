@@ -26,7 +26,10 @@ using namespace tint::number_suffixes;  // NOLINT
 
 namespace tint {
 
-ProgramBuilder::VarOptionals::~VarOptionals() = default;
+ProgramBuilder::VarOptions::~VarOptions() = default;
+ProgramBuilder::LetOptions::~LetOptions() = default;
+ProgramBuilder::ConstOptions::~ConstOptions() = default;
+ProgramBuilder::OverrideOptions::~OverrideOptions() = default;
 
 ProgramBuilder::ProgramBuilder()
     : id_(ProgramID::New()),
@@ -67,7 +70,7 @@ ProgramBuilder ProgramBuilder::Wrap(const Program* program) {
     ProgramBuilder builder;
     builder.id_ = program->ID();
     builder.last_ast_node_id_ = program->HighestASTNodeID();
-    builder.types_ = sem::Manager::Wrap(program->Types());
+    builder.types_ = type::Manager::Wrap(program->Types());
     builder.ast_ =
         builder.create<ast::Module>(program->AST().source, program->AST().GlobalDeclarations());
     builder.sem_ = sem::Info::Wrap(program->Sem());
@@ -92,22 +95,35 @@ void ProgramBuilder::AssertNotMoved() const {
     }
 }
 
-const sem::Type* ProgramBuilder::TypeOf(const ast::Expression* expr) const {
+const type::Type* ProgramBuilder::TypeOf(const ast::Expression* expr) const {
     auto* sem = Sem().Get(expr);
     return sem ? sem->Type() : nullptr;
 }
 
-const sem::Type* ProgramBuilder::TypeOf(const ast::Variable* var) const {
+const type::Type* ProgramBuilder::TypeOf(const ast::Variable* var) const {
     auto* sem = Sem().Get(var);
     return sem ? sem->Type() : nullptr;
 }
 
-const sem::Type* ProgramBuilder::TypeOf(const ast::Type* type) const {
+const type::Type* ProgramBuilder::TypeOf(const ast::Type* type) const {
     return Sem().Get(type);
 }
 
-const sem::Type* ProgramBuilder::TypeOf(const ast::TypeDecl* type_decl) const {
+const type::Type* ProgramBuilder::TypeOf(const ast::TypeDecl* type_decl) const {
     return Sem().Get(type_decl);
+}
+
+std::string ProgramBuilder::FriendlyName(const ast::Type* type) const {
+    TINT_ASSERT_PROGRAM_IDS_EQUAL(ProgramBuilder, type, ID());
+    return type ? type->FriendlyName(Symbols()) : "<null>";
+}
+
+std::string ProgramBuilder::FriendlyName(const type::Type* type) const {
+    return type ? type->FriendlyName(Symbols()) : "<null>";
+}
+
+std::string ProgramBuilder::FriendlyName(std::nullptr_t) const {
+    return "<null>";
 }
 
 const ast::TypeName* ProgramBuilder::TypesBuilder::Of(const ast::TypeDecl* decl) const {
@@ -118,7 +134,7 @@ ProgramBuilder::TypesBuilder::TypesBuilder(ProgramBuilder* pb) : builder(pb) {}
 
 const ast::Statement* ProgramBuilder::WrapInStatement(const ast::Expression* expr) {
     // Create a temporary variable of inferred type from expr.
-    return Decl(Let(symbols_.New(), nullptr, expr));
+    return Decl(Let(symbols_.New(), expr));
 }
 
 const ast::VariableDeclStatement* ProgramBuilder::WrapInStatement(const ast::Variable* v) {

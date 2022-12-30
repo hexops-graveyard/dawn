@@ -89,7 +89,9 @@ struct PendingOperation {
 
 class Device final : public DeviceBase {
   public:
-    static ResultOrError<Ref<Device>> Create(Adapter* adapter, const DeviceDescriptor* descriptor);
+    static ResultOrError<Ref<Device>> Create(Adapter* adapter,
+                                             const DeviceDescriptor* descriptor,
+                                             const TripleStateTogglesSet& userProvidedToggles);
     ~Device() override;
 
     MaybeError Initialize(const DeviceDescriptor* descriptor);
@@ -104,15 +106,15 @@ class Device final : public DeviceBase {
     MaybeError SubmitPendingOperations();
 
     ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
-    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
-                                       uint64_t sourceOffset,
-                                       BufferBase* destination,
-                                       uint64_t destinationOffset,
-                                       uint64_t size) override;
-    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                        const TextureDataLayout& src,
-                                        TextureCopy* dst,
-                                        const Extent3D& copySizePixels) override;
+    MaybeError CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                           uint64_t sourceOffset,
+                                           BufferBase* destination,
+                                           uint64_t destinationOffset,
+                                           uint64_t size) override;
+    MaybeError CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                            const TextureDataLayout& src,
+                                            TextureCopy* dst,
+                                            const Extent3D& copySizePixels) override;
 
     MaybeError IncrementMemoryUsage(uint64_t bytes);
     void DecrementMemoryUsage(uint64_t bytes);
@@ -121,6 +123,8 @@ class Device final : public DeviceBase {
     uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
 
     float GetTimestampPeriodInNS() const override;
+
+    void ForceEventualFlushOfCommands() override;
 
   private:
     using DeviceBase::DeviceBase;
@@ -159,6 +163,7 @@ class Device final : public DeviceBase {
 
     void DestroyImpl() override;
     MaybeError WaitForIdleForDestruction() override;
+    bool HasPendingCommands() const override;
 
     std::vector<std::unique_ptr<PendingOperation>> mPendingOperations;
 
@@ -182,7 +187,13 @@ class Adapter : public AdapterBase {
     MaybeError InitializeSupportedFeaturesImpl() override;
     MaybeError InitializeSupportedLimitsImpl(CombinedLimits* limits) override;
 
-    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(const DeviceDescriptor* descriptor) override;
+    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(
+        const DeviceDescriptor* descriptor,
+        const TripleStateTogglesSet& userProvidedToggles) override;
+
+    MaybeError ValidateFeatureSupportedWithTogglesImpl(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles) override;
 };
 
 // Helper class so |BindGroup| can allocate memory for its binding data,

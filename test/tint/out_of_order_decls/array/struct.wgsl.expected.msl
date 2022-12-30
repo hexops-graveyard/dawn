@@ -20,7 +20,7 @@ struct S {
 
 fragment void f() {
   thread tint_array<S, 4> tint_symbol_1 = {};
-  S const tint_symbol = {.m=1};
+  S const tint_symbol = S{.m=1};
   tint_symbol_1[0] = tint_symbol;
   return;
 }

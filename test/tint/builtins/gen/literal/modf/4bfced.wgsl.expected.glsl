@@ -1,19 +1,13 @@
 #version 310 es
 
-struct modf_result_vec4 {
+struct modf_result_vec4_f32 {
   vec4 fract;
   vec4 whole;
 };
 
-modf_result_vec4 tint_modf(vec4 param_0) {
-  modf_result_vec4 result;
-  result.fract = modf(param_0, result.whole);
-  return result;
-}
-
 
 void modf_4bfced() {
-  modf_result_vec4 res = tint_modf(vec4(1.0f));
+  modf_result_vec4_f32 res = modf_result_vec4_f32(vec4(-0.5f), vec4(-1.0f));
 }
 
 vec4 vertex_main() {
@@ -32,20 +26,14 @@ void main() {
 #version 310 es
 precision mediump float;
 
-struct modf_result_vec4 {
+struct modf_result_vec4_f32 {
   vec4 fract;
   vec4 whole;
 };
 
-modf_result_vec4 tint_modf(vec4 param_0) {
-  modf_result_vec4 result;
-  result.fract = modf(param_0, result.whole);
-  return result;
-}
-
 
 void modf_4bfced() {
-  modf_result_vec4 res = tint_modf(vec4(1.0f));
+  modf_result_vec4_f32 res = modf_result_vec4_f32(vec4(-0.5f), vec4(-1.0f));
 }
 
 void fragment_main() {
@@ -58,20 +46,14 @@ void main() {
 }
 #version 310 es
 
-struct modf_result_vec4 {
+struct modf_result_vec4_f32 {
   vec4 fract;
   vec4 whole;
 };
 
-modf_result_vec4 tint_modf(vec4 param_0) {
-  modf_result_vec4 result;
-  result.fract = modf(param_0, result.whole);
-  return result;
-}
-
 
 void modf_4bfced() {
-  modf_result_vec4 res = tint_modf(vec4(1.0f));
+  modf_result_vec4_f32 res = modf_result_vec4_f32(vec4(-0.5f), vec4(-1.0f));
 }
 
 void compute_main() {

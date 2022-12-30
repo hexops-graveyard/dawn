@@ -46,7 +46,9 @@ class StagingDescriptorAllocator;
 // Definition of backend types
 class Device final : public DeviceBase {
   public:
-    static ResultOrError<Ref<Device>> Create(Adapter* adapter, const DeviceDescriptor* descriptor);
+    static ResultOrError<Ref<Device>> Create(Adapter* adapter,
+                                             const DeviceDescriptor* descriptor,
+                                             const TripleStateTogglesSet& userProvidedToggles);
     ~Device() override;
 
     MaybeError Initialize(const DeviceDescriptor* descriptor);
@@ -60,6 +62,7 @@ class Device final : public DeviceBase {
     ID3D12Device* GetD3D12Device() const;
     ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
     ID3D12SharingContract* GetSharingContract() const;
+    HANDLE GetFenceHandle() const;
 
     ComPtr<ID3D12CommandSignature> GetDispatchIndirectSignature() const;
     ComPtr<ID3D12CommandSignature> GetDrawIndirectSignature() const;
@@ -74,7 +77,8 @@ class Device final : public DeviceBase {
     ComPtr<IDxcCompiler> GetDxcCompiler() const;
     ComPtr<IDxcValidator> GetDxcValidator() const;
 
-    ResultOrError<CommandRecordingContext*> GetPendingCommandContext();
+    ResultOrError<CommandRecordingContext*> GetPendingCommandContext(
+        Device::SubmitMode submitMode = Device::SubmitMode::Normal);
 
     MaybeError ClearBufferToZero(CommandRecordingContext* commandContext,
                                  BufferBase* destination,
@@ -88,31 +92,35 @@ class Device final : public DeviceBase {
 
     void ReferenceUntilUnused(ComPtr<IUnknown> object);
 
+    void ForceEventualFlushOfCommands() override;
+
     MaybeError ExecutePendingCommandContext();
 
     ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
-    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
+    MaybeError CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                           uint64_t sourceOffset,
+                                           BufferBase* destination,
+                                           uint64_t destinationOffset,
+                                           uint64_t size) override;
+
+    void CopyFromStagingToBufferHelper(CommandRecordingContext* commandContext,
+                                       StagingBufferBase* source,
                                        uint64_t sourceOffset,
                                        BufferBase* destination,
                                        uint64_t destinationOffset,
-                                       uint64_t size) override;
+                                       uint64_t size);
 
-    void CopyFromStagingToBufferImpl(CommandRecordingContext* commandContext,
-                                     StagingBufferBase* source,
-                                     uint64_t sourceOffset,
-                                     BufferBase* destination,
-                                     uint64_t destinationOffset,
-                                     uint64_t size);
-
-    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                        const TextureDataLayout& src,
-                                        TextureCopy* dst,
-                                        const Extent3D& copySizePixels) override;
+    MaybeError CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                            const TextureDataLayout& src,
+                                            TextureCopy* dst,
+                                            const Extent3D& copySizePixels) override;
 
     ResultOrError<ResourceHeapAllocation> AllocateMemory(
         D3D12_HEAP_TYPE heapType,
         const D3D12_RESOURCE_DESC& resourceDescriptor,
-        D3D12_RESOURCE_STATES initialUsage);
+        D3D12_RESOURCE_STATES initialUsage,
+        uint32_t formatBytesPerBlock,
+        bool forceAllocateAsCommittedResource = false);
 
     void DeallocateMemory(ResourceHeapAllocation& allocation);
 
@@ -136,10 +144,8 @@ class Device final : public DeviceBase {
 
     Ref<TextureBase> CreateD3D12ExternalTexture(const TextureDescriptor* descriptor,
                                                 ComPtr<ID3D12Resource> d3d12Texture,
-                                                ComPtr<ID3D12Fence> d3d12Fence,
+                                                std::vector<Ref<Fence>> waitFences,
                                                 Ref<D3D11on12ResourceCacheEntry> d3d11on12Resource,
-                                                uint64_t fenceWaitValue,
-                                                uint64_t fenceSignalValue,
                                                 bool isSwapChainTexture,
                                                 bool isInitialized);
 
@@ -160,7 +166,7 @@ class Device final : public DeviceBase {
     bool ShouldDuplicateParametersForDrawIndirect(
         const RenderPipelineBase* renderPipelineBase) const override;
 
-    bool IsFeatureEnabled(Feature feature) const override;
+    uint64_t GetBufferCopyOffsetAlignmentForDepthStencil() const override;
 
     // Dawn APIs
     void SetLabelImpl() override;
@@ -206,6 +212,7 @@ class Device final : public DeviceBase {
 
     void DestroyImpl() override;
     MaybeError WaitForIdleForDestruction() override;
+    bool HasPendingCommands() const override;
 
     MaybeError CheckDebugLayerAndGenerateErrors();
     void AppendDebugLayerMessages(ErrorData* error) override;
@@ -216,6 +223,7 @@ class Device final : public DeviceBase {
 
     ComPtr<ID3D12Fence> mFence;
     HANDLE mFenceEvent = nullptr;
+    HANDLE mFenceHandle = nullptr;
     ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
 
     ComPtr<ID3D12Device> mD3d12Device;  // Device is owned by adapter and will not be outlived.

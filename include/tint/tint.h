@@ -15,6 +15,9 @@
 #ifndef INCLUDE_TINT_TINT_H_
 #define INCLUDE_TINT_TINT_H_
 
+// Guard for accidental includes to private headers
+#define CURRENTLY_IN_TINT_PUBLIC_HEADER
+
 // TODO(tint:88): When implementing support for an install target, all of these
 //                headers will need to be moved to include/tint/.
 
@@ -22,10 +25,8 @@
 #include "src/tint/diagnostic/printer.h"
 #include "src/tint/inspector/inspector.h"
 #include "src/tint/reader/reader.h"
-#include "src/tint/sem/type_manager.h"
 #include "src/tint/transform/binding_remapper.h"
 #include "src/tint/transform/first_index_offset.h"
-#include "src/tint/transform/fold_trivial_single_use_lets.h"
 #include "src/tint/transform/manager.h"
 #include "src/tint/transform/multiplanar_external_texture.h"
 #include "src/tint/transform/renamer.h"
@@ -33,6 +34,7 @@
 #include "src/tint/transform/single_entry_point.h"
 #include "src/tint/transform/substitute_override.h"
 #include "src/tint/transform/vertex_pulling.h"
+#include "src/tint/type/manager.h"
 #include "src/tint/writer/flatten_bindings.h"
 #include "src/tint/writer/writer.h"
 
@@ -64,5 +66,17 @@
 #if TINT_BUILD_GLSL_WRITER
 #include "src/tint/writer/glsl/generator.h"
 #endif  // TINT_BUILD_GLSL_WRITER
+
+namespace tint {
+
+/// Initialize initializes the Tint library. Call before using the Tint API.
+void Initialize();
+
+/// Shutdown uninitializes the Tint library. Call after using the Tint API.
+void Shutdown();
+
+}  // namespace tint
+
+#undef CURRENTLY_IN_TINT_PUBLIC_HEADER
 
 #endif  // INCLUDE_TINT_TINT_H_

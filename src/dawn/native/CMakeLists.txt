@@ -32,6 +32,8 @@ target_sources(dawn_native PRIVATE
     ${DAWN_NATIVE_UTILS_GEN_SOURCES}
     "Adapter.cpp"
     "Adapter.h"
+    "ApplyClearColorValueWithDrawHelper.cpp"
+    "ApplyClearColorValueWithDrawHelper.h"
     "AsyncTask.cpp"
     "AsyncTask.h"
     "AttachmentState.cpp"
@@ -168,6 +170,7 @@ target_sources(dawn_native PRIVATE
     "Sampler.h"
     "ScratchBuffer.cpp"
     "ScratchBuffer.h"
+    "Serializable.h"
     "ShaderModule.cpp"
     "ShaderModule.h"
     "StagingBuffer.cpp"
@@ -281,6 +284,8 @@ if (DAWN_ENABLE_D3D12)
         "d3d12/DeviceD3D12.h"
         "d3d12/ExternalImageDXGIImpl.cpp"
         "d3d12/ExternalImageDXGIImpl.h"
+        "d3d12/FenceD3D12.cpp"
+        "d3d12/FenceD3D12.h"
         "d3d12/Forward.h"
         "d3d12/GPUDescriptorHeapAllocationD3D12.cpp"
         "d3d12/GPUDescriptorHeapAllocationD3D12.h"
@@ -547,6 +552,7 @@ if (DAWN_ENABLE_VULKAN)
         "vulkan/VulkanFunctions.h"
         "vulkan/VulkanInfo.cpp"
         "vulkan/VulkanInfo.h"
+        "vulkan/external_memory/MemoryService.cpp"
         "vulkan/external_memory/MemoryService.h"
         "vulkan/external_semaphore/SemaphoreService.h"
     )
@@ -594,6 +600,7 @@ DawnJSONGenerator(
 add_library(webgpu_dawn ${DAWN_PLACEHOLDER_FILE})
 common_compile_options(webgpu_dawn)
 target_link_libraries(webgpu_dawn PRIVATE dawn_native)
+target_link_libraries(webgpu_dawn PUBLIC dawn_headers)
 target_compile_definitions(webgpu_dawn PRIVATE "WGPU_IMPLEMENTATION")
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(webgpu_dawn PRIVATE "WGPU_SHARED_LIBRARY")

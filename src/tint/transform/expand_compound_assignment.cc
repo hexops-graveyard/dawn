@@ -31,11 +31,9 @@ using namespace tint::number_suffixes;  // NOLINT
 
 namespace tint::transform {
 
-ExpandCompoundAssignment::ExpandCompoundAssignment() = default;
+namespace {
 
-ExpandCompoundAssignment::~ExpandCompoundAssignment() = default;
-
-bool ExpandCompoundAssignment::ShouldRun(const Program* program, const DataMap&) const {
+bool ShouldRun(const Program* program) {
     for (auto* node : program->ASTNodes().Objects()) {
         if (node->IsAnyOf<ast::CompoundAssignmentStatement, ast::IncrementDecrementStatement>()) {
             return true;
@@ -44,21 +42,10 @@ bool ExpandCompoundAssignment::ShouldRun(const Program* program, const DataMap&)
     return false;
 }
 
-namespace {
+}  // namespace
 
-/// Internal class used to collect statement expansions during the transform.
-class State {
-  private:
-    /// The clone context.
-    CloneContext& ctx;
-
-    /// The program builder.
-    ProgramBuilder& b;
-
-    /// The HoistToDeclBefore helper instance.
-    HoistToDeclBefore hoist_to_decl_before;
-
-  public:
+/// PIMPL state for the transform
+struct ExpandCompoundAssignment::State {
     /// Constructor
     /// @param context the clone context
     explicit State(CloneContext& context) : ctx(context), b(*ctx.dst), hoist_to_decl_before(ctx) {}
@@ -84,7 +71,7 @@ class State {
         auto hoist_pointer_to = [&](const ast::Expression* expr) {
             auto name = b.Sym();
             auto* ptr = b.AddressOf(ctx.Clone(expr));
-            auto* decl = b.Decl(b.Let(name, nullptr, ptr));
+            auto* decl = b.Decl(b.Let(name, ptr));
             hoist_to_decl_before.InsertBefore(ctx.src->Sem().Get(stmt), decl);
             return name;
         };
@@ -92,14 +79,14 @@ class State {
         // Helper function to hoist `expr` to a let declaration.
         auto hoist_expr_to_let = [&](const ast::Expression* expr) {
             auto name = b.Sym();
-            auto* decl = b.Decl(b.Let(name, nullptr, ctx.Clone(expr)));
+            auto* decl = b.Decl(b.Let(name, ctx.Clone(expr)));
             hoist_to_decl_before.InsertBefore(ctx.src->Sem().Get(stmt), decl);
             return name;
         };
 
         // Helper function that returns `true` if the type of `expr` is a vector.
         auto is_vec = [&](const ast::Expression* expr) {
-            return ctx.src->Sem().Get(expr)->Type()->UnwrapRef()->Is<sem::Vector>();
+            return ctx.src->Sem().Get(expr)->Type()->UnwrapRef()->Is<type::Vector>();
         };
 
         // Hoist the LHS expression subtree into local constants to produce a new
@@ -158,18 +145,32 @@ class State {
         ctx.Replace(stmt, b.Assign(new_lhs(), value));
     }
 
-    /// Finalize the transformation and clone the module.
-    void Finalize() {
-        hoist_to_decl_before.Apply();
-        ctx.Clone();
-    }
+  private:
+    /// The clone context.
+    CloneContext& ctx;
+
+    /// The program builder.
+    ProgramBuilder& b;
+
+    /// The HoistToDeclBefore helper instance.
+    HoistToDeclBefore hoist_to_decl_before;
 };
 
-}  // namespace
+ExpandCompoundAssignment::ExpandCompoundAssignment() = default;
 
-void ExpandCompoundAssignment::Run(CloneContext& ctx, const DataMap&, DataMap&) const {
+ExpandCompoundAssignment::~ExpandCompoundAssignment() = default;
+
+Transform::ApplyResult ExpandCompoundAssignment::Apply(const Program* src,
+                                                       const DataMap&,
+                                                       DataMap&) const {
+    if (!ShouldRun(src)) {
+        return SkipTransform;
+    }
+
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     State state(ctx);
-    for (auto* node : ctx.src->ASTNodes().Objects()) {
+    for (auto* node : src->ASTNodes().Objects()) {
         if (auto* assign = node->As<ast::CompoundAssignmentStatement>()) {
             state.Expand(assign, assign->lhs, ctx.Clone(assign->rhs), assign->op);
         } else if (auto* inc_dec = node->As<ast::IncrementDecrementStatement>()) {
@@ -178,7 +179,9 @@ void ExpandCompoundAssignment::Run(CloneContext& ctx, const DataMap&, DataMap&) 
             state.Expand(inc_dec, inc_dec->lhs, ctx.dst->Expr(1_a), op);
         }
     }
-    state.Finalize();
+
+    ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

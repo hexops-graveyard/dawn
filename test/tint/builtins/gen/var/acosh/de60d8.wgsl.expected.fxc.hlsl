@@ -5,7 +5,7 @@ vector<float16_t, 4> tint_acosh(vector<float16_t, 4> x) {
 }
 
 void acosh_de60d8() {
-  vector<float16_t, 4> arg_0 = (float16_t(0.0h)).xxxx;
+  vector<float16_t, 4> arg_0 = (float16_t(2.0h)).xxxx;
   vector<float16_t, 4> res = tint_acosh(arg_0);
 }
 
@@ -35,6 +35,3 @@ void compute_main() {
   acosh_de60d8();
   return;
 }
-FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x0000021E640184D0(1,8-16): error X3000: syntax error: unexpected token 'float16_t'
-

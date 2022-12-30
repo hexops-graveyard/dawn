@@ -100,7 +100,7 @@ using ResolverBuiltinsStageTest = ResolverTestWithParam<Params>;
 TEST_P(ResolverBuiltinsStageTest, All_input) {
     const Params& params = GetParam();
 
-    auto* p = GlobalVar("p", ty.vec4<f32>(), ast::StorageClass::kPrivate);
+    auto* p = GlobalVar("p", ty.vec4<f32>(), ast::AddressSpace::kPrivate);
     auto* input = Param("input", params.type(*this),
                         utils::Vector{Builtin(Source{{12, 34}}, params.builtin)});
     switch (params.stage) {
@@ -163,7 +163,7 @@ TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInput_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -198,13 +198,13 @@ TEST_F(ResolverBuiltinsValidationTest, FragDepthIsInputStruct_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
               "12:34 error: builtin(frag_depth) cannot be used in input of "
               "fragment pipeline stage\n"
-              "note: while analysing entry point 'fragShader'");
+              "note: while analyzing entry point 'fragShader'");
 }
 
 TEST_F(ResolverBuiltinsValidationTest, StructBuiltinInsideEntryPoint_Ignored) {
@@ -256,7 +256,7 @@ TEST_F(ResolverBuiltinsValidationTest, PositionNotF32_Struct_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -301,7 +301,7 @@ TEST_F(ResolverBuiltinsValidationTest, FragDepthNotF32_Struct_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -330,7 +330,7 @@ TEST_F(ResolverBuiltinsValidationTest, SampleMaskNotU32_Struct_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -372,7 +372,7 @@ TEST_F(ResolverBuiltinsValidationTest, SampleMaskIsNotU32_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), "12:34 error: store type of builtin(sample_mask) must be 'u32'");
@@ -400,7 +400,7 @@ TEST_F(ResolverBuiltinsValidationTest, SampleIndexIsNotU32_Struct_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -427,7 +427,7 @@ TEST_F(ResolverBuiltinsValidationTest, SampleIndexIsNotU32_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), "12:34 error: store type of builtin(sample_index) must be 'u32'");
@@ -453,7 +453,7 @@ TEST_F(ResolverBuiltinsValidationTest, PositionIsNotF32_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), "12:34 error: store type of builtin(position) must be 'vec4<f32>'");
@@ -745,7 +745,7 @@ TEST_F(ResolverBuiltinsValidationTest, FragmentBuiltinStruct_Pass) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
     EXPECT_TRUE(r()->Resolve()) << r()->error();
 }
@@ -768,7 +768,7 @@ TEST_F(ResolverBuiltinsValidationTest, FrontFacingParamIsNotBool_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -797,7 +797,7 @@ TEST_F(ResolverBuiltinsValidationTest, FrontFacingMemberIsNotBool_Fail) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -892,10 +892,10 @@ TEST_F(ResolverBuiltinsValidationTest, Frexp_Scalar) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    EXPECT_TRUE(members[0]->Type()->Is<sem::F32>());
-    EXPECT_TRUE(members[1]->Type()->Is<sem::I32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    EXPECT_TRUE(members[0]->Type()->Is<type::F32>());
+    EXPECT_TRUE(members[1]->Type()->Is<type::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec2) {
@@ -905,14 +905,14 @@ TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec2) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 2u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 2u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 2u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 2u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec3) {
@@ -922,14 +922,14 @@ TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec3) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 3u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 3u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 3u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 3u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec4) {
@@ -939,14 +939,14 @@ TEST_F(ResolverBuiltinsValidationTest, Frexp_Vec4) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 4u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 4u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::I32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 4u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 4u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::I32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Scalar) {
@@ -956,10 +956,10 @@ TEST_F(ResolverBuiltinsValidationTest, Modf_Scalar) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    EXPECT_TRUE(members[0]->Type()->Is<sem::F32>());
-    EXPECT_TRUE(members[1]->Type()->Is<sem::F32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    EXPECT_TRUE(members[0]->Type()->Is<type::F32>());
+    EXPECT_TRUE(members[1]->Type()->Is<type::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec2) {
@@ -969,14 +969,14 @@ TEST_F(ResolverBuiltinsValidationTest, Modf_Vec2) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 2u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 2u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 2u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 2u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec3) {
@@ -986,14 +986,14 @@ TEST_F(ResolverBuiltinsValidationTest, Modf_Vec3) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 3u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 3u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 3u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 3u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Modf_Vec4) {
@@ -1003,14 +1003,14 @@ TEST_F(ResolverBuiltinsValidationTest, Modf_Vec4) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
     auto* res_ty = TypeOf(builtin)->As<sem::Struct>();
     ASSERT_TRUE(res_ty != nullptr);
-    auto& members = res_ty->Members();
-    ASSERT_EQ(members.size(), 2u);
-    ASSERT_TRUE(members[0]->Type()->Is<sem::Vector>());
-    ASSERT_TRUE(members[1]->Type()->Is<sem::Vector>());
-    EXPECT_EQ(members[0]->Type()->As<sem::Vector>()->Width(), 4u);
-    EXPECT_TRUE(members[0]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
-    EXPECT_EQ(members[1]->Type()->As<sem::Vector>()->Width(), 4u);
-    EXPECT_TRUE(members[1]->Type()->As<sem::Vector>()->type()->Is<sem::F32>());
+    auto members = res_ty->Members();
+    ASSERT_EQ(members.Length(), 2u);
+    ASSERT_TRUE(members[0]->Type()->Is<type::Vector>());
+    ASSERT_TRUE(members[1]->Type()->Is<type::Vector>());
+    EXPECT_EQ(members[0]->Type()->As<type::Vector>()->Width(), 4u);
+    EXPECT_TRUE(members[0]->Type()->As<type::Vector>()->type()->Is<type::F32>());
+    EXPECT_EQ(members[1]->Type()->As<type::Vector>()->Width(), 4u);
+    EXPECT_TRUE(members[1]->Type()->As<type::Vector>()->type()->Is<type::F32>());
 }
 
 TEST_F(ResolverBuiltinsValidationTest, Cross_Float_Vec3) {
@@ -1099,7 +1099,7 @@ TEST_P(FloatAllMatching, Scalar) {
 
     utils::Vector<const ast::Expression*, 8> params;
     for (uint32_t i = 0; i < num_params; ++i) {
-        params.Push(Expr(1_f));
+        params.Push(Expr(f32(i + 1)));
     }
     auto* builtin = Call(name, params);
     Func("func", utils::Empty, ty.void_(),
@@ -1111,7 +1111,7 @@ TEST_P(FloatAllMatching, Scalar) {
          });
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
-    EXPECT_TRUE(TypeOf(builtin)->Is<sem::F32>());
+    EXPECT_TRUE(TypeOf(builtin)->Is<type::F32>());
 }
 
 TEST_P(FloatAllMatching, Vec2) {
@@ -1120,7 +1120,7 @@ TEST_P(FloatAllMatching, Vec2) {
 
     utils::Vector<const ast::Expression*, 8> params;
     for (uint32_t i = 0; i < num_params; ++i) {
-        params.Push(vec2<f32>(1_f, 1_f));
+        params.Push(vec2<f32>(f32(i + 1), f32(i + 1)));
     }
     auto* builtin = Call(name, params);
     Func("func", utils::Empty, ty.void_(),
@@ -1141,7 +1141,7 @@ TEST_P(FloatAllMatching, Vec3) {
 
     utils::Vector<const ast::Expression*, 8> params;
     for (uint32_t i = 0; i < num_params; ++i) {
-        params.Push(vec3<f32>(1_f, 1_f, 1_f));
+        params.Push(vec3<f32>(f32(i + 1), f32(i + 1), f32(i + 1)));
     }
     auto* builtin = Call(name, params);
     Func("func", utils::Empty, ty.void_(),
@@ -1162,7 +1162,7 @@ TEST_P(FloatAllMatching, Vec4) {
 
     utils::Vector<const ast::Expression*, 8> params;
     for (uint32_t i = 0; i < num_params; ++i) {
-        params.Push(vec4<f32>(1_f, 1_f, 1_f, 1_f));
+        params.Push(vec4<f32>(f32(i + 1), f32(i + 1), f32(i + 1), f32(i + 1)));
     }
     auto* builtin = Call(name, params);
     Func("func", utils::Empty, ty.void_(),
@@ -1235,7 +1235,7 @@ TEST_P(IntegerAllMatching, ScalarUnsigned) {
     WrapInFunction(builtin);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
-    EXPECT_TRUE(TypeOf(builtin)->Is<sem::U32>());
+    EXPECT_TRUE(TypeOf(builtin)->Is<type::U32>());
 }
 
 TEST_P(IntegerAllMatching, Vec2Unsigned) {
@@ -1295,7 +1295,7 @@ TEST_P(IntegerAllMatching, ScalarSigned) {
     WrapInFunction(builtin);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
-    EXPECT_TRUE(TypeOf(builtin)->Is<sem::I32>());
+    EXPECT_TRUE(TypeOf(builtin)->Is<type::I32>());
 }
 
 TEST_P(IntegerAllMatching, Vec2Signed) {

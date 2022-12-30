@@ -23,17 +23,20 @@ namespace dawn::native {
 MaybeError ValidateComputePipelineDescriptor(DeviceBase* device,
                                              const ComputePipelineDescriptor* descriptor) {
     if (descriptor->nextInChain != nullptr) {
-        return DAWN_FORMAT_VALIDATION_ERROR("nextInChain must be nullptr.");
+        return DAWN_VALIDATION_ERROR("nextInChain must be nullptr.");
     }
 
     if (descriptor->layout != nullptr) {
         DAWN_TRY(device->ValidateObject(descriptor->layout));
     }
 
-    return ValidateProgrammableStage(
-        device, descriptor->compute.module, descriptor->compute.entryPoint,
-        descriptor->compute.constantCount, descriptor->compute.constants, descriptor->layout,
-        SingleShaderStage::Compute);
+    DAWN_TRY_CONTEXT(ValidateProgrammableStage(
+                         device, descriptor->compute.module, descriptor->compute.entryPoint,
+                         descriptor->compute.constantCount, descriptor->compute.constants,
+                         descriptor->layout, SingleShaderStage::Compute),
+                     "validating compute stage (%s, entryPoint: %s).", descriptor->compute.module,
+                     descriptor->compute.entryPoint);
+    return {};
 }
 
 // ComputePipelineBase
@@ -47,14 +50,14 @@ ComputePipelineBase::ComputePipelineBase(DeviceBase* device,
           {{SingleShaderStage::Compute, descriptor->compute.module, descriptor->compute.entryPoint,
             descriptor->compute.constantCount, descriptor->compute.constants}}) {
     SetContentHash(ComputeContentHash());
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 
     // Initialize the cache key to include the cache type and device information.
     StreamIn(&mCacheKey, CacheKey::Type::ComputePipeline, device->GetCacheKey());
 }
 
 ComputePipelineBase::ComputePipelineBase(DeviceBase* device) : PipelineBase(device) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 ComputePipelineBase::ComputePipelineBase(DeviceBase* device, ObjectBase::ErrorTag tag)

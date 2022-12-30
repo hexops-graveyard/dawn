@@ -18,6 +18,7 @@
 #include <string>
 
 #include "src/tint/ast/attribute.h"
+#include "src/tint/ast/expression.h"
 
 namespace tint::ast {
 
@@ -28,8 +29,8 @@ class IdAttribute final : public Castable<IdAttribute, Attribute> {
     /// @param pid the identifier of the program that owns this node
     /// @param nid the unique node identifier
     /// @param src the source of this node
-    /// @param val the numeric id value
-    IdAttribute(ProgramID pid, NodeID nid, const Source& src, uint32_t val);
+    /// @param expr the numeric id expression
+    IdAttribute(ProgramID pid, NodeID nid, const Source& src, const ast::Expression* expr);
     ~IdAttribute() override;
 
     /// @returns the WGSL name for the attribute
@@ -41,8 +42,8 @@ class IdAttribute final : public Castable<IdAttribute, Attribute> {
     /// @return the newly cloned node
     const IdAttribute* Clone(CloneContext* ctx) const override;
 
-    /// The id value
-    const uint32_t value;
+    /// The id expression
+    const ast::Expression* const expr;
 };
 
 }  // namespace tint::ast

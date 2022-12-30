@@ -21,8 +21,8 @@
 #include "src/tint/ast/external_texture.h"
 #include "src/tint/ast/module.h"
 #include "src/tint/program.h"
-#include "src/tint/sem/external_texture.h"
 #include "src/tint/sem/variable.h"
+#include "src/tint/type/external_texture.h"
 
 namespace tint::writer {
 
@@ -40,7 +40,7 @@ transform::MultiplanarExternalTexture::BindingsMap GenerateExternalTextureBindin
             auto& n = group_to_next_binding_number[bp.group];
             n = std::max(n, bp.binding + 1);
 
-            if (sem_var->Type()->UnwrapRef()->Is<sem::ExternalTexture>()) {
+            if (sem_var->Type()->UnwrapRef()->Is<type::ExternalTexture>()) {
                 ext_tex_bps.emplace_back(bp);
             }
         }
@@ -50,7 +50,8 @@ transform::MultiplanarExternalTexture::BindingsMap GenerateExternalTextureBindin
     for (auto bp : ext_tex_bps) {
         uint32_t g = bp.group;
         uint32_t& next_num = group_to_next_binding_number[g];
-        auto new_bps = transform::BindingPoints{{g, next_num++}, {g, next_num++}};
+        auto new_bps =
+            transform::MultiplanarExternalTexture::BindingPoints{{g, next_num++}, {g, next_num++}};
         new_bindings_map[bp] = new_bps;
     }
     return new_bindings_map;

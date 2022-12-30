@@ -22,6 +22,11 @@
 
 namespace dawn::native::metal {
 
+struct MTLSharedEventAndSignalValue {
+    NSPRef<id> sharedEvent;
+    uint64_t signaledValue;
+};
+
 // This class wraps a MTLCommandBuffer and tracks which Metal encoder is open.
 // Only one encoder may be open at a time.
 class CommandRecordingContext : NonMovable {
@@ -30,16 +35,26 @@ class CommandRecordingContext : NonMovable {
     ~CommandRecordingContext();
 
     id<MTLCommandBuffer> GetCommands();
+    void SetNeedsSubmit();
+    bool NeedsSubmit() const;
     void MarkUsed();
     bool WasUsed() const;
 
     MaybeError PrepareNextCommandBuffer(id<MTLCommandQueue> queue);
     NSPRef<id<MTLCommandBuffer>> AcquireCommands();
 
+    // Create blit pass encoder from blit pass descriptor
+    id<MTLBlitCommandEncoder> BeginBlit(MTLBlitPassDescriptor* descriptor)
+        API_AVAILABLE(macos(11.0), ios(14.0));
     id<MTLBlitCommandEncoder> EnsureBlit();
     void EndBlit();
 
+    // Create a sequential compute pass by default.
     id<MTLComputeCommandEncoder> BeginCompute();
+    // Create configurable compute pass from a descriptor with serial dispatch type which commands
+    // are executed sequentially.
+    id<MTLComputeCommandEncoder> BeginCompute(MTLComputePassDescriptor* descriptor)
+        API_AVAILABLE(macos(11.0), ios(14.0));
     void EndCompute();
 
     id<MTLRenderCommandEncoder> BeginRender(MTLRenderPassDescriptor* descriptor);
@@ -51,6 +66,7 @@ class CommandRecordingContext : NonMovable {
     NSPRef<id<MTLComputeCommandEncoder>> mCompute;
     NSPRef<id<MTLRenderCommandEncoder>> mRender;
     bool mInEncoder = false;
+    bool mNeedsSubmit = false;
     bool mUsed = false;
 };
 

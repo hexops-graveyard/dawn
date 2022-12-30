@@ -29,6 +29,10 @@ namespace dawn::native {
 
 enum class UsageValidationMode;
 
+bool HasDeprecatedColor(const RenderPassColorAttachment& attachment);
+
+Color ClampClearColorValueToLegalRange(const Color& originalColor, const Format& format);
+
 MaybeError ValidateCommandEncoderDescriptor(const DeviceBase* device,
                                             const CommandEncoderDescriptor* descriptor);
 
@@ -97,6 +101,12 @@ class CommandEncoder final : public ApiObjectBase {
     CommandEncoder(DeviceBase* device, ObjectBase::ErrorTag tag);
 
     void DestroyImpl() override;
+
+    ResultOrError<std::function<void()>> ApplyRenderPassWorkarounds(
+        DeviceBase* device,
+        RenderPassResourceUsageTracker* usageTracker,
+        BeginRenderPassCmd* cmd,
+        std::function<void()> passEndCallback = nullptr);
 
     // Helper to be able to implement both APICopyTextureToTexture and
     // APICopyTextureToTextureInternal. The only difference between both

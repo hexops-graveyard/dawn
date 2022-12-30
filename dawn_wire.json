@@ -189,6 +189,7 @@
             "BufferMapAsync",
             "BufferGetConstMappedRange",
             "BufferGetMappedRange",
+            "BufferGetMapState",
             "BufferGetSize",
             "BufferGetUsage",
             "DeviceCreateBuffer",
@@ -224,6 +225,7 @@
             "DeviceCreateQuerySet",
             "DeviceCreateTexture",
             "DeviceCreateErrorTexture",
+            "DeviceGetAdapter",
             "DeviceGetQueue",
             "DeviceInjectError"
         ],

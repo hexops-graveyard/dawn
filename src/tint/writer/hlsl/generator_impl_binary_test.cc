@@ -50,8 +50,8 @@ TEST_P(HlslBinaryTest, Emit_f32) {
         return;
     }
 
-    GlobalVar("left", ty.f32(), ast::StorageClass::kPrivate);
-    GlobalVar("right", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("left", ty.f32(), ast::AddressSpace::kPrivate);
+    GlobalVar("right", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* left = Expr("left");
     auto* right = Expr("right");
@@ -82,8 +82,8 @@ TEST_P(HlslBinaryTest, Emit_f16) {
 
     Enable(ast::Extension::kF16);
 
-    GlobalVar("left", ty.f16(), ast::StorageClass::kPrivate);
-    GlobalVar("right", ty.f16(), ast::StorageClass::kPrivate);
+    GlobalVar("left", ty.f16(), ast::AddressSpace::kPrivate);
+    GlobalVar("right", ty.f16(), ast::AddressSpace::kPrivate);
 
     auto* left = Expr("left");
     auto* right = Expr("right");
@@ -105,8 +105,8 @@ TEST_P(HlslBinaryTest, Emit_u32) {
         return;
     }
 
-    GlobalVar("left", ty.u32(), ast::StorageClass::kPrivate);
-    GlobalVar("right", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("left", ty.u32(), ast::AddressSpace::kPrivate);
+    GlobalVar("right", ty.u32(), ast::AddressSpace::kPrivate);
 
     auto* left = Expr("left");
     auto* right = Expr("right");
@@ -133,8 +133,8 @@ TEST_P(HlslBinaryTest, Emit_i32) {
         return;
     }
 
-    GlobalVar("left", ty.i32(), ast::StorageClass::kPrivate);
-    GlobalVar("right", ty.i32(), ast::StorageClass::kPrivate);
+    GlobalVar("left", ty.i32(), ast::AddressSpace::kPrivate);
+    GlobalVar("right", ty.i32(), ast::AddressSpace::kPrivate);
 
     auto* left = Expr("left");
     auto* right = Expr("right");
@@ -184,7 +184,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f32) {
 
     std::stringstream out;
     EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "((1.0f).xxx * 1.0f)");
+    EXPECT_EQ(out.str(), "(1.0f).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f16) {
@@ -201,7 +201,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f16) {
 
     std::stringstream out;
     EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "((float16_t(1.0h)).xxx * float16_t(1.0h))");
+    EXPECT_EQ(out.str(), "(float16_t(1.0h)).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f32) {
@@ -216,7 +216,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f32) {
 
     std::stringstream out;
     EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "(1.0f * (1.0f).xxx)");
+    EXPECT_EQ(out.str(), "(1.0f).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f16) {
@@ -233,11 +233,11 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f16) {
 
     std::stringstream out;
     EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "(float16_t(1.0h) * (float16_t(1.0h)).xxx)");
+    EXPECT_EQ(out.str(), "(float16_t(1.0h)).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f32) {
-    GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = Expr(1_f);
 
@@ -254,7 +254,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f32) {
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = Expr(1_h);
 
@@ -269,7 +269,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f16) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f32) {
-    GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr(1_f);
     auto* rhs = Expr("mat");
 
@@ -286,7 +286,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f32) {
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr(1_h);
     auto* rhs = Expr("mat");
 
@@ -301,7 +301,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f16) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f32) {
-    GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = vec3<f32>(1_f, 1_f, 1_f);
 
@@ -318,7 +318,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f32) {
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
     auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
 
@@ -333,7 +333,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f16) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f32) {
-    GlobalVar("mat", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
     auto* lhs = vec3<f32>(1_f, 1_f, 1_f);
     auto* rhs = Expr("mat");
 
@@ -350,7 +350,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f32) {
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("mat", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("mat", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
     auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
     auto* rhs = Expr("mat");
 
@@ -365,8 +365,8 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f16) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f32) {
-    GlobalVar("lhs", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("rhs", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("lhs", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("rhs", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr("lhs"), Expr("rhs"));
     WrapInFunction(expr);
@@ -381,8 +381,8 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f32) {
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("lhs", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
-    GlobalVar("rhs", ty.mat3x3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("lhs", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
+    GlobalVar("rhs", ty.mat3x3<f16>(), ast::AddressSpace::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr("lhs"), Expr("rhs"));
     WrapInFunction(expr);
@@ -395,8 +395,8 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f16) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Logical_And) {
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b"));
     WrapInFunction(expr);
@@ -415,10 +415,10 @@ if (tint_tmp) {
 
 TEST_F(HlslGeneratorImplTest_Binary, Logical_Multi) {
     // (a && b) || (c || d)
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("d", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("d", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(
         ast::BinaryOp::kLogicalOr,
@@ -447,8 +447,8 @@ if (!tint_tmp) {
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Logical_Or) {
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("a"), Expr("b"));
     WrapInFunction(expr);
@@ -474,9 +474,9 @@ TEST_F(HlslGeneratorImplTest_Binary, If_WithLogical) {
     //   return 3i;
     // }
 
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr =
         If(create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b")),
@@ -511,9 +511,9 @@ if ((tint_tmp)) {
 TEST_F(HlslGeneratorImplTest_Binary, Return_WithLogical) {
     // return (a && b) || c;
 
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr = Return(create<ast::BinaryExpression>(
         ast::BinaryOp::kLogicalOr,
@@ -539,10 +539,10 @@ return (tint_tmp);
 TEST_F(HlslGeneratorImplTest_Binary, Assign_WithLogical) {
     // a = (b || c) && d;
 
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("d", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("d", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* expr =
         Assign(Expr("a"),
@@ -570,12 +570,12 @@ a = (tint_tmp);
 TEST_F(HlslGeneratorImplTest_Binary, Decl_WithLogical) {
     // var a : bool = (b && c) || d;
 
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("d", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("d", ty.bool_(), ast::AddressSpace::kPrivate);
 
     auto* var =
-        Var("a", ty.bool_(), ast::StorageClass::kNone,
+        Var("a", ty.bool_(), ast::AddressSpace::kNone,
             create<ast::BinaryExpression>(
                 ast::BinaryOp::kLogicalOr,
                 create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("b"), Expr("c")),
@@ -609,10 +609,10 @@ TEST_F(HlslGeneratorImplTest_Binary, Call_WithLogical) {
              Param(Sym(), ty.bool_()),
          },
          ty.void_(), utils::Empty, utils::Empty);
-    GlobalVar("a", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.bool_(), ast::StorageClass::kPrivate);
-    GlobalVar("d", ty.bool_(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.bool_(), ast::AddressSpace::kPrivate);
+    GlobalVar("d", ty.bool_(), ast::AddressSpace::kPrivate);
 
     utils::Vector params{
         create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b")),
@@ -652,296 +652,6 @@ if (tint_tmp_2) {
 foo((tint_tmp), (tint_tmp_1), (tint_tmp_2));
 )");
 }
-
-namespace HlslGeneratorDivMod {
-
-struct Params {
-    enum class Type { Div, Mod };
-    Type type;
-};
-
-struct HlslGeneratorDivModTest : TestParamHelper<Params> {
-    std::string Token() { return GetParam().type == Params::Type::Div ? "/" : "%"; }
-
-    template <typename... Args>
-    auto Op(Args... args) {
-        return GetParam().type == Params::Type::Div ? Div(std::forward<Args>(args)...)
-                                                    : Mod(std::forward<Args>(args)...);
-    }
-};
-
-INSTANTIATE_TEST_SUITE_P(HlslGeneratorImplTest,
-                         HlslGeneratorDivModTest,
-                         testing::Values(Params{Params::Type::Div}, Params{Params::Type::Mod}));
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByLiteralZero_i32) {
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.i32())),
-             Decl(Let("r", nullptr, Op("a", 0_i))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn() {
-  int a = 0;
-  const int r = (a )" + Token() +
-                                R"( 1);
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByLiteralZero_u32) {
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.u32())),
-             Decl(Let("r", nullptr, Op("a", 0_u))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn() {
-  uint a = 0u;
-  const uint r = (a )" + Token() +
-                                R"( 1u);
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByLiteralZero_vec_by_vec_i32) {
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", nullptr, vec4<i32>(100_i, 100_i, 100_i, 100_i))),
-             Decl(Let("r", nullptr, Op("a", vec4<i32>(50_i, 0_i, 25_i, 0_i)))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn() {
-  int4 a = (100).xxxx;
-  const int4 r = (a )" + Token() +
-                                R"( int4(50, 1, 25, 1));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByLiteralZero_vec_by_scalar_i32) {
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", nullptr, vec4<i32>(100_i, 100_i, 100_i, 100_i))),
-             Decl(Let("r", nullptr, Op("a", 0_i))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn() {
-  int4 a = (100).xxxx;
-  const int4 r = (a )" + Token() +
-                                R"( 1);
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByIdentifier_i32) {
-    Func("fn", utils::Vector{Param("b", ty.i32())}, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.i32())),
-             Decl(Let("r", nullptr, Op("a", "b"))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn(int b) {
-  int a = 0;
-  const int r = (a )" + Token() +
-                                R"( (b == 0 ? 1 : b));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByIdentifier_u32) {
-    Func("fn", utils::Vector{Param("b", ty.u32())}, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.u32())),
-             Decl(Let("r", nullptr, Op("a", "b"))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn(uint b) {
-  uint a = 0u;
-  const uint r = (a )" + Token() +
-                                R"( (b == 0u ? 1u : b));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByIdentifier_vec_by_vec_i32) {
-    Func("fn", utils::Vector{Param("b", ty.vec3<i32>())}, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.vec3<i32>())),
-             Decl(Let("r", nullptr, Op("a", "b"))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn(int3 b) {
-  int3 a = int3(0, 0, 0);
-  const int3 r = (a )" + Token() +
-                                R"( (b == int3(0, 0, 0) ? int3(1, 1, 1) : b));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByIdentifier_vec_by_scalar_i32) {
-    Func("fn", utils::Vector{Param("b", ty.i32())}, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.vec3<i32>())),
-             Decl(Let("r", nullptr, Op("a", "b"))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(void fn(int b) {
-  int3 a = int3(0, 0, 0);
-  const int3 r = (a )" + Token() +
-                                R"( (b == 0 ? 1 : b));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByExpression_i32) {
-    Func("zero", utils::Empty, ty.i32(),
-         utils::Vector{
-             Return(Expr(0_i)),
-         });
-
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.i32())),
-             Decl(Let("r", nullptr, Op("a", Call("zero")))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(int value_or_one_if_zero_int(int value) {
-  return value == 0 ? 1 : value;
-}
-
-int zero() {
-  return 0;
-}
-
-void fn() {
-  int a = 0;
-  const int r = (a )" + Token() +
-                                R"( value_or_one_if_zero_int(zero()));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByExpression_u32) {
-    Func("zero", utils::Empty, ty.u32(),
-         utils::Vector{
-             Return(Expr(0_u)),
-         });
-
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.u32())),
-             Decl(Let("r", nullptr, Op("a", Call("zero")))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(uint value_or_one_if_zero_uint(uint value) {
-  return value == 0u ? 1u : value;
-}
-
-uint zero() {
-  return 0u;
-}
-
-void fn() {
-  uint a = 0u;
-  const uint r = (a )" + Token() +
-                                R"( value_or_one_if_zero_uint(zero()));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByExpression_vec_by_vec_i32) {
-    Func("zero", utils::Empty, ty.vec3<i32>(),
-         utils::Vector{
-             Return(vec3<i32>(0_i, 0_i, 0_i)),
-         });
-
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.vec3<i32>())),
-             Decl(Let("r", nullptr, Op("a", Call("zero")))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(int3 value_or_one_if_zero_int3(int3 value) {
-  return value == int3(0, 0, 0) ? int3(1, 1, 1) : value;
-}
-
-int3 zero() {
-  return (0).xxx;
-}
-
-void fn() {
-  int3 a = int3(0, 0, 0);
-  const int3 r = (a )" + Token() +
-                                R"( value_or_one_if_zero_int3(zero()));
-}
-)");
-}
-
-TEST_P(HlslGeneratorDivModTest, DivOrModByExpression_vec_by_scalar_i32) {
-    Func("zero", utils::Empty, ty.i32(),
-         utils::Vector{
-             Return(0_i),
-         });
-
-    Func("fn", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var("a", ty.vec3<i32>())),
-             Decl(Let("r", nullptr, Op("a", Call("zero")))),
-         });
-
-    GeneratorImpl& gen = Build();
-
-    ASSERT_TRUE(gen.Generate());
-    EXPECT_EQ(gen.result(), R"(int value_or_one_if_zero_int(int value) {
-  return value == 0 ? 1 : value;
-}
-
-int zero() {
-  return 0;
-}
-
-void fn() {
-  int3 a = int3(0, 0, 0);
-  const int3 r = (a )" + Token() +
-                                R"( value_or_one_if_zero_int(zero()));
-}
-)");
-}
-}  // namespace HlslGeneratorDivMod
 
 }  // namespace
 }  // namespace tint::writer::hlsl

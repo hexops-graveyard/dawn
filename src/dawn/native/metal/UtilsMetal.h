@@ -15,6 +15,7 @@
 #ifndef SRC_DAWN_NATIVE_METAL_UTILSMETAL_H_
 #define SRC_DAWN_NATIVE_METAL_UTILSMETAL_H_
 
+#include "dawn/common/StackContainer.h"
 #include "dawn/native/dawn_platform.h"
 #include "dawn/native/metal/DeviceMTL.h"
 #include "dawn/native/metal/ShaderModuleMTL.h"
@@ -23,6 +24,7 @@
 #import <Metal/Metal.h>
 
 namespace dawn::native {
+struct BeginRenderPassCmd;
 struct ProgrammableStage;
 struct EntryPointMetadata;
 enum class SingleShaderStage;
@@ -33,9 +35,21 @@ namespace dawn::native::metal {
 MTLCompareFunction ToMetalCompareFunction(wgpu::CompareFunction compareFunction);
 
 struct TextureBufferCopySplit {
-    static constexpr uint32_t kMaxTextureBufferCopyRegions = 3;
+    // Avoid allocations except in the worse case. Most cases require at most 3 regions.
+    static constexpr uint32_t kNumCommonTextureBufferCopyRegions = 3;
 
     struct CopyInfo {
+        CopyInfo(NSUInteger bufferOffset,
+                 NSUInteger bytesPerRow,
+                 NSUInteger bytesPerImage,
+                 Origin3D textureOrigin,
+                 Extent3D copyExtent)
+            : bufferOffset(bufferOffset),
+              bytesPerRow(bytesPerRow),
+              bytesPerImage(bytesPerImage),
+              textureOrigin(textureOrigin),
+              copyExtent(copyExtent) {}
+
         NSUInteger bufferOffset;
         NSUInteger bytesPerRow;
         NSUInteger bytesPerImage;
@@ -43,12 +57,11 @@ struct TextureBufferCopySplit {
         Extent3D copyExtent;
     };
 
-    uint32_t count = 0;
-    std::array<CopyInfo, kMaxTextureBufferCopyRegions> copies;
+    StackVector<CopyInfo, kNumCommonTextureBufferCopyRegions> copies;
 
-    auto begin() const { return copies.begin(); }
-
-    auto end() const { return copies.begin() + count; }
+    auto begin() const { return copies->begin(); }
+    auto end() const { return copies->end(); }
+    void push_back(const CopyInfo& copyInfo) { copies->push_back(copyInfo); }
 };
 
 TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
@@ -68,15 +81,6 @@ void EnsureDestinationTextureInitialized(CommandRecordingContext* commandContext
 
 MTLBlitOption ComputeMTLBlitOption(const Format& format, Aspect aspect);
 
-// Helper function to create function with constant values wrapped in
-// if available branch
-MaybeError CreateMTLFunction(const ProgrammableStage& programmableStage,
-                             SingleShaderStage singleShaderStage,
-                             PipelineLayout* pipelineLayout,
-                             ShaderModule::MetalFunctionData* functionData,
-                             uint32_t sampleMask = 0xFFFFFFFF,
-                             const RenderPipeline* renderPipeline = nullptr);
-
 // Allow use MTLStoreActionStoreAndMultismapleResolve because the logic in the backend is
 // first to compute what the "best" Metal render pass descriptor is, then fix it up if we
 // are not on macOS 10.12 (i.e. the EmulateStoreAndMSAAResolve toggle is on).
@@ -90,18 +94,25 @@ constexpr MTLStoreAction kMTLStoreActionStoreAndMultisampleResolve =
 // happen at the render pass start and end. Because workarounds wrap the encoding of the render
 // pass, the encoding must be entirely done by the `encodeInside` callback.
 // At the end of this function, `commandContext` will have no encoder open.
-using EncodeInsideRenderPass = std::function<MaybeError(id<MTLRenderCommandEncoder>)>;
+using EncodeInsideRenderPass =
+    std::function<MaybeError(id<MTLRenderCommandEncoder>, BeginRenderPassCmd* renderPassCmd)>;
 MaybeError EncodeMetalRenderPass(Device* device,
                                  CommandRecordingContext* commandContext,
                                  MTLRenderPassDescriptor* mtlRenderPass,
                                  uint32_t width,
                                  uint32_t height,
-                                 EncodeInsideRenderPass encodeInside);
+                                 EncodeInsideRenderPass encodeInside,
+                                 BeginRenderPassCmd* renderPassCmd = nullptr);
 
 MaybeError EncodeEmptyMetalRenderPass(Device* device,
                                       CommandRecordingContext* commandContext,
                                       MTLRenderPassDescriptor* mtlRenderPass,
                                       Extent3D size);
+
+bool SupportCounterSamplingAtCommandBoundary(id<MTLDevice> device)
+    API_AVAILABLE(macos(11.0), ios(14.0));
+bool SupportCounterSamplingAtStageBoundary(id<MTLDevice> device)
+    API_AVAILABLE(macos(11.0), ios(14.0));
 
 }  // namespace dawn::native::metal
 

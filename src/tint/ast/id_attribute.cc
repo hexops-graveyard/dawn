@@ -22,8 +22,8 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::IdAttribute);
 
 namespace tint::ast {
 
-IdAttribute::IdAttribute(ProgramID pid, NodeID nid, const Source& src, uint32_t val)
-    : Base(pid, nid, src), value(val) {}
+IdAttribute::IdAttribute(ProgramID pid, NodeID nid, const Source& src, const ast::Expression* exp)
+    : Base(pid, nid, src), expr(exp) {}
 
 IdAttribute::~IdAttribute() = default;
 
@@ -34,7 +34,8 @@ std::string IdAttribute::Name() const {
 const IdAttribute* IdAttribute::Clone(CloneContext* ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
     auto src = ctx->Clone(source);
-    return ctx->dst->create<IdAttribute>(src, value);
+    auto* expr_ = ctx->Clone(expr);
+    return ctx->dst->create<IdAttribute>(src, expr_);
 }
 
 }  // namespace tint::ast

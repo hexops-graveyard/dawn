@@ -8,10 +8,7 @@ void tint_symbol() {
       break;
     }
     {
-      if (true) {
-      } else {
-        break;
-      }
+      if (false) { break; }
     }
   }
 }

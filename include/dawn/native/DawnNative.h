@@ -61,7 +61,15 @@ struct ToggleInfo {
 // A struct to record the information of a feature. A feature is a GPU feature that is not
 // required to be supported by all Dawn backends and can only be used when it is enabled on the
 // creation of device.
-using FeatureInfo = ToggleInfo;
+struct FeatureInfo {
+    const char* name;
+    const char* description;
+    const char* url;
+    // The enum of feature state, could be stable or experimental. Using an experimental feature
+    // requires DisallowUnsafeAPIs toggle being disabled.
+    enum class FeatureState { Stable = 0, Experimental };
+    FeatureState featureState;
+};
 
 // An adapter is an object that represent on possibility of creating devices in the system.
 // Most of the time it will represent a combination of a physical GPU and an API. Not that the
@@ -190,6 +198,9 @@ DAWN_NATIVE_EXPORT size_t GetLazyClearCountForTesting(WGPUDevice device);
 // Backdoor to get the number of deprecation warnings for testing
 DAWN_NATIVE_EXPORT size_t GetDeprecationWarningCountForTesting(WGPUDevice device);
 
+// Backdoor to get the number of adapters an instance knows about for testing
+DAWN_NATIVE_EXPORT size_t GetAdapterCountForTesting(WGPUInstance instance);
+
 //  Query if texture has been initialized
 DAWN_NATIVE_EXPORT bool IsTextureSubresourceInitialized(
     WGPUTexture texture,
@@ -218,6 +229,7 @@ enum ExternalImageType {
     IOSurface,
     DXGISharedHandle,
     EGLImage,
+    AHardwareBuffer,
 };
 
 // Common properties of external images
@@ -232,12 +244,6 @@ struct DAWN_NATIVE_EXPORT ExternalImageDescriptor {
 
   private:
     ExternalImageType mType;
-};
-
-struct DAWN_NATIVE_EXPORT ExternalImageAccessDescriptor {
-  public:
-    bool isInitialized = false;  // Whether the texture is initialized on import
-    WGPUTextureUsageFlags usage = WGPUTextureUsage_None;
 };
 
 struct DAWN_NATIVE_EXPORT ExternalImageExportInfo {

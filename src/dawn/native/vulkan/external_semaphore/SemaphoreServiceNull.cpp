@@ -47,4 +47,11 @@ ResultOrError<ExternalSemaphoreHandle> Service::ExportSemaphore(VkSemaphore sema
     return DAWN_UNIMPLEMENTED_ERROR("Using null semaphore service to interop inside Vulkan");
 }
 
+ExternalSemaphoreHandle Service::DuplicateHandle(ExternalSemaphoreHandle handle) {
+    return kNullExternalSemaphoreHandle;
+}
+
+// static
+void Service::CloseHandle(ExternalSemaphoreHandle handle) {}
+
 }  // namespace dawn::native::vulkan::external_semaphore

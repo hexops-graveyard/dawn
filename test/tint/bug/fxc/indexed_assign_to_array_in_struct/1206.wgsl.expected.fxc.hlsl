@@ -14,7 +14,7 @@ typedef float3 tint_symbol_3_ret[8];
 tint_symbol_3_ret tint_symbol_3(ByteAddressBuffer buffer, uint offset) {
   float3 arr[8] = (float3[8])0;
   {
-    [loop] for(uint i_1 = 0u; (i_1 < 8u); i_1 = (i_1 + 1u)) {
+    for(uint i_1 = 0u; (i_1 < 8u); i_1 = (i_1 + 1u)) {
       arr[i_1] = asfloat(buffer.Load3((offset + (i_1 * 16u))));
     }
   }
@@ -28,7 +28,7 @@ Particle tint_symbol_2(ByteAddressBuffer buffer, uint offset) {
 
 [numthreads(1, 1, 1)]
 void main() {
-  Particle particle = tint_symbol_2(particles, (176u * 0u));
+  Particle particle = tint_symbol_2(particles, 0u);
   {
     float3 tint_symbol_1[8] = particle.position;
     tint_symbol_1[sim[0].x] = particle.position[sim[0].x];

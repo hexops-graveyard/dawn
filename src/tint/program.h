@@ -19,11 +19,11 @@
 #include <unordered_set>
 
 #include "src/tint/ast/function.h"
+#include "src/tint/constant/value.h"
 #include "src/tint/program_id.h"
-#include "src/tint/sem/constant.h"
 #include "src/tint/sem/info.h"
-#include "src/tint/sem/type_manager.h"
 #include "src/tint/symbol_table.h"
+#include "src/tint/type/manager.h"
 
 // Forward Declarations
 namespace tint {
@@ -44,8 +44,8 @@ class Program {
     /// SemNodeAllocator is an alias to BlockAllocator<sem::Node>
     using SemNodeAllocator = utils::BlockAllocator<sem::Node>;
 
-    /// ConstantAllocator is an alias to BlockAllocator<sem::Constant>
-    using ConstantAllocator = utils::BlockAllocator<sem::Constant>;
+    /// ConstantAllocator is an alias to BlockAllocator<constant::Value>
+    using ConstantAllocator = utils::BlockAllocator<constant::Value>;
 
     /// Constructor
     Program();
@@ -73,7 +73,7 @@ class Program {
     ast::NodeID HighestASTNodeID() const { return highest_node_id_; }
 
     /// @returns a reference to the program's types
-    const sem::Manager& Types() const {
+    const type::Manager& Types() const {
         AssertNotMoved();
         return types_;
     }
@@ -136,20 +136,35 @@ class Program {
     /// @param expr the AST expression
     /// @return the resolved semantic type for the expression, or nullptr if the
     /// expression has no resolved type.
-    const sem::Type* TypeOf(const ast::Expression* expr) const;
+    const type::Type* TypeOf(const ast::Expression* expr) const;
 
     /// Helper for returning the resolved semantic type of the AST type `type`.
     /// @param type the AST type
     /// @return the resolved semantic type for the type, or nullptr if the type
     /// has no resolved type.
-    const sem::Type* TypeOf(const ast::Type* type) const;
+    const type::Type* TypeOf(const ast::Type* type) const;
 
     /// Helper for returning the resolved semantic type of the AST type
     /// declaration `type_decl`.
     /// @param type_decl the AST type declaration
     /// @return the resolved semantic type for the type declaration, or nullptr if
     /// the type declaration has no resolved type.
-    const sem::Type* TypeOf(const ast::TypeDecl* type_decl) const;
+    const type::Type* TypeOf(const ast::TypeDecl* type_decl) const;
+
+    /// @param type a type
+    /// @returns the name for `type` that closely resembles how it would be
+    /// declared in WGSL.
+    std::string FriendlyName(const ast::Type* type) const;
+
+    /// @param type a type
+    /// @returns the name for `type` that closely resembles how it would be
+    /// declared in WGSL.
+    std::string FriendlyName(const type::Type* type) const;
+
+    /// Overload of FriendlyName, which removes an ambiguity when passing nullptr.
+    /// Simplifies test code.
+    /// @returns "<null>"
+    std::string FriendlyName(std::nullptr_t) const;
 
     /// A function that can be used to print a program
     using Printer = std::string (*)(const Program*);
@@ -165,7 +180,7 @@ class Program {
 
     ProgramID id_;
     ast::NodeID highest_node_id_;
-    sem::Manager types_;
+    type::Manager types_;
     ASTNodeAllocator ast_nodes_;
     SemNodeAllocator sem_nodes_;
     ConstantAllocator constant_nodes_;

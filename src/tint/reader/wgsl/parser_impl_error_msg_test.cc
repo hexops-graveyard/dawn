@@ -186,17 +186,17 @@ fn f() { f() }
 )");
 }
 
-TEST_F(ParserImplErrorTest, ConstructorExprMissingLParen) {
+TEST_F(ParserImplErrorTest, InitializerExprMissingLParen) {
     EXPECT("fn f() { x = vec2<u32>1,2); }",
-           R"(test.wgsl:1:23 error: expected '(' for type constructor
+           R"(test.wgsl:1:23 error: expected '(' for type initializer
 fn f() { x = vec2<u32>1,2); }
                       ^
 )");
 }
 
-TEST_F(ParserImplErrorTest, ConstructorExprMissingRParen) {
+TEST_F(ParserImplErrorTest, InitializerExprMissingRParen) {
     EXPECT("fn f() { x = vec2<u32>(1,2; }",
-           R"(test.wgsl:1:27 error: expected ')' for type constructor
+           R"(test.wgsl:1:27 error: expected ')' for type initializer
 fn f() { x = vec2<u32>(1,2; }
                           ^
 )");
@@ -218,7 +218,7 @@ fn f() { let a : i32; }
 )");
 }
 
-TEST_F(ParserImplErrorTest, ConstVarStmtMissingConstructor) {
+TEST_F(ParserImplErrorTest, ConstVarStmtMissingInitializer) {
     EXPECT("fn f() { let a : i32 = >; }",
            R"(test.wgsl:1:24 error: missing initializer for 'let' declaration
 fn f() { let a : i32 = >; }
@@ -348,48 +348,6 @@ TEST_F(ParserImplErrorTest, FunctionDeclStaticAssertMissingSemicolon) {
            R"(test.wgsl:1:29 error: expected ';' for statement
 fn f() { static_assert true }
                             ^
-)");
-}
-
-// TODO(crbug.com/tint/1503): Remove this when @stage is removed
-TEST_F(ParserImplErrorTest, FunctionDeclStageMissingLParen) {
-    EXPECT("@stage vertex) fn f() {}",
-           R"(test.wgsl:1:8 error: expected '(' for stage attribute
-@stage vertex) fn f() {}
-       ^^^^^^
-)");
-}
-
-TEST_F(ParserImplErrorTest, FunctionDeclStageMissingRParen) {
-    EXPECT(
-        "@stage(vertex fn f() {}",
-        R"(test.wgsl:1:2 warning: use of deprecated language feature: remove stage and use @vertex
-@stage(vertex fn f() {}
- ^^^^^
-
-test.wgsl:1:15 error: expected ')' for stage attribute
-@stage(vertex fn f() {}
-              ^^
-)");
-}
-
-TEST_F(ParserImplErrorTest, FunctionDeclStageInvalid) {
-    EXPECT("@stage(x) fn f() {}",
-           R"(test.wgsl:1:8 error: invalid value for stage attribute
-@stage(x) fn f() {}
-       ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, FunctionDeclStageTypeInvalid) {
-    EXPECT("@shader(vertex) fn main() {}",
-           R"(test.wgsl:1:2 error: expected attribute
-@shader(vertex) fn main() {}
- ^^^^^^
-
-test.wgsl:1:8 error: unexpected token
-@shader(vertex) fn main() {}
-       ^
 )");
 }
 
@@ -530,7 +488,7 @@ const i : i32 = 1
 
 TEST_F(ParserImplErrorTest, GlobalDeclConstMissingLParen) {
     EXPECT("const i : vec2<i32> = vec2<i32>;",
-           R"(test.wgsl:1:32 error: expected '(' for type constructor
+           R"(test.wgsl:1:32 error: expected '(' for type initializer
 const i : vec2<i32> = vec2<i32>;
                                ^
 )");
@@ -538,7 +496,7 @@ const i : vec2<i32> = vec2<i32>;
 
 TEST_F(ParserImplErrorTest, GlobalDeclConstMissingRParen) {
     EXPECT("const i : vec2<i32> = vec2<i32>(1., 2.;",
-           R"(test.wgsl:1:39 error: expected ')' for type constructor
+           R"(test.wgsl:1:39 error: expected ')' for type initializer
 const i : vec2<i32> = vec2<i32>(1., 2.;
                                       ^
 )");
@@ -581,7 +539,7 @@ TEST_F(ParserImplErrorTest, GlobalDeclConstExprMaxDepth) {
 
 TEST_F(ParserImplErrorTest, GlobalDeclConstExprMissingLParen) {
     EXPECT("const i : vec2<i32> = vec2<i32> 1, 2);",
-           R"(test.wgsl:1:33 error: expected '(' for type constructor
+           R"(test.wgsl:1:33 error: expected '(' for type initializer
 const i : vec2<i32> = vec2<i32> 1, 2);
                                 ^
 )");
@@ -589,100 +547,17 @@ const i : vec2<i32> = vec2<i32> 1, 2);
 
 TEST_F(ParserImplErrorTest, GlobalDeclConstExprMissingRParen) {
     EXPECT("const i : vec2<i32> = vec2<i32>(1, 2;",
-           R"(test.wgsl:1:37 error: expected ')' for type constructor
+           R"(test.wgsl:1:37 error: expected ')' for type initializer
 const i : vec2<i32> = vec2<i32>(1, 2;
                                     ^
 )");
 }
 
-TEST_F(ParserImplErrorTest, GlobalDeclLetInvalidIdentifier) {
-    EXPECT(
-        "let ^ : i32 = 1;",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let ^ : i32 = 1;
+TEST_F(ParserImplErrorTest, GlobalDeclLet) {
+    EXPECT("let a : i32 = 1;",
+           R"(test.wgsl:1:1 error: module-scope 'let' is invalid, use 'const'
+let a : i32 = 1;
 ^^^
-
-test.wgsl:1:5 error: expected identifier for 'let' declaration
-let ^ : i32 = 1;
-    ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetMissingSemicolon) {
-    EXPECT(
-        "let i : i32 = 1",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : i32 = 1
-^^^
-
-test.wgsl:1:16 error: expected ';' for 'const' declaration
-let i : i32 = 1
-               ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetMissingLParen) {
-    EXPECT(
-        "let i : vec2<i32> = vec2<i32>;",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : vec2<i32> = vec2<i32>;
-^^^
-
-test.wgsl:1:30 error: expected '(' for type constructor
-let i : vec2<i32> = vec2<i32>;
-                             ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetMissingRParen) {
-    EXPECT(
-        "let i : vec2<i32> = vec2<i32>(1., 2.;",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : vec2<i32> = vec2<i32>(1., 2.;
-^^^
-
-test.wgsl:1:37 error: expected ')' for type constructor
-let i : vec2<i32> = vec2<i32>(1., 2.;
-                                    ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetBadConstLiteral) {
-    EXPECT(
-        "let i : vec2<i32> = vec2<i32>(!);",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : vec2<i32> = vec2<i32>(!);
-^^^
-
-test.wgsl:1:32 error: unable to parse right side of ! expression
-let i : vec2<i32> = vec2<i32>(!);
-                               ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetExprMissingLParen) {
-    EXPECT(
-        "let i : vec2<i32> = vec2<i32> 1, 2);",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : vec2<i32> = vec2<i32> 1, 2);
-^^^
-
-test.wgsl:1:31 error: expected '(' for type constructor
-let i : vec2<i32> = vec2<i32> 1, 2);
-                              ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclLetExprMissingRParen) {
-    EXPECT(
-        "let i : vec2<i32> = vec2<i32>(1, 2;",
-        R"(test.wgsl:1:1 warning: use of deprecated language feature: module-scope 'let' has been replaced with 'const'
-let i : vec2<i32> = vec2<i32>(1, 2;
-^^^
-
-test.wgsl:1:35 error: expected ')' for type constructor
-let i : vec2<i32> = vec2<i32>(1, 2;
-                                  ^
 )");
 }
 
@@ -765,7 +640,8 @@ type T = i32;
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclStaticAssertMissingLParen) {
-    EXPECT("static_assert true);", R"(test.wgsl:1:19 error: expected ';' for static assertion declaration
+    EXPECT("static_assert true);",
+           R"(test.wgsl:1:19 error: expected ';' for static assertion declaration
 static_assert true);
                   ^
 )");
@@ -804,7 +680,8 @@ var x : texture_storage_2d<r32uint, read;
 
 TEST_F(ParserImplErrorTest, GlobalDeclStorageTextureMissingSubtype) {
     EXPECT("var x : texture_storage_2d<>;",
-           R"(test.wgsl:1:28 error: invalid format for storage texture type
+           R"(test.wgsl:1:28 error: expected texel format for storage texture type
+Possible values: 'r32float', 'r32sint', 'r32uint', 'rg32float', 'rg32sint', 'rg32uint', 'rgba16float', 'rgba16sint', 'rgba16uint', 'rgba32float', 'rgba32sint', 'rgba32uint', 'rgba8sint', 'rgba8snorm', 'rgba8uint', 'rgba8unorm'
 var x : texture_storage_2d<>;
                            ^
 )");
@@ -812,7 +689,8 @@ var x : texture_storage_2d<>;
 
 TEST_F(ParserImplErrorTest, GlobalDeclStorageTextureMissingInvalidSubtype) {
     EXPECT("var x : texture_storage_2d<1>;",
-           R"(test.wgsl:1:28 error: invalid format for storage texture type
+           R"(test.wgsl:1:28 error: expected texel format for storage texture type
+Possible values: 'r32float', 'r32sint', 'r32uint', 'rg32float', 'rg32sint', 'rg32uint', 'rgba16float', 'rgba16sint', 'rgba16uint', 'rgba32float', 'rgba32sint', 'rgba32uint', 'rgba8sint', 'rgba8snorm', 'rgba8uint', 'rgba8unorm'
 var x : texture_storage_2d<1>;
                            ^
 )");
@@ -851,33 +729,17 @@ struct S { 1 : i32, };
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclStructMemberAlignInvaldValue) {
-    EXPECT("struct S { @align(x) i : i32, };",
-           R"(test.wgsl:1:19 error: expected signed integer literal for align attribute
-struct S { @align(x) i : i32, };
-                  ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclStructMemberAlignNegativeValue) {
-    EXPECT("struct S { @align(-2) i : i32, };",
-           R"(test.wgsl:1:19 error: align attribute must be positive
-struct S { @align(-2) i : i32, };
+    EXPECT("struct S { @align(fn) i : i32, };",
+           R"(test.wgsl:1:19 error: expected align expression
+struct S { @align(fn) i : i32, };
                   ^^
 )");
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclStructMemberSizeInvaldValue) {
-    EXPECT("struct S { @size(x) i : i32, };",
-           R"(test.wgsl:1:18 error: expected signed integer literal for size attribute
-struct S { @size(x) i : i32, };
-                 ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, GlobalDeclStructMemberSizeNegativeValue) {
-    EXPECT("struct S { @size(-2) i : i32, };",
-           R"(test.wgsl:1:18 error: size attribute must be positive
-struct S { @size(-2) i : i32, };
+    EXPECT("struct S { @size(if) i : i32, };",
+           R"(test.wgsl:1:18 error: expected size expression
+struct S { @size(if) i : i32, };
                  ^^
 )");
 }
@@ -937,13 +799,13 @@ var i : array<u32, >;
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarArrayInvalidSize) {
     EXPECT("var i : array<u32, !>;",
-           R"(test.wgsl:1:20 error: expected array size expression
+           R"(test.wgsl:1:21 error: unable to parse right side of ! expression
 var i : array<u32, !>;
-                   ^
+                    ^
 )");
 }
 
-TEST_F(ParserImplErrorTest, GlobalDeclVarAttrListMissingComma) {
+TEST_F(ParserImplErrorTest, GlobalDeclVarAttrListMissingAt) {
     EXPECT("@location(1) group(2) var i : i32;",
            R"(test.wgsl:1:14 error: expected declaration after attributes
 @location(1) group(2) var i : i32;
@@ -972,10 +834,34 @@ TEST_F(ParserImplErrorTest, GlobalDeclVarAttrLocationMissingRParen) {
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarAttrLocationInvalidValue) {
-    EXPECT("@location(x) var i : i32;",
-           R"(test.wgsl:1:11 error: expected signed integer literal for location attribute
-@location(x) var i : i32;
-          ^
+    EXPECT("@location(if) var i : i32;",
+           R"(test.wgsl:1:11 error: expected location expression
+@location(if) var i : i32;
+          ^^
+)");
+}
+
+TEST_F(ParserImplErrorTest, GlobalDeclVarAttrIdMissingLParen) {
+    EXPECT("@id 1) var i : i32;",
+           R"(test.wgsl:1:5 error: expected '(' for id attribute
+@id 1) var i : i32;
+    ^
+)");
+}
+
+TEST_F(ParserImplErrorTest, GlobalDeclVarAttrIdMissingRParen) {
+    EXPECT("@id (1 var i : i32;",
+           R"(test.wgsl:1:8 error: expected ')' for id attribute
+@id (1 var i : i32;
+       ^^^
+)");
+}
+
+TEST_F(ParserImplErrorTest, GlobalDeclVarAttrIdInvalidValue) {
+    EXPECT("@id(if) var i : i32;",
+           R"(test.wgsl:1:5 error: expected id expression
+@id(if) var i : i32;
+    ^^
 )");
 }
 
@@ -997,17 +883,19 @@ TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBuiltinMissingRParen) {
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBuiltinInvalidIdentifer) {
     EXPECT("@builtin(1) var i : i32;",
-           R"(test.wgsl:1:10 error: expected identifier for builtin
+           R"(test.wgsl:1:10 error: expected builtin
+Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id'
 @builtin(1) var i : i32;
          ^
 )");
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBuiltinInvalidValue) {
-    EXPECT("@builtin(x) var i : i32;",
-           R"(test.wgsl:1:10 error: invalid value for builtin attribute
-@builtin(x) var i : i32;
-         ^
+    EXPECT("@builtin(frag_d3pth) var i : i32;",
+           R"(test.wgsl:1:10 error: expected builtin. Did you mean 'frag_depth'?
+Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id'
+@builtin(frag_d3pth) var i : i32;
+         ^^^^^^^^^^
 )");
 }
 
@@ -1028,10 +916,10 @@ TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBindingMissingRParen) {
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBindingInvalidValue) {
-    EXPECT("@binding(x) var i : i32;",
-           R"(test.wgsl:1:10 error: expected signed integer literal for binding attribute
-@binding(x) var i : i32;
-         ^
+    EXPECT("@binding(if) var i : i32;",
+           R"(test.wgsl:1:10 error: expected binding expression
+@binding(if) var i : i32;
+         ^^
 )");
 }
 
@@ -1052,10 +940,10 @@ TEST_F(ParserImplErrorTest, GlobalDeclVarAttrGroupMissingRParen) {
 }
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarAttrBindingGroupValue) {
-    EXPECT("@group(x) var i : i32;",
-           R"(test.wgsl:1:8 error: expected signed integer literal for group attribute
-@group(x) var i : i32;
-       ^
+    EXPECT("@group(if) var i : i32;",
+           R"(test.wgsl:1:8 error: expected group expression
+@group(if) var i : i32;
+       ^^
 )");
 }
 
@@ -1113,9 +1001,10 @@ var i : ptr<private u32>;
 )");
 }
 
-TEST_F(ParserImplErrorTest, GlobalDeclVarPtrMissingStorageClass) {
+TEST_F(ParserImplErrorTest, GlobalDeclVarPtrMissingAddressSpace) {
     EXPECT("var i : ptr<meow, u32>;",
-           R"(test.wgsl:1:13 error: invalid storage class for ptr declaration
+           R"(test.wgsl:1:13 error: expected address space for ptr declaration
+Possible values: 'function', 'private', 'push_constant', 'storage', 'uniform', 'workgroup'
 var i : ptr<meow, u32>;
             ^^^^
 )");
@@ -1147,7 +1036,8 @@ var i : atomic<u32 x;
 
 TEST_F(ParserImplErrorTest, GlobalDeclVarStorageDeclInvalidClass) {
     EXPECT("var<fish> i : i32",
-           R"(test.wgsl:1:5 error: invalid storage class for variable declaration
+           R"(test.wgsl:1:5 error: expected address space for variable declaration
+Possible values: 'function', 'private', 'push_constant', 'storage', 'uniform', 'workgroup'
 var<fish> i : i32
     ^^^^
 )");
@@ -1318,17 +1208,9 @@ fn f() { switch(1) {
 
 TEST_F(ParserImplErrorTest, SwitchStmtInvalidCase) {
     EXPECT("fn f() { switch(1) { case ^: } }",
-           R"(test.wgsl:1:27 error: unable to parse case selectors
+           R"(test.wgsl:1:27 error: expected case selector expression or `default`
 fn f() { switch(1) { case ^: } }
                           ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, SwitchStmtInvalidCase2) {
-    EXPECT("fn f() { switch(1) { case false: } }",
-           R"(test.wgsl:1:27 error: invalid case selector must be an integer value
-fn f() { switch(1) { case false: } }
-                          ^^^^^
 )");
 }
 
@@ -1345,14 +1227,6 @@ TEST_F(ParserImplErrorTest, SwitchStmtCaseMissingRBrace) {
            R"(test.wgsl:1:31 error: expected '}' for case statement
 fn f() { switch(1) { case 1: {
                               ^
-)");
-}
-
-TEST_F(ParserImplErrorTest, SwitchStmtCaseFallthroughMissingSemicolon) {
-    EXPECT("fn f() { switch(1) { case 1: { fallthrough } case 2: {} } }",
-           R"(test.wgsl:1:44 error: expected ';' for fallthrough statement
-fn f() { switch(1) { case 1: { fallthrough } case 2: {} } }
-                                           ^
 )");
 }
 

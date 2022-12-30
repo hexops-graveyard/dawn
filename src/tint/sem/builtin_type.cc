@@ -193,22 +193,25 @@ BuiltinType ParseBuiltinType(const std::string& name) {
         return BuiltinType::kNormalize;
     }
     if (name == "pack2x16float") {
-        return BuiltinType::kPack2x16float;
+        return BuiltinType::kPack2X16Float;
     }
     if (name == "pack2x16snorm") {
-        return BuiltinType::kPack2x16snorm;
+        return BuiltinType::kPack2X16Snorm;
     }
     if (name == "pack2x16unorm") {
-        return BuiltinType::kPack2x16unorm;
+        return BuiltinType::kPack2X16Unorm;
     }
     if (name == "pack4x8snorm") {
-        return BuiltinType::kPack4x8snorm;
+        return BuiltinType::kPack4X8Snorm;
     }
     if (name == "pack4x8unorm") {
-        return BuiltinType::kPack4x8unorm;
+        return BuiltinType::kPack4X8Unorm;
     }
     if (name == "pow") {
         return BuiltinType::kPow;
+    }
+    if (name == "quantizeToF16") {
+        return BuiltinType::kQuantizeToF16;
     }
     if (name == "radians") {
         return BuiltinType::kRadians;
@@ -224,6 +227,9 @@ BuiltinType ParseBuiltinType(const std::string& name) {
     }
     if (name == "round") {
         return BuiltinType::kRound;
+    }
+    if (name == "saturate") {
+        return BuiltinType::kSaturate;
     }
     if (name == "select") {
         return BuiltinType::kSelect;
@@ -262,19 +268,19 @@ BuiltinType ParseBuiltinType(const std::string& name) {
         return BuiltinType::kTrunc;
     }
     if (name == "unpack2x16float") {
-        return BuiltinType::kUnpack2x16float;
+        return BuiltinType::kUnpack2X16Float;
     }
     if (name == "unpack2x16snorm") {
-        return BuiltinType::kUnpack2x16snorm;
+        return BuiltinType::kUnpack2X16Snorm;
     }
     if (name == "unpack2x16unorm") {
-        return BuiltinType::kUnpack2x16unorm;
+        return BuiltinType::kUnpack2X16Unorm;
     }
     if (name == "unpack4x8snorm") {
-        return BuiltinType::kUnpack4x8snorm;
+        return BuiltinType::kUnpack4X8Snorm;
     }
     if (name == "unpack4x8unorm") {
-        return BuiltinType::kUnpack4x8unorm;
+        return BuiltinType::kUnpack4X8Unorm;
     }
     if (name == "workgroupBarrier") {
         return BuiltinType::kWorkgroupBarrier;
@@ -315,6 +321,9 @@ BuiltinType ParseBuiltinType(const std::string& name) {
     if (name == "textureSampleLevel") {
         return BuiltinType::kTextureSampleLevel;
     }
+    if (name == "textureSampleBaseClampToEdge") {
+        return BuiltinType::kTextureSampleBaseClampToEdge;
+    }
     if (name == "textureStore") {
         return BuiltinType::kTextureStore;
     }
@@ -353,6 +362,9 @@ BuiltinType ParseBuiltinType(const std::string& name) {
     }
     if (name == "atomicCompareExchangeWeak") {
         return BuiltinType::kAtomicCompareExchangeWeak;
+    }
+    if (name == "_tint_materialize") {
+        return BuiltinType::kTintMaterialize;
     }
     return BuiltinType::kNone;
 }
@@ -471,18 +483,20 @@ const char* str(BuiltinType i) {
             return "modf";
         case BuiltinType::kNormalize:
             return "normalize";
-        case BuiltinType::kPack2x16float:
+        case BuiltinType::kPack2X16Float:
             return "pack2x16float";
-        case BuiltinType::kPack2x16snorm:
+        case BuiltinType::kPack2X16Snorm:
             return "pack2x16snorm";
-        case BuiltinType::kPack2x16unorm:
+        case BuiltinType::kPack2X16Unorm:
             return "pack2x16unorm";
-        case BuiltinType::kPack4x8snorm:
+        case BuiltinType::kPack4X8Snorm:
             return "pack4x8snorm";
-        case BuiltinType::kPack4x8unorm:
+        case BuiltinType::kPack4X8Unorm:
             return "pack4x8unorm";
         case BuiltinType::kPow:
             return "pow";
+        case BuiltinType::kQuantizeToF16:
+            return "quantizeToF16";
         case BuiltinType::kRadians:
             return "radians";
         case BuiltinType::kReflect:
@@ -493,6 +507,8 @@ const char* str(BuiltinType i) {
             return "reverseBits";
         case BuiltinType::kRound:
             return "round";
+        case BuiltinType::kSaturate:
+            return "saturate";
         case BuiltinType::kSelect:
             return "select";
         case BuiltinType::kSign:
@@ -517,15 +533,15 @@ const char* str(BuiltinType i) {
             return "transpose";
         case BuiltinType::kTrunc:
             return "trunc";
-        case BuiltinType::kUnpack2x16float:
+        case BuiltinType::kUnpack2X16Float:
             return "unpack2x16float";
-        case BuiltinType::kUnpack2x16snorm:
+        case BuiltinType::kUnpack2X16Snorm:
             return "unpack2x16snorm";
-        case BuiltinType::kUnpack2x16unorm:
+        case BuiltinType::kUnpack2X16Unorm:
             return "unpack2x16unorm";
-        case BuiltinType::kUnpack4x8snorm:
+        case BuiltinType::kUnpack4X8Snorm:
             return "unpack4x8snorm";
-        case BuiltinType::kUnpack4x8unorm:
+        case BuiltinType::kUnpack4X8Unorm:
             return "unpack4x8unorm";
         case BuiltinType::kWorkgroupBarrier:
             return "workgroupBarrier";
@@ -553,6 +569,8 @@ const char* str(BuiltinType i) {
             return "textureSampleGrad";
         case BuiltinType::kTextureSampleLevel:
             return "textureSampleLevel";
+        case BuiltinType::kTextureSampleBaseClampToEdge:
+            return "textureSampleBaseClampToEdge";
         case BuiltinType::kTextureStore:
             return "textureStore";
         case BuiltinType::kTextureLoad:
@@ -579,6 +597,8 @@ const char* str(BuiltinType i) {
             return "atomicExchange";
         case BuiltinType::kAtomicCompareExchangeWeak:
             return "atomicCompareExchangeWeak";
+        case BuiltinType::kTintMaterialize:
+            return "_tint_materialize";
     }
     return "<unknown>";
 }

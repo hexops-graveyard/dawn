@@ -191,7 +191,7 @@ Instance::Instance(const WGPUInstanceDescriptor* desc)
 
 Instance::~Instance() {
     if (mImpl != nullptr) {
-        mImpl->Release();
+        mImpl->APIRelease();
         mImpl = nullptr;
     }
 }
@@ -256,6 +256,10 @@ size_t GetDeprecationWarningCountForTesting(WGPUDevice device) {
     return FromAPI(device)->GetDeprecationWarningCountForTesting();
 }
 
+size_t GetAdapterCountForTesting(WGPUInstance instance) {
+    return FromAPI(instance)->GetAdapters().size();
+}
+
 bool IsTextureSubresourceInitialized(WGPUTexture texture,
                                      uint32_t baseMipLevel,
                                      uint32_t levelCount,
@@ -263,6 +267,9 @@ bool IsTextureSubresourceInitialized(WGPUTexture texture,
                                      uint32_t layerCount,
                                      WGPUTextureAspect cAspect) {
     TextureBase* textureBase = FromAPI(texture);
+    if (textureBase->IsError()) {
+        return false;
+    }
 
     Aspect aspect =
         ConvertAspect(textureBase->GetFormat(), static_cast<wgpu::TextureAspect>(cAspect));

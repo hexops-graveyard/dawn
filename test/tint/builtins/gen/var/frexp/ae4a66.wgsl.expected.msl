@@ -3,17 +3,17 @@
 using namespace metal;
 
 struct frexp_result_vec3_f16 {
-  half3 sig;
+  half3 fract;
   int3 exp;
 };
 frexp_result_vec3_f16 tint_frexp(half3 param_0) {
   frexp_result_vec3_f16 result;
-  result.sig = frexp(param_0, result.exp);
+  result.fract = frexp(param_0, result.exp);
   return result;
 }
 
 void frexp_ae4a66() {
-  half3 arg_0 = half3(0.0h);
+  half3 arg_0 = half3(1.0h);
   frexp_result_vec3_f16 res = tint_frexp(arg_0);
 }
 

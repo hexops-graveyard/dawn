@@ -17,8 +17,11 @@
 
 #include <vector>
 
+#include "dawn/common/Constants.h"
+#include "dawn/common/StackContainer.h"
 #include "dawn/native/CommandAllocator.h"
 #include "dawn/native/Error.h"
+#include "dawn/native/Features.h"
 #include "dawn/native/Texture.h"
 #include "dawn/native/UsageValidationMode.h"
 
@@ -32,7 +35,8 @@ MaybeError ValidateSyncScopeResourceUsage(const SyncScopeResourceUsage& usage);
 
 MaybeError ValidateTimestampQuery(const DeviceBase* device,
                                   const QuerySetBase* querySet,
-                                  uint32_t queryIndex);
+                                  uint32_t queryIndex,
+                                  Feature requiredFeature = Feature::TimestampQuery);
 
 MaybeError ValidateWriteBuffer(const DeviceBase* device,
                                const BufferBase* buffer,
@@ -87,6 +91,10 @@ MaybeError ValidateCanUseAs(const TextureBase* texture,
                             wgpu::TextureUsage usage,
                             UsageValidationMode mode);
 MaybeError ValidateCanUseAs(const BufferBase* buffer, wgpu::BufferUsage usage);
+
+using ColorAttachmentFormats = StackVector<const Format*, kMaxColorAttachments>;
+MaybeError ValidateColorAttachmentBytesPerSample(DeviceBase* device,
+                                                 const ColorAttachmentFormats& formats);
 
 }  // namespace dawn::native
 

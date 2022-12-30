@@ -26,16 +26,12 @@ using HlslSanitizerTest = TestHelper;
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength) {
     auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
-    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              utils::Vector{
-                  create<ast::BindingAttribute>(1u),
-                  create<ast::GroupAttribute>(2u),
-              });
+    GlobalVar("b", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(1_a),
+              Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
-                      Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
+             Decl(Var("len", ty.u32(), Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -64,16 +60,12 @@ TEST_F(HlslSanitizerTest, Call_ArrayLength_OtherMembersInStruct) {
                                          Member(0, "z", ty.f32()),
                                          Member(4, "a", ty.array<f32>(4)),
                                      });
-    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              utils::Vector{
-                  create<ast::BindingAttribute>(1u),
-                  create<ast::GroupAttribute>(2u),
-              });
+    GlobalVar("b", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(1_a),
+              Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
-                      Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
+             Decl(Var("len", ty.u32(), Call("arrayLength", AddressOf(MemberAccessor("b", "a"))))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -100,20 +92,17 @@ void a_func() {
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength_ViaLets) {
     auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
-    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              utils::Vector{
-                  create<ast::BindingAttribute>(1u),
-                  create<ast::GroupAttribute>(2u),
-              });
+    GlobalVar("b", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(1_a),
+              Group(2_a));
 
-    auto* p = Let("p", nullptr, AddressOf("b"));
-    auto* p2 = Let("p2", nullptr, AddressOf(MemberAccessor(Deref(p), "a")));
+    auto* p = Let("p", AddressOf("b"));
+    auto* p2 = Let("p2", AddressOf(MemberAccessor(Deref(p), "a")));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
              Decl(p),
              Decl(p2),
-             Decl(Var("len", ty.u32(), ast::StorageClass::kNone, Call("arrayLength", p2))),
+             Decl(Var("len", ty.u32(), Call("arrayLength", p2))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -140,20 +129,14 @@ void a_func() {
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength_ArrayLengthFromUniform) {
     auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
-    GlobalVar("b", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              utils::Vector{
-                  create<ast::BindingAttribute>(1u),
-                  create<ast::GroupAttribute>(2u),
-              });
-    GlobalVar("c", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              utils::Vector{
-                  create<ast::BindingAttribute>(2u),
-                  create<ast::GroupAttribute>(2u),
-              });
+    GlobalVar("b", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(1_a),
+              Group(2_a));
+    GlobalVar("c", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(2_a),
+              Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("len", ty.u32(), ast::StorageClass::kNone,
+             Decl(Var("len", ty.u32(),
                       Add(Call("arrayLength", AddressOf(MemberAccessor("b", "a"))),
                           Call("arrayLength", AddressOf(MemberAccessor("c", "a")))))),
          },
@@ -191,7 +174,7 @@ TEST_F(HlslSanitizerTest, PromoteArrayInitializerToConstVar) {
 
     Func("main", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("idx", nullptr, Expr(3_i))),
+             Decl(Var("idx", Expr(3_i))),
              Decl(Var("pos", ty.i32(), IndexAccessor(array_init, "idx"))),
          },
          utils::Vector{
@@ -214,17 +197,19 @@ TEST_F(HlslSanitizerTest, PromoteArrayInitializerToConstVar) {
 }
 
 TEST_F(HlslSanitizerTest, PromoteStructInitializerToConstVar) {
+    auto* runtime_value = Var("runtime_value", Expr(3_f));
     auto* str = Structure("S", utils::Vector{
                                    Member("a", ty.i32()),
                                    Member("b", ty.vec3<f32>()),
                                    Member("c", ty.i32()),
                                });
-    auto* struct_init = Construct(ty.Of(str), 1_i, vec3<f32>(2_f, 3_f, 4_f), 4_i);
+    auto* struct_init = Construct(ty.Of(str), 1_i, vec3<f32>(2_f, runtime_value, 4_f), 4_i);
     auto* struct_access = MemberAccessor(struct_init, "b");
-    auto* pos = Var("pos", ty.vec3<f32>(), ast::StorageClass::kNone, struct_access);
+    auto* pos = Var("pos", ty.vec3<f32>(), struct_access);
 
     Func("main", utils::Empty, ty.void_(),
          utils::Vector{
+             Decl(runtime_value),
              Decl(pos),
          },
          utils::Vector{
@@ -243,7 +228,8 @@ TEST_F(HlslSanitizerTest, PromoteStructInitializerToConstVar) {
 };
 
 void main() {
-  const S tint_symbol = {1, float3(2.0f, 3.0f, 4.0f), 4};
+  float runtime_value = 3.0f;
+  const S tint_symbol = {1, float3(2.0f, runtime_value, 4.0f), 4};
   float3 pos = tint_symbol.b;
   return;
 }
@@ -256,8 +242,8 @@ TEST_F(HlslSanitizerTest, InlinePtrLetsBasic) {
     // let p : ptr<function, i32> = &v;
     // let x : i32 = *p;
     auto* v = Var("v", ty.i32());
-    auto* p = Let("p", ty.pointer<i32>(ast::StorageClass::kFunction), AddressOf(v));
-    auto* x = Var("x", ty.i32(), ast::StorageClass::kNone, Deref(p));
+    auto* p = Let("p", ty.pointer<i32>(ast::AddressSpace::kFunction), AddressOf(v));
+    auto* x = Var("x", ty.i32(), Deref(p));
 
     Func("main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -290,13 +276,13 @@ TEST_F(HlslSanitizerTest, InlinePtrLetsComplexChain) {
     // let vp : ptr<function, vec4<f32>> = &(*mp)[2i];
     // let v : vec4<f32> = *vp;
     auto* a = Var("a", ty.array(ty.mat4x4<f32>(), 4_u));
-    auto* ap = Let("ap", ty.pointer(ty.array(ty.mat4x4<f32>(), 4_u), ast::StorageClass::kFunction),
+    auto* ap = Let("ap", ty.pointer(ty.array(ty.mat4x4<f32>(), 4_u), ast::AddressSpace::kFunction),
                    AddressOf(a));
-    auto* mp = Let("mp", ty.pointer(ty.mat4x4<f32>(), ast::StorageClass::kFunction),
+    auto* mp = Let("mp", ty.pointer(ty.mat4x4<f32>(), ast::AddressSpace::kFunction),
                    AddressOf(IndexAccessor(Deref(ap), 3_i)));
-    auto* vp = Let("vp", ty.pointer(ty.vec4<f32>(), ast::StorageClass::kFunction),
+    auto* vp = Let("vp", ty.pointer(ty.vec4<f32>(), ast::AddressSpace::kFunction),
                    AddressOf(IndexAccessor(Deref(mp), 2_i)));
-    auto* v = Var("v", ty.vec4<f32>(), ast::StorageClass::kNone, Deref(vp));
+    auto* v = Var("v", ty.vec4<f32>(), Deref(vp));
 
     Func("main", utils::Empty, ty.void_(),
          utils::Vector{

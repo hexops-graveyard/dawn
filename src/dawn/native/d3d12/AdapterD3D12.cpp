@@ -14,7 +14,7 @@
 
 #include "dawn/native/d3d12/AdapterD3D12.h"
 
-#include <sstream>
+#include <string>
 
 #include "dawn/common/Constants.h"
 #include "dawn/common/WindowsUtils.h"
@@ -57,10 +57,6 @@ ComPtr<ID3D12Device> Adapter::GetDevice() const {
     return mD3d12Device;
 }
 
-const gpu_info::D3DDriverVersion& Adapter::GetDriverVersion() const {
-    return mDriverVersion;
-}
-
 MaybeError Adapter::InitializeImpl() {
     // D3D12 cannot check for feature support without a device.
     // Create the device to populate the adapter properties then reuse it when needed for actual
@@ -94,14 +90,12 @@ MaybeError Adapter::InitializeImpl() {
     if (mHardwareAdapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umdVersion) !=
         DXGI_ERROR_UNSUPPORTED) {
         uint64_t encodedVersion = umdVersion.QuadPart;
-
-        std::ostringstream o;
-        o << "D3D12 driver version ";
-        for (size_t i = 0; i < mDriverVersion.size(); ++i) {
-            mDriverVersion[i] = (encodedVersion >> (48 - 16 * i)) & 0xFFFF;
-            o << mDriverVersion[i] << ".";
-        }
-        mDriverDescription = o.str();
+        uint16_t mask = 0xFFFF;
+        mDriverVersion = {static_cast<uint16_t>((encodedVersion >> 48) & mask),
+                          static_cast<uint16_t>((encodedVersion >> 32) & mask),
+                          static_cast<uint16_t>((encodedVersion >> 16) & mask),
+                          static_cast<uint16_t>(encodedVersion & mask)};
+        mDriverDescription = std::string("D3D12 driver version ") + mDriverVersion.ToString();
     }
 
     return {};
@@ -131,21 +125,23 @@ bool Adapter::AreTimestampQueriesSupported() const {
 MaybeError Adapter::InitializeSupportedFeaturesImpl() {
     if (AreTimestampQueriesSupported()) {
         mSupportedFeatures.EnableFeature(Feature::TimestampQuery);
+        mSupportedFeatures.EnableFeature(Feature::TimestampQueryInsidePasses);
     }
     mSupportedFeatures.EnableFeature(Feature::TextureCompressionBC);
     mSupportedFeatures.EnableFeature(Feature::PipelineStatisticsQuery);
     mSupportedFeatures.EnableFeature(Feature::MultiPlanarFormats);
     mSupportedFeatures.EnableFeature(Feature::Depth32FloatStencil8);
     mSupportedFeatures.EnableFeature(Feature::IndirectFirstInstance);
+    mSupportedFeatures.EnableFeature(Feature::RG11B10UfloatRenderable);
+    mSupportedFeatures.EnableFeature(Feature::DepthClipControl);
 
-    if (GetBackend()->GetFunctions()->IsDXCAvailable()) {
-        uint64_t dxcVersion = 0;
-        DAWN_TRY_ASSIGN(dxcVersion, GetBackend()->GetDXCompilerVersion());
-        constexpr uint64_t kLeastMajorVersionForDP4a = 1;
-        constexpr uint64_t kLeastMinorVersionForDP4a = 4;
-        if (mDeviceInfo.supportsDP4a &&
-            dxcVersion >= MakeDXCVersion(kLeastMajorVersionForDP4a, kLeastMinorVersionForDP4a)) {
+    // Both Dp4a and ShaderF16 features require DXC version being 1.4 or higher
+    if (GetBackend()->IsDXCAvailableAndVersionAtLeast(1, 4, 1, 4)) {
+        if (mDeviceInfo.supportsDP4a) {
             mSupportedFeatures.EnableFeature(Feature::ChromiumExperimentalDp4a);
+        }
+        if (mDeviceInfo.supportsShaderF16) {
+            mSupportedFeatures.EnableFeature(Feature::ShaderF16);
         }
     }
 
@@ -300,6 +296,8 @@ MaybeError Adapter::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
     limits->v1.maxUniformBufferBindingSize = D3D12_REQ_CONSTANT_BUFFER_ELEMENT_COUNT * 16;
     // D3D12 has no documented limit on the size of a storage buffer binding.
     limits->v1.maxStorageBufferBindingSize = 4294967295;
+    // D3D12 has no documented limit on the buffer size.
+    limits->v1.maxBufferSize = kAssumedMaxBufferSize;
 
     // Using base limits for:
     // TODO(crbug.com/dawn/685):
@@ -309,6 +307,21 @@ MaybeError Adapter::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
     // TODO(crbug.com/dawn/1448):
     // - maxInterStageShaderVariables
 
+    return {};
+}
+
+MaybeError Adapter::ValidateFeatureSupportedWithTogglesImpl(
+    wgpu::FeatureName feature,
+    const TripleStateTogglesSet& userProvidedToggles) {
+    // shader-f16 feature and chromium-experimental-dp4a feature require DXC 1.4 or higher for
+    // D3D12.
+    if (feature == wgpu::FeatureName::ShaderF16 ||
+        feature == wgpu::FeatureName::ChromiumExperimentalDp4a) {
+        DAWN_INVALID_IF(!(userProvidedToggles.IsEnabled(Toggle::UseDXC) &&
+                          mBackend->IsDXCAvailableAndVersionAtLeast(1, 4, 1, 4)),
+                        "Feature %s requires DXC for D3D12.",
+                        GetInstance()->GetFeatureInfo(feature)->name);
+    }
     return {};
 }
 
@@ -368,6 +381,11 @@ MaybeError Adapter::InitializeDebugLayerFilters() {
         // Even this means that no vertex buffer view has been set in D3D12 backend.
         // https://crbug.com/dawn/1255
         D3D12_MESSAGE_ID_COMMAND_LIST_DRAW_VERTEX_BUFFER_NOT_SET,
+
+        // When using f16 in vertex attributes the debug layer may report float16_t as type
+        // `unknown`, resulting in a CREATEINPUTLAYOUT_TYPE_MISMATCH warning.
+        // https://crbug.com/tint/1473
+        D3D12_MESSAGE_ID_CREATEINPUTLAYOUT_TYPE_MISMATCH,
     };
 
     // Create a retrieval filter with a deny list to suppress messages.
@@ -418,8 +436,10 @@ void Adapter::CleanUpDebugLayerFilters() {
     infoQueue->PopStorageFilter();
 }
 
-ResultOrError<Ref<DeviceBase>> Adapter::CreateDeviceImpl(const DeviceDescriptor* descriptor) {
-    return Device::Create(this, descriptor);
+ResultOrError<Ref<DeviceBase>> Adapter::CreateDeviceImpl(
+    const DeviceDescriptor* descriptor,
+    const TripleStateTogglesSet& userProvidedToggles) {
+    return Device::Create(this, descriptor, userProvidedToggles);
 }
 
 // Resets the backend device and creates a new one. If any D3D12 objects belonging to the

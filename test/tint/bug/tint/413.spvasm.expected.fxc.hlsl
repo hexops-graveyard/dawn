@@ -6,8 +6,9 @@ void main_1() {
   const uint4 x_18 = Src.Load(int3(0, 0, 0));
   srcValue = x_18;
   const uint x_22 = srcValue.x;
-  srcValue.x = (x_22 + asuint(1));
-  Dst[(0).xx] = srcValue;
+  srcValue.x = (x_22 + 1u);
+  const uint4 x_27 = srcValue;
+  Dst[(0).xx] = x_27;
   return;
 }
 

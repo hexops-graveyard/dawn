@@ -20,11 +20,13 @@ using ::testing::HasSubstr;
 namespace tint::writer::glsl {
 namespace {
 
+using namespace tint::number_suffixes;  // NOLINT
+
 using GlslGeneratorImplTest_UniformBuffer = TestHelper;
 
 TEST_F(GlslGeneratorImplTest_UniformBuffer, Simple) {
     auto* simple = Structure("Simple", utils::Vector{Member("member", ty.f32())});
-    GlobalVar("simple", ty.Of(simple), ast::StorageClass::kUniform, GroupAndBinding(0, 0));
+    GlobalVar("simple", ty.Of(simple), ast::AddressSpace::kUniform, Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build();
 
@@ -35,7 +37,7 @@ struct Simple {
   float member;
 };
 
-layout(binding = 0) uniform Simple_1 {
+layout(binding = 0, std140) uniform Simple_ubo {
   float member;
 } simple;
 
@@ -44,7 +46,7 @@ layout(binding = 0) uniform Simple_1 {
 
 TEST_F(GlslGeneratorImplTest_UniformBuffer, Simple_Desktop) {
     auto* simple = Structure("Simple", utils::Vector{Member("member", ty.f32())});
-    GlobalVar("simple", ty.Of(simple), ast::StorageClass::kUniform, GroupAndBinding(0, 0));
+    GlobalVar("simple", ty.Of(simple), ast::AddressSpace::kUniform, Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build(Version(Version::Standard::kDesktop, 4, 4));
 
@@ -55,7 +57,7 @@ struct Simple {
   float member;
 };
 
-layout(binding = 0, std140) uniform Simple_1 {
+layout(binding = 0, std140) uniform Simple_ubo {
   float member;
 } simple;
 

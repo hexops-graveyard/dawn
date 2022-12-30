@@ -128,18 +128,14 @@ TEST_P(MslBinaryTest_SignedOverflowDefinedBehaviour_Chained, Emit) {
 }
 using Op = ast::BinaryOp;
 constexpr BinaryData signed_overflow_defined_behaviour_chained_cases[] = {
-    {"as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) << b))) << "
-     "b))",
+    {R"(as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) << b))) << b)))",
      Op::kShiftLeft},
-    {"((a >> b) >> b)", Op::kShiftRight},
-    {"as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) + "
-     "as_type<uint>(b)))) + as_type<uint>(b)))",
+    {R"(((a >> b) >> b))", Op::kShiftRight},
+    {R"(as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) + as_type<uint>(b)))) + as_type<uint>(b))))",
      Op::kAdd},
-    {"as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) - "
-     "as_type<uint>(b)))) - as_type<uint>(b)))",
+    {R"(as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) - as_type<uint>(b)))) - as_type<uint>(b))))",
      Op::kSubtract},
-    {"as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) * "
-     "as_type<uint>(b)))) * as_type<uint>(b)))",
+    {R"(as_type<int>((as_type<uint>(as_type<int>((as_type<uint>(a) * as_type<uint>(b)))) * as_type<uint>(b))))",
      Op::kMultiply}};
 INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
                          MslBinaryTest_SignedOverflowDefinedBehaviour_Chained,
@@ -202,8 +198,8 @@ TEST_F(MslBinaryTest, ModVec3F16) {
 }
 
 TEST_F(MslBinaryTest, BoolAnd) {
-    auto* left = Var("left", nullptr, Expr(true));
-    auto* right = Var("right", nullptr, Expr(false));
+    auto* left = Var("left", Expr(true));
+    auto* right = Var("right", Expr(false));
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kAnd, Expr(left), Expr(right));
     WrapInFunction(left, right, expr);
 
@@ -215,8 +211,8 @@ TEST_F(MslBinaryTest, BoolAnd) {
 }
 
 TEST_F(MslBinaryTest, BoolOr) {
-    auto* left = Var("left", nullptr, Expr(true));
-    auto* right = Var("right", nullptr, Expr(false));
+    auto* left = Var("left", Expr(true));
+    auto* right = Var("right", Expr(false));
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kOr, Expr(left), Expr(right));
     WrapInFunction(left, right, expr);
 

@@ -43,7 +43,8 @@ class Device final : public DeviceBase {
     static ResultOrError<Ref<Device>> Create(AdapterBase* adapter,
                                              const DeviceDescriptor* descriptor,
                                              const OpenGLFunctions& functions,
-                                             std::unique_ptr<Context> context);
+                                             std::unique_ptr<Context> context,
+                                             const TripleStateTogglesSet& userProvidedToggles);
     ~Device() override;
 
     MaybeError Initialize(const DeviceDescriptor* descriptor);
@@ -67,21 +68,22 @@ class Device final : public DeviceBase {
     MaybeError TickImpl() override;
 
     ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
-    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
-                                       uint64_t sourceOffset,
-                                       BufferBase* destination,
-                                       uint64_t destinationOffset,
-                                       uint64_t size) override;
+    MaybeError CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                           uint64_t sourceOffset,
+                                           BufferBase* destination,
+                                           uint64_t destinationOffset,
+                                           uint64_t size) override;
 
-    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                        const TextureDataLayout& src,
-                                        TextureCopy* dst,
-                                        const Extent3D& copySizePixels) override;
+    MaybeError CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                            const TextureDataLayout& src,
+                                            TextureCopy* dst,
+                                            const Extent3D& copySizePixels) override;
 
     uint32_t GetOptimalBytesPerRowAlignment() const override;
     uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
 
     float GetTimestampPeriodInNS() const override;
+    void ForceEventualFlushOfCommands() override;
 
     class Context {
       public:
@@ -93,7 +95,8 @@ class Device final : public DeviceBase {
     Device(AdapterBase* adapter,
            const DeviceDescriptor* descriptor,
            const OpenGLFunctions& functions,
-           std::unique_ptr<Context> context);
+           std::unique_ptr<Context> context,
+           const TripleStateTogglesSet& userProvidedToggles);
 
     ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
         const BindGroupDescriptor* descriptor) override;
@@ -130,6 +133,7 @@ class Device final : public DeviceBase {
     ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
     void DestroyImpl() override;
     MaybeError WaitForIdleForDestruction() override;
+    bool HasPendingCommands() const override;
 
     const OpenGLFunctions mGL;
 

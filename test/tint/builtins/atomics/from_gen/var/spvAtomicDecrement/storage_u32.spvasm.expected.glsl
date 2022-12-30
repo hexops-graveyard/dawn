@@ -9,14 +9,15 @@ struct SB_RW {
   uint arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_atomic_1 {
-  uint arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW_atomic inner;
 } sb_rw;
+
 void atomicAdd_8a199a() {
   uint arg_1 = 0u;
   uint res = 0u;
   arg_1 = 1u;
-  uint x_13 = atomicAdd(sb_rw.arg_0, 1u);
+  uint x_13 = atomicAdd(sb_rw.inner.arg_0, 1u);
   res = x_13;
   return;
 }
@@ -44,14 +45,15 @@ struct SB_RW {
   uint arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_atomic_1 {
-  uint arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW_atomic inner;
 } sb_rw;
+
 void atomicAdd_8a199a() {
   uint arg_1 = 0u;
   uint res = 0u;
   arg_1 = 1u;
-  uint x_13 = atomicAdd(sb_rw.arg_0, 1u);
+  uint x_13 = atomicAdd(sb_rw.inner.arg_0, 1u);
   res = x_13;
   return;
 }

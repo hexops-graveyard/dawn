@@ -8,15 +8,12 @@ struct Uniforms {
   uvec2 copySize;
 };
 
-layout(binding = 2, std430) buffer OutputBuf_1 {
+layout(binding = 2, std430) buffer OutputBuf_ssbo {
   uint result[];
 } tint_symbol;
-layout(binding = 3) uniform Uniforms_1 {
-  uint dstTextureFlipY;
-  uint channelCount;
-  uvec2 srcCopyOrigin;
-  uvec2 dstCopyOrigin;
-  uvec2 copySize;
+
+layout(binding = 3, std140) uniform uniforms_block_ubo {
+  Uniforms inner;
 } uniforms;
 
 bool aboutEqual(float value, float expect) {
@@ -26,22 +23,22 @@ bool aboutEqual(float value, float expect) {
 uniform highp sampler2D src_1;
 uniform highp sampler2D dst_1;
 void tint_symbol_1(uvec3 GlobalInvocationID) {
-  ivec2 srcSize = textureSize(src_1, 0);
-  ivec2 dstSize = textureSize(dst_1, 0);
+  uvec2 srcSize = uvec2(textureSize(src_1, 0));
+  uvec2 dstSize = uvec2(textureSize(dst_1, 0));
   uvec2 dstTexCoord = uvec2(GlobalInvocationID.xy);
   vec4 nonCoveredColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
   bool success = true;
-  bool tint_tmp_2 = (dstTexCoord.x < uniforms.dstCopyOrigin.x);
+  bool tint_tmp_2 = (dstTexCoord.x < uniforms.inner.dstCopyOrigin.x);
   if (!tint_tmp_2) {
-    tint_tmp_2 = (dstTexCoord.y < uniforms.dstCopyOrigin.y);
+    tint_tmp_2 = (dstTexCoord.y < uniforms.inner.dstCopyOrigin.y);
   }
   bool tint_tmp_1 = (tint_tmp_2);
   if (!tint_tmp_1) {
-    tint_tmp_1 = (dstTexCoord.x >= (uniforms.dstCopyOrigin.x + uniforms.copySize.x));
+    tint_tmp_1 = (dstTexCoord.x >= (uniforms.inner.dstCopyOrigin.x + uniforms.inner.copySize.x));
   }
   bool tint_tmp = (tint_tmp_1);
   if (!tint_tmp) {
-    tint_tmp = (dstTexCoord.y >= (uniforms.dstCopyOrigin.y + uniforms.copySize.y));
+    tint_tmp = (dstTexCoord.y >= (uniforms.inner.dstCopyOrigin.y + uniforms.inner.copySize.y));
   }
   if ((tint_tmp)) {
     bool tint_tmp_3 = success;
@@ -50,13 +47,13 @@ void tint_symbol_1(uvec3 GlobalInvocationID) {
     }
     success = (tint_tmp_3);
   } else {
-    uvec2 srcTexCoord = ((dstTexCoord - uniforms.dstCopyOrigin) + uniforms.srcCopyOrigin);
-    if ((uniforms.dstTextureFlipY == 1u)) {
-      srcTexCoord.y = ((uint(srcSize.y) - srcTexCoord.y) - 1u);
+    uvec2 srcTexCoord = ((dstTexCoord - uniforms.inner.dstCopyOrigin) + uniforms.inner.srcCopyOrigin);
+    if ((uniforms.inner.dstTextureFlipY == 1u)) {
+      srcTexCoord.y = ((srcSize.y - srcTexCoord.y) - 1u);
     }
     vec4 srcColor = texelFetch(src_1, ivec2(srcTexCoord), 0);
     vec4 dstColor = texelFetch(dst_1, ivec2(dstTexCoord), 0);
-    if ((uniforms.channelCount == 2u)) {
+    if ((uniforms.inner.channelCount == 2u)) {
       bool tint_symbol_3 = success;
       if (tint_symbol_3) {
         tint_symbol_3 = aboutEqual(dstColor.r, srcColor.r);
@@ -86,7 +83,7 @@ void tint_symbol_1(uvec3 GlobalInvocationID) {
       success = tint_symbol_4;
     }
   }
-  uint outputIndex = ((GlobalInvocationID.y * uint(dstSize.x)) + GlobalInvocationID.x);
+  uint outputIndex = ((GlobalInvocationID.y * dstSize.x) + GlobalInvocationID.x);
   if (success) {
     tint_symbol.result[outputIndex] = 1u;
   } else {

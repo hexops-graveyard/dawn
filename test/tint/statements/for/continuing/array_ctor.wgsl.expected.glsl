@@ -6,15 +6,8 @@ void unused_entry_point() {
 }
 void f() {
   int i = 0;
-  while (true) {
-    if (!(false)) {
-      break;
-    }
-    {
-    }
-    {
-      int tint_symbol[1] = int[1](1);
-      i = (i + tint_symbol[0]);
+  {
+    for(; false; i = (i + 1)) {
     }
   }
 }

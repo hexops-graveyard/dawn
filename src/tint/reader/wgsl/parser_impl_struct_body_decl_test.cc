@@ -60,23 +60,23 @@ TEST_F(ParserImplTest, StructBodyDecl_ParsesEmpty) {
 TEST_F(ParserImplTest, StructBodyDecl_InvalidAlign) {
     auto p = parser(R"(
 {
-  @align(nan) a : i32,
+  @align(if) a : i32,
 })");
     auto m = p->expect_struct_body_decl();
     ASSERT_TRUE(p->has_error());
     ASSERT_TRUE(m.errored);
-    EXPECT_EQ(p->error(), "3:10: expected signed integer literal for align attribute");
+    EXPECT_EQ(p->error(), "3:10: expected align expression");
 }
 
 TEST_F(ParserImplTest, StructBodyDecl_InvalidSize) {
     auto p = parser(R"(
 {
-  @size(nan) a : i32,
+  @size(if) a : i32,
 })");
     auto m = p->expect_struct_body_decl();
     ASSERT_TRUE(p->has_error());
     ASSERT_TRUE(m.errored);
-    EXPECT_EQ(p->error(), "3:9: expected signed integer literal for size attribute");
+    EXPECT_EQ(p->error(), "3:9: expected size expression");
 }
 
 TEST_F(ParserImplTest, StructBodyDecl_MissingClosingBracket) {

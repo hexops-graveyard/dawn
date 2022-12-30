@@ -1,11 +1,7 @@
 SKIP: FAILED
 
-vector<float16_t, 2> tint_acosh(vector<float16_t, 2> x) {
-  return log((x + sqrt(((x * x) - float16_t(1.0h)))));
-}
-
 void acosh_5f49d8() {
-  vector<float16_t, 2> res = tint_acosh((float16_t(0.0h)).xx);
+  vector<float16_t, 2> res = (float16_t(1.31640625h)).xx;
 }
 
 struct tint_symbol {
@@ -34,6 +30,3 @@ void compute_main() {
   acosh_5f49d8();
   return;
 }
-FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x000001641C7488B0(1,8-16): error X3000: syntax error: unexpected token 'float16_t'
-

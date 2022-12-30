@@ -16,6 +16,7 @@
 #define SRC_TINT_SEM_FUNCTION_H_
 
 #include <array>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -38,31 +39,26 @@ class Variable;
 
 namespace tint::sem {
 
-/// WorkgroupDimension describes the size of a single dimension of an entry
-/// point's workgroup size.
-struct WorkgroupDimension {
-    /// The size of this dimension.
-    uint32_t value;
-    /// A pipeline-overridable constant that overrides the size, or nullptr if
-    /// this dimension is not overridable.
-    const ast::Variable* overridable_const = nullptr;
-};
-
 /// WorkgroupSize is a three-dimensional array of WorkgroupDimensions.
-using WorkgroupSize = std::array<WorkgroupDimension, 3>;
+/// Each dimension is a std::optional as a workgroup size can be a const-expression or
+/// override-expression. Override expressions are not known at compilation time, so these will be
+/// std::nullopt.
+using WorkgroupSize = std::array<std::optional<uint32_t>, 3>;
 
 /// Function holds the semantic information for function nodes.
 class Function final : public Castable<Function, CallTarget> {
   public:
-    /// A vector of [Variable*, ast::VariableBindingPoint] pairs
-    using VariableBindings = std::vector<std::pair<const Variable*, ast::VariableBindingPoint>>;
+    /// A vector of [Variable*, sem::BindingPoint] pairs
+    using VariableBindings = std::vector<std::pair<const Variable*, sem::BindingPoint>>;
 
     /// Constructor
     /// @param declaration the ast::Function
     /// @param return_type the return type of the function
+    /// @param return_location the location value for the return, if provided
     /// @param parameters the parameters to the function
     Function(const ast::Function* declaration,
-             Type* return_type,
+             type::Type* return_type,
+             std::optional<uint32_t> return_location,
              utils::VectorRef<Parameter*> parameters);
 
     /// Destructor
@@ -81,7 +77,7 @@ class Function final : public Castable<Function, CallTarget> {
     }
 
     /// @returns all directly referenced global variables
-    const utils::UniqueVector<const GlobalVariable*>& DirectlyReferencedGlobals() const {
+    const utils::UniqueVector<const GlobalVariable*, 4>& DirectlyReferencedGlobals() const {
         return directly_referenced_globals_;
     }
 
@@ -89,12 +85,12 @@ class Function final : public Castable<Function, CallTarget> {
     /// Note: Implicitly adds this global to the transtively-called globals.
     /// @param global the module-scope variable
     void AddDirectlyReferencedGlobal(const sem::GlobalVariable* global) {
-        directly_referenced_globals_.add(global);
-        transitively_referenced_globals_.add(global);
+        directly_referenced_globals_.Add(global);
+        transitively_referenced_globals_.Add(global);
     }
 
     /// @returns all transitively referenced global variables
-    const utils::UniqueVector<const GlobalVariable*>& TransitivelyReferencedGlobals() const {
+    const utils::UniqueVector<const GlobalVariable*, 8>& TransitivelyReferencedGlobals() const {
         return transitively_referenced_globals_;
     }
 
@@ -102,29 +98,29 @@ class Function final : public Castable<Function, CallTarget> {
     /// variable.
     /// @param global the module-scoped variable
     void AddTransitivelyReferencedGlobal(const sem::GlobalVariable* global) {
-        transitively_referenced_globals_.add(global);
+        transitively_referenced_globals_.Add(global);
     }
 
     /// @returns the list of functions that this function transitively calls.
-    const utils::UniqueVector<const Function*>& TransitivelyCalledFunctions() const {
+    const utils::UniqueVector<const Function*, 8>& TransitivelyCalledFunctions() const {
         return transitively_called_functions_;
     }
 
     /// Records that this function transitively calls `function`.
     /// @param function the function this function transitively calls
     void AddTransitivelyCalledFunction(const Function* function) {
-        transitively_called_functions_.add(function);
+        transitively_called_functions_.Add(function);
     }
 
     /// @returns the list of builtins that this function directly calls.
-    const utils::UniqueVector<const Builtin*>& DirectlyCalledBuiltins() const {
+    const utils::UniqueVector<const Builtin*, 4>& DirectlyCalledBuiltins() const {
         return directly_called_builtins_;
     }
 
     /// Records that this function transitively calls `builtin`.
     /// @param builtin the builtin this function directly calls
     void AddDirectlyCalledBuiltin(const Builtin* builtin) {
-        directly_called_builtins_.add(builtin);
+        directly_called_builtins_.Add(builtin);
     }
 
     /// Adds the given texture/sampler pair to the list of unique pairs
@@ -134,16 +130,16 @@ class Function final : public Castable<Function, CallTarget> {
     /// @param texture the texture (must be non-null)
     /// @param sampler the sampler (null indicates a texture-only reference)
     void AddTextureSamplerPair(const sem::Variable* texture, const sem::Variable* sampler) {
-        texture_sampler_pairs_.add(VariablePair(texture, sampler));
+        texture_sampler_pairs_.Add(VariablePair(texture, sampler));
     }
 
     /// @returns the list of texture/sampler pairs that this function uses
     /// (directly or indirectly).
-    const std::vector<VariablePair>& TextureSamplerPairs() const { return texture_sampler_pairs_; }
+    utils::VectorRef<VariablePair> TextureSamplerPairs() const { return texture_sampler_pairs_; }
 
     /// @returns the list of direct calls to functions / builtins made by this
     /// function
-    std::vector<const Call*> DirectCallStatements() const { return direct_calls_; }
+    std::vector<const Call*> DirectCalls() const { return direct_calls_; }
 
     /// Adds a record of the direct function / builtin calls made by this
     /// function
@@ -162,7 +158,7 @@ class Function final : public Castable<Function, CallTarget> {
         return nullptr;
     }
 
-    /// @returns the list of callsites of this function
+    /// @returns the list of callsites to this function
     std::vector<const Call*> CallSites() const { return callsites_; }
 
     /// Adds a record of a callsite to this function
@@ -239,12 +235,17 @@ class Function final : public Castable<Function, CallTarget> {
     /// @returns true if `sym` is an ancestor entry point of this function
     bool HasAncestorEntryPoint(Symbol sym) const;
 
-    /// Sets that this function has a discard statement
-    void SetHasDiscard() { has_discard_ = true; }
+    /// Records the first discard statement in the function
+    /// @param stmt the `discard` statement.
+    void SetDiscardStatement(const Statement* stmt) {
+        if (!discard_stmt_) {
+            discard_stmt_ = stmt;
+        }
+    }
 
-    /// Returns true if this function has a discard statement
-    /// @returns true if this function has a discard statement
-    bool HasDiscard() const { return has_discard_; }
+    /// @returns the first discard statement for the function, or nullptr if the function does not
+    /// use `discard`.
+    const Statement* DiscardStatement() const { return discard_stmt_; }
 
     /// @return the behaviors of this function
     const sem::Behaviors& Behaviors() const { return behaviors_; }
@@ -252,23 +253,31 @@ class Function final : public Castable<Function, CallTarget> {
     /// @return the behaviors of this function
     sem::Behaviors& Behaviors() { return behaviors_; }
 
+    /// @return the location for the return, if provided
+    std::optional<uint32_t> ReturnLocation() const { return return_location_; }
+
   private:
+    Function(const Function&) = delete;
+    Function(Function&&) = delete;
+
     VariableBindings TransitivelyReferencedSamplerVariablesImpl(ast::SamplerKind kind) const;
     VariableBindings TransitivelyReferencedSampledTextureVariablesImpl(bool multisampled) const;
 
     const ast::Function* const declaration_;
 
     sem::WorkgroupSize workgroup_size_;
-    utils::UniqueVector<const GlobalVariable*> directly_referenced_globals_;
-    utils::UniqueVector<const GlobalVariable*> transitively_referenced_globals_;
-    utils::UniqueVector<const Function*> transitively_called_functions_;
-    utils::UniqueVector<const Builtin*> directly_called_builtins_;
-    utils::UniqueVector<VariablePair> texture_sampler_pairs_;
+    utils::UniqueVector<const GlobalVariable*, 4> directly_referenced_globals_;
+    utils::UniqueVector<const GlobalVariable*, 8> transitively_referenced_globals_;
+    utils::UniqueVector<const Function*, 8> transitively_called_functions_;
+    utils::UniqueVector<const Builtin*, 4> directly_called_builtins_;
+    utils::UniqueVector<VariablePair, 8> texture_sampler_pairs_;
     std::vector<const Call*> direct_calls_;
     std::vector<const Call*> callsites_;
     std::vector<const Function*> ancestor_entry_points_;
-    bool has_discard_ = false;
+    const Statement* discard_stmt_ = nullptr;
     sem::Behaviors behaviors_{sem::Behavior::kNext};
+
+    std::optional<uint32_t> return_location_;
 };
 
 }  // namespace tint::sem

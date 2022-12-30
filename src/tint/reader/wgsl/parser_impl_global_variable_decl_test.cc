@@ -17,7 +17,7 @@
 namespace tint::reader::wgsl {
 namespace {
 
-TEST_F(ParserImplTest, GlobalVariableDecl_WithoutConstructor) {
+TEST_F(ParserImplTest, GlobalVariableDecl_WithoutInitializer) {
     auto p = parser("var<private> a : f32");
     auto attrs = p->attribute_list();
     EXPECT_FALSE(attrs.errored);
@@ -31,17 +31,17 @@ TEST_F(ParserImplTest, GlobalVariableDecl_WithoutConstructor) {
 
     EXPECT_EQ(var->symbol, p->builder().Symbols().Get("a"));
     EXPECT_TRUE(var->type->Is<ast::F32>());
-    EXPECT_EQ(var->declared_storage_class, ast::StorageClass::kPrivate);
+    EXPECT_EQ(var->declared_address_space, ast::AddressSpace::kPrivate);
 
     EXPECT_EQ(var->source.range.begin.line, 1u);
     EXPECT_EQ(var->source.range.begin.column, 14u);
     EXPECT_EQ(var->source.range.end.line, 1u);
     EXPECT_EQ(var->source.range.end.column, 15u);
 
-    ASSERT_EQ(var->constructor, nullptr);
+    ASSERT_EQ(var->initializer, nullptr);
 }
 
-TEST_F(ParserImplTest, GlobalVariableDecl_WithConstructor) {
+TEST_F(ParserImplTest, GlobalVariableDecl_WithInitializer) {
     auto p = parser("var<private> a : f32 = 1.");
     auto attrs = p->attribute_list();
     EXPECT_FALSE(attrs.errored);
@@ -55,15 +55,15 @@ TEST_F(ParserImplTest, GlobalVariableDecl_WithConstructor) {
 
     EXPECT_EQ(var->symbol, p->builder().Symbols().Get("a"));
     EXPECT_TRUE(var->type->Is<ast::F32>());
-    EXPECT_EQ(var->declared_storage_class, ast::StorageClass::kPrivate);
+    EXPECT_EQ(var->declared_address_space, ast::AddressSpace::kPrivate);
 
     EXPECT_EQ(var->source.range.begin.line, 1u);
     EXPECT_EQ(var->source.range.begin.column, 14u);
     EXPECT_EQ(var->source.range.end.line, 1u);
     EXPECT_EQ(var->source.range.end.column, 15u);
 
-    ASSERT_NE(var->constructor, nullptr);
-    ASSERT_TRUE(var->constructor->Is<ast::FloatLiteralExpression>());
+    ASSERT_NE(var->initializer, nullptr);
+    ASSERT_TRUE(var->initializer->Is<ast::FloatLiteralExpression>());
 }
 
 TEST_F(ParserImplTest, GlobalVariableDecl_WithAttribute) {
@@ -81,14 +81,14 @@ TEST_F(ParserImplTest, GlobalVariableDecl_WithAttribute) {
     EXPECT_EQ(var->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(var->type, nullptr);
     EXPECT_TRUE(var->type->Is<ast::F32>());
-    EXPECT_EQ(var->declared_storage_class, ast::StorageClass::kUniform);
+    EXPECT_EQ(var->declared_address_space, ast::AddressSpace::kUniform);
 
     EXPECT_EQ(var->source.range.begin.line, 1u);
     EXPECT_EQ(var->source.range.begin.column, 36u);
     EXPECT_EQ(var->source.range.end.line, 1u);
     EXPECT_EQ(var->source.range.end.column, 37u);
 
-    ASSERT_EQ(var->constructor, nullptr);
+    ASSERT_EQ(var->initializer, nullptr);
 
     auto& attributes = var->attributes;
     ASSERT_EQ(attributes.Length(), 2u);
@@ -112,14 +112,14 @@ TEST_F(ParserImplTest, GlobalVariableDecl_WithAttribute_MulitpleGroups) {
     EXPECT_EQ(var->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(var->type, nullptr);
     EXPECT_TRUE(var->type->Is<ast::F32>());
-    EXPECT_EQ(var->declared_storage_class, ast::StorageClass::kUniform);
+    EXPECT_EQ(var->declared_address_space, ast::AddressSpace::kUniform);
 
     EXPECT_EQ(var->source.range.begin.line, 1u);
     EXPECT_EQ(var->source.range.begin.column, 36u);
     EXPECT_EQ(var->source.range.end.line, 1u);
     EXPECT_EQ(var->source.range.end.column, 37u);
 
-    ASSERT_EQ(var->constructor, nullptr);
+    ASSERT_EQ(var->initializer, nullptr);
 
     auto& attributes = var->attributes;
     ASSERT_EQ(attributes.Length(), 2u);
@@ -139,7 +139,7 @@ TEST_F(ParserImplTest, GlobalVariableDecl_InvalidAttribute) {
     EXPECT_NE(e.value, nullptr);
 
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:10: expected signed integer literal for binding attribute");
+    EXPECT_EQ(p->error(), "1:10: expected binding expression");
 }
 
 TEST_F(ParserImplTest, GlobalVariableDecl_InvalidConstExpr) {
@@ -165,7 +165,8 @@ TEST_F(ParserImplTest, GlobalVariableDecl_InvalidVariableDecl) {
     EXPECT_TRUE(e.errored);
     EXPECT_FALSE(e.matched);
     EXPECT_EQ(e.value, nullptr);
-    EXPECT_EQ(p->error(), "1:5: invalid storage class for variable declaration");
+    EXPECT_EQ(p->error(), R"(1:5: expected address space for variable declaration
+Possible values: 'function', 'private', 'push_constant', 'storage', 'uniform', 'workgroup')");
 }
 
 }  // namespace

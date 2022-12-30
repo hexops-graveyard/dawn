@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/sem/depth_texture.h"
-#include "src/tint/sem/multisampled_texture.h"
-#include "src/tint/sem/sampled_texture.h"
+#include "src/tint/type/depth_texture.h"
+#include "src/tint/type/multisampled_texture.h"
+#include "src/tint/type/sampled_texture.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -140,7 +140,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_Matrix_F16) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Pointer) {
-    auto* p = ty.pointer<f32>(ast::StorageClass::kWorkgroup);
+    auto* p = ty.pointer<f32>(ast::AddressSpace::kWorkgroup);
     Alias("make_type_reachable", p);
 
     GeneratorImpl& gen = Build();
@@ -151,7 +151,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_Pointer) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_PointerAccessMode) {
-    auto* p = ty.pointer<f32>(ast::StorageClass::kStorage, ast::Access::kReadWrite);
+    auto* p = ty.pointer<f32>(ast::AddressSpace::kStorage, ast::Access::kReadWrite);
     Alias("make_type_reachable", p);
 
     GeneratorImpl& gen = Build();
@@ -178,8 +178,8 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct) {
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl) {
     auto* s = Structure("S", utils::Vector{
-                                 Member("a", ty.i32(), utils::Vector{MemberOffset(8)}),
-                                 Member("b", ty.f32(), utils::Vector{MemberOffset(16)}),
+                                 Member("a", ty.i32(), utils::Vector{MemberOffset(8_a)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberOffset(16_a)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -188,9 +188,11 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl) {
     EXPECT_EQ(gen.result(), R"(struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   a : i32,
   @size(4)
   padding_1 : u32,
+  /* @offset(16) */
   b : f32,
 }
 )");
@@ -199,8 +201,8 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl) {
 TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
     auto* s =
         Structure("S", utils::Vector{
-                           Member("tint_0_padding", ty.i32(), utils::Vector{MemberOffset(8)}),
-                           Member("tint_2_padding", ty.f32(), utils::Vector{MemberOffset(16)}),
+                           Member("tint_0_padding", ty.i32(), utils::Vector{MemberOffset(8_a)}),
+                           Member("tint_2_padding", ty.f32(), utils::Vector{MemberOffset(16_a)}),
                        });
 
     GeneratorImpl& gen = Build();
@@ -209,9 +211,11 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
     EXPECT_EQ(gen.result(), R"(struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   tint_0_padding : i32,
   @size(4)
   padding_1 : u32,
+  /* @offset(16) */
   tint_2_padding : f32,
 }
 )");
@@ -219,8 +223,8 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructAlignDecl) {
     auto* s = Structure("S", utils::Vector{
-                                 Member("a", ty.i32(), utils::Vector{MemberAlign(8)}),
-                                 Member("b", ty.f32(), utils::Vector{MemberAlign(16)}),
+                                 Member("a", ty.i32(), utils::Vector{MemberAlign(8_a)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberAlign(16_a)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -237,8 +241,8 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructAlignDecl) {
 
 TEST_F(WgslGeneratorImplTest, EmitType_StructSizeDecl) {
     auto* s = Structure("S", utils::Vector{
-                                 Member("a", ty.i32(), utils::Vector{MemberSize(16)}),
-                                 Member("b", ty.f32(), utils::Vector{MemberSize(32)}),
+                                 Member("a", ty.i32(), utils::Vector{MemberSize(16_a)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberSize(32_a)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -256,7 +260,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_StructSizeDecl) {
 TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithAttribute) {
     auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.i32()),
-                                 Member("b", ty.f32(), utils::Vector{MemberAlign(8)}),
+                                 Member("b", ty.f32(), utils::Vector{MemberAlign(8_a)}),
                              });
 
     GeneratorImpl& gen = Build();
@@ -274,7 +278,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithEntryPointAttributes) {
     auto* s = Structure(
         "S", utils::Vector{
                  Member("a", ty.u32(), utils::Vector{Builtin(ast::BuiltinValue::kVertexIndex)}),
-                 Member("b", ty.f32(), utils::Vector{Location(2u)}),
+                 Member("b", ty.f32(), utils::Vector{Location(2_a)}),
              });
 
     GeneratorImpl& gen = Build();
@@ -462,11 +466,7 @@ TEST_P(WgslGenerator_StorageTextureTest, EmitType_StorageTexture) {
     auto param = GetParam();
 
     auto* t = ty.storage_texture(param.dim, param.fmt, param.access);
-    GlobalVar("g", t,
-              utils::Vector{
-                  create<ast::BindingAttribute>(1u),
-                  create<ast::GroupAttribute>(2u),
-              });
+    GlobalVar("g", t, Binding(1_a), Group(2_a));
 
     GeneratorImpl& gen = Build();
 

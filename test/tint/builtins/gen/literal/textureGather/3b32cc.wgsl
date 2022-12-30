@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 // fn textureGather(@const component: i32, texture: texture_cube<u32>, sampler: sampler, coords: vec3<f32>) -> vec4<u32>
 fn textureGather_3b32cc() {
-  var res: vec4<u32> = textureGather(1, arg_1, arg_2, vec3<f32>());
+  var res: vec4<u32> = textureGather(1i, arg_1, arg_2, vec3<f32>(1.f));
 }
 
 @vertex

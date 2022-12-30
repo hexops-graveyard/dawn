@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "src/tint/sem/load.h"
 #include "src/tint/sem/materialize.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::sem::Expression);
@@ -23,14 +24,14 @@ TINT_INSTANTIATE_TYPEINFO(tint::sem::Expression);
 namespace tint::sem {
 
 Expression::Expression(const ast::Expression* declaration,
-                       const sem::Type* type,
+                       const type::Type* type,
                        EvaluationStage stage,
                        const Statement* statement,
-                       const Constant* constant,
+                       const constant::Value* constant,
                        bool has_side_effects,
-                       const Variable* source_var /* = nullptr */)
+                       const Variable* root_ident /* = nullptr */)
     : declaration_(declaration),
-      source_variable_(source_var),
+      root_identifier_(root_ident),
       type_(type),
       stage_(stage),
       statement_(statement),
@@ -47,6 +48,21 @@ const Expression* Expression::UnwrapMaterialize() const {
         return m->Expr();
     }
     return this;
+}
+
+const Expression* Expression::UnwrapLoad() const {
+    if (auto* l = As<Load>()) {
+        return l->Reference();
+    }
+    return this;
+}
+
+const Expression* Expression::Unwrap() const {
+    return Switch(
+        this,  // note: An expression can only be wrapped by a Load or Materialize, not both.
+        [&](const Load* load) { return load->Reference(); },
+        [&](const Materialize* materialize) { return materialize->Expr(); },
+        [&](Default) { return this; });
 }
 
 }  // namespace tint::sem

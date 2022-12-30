@@ -17,7 +17,6 @@
 
 #include "dawn/native/Adapter.h"
 
-#include "dawn/common/GPUInfo.h"
 #include "dawn/native/d3d12/D3D12Info.h"
 #include "dawn/native/d3d12/d3d12_platform.h"
 
@@ -37,10 +36,11 @@ class Adapter : public AdapterBase {
     IDXGIAdapter3* GetHardwareAdapter() const;
     Backend* GetBackend() const;
     ComPtr<ID3D12Device> GetDevice() const;
-    const gpu_info::D3DDriverVersion& GetDriverVersion() const;
 
   private:
-    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(const DeviceDescriptor* descriptor) override;
+    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(
+        const DeviceDescriptor* descriptor,
+        const TripleStateTogglesSet& userProvidedToggles) override;
     MaybeError ResetInternalDeviceForTestingImpl() override;
 
     bool AreTimestampQueriesSupported() const;
@@ -49,12 +49,15 @@ class Adapter : public AdapterBase {
     MaybeError InitializeSupportedFeaturesImpl() override;
     MaybeError InitializeSupportedLimitsImpl(CombinedLimits* limits) override;
 
+    MaybeError ValidateFeatureSupportedWithTogglesImpl(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles) override;
+
     MaybeError InitializeDebugLayerFilters();
     void CleanUpDebugLayerFilters();
 
     ComPtr<IDXGIAdapter3> mHardwareAdapter;
     ComPtr<ID3D12Device> mD3d12Device;
-    gpu_info::D3DDriverVersion mDriverVersion;
 
     Backend* mBackend;
     D3D12DeviceInfo mDeviceInfo = {};

@@ -18,15 +18,10 @@
 #include <vector>
 
 #include "src/tint/sem/node.h"
-#include "src/tint/sem/sampler.h"
 #include "src/tint/sem/variable.h"
+#include "src/tint/type/sampler.h"
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/vector.h"
-
-// Forward declarations
-namespace tint::sem {
-class Type;
-}  // namespace tint::sem
 
 namespace tint::sem {
 
@@ -35,7 +30,7 @@ struct CallTargetSignature {
     /// Constructor
     /// @param ret_ty the call target return type
     /// @param params the call target parameters
-    CallTargetSignature(const sem::Type* ret_ty, utils::VectorRef<const Parameter*> params);
+    CallTargetSignature(const type::Type* ret_ty, utils::VectorRef<const Parameter*> params);
 
     /// Copy constructor
     CallTargetSignature(const CallTargetSignature&);
@@ -44,7 +39,7 @@ struct CallTargetSignature {
     ~CallTargetSignature();
 
     /// The type of the call target return value
-    const sem::Type* const return_type = nullptr;
+    const type::Type* const return_type = nullptr;
     /// The parameters of the call target
     const utils::Vector<const sem::Parameter*, 8> parameters;
 
@@ -57,9 +52,17 @@ struct CallTargetSignature {
     /// @returns the index of the parameter with the given usage, or -1 if no
     /// parameter with the given usage exists.
     int IndexOf(ParameterUsage usage) const;
+
+    /// @param usage  the parameter usage to find
+    /// @returns the the parameter with the given usage, or nullptr if no parameter with the given
+    /// usage exists.
+    inline const sem::Parameter* Parameter(ParameterUsage usage) const {
+        auto idx = IndexOf(usage);
+        return (idx >= 0) ? parameters[static_cast<size_t>(idx)] : nullptr;
+    }
 };
 
-/// CallTarget is the base for callable functions, builtins, type constructors
+/// CallTarget is the base for callable functions, builtins, type initializers
 /// and type casts.
 class CallTarget : public Castable<CallTarget, Node> {
   public:
@@ -67,7 +70,7 @@ class CallTarget : public Castable<CallTarget, Node> {
     /// @param stage the earliest evaluation stage for a call to this target
     /// @param return_type the return type of the call target
     /// @param parameters the parameters for the call target
-    CallTarget(const sem::Type* return_type,
+    CallTarget(const type::Type* return_type,
                utils::VectorRef<const Parameter*> parameters,
                EvaluationStage stage);
 
@@ -78,7 +81,7 @@ class CallTarget : public Castable<CallTarget, Node> {
     ~CallTarget() override;
 
     /// @return the return type of the call target
-    const sem::Type* ReturnType() const { return signature_.return_type; }
+    const type::Type* ReturnType() const { return signature_.return_type; }
 
     /// @return the parameters of the call target
     auto& Parameters() const { return signature_.parameters; }

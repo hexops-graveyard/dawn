@@ -57,9 +57,7 @@ enum class SampleTypeBit : uint8_t {
     Uint = 0x10,
 };
 
-// Converts an wgpu::TextureComponentType to its bitmask representation.
-SampleTypeBit ToSampleTypeBit(wgpu::TextureComponentType type);
-// Converts an wgpu::TextureSampleType to its bitmask representation.
+// Converts a wgpu::TextureSampleType to its bitmask representation.
 SampleTypeBit SampleTypeToSampleTypeBit(wgpu::TextureSampleType sampleType);
 
 struct TexelBlockInfo {
@@ -99,8 +97,10 @@ struct Format {
     bool supportsMultisample = false;
     bool supportsResolveTarget = false;
     Aspect aspects{};
-    // Only used for renderable color formats, number of color channels.
-    uint8_t componentCount = 0;
+    // Only used for renderable color formats:
+    uint8_t componentCount = 0;                  // number of color channels
+    uint8_t renderTargetPixelByteCost = 0;       // byte cost of pixel in render targets
+    uint8_t renderTargetComponentAlignment = 0;  // byte alignment for components in render targets
 
     bool IsColor() const;
     bool HasDepth() const;

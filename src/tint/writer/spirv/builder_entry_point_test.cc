@@ -15,16 +15,16 @@
 #include <memory>
 
 #include "gtest/gtest.h"
+#include "src/tint/ast/address_space.h"
 #include "src/tint/ast/builtin_attribute.h"
 #include "src/tint/ast/builtin_value.h"
 #include "src/tint/ast/location_attribute.h"
 #include "src/tint/ast/return_statement.h"
 #include "src/tint/ast/stage_attribute.h"
-#include "src/tint/ast/storage_class.h"
 #include "src/tint/ast/variable.h"
 #include "src/tint/program.h"
-#include "src/tint/sem/f32.h"
-#include "src/tint/sem/vector.h"
+#include "src/tint/type/f32.h"
+#include "src/tint/type/vector.h"
 #include "src/tint/writer/spirv/builder.h"
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
@@ -48,10 +48,10 @@ TEST_F(BuilderTest, EntryPoint_Parameters) {
                         });
     auto* loc1 = Param("loc1", ty.f32(),
                        utils::Vector{
-                           Location(1u),
+                           Location(1_u),
                        });
     auto* mul = Mul(Expr(MemberAccessor("coord", "x")), Expr("loc1"));
-    auto* col = Var("col", ty.f32(), ast::StorageClass::kNone, mul);
+    auto* col = Var("col", ty.f32(), mul);
     Func("frag_main", utils::Vector{coord, loc1}, ty.void_(), utils::Vector{WrapInStatement(col)},
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -62,7 +62,7 @@ TEST_F(BuilderTest, EntryPoint_Parameters) {
     ASSERT_TRUE(b.Build());
 
     // Test that "coord" and "loc1" get hoisted out to global variables with the
-    // Input storage class, retaining their decorations.
+    // Input address space, retaining their decorations.
     EXPECT_EQ(DumpBuilder(b), R"(OpCapability Shader
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %19 "frag_main" %1 %5
@@ -120,7 +120,7 @@ TEST_F(BuilderTest, EntryPoint_ReturnValue) {
     // }
     auto* loc_in = Param("loc_in", ty.u32(),
                          utils::Vector{
-                             Location(0),
+                             Location(0_a),
                              Flat(),
                          });
     auto* cond =
@@ -134,7 +134,7 @@ TEST_F(BuilderTest, EntryPoint_ReturnValue) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(0),
+             Location(0_a),
          });
 
     spirv::Builder& b = SanitizeAndBuild();
@@ -142,7 +142,7 @@ TEST_F(BuilderTest, EntryPoint_ReturnValue) {
     ASSERT_TRUE(b.Build());
 
     // Test that the return value gets hoisted out to a global variable with the
-    // Output storage class, and the return statements are replaced with stores.
+    // Output address space, and the return statements are replaced with stores.
     EXPECT_EQ(DumpBuilder(b), R"(OpCapability Shader
 OpMemoryModel Logical GLSL450
 OpEntryPoint Fragment %21 "frag_main" %1 %4
@@ -211,7 +211,7 @@ TEST_F(BuilderTest, EntryPoint_SharedStruct) {
     auto* interface = Structure(
         "Interface",
         utils::Vector{
-            Member("value", ty.f32(), utils::Vector{Location(1u)}),
+            Member("value", ty.f32(), utils::Vector{Location(1_u)}),
             Member("pos", ty.vec4<f32>(), utils::Vector{Builtin(ast::BuiltinValue::kPosition)}),
         });
 

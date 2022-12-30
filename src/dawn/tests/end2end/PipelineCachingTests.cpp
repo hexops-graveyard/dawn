@@ -108,8 +108,8 @@ class PipelineCachingTests : public DawnTest {
     const EntryCounts counts = {
         // pipeline caching is only implemented on D3D12/Vulkan
         IsD3D12() || IsVulkan() ? 1u : 0u,
-        // shader module caching is only implemented on Vulkan/D3D12/Metal
-        IsVulkan() || IsMetal() || IsD3D12() ? 1u : 0u,
+        // One blob per shader module
+        1u,
     };
     NiceMock<CachingInterfaceMock> mMockCache;
 };
@@ -327,9 +327,6 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineFrontedCache) {
 // Note: This test needs to use more than 1 device since the frontend cache on each device
 //   will prevent going out to the blob cache.
 TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCache) {
-    // TODO(dawn:1471) Re-enable after debugging ASAN failures for D3D12.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsAsan());
-
     // First time should create and write out to the cache.
     {
         wgpu::Device device = CreateDevice();
@@ -358,9 +355,6 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCache) {
 // Tests that pipeline creation hits the cache when using the same pipeline but with explicit
 // layout.
 TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheExplictLayout) {
-    // TODO(dawn:1471) Re-enable after debugging ASAN failures for D3D12.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsAsan());
-
     // First time should create and write out to the cache.
     {
         wgpu::Device device = CreateDevice();
@@ -587,8 +581,8 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheLayout) {
     }
 
     // Cache should not hit for the fragment shader, but should hit for the pipeline.
-    // Except for D3D12, the shader is different but compiles to the same due to binding number
-    // remapping.
+    // On Metal and Vulkan, the shader is different but compiles to the same due to binding number
+    // remapping. On other backends, the compiled shader is different and so is the pipeline.
     {
         wgpu::Device device = CreateDevice();
         utils::ComboRenderPipelineDescriptor desc;
@@ -605,7 +599,7 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheLayout) {
                                 {1, wgpu::ShaderStage::Fragment, wgpu::BufferBindingType::Uniform},
                             }),
                     });
-        if (!IsD3D12()) {
+        if (IsMetal() || IsVulkan()) {
             EXPECT_CACHE_STATS(mMockCache, Hit(counts.shaderModule + counts.pipeline),
                                Add(counts.shaderModule), device.CreateRenderPipeline(&desc));
         } else {
@@ -645,11 +639,11 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheIsolationKey) {
 }
 
 DAWN_INSTANTIATE_TEST(SinglePipelineCachingTests,
-                      D3D12Backend({"enable_blob_cache"}),
-                      D3D12Backend({"enable_blob_cache", "use_dxc"}),
-                      MetalBackend({"enable_blob_cache"}),
-                      OpenGLBackend({"enable_blob_cache"}),
-                      OpenGLESBackend({"enable_blob_cache"}),
-                      VulkanBackend({"enable_blob_cache"}));
+                      D3D12Backend(),
+                      D3D12Backend({"use_dxc"}),
+                      MetalBackend(),
+                      OpenGLBackend(),
+                      OpenGLESBackend(),
+                      VulkanBackend());
 
 }  // namespace

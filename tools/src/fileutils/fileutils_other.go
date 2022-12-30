@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !windows
 // +build !windows
 
 // Package fileutils contains utility functions for files
@@ -20,6 +21,8 @@ package fileutils
 import (
 	"os"
 )
+
+const ExeExt = ""
 
 // IsExe returns true if the file at path is an executable
 func IsExe(path string) bool {

@@ -13,7 +13,7 @@ void main_1() {
   GLF_dead6index = 0;
   const float x_34 = asfloat(x_6[0].y);
   if ((x_34 < 0.0f)) {
-    [loop] while (true) {
+    while (true) {
       if (true) {
       } else {
         break;
@@ -45,3 +45,6 @@ tint_symbol main() {
   wrapper_result.x_GLF_color_1 = inner_result.x_GLF_color_1;
   return wrapper_result;
 }
+FXC validation failure:
+C:\src\dawn\test\tint\Shader@0x00000263B76FE810(14,19-22): error X3696: infinite loop detected - loop never exits
+

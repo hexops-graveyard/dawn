@@ -3,62 +3,73 @@ precision mediump float;
 
 struct S {
   float a;
+  uint pad;
+  uint pad_1;
+  uint pad_2;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  float a;
+layout(binding = 0, std430) buffer b0_block_ssbo {
+  S inner;
 } b0;
-layout(binding = 0, std430) buffer S_2 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_1 {
+  S inner;
 } b1;
-layout(binding = 0, std430) buffer S_3 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_2 {
+  S inner;
 } b2;
-layout(binding = 0, std430) buffer S_4 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_3 {
+  S inner;
 } b3;
-layout(binding = 0, std430) buffer S_5 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_4 {
+  S inner;
 } b4;
-layout(binding = 0, std430) buffer S_6 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_5 {
+  S inner;
 } b5;
-layout(binding = 0, std430) buffer S_7 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_6 {
+  S inner;
 } b6;
-layout(binding = 0, std430) buffer S_8 {
-  float a;
+
+layout(binding = 0, std430) buffer b0_block_ssbo_7 {
+  S inner;
 } b7;
-layout(binding = 1) uniform S_9 {
-  float a;
+
+layout(binding = 1, std140) uniform b0_block_ubo {
+  S inner;
 } b8;
 
-layout(binding = 1) uniform S_10 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_1 {
+  S inner;
 } b9;
 
-layout(binding = 1) uniform S_11 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_2 {
+  S inner;
 } b10;
 
-layout(binding = 1) uniform S_12 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_3 {
+  S inner;
 } b11;
 
-layout(binding = 1) uniform S_13 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_4 {
+  S inner;
 } b12;
 
-layout(binding = 1) uniform S_14 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_5 {
+  S inner;
 } b13;
 
-layout(binding = 1) uniform S_15 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_6 {
+  S inner;
 } b14;
 
-layout(binding = 1) uniform S_16 {
-  float a;
+layout(binding = 1, std140) uniform b0_block_ubo_7 {
+  S inner;
 } b15;
 
 void tint_symbol() {

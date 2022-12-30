@@ -117,17 +117,30 @@ bool Program::IsValid() const {
     return is_valid_;
 }
 
-const sem::Type* Program::TypeOf(const ast::Expression* expr) const {
+const type::Type* Program::TypeOf(const ast::Expression* expr) const {
     auto* sem = Sem().Get(expr);
     return sem ? sem->Type() : nullptr;
 }
 
-const sem::Type* Program::TypeOf(const ast::Type* type) const {
+const type::Type* Program::TypeOf(const ast::Type* type) const {
     return Sem().Get(type);
 }
 
-const sem::Type* Program::TypeOf(const ast::TypeDecl* type_decl) const {
+const type::Type* Program::TypeOf(const ast::TypeDecl* type_decl) const {
     return Sem().Get(type_decl);
+}
+
+std::string Program::FriendlyName(const ast::Type* type) const {
+    TINT_ASSERT_PROGRAM_IDS_EQUAL(Program, type, ID());
+    return type ? type->FriendlyName(Symbols()) : "<null>";
+}
+
+std::string Program::FriendlyName(const type::Type* type) const {
+    return type ? type->FriendlyName(Symbols()) : "<null>";
+}
+
+std::string Program::FriendlyName(std::nullptr_t) const {
+    return "<null>";
 }
 
 void Program::AssertNotMoved() const {

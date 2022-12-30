@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "src/tint/reflection.h"
 #include "src/tint/transform/transform.h"
 
 namespace tint::transform {
@@ -72,6 +73,9 @@ struct VertexAttributeDescriptor {
     uint32_t offset;
     /// The shader location used for the attribute
     uint32_t shader_location;
+
+    /// Reflect the fields of this class so that it can be used by tint::ForeachField()
+    TINT_REFLECT(format, offset, shader_location);
 };
 
 /// Describes a buffer containing multiple vertex attributes
@@ -102,6 +106,9 @@ struct VertexBufferLayoutDescriptor {
     VertexStepMode step_mode = VertexStepMode::kVertex;
     /// The vertex attributes
     std::vector<VertexAttributeDescriptor> attributes;
+
+    /// Reflect the fields of this class so that it can be used by tint::ForeachField()
+    TINT_REFLECT(array_stride, step_mode, attributes);
 };
 
 /// Describes vertex state, which consists of many buffers containing vertex
@@ -128,6 +135,8 @@ using VertexStateDescriptor = std::vector<VertexBufferLayoutDescriptor>;
 /// code, but these are types that the data may arrive as. We need to convert
 /// these smaller types into the base types such as `f32` and `u32` for the
 /// shader to use.
+///
+/// The SingleEntryPoint transform must have run before VertexPulling.
 class VertexPulling final : public Castable<VertexPulling, Transform> {
   public:
     /// Configuration options for the transform
@@ -145,15 +154,15 @@ class VertexPulling final : public Castable<VertexPulling, Transform> {
         /// @returns this Config
         Config& operator=(const Config&);
 
-        /// The entry point to add assignments into
-        std::string entry_point_name;
-
         /// The vertex state descriptor, containing info about attributes
         VertexStateDescriptor vertex_state;
 
         /// The "group" we will put all our vertex buffers into (as storage buffers)
         /// Default to 4 as it is past the limits of user-accessible groups
         uint32_t pulling_group = 4u;
+
+        /// Reflect the fields of this class so that it can be used by tint::ForeachField()
+        TINT_REFLECT(vertex_state, pulling_group);
     };
 
     /// Constructor
@@ -162,16 +171,14 @@ class VertexPulling final : public Castable<VertexPulling, Transform> {
     /// Destructor
     ~VertexPulling() override;
 
-  protected:
-    /// Runs the transform using the CloneContext built for transforming a
-    /// program. Run() is responsible for calling Clone() on the CloneContext.
-    /// @param ctx the CloneContext primed with the input program and
-    /// ProgramBuilder
-    /// @param inputs optional extra transform-specific input data
-    /// @param outputs optional extra transform-specific output data
-    void Run(CloneContext& ctx, const DataMap& inputs, DataMap& outputs) const override;
+    /// @copydoc Transform::Apply
+    ApplyResult Apply(const Program* program,
+                      const DataMap& inputs,
+                      DataMap& outputs) const override;
 
   private:
+    struct State;
+
     Config cfg_;
 };
 

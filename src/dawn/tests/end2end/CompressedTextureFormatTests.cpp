@@ -201,7 +201,7 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
                                             const wgpu::Extent3D& renderTargetSize,
                                             const wgpu::Origin3D& expectedOrigin,
                                             const wgpu::Extent3D& expectedExtent,
-                                            const std::vector<RGBA8>& expected) {
+                                            const std::vector<utils::RGBA8>& expected) {
         ASSERT(IsFormatSupported());
 
         utils::BasicRenderPass renderPass =
@@ -219,8 +219,13 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
         wgpu::CommandBuffer commands = encoder.Finish();
         queue.Submit(1, &commands);
 
+        // Some mobile chipsets decode the compressed texture values with a lower precision, leading
+        // to color channels that are off by one from the expected result. This check is given a
+        // little bit of tolerance to account for it. See dawn:1562.
         EXPECT_TEXTURE_EQ(expected.data(), renderPass.color, {expectedOrigin.x, expectedOrigin.y},
-                          {expectedExtent.width, expectedExtent.height});
+                          {expectedExtent.width, expectedExtent.height},
+                          /* level */ 0, /* aspect */ wgpu::TextureAspect::All,
+                          /* bytesPerRow */ 0, /* Tolerance */ utils::RGBA8(1, 1, 1, 1));
     }
 
     // Run the tests that copies pre-prepared format data into a texture and verifies if we can
@@ -250,7 +255,7 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
         }
         noPaddingExtent3D.depthOrArrayLayers = 1u;
 
-        std::vector<RGBA8> expectedData = GetExpectedData(noPaddingExtent3D);
+        std::vector<utils::RGBA8> expectedData = GetExpectedData(noPaddingExtent3D);
 
         wgpu::Origin3D firstLayerCopyOrigin = {config.copyOrigin3D.x, config.copyOrigin3D.y, 0};
         for (uint32_t layer = config.copyOrigin3D.z;
@@ -447,24 +452,24 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
     // Return the texture data that is decoded from the result of GetOneBlockFormatTextureData
     // in RGBA8 formats. Since some compression methods may be lossy, we may use different colors
     // to test different formats.
-    std::vector<RGBA8> GetExpectedData(const wgpu::Extent3D& testRegion) {
+    std::vector<utils::RGBA8> GetExpectedData(const wgpu::Extent3D& testRegion) {
         constexpr uint8_t kLeftAlpha = 0x88;
         constexpr uint8_t kRightAlpha = 0xFF;
 
-        constexpr RGBA8 kBCDarkRed(198, 0, 0, 255);
-        constexpr RGBA8 kBCDarkGreen(0, 207, 0, 255);
-        constexpr RGBA8 kBCDarkRedSRGB(144, 0, 0, 255);
-        constexpr RGBA8 kBCDarkGreenSRGB(0, 159, 0, 255);
+        constexpr utils::RGBA8 kBCDarkRed(198, 0, 0, 255);
+        constexpr utils::RGBA8 kBCDarkGreen(0, 207, 0, 255);
+        constexpr utils::RGBA8 kBCDarkRedSRGB(144, 0, 0, 255);
+        constexpr utils::RGBA8 kBCDarkGreenSRGB(0, 159, 0, 255);
 
-        constexpr RGBA8 kETC2DarkRed(204, 0, 0, 255);
-        constexpr RGBA8 kETC2DarkGreen(0, 204, 0, 255);
-        constexpr RGBA8 kETC2DarkRedSRGB(154, 0, 0, 255);
-        constexpr RGBA8 kETC2DarkGreenSRGB(0, 154, 0, 255);
+        constexpr utils::RGBA8 kETC2DarkRed(204, 0, 0, 255);
+        constexpr utils::RGBA8 kETC2DarkGreen(0, 204, 0, 255);
+        constexpr utils::RGBA8 kETC2DarkRedSRGB(154, 0, 0, 255);
+        constexpr utils::RGBA8 kETC2DarkGreenSRGB(0, 154, 0, 255);
 
-        constexpr RGBA8 kASTCDarkRed(244, 0, 0, 128);
-        constexpr RGBA8 kASTCDarkGreen(0, 244, 0, 255);
-        constexpr RGBA8 kASTCDarkRedSRGB(231, 0, 0, 128);
-        constexpr RGBA8 kASTCDarkGreenSRGB(0, 231, 0, 255);
+        constexpr utils::RGBA8 kASTCDarkRed(244, 0, 0, 128);
+        constexpr utils::RGBA8 kASTCDarkGreen(0, 244, 0, 255);
+        constexpr utils::RGBA8 kASTCDarkRedSRGB(231, 0, 0, 128);
+        constexpr utils::RGBA8 kASTCDarkGreenSRGB(0, 231, 0, 255);
 
         switch (GetParam().mTextureFormat) {
             case wgpu::TextureFormat::BC1RGBAUnorm:
@@ -473,8 +478,9 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
 
             case wgpu::TextureFormat::BC2RGBAUnorm:
             case wgpu::TextureFormat::BC3RGBAUnorm: {
-                constexpr RGBA8 kLeftColor = RGBA8(kBCDarkRed.r, 0, 0, kLeftAlpha);
-                constexpr RGBA8 kRightColor = RGBA8(0, kBCDarkGreen.g, 0, kRightAlpha);
+                constexpr utils::RGBA8 kLeftColor = utils::RGBA8(kBCDarkRed.r, 0, 0, kLeftAlpha);
+                constexpr utils::RGBA8 kRightColor =
+                    utils::RGBA8(0, kBCDarkGreen.g, 0, kRightAlpha);
                 return FillExpectedData(testRegion, kLeftColor, kRightColor);
             }
 
@@ -484,20 +490,22 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
 
             case wgpu::TextureFormat::BC2RGBAUnormSrgb:
             case wgpu::TextureFormat::BC3RGBAUnormSrgb: {
-                constexpr RGBA8 kLeftColor = RGBA8(kBCDarkRedSRGB.r, 0, 0, kLeftAlpha);
-                constexpr RGBA8 kRightColor = RGBA8(0, kBCDarkGreenSRGB.g, 0, kRightAlpha);
+                constexpr utils::RGBA8 kLeftColor =
+                    utils::RGBA8(kBCDarkRedSRGB.r, 0, 0, kLeftAlpha);
+                constexpr utils::RGBA8 kRightColor =
+                    utils::RGBA8(0, kBCDarkGreenSRGB.g, 0, kRightAlpha);
                 return FillExpectedData(testRegion, kLeftColor, kRightColor);
             }
 
             case wgpu::TextureFormat::BC4RSnorm:
             case wgpu::TextureFormat::BC4RUnorm:
-                return FillExpectedData(testRegion, RGBA8::kRed, RGBA8::kBlack);
+                return FillExpectedData(testRegion, utils::RGBA8::kRed, utils::RGBA8::kBlack);
 
             case wgpu::TextureFormat::BC5RGSnorm:
             case wgpu::TextureFormat::BC5RGUnorm:
             case wgpu::TextureFormat::BC6HRGBFloat:
             case wgpu::TextureFormat::BC6HRGBUfloat:
-                return FillExpectedData(testRegion, RGBA8::kRed, RGBA8::kGreen);
+                return FillExpectedData(testRegion, utils::RGBA8::kRed, utils::RGBA8::kGreen);
 
             case wgpu::TextureFormat::ETC2RGB8Unorm:
             case wgpu::TextureFormat::ETC2RGB8A1Unorm:
@@ -508,24 +516,27 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
                 return FillExpectedData(testRegion, kETC2DarkRedSRGB, kETC2DarkGreenSRGB);
 
             case wgpu::TextureFormat::ETC2RGBA8Unorm: {
-                constexpr RGBA8 kLeftColor = RGBA8(kETC2DarkRed.r, 0, 0, kLeftAlpha);
-                constexpr RGBA8 kRightColor = RGBA8(0, kETC2DarkGreen.g, 0, kRightAlpha);
+                constexpr utils::RGBA8 kLeftColor = utils::RGBA8(kETC2DarkRed.r, 0, 0, kLeftAlpha);
+                constexpr utils::RGBA8 kRightColor =
+                    utils::RGBA8(0, kETC2DarkGreen.g, 0, kRightAlpha);
                 return FillExpectedData(testRegion, kLeftColor, kRightColor);
             }
 
             case wgpu::TextureFormat::ETC2RGBA8UnormSrgb: {
-                constexpr RGBA8 kLeftColor = RGBA8(kETC2DarkRedSRGB.r, 0, 0, kLeftAlpha);
-                constexpr RGBA8 kRightColor = RGBA8(0, kETC2DarkGreenSRGB.g, 0, kRightAlpha);
+                constexpr utils::RGBA8 kLeftColor =
+                    utils::RGBA8(kETC2DarkRedSRGB.r, 0, 0, kLeftAlpha);
+                constexpr utils::RGBA8 kRightColor =
+                    utils::RGBA8(0, kETC2DarkGreenSRGB.g, 0, kRightAlpha);
                 return FillExpectedData(testRegion, kLeftColor, kRightColor);
             }
 
             case wgpu::TextureFormat::EACR11Unorm:
             case wgpu::TextureFormat::EACR11Snorm:
-                return FillExpectedData(testRegion, RGBA8::kRed, RGBA8::kBlack);
+                return FillExpectedData(testRegion, utils::RGBA8::kRed, utils::RGBA8::kBlack);
 
             case wgpu::TextureFormat::EACRG11Unorm:
             case wgpu::TextureFormat::EACRG11Snorm:
-                return FillExpectedData(testRegion, RGBA8::kRed, RGBA8::kGreen);
+                return FillExpectedData(testRegion, utils::RGBA8::kRed, utils::RGBA8::kGreen);
 
             case wgpu::TextureFormat::ASTC4x4Unorm:
             case wgpu::TextureFormat::ASTC5x4Unorm:
@@ -565,12 +576,13 @@ class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureF
         }
     }
 
-    std::vector<RGBA8> FillExpectedData(const wgpu::Extent3D& testRegion,
-                                        RGBA8 leftColorInBlock,
-                                        RGBA8 rightColorInBlock) {
+    std::vector<utils::RGBA8> FillExpectedData(const wgpu::Extent3D& testRegion,
+                                               utils::RGBA8 leftColorInBlock,
+                                               utils::RGBA8 rightColorInBlock) {
         ASSERT(testRegion.depthOrArrayLayers == 1);
 
-        std::vector<RGBA8> expectedData(testRegion.width * testRegion.height, leftColorInBlock);
+        std::vector<utils::RGBA8> expectedData(testRegion.width * testRegion.height,
+                                               leftColorInBlock);
         for (uint32_t y = 0; y < testRegion.height; ++y) {
             for (uint32_t x = 0; x < testRegion.width; ++x) {
                 if (x % BlockWidthInTexels() >= BlockWidthInTexels() / 2) {
@@ -760,7 +772,7 @@ TEST_P(CompressedTextureFormatTest, CopyWholeTextureSubResourceIntoNonZeroMipmap
         CreateBindGroupForTest(renderPipeline.GetBindGroupLayout(0), textureDst,
                                config.copyOrigin3D.z, config.viewMipmapLevel);
 
-    std::vector<RGBA8> expectedData = GetExpectedData(kVirtualSize);
+    std::vector<utils::RGBA8> expectedData = GetExpectedData(kVirtualSize);
     VerifyCompressedTexturePixelValues(renderPipeline, bindGroup, kVirtualSize, config.copyOrigin3D,
                                        kVirtualSize, expectedData);
 }
@@ -800,7 +812,7 @@ TEST_P(CompressedTextureFormatTest, CopyIntoSubresourceWithPhysicalSizeNotEqualT
         CreateBindGroupForTest(renderPipeline.GetBindGroupLayout(0), textureDst,
                                dstConfig.copyOrigin3D.z, dstConfig.viewMipmapLevel);
 
-    std::vector<RGBA8> expectedData = GetExpectedData(kDstVirtualSize);
+    std::vector<utils::RGBA8> expectedData = GetExpectedData(kDstVirtualSize);
     VerifyCompressedTexturePixelValues(renderPipeline, bindGroup, kDstVirtualSize,
                                        dstConfig.copyOrigin3D, kDstVirtualSize, expectedData);
 }
@@ -841,7 +853,7 @@ TEST_P(CompressedTextureFormatTest, CopyFromSubresourceWithPhysicalSizeNotEqualT
         CreateBindGroupForTest(renderPipeline.GetBindGroupLayout(0), textureDst,
                                dstConfig.copyOrigin3D.z, dstConfig.viewMipmapLevel);
 
-    std::vector<RGBA8> expectedData = GetExpectedData(kDstVirtualSize);
+    std::vector<utils::RGBA8> expectedData = GetExpectedData(kDstVirtualSize);
     VerifyCompressedTexturePixelValues(renderPipeline, bindGroup, kDstVirtualSize,
                                        dstConfig.copyOrigin3D, kDstVirtualSize, expectedData);
 }
@@ -900,7 +912,7 @@ TEST_P(CompressedTextureFormatTest, MultipleCopiesWithPhysicalSizeNotEqualToVirt
             CreateBindGroupForTest(renderPipeline.GetBindGroupLayout(0), dstTextures[i],
                                    dstConfigs[i].copyOrigin3D.z, dstConfigs[i].viewMipmapLevel);
 
-        std::vector<RGBA8> expectedData = GetExpectedData(dstVirtualSizes[i]);
+        std::vector<utils::RGBA8> expectedData = GetExpectedData(dstVirtualSizes[i]);
         VerifyCompressedTexturePixelValues(renderPipeline, bindGroup0, dstVirtualSizes[i],
                                            dstConfigs[i].copyOrigin3D, dstVirtualSizes[i],
                                            expectedData);
@@ -954,7 +966,7 @@ TEST_P(CompressedTextureFormatTest, CopyWithMultipleLayerAndPhysicalSizeNotEqual
 
     const wgpu::Extent3D kExpectedDataRegionPerLayer = {kDstVirtualSize.width,
                                                         kDstVirtualSize.height, 1u};
-    std::vector<RGBA8> kExpectedDataPerLayer = GetExpectedData(kExpectedDataRegionPerLayer);
+    std::vector<utils::RGBA8> kExpectedDataPerLayer = GetExpectedData(kExpectedDataRegionPerLayer);
     const wgpu::Origin3D kCopyOriginPerLayer = {dstConfig.copyOrigin3D.x, dstConfig.copyOrigin3D.y,
                                                 0};
     for (uint32_t copyLayer = 0; copyLayer < kArrayLayerCount; ++copyLayer) {

@@ -22,8 +22,10 @@ group("webgpu-cts") {
   public_deps = [
     ":compile_src",
     ":copy_resources",
+    ":gen_cache",
     ":verify_gen_ts_dep_list",
   ]
+  data = [ "test_list.txt" ]
 }
 
 list_from_ts_sources_txt = read_file("ts_sources.txt", "list lines")
@@ -34,7 +36,7 @@ foreach(file, list_from_ts_sources_txt) {
 }
 
 js_outputs = []
-foreach(ts_file, list_from_ts_sources_txt) {
+foreach(ts_file, filter_exclude(list_from_ts_sources_txt, [ "*.d.ts" ])) {
   js_file = string_replace(ts_file, ".ts", ".js")
   js_node_file = string_replace(js_file, "src/", "src-node/")
 
@@ -56,6 +58,10 @@ action("compile_src") {
              "//third_party/node/node_modules/typescript/lib/tsc.js",
              "//third_party/node/node.py",
              "${dawn_root}/webgpu-cts/scripts/tsc_ignore_errors.py",
+
+             # If the only change is that a file is deleted, we still need to
+             # rebuild so that listing.js gets updated.
+             "ts_sources.txt",
            ] + ts_source_inputs
 
   outputs = js_outputs
@@ -98,4 +104,24 @@ action("verify_gen_ts_dep_list") {
     "--stamp",
     rebase_path(outputs[0], root_build_dir),
   ]
+}
+
+action("gen_cache") {
+  script = "${dawn_root}/webgpu-cts/scripts/gen_cache.py"
+
+  deps = [ ":compile_src" ]
+  _gen_cache_js =
+      "$target_gen_dir/../../webgpu-cts/src-node/common/tools/gen_cache.js"
+  inputs = get_target_outputs(":compile_src") + [ _gen_cache_js ]
+  args = [
+    rebase_path(_gen_cache_js, root_build_dir),
+    rebase_path("$target_gen_dir/../../webgpu-cts/cache", root_build_dir),
+  ]
+
+  _outputs = read_file("cache_list.txt", "list lines")
+  outputs = []
+  foreach(file, _outputs) {
+    outputs += [ "$target_gen_dir/../../webgpu-cts/cache/$file" ]
+  }
+  data = outputs
 }

@@ -18,19 +18,17 @@
 
 #include "gtest/gtest.h"
 #include "src/tint/program_builder.h"
-#include "src/tint/resolver/resolver.h"
 #include "src/tint/sem/variable.h"
 
 namespace tint::writer {
 namespace {
 
+using namespace tint::number_suffixes;  // NOLINT
+
 class FlattenBindingsTest : public ::testing::Test {};
 
 TEST_F(FlattenBindingsTest, NoBindings) {
     ProgramBuilder b;
-
-    resolver::Resolver resolver(&b);
-
     Program program(std::move(b));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
@@ -40,11 +38,9 @@ TEST_F(FlattenBindingsTest, NoBindings) {
 
 TEST_F(FlattenBindingsTest, AlreadyFlat) {
     ProgramBuilder b;
-    b.GlobalVar("a", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
-    b.GlobalVar("b", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(0, 1));
-    b.GlobalVar("c", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(0, 2));
-
-    resolver::Resolver resolver(&b);
+    b.GlobalVar("a", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
+    b.GlobalVar("b", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(1_a));
+    b.GlobalVar("c", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(2_a));
 
     Program program(std::move(b));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
@@ -55,12 +51,10 @@ TEST_F(FlattenBindingsTest, AlreadyFlat) {
 
 TEST_F(FlattenBindingsTest, NotFlat_SingleNamespace) {
     ProgramBuilder b;
-    b.GlobalVar("a", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
-    b.GlobalVar("b", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(1, 1));
-    b.GlobalVar("c", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(2, 2));
+    b.GlobalVar("a", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
+    b.GlobalVar("b", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(1_a), b.Binding(1_a));
+    b.GlobalVar("c", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(2_a), b.Binding(2_a));
     b.WrapInFunction(b.Expr("a"), b.Expr("b"), b.Expr("c"));
-
-    resolver::Resolver resolver(&b);
 
     Program program(std::move(b));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
@@ -69,42 +63,51 @@ TEST_F(FlattenBindingsTest, NotFlat_SingleNamespace) {
     EXPECT_TRUE(flattened);
 
     auto& vars = flattened->AST().GlobalVariables();
-    EXPECT_EQ(vars[0]->BindingPoint().group->value, 0u);
-    EXPECT_EQ(vars[0]->BindingPoint().binding->value, 0u);
-    EXPECT_EQ(vars[1]->BindingPoint().group->value, 0u);
-    EXPECT_EQ(vars[1]->BindingPoint().binding->value, 1u);
-    EXPECT_EQ(vars[2]->BindingPoint().group->value, 0u);
-    EXPECT_EQ(vars[2]->BindingPoint().binding->value, 2u);
+
+    auto* sem = flattened->Sem().Get<sem::GlobalVariable>(vars[0]);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->BindingPoint().group, 0u);
+    EXPECT_EQ(sem->BindingPoint().binding, 0u);
+
+    sem = flattened->Sem().Get<sem::GlobalVariable>(vars[1]);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->BindingPoint().group, 0u);
+    EXPECT_EQ(sem->BindingPoint().binding, 1u);
+
+    sem = flattened->Sem().Get<sem::GlobalVariable>(vars[2]);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->BindingPoint().group, 0u);
+    EXPECT_EQ(sem->BindingPoint().binding, 2u);
 }
 
 TEST_F(FlattenBindingsTest, NotFlat_MultipleNamespaces) {
     ProgramBuilder b;
 
     const size_t num_buffers = 3;
-    b.GlobalVar("buffer1", b.ty.i32(), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
-    b.GlobalVar("buffer2", b.ty.i32(), ast::StorageClass::kStorage, b.GroupAndBinding(1, 1));
-    b.GlobalVar("buffer3", b.ty.i32(), ast::StorageClass::kStorage, ast::Access::kRead,
-                b.GroupAndBinding(2, 2));
+    b.GlobalVar("buffer1", b.ty.i32(), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
+    b.GlobalVar("buffer2", b.ty.i32(), ast::AddressSpace::kStorage, b.Group(1_a), b.Binding(1_a));
+    b.GlobalVar("buffer3", b.ty.i32(), ast::AddressSpace::kStorage, ast::Access::kRead,
+                b.Group(2_a), b.Binding(2_a));
 
     const size_t num_samplers = 2;
-    b.GlobalVar("sampler1", b.ty.sampler(ast::SamplerKind::kSampler), b.GroupAndBinding(3, 3));
-    b.GlobalVar("sampler2", b.ty.sampler(ast::SamplerKind::kComparisonSampler),
-                b.GroupAndBinding(4, 4));
+    b.GlobalVar("sampler1", b.ty.sampler(ast::SamplerKind::kSampler), b.Group(3_a), b.Binding(3_a));
+    b.GlobalVar("sampler2", b.ty.sampler(ast::SamplerKind::kComparisonSampler), b.Group(4_a),
+                b.Binding(4_a));
 
     const size_t num_textures = 6;
     b.GlobalVar("texture1", b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32()),
-                b.GroupAndBinding(5, 5));
+                b.Group(5_a), b.Binding(5_a));
     b.GlobalVar("texture2", b.ty.multisampled_texture(ast::TextureDimension::k2d, b.ty.f32()),
-                b.GroupAndBinding(6, 6));
+                b.Group(6_a), b.Binding(6_a));
     b.GlobalVar("texture3",
                 b.ty.storage_texture(ast::TextureDimension::k2d, ast::TexelFormat::kR32Float,
                                      ast::Access::kWrite),
-                b.GroupAndBinding(7, 7));
-    b.GlobalVar("texture4", b.ty.depth_texture(ast::TextureDimension::k2d),
-                b.GroupAndBinding(8, 8));
+                b.Group(7_a), b.Binding(7_a));
+    b.GlobalVar("texture4", b.ty.depth_texture(ast::TextureDimension::k2d), b.Group(8_a),
+                b.Binding(8_a));
     b.GlobalVar("texture5", b.ty.depth_multisampled_texture(ast::TextureDimension::k2d),
-                b.GroupAndBinding(9, 9));
-    b.GlobalVar("texture6", b.ty.external_texture(), b.GroupAndBinding(10, 10));
+                b.Group(9_a), b.Binding(9_a));
+    b.GlobalVar("texture6", b.ty.external_texture(), b.Group(10_a), b.Binding(10_a));
 
     b.WrapInFunction(b.Assign(b.Phony(), "buffer1"), b.Assign(b.Phony(), "buffer2"),
                      b.Assign(b.Phony(), "buffer3"), b.Assign(b.Phony(), "sampler1"),
@@ -112,8 +115,6 @@ TEST_F(FlattenBindingsTest, NotFlat_MultipleNamespaces) {
                      b.Assign(b.Phony(), "texture2"), b.Assign(b.Phony(), "texture3"),
                      b.Assign(b.Phony(), "texture4"), b.Assign(b.Phony(), "texture5"),
                      b.Assign(b.Phony(), "texture6"));
-
-    resolver::Resolver resolver(&b);
 
     Program program(std::move(b));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
@@ -124,16 +125,22 @@ TEST_F(FlattenBindingsTest, NotFlat_MultipleNamespaces) {
     auto& vars = flattened->AST().GlobalVariables();
 
     for (size_t i = 0; i < num_buffers; ++i) {
-        EXPECT_EQ(vars[i]->BindingPoint().group->value, 0u);
-        EXPECT_EQ(vars[i]->BindingPoint().binding->value, i);
+        auto* sem = flattened->Sem().Get<sem::GlobalVariable>(vars[i]);
+        ASSERT_NE(sem, nullptr);
+        EXPECT_EQ(sem->BindingPoint().group, 0u);
+        EXPECT_EQ(sem->BindingPoint().binding, i);
     }
     for (size_t i = 0; i < num_samplers; ++i) {
-        EXPECT_EQ(vars[i + num_buffers]->BindingPoint().group->value, 0u);
-        EXPECT_EQ(vars[i + num_buffers]->BindingPoint().binding->value, i);
+        auto* sem = flattened->Sem().Get<sem::GlobalVariable>(vars[i + num_buffers]);
+        ASSERT_NE(sem, nullptr);
+        EXPECT_EQ(sem->BindingPoint().group, 0u);
+        EXPECT_EQ(sem->BindingPoint().binding, i);
     }
     for (size_t i = 0; i < num_textures; ++i) {
-        EXPECT_EQ(vars[i + num_buffers + num_samplers]->BindingPoint().group->value, 0u);
-        EXPECT_EQ(vars[i + num_buffers + num_samplers]->BindingPoint().binding->value, i);
+        auto* sem = flattened->Sem().Get<sem::GlobalVariable>(vars[i + num_buffers + num_samplers]);
+        ASSERT_NE(sem, nullptr);
+        EXPECT_EQ(sem->BindingPoint().group, 0u);
+        EXPECT_EQ(sem->BindingPoint().binding, i);
     }
 }
 

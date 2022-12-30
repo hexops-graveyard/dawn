@@ -65,8 +65,8 @@ class DrawIndirectTest : public DawnTest {
 
     void Test(std::initializer_list<uint32_t> bufferList,
               uint64_t indirectOffset,
-              RGBA8 bottomLeftExpected,
-              RGBA8 topRightExpected) {
+              utils::RGBA8 bottomLeftExpected,
+              utils::RGBA8 topRightExpected) {
         wgpu::Buffer indirectBuffer =
             utils::CreateBufferFromData<uint32_t>(device, wgpu::BufferUsage::Indirect, bufferList);
 
@@ -92,9 +92,12 @@ TEST_P(DrawIndirectTest, Uint32) {
     // TODO(crbug.com/dawn/1292): Some Intel OpenGL drivers don't seem to like
     // the offsets that Tint/GLSL produces.
     DAWN_SUPPRESS_TEST_IF(IsIntel() && IsOpenGL() && IsLinux());
+    // TODO(crbug.com/dawn/1620): flaky VUID-vkDestroyBuffer-buffer-00922 on UHD630
+    // driver 31.0.101.2111
+    DAWN_SUPPRESS_TEST_IF(IsWindows() && IsVulkan() && IsIntel());
 
-    RGBA8 filled(0, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(0, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
 
     // Test a draw with no indices.
     Test({0, 0, 0, 0}, 0, notFilled, notFilled);
@@ -114,8 +117,8 @@ TEST_P(DrawIndirectTest, IndirectOffset) {
     // the offsets that Tint/GLSL produces.
     DAWN_SUPPRESS_TEST_IF(IsIntel() && IsOpenGL() && IsLinux());
 
-    RGBA8 filled(0, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(0, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
 
     // Test an offset draw call, with indirect buffer containing 2 calls:
     // 1) only the first 3 indices (bottom left triangle)

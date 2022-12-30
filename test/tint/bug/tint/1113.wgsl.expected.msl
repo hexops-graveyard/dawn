@@ -2,16 +2,6 @@
 
 using namespace metal;
 
-template<typename T, int N, int M>
-inline vec<T, M> operator*(matrix<T, N, M> lhs, packed_vec<T, N> rhs) {
-  return lhs * vec<T, N>(rhs);
-}
-
-template<typename T, int N, int M>
-inline vec<T, N> operator*(packed_vec<T, M> lhs, matrix<T, N, M> rhs) {
-  return vec<T, M>(lhs) * rhs;
-}
-
 template<typename T, size_t N>
 struct tint_array {
     const constant T& operator[](size_t i) const constant { return elements[i]; }
@@ -87,10 +77,18 @@ uint toIndex1D(uint gridSize, float3 voxelPos) {
   return ((icoord[0] + (gridSize * icoord[1])) + ((gridSize * gridSize) * icoord[2]));
 }
 
+uint tint_div(uint lhs, uint rhs) {
+  return (lhs / select(rhs, 1u, (rhs == 0u)));
+}
+
+uint tint_mod(uint lhs, uint rhs) {
+  return (lhs % select(rhs, 1u, (rhs == 0u)));
+}
+
 uint3 toIndex3D(uint gridSize, uint index) {
-  uint z_1 = (index / (gridSize * gridSize));
-  uint y_1 = ((index - ((gridSize * gridSize) * z_1)) / gridSize);
-  uint x_1 = (index % gridSize);
+  uint z_1 = tint_div(index, (gridSize * gridSize));
+  uint y_1 = tint_div((index - ((gridSize * gridSize) * z_1)), gridSize);
+  uint x_1 = tint_mod(index, gridSize);
   return uint3(x_1, y_1, z_1);
 }
 

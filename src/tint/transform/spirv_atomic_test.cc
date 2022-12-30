@@ -151,6 +151,19 @@ class SpirvAtomicTest : public TransformTest {
     std::vector<std::unique_ptr<Source::File>> files_;
 };
 
+TEST_F(SpirvAtomicTest, StripUnusedBuiltins) {
+    auto* src = R"(
+fn f() {
+}
+)";
+
+    auto* expect = src;
+
+    auto got = Run(src);
+
+    EXPECT_EQ(expect, str(got));
+}
+
 TEST_F(SpirvAtomicTest, ArrayOfU32) {
     auto* src = R"(
 var<workgroup> wg : array<u32, 4>;
@@ -540,49 +553,6 @@ fn another_usage() {
   var s : S;
   let x : i32 = s.i;
   s.i = 3i;
-}
-)";
-
-    auto got = Run(src);
-
-    EXPECT_EQ(expect, str(got));
-}
-
-// This sort of mixed usage isn't handled yet. Not sure if we need to just yet.
-// If we don't, then the transform should give sensible diagnostics instead of producing invalid
-// WGSL.
-// TODO(crbug.com/tint/1595)
-TEST_F(SpirvAtomicTest, DISABLED_StructComplexMixedUsage) {
-    auto* src = R"(
-struct S {
-  i : i32,
-}
-
-@group(0) @binding(1) var<storage, read_write> s : S;
-
-fn f() {
-  let x : i32 = s.i;
-  stub_atomicStore_i32(s.i, 1i);
-  s.i = 3i;
-}
-)";
-
-    auto* expect =
-        R"(
-struct S_atomic {
-  i : atomic<i32>,
-}
-
-struct S {
-  i : i32,
-}
-
-@group(0) @binding(1) var<storage, read_write> s : S_atomic;
-
-fn f() {
-  let x : i32 = atomicLoad(&s.i);
-  stub_atomicStore_i32(s.i, 1i);
-  atomicStore(&(s.i), 1i);
 }
 )";
 

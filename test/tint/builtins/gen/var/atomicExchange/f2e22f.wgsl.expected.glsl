@@ -5,12 +5,13 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW inner;
 } sb_rw;
+
 void atomicExchange_f2e22f() {
   int arg_1 = 1;
-  int res = atomicExchange(sb_rw.arg_0, arg_1);
+  int res = atomicExchange(sb_rw.inner.arg_0, arg_1);
 }
 
 void fragment_main() {
@@ -27,12 +28,13 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW inner;
 } sb_rw;
+
 void atomicExchange_f2e22f() {
   int arg_1 = 1;
-  int res = atomicExchange(sb_rw.arg_0, arg_1);
+  int res = atomicExchange(sb_rw.inner.arg_0, arg_1);
 }
 
 void compute_main() {

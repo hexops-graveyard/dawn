@@ -13,16 +13,16 @@
 // limitations under the License.
 
 #include "src/tint/reader/wgsl/parser_impl_test_helper.h"
-#include "src/tint/sem/depth_texture.h"
-#include "src/tint/sem/multisampled_texture.h"
-#include "src/tint/sem/sampled_texture.h"
+#include "src/tint/type/depth_texture.h"
+#include "src/tint/type/multisampled_texture.h"
+#include "src/tint/type/sampled_texture.h"
 
 namespace tint::reader::wgsl {
 namespace {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_Invalid) {
     auto p = parser("1234");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -31,7 +31,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_Invalid) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_Sampler) {
     auto p = parser("sampler");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -43,7 +43,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_Sampler) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SamplerComparison) {
     auto p = parser("sampler_comparison");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -55,7 +55,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SamplerComparison) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_DepthTexture) {
     auto p = parser("texture_depth_2d");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -68,7 +68,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_DepthTexture) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_F32) {
     auto p = parser("texture_1d<f32>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -82,7 +82,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_F32) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_I32) {
     auto p = parser("texture_2d<i32>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -96,7 +96,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_I32) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_U32) {
     auto p = parser("texture_3d<u32>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -110,7 +110,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_U32) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingType) {
     auto p = parser("texture_1d<>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
@@ -120,7 +120,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingType) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingLessThan) {
     auto p = parser("texture_1d");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
@@ -130,7 +130,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingLessThan) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingGreaterThan) {
     auto p = parser("texture_1d<u32");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
@@ -140,7 +140,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_SampledTexture_MissingGreaterThan) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_I32) {
     auto p = parser("texture_multisampled_2d<i32>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -154,7 +154,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_I32) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingType) {
     auto p = parser("texture_multisampled_2d<>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
@@ -164,7 +164,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingType) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingLessThan) {
     auto p = parser("texture_multisampled_2d");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
@@ -173,7 +173,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingLessThan) 
 
 TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingGreaterThan) {
     auto p = parser("texture_multisampled_2d<u32");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
@@ -182,7 +182,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_MultisampledTexture_MissingGreaterTha
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_Readonly1dRg32Float) {
     auto p = parser("texture_storage_1d<rg32float, read>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -198,7 +198,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_Readonly1dRg32Float) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_Writeonly2dR32Uint) {
     auto p = parser("texture_storage_2d<r32uint, write>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     ASSERT_FALSE(p->has_error()) << p->error();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
@@ -214,34 +214,49 @@ TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_Writeonly2dR32Uint) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_InvalidType) {
     auto p = parser("texture_storage_1d<abc, read>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
-    EXPECT_EQ(p->error(), "1:20: invalid format for storage texture type");
+    EXPECT_EQ(p->error(), R"(1:20: expected texel format for storage texture type
+Possible values: 'r32float', 'r32sint', 'r32uint', 'rg32float', 'rg32sint', 'rg32uint', 'rgba16float', 'rgba16sint', 'rgba16uint', 'rgba32float', 'rgba32sint', 'rgba32uint', 'rgba8sint', 'rgba8snorm', 'rgba8uint', 'rgba8unorm')");
+}
+
+TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_InvalidTypeSuggest) {
+    auto p = parser("texture_storage_1d<rg32_float, read>");
+    auto t = p->texture_and_sampler_types();
+    EXPECT_EQ(t.value, nullptr);
+    EXPECT_FALSE(t.matched);
+    EXPECT_TRUE(t.errored);
+    EXPECT_EQ(p->error(),
+              R"(1:20: expected texel format for storage texture type. Did you mean 'rg32float'?
+Possible values: 'r32float', 'r32sint', 'r32uint', 'rg32float', 'rg32sint', 'rg32uint', 'rgba16float', 'rgba16sint', 'rgba16uint', 'rgba32float', 'rgba32sint', 'rgba32uint', 'rgba8sint', 'rgba8snorm', 'rgba8uint', 'rgba8unorm')");
 }
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_InvalidAccess) {
     auto p = parser("texture_storage_1d<r32float, abc>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
-    EXPECT_EQ(p->error(), "1:30: invalid value for access control");
+    EXPECT_EQ(p->error(),
+              R"(1:30: expected access control for storage texture type. Did you mean 'read'?
+Possible values: 'read', 'read_write', 'write')");
 }
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_MissingType) {
     auto p = parser("texture_storage_1d<>");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
-    EXPECT_EQ(p->error(), "1:20: invalid format for storage texture type");
+    EXPECT_EQ(p->error(), R"(1:20: expected texel format for storage texture type
+Possible values: 'r32float', 'r32sint', 'r32uint', 'rg32float', 'rg32sint', 'rg32uint', 'rgba16float', 'rgba16sint', 'rgba16uint', 'rgba32float', 'rgba32sint', 'rgba32uint', 'rgba8sint', 'rgba8snorm', 'rgba8uint', 'rgba8unorm')");
 }
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_MissingLessThan) {
     auto p = parser("texture_storage_1d");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);
@@ -250,7 +265,7 @@ TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_MissingLessThan) {
 
 TEST_F(ParserImplTest, TextureSamplerTypes_StorageTexture_MissingGreaterThan) {
     auto p = parser("texture_storage_1d<r32uint, read");
-    auto t = p->texture_samplers();
+    auto t = p->texture_and_sampler_types();
     EXPECT_EQ(t.value, nullptr);
     EXPECT_FALSE(t.matched);
     EXPECT_TRUE(t.errored);

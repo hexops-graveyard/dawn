@@ -64,16 +64,16 @@ TEST(ChangeUnaryOperatorTest, Operator_Not_Applicable) {
     ASSERT_NE(neg_d_var, nullptr);
 
     // Get the expression from variable declaration.
-    const auto* neg_a_expr = neg_a_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* neg_a_expr = neg_a_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(neg_a_expr, nullptr);
 
-    const auto* not_b_expr = not_b_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* not_b_expr = not_b_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(not_b_expr, nullptr);
 
-    const auto* not_c_expr = not_c_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* not_c_expr = not_c_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(not_c_expr, nullptr);
 
-    const auto* neg_d_expr = neg_d_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* neg_d_expr = neg_d_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(neg_d_expr, nullptr);
 
     // The following mutations are not applicable.
@@ -147,7 +147,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable1) {
     ASSERT_NE(comp_a_var, nullptr);
 
     // Get the expression from variable declaration.
-    const auto* comp_a_expr = comp_a_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* comp_a_expr = comp_a_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(comp_a_expr, nullptr);
 
     // Assert mutation to be applicable and apply mutation.
@@ -188,7 +188,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable2) {
     ASSERT_NE(comp_b_var, nullptr);
 
     // Get the expression from variable declaration.
-    const auto* comp_b_expr = comp_b_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* comp_b_expr = comp_b_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(comp_b_expr, nullptr);
 
     // Assert mutation to be applicable and apply mutation.
@@ -203,7 +203,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable2) {
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
-  let b : vec3<i32> = vec3<i32>(1, 3, -1);
+  let b : vec3<i32> = vec3<i32>(1, 3, -(1));
   var comp_b : vec3<i32> = -(b);
 }
 )";
@@ -231,7 +231,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable3) {
     ASSERT_NE(neg_a_var, nullptr);
 
     // Get the expression from variable declaration.
-    const auto* neg_a_expr = neg_a_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* neg_a_expr = neg_a_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(neg_a_expr, nullptr);
 
     // Assert mutation to be applicable and apply mutation.
@@ -246,7 +246,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable3) {
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
-  var a = -5;
+  var a = -(5);
   var neg_a = ~(a);
 }
 )";
@@ -273,7 +273,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable4) {
     ASSERT_NE(neg_b_var, nullptr);
 
     // Get the expression from variable declaration.
-    const auto* neg_b_expr = neg_b_var->constructor->As<ast::UnaryOpExpression>();
+    const auto* neg_b_expr = neg_b_var->initializer->As<ast::UnaryOpExpression>();
     ASSERT_NE(neg_b_expr, nullptr);
 
     // Assert mutation to be applicable and apply mutation.
@@ -288,7 +288,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable4) {
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
-  var b : vec3<i32> = vec3<i32>(1, 3, -1);
+  var b : vec3<i32> = vec3<i32>(1, 3, -(1));
   let neg_b : vec3<i32> = ~(b);
 }
 )";

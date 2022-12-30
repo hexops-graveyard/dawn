@@ -1,3 +1,7 @@
+builtins/gen/var/textureSampleLevel/979816.wgsl:29:24 warning: use of deprecated builtin
+  var res: vec4<f32> = textureSampleLevel(arg_0, arg_1, arg_2);
+                       ^^^^^^^^^^^^^^^^^^
+
 #include <metal_stdlib>
 
 using namespace metal;
@@ -33,6 +37,10 @@ struct ExternalTextureParams {
   /* 0x0040 */ GammaTransferParams gammaDecodeParams;
   /* 0x0060 */ GammaTransferParams gammaEncodeParams;
   /* 0x0080 */ float3x3 gamutConversionMatrix;
+  /* 0x00b0 */ uint flipY;
+  /* 0x00b4 */ tint_array<int8_t, 4> tint_pad_1;
+  /* 0x00b8 */ float2x2 rotationMatrix;
+  /* 0x00c8 */ tint_array<int8_t, 8> tint_pad_2;
 };
 
 float3 gammaCorrection(float3 v, GammaTransferParams params) {
@@ -58,7 +66,7 @@ float4 textureSampleExternal(texture2d<float, access::sample> plane0, texture2d<
 }
 
 void textureSampleLevel_979816(texture2d<float, access::sample> tint_symbol_1, texture2d<float, access::sample> tint_symbol_2, sampler tint_symbol_3, const constant ExternalTextureParams* const tint_symbol_4) {
-  float2 arg_2 = float2(0.0f);
+  float2 arg_2 = float2(1.0f);
   float4 res = textureSampleExternal(tint_symbol_1, tint_symbol_2, tint_symbol_3, arg_2, *(tint_symbol_4));
 }
 

@@ -22,6 +22,7 @@ add_subdirectory(native)
 add_subdirectory(wire)
 # TODO(dawn:269): Remove once the implementation-based swapchains are removed.
 add_subdirectory(utils)
+add_subdirectory(glfw)
 
 if (DAWN_BUILD_SAMPLES)
     #TODO(dawn:269): Add this once implementation-based swapchains are removed.
@@ -111,6 +112,8 @@ add_library(dawncpp STATIC ${DAWN_PLACEHOLDER_FILE})
 common_compile_options(dawncpp)
 target_sources(dawncpp PRIVATE ${DAWNCPP_GEN_SOURCES})
 target_link_libraries(dawncpp PUBLIC dawncpp_headers)
+
+add_library(webgpu_cpp ALIAS dawncpp)
 
 ###############################################################################
 # libdawn_proc

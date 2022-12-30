@@ -92,14 +92,15 @@ TEST_P(GlslImportData_SingleVectorParamTest, FloatVector) {
     auto param = GetParam();
 
     auto* ident = Expr(param.name);
-    auto* expr = Call(ident, vec3<f32>(1_f, 2_f, 3_f));
+    auto* expr = Call(ident, vec3<f32>(0.1_f, 0.2_f, 0.3_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
     ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(vec3(1.0f, 2.0f, 3.0f))");
+    EXPECT_EQ(out.str(),
+              std::string(param.glsl_name) + "(vec3(0.100000001f, 0.200000003f, 0.300000012f))");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
                          GlslImportData_SingleVectorParamTest,
@@ -234,10 +235,6 @@ INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
                                          GlslImportData{"clamp", "clamp"},
                                          GlslImportData{"smoothstep", "smoothstep"}));
 
-TEST_F(GlslGeneratorImplTest_Import, DISABLED_GlslImportData_FMix) {
-    FAIL();
-}
-
 using GlslImportData_TripleParam_Int_Test = TestParamHelper<GlslImportData>;
 TEST_P(GlslImportData_TripleParam_Int_Test, IntScalar) {
     auto param = GetParam();
@@ -256,7 +253,7 @@ INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
                          testing::Values(GlslImportData{"clamp", "clamp"}));
 
 TEST_F(GlslGeneratorImplTest_Import, GlslImportData_Determinant) {
-    GlobalVar("var", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("var", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* expr = Call("determinant", "var");
     WrapInFunction(expr);

@@ -23,11 +23,11 @@
 #include "src/tint/sem/block_statement.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/function.h"
-#include "src/tint/sem/reference.h"
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/transform/simplify_pointers.h"
+#include "src/tint/type/reference.h"
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/map.h"
 
@@ -39,6 +39,19 @@ using namespace tint::number_suffixes;  // NOLINT
 namespace tint::transform {
 
 namespace {
+
+bool ShouldRun(const Program* program) {
+    for (auto* fn : program->AST().Functions()) {
+        if (auto* sem_fn = program->Sem().Get(fn)) {
+            for (auto* builtin : sem_fn->DirectlyCalledBuiltins()) {
+                if (builtin->Type() == sem::BuiltinType::kArrayLength) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
 
 /// ArrayUsage describes a runtime array usage.
 /// It is used as a key by the array_length_by_usage map.
@@ -73,46 +86,37 @@ const CalculateArrayLength::BufferSizeIntrinsic* CalculateArrayLength::BufferSiz
 CalculateArrayLength::CalculateArrayLength() = default;
 CalculateArrayLength::~CalculateArrayLength() = default;
 
-bool CalculateArrayLength::ShouldRun(const Program* program, const DataMap&) const {
-    for (auto* fn : program->AST().Functions()) {
-        if (auto* sem_fn = program->Sem().Get(fn)) {
-            for (auto* builtin : sem_fn->DirectlyCalledBuiltins()) {
-                if (builtin->Type() == sem::BuiltinType::kArrayLength) {
-                    return true;
-                }
-            }
-        }
+Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
+                                                   const DataMap&,
+                                                   DataMap&) const {
+    if (!ShouldRun(src)) {
+        return SkipTransform;
     }
-    return false;
-}
 
-void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) const {
-    auto& sem = ctx.src->Sem();
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    auto& sem = src->Sem();
 
     // get_buffer_size_intrinsic() emits the function decorated with
     // BufferSizeIntrinsic that is transformed by the HLSL writer into a call to
     // [RW]ByteAddressBuffer.GetDimensions().
-    std::unordered_map<const sem::Reference*, Symbol> buffer_size_intrinsics;
-    auto get_buffer_size_intrinsic = [&](const sem::Reference* buffer_type) {
+    std::unordered_map<const type::Reference*, Symbol> buffer_size_intrinsics;
+    auto get_buffer_size_intrinsic = [&](const type::Reference* buffer_type) {
         return utils::GetOrCreate(buffer_size_intrinsics, buffer_type, [&] {
-            auto name = ctx.dst->Sym();
+            auto name = b.Sym();
             auto* type = CreateASTTypeFor(ctx, buffer_type);
-            auto* disable_validation =
-                ctx.dst->Disable(ast::DisabledValidation::kFunctionParameter);
-            ctx.dst->AST().AddFunction(ctx.dst->create<ast::Function>(
+            auto* disable_validation = b.Disable(ast::DisabledValidation::kFunctionParameter);
+            b.AST().AddFunction(b.create<ast::Function>(
                 name,
                 utils::Vector{
-                    ctx.dst->Param("buffer",
-                                   ctx.dst->ty.pointer(type, buffer_type->StorageClass(),
-                                                       buffer_type->Access()),
-                                   utils::Vector{disable_validation}),
-                    ctx.dst->Param("result", ctx.dst->ty.pointer(ctx.dst->ty.u32(),
-                                                                 ast::StorageClass::kFunction)),
+                    b.Param("buffer",
+                            b.ty.pointer(type, buffer_type->AddressSpace(), buffer_type->Access()),
+                            utils::Vector{disable_validation}),
+                    b.Param("result", b.ty.pointer(b.ty.u32(), ast::AddressSpace::kFunction)),
                 },
-                ctx.dst->ty.void_(), nullptr,
+                b.ty.void_(), nullptr,
                 utils::Vector{
-                    ctx.dst->ASTNodes().Create<BufferSizeIntrinsic>(ctx.dst->ID(),
-                                                                    ctx.dst->AllocateNodeID()),
+                    b.ASTNodes().Create<BufferSizeIntrinsic>(b.ID(), b.AllocateNodeID()),
                 },
                 utils::Empty));
 
@@ -123,12 +127,22 @@ void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) cons
     std::unordered_map<ArrayUsage, Symbol, ArrayUsage::Hasher> array_length_by_usage;
 
     // Find all the arrayLength() calls...
-    for (auto* node : ctx.src->ASTNodes().Objects()) {
+    for (auto* node : src->ASTNodes().Objects()) {
         if (auto* call_expr = node->As<ast::CallExpression>()) {
             auto* call = sem.Get(call_expr)->UnwrapMaterialize()->As<sem::Call>();
             if (auto* builtin = call->Target()->As<sem::Builtin>()) {
                 if (builtin->Type() == sem::BuiltinType::kArrayLength) {
                     // We're dealing with an arrayLength() call
+
+                    if (auto* call_stmt = call->Stmt()->Declaration()->As<ast::CallStatement>()) {
+                        if (call_stmt->expr == call_expr) {
+                            // arrayLength() is used as a statement.
+                            // The argument expression must be side-effect free, so just drop the
+                            // statement.
+                            RemoveStatement(ctx, call_stmt);
+                            continue;
+                        }
+                    }
 
                     // A runtime-sized array can only appear as the store type of a variable, or the
                     // last element of a structure (which cannot itself be nested). Given that we
@@ -139,7 +153,7 @@ void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) cons
                     auto* arg = call_expr->args[0];
                     auto* address_of = arg->As<ast::UnaryOpExpression>();
                     if (!address_of || address_of->op != ast::UnaryOp::kAddressOf) {
-                        TINT_ICE(Transform, ctx.dst->Diagnostics())
+                        TINT_ICE(Transform, b.Diagnostics())
                             << "arrayLength() expected address-of, got " << arg->TypeInfo().name;
                     }
                     auto* storage_buffer_expr = address_of->expr;
@@ -148,13 +162,13 @@ void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) cons
                     }
                     auto* storage_buffer_sem = sem.Get<sem::VariableUser>(storage_buffer_expr);
                     if (!storage_buffer_sem) {
-                        TINT_ICE(Transform, ctx.dst->Diagnostics())
+                        TINT_ICE(Transform, b.Diagnostics())
                             << "expected form of arrayLength argument to be &array_var or "
                                "&struct_var.array_member";
                         break;
                     }
                     auto* storage_buffer_var = storage_buffer_sem->Variable();
-                    auto* storage_buffer_type = storage_buffer_sem->Type()->As<sem::Reference>();
+                    auto* storage_buffer_type = storage_buffer_sem->Type()->As<type::Reference>();
 
                     // Generate BufferSizeIntrinsic for this storage type if we haven't already
                     auto buffer_size = get_buffer_size_intrinsic(storage_buffer_type);
@@ -169,50 +183,46 @@ void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) cons
 
                             // Construct the variable that'll hold the result of
                             // RWByteAddressBuffer.GetDimensions()
-                            auto* buffer_size_result = ctx.dst->Decl(
-                                ctx.dst->Var(ctx.dst->Sym(), ctx.dst->ty.u32(),
-                                             ast::StorageClass::kNone, ctx.dst->Expr(0_u)));
+                            auto* buffer_size_result =
+                                b.Decl(b.Var(b.Sym(), b.ty.u32(), b.Expr(0_u)));
 
                             // Call storage_buffer.GetDimensions(&buffer_size_result)
-                            auto* call_get_dims = ctx.dst->CallStmt(ctx.dst->Call(
+                            auto* call_get_dims = b.CallStmt(b.Call(
                                 // BufferSizeIntrinsic(X, ARGS...) is
                                 // translated to:
                                 //  X.GetDimensions(ARGS..) by the writer
-                                buffer_size, ctx.dst->AddressOf(ctx.Clone(storage_buffer_expr)),
-                                ctx.dst->AddressOf(
-                                    ctx.dst->Expr(buffer_size_result->variable->symbol))));
+                                buffer_size, b.AddressOf(ctx.Clone(storage_buffer_expr)),
+                                b.AddressOf(b.Expr(buffer_size_result->variable->symbol))));
 
                             // Calculate actual array length
                             //                total_storage_buffer_size - array_offset
                             // array_length = ----------------------------------------
                             //                             array_stride
-                            auto name = ctx.dst->Sym();
+                            auto name = b.Sym();
                             const ast::Expression* total_size =
-                                ctx.dst->Expr(buffer_size_result->variable);
+                                b.Expr(buffer_size_result->variable);
 
-                            const sem::Array* array_type = Switch(
+                            const type::Array* array_type = Switch(
                                 storage_buffer_type->StoreType(),
                                 [&](const sem::Struct* str) {
                                     // The variable is a struct, so subtract the byte offset of
                                     // the array member.
-                                    auto* array_member_sem = str->Members().back();
-                                    total_size =
-                                        ctx.dst->Sub(total_size, u32(array_member_sem->Offset()));
-                                    return array_member_sem->Type()->As<sem::Array>();
+                                    auto* array_member_sem = str->Members().Back();
+                                    total_size = b.Sub(total_size, u32(array_member_sem->Offset()));
+                                    return array_member_sem->Type()->As<type::Array>();
                                 },
-                                [&](const sem::Array* arr) { return arr; });
+                                [&](const type::Array* arr) { return arr; });
 
                             if (!array_type) {
-                                TINT_ICE(Transform, ctx.dst->Diagnostics())
+                                TINT_ICE(Transform, b.Diagnostics())
                                     << "expected form of arrayLength argument to be "
                                        "&array_var or &struct_var.array_member";
                                 return name;
                             }
 
                             uint32_t array_stride = array_type->Size();
-                            auto* array_length_var = ctx.dst->Decl(
-                                ctx.dst->Let(name, ctx.dst->ty.u32(),
-                                             ctx.dst->Div(total_size, u32(array_stride))));
+                            auto* array_length_var = b.Decl(
+                                b.Let(name, b.ty.u32(), b.Div(total_size, u32(array_stride))));
 
                             // Insert the array length calculations at the top of the block
                             ctx.InsertBefore(block->statements, block->statements[0],
@@ -225,13 +235,14 @@ void CalculateArrayLength::Run(CloneContext& ctx, const DataMap&, DataMap&) cons
                         });
 
                     // Replace the call to arrayLength() with the array length variable
-                    ctx.Replace(call_expr, ctx.dst->Expr(array_length));
+                    ctx.Replace(call_expr, b.Expr(array_length));
                 }
             }
         }
     }
 
     ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

@@ -134,11 +134,14 @@ static constexpr std::array<DeviceExtInfo, kDeviceExtCount> sDeviceExtInfos{{
     //
     {DeviceExt::BindMemory2, "VK_KHR_bind_memory2", VulkanVersion_1_1},
     {DeviceExt::Maintenance1, "VK_KHR_maintenance1", VulkanVersion_1_1},
+    {DeviceExt::Maintenance2, "VK_KHR_maintenance2", VulkanVersion_1_1},
+    {DeviceExt::Maintenance3, "VK_KHR_maintenance3", VulkanVersion_1_1},
     {DeviceExt::StorageBufferStorageClass, "VK_KHR_storage_buffer_storage_class",
      VulkanVersion_1_1},
     {DeviceExt::GetPhysicalDeviceProperties2, "VK_KHR_get_physical_device_properties2",
      VulkanVersion_1_1},
     {DeviceExt::GetMemoryRequirements2, "VK_KHR_get_memory_requirements2", VulkanVersion_1_1},
+    {DeviceExt::DedicatedAllocation, "VK_KHR_dedicated_allocation", VulkanVersion_1_1},
     {DeviceExt::ExternalMemoryCapabilities, "VK_KHR_external_memory_capabilities",
      VulkanVersion_1_1},
     {DeviceExt::ExternalSemaphoreCapabilities, "VK_KHR_external_semaphore_capabilities",
@@ -156,16 +159,19 @@ static constexpr std::array<DeviceExtInfo, kDeviceExtCount> sDeviceExtInfos{{
     {DeviceExt::ZeroInitializeWorkgroupMemory, "VK_KHR_zero_initialize_workgroup_memory",
      VulkanVersion_1_3},
 
+    {DeviceExt::DepthClipEnable, "VK_EXT_depth_clip_enable", NeverPromoted},
+    {DeviceExt::ImageDrmFormatModifier, "VK_EXT_image_drm_format_modifier", NeverPromoted},
+    {DeviceExt::Swapchain, "VK_KHR_swapchain", NeverPromoted},
+    {DeviceExt::SubgroupSizeControl, "VK_EXT_subgroup_size_control", NeverPromoted},
+    {DeviceExt::QueueFamilyForeign, "VK_EXT_queue_family_foreign", NeverPromoted},
+
+    {DeviceExt::ExternalMemoryAndroidHardwareBuffer,
+     "VK_ANDROID_external_memory_android_hardware_buffer", NeverPromoted},
     {DeviceExt::ExternalMemoryFD, "VK_KHR_external_memory_fd", NeverPromoted},
     {DeviceExt::ExternalMemoryDmaBuf, "VK_EXT_external_memory_dma_buf", NeverPromoted},
     {DeviceExt::ExternalMemoryZirconHandle, "VK_FUCHSIA_external_memory", NeverPromoted},
     {DeviceExt::ExternalSemaphoreFD, "VK_KHR_external_semaphore_fd", NeverPromoted},
     {DeviceExt::ExternalSemaphoreZirconHandle, "VK_FUCHSIA_external_semaphore", NeverPromoted},
-
-    {DeviceExt::DepthClipEnable, "VK_EXT_depth_clip_enable", NeverPromoted},
-    {DeviceExt::ImageDrmFormatModifier, "VK_EXT_image_drm_format_modifier", NeverPromoted},
-    {DeviceExt::Swapchain, "VK_KHR_swapchain", NeverPromoted},
-    {DeviceExt::SubgroupSizeControl, "VK_EXT_subgroup_size_control", NeverPromoted},
     //
 }};
 
@@ -206,9 +212,14 @@ DeviceExtSet EnsureDependencies(const DeviceExtSet& advertisedExts,
             case DeviceExt::BindMemory2:
             case DeviceExt::GetMemoryRequirements2:
             case DeviceExt::Maintenance1:
+            case DeviceExt::Maintenance2:
             case DeviceExt::ImageFormatList:
             case DeviceExt::StorageBufferStorageClass:
                 hasDependencies = true;
+                break;
+
+            case DeviceExt::DedicatedAllocation:
+                hasDependencies = HasDep(DeviceExt::GetMemoryRequirements2);
                 break;
 
             // Physical device extensions technically don't require the instance to support
@@ -216,6 +227,7 @@ DeviceExtSet EnsureDependencies(const DeviceExtSet& advertisedExts,
             // advertises the extension. So if we didn't have this check, we'd risk a calling
             // a nullptr.
             case DeviceExt::GetPhysicalDeviceProperties2:
+            case DeviceExt::Maintenance3:
                 hasDependencies = instanceExts[InstanceExt::GetPhysicalDeviceProperties2];
                 break;
             case DeviceExt::ExternalMemoryCapabilities:
@@ -258,8 +270,16 @@ DeviceExtSet EnsureDependencies(const DeviceExtSet& advertisedExts,
                 hasDependencies = HasDep(DeviceExt::ExternalSemaphoreCapabilities);
                 break;
 
+            case DeviceExt::ExternalMemoryAndroidHardwareBuffer:
+                hasDependencies = HasDep(DeviceExt::ExternalMemory) &&
+                                  HasDep(DeviceExt::SamplerYCbCrConversion) &&
+                                  HasDep(DeviceExt::DedicatedAllocation) &&
+                                  HasDep(DeviceExt::QueueFamilyForeign);
+                break;
+
             case DeviceExt::ExternalMemoryFD:
             case DeviceExt::ExternalMemoryZirconHandle:
+            case DeviceExt::QueueFamilyForeign:
                 hasDependencies = HasDep(DeviceExt::ExternalMemory);
                 break;
 

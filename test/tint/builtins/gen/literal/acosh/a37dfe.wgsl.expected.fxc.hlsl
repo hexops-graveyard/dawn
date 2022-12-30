@@ -1,11 +1,7 @@
 SKIP: FAILED
 
-float16_t tint_acosh(float16_t x) {
-  return log((x + sqrt(((x * x) - float16_t(1.0h)))));
-}
-
 void acosh_a37dfe() {
-  float16_t res = tint_acosh(float16_t(0.0h));
+  float16_t res = float16_t(1.31640625h);
 }
 
 struct tint_symbol {
@@ -34,6 +30,3 @@ void compute_main() {
   acosh_a37dfe();
   return;
 }
-FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x00000285D7A33130(1,1-9): error X3000: unrecognized identifier 'float16_t'
-

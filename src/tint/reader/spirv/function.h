@@ -15,6 +15,7 @@
 #ifndef SRC_TINT_READER_SPIRV_FUNCTION_H_
 #define SRC_TINT_READER_SPIRV_FUNCTION_H_
 
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -33,15 +34,13 @@ namespace tint::reader::spirv {
 //
 // The edge kinds are used in many ways.
 //
-// For example, consider the edges leaving a basic block and going to distinct
-// targets. If the total number of kForward + kIfBreak + kCaseFallThrough edges
-// is more than 1, then the block must be a structured header, i.e. it needs
-// a merge instruction to declare the control flow divergence and associated
-// reconvergence point.  Those those edge kinds count toward divergence
-// because SPIR-v is designed to easily map back to structured control flow
-// in GLSL (and C).  In GLSL and C, those forward-flow edges don't have a
-// special statement to express them.  The other forward edges: kSwitchBreak,
-// kLoopBreak, and kLoopContinue directly map to 'break', 'break', and
+// For example, consider the edges leaving a basic block and going to distinct targets. If the
+// total number of kForward + kIfBreak + kCaseFallThrough edges is more than 1, then the block must
+// be a structured header, i.e. it needs a merge instruction to declare the control flow divergence
+// and associated reconvergence point.  Those those edge kinds count toward divergence because
+// SPIR-V is designed to easily map back to structured control flow in GLSL (and C).  In GLSL and C,
+// those forward-flow edges don't have a special statement to express them.  The other forward
+// edges: kSwitchBreak, kLoopBreak, and kLoopContinue directly map to 'break', 'break', and
 // 'continue', respectively.
 enum class EdgeKind {
     // A back-edge: An edge from a node to one of its ancestors in a depth-first
@@ -63,7 +62,8 @@ enum class EdgeKind {
     // This can only occur for an "if" selection, i.e. where the selection
     // header ends in OpBranchConditional.
     kIfBreak,
-    // An edge from one switch case to the next sibling switch case.
+    // An edge from one switch case to the next sibling switch case. Note, this is not valid in WGSL
+    // at the moment and will trigger an ICE if encountered. It is here for completeness.
     kCaseFallThrough,
     // None of the above.
     kForward
@@ -158,7 +158,7 @@ struct BlockInfo {
 
     /// The result IDs that this block is responsible for declaring as a
     /// hoisted variable.
-    /// @see DefInfo#requires_hoisted_def
+    /// @see DefInfo#requires_hoisted_var_def
     utils::Vector<uint32_t, 4> hoisted_ids;
 
     /// A PhiAssignment represents the assignment of a value to the state
@@ -166,8 +166,8 @@ struct BlockInfo {
     struct PhiAssignment {
         /// The ID of an OpPhi receiving a value from this basic block.
         uint32_t phi_id;
-        /// The the value carried to the given OpPhi.
-        uint32_t value;
+        /// The ID of the value carried to the given OpPhi.
+        uint32_t value_id;
     };
     /// If this basic block branches to a visited basic block containing phis,
     /// then this is the list of writes to the variables associated those phis.
@@ -240,56 +240,81 @@ enum class SkipReason {
 ///    function.
 /// - certain module-scope builtin variables.
 struct DefInfo {
-    /// Constructor.
+    /// Constructor for a locally defined value.
+    /// @param index an ordering index for uniqueness.
     /// @param def_inst the SPIR-V instruction defining the ID
-    /// @param locally_defined true if the defining instruction is in the function
-    /// @param block_pos the position of the basic block where the ID is defined
-    /// @param index an ordering index for this local definition
-    DefInfo(const spvtools::opt::Instruction& def_inst,
-            bool locally_defined,
-            uint32_t block_pos,
-            size_t index);
+    /// @param block_pos the position of the first basic block dominated by the
+    ///   definition
+    DefInfo(size_t index, const spvtools::opt::Instruction& def_inst, uint32_t block_pos);
+    /// Constructor for a value defined at module scope.
+    /// @param index an ordering index for uniqueness.
+    /// @param def_inst the SPIR-V instruction defining the ID
+    DefInfo(size_t index, const spvtools::opt::Instruction& def_inst);
+
     /// Destructor.
     ~DefInfo();
-
-    /// The SPIR-V instruction that defines the ID.
-    const spvtools::opt::Instruction& inst;
-
-    /// True if the definition of this ID is inside the function.
-    const bool locally_defined = true;
-
-    /// The position of the first block in which this ID is visible, in function
-    /// block order.  For IDs defined outside of the function, it is 0.
-    /// For IDs defined in the function, it is the position of the block
-    /// containing the definition of the ID.
-    /// See method `FunctionEmitter::ComputeBlockOrderAndPositions`
-    const uint32_t block_pos = 0;
 
     /// An index for uniquely and deterministically ordering all DefInfo records
     /// in a function.
     const size_t index = 0;
 
-    /// The number of uses of this ID.
-    uint32_t num_uses = 0;
+    /// The SPIR-V instruction that defines the ID.
+    const spvtools::opt::Instruction& inst;
 
-    /// The block position of the last use of this ID, or 0 if it is not used
-    /// at all.  The "last" ordering is determined by the function block order.
-    uint32_t last_use_pos = 0;
+    /// Information about a definition created inside a function.
+    struct Local {
+        /// Constructor.
+        /// @param block_pos the position of the basic block defining the value.
+        explicit Local(uint32_t block_pos);
+        /// Copy constructor.
+        /// @param other the original object to copy from.
+        Local(const Local& other);
+        /// Destructor.
+        ~Local();
 
-    /// Is this value used in a construct other than the one in which it was
-    /// defined?
-    bool used_in_another_construct = false;
+        /// The position of the basic block defininig the value, in function
+        /// block order.
+        /// See method `FunctionEmitter::ComputeBlockOrderAndPositions` for block
+        /// ordering.
+        const uint32_t block_pos = 0;
 
-    /// True if this ID requires a WGSL 'const' definition, due to context. It
+        /// The number of uses of this ID.
+        uint32_t num_uses = 0;
+
+        /// The block position of the first use of this ID, or MAX_UINT if it is not
+        /// used at all.  The "first" ordering is determined by the function block
+        /// order.  The first use of an ID might be in an OpPhi that precedes the
+        /// definition of the ID.
+        /// The ID defined by an OpPhi is counted as being "used" in each of its
+        /// parent blocks.
+        uint32_t first_use_pos = std::numeric_limits<uint32_t>::max();
+        /// The block position of the last use of this ID, or 0 if it is not used
+        /// at all.  The "last" ordering is determined by the function block order.
+        /// The ID defined by an OpPhi is counted as being "used" in each of its
+        /// parent blocks.
+        uint32_t last_use_pos = 0;
+
+        /// Is this value used in a construct other than the one in which it was
+        /// defined?
+        bool used_in_another_construct = false;
+        /// Is this ID an OpPhi?
+        bool is_phi = false;
+    };
+
+    /// Information about a definition inside the function. Populated if and only
+    /// if the definition actually is inside the function.
+    std::optional<Local> local;
+
+    /// True if this ID requires a WGSL 'let' definition, due to context. It
     /// might get one anyway (so this is *not* an if-and-only-if condition).
-    bool requires_named_const_def = false;
+    bool requires_named_let_def = false;
 
     /// True if this ID must map to a WGSL variable declaration before the
     /// corresponding position of the ID definition in SPIR-V.  This compensates
     /// for the difference between dominance and scoping. An SSA definition can
     /// dominate all its uses, but the construct where it is defined does not
-    /// enclose all the uses, and so if it were declared as a WGSL constant
-    /// definition at the point of its SPIR-V definition, then the WGSL name
+    /// enclose all the uses, and so if it were declared as a WGSL let-
+    /// declaration at the point of its SPIR-V definition, then the WGSL name
     /// would go out of scope too early. Fix that by creating a variable at the
     /// top of the smallest construct that encloses both the definition and all
     /// its uses. Then the original SPIR-V definition maps to a WGSL assignment
@@ -297,24 +322,28 @@ struct DefInfo {
     /// variable.
     /// TODO(dneto): This works for constants of storable type, but not, for
     /// example, pointers. crbug.com/tint/98
-    bool requires_hoisted_def = false;
+    bool requires_hoisted_var_def = false;
 
-    /// If the definition is an OpPhi, then `phi_var` is the name of the
-    /// variable that stores the value carried from parent basic blocks into
-    /// the basic block containing the OpPhi. Otherwise this is the empty string.
-    std::string phi_var;
+    /// Information about a pointer value, used to construct its WGSL type.
+    struct Pointer {
+        /// The address space to use for this value, if it is of pointer type.
+        /// This is required to carry an address space override from a storage
+        /// buffer expressed in the old style (with Uniform address space)
+        /// that needs to be remapped to StorageBuffer address space.
+        /// This is kInvalid for non-pointers.
+        ast::AddressSpace address_space = ast::AddressSpace::kUndefined;
 
-    /// The storage class to use for this value, if it is of pointer type.
-    /// This is required to carry a storage class override from a storage
-    /// buffer expressed in the old style (with Uniform storage class)
-    /// that needs to be remapped to StorageBuffer storage class.
-    /// This is kInvalid for non-pointers.
-    ast::StorageClass storage_class = ast::StorageClass::kInvalid;
+        /// The declared access mode.
+        ast::Access access = ast::Access::kUndefined;
+    };
 
     /// The expression to use when sinking pointers into their use.
     /// When encountering a use of this instruction, we will emit this expression
     /// instead.
     TypedExpression sink_pointer_source_expr = {};
+
+    /// Collected information about a pointer value.
+    Pointer pointer;
 
     /// The reason, if any, that this value should be ignored.
     /// Normally no values are ignored.  This field can be updated while
@@ -329,16 +358,18 @@ struct DefInfo {
 /// @returns the ostream so calls can be chained
 inline std::ostream& operator<<(std::ostream& o, const DefInfo& di) {
     o << "DefInfo{"
-      << " inst.result_id: " << di.inst.result_id()
-      << " locally_defined: " << (di.locally_defined ? "true" : "false")
-      << " block_pos: " << di.block_pos << " num_uses: " << di.num_uses
-      << " last_use_pos: " << di.last_use_pos
-      << " used_in_another_construct: " << (di.used_in_another_construct ? "true" : "false")
-      << " requires_named_const_def: " << (di.requires_named_const_def ? "true" : "false")
-      << " requires_hoisted_def: " << (di.requires_hoisted_def ? "true" : "false") << " phi_var: '"
-      << di.phi_var << "'";
-    if (di.storage_class != ast::StorageClass::kNone) {
-        o << " sc:" << int(di.storage_class);
+      << " inst.result_id: " << di.inst.result_id();
+    if (di.local.has_value()) {
+        const auto& dil = di.local.value();
+        o << " block_pos: " << dil.block_pos << " num_uses: " << dil.num_uses
+          << " first_use_pos: " << dil.first_use_pos << " last_use_pos: " << dil.last_use_pos
+          << " used_in_another_construct: " << (dil.used_in_another_construct ? "true" : "false")
+          << " is_phi: " << (dil.is_phi ? "true" : "false") << "";
+    }
+    o << " requires_named_let_def: " << (di.requires_named_let_def ? "true" : "false")
+      << " requires_hoisted_var_def: " << (di.requires_hoisted_var_def ? "true" : "false");
+    if (di.pointer.address_space != ast::AddressSpace::kNone) {
+        o << " sc:" << int(di.pointer.address_space);
     }
     switch (di.skip) {
         case SkipReason::kDontSkip:
@@ -447,7 +478,7 @@ class FunctionEmitter {
     /// by the `index_prefix`, which successively indexes into the variable.
     /// Also generates the assignment statements that copy the input parameter
     /// to the corresponding part of the variable.  Assumes the variable
-    /// has already been created in the Private storage class.
+    /// has already been created in the Private address space.
     /// @param var_name The name of the variable
     /// @param var_type The store type of the variable
     /// @param decos The variable's decorations
@@ -473,8 +504,7 @@ class FunctionEmitter {
     /// expressions that compute the value they contribute to the entry point
     /// return value.  The part of the output variable is specfied
     /// by the `index_prefix`, which successively indexes into the variable.
-    /// Assumes the variable has already been created in the Private storage
-    /// class.
+    /// Assumes the variable has already been created in the Private address space
     /// @param var_name The name of the variable
     /// @param var_type The store type of the variable
     /// @param decos The variable's decorations
@@ -589,34 +619,38 @@ class FunctionEmitter {
     /// @returns false on failure
     bool RegisterLocallyDefinedValues();
 
-    /// Returns the Tint storage class for the given SPIR-V ID that is a
-    /// pointer value.
+    /// Returns the pointer information needed for the given SPIR-V ID.
+    /// Assumes the given ID yields a value of pointer type.  For IDs
+    /// corresponding to WGSL root identifiers (i.e. OpVariable or
+    /// OpFunctionParameter), the info is computed from scratch.
+    /// Otherwise, this looks up pointer info from a base pointer whose
+    /// data is cached in def_info_.
     /// @param id a SPIR-V ID for a pointer value
-    /// @returns the storage class
-    ast::StorageClass GetStorageClassForPointerValue(uint32_t id);
+    /// @returns the associated Pointer info
+    DefInfo::Pointer GetPointerInfo(uint32_t id);
 
-    /// Remaps the storage class for the type of a locally-defined value,
-    /// if necessary. If it's not a pointer type, or if its storage class
-    /// already matches, then the result is a copy of the `type` argument.
+    /// Remaps the address space and access mode for the type of a
+    /// locally-defined value, if necessary. If it's not a pointer or reference
+    /// type, then the result is a copy of the `type` argument.
     /// @param type the AST type
     /// @param result_id the SPIR-V ID for the locally defined value
     /// @returns an possibly updated type
-    const Type* RemapStorageClass(const Type* type, uint32_t result_id);
+    const Type* RemapPointerProperties(const Type* type, uint32_t result_id);
 
-    /// Marks locally defined values when they should get a 'const'
+    /// Marks locally defined values when they should get a 'let'
     /// definition in WGSL, or a 'var' definition at an outer scope.
     /// This occurs in several cases:
     ///  - When a SPIR-V instruction might use the dynamically computed value
     ///    only once, but the WGSL code might reference it multiple times.
     ///    For example, this occurs for the vector operands of OpVectorShuffle.
-    ///    In this case the definition's DefInfo#requires_named_const_def property
+    ///    In this case the definition's DefInfo#requires_named_let_def property
     ///    is set to true.
     ///  - When a definition and at least one of its uses are not in the
     ///    same structured construct.
-    ///    In this case the definition's DefInfo#requires_named_const_def property
+    ///    In this case the definition's DefInfo#requires_named_let_def property
     ///    is set to true.
     ///  - When a definition is in a construct that does not enclose all the
-    ///    uses.  In this case the definition's DefInfo#requires_hoisted_def
+    ///    uses.  In this case the definition's DefInfo#requires_hoisted_var_def
     ///    property is set to true.
     /// Updates the `def_info_` mapping.
     void FindValuesNeedingNamedOrHoistedDefinition();
@@ -673,8 +707,7 @@ class FunctionEmitter {
 
     /// Emits code for terminators, but that aren't part of entering or
     /// resolving structured control flow. That is, if the basic block
-    /// terminator calls for it, emit the fallthrough, break, continue, return,
-    /// or kill commands.
+    /// terminator calls for it, emit the fallthrough break, continue, return, or kill commands.
     /// @param block_info the block with the terminator to emit (if any)
     /// @returns false if emission failed
     bool EmitNormalTerminator(const BlockInfo& block_info);
@@ -687,39 +720,24 @@ class FunctionEmitter {
     /// @param src_info the source block
     /// @param dest_info the destination block
     /// @returns the new statement, or a null statement
-    const ast::Statement* MakeBranch(const BlockInfo& src_info, const BlockInfo& dest_info) const {
-        return MakeBranchDetailed(src_info, dest_info, false, nullptr);
+    const ast::Statement* MakeBranch(const BlockInfo& src_info, const BlockInfo& dest_info) {
+        return MakeBranchDetailed(src_info, dest_info, nullptr);
     }
 
     /// Returns a new statement to represent the given branch representing a
     /// "normal" terminator, as in the sense of EmitNormalTerminator.  If no
-    /// WGSL statement is required, the statement will be nullptr.
-    /// @param src_info the source block
-    /// @param dest_info the destination block
-    /// @returns the new statement, or a null statement
-    const ast::Statement* MakeForcedBranch(const BlockInfo& src_info,
-                                           const BlockInfo& dest_info) const {
-        return MakeBranchDetailed(src_info, dest_info, true, nullptr);
-    }
-
-    /// Returns a new statement to represent the given branch representing a
-    /// "normal" terminator, as in the sense of EmitNormalTerminator.  If no
-    /// WGSL statement is required, the statement will be nullptr. When `forced`
-    /// is false, this method tries to avoid emitting a 'break' statement when
-    /// that would be redundant in WGSL due to implicit breaking out of a switch.
-    /// When `forced` is true, the method won't try to avoid emitting that break.
-    /// If the control flow edge is an if-break for an if-selection with a
+    /// WGSL statement is required, the statement will be nullptr. This method tries to avoid
+    /// emitting a 'break' statement when that would be redundant in WGSL due to implicit breaking
+    /// out of a switch. If the control flow edge is an if-break for an if-selection with a
     /// control flow guard, then return that guard name via `flow_guard_name_ptr`
     /// when that parameter is not null.
     /// @param src_info the source block
     /// @param dest_info the destination block
-    /// @param forced if true, always emit the branch (if it exists in WGSL)
     /// @param flow_guard_name_ptr return parameter for control flow guard name
     /// @returns the new statement, or a null statement
     const ast::Statement* MakeBranchDetailed(const BlockInfo& src_info,
                                              const BlockInfo& dest_info,
-                                             bool forced,
-                                             std::string* flow_guard_name_ptr) const;
+                                             std::string* flow_guard_name_ptr);
 
     /// Returns a new if statement with the given statements as the then-clause
     /// and the else-clause.  Either or both clauses might be nullptr. If both
@@ -803,6 +821,11 @@ class FunctionEmitter {
     /// @param inst a SPIR-V OpExtInst instruction from GLSL.std.450
     /// @returns an AST expression for the instruction, or nullptr.
     TypedExpression EmitGlslStd450ExtInst(const spvtools::opt::Instruction& inst);
+
+    /// Creates an expression for the GLSL.std.450 matrix `inverse` extended instruction.
+    /// @param inst a SPIR-V OpExtInst instruction from GLSL.std.450
+    /// @returns an AST expression for the instruction, or nullptr.
+    TypedExpression EmitGlslStd450MatrixInverse(const spvtools::opt::Instruction& inst);
 
     /// Creates an expression for OpCompositeExtract
     /// @param inst an OpCompositeExtract instruction.
@@ -916,17 +939,15 @@ class FunctionEmitter {
     ExpressionList MakeCoordinateOperandsForImageAccess(
         const spvtools::opt::Instruction& image_access);
 
-    /// Returns the given value as an I32.  If it's already an I32 then this
-    /// return the given value.  Otherwise, wrap the value in a TypeConstructor
-    /// expression.
+    /// Returns the given value as an i32. If it's already an i32 then simply returns @p value.
+    /// Otherwise, wrap the value in a TypeInitializer expression.
     /// @param value the value to pass through or convert
-    /// @returns the value as an I32 value.
+    /// @returns the value as an i32 value.
     TypedExpression ToI32(TypedExpression value);
 
-    /// Returns the given value as a signed integer type of the same shape
-    /// if the value is unsigned scalar or vector, by wrapping the value
-    /// with a TypeConstructor expression.  Returns the value itself if the
-    /// value otherwise.
+    /// Returns the given value as a signed integer type of the same shape if the value is unsigned
+    /// scalar or vector, by wrapping the value with a TypeInitializer expression.  Returns the
+    /// value itself if the value was already signed.
     /// @param value the value to pass through or convert
     /// @returns the value itself, or converted to signed integral
     TypedExpression ToSignedIfUnsigned(TypedExpression value);
@@ -964,6 +985,16 @@ class FunctionEmitter {
     /// @returns true if emission has not yet failed.
     bool ParseFunctionDeclaration(FunctionDeclaration* decl);
 
+    /// @param obj a SPIR-V instruction with a result ID and a type ID
+    /// @returns true if the object is an image, a sampler, or a pointer to
+    /// an image or a sampler
+    bool IsHandleObj(const spvtools::opt::Instruction& obj);
+
+    /// @param obj a SPIR-V instruction with a result ID and a type ID
+    /// @returns true if the object is an image, a sampler, or a pointer to
+    /// an image or a sampler
+    bool IsHandleObj(const spvtools::opt::Instruction* obj);
+
     /// @returns the store type for the OpVariable instruction, or
     /// null on failure.
     const Type* GetVariableStoreType(const spvtools::opt::Instruction& var_decl_inst);
@@ -975,13 +1006,6 @@ class FunctionEmitter {
     /// input operand
     /// @returns a new expression node
     TypedExpression MakeOperand(const spvtools::opt::Instruction& inst, uint32_t operand_index);
-
-    /// Copies a typed expression to the result, but when the type is a pointer
-    /// or reference type, ensures the storage class is not defaulted.  That is,
-    /// it changes a storage class of "none" to "function".
-    /// @param expr a typed expression
-    /// @results a copy of the expression, with possibly updated type
-    TypedExpression InferFunctionStorageClass(TypedExpression expr);
 
     /// Returns an expression for a SPIR-V OpFMod instruction.
     /// @param inst the SPIR-V instruction
@@ -1244,7 +1268,7 @@ class FunctionEmitter {
     TypedExpression Dereference(TypedExpression expr);
 
     /// Creates a new `ast::Node` owned by the ProgramBuilder.
-    /// @param args the arguments to pass to the type constructor
+    /// @param args the arguments to pass to the type initializer
     /// @returns the node pointer
     template <typename T, typename... ARGS>
     T* create(ARGS&&... args) const {

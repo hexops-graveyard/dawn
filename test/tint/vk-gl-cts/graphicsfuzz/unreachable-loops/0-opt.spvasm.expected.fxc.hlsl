@@ -11,7 +11,7 @@ void main_1() {
   const float x_30 = asfloat(x_5[0].x);
   const float x_32 = asfloat(x_5[0].y);
   if ((x_30 > x_32)) {
-    [loop] while (true) {
+    while (true) {
       {
         if (false) {
         } else {
@@ -20,7 +20,7 @@ void main_1() {
       }
     }
     m = 1;
-    [loop] while (true) {
+    while (true) {
       if (true) {
       } else {
         break;
@@ -50,3 +50,8 @@ tint_symbol main() {
   wrapper_result.x_GLF_color_1 = inner_result.x_GLF_color_1;
   return wrapper_result;
 }
+FXC validation failure:
+C:\src\dawn\test\tint\Shader@0x000001487CF231C0(12,12-23): warning X3557: loop only executes for 0 iteration(s), consider removing [loop]
+C:\src\dawn\test\tint\Shader@0x000001487CF231C0(12,12-23): warning X3557: loop doesn't seem to do anything, consider removing [loop]
+C:\src\dawn\test\tint\Shader@0x000001487CF231C0(21,19-22): error X3696: infinite loop detected - loop never exits
+

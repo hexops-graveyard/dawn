@@ -34,61 +34,78 @@ using FeatureEnumAndInfoList =
 static constexpr FeatureEnumAndInfoList kFeatureNameAndInfoList = {{
     {Feature::TextureCompressionBC,
      {"texture-compression-bc", "Support Block Compressed (BC) texture formats",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=42"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=42", FeatureInfo::FeatureState::Stable}},
     {Feature::TextureCompressionETC2,
      {"texture-compression-etc2",
       "Support Ericsson Texture Compressed (ETC2/EAC) texture "
       "formats",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=955"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=955", FeatureInfo::FeatureState::Stable}},
     {Feature::TextureCompressionASTC,
      {"texture-compression-astc",
       "Support Adaptable Scalable Texture Compressed (ASTC) "
       "texture formats",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=955"}},
-    {Feature::ShaderFloat16,
-     {"shader-float16",
-      "Support 16bit float arithmetic and declarations in uniform and storage buffers",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=426"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=955", FeatureInfo::FeatureState::Stable}},
     {Feature::PipelineStatisticsQuery,
      {"pipeline-statistics-query", "Support Pipeline Statistics Query",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=434"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=434", FeatureInfo::FeatureState::Stable}},
     {Feature::TimestampQuery,
      {"timestamp-query", "Support Timestamp Query",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=434"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=434", FeatureInfo::FeatureState::Stable}},
+    {Feature::TimestampQueryInsidePasses,
+     {"timestamp-query-inside-passes", "Support Timestamp Query inside render/compute pass",
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=434",
+      FeatureInfo::FeatureState::Experimental}},
     {Feature::DepthClipControl,
      {"depth-clip-control", "Disable depth clipping of primitives to the clip volume",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=1178"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=1178", FeatureInfo::FeatureState::Stable}},
     {Feature::Depth32FloatStencil8,
      {"depth32float-stencil8", "Support depth32float-stencil8 texture format",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=690"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=690", FeatureInfo::FeatureState::Stable}},
     {Feature::ChromiumExperimentalDp4a,
      {"chromium-experimental-dp4a", "Support experimental DP4a instructions in WGSL",
-      "https://bugs.chromium.org/p/tint/issues/detail?id=1497"}},
+      "https://bugs.chromium.org/p/tint/issues/detail?id=1497",
+      FeatureInfo::FeatureState::Experimental}},
     {Feature::IndirectFirstInstance,
      {"indirect-first-instance", "Support non-zero first instance values on indirect draw calls",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=1197"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=1197", FeatureInfo::FeatureState::Stable}},
+    {Feature::ShaderF16,
+     {"shader-f16", "Supports the \"enable f16;\" directive in WGSL",
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=1510",
+      FeatureInfo::FeatureState::Experimental}},
+    {Feature::RG11B10UfloatRenderable,
+     {"rg11b10ufloat-renderable",
+      "Allows the RENDER_ATTACHMENT usage on textures with format \"rg11b10ufloat\", and also "
+      "allows textures of that format to be multisampled.",
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=1518", FeatureInfo::FeatureState::Stable}},
     {Feature::DawnInternalUsages,
      {"dawn-internal-usages",
       "Add internal usages to resources to affect how the texture is allocated, but not "
       "frontend validation. Other internal commands may access this usage.",
       "https://dawn.googlesource.com/dawn/+/refs/heads/main/docs/dawn/features/"
-      "dawn_internal_usages.md"}},
+      "dawn_internal_usages.md",
+      FeatureInfo::FeatureState::Stable}},
     {Feature::MultiPlanarFormats,
      {"multiplanar-formats", "Import and use multi-planar texture formats with per plane views",
-      "https://bugs.chromium.org/p/dawn/issues/detail?id=551"}},
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=551", FeatureInfo::FeatureState::Stable}},
     {Feature::DawnNative,
      {"dawn-native", "WebGPU is running on top of dawn_native.",
       "https://dawn.googlesource.com/dawn/+/refs/heads/main/docs/dawn/features/"
-      "dawn_native.md"}},
+      "dawn_native.md",
+      FeatureInfo::FeatureState::Stable}},
 }};
 
 Feature FromAPIFeature(wgpu::FeatureName feature) {
     switch (feature) {
         case wgpu::FeatureName::Undefined:
             return Feature::InvalidEnum;
+        case wgpu::FeatureName::DawnShaderFloat16:
+            // Deprecated.
+            return Feature::InvalidEnum;
 
         case wgpu::FeatureName::TimestampQuery:
             return Feature::TimestampQuery;
+        case wgpu::FeatureName::TimestampQueryInsidePasses:
+            return Feature::TimestampQueryInsidePasses;
         case wgpu::FeatureName::PipelineStatisticsQuery:
             return Feature::PipelineStatisticsQuery;
         case wgpu::FeatureName::TextureCompressionBC:
@@ -103,8 +120,6 @@ Feature FromAPIFeature(wgpu::FeatureName feature) {
             return Feature::Depth32FloatStencil8;
         case wgpu::FeatureName::IndirectFirstInstance:
             return Feature::IndirectFirstInstance;
-        case wgpu::FeatureName::DawnShaderFloat16:
-            return Feature::ShaderFloat16;
         case wgpu::FeatureName::DawnInternalUsages:
             return Feature::DawnInternalUsages;
         case wgpu::FeatureName::DawnMultiPlanarFormats:
@@ -113,6 +128,10 @@ Feature FromAPIFeature(wgpu::FeatureName feature) {
             return Feature::DawnNative;
         case wgpu::FeatureName::ChromiumExperimentalDp4a:
             return Feature::ChromiumExperimentalDp4a;
+        case wgpu::FeatureName::ShaderF16:
+            return Feature::ShaderF16;
+        case wgpu::FeatureName::RG11B10UfloatRenderable:
+            return Feature::RG11B10UfloatRenderable;
     }
     return Feature::InvalidEnum;
 }
@@ -129,14 +148,14 @@ wgpu::FeatureName ToAPIFeature(Feature feature) {
             return wgpu::FeatureName::PipelineStatisticsQuery;
         case Feature::TimestampQuery:
             return wgpu::FeatureName::TimestampQuery;
+        case Feature::TimestampQueryInsidePasses:
+            return wgpu::FeatureName::TimestampQueryInsidePasses;
         case Feature::DepthClipControl:
             return wgpu::FeatureName::DepthClipControl;
         case Feature::Depth32FloatStencil8:
             return wgpu::FeatureName::Depth32FloatStencil8;
         case Feature::IndirectFirstInstance:
             return wgpu::FeatureName::IndirectFirstInstance;
-        case Feature::ShaderFloat16:
-            return wgpu::FeatureName::DawnShaderFloat16;
         case Feature::DawnInternalUsages:
             return wgpu::FeatureName::DawnInternalUsages;
         case Feature::MultiPlanarFormats:
@@ -145,6 +164,10 @@ wgpu::FeatureName ToAPIFeature(Feature feature) {
             return wgpu::FeatureName::DawnNative;
         case Feature::ChromiumExperimentalDp4a:
             return wgpu::FeatureName::ChromiumExperimentalDp4a;
+        case Feature::ShaderF16:
+            return wgpu::FeatureName::ShaderF16;
+        case Feature::RG11B10UfloatRenderable:
+            return wgpu::FeatureName::RG11B10UfloatRenderable;
 
         case Feature::EnumCount:
             break;
@@ -233,23 +256,6 @@ Feature FeaturesInfo::FeatureNameToEnum(const char* featureName) const {
     if (iter != mFeatureNameToEnumMap.cend()) {
         return kFeatureNameAndInfoList[static_cast<size_t>(iter->second)].feature;
     }
-
-    // TODO(dawn:550): Remove this fallback logic when Chromium is updated.
-    constexpr std::array<std::pair<const char*, const char*>, 6> kReplacementsForDeprecatedNames = {
-        {
-            {"texture_compression_bc", "texture-compression-bc"},
-            {"depth_clamping", "depth-clamping"},
-            {"pipeline_statistics_query", "pipeline-statistics-query"},
-            {"shader_float16", "shader-float16"},
-            {"timestamp_query", "timestamp-query"},
-            {"multiplanar_formats", "multiplanar-formats"},
-        }};
-    for (const auto& [name, replacement] : kReplacementsForDeprecatedNames) {
-        if (strcmp(featureName, name) == 0) {
-            return FeatureNameToEnum(replacement);
-        }
-    }
-
     return Feature::InvalidEnum;
 }
 

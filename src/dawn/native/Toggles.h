@@ -24,6 +24,8 @@
 
 namespace dawn::native {
 
+struct DawnTogglesDeviceDescriptor;
+
 enum class Toggle {
     EmulateStoreAndMSAAResolve,
     NonzeroClearResourcesOnCreationForTesting,
@@ -70,12 +72,22 @@ enum class Toggle {
     VulkanUseZeroInitializeWorkgroupMemoryExtension,
     D3D12SplitBufferTextureCopyForRowsPerImagePaddings,
     MetalRenderR8RG8UnormSmallMipToTempTexture,
-    EnableBlobCache,
+    DisableBlobCache,
     D3D12ForceClearCopyableDepthStencilTextureOnCreation,
     D3D12DontSetClearValueOnDepthTextureCreation,
     D3D12AlwaysUseTypelessFormatsForCastableTexture,
-    D3D12AllocateExtraMemoryFor2DArrayTexture,
+    D3D12AllocateExtraMemoryFor2DArrayColorTexture,
     D3D12UseTempBufferInDepthStencilTextureAndBufferCopyWithNonZeroBufferOffset,
+    ApplyClearBigIntegerColorValueWithDraw,
+    MetalUseMockBlitEncoderForWriteTimestamp,
+    VulkanSplitCommandBufferOnDepthStencilComputeSampleAfterRenderPass,
+    D3D12Allocate2DTexturewithCopyDstAsCommittedResource,
+    DisallowDeprecatedAPIs,
+
+    // Unresolved issues.
+    NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
+    NoWorkaroundIndirectBaseVertexNotApplied,
+    NoWorkaroundDstAlphaBlendDoesNotWork,
 
     EnumCount,
     InvalidEnum = EnumCount,
@@ -89,6 +101,27 @@ struct TogglesSet {
     void Set(Toggle toggle, bool enabled);
     bool Has(Toggle toggle) const;
     std::vector<const char*> GetContainedToggleNames() const;
+};
+
+// TripleStateTogglesSet track each toggle with three posible states, i.e. "Not provided" (default),
+// "Provided as enabled", and "Provided as disabled". This struct can be used to record the
+// user-provided toggles, where some toggles are explicitly enabled or disabled while the other
+// toggles are left as default.
+struct TripleStateTogglesSet {
+    TogglesSet togglesIsProvided;
+    TogglesSet providedTogglesEnabled;
+
+    static TripleStateTogglesSet CreateFromTogglesDeviceDescriptor(
+        const DawnTogglesDeviceDescriptor* togglesDesc);
+    // Provide a single toggle with given state.
+    void Set(Toggle toggle, bool enabled);
+    bool IsProvided(Toggle toggle) const;
+    // Return true if the toggle is provided in enable list, and false otherwise.
+    bool IsEnabled(Toggle toggle) const;
+    // Return true if the toggle is provided in disable list, and false otherwise.
+    bool IsDisabled(Toggle toggle) const;
+    std::vector<const char*> GetEnabledToggleNames() const;
+    std::vector<const char*> GetDisabledToggleNames() const;
 };
 
 const char* ToggleEnumToName(Toggle toggle);

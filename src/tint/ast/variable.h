@@ -19,31 +19,19 @@
 #include <vector>
 
 #include "src/tint/ast/access.h"
+#include "src/tint/ast/address_space.h"
 #include "src/tint/ast/attribute.h"
+#include "src/tint/ast/binding_attribute.h"
 #include "src/tint/ast/expression.h"
-#include "src/tint/ast/storage_class.h"
+#include "src/tint/ast/group_attribute.h"
 
 // Forward declarations
 namespace tint::ast {
-class BindingAttribute;
-class GroupAttribute;
 class LocationAttribute;
 class Type;
 }  // namespace tint::ast
 
 namespace tint::ast {
-
-/// VariableBindingPoint holds a group and binding attribute.
-struct VariableBindingPoint {
-    /// The `@group` part of the binding point
-    const GroupAttribute* group = nullptr;
-    /// The `@binding` part of the binding point
-    const BindingAttribute* binding = nullptr;
-
-    /// @returns true if the BindingPoint has a valid group and binding
-    /// attribute.
-    inline operator bool() const { return group && binding; }
-};
 
 /// Variable is the base class for Var, Let, Const, Override and Parameter.
 ///
@@ -59,14 +47,14 @@ class Variable : public Castable<Variable, Node> {
     /// @param source the variable source
     /// @param sym the variable symbol
     /// @param type the declared variable type
-    /// @param constructor the constructor expression
+    /// @param initializer the initializer expression
     /// @param attributes the variable attributes
     Variable(ProgramID pid,
              NodeID nid,
              const Source& source,
              const Symbol& sym,
              const ast::Type* type,
-             const Expression* constructor,
+             const Expression* initializer,
              utils::VectorRef<const Attribute*> attributes);
 
     /// Move constructor
@@ -75,9 +63,11 @@ class Variable : public Castable<Variable, Node> {
     /// Destructor
     ~Variable() override;
 
-    /// @returns the binding point information from the variable's attributes.
-    /// @note binding points should only be applied to Var and Parameter types.
-    VariableBindingPoint BindingPoint() const;
+    /// @returns true if the variable has both group and binding attributes
+    bool HasBindingPoint() const {
+        return ast::GetAttribute<ast::BindingAttribute>(attributes) != nullptr &&
+               ast::GetAttribute<ast::GroupAttribute>(attributes) != nullptr;
+    }
 
     /// @returns the kind of the variable, which can be used in diagnostics
     ///          e.g. "var", "let", "const", etc
@@ -91,8 +81,8 @@ class Variable : public Castable<Variable, Node> {
     ///   var i = 1;
     const ast::Type* const type;
 
-    /// The constructor expression or nullptr if none set
-    const Expression* const constructor;
+    /// The initializer expression or nullptr if none set
+    const Expression* const initializer;
 
     /// The attributes attached to this variable
     const utils::Vector<const Attribute*, 2> attributes;

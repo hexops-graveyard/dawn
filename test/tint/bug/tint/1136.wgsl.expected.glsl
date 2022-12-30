@@ -8,10 +8,11 @@ struct Buffer {
   uint data;
 };
 
-layout(binding = 0, std430) buffer Buffer_1 {
-  uint data;
+layout(binding = 0, std430) buffer tint_symbol_block_ssbo {
+  Buffer inner;
 } tint_symbol;
+
 void tint_symbol_1() {
-  tint_symbol.data = (tint_symbol.data + 1u);
+  tint_symbol.inner.data = (tint_symbol.inner.data + 1u);
 }
 

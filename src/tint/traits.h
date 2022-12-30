@@ -73,15 +73,24 @@ struct SignatureOf<R (C::*)(ARGS...) const> {
 
 /// SignatureOfT is an alias to `typename SignatureOf<F>::type`.
 template <typename F>
-using SignatureOfT = typename SignatureOf<F>::type;
+using SignatureOfT = typename SignatureOf<Decay<F>>::type;
 
 /// ParameterType is an alias to `typename SignatureOf<F>::type::parameter<N>`.
 template <typename F, std::size_t N>
-using ParameterType = typename SignatureOfT<F>::template parameter<N>;
+using ParameterType = typename SignatureOfT<Decay<F>>::template parameter<N>;
+
+/// LastParameterType returns the type of the last parameter of `F`. `F` must have at least one
+/// parameter.
+template <typename F>
+using LastParameterType = ParameterType<F, SignatureOfT<Decay<F>>::parameter_count - 1>;
 
 /// ReturnType is an alias to `typename SignatureOf<F>::type::ret`.
 template <typename F>
-using ReturnType = typename SignatureOfT<F>::ret;
+using ReturnType = typename SignatureOfT<Decay<F>>::ret;
+
+/// Returns true iff decayed T and decayed U are the same.
+template <typename T, typename U>
+static constexpr bool IsType = std::is_same<Decay<T>, Decay<U>>::value;
 
 /// IsTypeOrDerived<T, BASE> is true iff `T` is of type `BASE`, or derives from
 /// `BASE`.
@@ -150,6 +159,22 @@ constexpr auto Slice(TUPLE&& t) {
 template <std::size_t OFFSET, std::size_t COUNT, typename TUPLE>
 using SliceTuple =
     std::remove_pointer_t<decltype(detail::SwizzlePtrTy<TUPLE>(Range<OFFSET, COUNT>()))>;
+
+namespace detail {
+/// Base template for IsTypeIn
+template <class T, class TypeList>
+struct IsTypeIn;
+
+/// Specialization for IsTypeIn
+template <class T, template <class...> class TypeContainer, class... Ts>
+struct IsTypeIn<T, TypeContainer<Ts...>> : std::disjunction<std::is_same<T, Ts>...> {};
+}  // namespace detail
+
+/// Evaluates to true if T is one of the types in the TypeContainer's template arguments.
+/// Works for std::variant, std::tuple, std::pair, or any class template where all parameters are
+/// types.
+template <typename T, typename TypeContainer>
+static constexpr bool IsTypeIn = detail::IsTypeIn<T, TypeContainer>::value;
 
 }  // namespace tint::traits
 

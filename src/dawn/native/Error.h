@@ -22,6 +22,7 @@
 #include "absl/strings/str_format.h"
 #include "dawn/common/Result.h"
 #include "dawn/native/ErrorData.h"
+#include "dawn/native/Toggles.h"
 #include "dawn/native/webgpu_absl_format.h"
 
 namespace dawn::native {
@@ -43,7 +44,7 @@ using ResultOrError = Result<T, ErrorData>;
 //   return DAWN_MAKE_ERROR(errorType, "My error message");
 //
 // but shorthand version for specific error types are preferred:
-//   return DAWN_VALIDATION_ERROR("My error message");
+//   return DAWN_VALIDATION_ERROR("My error message with details %s", details);
 //
 // There are different types of errors that should be used for different purpose:
 //
@@ -71,11 +72,7 @@ using ResultOrError = Result<T, ErrorData>;
 #define DAWN_MAKE_ERROR(TYPE, MESSAGE) \
     ::dawn::native::ErrorData::Create(TYPE, MESSAGE, __FILE__, __func__, __LINE__)
 
-#define DAWN_VALIDATION_ERROR(MESSAGE) DAWN_MAKE_ERROR(InternalErrorType::Validation, MESSAGE)
-
-// TODO(dawn:563): Rename to DAWN_VALIDATION_ERROR once all message format strings have been
-// converted to constexpr.
-#define DAWN_FORMAT_VALIDATION_ERROR(...) \
+#define DAWN_VALIDATION_ERROR(...) \
     DAWN_MAKE_ERROR(InternalErrorType::Validation, absl::StrFormat(__VA_ARGS__))
 
 #define DAWN_INVALID_IF(EXPR, ...)                                                           \
@@ -83,6 +80,22 @@ using ResultOrError = Result<T, ErrorData>;
         return DAWN_MAKE_ERROR(InternalErrorType::Validation, absl::StrFormat(__VA_ARGS__)); \
     }                                                                                        \
     for (;;)                                                                                 \
+    break
+
+// DAWN_MAKE_DEPRECATION_ERROR is used at deprecation paths. It returns a MaybeError.
+// When the disallow_deprecated_path toggle is on, it creates an internal validation error.
+// Otherwise it returns {} and emits a deprecation warning, and moves on.
+#define DAWN_MAKE_DEPRECATION_ERROR(device, ...)            \
+    device->IsToggleEnabled(Toggle::DisallowDeprecatedAPIs) \
+        ? MaybeError(DAWN_VALIDATION_ERROR(__VA_ARGS__))    \
+        : (device->EmitDeprecationWarning(absl::StrFormat(__VA_ARGS__)), MaybeError{})
+
+// DAWN_DEPRECATED_IF is used analogous to DAWN_INVALID_IF at deprecation paths.
+#define DAWN_DEPRECATED_IF(device, EXPR, ...)                    \
+    if (DAWN_UNLIKELY(EXPR)) {                                   \
+        return DAWN_MAKE_DEPRECATION_ERROR(device, __VA_ARGS__); \
+    }                                                            \
+    for (;;)                                                     \
     break
 
 // DAWN_DEVICE_LOST_ERROR means that there was a real unrecoverable native device lost error.

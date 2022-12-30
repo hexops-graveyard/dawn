@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "src/tint/reader/wgsl/parser_impl_test_helper.h"
-#include "src/tint/sem/depth_texture.h"
+#include "src/tint/type/depth_texture.h"
 
 namespace tint::reader::wgsl {
 namespace {
 
 TEST_F(ParserImplTest, DepthTextureType_Invalid) {
     auto p = parser("1234");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_FALSE(t.matched);
     EXPECT_FALSE(t.errored);
     EXPECT_FALSE(p->has_error());
@@ -28,7 +28,7 @@ TEST_F(ParserImplTest, DepthTextureType_Invalid) {
 
 TEST_F(ParserImplTest, DepthTextureType_2d) {
     auto p = parser("texture_depth_2d");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
     ASSERT_NE(t.value, nullptr);
@@ -41,7 +41,7 @@ TEST_F(ParserImplTest, DepthTextureType_2d) {
 
 TEST_F(ParserImplTest, DepthTextureType_2dArray) {
     auto p = parser("texture_depth_2d_array");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
     ASSERT_NE(t.value, nullptr);
@@ -54,7 +54,7 @@ TEST_F(ParserImplTest, DepthTextureType_2dArray) {
 
 TEST_F(ParserImplTest, DepthTextureType_Cube) {
     auto p = parser("texture_depth_cube");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
     ASSERT_NE(t.value, nullptr);
@@ -67,7 +67,7 @@ TEST_F(ParserImplTest, DepthTextureType_Cube) {
 
 TEST_F(ParserImplTest, DepthTextureType_CubeArray) {
     auto p = parser("texture_depth_cube_array");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
     ASSERT_NE(t.value, nullptr);
@@ -80,7 +80,7 @@ TEST_F(ParserImplTest, DepthTextureType_CubeArray) {
 
 TEST_F(ParserImplTest, DepthTextureType_Multisampled2d) {
     auto p = parser("texture_depth_multisampled_2d");
-    auto t = p->depth_texture();
+    auto t = p->depth_texture_type();
     EXPECT_TRUE(t.matched);
     EXPECT_FALSE(t.errored);
     ASSERT_NE(t.value, nullptr);

@@ -17,7 +17,6 @@ package expectations
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -30,15 +29,19 @@ import (
 // results.
 //
 // Update will:
-// • Remove any expectation lines that have a query where no results match.
-// • Remove expectations lines that are in a chunk which is not annotated with
-//   'KEEP', and all test results have the status 'Pass'.
-// • Remove chunks that have had all expectation lines removed.
-// • Appends new chunks for flaky and failing tests which are not covered by
-//   existing expectation lines.
+//   - Remove any expectation lines that have a query where no results match.
+//   - Remove expectations lines that are in a chunk which is not annotated with
+//     'KEEP', and all test results have the status 'Pass'.
+//   - Remove chunks that have had all expectation lines removed.
+//   - Appends new chunks for flaky and failing tests which are not covered by
+//     existing expectation lines.
 //
 // Update returns a list of diagnostics for things that should be addressed.
-func (c *Content) Update(results result.List) ([]Diagnostic, error) {
+//
+// Note: Validate() should be called before attempting to update the
+// expectations. If Validate() returns errors, then Update() behaviour is
+// undefined.
+func (c *Content) Update(results result.List, testlist []query.Query) (Diagnostics, error) {
 	// Make a copy of the results. This code mutates the list.
 	results = append(result.List{}, results...)
 
@@ -54,13 +57,23 @@ func (c *Content) Update(results result.List) ([]Diagnostic, error) {
 		tagSets[len(tagSets)-i-1] = s.Tags
 	}
 
-	// Update those expectations!
+	// Scan the full result list to obtain all the test variants
+	// (unique tag combinations).
+	variants := results.Variants()
+
+	// Add 'consumed' results for tests that were skipped.
+	// This ensures that skipped results are not included in reduced trees.
+	results = c.appendConsumedResultsForSkippedTests(results, testlist, variants)
+
 	u := updater{
-		in:      *c,
-		out:     Content{},
-		qt:      newQueryTree(results),
-		tagSets: tagSets,
+		in:       *c,
+		out:      Content{},
+		qt:       newQueryTree(results),
+		variants: variants,
+		tagSets:  tagSets,
 	}
+
+	// Update those expectations!
 	if err := u.build(); err != nil {
 		return nil, fmt.Errorf("while updating expectations: %w", err)
 	}
@@ -71,11 +84,62 @@ func (c *Content) Update(results result.List) ([]Diagnostic, error) {
 
 // updater holds the state used for updating the expectations
 type updater struct {
-	in      Content       // the original expectations Content
-	out     Content       // newly built expectations Content
-	qt      queryTree     // the query tree
-	diags   []Diagnostic  // diagnostics raised during update
-	tagSets []result.Tags // reverse-ordered tag-sets of 'in'
+	in       Content   // the original expectations Content
+	out      Content   // newly built expectations Content
+	qt       queryTree // the query tree
+	variants []container.Set[string]
+	diags    []Diagnostic  // diagnostics raised during update
+	tagSets  []result.Tags // reverse-ordered tag-sets of 'in'
+}
+
+// Returns 'results' with additional 'consumed' results for tests that have
+// 'Skip' expectations. This fills in gaps for results, preventing tree
+// reductions from marking skipped results as failure, which could result in
+// expectation collisions.
+func (c *Content) appendConsumedResultsForSkippedTests(results result.List,
+	testlist []query.Query,
+	variants []container.Set[string]) result.List {
+	tree := query.Tree[struct{}]{}
+	for _, q := range testlist {
+		tree.Add(q, struct{}{})
+	}
+	// For each variant...
+	for _, variant := range variants {
+		resultsForVariant := container.NewSet[string]()
+		for _, result := range results.FilterByVariant(variant) {
+			resultsForVariant.Add(result.Query.String())
+		}
+
+		// For each expectation...
+		for _, c := range c.Chunks {
+			for _, ex := range c.Expectations {
+				// Does this expectation apply for variant?
+				if !variant.ContainsAll(ex.Tags) {
+					continue // Nope.
+				}
+
+				// Does the expectation contain a Skip status?
+				if !container.NewSet(ex.Status...).Contains(string(result.Skip)) {
+					continue // Nope.
+				}
+
+				// Gather all the tests that apply to the expectation
+				glob, _ := tree.Glob(query.Parse(ex.Query))
+				for _, qd := range glob {
+					// If we don't have a result for the test, then append a
+					// synthetic 'consumed' result.
+					if !resultsForVariant.Contains(qd.Query.String()) {
+						results = append(results, result.Result{
+							Query:  qd.Query,
+							Tags:   variant,
+							Status: consumed,
+						})
+					}
+				}
+			}
+		}
+	}
+	return results
 }
 
 // simplifyStatuses replaces all result statuses that are not one of
@@ -161,14 +225,9 @@ func (qt *queryTree) glob(q query.Query) (result.List, error) {
 	return out, nil
 }
 
-// globAndCheckForCollisions returns the list of results matching the given tags
-// under (or with) the given query.
-// globAndCheckForCollisions will return an error if any of the results are
-// already consumed by a non-zero line. The non-zero line distinguishes between
-// results consumed by expectations declared in the input (non-zero line), vs
-// those that were introduced by the update (zero line). We only want to error
-// if there's a collision in user declared expectations.
-func (qt *queryTree) globAndCheckForCollisions(q query.Query, t result.Tags) (result.List, error) {
+// globTags returns the list of results matching the given tags under (or with)
+// the given query.
+func (qt *queryTree) globTags(q query.Query, t result.Tags) (result.List, error) {
 	glob, err := qt.tree.Glob(q)
 	if err != nil {
 		return nil, err
@@ -178,12 +237,6 @@ func (qt *queryTree) globAndCheckForCollisions(q query.Query, t result.Tags) (re
 	for _, indices := range glob {
 		for _, idx := range indices.Data {
 			if r := qt.results[idx]; r.Tags.ContainsAll(t) {
-				if at := qt.consumedAt[idx]; at > 0 {
-					if len(t) > 0 {
-						return nil, fmt.Errorf("%v %v collides with expectation at line %v", t, q, at)
-					}
-					return nil, fmt.Errorf("%v collides with expectation at line %v", q, at)
-				}
 				out = append(out, r)
 			}
 		}
@@ -195,7 +248,7 @@ func (qt *queryTree) globAndCheckForCollisions(q query.Query, t result.Tags) (re
 // under (or with) the given query, as consumed.
 // line is used to record the line at which the results were consumed. If the
 // results were consumed as part of generating new expectations then line should
-// be 0. See queryTree.globAndCheckForCollisions().
+// be 0.
 func (qt *queryTree) markAsConsumed(q query.Query, t result.Tags, line int) {
 	if glob, err := qt.tree.Glob(q); err == nil {
 		for _, indices := range glob {
@@ -271,42 +324,16 @@ func (u *updater) chunk(in Chunk) Chunk {
 	}
 
 	// Sort the expectations to keep things clean and tidy.
-	sort.Slice(out.Expectations, func(i, j int) bool {
-		switch {
-		case out.Expectations[i].Query < out.Expectations[j].Query:
-			return true
-		case out.Expectations[i].Query > out.Expectations[j].Query:
-			return false
-		}
-		a := result.TagsToString(out.Expectations[i].Tags)
-		b := result.TagsToString(out.Expectations[j].Tags)
-		switch {
-		case a < b:
-			return true
-		case a > b:
-			return false
-		}
-		return false
-	})
-
+	out.Expectations.Sort()
 	return out
 }
 
-// chunk returns a new list of Expectations, based on the Expectation 'in',
+// expectation returns a new list of Expectations, based on the Expectation 'in',
 // using the new result data.
 func (u *updater) expectation(in Expectation, keep bool) []Expectation {
 	// noResults is a helper for returning when the expectation has no test
 	// results.
-	// If the expectation has an expected 'Skip' result, then we're likely
-	// to be missing results (as the test was not run). In this situation
-	// the expectation is preserved, and no diagnostics are raised.
-	// If the expectation did not have a 'Skip' result, then a diagnostic will
-	// be raised and the expectation will be removed.
 	noResults := func() []Expectation {
-		if container.NewSet(in.Status...).Contains(string(result.Skip)) {
-			return []Expectation{in}
-		}
-		// Expectation does not have a 'Skip' result.
 		if len(in.Tags) > 0 {
 			u.diag(Warning, in.Line, "no results found for '%v' with tags %v", in.Query, in.Tags)
 		} else {
@@ -316,12 +343,11 @@ func (u *updater) expectation(in Expectation, keep bool) []Expectation {
 		return []Expectation{}
 	}
 
-	// Grab all the results that match the expectation's query
 	q := query.Parse(in.Query)
 
 	// Glob the results for the expectation's query + tag combination.
 	// Ensure that none of these are already consumed.
-	results, err := u.qt.globAndCheckForCollisions(q, in.Tags)
+	results, err := u.qt.globTags(q, in.Tags)
 	// If we can't find any results for this query + tag combination, then bail.
 	switch {
 	case errors.As(err, &query.ErrNoDataForQuery{}):
@@ -375,18 +401,14 @@ func (u *updater) expectation(in Expectation, keep bool) []Expectation {
 // addNewExpectations (potentially) appends to 'u.out' chunks for new flaky and
 // failing tests.
 func (u *updater) addNewExpectations() error {
-	// Scan the full result list to obtain all the test variants
-	// (unique tag combinations).
-	allVariants := u.qt.results.Variants()
-
 	// For each variant:
 	// • Build a query tree using the results filtered to the variant, and then
 	//   reduce the tree.
 	// • Take all the reduced-tree leaf nodes, and add these to 'roots'.
 	// Once we've collected all the roots, we'll use these to build the
 	// expectations across the reduced set of tags.
-	roots := container.NewMap[string, query.Query]()
-	for _, variant := range allVariants {
+	roots := query.Tree[bool]{}
+	for _, variant := range u.variants {
 		// Build a tree from the results matching the given variant.
 		tree, err := u.qt.results.FilterByVariant(variant).StatusTree()
 		if err != nil {
@@ -396,15 +418,16 @@ func (u *updater) addNewExpectations() error {
 		tree.Reduce(treeReducer)
 		// Add all the reduced leaf nodes to 'roots'.
 		for _, qd := range tree.List() {
-			roots.Add(qd.Query.String(), qd.Query)
+			// Use Split() to ensure that only the leaves have data (true) in the tree
+			roots.Split(qd.Query, true)
 		}
 	}
 
 	// Build all the expectations for each of the roots.
 	expectations := []Expectation{}
-	for _, root := range roots.Values() {
+	for _, root := range roots.List() {
 		expectations = append(expectations, u.expectationsForRoot(
-			root,                  // Root query
+			root.Query,            // Root query
 			0,                     // Line number
 			"crbug.com/dawn/0000", // Bug
 			"",                    // Comment
@@ -533,10 +556,10 @@ func (u *updater) resultsToExpectations(results result.List, bug, comment string
 }
 
 // cleanupTags returns a copy of the provided results with:
-// • All tags not found in the expectations list removed
-// • All but the highest priority tag for any tag-set.
-//   The tag sets are defined by the `BEGIN TAG HEADER` / `END TAG HEADER`
-//   section at the top of the expectations file.
+//   - All tags not found in the expectations list removed
+//   - All but the highest priority tag for any tag-set.
+//     The tag sets are defined by the `BEGIN TAG HEADER` / `END TAG HEADER`
+//     section at the top of the expectations file.
 func (u *updater) cleanupTags(results result.List) result.List {
 	return results.TransformTags(func(t result.Tags) result.Tags {
 		type HighestPrioritySetTag struct {
@@ -564,11 +587,11 @@ func (u *updater) cleanupTags(results result.List) result.List {
 // treeReducer is a function that can be used by StatusTree.Reduce() to reduce
 // tree nodes with the same status.
 // treeReducer will collapse trees nodes if any of the following are true:
-// • All child nodes have the same status
-// • More than 75% of the child nodes have a non-pass status, and none of the
-//   children are consumed.
-// • There are more than 20 child nodes with a non-pass status, and none of the
-//   children are consumed.
+//   - All child nodes have the same status
+//   - More than 75% of the child nodes have a non-pass status, and none of the
+//     children are consumed.
+//   - There are more than 20 child nodes with a non-pass status, and none of the
+//     children are consumed.
 func treeReducer(statuses []result.Status) *result.Status {
 	counts := map[result.Status]int{}
 	for _, s := range statuses {

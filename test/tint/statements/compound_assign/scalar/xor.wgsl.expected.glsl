@@ -8,10 +8,11 @@ struct S {
   int a;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  int a;
+layout(binding = 0, std430) buffer v_block_ssbo {
+  S inner;
 } v;
+
 void foo() {
-  v.a = (v.a ^ 2);
+  v.inner.a = (v.inner.a ^ 2);
 }
 

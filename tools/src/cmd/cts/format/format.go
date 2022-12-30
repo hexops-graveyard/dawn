@@ -37,7 +37,7 @@ func (cmd) Name() string {
 }
 
 func (cmd) Desc() string {
-	return "formats a WebGPUExpectation file"
+	return "formats a WebGPU expectations.txt file"
 }
 
 func (c *cmd) RegisterFlags(ctx context.Context, cfg common.Config) ([]string, error) {
@@ -51,5 +51,11 @@ func (c *cmd) Run(ctx context.Context, cfg common.Config) error {
 	if err != nil {
 		return err
 	}
+
+	// Sort the expectations in each chunk.
+	for _, chunk := range ex.Chunks {
+		chunk.Expectations.Sort()
+	}
+
 	return ex.Save(c.flags.expectations)
 }

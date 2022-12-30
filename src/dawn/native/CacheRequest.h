@@ -129,11 +129,7 @@ class CacheRequestImpl {
         using ReturnType = ResultOrError<CacheResultType>;
 
         CacheKey key = r.CreateCacheKey(device);
-        BlobCache* cache = device->GetBlobCache();
-        Blob blob;
-        if (cache != nullptr) {
-            blob = cache->Load(key);
-        }
+        Blob blob = device->GetBlobCache()->Load(key);
 
         if (!blob.Empty()) {
             // Cache hit. Handle the cached blob.
@@ -184,7 +180,7 @@ class CacheRequestImpl {
         static constexpr char kName[] = #Request;                      \
         Request() = default;                                           \
         DAWN_VISITABLE_MEMBERS(MEMBERS)                                \
-    };
+    }
 
 // Helper macro for the common pattern of DAWN_TRY_ASSIGN around LoadOrRun.
 // Requires an #include of dawn/native/Error.h

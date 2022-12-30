@@ -44,6 +44,7 @@ class BufferBase : public ApiObjectBase {
   public:
     enum class BufferState {
         Unmapped,
+        PendingMap,
         Mapped,
         MappedAtCreation,
         Destroyed,
@@ -85,6 +86,7 @@ class BufferBase : public ApiObjectBase {
     void APIUnmap();
     void APIDestroy();
     wgpu::BufferUsage APIGetUsage() const;
+    wgpu::BufferMapState APIGetMapState() const;
     uint64_t APIGetSize() const;
 
   protected:

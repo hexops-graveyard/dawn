@@ -2,12 +2,32 @@
 
 uint local_invocation_index_1 = 0u;
 shared uint wg[3][2][1];
+uint tint_div(uint lhs, uint rhs) {
+  return (lhs / ((rhs == 0u) ? 1u : rhs));
+}
+
+uint tint_mod(uint lhs, uint rhs) {
+  return (lhs % ((rhs == 0u) ? 1u : rhs));
+}
+
 void compute_main_inner(uint local_invocation_index) {
   uint idx = 0u;
   idx = local_invocation_index;
-  {
-    for(; !(!((idx < 6u))); idx = (idx + 1u)) {
-      atomicExchange(wg[(idx / 2u)][(idx % 2u)][(idx % 1u)], 0u);
+  while (true) {
+    uint x_25 = idx;
+    if (!((x_25 < 6u))) {
+      break;
+    }
+    uint x_31 = idx;
+    uint x_33 = idx;
+    uint x_35 = idx;
+    uint tint_symbol = tint_div(x_31, 2u);
+    uint tint_symbol_1 = tint_mod(x_33, 2u);
+    uint tint_symbol_2 = tint_mod(x_35, 1u);
+    atomicExchange(wg[tint_symbol][tint_symbol_1][tint_symbol_2], 0u);
+    {
+      uint x_42 = idx;
+      idx = (x_42 + 1u);
     }
   }
   barrier();
@@ -16,7 +36,8 @@ void compute_main_inner(uint local_invocation_index) {
 }
 
 void compute_main_1() {
-  compute_main_inner(local_invocation_index_1);
+  uint x_57 = local_invocation_index_1;
+  compute_main_inner(x_57);
   return;
 }
 

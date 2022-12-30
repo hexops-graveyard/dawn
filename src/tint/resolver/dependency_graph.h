@@ -15,11 +15,11 @@
 #ifndef SRC_TINT_RESOLVER_DEPENDENCY_GRAPH_H_
 #define SRC_TINT_RESOLVER_DEPENDENCY_GRAPH_H_
 
-#include <unordered_map>
 #include <vector>
 
 #include "src/tint/ast/module.h"
 #include "src/tint/diagnostic/diagnostic.h"
+#include "src/tint/utils/hashmap.h"
 
 namespace tint::resolver {
 
@@ -46,17 +46,17 @@ struct DependencyGraph {
                       DependencyGraph& output);
 
     /// All globals in dependency-sorted order.
-    std::vector<const ast::Node*> ordered_globals;
+    utils::Vector<const ast::Node*, 32> ordered_globals;
 
     /// Map of ast::IdentifierExpression or ast::TypeName to a type, function, or
     /// variable that declares the symbol.
-    std::unordered_map<const ast::Node*, const ast::Node*> resolved_symbols;
+    utils::Hashmap<const ast::Node*, const ast::Node*, 64> resolved_symbols;
 
     /// Map of ast::Variable to a type, function, or variable that is shadowed by
     /// the variable key. A declaration (X) shadows another (Y) if X and Y use
     /// the same symbol, and X is declared in a sub-scope of the scope that
     /// declares Y.
-    std::unordered_map<const ast::Variable*, const ast::Node*> shadows;
+    utils::Hashmap<const ast::Variable*, const ast::Node*, 16> shadows;
 };
 
 }  // namespace tint::resolver

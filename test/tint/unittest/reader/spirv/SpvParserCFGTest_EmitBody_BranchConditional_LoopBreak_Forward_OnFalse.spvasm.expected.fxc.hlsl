@@ -4,7 +4,7 @@ static uint var_1 = 0u;
 
 void main_1() {
   var_1 = 0u;
-  [loop] while (true) {
+  while (true) {
     var_1 = 1u;
     var_1 = 2u;
     if (false) {
@@ -23,3 +23,6 @@ void main() {
   main_1();
   return;
 }
+FXC validation failure:
+C:\src\dawn\test\tint\Shader@0x000001D02A987360(5,17-20): error X3696: infinite loop detected - loop never exits
+

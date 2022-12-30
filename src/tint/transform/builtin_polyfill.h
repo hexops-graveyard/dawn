@@ -47,6 +47,10 @@ class BuiltinPolyfill final : public Castable<BuiltinPolyfill, Transform> {
         bool asinh = false;
         /// What level should `atanh` be polyfilled?
         Level atanh = Level::kNone;
+        /// Should the RHS of `<<` and `>>` be wrapped in a modulo bit-width of LHS?
+        bool bitshift_modulo = false;
+        /// Should `clamp()` be polyfilled for integer values (scalar or vector)?
+        bool clamp_int = false;
         /// Should `countLeadingZeros()` be polyfilled?
         bool count_leading_zeros = false;
         /// Should `countTrailingZeros()` be polyfilled?
@@ -59,6 +63,18 @@ class BuiltinPolyfill final : public Castable<BuiltinPolyfill, Transform> {
         bool first_trailing_bit = false;
         /// Should `insertBits()` be polyfilled?
         Level insert_bits = Level::kNone;
+        /// Should integer scalar / vector divides and modulos be polyfilled to avoid DBZ and
+        /// integer overflows?
+        bool int_div_mod = false;
+        /// Should `saturate()` be polyfilled?
+        bool saturate = false;
+        /// Should `sign()` be polyfilled for integer types?
+        bool sign_int = false;
+        /// Should `textureSampleBaseClampToEdge()` be polyfilled for texture_2d<f32> textures?
+        bool texture_sample_base_clamp_to_edge_2d_f32 = false;
+        /// Should the vector form of `quantizeToF16()` be polyfilled with a scalar implementation?
+        /// See crbug.com/tint/1741
+        bool quantize_to_vec_f16 = false;
     };
 
     /// Config is consumed by the BuiltinPolyfill transform.
@@ -78,21 +94,13 @@ class BuiltinPolyfill final : public Castable<BuiltinPolyfill, Transform> {
         const Builtins builtins;
     };
 
-    /// @param program the program to inspect
-    /// @param data optional extra transform-specific input data
-    /// @returns true if this transform should be run for the given program
-    bool ShouldRun(const Program* program, const DataMap& data = {}) const override;
+    /// @copydoc Transform::Apply
+    ApplyResult Apply(const Program* program,
+                      const DataMap& inputs,
+                      DataMap& outputs) const override;
 
-  protected:
+  private:
     struct State;
-
-    /// Runs the transform using the CloneContext built for transforming a
-    /// program. Run() is responsible for calling Clone() on the CloneContext.
-    /// @param ctx the CloneContext primed with the input program and
-    /// ProgramBuilder
-    /// @param inputs optional extra transform-specific input data
-    /// @param outputs optional extra transform-specific output data
-    void Run(CloneContext& ctx, const DataMap& inputs, DataMap& outputs) const override;
 };
 
 }  // namespace tint::transform

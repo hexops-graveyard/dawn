@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 // fn textureSample(texture: texture_2d_array<f32>, sampler: sampler, coords: vec2<f32>, array_index: i32) -> vec4<f32>
 fn textureSample_6717ca() {
-  var res: vec4<f32> = textureSample(arg_0, arg_1, vec2<f32>(), 1);
+  var res: vec4<f32> = textureSample(arg_0, arg_1, vec2<f32>(1.f), 1i);
 }
 
 @fragment

@@ -57,7 +57,7 @@ wgpu::TextureDataLayout CreateTextureDataLayout(uint64_t offset,
 
 struct ComboRenderPassDescriptor : public wgpu::RenderPassDescriptor {
   public:
-    ComboRenderPassDescriptor(std::initializer_list<wgpu::TextureView> colorAttachmentInfo,
+    ComboRenderPassDescriptor(const std::vector<wgpu::TextureView>& colorAttachmentInfo = {},
                               wgpu::TextureView depthStencil = wgpu::TextureView());
     ~ComboRenderPassDescriptor();
 
@@ -177,6 +177,15 @@ wgpu::BindGroup MakeBindGroup(
     const wgpu::Device& device,
     const wgpu::BindGroupLayout& layout,
     std::initializer_list<BindingInitializationHelper> entriesInitializer);
+
+struct ColorSpaceConversionInfo {
+    std::array<float, 12> yuvToRgbConversionMatrix;
+    std::array<float, 9> gamutConversionMatrix;
+    std::array<float, 7> srcTransferFunctionParameters;
+    std::array<float, 7> dstTransferFunctionParameters;
+};
+
+ColorSpaceConversionInfo GetYUVBT709ToRGBSRGBColorSpaceConversionInfo();
 
 }  // namespace utils
 

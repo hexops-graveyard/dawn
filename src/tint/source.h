@@ -43,8 +43,6 @@ class Source {
 
         /// The original un-split file content
         const std::string data;
-        /// A string_view over #data
-        const std::string_view data_view;
         /// #data split by lines
         const std::vector<std::string_view> lines;
     };
@@ -81,7 +79,7 @@ class Source {
         /// 0 represents no column information.
         size_t column = 0;
 
-        /// Returns true of `this` location is lexicographically less than `rhs`
+        /// Returns true if `this` location is lexicographically less than `rhs`
         /// @param rhs location to compare against
         /// @returns true if `this` < `rhs`
         inline bool operator<(const Source::Location& rhs) {

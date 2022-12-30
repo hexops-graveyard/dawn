@@ -43,7 +43,9 @@ class ResourceMemoryAllocator;
 
 class Device final : public DeviceBase {
   public:
-    static ResultOrError<Ref<Device>> Create(Adapter* adapter, const DeviceDescriptor* descriptor);
+    static ResultOrError<Ref<Device>> Create(Adapter* adapter,
+                                             const DeviceDescriptor* descriptor,
+                                             const TripleStateTogglesSet& userProvidedToggles);
     ~Device() override;
 
     MaybeError Initialize(const DeviceDescriptor* descriptor);
@@ -61,8 +63,11 @@ class Device final : public DeviceBase {
     FencedDeleter* GetFencedDeleter() const;
     RenderPassCache* GetRenderPassCache() const;
     ResourceMemoryAllocator* GetResourceMemoryAllocator() const;
+    external_semaphore::Service* GetExternalSemaphoreService() const;
 
-    CommandRecordingContext* GetPendingRecordingContext();
+    CommandRecordingContext* GetPendingRecordingContext(
+        Device::SubmitMode submitMode = Device::SubmitMode::Normal);
+    MaybeError SplitRecordingContext(CommandRecordingContext* recordingContext);
     MaybeError SubmitPendingCommands();
 
     void EnqueueDeferredDeallocation(DescriptorSetAllocator* allocator);
@@ -85,15 +90,15 @@ class Device final : public DeviceBase {
     MaybeError TickImpl() override;
 
     ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) override;
-    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
-                                       uint64_t sourceOffset,
-                                       BufferBase* destination,
-                                       uint64_t destinationOffset,
-                                       uint64_t size) override;
-    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                        const TextureDataLayout& src,
-                                        TextureCopy* dst,
-                                        const Extent3D& copySizePixels) override;
+    MaybeError CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                           uint64_t sourceOffset,
+                                           BufferBase* destination,
+                                           uint64_t destinationOffset,
+                                           uint64_t size) override;
+    MaybeError CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                            const TextureDataLayout& src,
+                                            TextureCopy* dst,
+                                            const Extent3D& copySizePixels) override;
 
     // Return the fixed subgroup size to use for compute shaders on this device or 0 if none
     // needs to be set.
@@ -111,8 +116,12 @@ class Device final : public DeviceBase {
     // Used to associate this device with validation layer messages.
     const char* GetDebugPrefix() { return mDebugPrefix.c_str(); }
 
+    void ForceEventualFlushOfCommands() override;
+
   private:
-    Device(Adapter* adapter, const DeviceDescriptor* descriptor);
+    Device(Adapter* adapter,
+           const DeviceDescriptor* descriptor,
+           const TripleStateTogglesSet& userProvidedToggles);
 
     ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
         const BindGroupDescriptor* descriptor) override;
@@ -161,9 +170,11 @@ class Device final : public DeviceBase {
 
     MaybeError CheckDebugLayerAndGenerateErrors();
     void AppendDebugLayerMessages(ErrorData* error) override;
+    void CheckDebugMessagesAfterDestruction() const;
 
     void DestroyImpl() override;
     MaybeError WaitForIdleForDestruction() override;
+    bool HasPendingCommands() const override;
 
     // To make it easier to use fn it is a public const member. However
     // the Device is allowed to mutate them through these private methods.
@@ -200,12 +211,9 @@ class Device final : public DeviceBase {
     std::vector<std::string> mDebugMessages;
 
     MaybeError PrepareRecordingContext();
+    ResultOrError<CommandPoolAndBuffer> BeginVkCommandBuffer();
     void RecycleCompletedCommands();
 
-    struct CommandPoolAndBuffer {
-        VkCommandPool pool = VK_NULL_HANDLE;
-        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
-    };
     SerialQueue<ExecutionSerial, CommandPoolAndBuffer> mCommandsInFlight;
     // Command pools in the unused list haven't been reset yet.
     std::vector<CommandPoolAndBuffer> mUnusedCommands;
@@ -216,7 +224,6 @@ class Device final : public DeviceBase {
                                    ExternalMemoryHandle memoryHandle,
                                    VkImage image,
                                    const std::vector<ExternalSemaphoreHandle>& waitHandles,
-                                   VkSemaphore* outSignalSemaphore,
                                    VkDeviceMemory* outAllocation,
                                    std::vector<VkSemaphore>* outWaitSemaphores);
 };

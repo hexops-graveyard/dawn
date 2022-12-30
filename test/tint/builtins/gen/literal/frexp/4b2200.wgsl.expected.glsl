@@ -1,19 +1,13 @@
 #version 310 es
 
-struct frexp_result {
-  float sig;
+struct frexp_result_f32 {
+  float fract;
   int exp;
 };
 
-frexp_result tint_frexp(float param_0) {
-  frexp_result result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_4b2200() {
-  frexp_result res = tint_frexp(1.0f);
+  frexp_result_f32 res = frexp_result_f32(0.5f, 1);
 }
 
 vec4 vertex_main() {
@@ -32,20 +26,14 @@ void main() {
 #version 310 es
 precision mediump float;
 
-struct frexp_result {
-  float sig;
+struct frexp_result_f32 {
+  float fract;
   int exp;
 };
 
-frexp_result tint_frexp(float param_0) {
-  frexp_result result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_4b2200() {
-  frexp_result res = tint_frexp(1.0f);
+  frexp_result_f32 res = frexp_result_f32(0.5f, 1);
 }
 
 void fragment_main() {
@@ -58,20 +46,14 @@ void main() {
 }
 #version 310 es
 
-struct frexp_result {
-  float sig;
+struct frexp_result_f32 {
+  float fract;
   int exp;
 };
 
-frexp_result tint_frexp(float param_0) {
-  frexp_result result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_4b2200() {
-  frexp_result res = tint_frexp(1.0f);
+  frexp_result_f32 res = frexp_result_f32(0.5f, 1);
 }
 
 void compute_main() {

@@ -15,17 +15,14 @@
 #ifndef SRC_TINT_SEM_STRUCT_H_
 #define SRC_TINT_SEM_STRUCT_H_
 
-#include <stdint.h>
+#include <optional>
 
-#include <string>
-#include <unordered_set>
-#include <vector>
-
-#include "src/tint/ast/storage_class.h"
+#include "src/tint/ast/address_space.h"
 #include "src/tint/ast/struct.h"
-#include "src/tint/sem/node.h"
-#include "src/tint/sem/type.h"
 #include "src/tint/symbol.h"
+#include "src/tint/type/struct.h"
+#include "src/tint/type/type.h"
+#include "src/tint/utils/vector.h"
 
 // Forward declarations
 namespace tint::ast {
@@ -33,29 +30,19 @@ class StructMember;
 }  // namespace tint::ast
 namespace tint::sem {
 class StructMember;
-class Type;
 }  // namespace tint::sem
+namespace tint::type {
+class StructMember;
+}  // namespace tint::type
 
 namespace tint::sem {
 
-/// A vector of StructMember pointers.
-using StructMemberList = std::vector<const StructMember*>;
-
-/// Metadata to capture how a structure is used in a shader module.
-enum class PipelineStageUsage {
-    kVertexInput,
-    kVertexOutput,
-    kFragmentInput,
-    kFragmentOutput,
-    kComputeInput,
-    kComputeOutput,
-};
-
 /// Struct holds the semantic information for structures.
-class Struct final : public Castable<Struct, Type> {
+class Struct final : public Castable<Struct, type::Struct> {
   public:
     /// Constructor
     /// @param declaration the AST structure declaration
+    /// @param source the source of the structure
     /// @param name the name of the structure
     /// @param members the structure members
     /// @param align the byte alignment of the structure
@@ -63,8 +50,9 @@ class Struct final : public Castable<Struct, Type> {
     /// @param size_no_padding size of the members without the end of structure
     /// alignment padding
     Struct(const ast::Struct* declaration,
+           tint::Source source,
            Symbol name,
-           StructMemberList members,
+           utils::VectorRef<const StructMember*> members,
            uint32_t align,
            uint32_t size,
            uint32_t size_no_padding);
@@ -72,121 +60,40 @@ class Struct final : public Castable<Struct, Type> {
     /// Destructor
     ~Struct() override;
 
-    /// @returns a hash of the type.
-    size_t Hash() const override;
-
-    /// @param other the other type to compare against
-    /// @returns true if the this type is equal to the given type
-    bool Equals(const Type& other) const override;
-
     /// @returns the struct
     const ast::Struct* Declaration() const { return declaration_; }
 
-    /// @returns the name of the structure
-    Symbol Name() const { return name_; }
-
     /// @returns the members of the structure
-    const StructMemberList& Members() const { return members_; }
-
-    /// @param name the member name to look for
-    /// @returns the member with the given name, or nullptr if it was not found.
-    const StructMember* FindMember(Symbol name) const;
-
-    /// @returns the byte alignment of the structure
-    /// @note this may differ from the alignment of a structure member of this
-    /// structure type, if the member is annotated with the `@align(n)`
-    /// attribute.
-    uint32_t Align() const override;
-
-    /// @returns the byte size of the structure
-    /// @note this may differ from the size of a structure member of this
-    /// structure type, if the member is annotated with the `@size(n)`
-    /// attribute.
-    uint32_t Size() const override;
-
-    /// @returns the byte size of the members without the end of structure
-    /// alignment padding
-    uint32_t SizeNoPadding() const { return size_no_padding_; }
-
-    /// Adds the StorageClass usage to the structure.
-    /// @param usage the storage usage
-    void AddUsage(ast::StorageClass usage) { storage_class_usage_.emplace(usage); }
-
-    /// @returns the set of storage class uses of this structure
-    const std::unordered_set<ast::StorageClass>& StorageClassUsage() const {
-        return storage_class_usage_;
+    utils::VectorRef<const StructMember*> Members() const {
+        return Base::Members().ReinterpretCast<const StructMember*>();
     }
-
-    /// @param usage the ast::StorageClass usage type to query
-    /// @returns true iff this structure has been used as the given storage class
-    bool UsedAs(ast::StorageClass usage) const { return storage_class_usage_.count(usage) > 0; }
-
-    /// @returns true iff this structure has been used by storage class that's
-    /// host-shareable.
-    bool IsHostShareable() const {
-        for (auto sc : storage_class_usage_) {
-            if (ast::IsHostShareable(sc)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// Adds the pipeline stage usage to the structure.
-    /// @param usage the storage usage
-    void AddUsage(PipelineStageUsage usage) { pipeline_stage_uses_.emplace(usage); }
-
-    /// @returns the set of entry point uses of this structure
-    const std::unordered_set<PipelineStageUsage>& PipelineStageUses() const {
-        return pipeline_stage_uses_;
-    }
-
-    /// @param symbols the program's symbol table
-    /// @returns the name for this type that closely resembles how it would be
-    /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
-
-    /// @param symbols the program's symbol table
-    /// @returns a multiline string that describes the layout of this struct,
-    /// including size and alignment information.
-    std::string Layout(const tint::SymbolTable& symbols) const;
-
-    /// @returns true if constructible as per
-    /// https://gpuweb.github.io/gpuweb/wgsl/#constructible-types
-    bool IsConstructible() const override;
 
   private:
-    uint64_t LargestMemberBaseAlignment(MemoryLayout mem_layout) const;
-
     ast::Struct const* const declaration_;
-    const Symbol name_;
-    const StructMemberList members_;
-    const uint32_t align_;
-    const uint32_t size_;
-    const uint32_t size_no_padding_;
-    std::unordered_set<ast::StorageClass> storage_class_usage_;
-    std::unordered_set<PipelineStageUsage> pipeline_stage_uses_;
-    bool constructible_;
 };
 
 /// StructMember holds the semantic information for structure members.
-class StructMember final : public Castable<StructMember, Node> {
+class StructMember final : public Castable<StructMember, type::StructMember> {
   public:
     /// Constructor
     /// @param declaration the AST declaration node
-    /// @param name the name of the structure
+    /// @param source the source of the struct member
+    /// @param name the name of the structure member
     /// @param type the type of the member
     /// @param index the index of the member in the structure
     /// @param offset the byte offset from the base of the structure
     /// @param align the byte alignment of the member
     /// @param size the byte size of the member
+    /// @param location the location attribute, if present
     StructMember(const ast::StructMember* declaration,
+                 tint::Source source,
                  Symbol name,
-                 const sem::Type* type,
+                 const type::Type* type,
                  uint32_t index,
                  uint32_t offset,
                  uint32_t align,
-                 uint32_t size);
+                 uint32_t size,
+                 std::optional<uint32_t> location);
 
     /// Destructor
     ~StructMember() override;
@@ -194,40 +101,11 @@ class StructMember final : public Castable<StructMember, Node> {
     /// @returns the AST declaration node
     const ast::StructMember* Declaration() const { return declaration_; }
 
-    /// @returns the name of the structure member
-    Symbol Name() const { return name_; }
-
-    /// Sets the owning structure to `s`
-    /// @param s the new structure owner
-    void SetStruct(const sem::Struct* s) { struct_ = s; }
-
     /// @returns the structure that owns this member
-    const sem::Struct* Struct() const { return struct_; }
-
-    /// @returns the type of the member
-    const sem::Type* Type() const { return type_; }
-
-    /// @returns the member index
-    uint32_t Index() const { return index_; }
-
-    /// @returns byte offset from base of structure
-    uint32_t Offset() const { return offset_; }
-
-    /// @returns the alignment of the member in bytes
-    uint32_t Align() const { return align_; }
-
-    /// @returns byte size
-    uint32_t Size() const { return size_; }
+    const sem::Struct* Struct() const { return static_cast<const sem::Struct*>(Base::Struct()); }
 
   private:
     const ast::StructMember* const declaration_;
-    const Symbol name_;
-    const sem::Struct* struct_;
-    const sem::Type* type_;
-    const uint32_t index_;
-    const uint32_t offset_;
-    const uint32_t align_;
-    const uint32_t size_;
 };
 
 }  // namespace tint::sem

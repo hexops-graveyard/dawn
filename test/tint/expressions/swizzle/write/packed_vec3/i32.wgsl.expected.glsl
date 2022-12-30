@@ -6,15 +6,17 @@ void unused_entry_point() {
 }
 struct S {
   ivec3 v;
+  uint pad;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  ivec3 v;
+layout(binding = 0, std430) buffer U_block_ssbo {
+  S inner;
 } U;
+
 void f() {
-  U.v = ivec3(1, 2, 3);
-  U.v.x = 1;
-  U.v.y = 2;
-  U.v.z = 3;
+  U.inner.v = ivec3(1, 2, 3);
+  U.inner.v.x = 1;
+  U.inner.v.y = 2;
+  U.inner.v.z = 3;
 }
 

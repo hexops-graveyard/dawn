@@ -16,6 +16,7 @@
 
 #include "dawn/native/BindGroupLayout.h"
 #include "dawn/native/Device.h"
+#include "dawn/native/Pipeline.h"
 #include "dawn/native/PipelineLayout.h"
 #include "dawn/native/RenderPipeline.h"
 
@@ -29,7 +30,7 @@ thread_local DeviceBase* tlDevice = nullptr;
 
 void TintICEReporter(const tint::diag::List& diagnostics) {
     if (tlDevice) {
-        tlDevice->HandleError(InternalErrorType::Validation, diagnostics.str().c_str());
+        tlDevice->HandleError(InternalErrorType::Internal, diagnostics.str().c_str());
     }
 }
 
@@ -153,10 +154,8 @@ tint::transform::MultiplanarExternalTexture::BindingsMap BuildExternalTextureTra
 
 tint::transform::VertexPulling::Config BuildVertexPullingTransformConfig(
     const RenderPipelineBase& renderPipeline,
-    const std::string_view& entryPoint,
     BindGroupIndex pullingBufferBindingSet) {
     tint::transform::VertexPulling::Config cfg;
-    cfg.entry_point_name = entryPoint;
     cfg.pulling_group = static_cast<uint32_t>(pullingBufferBindingSet);
 
     cfg.vertex_state.resize(renderPipeline.GetVertexBufferCount());
@@ -180,6 +179,21 @@ tint::transform::VertexPulling::Config BuildVertexPullingTransformConfig(
         uint8_t vertexBufferSlot = static_cast<uint8_t>(dawnInfo.vertexBufferSlot);
         cfg.vertex_state[vertexBufferSlot].attributes.push_back(tintInfo);
     }
+    return cfg;
+}
+
+tint::transform::SubstituteOverride::Config BuildSubstituteOverridesTransformConfig(
+    const ProgrammableStage& stage) {
+    const EntryPointMetadata& metadata = *stage.metadata;
+    const auto& constants = stage.constants;
+
+    tint::transform::SubstituteOverride::Config cfg;
+
+    for (const auto& [key, value] : constants) {
+        const auto& o = metadata.overrides.at(key);
+        cfg.map.insert({o.id, value});
+    }
+
     return cfg;
 }
 

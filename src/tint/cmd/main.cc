@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <charconv>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -24,9 +25,9 @@
 #include <vector>
 
 #if TINT_BUILD_GLSL_WRITER
-#include "StandAlone/ResourceLimits.h"
+#include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
-#endif
+#endif  // TINT_BUILD_GLSL_WRITER
 
 #if TINT_BUILD_SPV_READER
 #include "spirv-tools/libspirv.hpp"
@@ -38,6 +39,12 @@
 #include "src/tint/utils/transform.h"
 #include "src/tint/val/val.h"
 #include "tint/tint.h"
+
+#if TINT_BUILD_IR
+#include "src/tint/ir/debug.h"
+#include "src/tint/ir/disassembler.h"
+#include "src/tint/ir/module.h"
+#endif  // TINT_BUILD_IR
 
 namespace {
 
@@ -57,8 +64,14 @@ namespace {
     exit(1);
 }
 
+/// Prints the given hash value in a format string that the end-to-end test runner can parse.
+void PrintHash(uint32_t hash) {
+    std::cout << "<<HASH: 0x" << std::hex << hash << ">>" << std::endl;
+}
+
 enum class Format {
-    kNone = -1,
+    kUnknown,
+    kNone,
     kSpirv,
     kSpvAsm,
     kWgsl,
@@ -77,13 +90,18 @@ struct Options {
     bool parse_only = false;
     bool disable_workgroup_init = false;
     bool validate = false;
+    bool print_hash = false;
     bool demangle = false;
     bool dump_inspector_bindings = false;
 
-    Format format = Format::kNone;
+    std::unordered_set<uint32_t> skip_hash;
+
+    Format format = Format::kUnknown;
 
     bool emit_single_entry_point = false;
     std::string ep_name;
+
+    bool rename_all = false;
 
     std::vector<std::string> transforms;
 
@@ -92,12 +110,17 @@ struct Options {
     std::string xcrun_path;
     std::unordered_map<std::string, double> overrides;
     std::optional<tint::sem::BindingPoint> hlsl_root_constant_binding_point;
+
+#if TINT_BUILD_IR
+    bool dump_ir = false;
+    bool dump_ir_graph = false;
+#endif  // TINT_BUILD_IR
 };
 
 const char kUsage[] = R"(Usage: tint [options] <input-file>
 
  options:
-  --format <spirv|spvasm|wgsl|msl|hlsl>  -- Output format.
+  --format <spirv|spvasm|wgsl|msl|hlsl|none>  -- Output format.
                                If not provided, will be inferred from output
                                filename extension:
                                    .spvasm -> spvasm
@@ -111,8 +134,7 @@ const char kUsage[] = R"(Usage: tint [options] <input-file>
   -o <name>                 -- Output file name.  Use "-" for standard output
   --transform <name list>   -- Runs transforms, name list is comma separated
                                Available transforms:
-${transforms}
-  --parse-only              -- Stop after parsing the input
+${transforms} --parse-only              -- Stop after parsing the input
   --disable-workgroup-init  -- Disable workgroup memory zero initialization.
   --demangle                -- Preserve original source names. Demangle them.
                                Affects AST dumping, and text-based output languages.
@@ -124,6 +146,9 @@ ${transforms}
                                default to binding 0 of the largest used group plus 1,
                                or group 0 if no resource bound.
   --validate                -- Validates the generated shader with all available validators
+  --skip-hash <hash list>   -- Skips validation if the hash of the output is equal to any
+                               of the hash codes in the comma separated list of hashes
+  --print-hash              -- Emit the hash of the output program
   --fxc                     -- Path to FXC dll, used to validate HLSL output.
                                When specified, automatically enables HLSL validation with FXC
   --dxc                     -- Path to DXC executable, used to validate HLSL output.
@@ -131,6 +156,7 @@ ${transforms}
   --xcrun                   -- Path to xcrun executable, used to validate MSL output.
                                When specified, automatically enables MSL validation
   --overrides               -- Override values as IDENTIFIER=VALUE, comma-separated.
+  --rename-all              -- Renames all symbols.
 )";
 
 Format parse_format(const std::string& fmt) {
@@ -169,7 +195,11 @@ Format parse_format(const std::string& fmt) {
     }
 #endif  // TINT_BUILD_GLSL_WRITER
 
-    return Format::kNone;
+    if (fmt == "none") {
+        return Format::kNone;
+    }
+
+    return Format::kUnknown;
 }
 
 #if TINT_BUILD_SPV_WRITER || TINT_BUILD_WGSL_WRITER || TINT_BUILD_MSL_WRITER || \
@@ -217,7 +247,7 @@ Format infer_format(const std::string& filename) {
     }
 #endif  // TINT_BUILD_HLSL_WRITER
 
-    return Format::kNone;
+    return Format::kUnknown;
 }
 
 std::vector<std::string> split_on_char(std::string list, char c) {
@@ -377,7 +407,7 @@ bool ParseArgs(const std::vector<std::string>& args, Options* opts) {
             }
             opts->format = parse_format(args[i]);
 
-            if (opts->format == Format::kNone) {
+            if (opts->format == Format::kUnknown) {
                 std::cerr << "Unknown output format: " << args[i] << std::endl;
                 return false;
             }
@@ -419,6 +449,24 @@ bool ParseArgs(const std::vector<std::string>& args, Options* opts) {
             opts->dump_inspector_bindings = true;
         } else if (arg == "--validate") {
             opts->validate = true;
+        } else if (arg == "--skip-hash") {
+            ++i;
+            if (i >= args.size()) {
+                std::cerr << "Missing hash value for " << arg << std::endl;
+                return false;
+            }
+            for (auto hash : split_on_comma(args[i])) {
+                uint32_t value = 0;
+                int base = 10;
+                if (hash.size() > 2 && hash[0] == '0' && (hash[1] == 'x' || hash[1] == 'X')) {
+                    hash = hash.substr(2);
+                    base = 16;
+                }
+                std::from_chars(hash.data(), hash.data() + hash.size(), value, base);
+                opts->skip_hash.emplace(value);
+            }
+        } else if (arg == "--print-hash") {
+            opts->print_hash = true;
         } else if (arg == "--fxc") {
             ++i;
             if (i >= args.size()) {
@@ -433,6 +481,12 @@ bool ParseArgs(const std::vector<std::string>& args, Options* opts) {
                 return false;
             }
             opts->dxc_path = args[i];
+#if TINT_BUILD_IR
+        } else if (arg == "--dump-ir") {
+            opts->dump_ir = true;
+        } else if (arg == "--dump-ir-graph") {
+            opts->dump_ir_graph = true;
+#endif  // TINT_BUILD_IR
         } else if (arg == "--xcrun") {
             ++i;
             if (i >= args.size()) {
@@ -451,6 +505,9 @@ bool ParseArgs(const std::vector<std::string>& args, Options* opts) {
                 auto parts = split_on_equal(o);
                 opts->overrides.insert({parts[0], std::stod(parts[1])});
             }
+        } else if (arg == "--rename-all") {
+            ++i;
+            opts->rename_all = true;
         } else if (arg == "--hlsl-root-constant-binding-point") {
             ++i;
             if (i >= args.size()) {
@@ -663,7 +720,12 @@ bool GenerateSpirv(const tint::Program* program, const Options& options) {
         }
     }
 
-    if (options.validate) {
+    const auto hash = tint::utils::CRC32(result.spirv.data(), result.spirv.size());
+    if (options.print_hash) {
+        PrintHash(hash);
+    }
+
+    if (options.validate && options.skip_hash.count(hash) == 0) {
         // Use Vulkan 1.1, since this is what Tint, internally, uses.
         spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_1);
         tools.SetMessageConsumer(
@@ -703,7 +765,12 @@ bool GenerateWgsl(const tint::Program* program, const Options& options) {
         return false;
     }
 
-    if (options.validate) {
+    const auto hash = tint::utils::CRC32(result.wgsl.data(), result.wgsl.size());
+    if (options.print_hash) {
+        PrintHash(hash);
+    }
+
+    if (options.validate && options.skip_hash.count(hash) == 0) {
         // Attempt to re-parse the output program with Tint's WGSL reader.
         auto source = std::make_unique<tint::Source::File>(options.input_filename, result.wgsl);
         auto reparsed_program = tint::reader::wgsl::Parse(source.get());
@@ -753,7 +820,12 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
         return false;
     }
 
-    if (options.validate) {
+    const auto hash = tint::utils::CRC32(result.msl.c_str());
+    if (options.print_hash) {
+        PrintHash(hash);
+    }
+
+    if (options.validate && options.skip_hash.count(hash) == 0) {
         tint::val::Result res;
 #ifdef TINT_ENABLE_MSL_VALIDATION_USING_METAL_API
         res = tint::val::MslUsingMetalAPI(result.msl);
@@ -809,11 +881,17 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
         return false;
     }
 
+    const auto hash = tint::utils::CRC32(result.hlsl.c_str());
+    if (options.print_hash) {
+        PrintHash(hash);
+    }
+
     // If --fxc or --dxc was passed, then we must explicitly find and validate with that respective
     // compiler.
     const bool must_validate_dxc = !options.dxc_path.empty();
     const bool must_validate_fxc = !options.fxc_path.empty();
-    if (options.validate || must_validate_dxc || must_validate_fxc) {
+    if ((options.validate || must_validate_dxc || must_validate_fxc) &&
+        (options.skip_hash.count(hash) == 0)) {
         tint::val::Result dxc_res;
         bool dxc_found = false;
         if (options.validate || must_validate_dxc) {
@@ -940,7 +1018,12 @@ bool GenerateGlsl(const tint::Program* program, const Options& options) {
             return false;
         }
 
-        if (options.validate) {
+        const auto hash = tint::utils::CRC32(result.glsl.c_str());
+        if (options.print_hash) {
+            PrintHash(hash);
+        }
+
+        if (options.validate && options.skip_hash.count(hash) == 0) {
             for (auto entry_pt : result.entry_points) {
                 EShLanguage lang = pipeline_stage_to_esh_language(entry_pt.second);
                 glslang::TShader shader(lang);
@@ -948,8 +1031,8 @@ bool GenerateGlsl(const tint::Program* program, const Options& options) {
                 int lengths[1] = {static_cast<int>(result.glsl.length())};
                 shader.setStringsWithLengths(strings, lengths, 1);
                 shader.setEntryPoint("main");
-                bool glslang_result = shader.parse(&glslang::DefaultTBuiltInResource, 310,
-                                                   EEsProfile, false, false, EShMsgDefault);
+                bool glslang_result = shader.parse(GetDefaultResources(), 310, EEsProfile, false,
+                                                   false, EShMsgDefault);
                 if (!glslang_result) {
                     std::cerr << "Error parsing GLSL shader:\n"
                               << shader.getInfoLog() << "\n"
@@ -1025,11 +1108,6 @@ int main(int argc, const char** argv) {
              m.Add<tint::transform::FirstIndexOffset>();
              return true;
          }},
-        {"fold_trivial_single_use_lets",
-         [](tint::inspector::Inspector&, tint::transform::Manager& m, tint::transform::DataMap&) {
-             m.Add<tint::transform::FoldTrivialSingleUseLets>();
-             return true;
-         }},
         {"renamer",
          [](tint::inspector::Inspector&, tint::transform::Manager& m, tint::transform::DataMap&) {
              m.Add<tint::transform::Renamer>();
@@ -1074,6 +1152,55 @@ int main(int argc, const char** argv) {
              m.Add<tint::transform::SubstituteOverride>();
              return true;
          }},
+        {"multiplaner_external_texture",
+         [](tint::inspector::Inspector& inspector, tint::transform::Manager& m,
+            tint::transform::DataMap& i) {
+             using MET = tint::transform::MultiplanarExternalTexture;
+
+             // Generate the MultiplanarExternalTexture::NewBindingPoints by finding two free
+             // binding points. We may wish to expose these binding points via a command line flag
+             // in the future.
+
+             // Set of all the group-0 bindings in use.
+             std::unordered_set<uint32_t> group0_bindings_in_use;
+             auto allocate_binding = [&] {
+                 for (uint32_t idx = 0;; idx++) {
+                     auto binding = tint::transform::BindingPoint{0u, idx};
+                     if (group0_bindings_in_use.emplace(idx).second) {
+                         return binding;
+                     }
+                 }
+             };
+             // Populate group0_bindings_in_use with the existing bindings across all entry points.
+             for (auto ep : inspector.GetEntryPoints()) {
+                 for (auto binding : inspector.GetResourceBindings(ep.name)) {
+                     if (binding.bind_group == 0) {
+                         group0_bindings_in_use.emplace(binding.binding);
+                     }
+                 }
+             }
+             // Allocate new binding points for the external texture's planes and parameters.
+             MET::BindingsMap met_bindings;
+             for (auto ep : inspector.GetEntryPoints()) {
+                 for (auto ext_tex : inspector.GetExternalTextureResourceBindings(ep.name)) {
+                     auto binding = tint::transform::BindingPoint{
+                         ext_tex.bind_group,
+                         ext_tex.binding,
+                     };
+                     if (met_bindings.count(binding)) {
+                         continue;
+                     }
+                     met_bindings.emplace(binding, MET::BindingPoints{
+                                                       /* plane_1 */ allocate_binding(),
+                                                       /* params */ allocate_binding(),
+                                                   });
+                 }
+             }
+
+             i.Add<MET::NewBindingPoints>(std::move(met_bindings));
+             m.Add<MET>();
+             return true;
+         }},
     };
     auto transform_names = [&] {
         std::stringstream names;
@@ -1085,16 +1212,22 @@ int main(int argc, const char** argv) {
 
     if (options.show_help) {
         std::string usage = tint::utils::ReplaceAll(kUsage, "${transforms}", transform_names());
+#if TINT_BUILD_IR
+        usage +=
+            "  --dump-ir                 -- Writes the IR to stdout\n"
+            "  --dump-ir-graph           -- Writes the IR graph to 'tint.dot' as a dot graph\n";
+#endif  // TINT_BUILD_IR
+
         std::cout << usage << std::endl;
         return 0;
     }
 
     // Implement output format defaults.
-    if (options.format == Format::kNone) {
+    if (options.format == Format::kUnknown) {
         // Try inferring from filename.
         options.format = infer_format(options.output_file);
     }
-    if (options.format == Format::kNone) {
+    if (options.format == Format::kUnknown) {
         // Ultimately, default to SPIR-V assembly. That's nice for interactive use.
         options.format = Format::kSpvAsm;
     }
@@ -1203,6 +1336,25 @@ int main(int argc, const char** argv) {
         return 1;
     }
 
+#if TINT_BUILD_IR
+    if (options.dump_ir || options.dump_ir_graph) {
+        auto result = tint::ir::Module::FromProgram(program.get());
+        if (!result) {
+            std::cerr << "Failed to build IR from program: " << result.Failure() << std::endl;
+        } else {
+            auto mod = result.Move();
+            if (options.dump_ir) {
+                tint::ir::Disassembler d(mod);
+                std::cout << d.Disassemble() << std::endl;
+            }
+            if (options.dump_ir_graph) {
+                auto graph = tint::ir::Debug::AsDotGraph(&mod);
+                WriteFile("tint.dot", "w", graph);
+            }
+        }
+    }
+#endif  // TINT_BUILD_IR
+
     tint::inspector::Inspector inspector(program.get());
 
     if (options.dump_inspector_bindings) {
@@ -1240,50 +1392,13 @@ int main(int argc, const char** argv) {
     tint::transform::Manager transform_manager;
     tint::transform::DataMap transform_inputs;
 
-    // If overrides are provided, add the SubstituteOverride transform.
-    if (!options.overrides.empty()) {
-        for (auto& t : transforms) {
-            if (t.name == std::string("substitute_override")) {
-                if (!t.make(inspector, transform_manager, transform_inputs)) {
-                    return 1;
-                }
-                break;
-            }
-        }
-    }
-
-    for (const auto& name : options.transforms) {
-        // TODO(dsinclair): The vertex pulling transform requires setup code to
-        // be run that needs user input. Should we find a way to support that here
-        // maybe through a provided file?
-
-        bool found = false;
-        for (auto& t : transforms) {
-            if (t.name == name) {
-                if (!t.make(inspector, transform_manager, transform_inputs)) {
-                    return 1;
-                }
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            std::cerr << "Unknown transform: " << name << std::endl;
-            std::cerr << "Available transforms: " << std::endl << transform_names();
-            return 1;
-        }
-    }
-
-    if (options.emit_single_entry_point) {
-        transform_manager.append(std::make_unique<tint::transform::SingleEntryPoint>());
-        transform_inputs.Add<tint::transform::SingleEntryPoint::Config>(options.ep_name);
-    }
-
+    // Renaming must always come first
     switch (options.format) {
         case Format::kMsl: {
 #if TINT_BUILD_MSL_WRITER
             transform_inputs.Add<tint::transform::Renamer::Config>(
-                tint::transform::Renamer::Target::kMslKeywords,
+                options.rename_all ? tint::transform::Renamer::Target::kAll
+                                   : tint::transform::Renamer::Target::kMslKeywords,
                 /* preserve_unicode */ false);
             transform_manager.Add<tint::transform::Renamer>();
 #endif  // TINT_BUILD_MSL_WRITER
@@ -1291,20 +1406,63 @@ int main(int argc, const char** argv) {
         }
 #if TINT_BUILD_GLSL_WRITER
         case Format::kGlsl: {
+            transform_inputs.Add<tint::transform::Renamer::Config>(
+                options.rename_all ? tint::transform::Renamer::Target::kAll
+                                   : tint::transform::Renamer::Target::kGlslKeywords,
+                /* preserve_unicode */ false);
+            transform_manager.Add<tint::transform::Renamer>();
             break;
         }
 #endif  // TINT_BUILD_GLSL_WRITER
         case Format::kHlsl: {
 #if TINT_BUILD_HLSL_WRITER
             transform_inputs.Add<tint::transform::Renamer::Config>(
-                tint::transform::Renamer::Target::kHlslKeywords,
+                options.rename_all ? tint::transform::Renamer::Target::kAll
+                                   : tint::transform::Renamer::Target::kHlslKeywords,
                 /* preserve_unicode */ false);
             transform_manager.Add<tint::transform::Renamer>();
 #endif  // TINT_BUILD_HLSL_WRITER
             break;
         }
-        default:
+        default: {
+            if (options.rename_all) {
+                transform_manager.Add<tint::transform::Renamer>();
+            }
             break;
+        }
+    }
+
+    auto enable_transform = [&](std::string_view name) {
+        for (auto& t : transforms) {
+            if (t.name == name) {
+                return t.make(inspector, transform_manager, transform_inputs);
+            }
+        }
+
+        std::cerr << "Unknown transform: " << name << std::endl;
+        std::cerr << "Available transforms: " << std::endl << transform_names();
+        return false;
+    };
+
+    // If overrides are provided, add the SubstituteOverride transform.
+    if (!options.overrides.empty()) {
+        if (!enable_transform("substitute_override")) {
+            return 1;
+        }
+    }
+
+    for (const auto& name : options.transforms) {
+        // TODO(dsinclair): The vertex pulling transform requires setup code to
+        // be run that needs user input. Should we find a way to support that here
+        // maybe through a provided file?
+        if (!enable_transform(name)) {
+            return 1;
+        }
+    }
+
+    if (options.emit_single_entry_point) {
+        transform_manager.append(std::make_unique<tint::transform::SingleEntryPoint>());
+        transform_inputs.Add<tint::transform::SingleEntryPoint::Config>(options.ep_name);
     }
 
     auto out = transform_manager.Run(program.get(), std::move(transform_inputs));
@@ -1333,6 +1491,8 @@ int main(int argc, const char** argv) {
             break;
         case Format::kGlsl:
             success = GenerateGlsl(program.get(), options);
+            break;
+        case Format::kNone:
             break;
         default:
             std::cerr << "Unknown output format specified" << std::endl;

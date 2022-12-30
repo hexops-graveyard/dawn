@@ -62,10 +62,18 @@ using WGSLExtensionSet = std::unordered_set<std::string>;
 
 class DeviceBase : public RefCountedWithExternalCount {
   public:
-    DeviceBase(AdapterBase* adapter, const DeviceDescriptor* descriptor);
+    DeviceBase(AdapterBase* adapter,
+               const DeviceDescriptor* descriptor,
+               const TripleStateTogglesSet& userProvidedToggles);
     ~DeviceBase() override;
 
-    void HandleError(InternalErrorType type, const char* message);
+    // Handles the error, causing a device loss if applicable. Almost always when a device loss
+    // occurs because of an error, we want to call the device loss callback with an undefined
+    // reason, but the ForceLoss API allows for an injection of the reason, hence the default
+    // argument.
+    void HandleError(InternalErrorType type,
+                     const char* message,
+                     WGPUDeviceLostReason lost_reason = WGPUDeviceLostReason_Undefined);
 
     bool ConsumedError(MaybeError maybeError) {
         if (DAWN_UNLIKELY(maybeError.IsError())) {
@@ -151,7 +159,6 @@ class DeviceBase : public RefCountedWithExternalCount {
 
     ExecutionSerial GetCompletedCommandSerial() const;
     ExecutionSerial GetLastSubmittedCommandSerial() const;
-    ExecutionSerial GetFutureSerial() const;
     ExecutionSerial GetPendingCommandSerial() const;
 
     // Many Dawn objects are completely immutable once created which means that if two
@@ -265,18 +272,15 @@ class DeviceBase : public RefCountedWithExternalCount {
     InternalPipelineStore* GetInternalPipelineStore();
 
     // For Dawn Wire
-    BufferBase* APICreateErrorBuffer();
+    BufferBase* APICreateErrorBuffer(const BufferDescriptor* desc);
     ExternalTextureBase* APICreateErrorExternalTexture();
     TextureBase* APICreateErrorTexture(const TextureDescriptor* desc);
 
+    AdapterBase* APIGetAdapter();
     QueueBase* APIGetQueue();
 
     bool APIGetLimits(SupportedLimits* limits) const;
-    // Note that we should not use this function to query the features which can only be enabled
-    // behind toggles (use IsFeatureEnabled() instead).
     bool APIHasFeature(wgpu::FeatureName feature) const;
-    // Note that we should not use this function to query the features which can only be enabled
-    // behind toggles (use IsFeatureEnabled() instead).
     size_t APIEnumerateFeatures(wgpu::FeatureName* features) const;
     void APIInjectError(wgpu::ErrorType type, const char* message);
     bool APITick();
@@ -294,15 +298,15 @@ class DeviceBase : public RefCountedWithExternalCount {
     void StoreCachedBlob(const CacheKey& key, const Blob& blob);
 
     virtual ResultOrError<std::unique_ptr<StagingBufferBase>> CreateStagingBuffer(size_t size) = 0;
-    virtual MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
-                                               uint64_t sourceOffset,
-                                               BufferBase* destination,
-                                               uint64_t destinationOffset,
-                                               uint64_t size) = 0;
-    virtual MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
-                                                const TextureDataLayout& src,
-                                                TextureCopy* dst,
-                                                const Extent3D& copySizePixels) = 0;
+    MaybeError CopyFromStagingToBuffer(StagingBufferBase* source,
+                                       uint64_t sourceOffset,
+                                       BufferBase* destination,
+                                       uint64_t destinationOffset,
+                                       uint64_t size);
+    MaybeError CopyFromStagingToTexture(const StagingBufferBase* source,
+                                        const TextureDataLayout& src,
+                                        TextureCopy* dst,
+                                        const Extent3D& copySizePixels);
 
     DynamicUploader* GetDynamicUploader() const;
 
@@ -328,8 +332,7 @@ class DeviceBase : public RefCountedWithExternalCount {
     };
     State GetState() const;
     bool IsLost() const;
-    void TrackObject(ApiObjectBase* object);
-    std::mutex* GetObjectListMutex(ObjectType type);
+    ApiObjectList* GetObjectTrackingList(ObjectType type);
 
     std::vector<const char*> GetTogglesUsed() const;
     WGSLExtensionSet GetWGSLExtensionAllowList() const;
@@ -339,20 +342,12 @@ class DeviceBase : public RefCountedWithExternalCount {
     size_t GetLazyClearCountForTesting();
     void IncrementLazyClearCountForTesting();
     size_t GetDeprecationWarningCountForTesting();
-    void EmitDeprecationWarning(const char* warning);
+    void EmitDeprecationWarning(const std::string& warning);
     void EmitLog(const char* message);
     void EmitLog(WGPULoggingType loggingType, const char* message);
-    void APILoseForTesting();
+    void APIForceLoss(wgpu::DeviceLostReason reason, const char* message);
     QueueBase* GetQueue() const;
 
-    // AddFutureSerial is used to update the mFutureSerial with the max serial needed to be
-    // ticked in order to clean up all pending callback work or to execute asynchronous resource
-    // writes. It should be given the serial that a callback is tracked with, so that once that
-    // serial is completed, it can be resolved and cleaned up. This is so that when there is no
-    // gpu work (the last submitted serial has not moved beyond the completed serial), Tick can
-    // still check if we have pending work to take care of, rather than hanging and never
-    // reaching the serial the work will be executed on.
-    void AddFutureSerial(ExecutionSerial serial);
     // Check for passed fences and set the new completed serial
     MaybeError CheckPassedSerials();
 
@@ -362,6 +357,7 @@ class DeviceBase : public RefCountedWithExternalCount {
     // BackendMetadata that we can query from the device.
     virtual uint32_t GetOptimalBytesPerRowAlignment() const = 0;
     virtual uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const = 0;
+    virtual uint64_t GetBufferCopyOffsetAlignmentForDepthStencil() const;
 
     virtual float GetTimestampPeriodInNS() const = 0;
 
@@ -373,9 +369,7 @@ class DeviceBase : public RefCountedWithExternalCount {
     virtual bool ShouldDuplicateParametersForDrawIndirect(
         const RenderPipelineBase* renderPipelineBase) const;
 
-    // TODO(crbug.com/dawn/1434): Make this function non-overridable when we support requesting
-    // Adapter with toggles.
-    virtual bool IsFeatureEnabled(Feature feature) const;
+    bool HasFeature(Feature feature) const;
 
     const CombinedLimits& GetLimits() const;
 
@@ -400,6 +394,25 @@ class DeviceBase : public RefCountedWithExternalCount {
     void APIDestroy();
 
     virtual void AppendDebugLayerMessages(ErrorData* error) {}
+
+    void AssumeCommandsCompleteForTesting();
+
+    // Whether the device is having scheduled commands to be submitted or executed.
+    // There are "Scheduled" "Pending" and "Executing" commands. Frontend knows "Executing" commands
+    // and backend knows "Pending" commands. "Scheduled" commands are either "Pending" or
+    // "Executing".
+    bool HasScheduledCommands() const;
+    // The serial by which time all currently submitted or pending operations will be completed.
+    ExecutionSerial GetScheduledWorkDoneSerial() const;
+
+    // For the commands being internally recorded in backend, that were not urgent to submit, this
+    // method makes them to be submitted as soon as possbile in next ticks.
+    virtual void ForceEventualFlushOfCommands() = 0;
+
+    // In the 'Normal' mode, currently recorded commands in the backend normally will be actually
+    // submitted in the next Tick. However in the 'Passive' mode, the submission will be postponed
+    // as late as possible, for example, until the client has explictly issued a submission.
+    enum class SubmitMode { Normal, Passive };
 
   protected:
     // Constructor used only for mocking and testing.
@@ -474,7 +487,6 @@ class DeviceBase : public RefCountedWithExternalCount {
                                                    WGPUCreateRenderPipelineAsyncCallback callback,
                                                    void* userdata);
 
-    void ApplyToggleOverrides(const DawnTogglesDeviceDescriptor* togglesDescriptor);
     void ApplyFeatures(const DeviceDescriptor* deviceDescriptor);
 
     void SetDefaultToggles();
@@ -495,14 +507,9 @@ class DeviceBase : public RefCountedWithExternalCount {
     // mCompletedSerial tracks the last completed command serial that the fence has returned.
     // mLastSubmittedSerial tracks the last submitted command serial.
     // During device removal, the serials could be artificially incremented
-    // to make it appear as if commands have been compeleted. They can also be artificially
-    // incremented when no work is being done in the GPU so CPU operations don't have to wait on
-    // stale serials.
-    // mFutureSerial tracks the largest serial we need to tick to for asynchronous commands or
-    // callbacks to fire
+    // to make it appear as if commands have been compeleted.
     ExecutionSerial mCompletedSerial = ExecutionSerial(0);
     ExecutionSerial mLastSubmittedSerial = ExecutionSerial(0);
-    ExecutionSerial mFutureSerial = ExecutionSerial(0);
 
     // DestroyImpl is used to clean up and release resources used by device, does not wait for
     // GPU or check errors.
@@ -513,6 +520,19 @@ class DeviceBase : public RefCountedWithExternalCount {
     // device loss, this function doesn't need to be called since the driver already closed all
     // resources.
     virtual MaybeError WaitForIdleForDestruction() = 0;
+
+    // Indicates whether the backend has pending commands to be submitted as soon as possible.
+    virtual bool HasPendingCommands() const = 0;
+
+    virtual MaybeError CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                                   uint64_t sourceOffset,
+                                                   BufferBase* destination,
+                                                   uint64_t destinationOffset,
+                                                   uint64_t size) = 0;
+    virtual MaybeError CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                                    const TextureDataLayout& src,
+                                                    TextureCopy* dst,
+                                                    const Extent3D& copySizePixels) = 0;
 
     wgpu::ErrorCallback mUncapturedErrorCallback = nullptr;
     void* mUncapturedErrorUserdata = nullptr;
@@ -525,12 +545,7 @@ class DeviceBase : public RefCountedWithExternalCount {
 
     std::unique_ptr<ErrorScopeStack> mErrorScopeStack;
 
-    // The Device keeps a ref to the Instance so that any live Device keeps the Instance alive.
-    // The Instance shouldn't need to ref child objects so this shouldn't introduce ref cycles.
-    // The Device keeps a simple pointer to the Adapter because the Adapter is owned by the
-    // Instance.
-    Ref<InstanceBase> mInstance;
-    AdapterBase* mAdapter = nullptr;
+    Ref<AdapterBase> mAdapter;
 
     // The object caches aren't exposed in the header as they would require a lot of
     // additional includes.
@@ -550,12 +565,6 @@ class DeviceBase : public RefCountedWithExternalCount {
 
     State mState = State::BeingCreated;
 
-    // Encompasses the mutex and the actual list that contains all live objects "owned" by the
-    // device.
-    struct ApiObjectList {
-        std::mutex mutex;
-        LinkedList<ApiObjectBase> objects;
-    };
     PerObjectType<ApiObjectList> mObjectLists;
 
     FormatTable mFormatTable;

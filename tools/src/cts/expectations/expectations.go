@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 
 	"dawn.googlesource.com/dawn/tools/src/cts/result"
@@ -38,8 +39,8 @@ type Content struct {
 // A chunk ends at the first blank line, or at the transition from an
 // expectation to a line-comment.
 type Chunk struct {
-	Comments     []string      // Line comments at the top of the chunk
-	Expectations []Expectation // Expectations for the chunk
+	Comments     []string     // Line comments at the top of the chunk
+	Expectations Expectations // Expectations for the chunk
 }
 
 // Tags holds the tag information parsed in the comments between the
@@ -80,13 +81,16 @@ type Expectation struct {
 	Comment string      // Optional comment at end of line
 }
 
+// Expectations are a list of Expectation
+type Expectations []Expectation
+
 // Load loads the expectation file at 'path', returning a Content.
 func Load(path string) (Content, error) {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return Content{}, err
 	}
-	ex, err := Parse(string(content))
+	ex, err := Parse(path, string(content))
 	if err != nil {
 		return Content{}, err
 	}
@@ -227,4 +231,39 @@ func (e Expectation) Clone() Expectation {
 		out.Status = append([]string{}, e.Status...)
 	}
 	return out
+}
+
+// Compare compares the relative order of a and b, returning:
+//
+//	-1 if a should come before b
+//	 1 if a should come after b
+//	 0 if a and b are identical
+//
+// Note: Only comparing bug, query, and tags (in that order).
+func (a Expectation) Compare(b Expectation) int {
+	switch strings.Compare(a.Bug, b.Bug) {
+	case -1:
+		return -1
+	case 1:
+		return 1
+	}
+	switch strings.Compare(a.Query, b.Query) {
+	case -1:
+		return -1
+	case 1:
+		return 1
+	}
+	aTag := result.TagsToString(a.Tags)
+	bTag := result.TagsToString(b.Tags)
+	switch strings.Compare(aTag, bTag) {
+	case -1:
+		return -1
+	case 1:
+		return 1
+	}
+	return 0
+}
+
+func (l Expectations) Sort() {
+	sort.Slice(l, func(i, j int) bool { return l[i].Compare(l[j]) < 0 })
 }

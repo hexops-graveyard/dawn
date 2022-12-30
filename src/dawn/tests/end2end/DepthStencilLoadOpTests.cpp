@@ -128,7 +128,8 @@ class DepthStencilLoadOpTests : public DawnTestWithParams<DepthStencilLoadOpTest
                     std::vector<uint16_t> expectedDepth(mipSize * mipSize,
                                                         kU16DepthValues[mipLevel]);
                     EXPECT_TEXTURE_EQ(expectedDepth.data(), texture, {0, 0}, {mipSize, mipSize},
-                                      mipLevel, wgpu::TextureAspect::DepthOnly)
+                                      mipLevel, wgpu::TextureAspect::DepthOnly,
+                                      /* bytesPerRow */ 0, /* tolerance */ uint16_t(1))
                         << "copy depth mip " << mipLevel;
                 } else {
                     std::vector<float> expectedDepth(mipSize * mipSize, kDepthValues[mipLevel]);
@@ -188,14 +189,6 @@ TEST_P(DepthStencilLoadOpTests, ClearMip0) {
 
 // Check that clearing a non-zero mip level works at all.
 TEST_P(DepthStencilLoadOpTests, ClearMip1) {
-    // TODO(crbug.com/dawn/838): Sampling from the non-zero mip does not work.
-    DAWN_SUPPRESS_TEST_IF(IsMetal() && IsIntel() && GetParam().mCheck == Check::SampleDepth);
-
-    // TODO(crbug.com/dawn/838): Copying from the non-zero mip here sometimes returns uninitialized
-    // data! (from mip 0 of a previous test run).
-    DAWN_SUPPRESS_TEST_IF(IsMetal() && IsIntel() && GetParam().mCheck == Check::CopyDepth);
-    DAWN_SUPPRESS_TEST_IF(IsMetal() && IsIntel() && GetParam().mCheck == Check::CopyStencil);
-
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
     encoder.BeginRenderPass(&renderPassDescriptors[1]).End();
     wgpu::CommandBuffer commandBuffer = encoder.Finish();
@@ -221,9 +214,6 @@ TEST_P(DepthStencilLoadOpTests, ClearBothMip0Then1) {
 
 // Clear second mip then the first mip. Check both mip levels.
 TEST_P(DepthStencilLoadOpTests, ClearBothMip1Then0) {
-    // TODO(crbug.com/dawn/838): Sampling from the non-zero mip does not work.
-    DAWN_SUPPRESS_TEST_IF(IsMetal() && IsIntel() && GetParam().mCheck == Check::SampleDepth);
-
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
     encoder.BeginRenderPass(&renderPassDescriptors[1]).End();
     encoder.BeginRenderPass(&renderPassDescriptors[0]).End();

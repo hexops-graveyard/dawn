@@ -114,7 +114,7 @@ def _NonInclusiveFileFilter(file):
         "src/dawn/native/metal/BackendMTL.mm",  # OSX Constant
         "src/dawn/native/vulkan/SamplerVk.cpp",  # External URL
         "src/dawn/native/vulkan/TextureVk.cpp",  # External URL
-        "src/dawn/node/tools/src/cmd/run-cts/main.go",  # Terminal type name
+        "src/tools/src/cmd/run-cts/main.go",  # Terminal type name
         "src/dawn/samples/ComputeBoids.cpp",  # External URL
         "src/dawn/tests/end2end/DepthBiasTests.cpp",  # External URL
         "src/tint/transform/canonicalize_entry_point_io.cc",  # External URL
@@ -127,14 +127,42 @@ def _NonInclusiveFileFilter(file):
     return file.LocalPath() not in filter_list
 
 
+def _CheckNoStaleGen(input_api, output_api):
+    results = []
+    try:
+        go = input_api.os_path.join(input_api.change.RepositoryRoot(), "tools",
+                                    "golang", "bin", "go")
+        if input_api.is_windows:
+            go += '.exe'
+        input_api.subprocess.check_call_out(
+            [go, "run", "tools/src/cmd/gen/main.go", "--check-stale"],
+            stdout=input_api.subprocess.PIPE,
+            stderr=input_api.subprocess.PIPE,
+            cwd=input_api.change.RepositoryRoot())
+    except input_api.subprocess.CalledProcessError as e:
+        if input_api.is_committing:
+            results.append(output_api.PresubmitError('%s' % (e, )))
+        else:
+            results.append(output_api.PresubmitPromptWarning('%s' % (e, )))
+    return results
+
+
 def _DoCommonChecks(input_api, output_api):
     results = []
+    results.extend(_CheckNoStaleGen(input_api, output_api))
     results.extend(
         input_api.canned_checks.CheckChangedLUCIConfigs(input_api, output_api))
+
+    result_factory = output_api.PresubmitPromptWarning
+    if input_api.is_committing:
+        result_factory = output_api.PresubmitError
+
     results.extend(
-        input_api.canned_checks.CheckPatchFormatted(input_api,
-                                                    output_api,
-                                                    check_python=True))
+        input_api.canned_checks.CheckPatchFormatted(
+            input_api,
+            output_api,
+            check_python=True,
+            result_factory=result_factory))
     results.extend(
         input_api.canned_checks.CheckChangeHasDescription(
             input_api, output_api))

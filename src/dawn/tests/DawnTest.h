@@ -28,10 +28,12 @@
 #include "dawn/dawn_proc_table.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/platform/DawnPlatform.h"
+#include "dawn/tests/AdapterTestConfig.h"
 #include "dawn/tests/MockCallback.h"
 #include "dawn/tests/ParamGenerator.h"
 #include "dawn/tests/ToggleParser.h"
 #include "dawn/utils/ScopedAutoreleasePool.h"
+#include "dawn/utils/TestUtils.h"
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/webgpu_cpp.h"
 #include "dawn/webgpu_cpp_print.h"
@@ -120,76 +122,6 @@
 
 #define ASSERT_DEVICE_ERROR(statement) ASSERT_DEVICE_ERROR_MSG(statement, testing::_)
 
-struct RGBA8 {
-    constexpr RGBA8() : RGBA8(0, 0, 0, 0) {}
-    constexpr RGBA8(uint8_t r, uint8_t g, uint8_t b, uint8_t a) : r(r), g(g), b(b), a(a) {}
-    bool operator==(const RGBA8& other) const;
-    bool operator!=(const RGBA8& other) const;
-    bool operator<=(const RGBA8& other) const;
-    bool operator>=(const RGBA8& other) const;
-
-    uint8_t r, g, b, a;
-
-    static const RGBA8 kZero;
-    static const RGBA8 kBlack;
-    static const RGBA8 kRed;
-    static const RGBA8 kGreen;
-    static const RGBA8 kBlue;
-    static const RGBA8 kYellow;
-    static const RGBA8 kWhite;
-};
-std::ostream& operator<<(std::ostream& stream, const RGBA8& color);
-
-struct BackendTestConfig {
-    BackendTestConfig(wgpu::BackendType backendType,
-                      std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                      std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-    wgpu::BackendType backendType;
-
-    std::vector<const char*> forceEnabledWorkarounds;
-    std::vector<const char*> forceDisabledWorkarounds;
-};
-
-struct TestAdapterProperties : wgpu::AdapterProperties {
-    TestAdapterProperties(const wgpu::AdapterProperties& properties, bool selected);
-    std::string adapterName;
-    bool selected;
-
-  private:
-    // This may be temporary, so it is copied into |adapterName| and made private.
-    using wgpu::AdapterProperties::name;
-};
-
-struct AdapterTestParam {
-    AdapterTestParam(const BackendTestConfig& config,
-                     const TestAdapterProperties& adapterProperties);
-
-    TestAdapterProperties adapterProperties;
-    std::vector<const char*> forceEnabledWorkarounds;
-    std::vector<const char*> forceDisabledWorkarounds;
-};
-
-std::ostream& operator<<(std::ostream& os, const AdapterTestParam& param);
-
-BackendTestConfig D3D12Backend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                               std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-BackendTestConfig MetalBackend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                               std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-BackendTestConfig NullBackend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                              std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-BackendTestConfig OpenGLBackend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                                std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-BackendTestConfig OpenGLESBackend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                                  std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
-BackendTestConfig VulkanBackend(std::initializer_list<const char*> forceEnabledWorkarounds = {},
-                                std::initializer_list<const char*> forceDisabledWorkarounds = {});
-
 struct GLFWwindow;
 
 namespace utils {
@@ -202,6 +134,8 @@ namespace detail {
 class Expectation;
 class CustomTextureExpectation;
 
+template <typename T>
+class ExpectConstant;
 template <typename T, typename U = T>
 class ExpectEq;
 template <typename T>
@@ -238,8 +172,6 @@ class DawnTestEnvironment : public testing::Environment {
     bool HasBackendTypeFilter() const;
     wgpu::BackendType GetBackendTypeFilter() const;
     const char* GetWireTraceDir() const;
-    GLFWwindow* GetOpenGLWindow() const;
-    GLFWwindow* GetOpenGLESWindow() const;
 
     const std::vector<std::string>& GetEnabledToggles() const;
     const std::vector<std::string>& GetDisabledToggles() const;
@@ -293,6 +225,7 @@ class DawnTestBase {
     bool IsVulkan() const;
 
     bool IsAMD() const;
+    bool IsApple() const;
     bool IsARM() const;
     bool IsImgTec() const;
     bool IsIntel() const;
@@ -300,11 +233,15 @@ class DawnTestBase {
     bool IsQualcomm() const;
     bool IsSwiftshader() const;
     bool IsANGLE() const;
+    bool IsANGLESwiftShader() const;
     bool IsWARP() const;
+
+    bool IsIntelGen12() const;
 
     bool IsWindows() const;
     bool IsLinux() const;
     bool IsMacOS(int32_t majorVersion = -1, int32_t minorVersion = -1) const;
+    bool IsAndroid() const;
 
     bool UsesWire() const;
     bool IsBackendValidationEnabled() const;
@@ -370,11 +307,29 @@ class DawnTestBase {
                                              uint64_t size,
                                              detail::Expectation* expectation);
 
+    template <typename T, typename U = T>
+    std::ostringstream& AddTextureExpectation(const char* file,
+                                              int line,
+                                              const T* expectedData,
+                                              const wgpu::Texture& texture,
+                                              wgpu::Origin3D origin,
+                                              wgpu::Extent3D extent,
+                                              wgpu::TextureFormat format,
+                                              T tolerance = 0,
+                                              uint32_t level = 0,
+                                              wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
+                                              uint32_t bytesPerRow = 0) {
+        // No device passed explicitly. Default it, and forward the rest of the args.
+        return AddTextureExpectation<T, U>(file, line, this->device, expectedData, texture, origin,
+                                           extent, format, tolerance, level, aspect, bytesPerRow);
+    }
+
     // T - expected value Type
     // U - actual value Type (defaults = T)
     template <typename T, typename U = T>
     std::ostringstream& AddTextureExpectation(const char* file,
                                               int line,
+                                              wgpu::Device targetDevice,
                                               const T* expectedData,
                                               const wgpu::Texture& texture,
                                               wgpu::Origin3D origin,
@@ -388,7 +343,7 @@ class DawnTestBase {
         uint32_t texelComponentCount = utils::GetWGSLRenderableColorTextureComponentCount(format);
 
         return AddTextureExpectationImpl(
-            file, line,
+            file, line, std::move(targetDevice),
             new detail::ExpectEq<T, U>(
                 expectedData,
                 texelComponentCount * extent.width * extent.height * extent.depthOrArrayLayers,
@@ -405,11 +360,29 @@ class DawnTestBase {
                                               wgpu::Extent3D extent,
                                               uint32_t level = 0,
                                               wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
-                                              uint32_t bytesPerRow = 0) {
+                                              uint32_t bytesPerRow = 0,
+                                              T tolerance = {}) {
+        // No device passed explicitly. Default it, and forward the rest of the args.
+        return AddTextureExpectation<T, U>(file, line, this->device, expectedData, texture, origin,
+                                           extent, level, aspect, bytesPerRow, tolerance);
+    }
+
+    template <typename T, typename U = T>
+    std::ostringstream& AddTextureExpectation(const char* file,
+                                              int line,
+                                              wgpu::Device targetDevice,
+                                              const T* expectedData,
+                                              const wgpu::Texture& texture,
+                                              wgpu::Origin3D origin,
+                                              wgpu::Extent3D extent,
+                                              uint32_t level = 0,
+                                              wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
+                                              uint32_t bytesPerRow = 0,
+                                              T tolerance = {}) {
         return AddTextureExpectationImpl(
-            file, line,
-            new detail::ExpectEq<T, U>(expectedData,
-                                       extent.width * extent.height * extent.depthOrArrayLayers),
+            file, line, std::move(targetDevice),
+            new detail::ExpectEq<T, U>(
+                expectedData, extent.width * extent.height * extent.depthOrArrayLayers, tolerance),
             texture, origin, extent, level, aspect, sizeof(U), bytesPerRow);
     }
 
@@ -422,9 +395,24 @@ class DawnTestBase {
                                               uint32_t level = 0,
                                               wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
                                               uint32_t bytesPerRow = 0) {
-        return AddTextureExpectationImpl(file, line, new detail::ExpectEq<T, U>(expectedData),
-                                         texture, origin, {1, 1}, level, aspect, sizeof(U),
-                                         bytesPerRow);
+        // No device passed explicitly. Default it, and forward the rest of the args.
+        return AddTextureExpectation<T, U>(file, line, this->device, expectedData, texture, origin,
+                                           level, aspect, bytesPerRow);
+    }
+
+    template <typename T, typename U = T>
+    std::ostringstream& AddTextureExpectation(const char* file,
+                                              int line,
+                                              wgpu::Device targetDevice,
+                                              const T& expectedData,
+                                              const wgpu::Texture& texture,
+                                              wgpu::Origin3D origin,
+                                              uint32_t level = 0,
+                                              wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
+                                              uint32_t bytesPerRow = 0) {
+        return AddTextureExpectationImpl(file, line, std::move(targetDevice),
+                                         new detail::ExpectEq<T, U>(expectedData), texture, origin,
+                                         {1, 1}, level, aspect, sizeof(U), bytesPerRow);
     }
 
     template <typename E,
@@ -439,8 +427,27 @@ class DawnTestBase {
                                               uint32_t level = 0,
                                               wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
                                               uint32_t bytesPerRow = 0) {
-        return AddTextureExpectationImpl(file, line, expectation, texture, origin, extent, level,
-                                         aspect, expectation->DataSize(), bytesPerRow);
+        // No device passed explicitly. Default it, and forward the rest of the args.
+        return AddTextureExpectation(file, line, this->device, expectation, texture, origin, extent,
+                                     level, aspect, bytesPerRow);
+    }
+
+    template <typename E,
+              typename = typename std::enable_if<
+                  std::is_base_of<detail::CustomTextureExpectation, E>::value>::type>
+    std::ostringstream& AddTextureExpectation(const char* file,
+                                              int line,
+                                              wgpu::Device targetDevice,
+                                              E* expectation,
+                                              const wgpu::Texture& texture,
+                                              wgpu::Origin3D origin,
+                                              wgpu::Extent3D extent,
+                                              uint32_t level = 0,
+                                              wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
+                                              uint32_t bytesPerRow = 0) {
+        return AddTextureExpectationImpl(file, line, std::move(targetDevice), expectation, texture,
+                                         origin, extent, level, aspect, expectation->DataSize(),
+                                         bytesPerRow);
     }
 
     template <typename T>
@@ -455,9 +462,27 @@ class DawnTestBase {
         uint32_t level = 0,
         wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
         uint32_t bytesPerRow = 0) {
+        // No device passed explicitly. Default it, and forward the rest of the args.
+        return AddTextureBetweenColorsExpectation(file, line, this->device, color0, color1, texture,
+                                                  x, y, level, aspect, bytesPerRow);
+    }
+
+    template <typename T>
+    std::ostringstream& AddTextureBetweenColorsExpectation(
+        const char* file,
+        int line,
+        const wgpu::Device& targetDevice,
+        const T& color0,
+        const T& color1,
+        const wgpu::Texture& texture,
+        uint32_t x,
+        uint32_t y,
+        uint32_t level = 0,
+        wgpu::TextureAspect aspect = wgpu::TextureAspect::All,
+        uint32_t bytesPerRow = 0) {
         return AddTextureExpectationImpl(
-            file, line, new detail::ExpectBetweenColors<T>(color0, color1), texture, {x, y}, {1, 1},
-            level, aspect, sizeof(T), bytesPerRow);
+            file, line, std::move(targetDevice), new detail::ExpectBetweenColors<T>(color0, color1),
+            texture, {x, y}, {1, 1}, level, aspect, sizeof(T), bytesPerRow);
     }
 
     std::ostringstream& ExpectSampledFloatData(wgpu::Texture texture,
@@ -520,7 +545,7 @@ class DawnTestBase {
                                                     mipLevel, {}, &expectedStencil);
     }
 
-    void WaitABit();
+    void WaitABit(wgpu::Device = nullptr);
     void FlushWire();
     void WaitForAllOperations();
 
@@ -557,6 +582,7 @@ class DawnTestBase {
 
     std::ostringstream& AddTextureExpectationImpl(const char* file,
                                                   int line,
+                                                  wgpu::Device targetDevice,
                                                   detail::Expectation* expectation,
                                                   const wgpu::Texture& texture,
                                                   wgpu::Origin3D origin,
@@ -576,6 +602,7 @@ class DawnTestBase {
 
     // MapRead buffers used to get data for the expectations
     struct ReadbackSlot {
+        wgpu::Device device;
         wgpu::Buffer buffer;
         uint64_t bufferSize;
         const void* mappedData = nullptr;
@@ -589,11 +616,12 @@ class DawnTestBase {
 
     // Reserve space where the data for an expectation can be copied
     struct ReadbackReservation {
+        wgpu::Device device;
         wgpu::Buffer buffer;
         size_t slot;
         uint64_t offset;
     };
-    ReadbackReservation ReserveReadback(uint64_t readbackSize);
+    ReadbackReservation ReserveReadback(wgpu::Device targetDevice, uint64_t readbackSize);
 
     struct DeferredExpectation {
         const char* file;
@@ -754,6 +782,19 @@ class Expectation {
     virtual testing::AssertionResult Check(const void* data, size_t size) = 0;
 };
 
+template <typename T>
+class ExpectConstant : public Expectation {
+  public:
+    explicit ExpectConstant(T constant);
+    uint32_t DataSize();
+    testing::AssertionResult Check(const void* data, size_t size) override;
+
+  private:
+    T mConstant;
+};
+
+extern template class ExpectConstant<float>;
+
 // Expectation that checks the data is equal to some expected values.
 // T - expected value Type
 // U - actual value Type (defaults = T)
@@ -774,7 +815,7 @@ extern template class ExpectEq<uint8_t>;
 extern template class ExpectEq<int16_t>;
 extern template class ExpectEq<uint32_t>;
 extern template class ExpectEq<uint64_t>;
-extern template class ExpectEq<RGBA8>;
+extern template class ExpectEq<utils::RGBA8>;
 extern template class ExpectEq<float>;
 extern template class ExpectEq<float, uint16_t>;
 
@@ -796,7 +837,7 @@ class ExpectBetweenColors : public Expectation {
 // A color is considered between color0 and color1 when all channel values are within range of
 // each counterparts. It doesn't matter which value is higher or lower. Essentially color =
 // lerp(color0, color1, t) where t is [0,1]. But I don't want to be too strict here.
-extern template class ExpectBetweenColors<RGBA8>;
+extern template class ExpectBetweenColors<utils::RGBA8>;
 
 class CustomTextureExpectation : public Expectation {
   public:

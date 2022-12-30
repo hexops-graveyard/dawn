@@ -22,8 +22,11 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::BindingAttribute);
 
 namespace tint::ast {
 
-BindingAttribute::BindingAttribute(ProgramID pid, NodeID nid, const Source& src, uint32_t val)
-    : Base(pid, nid, src), value(val) {}
+BindingAttribute::BindingAttribute(ProgramID pid,
+                                   NodeID nid,
+                                   const Source& src,
+                                   const ast::Expression* exp)
+    : Base(pid, nid, src), expr(exp) {}
 
 BindingAttribute::~BindingAttribute() = default;
 
@@ -34,7 +37,8 @@ std::string BindingAttribute::Name() const {
 const BindingAttribute* BindingAttribute::Clone(CloneContext* ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
     auto src = ctx->Clone(source);
-    return ctx->dst->create<BindingAttribute>(src, value);
+    auto* expr_ = ctx->Clone(expr);
+    return ctx->dst->create<BindingAttribute>(src, expr_);
 }
 
 }  // namespace tint::ast

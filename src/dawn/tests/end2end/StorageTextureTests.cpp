@@ -142,8 +142,9 @@ class StorageTextureTests : public DawnTest {
             // 8-bit (normalized/non-normalized signed/unsigned integer) 4-component formats
             case wgpu::TextureFormat::RGBA8Unorm:
             case wgpu::TextureFormat::RGBA8Uint: {
-                RGBA8* valuePtr = static_cast<RGBA8*>(pixelValuePtr);
-                *valuePtr = RGBA8(pixelValue, pixelValue * 2, pixelValue * 3, pixelValue * 4);
+                utils::RGBA8* valuePtr = static_cast<utils::RGBA8*>(pixelValuePtr);
+                *valuePtr =
+                    utils::RGBA8(pixelValue, pixelValue * 2, pixelValue * 3, pixelValue * 4);
                 break;
             }
 
@@ -309,23 +310,23 @@ fn IsEqualTo(pixel : vec4<f32>, expected : vec4<f32>) -> bool {
         auto texelType = "vec4<" + componentFmt + ">";
         std::string sliceCount;
         std::string textureStore;
-        std::string textureSize = "textureDimensions(storageImage0).xy";
+        std::string textureSize = "vec2<i32>(textureDimensions(storageImage0).xy)";
         switch (dimension) {
             case wgpu::TextureViewDimension::e1D:
                 sliceCount = "1";
                 textureStore = "textureStore(storageImage0, x, expected)";
-                textureSize = "vec2<i32>(textureDimensions(storageImage0), 1)";
+                textureSize = "vec2<i32>(i32(textureDimensions(storageImage0)), 1)";
                 break;
             case wgpu::TextureViewDimension::e2D:
                 sliceCount = "1";
                 textureStore = "textureStore(storageImage0, vec2<i32>(x, y), expected)";
                 break;
             case wgpu::TextureViewDimension::e2DArray:
-                sliceCount = "textureNumLayers(storageImage0)";
+                sliceCount = "i32(textureNumLayers(storageImage0))";
                 textureStore = "textureStore(storageImage0, vec2<i32>(x, y), slice, expected)";
                 break;
             case wgpu::TextureViewDimension::e3D:
-                sliceCount = "textureDimensions(storageImage0).z";
+                sliceCount = "i32(textureDimensions(storageImage0).z)";
                 textureStore = "textureStore(storageImage0, vec3<i32>(x, y, slice), expected)";
                 break;
             default:
@@ -488,7 +489,7 @@ fn IsEqualTo(pixel : vec4<f32>, expected : vec4<f32>) -> bool {
         queue.Submit(1, &commandBuffer);
 
         // Check if the contents in the output texture are all as expected (green).
-        EXPECT_PIXEL_RGBA8_EQ(RGBA8::kGreen, outputTexture, 0, 0)
+        EXPECT_PIXEL_RGBA8_EQ(utils::RGBA8::kGreen, outputTexture, 0, 0)
             << "\nVertex Shader:\n"
             << vertexShader << "\n\nFragment Shader:\n"
             << fragmentShader;
@@ -695,9 +696,6 @@ TEST_P(StorageTextureTests, WriteonlyStorageTextureInFragmentShader) {
     // TODO(crbug.com/dawn/672): Investigate why this test fails on Linux
     // NVidia OpenGLES drivers.
     DAWN_SUPPRESS_TEST_IF(IsNvidia() && IsLinux() && IsOpenGLES());
-
-    // TODO(crbug.com/dawn/1503): Investigate the regression in ANGLE that causes the test failure.
-    DAWN_SUPPRESS_TEST_IF(IsANGLE());
 
     for (wgpu::TextureFormat format : utils::kAllTextureFormats) {
         if (!utils::TextureFormatSupportsStorageTexture(format)) {
@@ -916,9 +914,6 @@ fn doTest() -> bool {
 // Verify that the texture is correctly cleared to 0 before its first usage as a write-only storage
 // storage texture in a render pass.
 TEST_P(StorageTextureZeroInitTests, WriteonlyStorageTextureClearsToZeroInRenderPass) {
-    // TODO(crbug.com/dawn/1503): Investigate the regression in ANGLE that causes the test failure.
-    DAWN_SUPPRESS_TEST_IF(IsANGLE());
-
     // Prepare the write-only storage texture.
     wgpu::Texture writeonlyStorageTexture = CreateTexture(
         wgpu::TextureFormat::R32Uint,

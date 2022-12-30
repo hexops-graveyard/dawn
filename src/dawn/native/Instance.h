@@ -27,6 +27,7 @@
 #include "dawn/native/BackendConnection.h"
 #include "dawn/native/BlobCache.h"
 #include "dawn/native/Features.h"
+#include "dawn/native/RefCountedWithExternalCount.h"
 #include "dawn/native/Toggles.h"
 #include "dawn/native/dawn_platform.h"
 
@@ -45,7 +46,7 @@ InstanceBase* APICreateInstance(const InstanceDescriptor* descriptor);
 
 // This is called InstanceBase for consistency across the frontend, even if the backends don't
 // specialize this class.
-class InstanceBase final : public RefCounted {
+class InstanceBase final : public RefCountedWithExternalCount {
   public:
     static Ref<InstanceBase> Create(const InstanceDescriptor* descriptor = nullptr);
 
@@ -92,7 +93,7 @@ class InstanceBase final : public RefCounted {
     void SetPlatform(dawn::platform::Platform* platform);
     void SetPlatformForTesting(dawn::platform::Platform* platform);
     dawn::platform::Platform* GetPlatform();
-    BlobCache* GetBlobCache();
+    BlobCache* GetBlobCache(bool enabled = true);
 
     uint64_t GetDeviceCountForTesting() const;
     void IncrementDeviceCountForTesting();
@@ -109,6 +110,8 @@ class InstanceBase final : public RefCounted {
   private:
     InstanceBase();
     ~InstanceBase() override;
+
+    void WillDropLastExternalRef() override;
 
     InstanceBase(const InstanceBase& other) = delete;
     InstanceBase& operator=(const InstanceBase& other) = delete;
@@ -136,6 +139,7 @@ class InstanceBase final : public RefCounted {
     dawn::platform::Platform* mPlatform = nullptr;
     std::unique_ptr<dawn::platform::Platform> mDefaultPlatform;
     std::unique_ptr<BlobCache> mBlobCache;
+    BlobCache mPassthroughBlobCache;
 
     std::vector<std::unique_ptr<BackendConnection>> mBackends;
     std::vector<Ref<AdapterBase>> mAdapters;

@@ -38,12 +38,21 @@ using WorkgroupParameterMemberList = utils::Vector<const ast::StructMember*, 8>;
 // The name of the struct member for arrays that are wrapped in structures.
 const char* kWrappedArrayMemberName = "arr";
 
+bool ShouldRun(const Program* program) {
+    for (auto* decl : program->AST().GlobalDeclarations()) {
+        if (decl->Is<ast::Variable>()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Returns `true` if `type` is or contains a matrix type.
-bool ContainsMatrix(const sem::Type* type) {
+bool ContainsMatrix(const type::Type* type) {
     type = type->UnwrapRef();
-    if (type->Is<sem::Matrix>()) {
+    if (type->Is<type::Matrix>()) {
         return true;
-    } else if (auto* ary = type->As<sem::Array>()) {
+    } else if (auto* ary = type->As<type::Array>()) {
         return ContainsMatrix(ary->ElemType());
     } else if (auto* str = type->As<sem::Struct>()) {
         for (auto* member : str->Members()) {
@@ -56,7 +65,7 @@ bool ContainsMatrix(const sem::Type* type) {
 }
 }  // namespace
 
-/// State holds the current transform state.
+/// PIMPL state for the transform
 struct ModuleScopeVarToEntryPointParam::State {
     /// The clone context.
     CloneContext& ctx;
@@ -69,7 +78,7 @@ struct ModuleScopeVarToEntryPointParam::State {
     /// and add it to the global declarations now, so that they precede new global
     /// declarations that need to reference them.
     /// @param ty the type to clone
-    void CloneStructTypes(const sem::Type* ty) {
+    void CloneStructTypes(const type::Type* ty) {
         if (auto* str = ty->As<sem::Struct>()) {
             if (!cloned_structs_.emplace(str).second) {
                 // The struct has already been cloned.
@@ -86,7 +95,7 @@ struct ModuleScopeVarToEntryPointParam::State {
             auto* ast_str = str->Declaration();
             ctx.dst->AST().AddTypeDecl(ctx.Clone(ast_str));
             ctx.Remove(ctx.src->AST().GlobalDeclarations(), ast_str);
-        } else if (auto* arr = ty->As<sem::Array>()) {
+        } else if (auto* arr = ty->As<type::Array>()) {
             CloneStructTypes(arr->ElemType());
         }
     }
@@ -114,9 +123,9 @@ struct ModuleScopeVarToEntryPointParam::State {
         // Helper to create an AST node for the store type of the variable.
         auto store_type = [&]() { return CreateASTTypeFor(ctx, ty); };
 
-        ast::StorageClass sc = var->StorageClass();
+        ast::AddressSpace sc = var->AddressSpace();
         switch (sc) {
-            case ast::StorageClass::kHandle: {
+            case ast::AddressSpace::kHandle: {
                 // For a texture or sampler variable, redeclare it as an entry point parameter.
                 // Disable entry point parameter validation.
                 auto* disable_validation =
@@ -128,16 +137,17 @@ struct ModuleScopeVarToEntryPointParam::State {
 
                 break;
             }
-            case ast::StorageClass::kStorage:
-            case ast::StorageClass::kUniform: {
-                // Variables into the Storage and Uniform storage classes are redeclared as entry
+            case ast::AddressSpace::kStorage:
+            case ast::AddressSpace::kUniform: {
+                // Variables into the Storage and Uniform address spaces are redeclared as entry
                 // point parameters with a pointer type.
                 auto attributes = ctx.Clone(var->Declaration()->attributes);
                 attributes.Push(ctx.dst->Disable(ast::DisabledValidation::kEntryPointParameter));
-                attributes.Push(ctx.dst->Disable(ast::DisabledValidation::kIgnoreStorageClass));
+                attributes.Push(ctx.dst->Disable(ast::DisabledValidation::kIgnoreAddressSpace));
 
                 auto* param_type = store_type();
-                if (auto* arr = ty->As<sem::Array>(); arr && arr->IsRuntimeSized()) {
+                if (auto* arr = ty->As<type::Array>();
+                    arr && arr->Count()->Is<type::RuntimeArrayCount>()) {
                     // Wrap runtime-sized arrays in structures, so that we can declare pointers to
                     // them. Ideally we'd just emit the array itself as a pointer, but this is not
                     // representable in Tint's AST.
@@ -157,7 +167,7 @@ struct ModuleScopeVarToEntryPointParam::State {
 
                 break;
             }
-            case ast::StorageClass::kWorkgroup: {
+            case ast::AddressSpace::kWorkgroup: {
                 if (ContainsMatrix(var->Type())) {
                     // Due to a bug in the MSL compiler, we use a threadgroup memory argument for
                     // any workgroup allocation that contains a matrix. See crbug.com/tint/938.
@@ -173,7 +183,7 @@ struct ModuleScopeVarToEntryPointParam::State {
                         ctx.dst->MemberAccessor(ctx.dst->Deref(workgroup_param()), member));
                     auto* local_var = ctx.dst->Let(
                         new_var_symbol,
-                        ctx.dst->ty.pointer(store_type(), ast::StorageClass::kWorkgroup),
+                        ctx.dst->ty.pointer(store_type(), ast::AddressSpace::kWorkgroup),
                         member_ptr);
                     ctx.InsertFront(func->body->statements, ctx.dst->Decl(local_var));
                     is_pointer = true;
@@ -182,27 +192,27 @@ struct ModuleScopeVarToEntryPointParam::State {
                 }
                 [[fallthrough]];
             }
-            case ast::StorageClass::kPrivate: {
-                // Variables in the Private and Workgroup storage classes are redeclared at function
-                // scope. Disable storage class validation on this variable.
+            case ast::AddressSpace::kPrivate: {
+                // Variables in the Private and Workgroup address spaces are redeclared at function
+                // scope. Disable address space validation on this variable.
                 auto* disable_validation =
-                    ctx.dst->Disable(ast::DisabledValidation::kIgnoreStorageClass);
-                auto* constructor = ctx.Clone(var->Declaration()->constructor);
-                auto* local_var = ctx.dst->Var(new_var_symbol, store_type(), sc, constructor,
+                    ctx.dst->Disable(ast::DisabledValidation::kIgnoreAddressSpace);
+                auto* initializer = ctx.Clone(var->Declaration()->initializer);
+                auto* local_var = ctx.dst->Var(new_var_symbol, store_type(), sc, initializer,
                                                utils::Vector{disable_validation});
                 ctx.InsertFront(func->body->statements, ctx.dst->Decl(local_var));
 
                 break;
             }
-            case ast::StorageClass::kPushConstant: {
+            case ast::AddressSpace::kPushConstant: {
                 ctx.dst->Diagnostics().add_error(
                     diag::System::Transform,
-                    "unhandled module-scope storage class (" + utils::ToString(sc) + ")");
+                    "unhandled module-scope address space (" + utils::ToString(sc) + ")");
                 break;
             }
             default: {
                 TINT_ICE(Transform, ctx.dst->Diagnostics())
-                    << "unhandled module-scope storage class (" << sc << ")";
+                    << "unhandled module-scope address space (" << sc << ")";
                 break;
             }
         }
@@ -221,23 +231,23 @@ struct ModuleScopeVarToEntryPointParam::State {
         auto* var_ast = var->Declaration()->As<ast::Var>();
         auto* ty = var->Type()->UnwrapRef();
         auto* param_type = CreateASTTypeFor(ctx, ty);
-        auto sc = var->StorageClass();
+        auto sc = var->AddressSpace();
         switch (sc) {
-            case ast::StorageClass::kPrivate:
-            case ast::StorageClass::kStorage:
-            case ast::StorageClass::kUniform:
-            case ast::StorageClass::kHandle:
-            case ast::StorageClass::kWorkgroup:
+            case ast::AddressSpace::kPrivate:
+            case ast::AddressSpace::kStorage:
+            case ast::AddressSpace::kUniform:
+            case ast::AddressSpace::kHandle:
+            case ast::AddressSpace::kWorkgroup:
                 break;
-            case ast::StorageClass::kPushConstant: {
+            case ast::AddressSpace::kPushConstant: {
                 ctx.dst->Diagnostics().add_error(
                     diag::System::Transform,
-                    "unhandled module-scope storage class (" + utils::ToString(sc) + ")");
+                    "unhandled module-scope address space (" + utils::ToString(sc) + ")");
                 break;
             }
             default: {
                 TINT_ICE(Transform, ctx.dst->Diagnostics())
-                    << "unhandled module-scope storage class (" << sc << ")";
+                    << "unhandled module-scope address space (" << sc << ")";
             }
         }
 
@@ -247,8 +257,8 @@ struct ModuleScopeVarToEntryPointParam::State {
             param_type = ctx.dst->ty.pointer(param_type, sc, var_ast->declared_access);
             is_pointer = true;
 
-            // Disable validation of the parameter's storage class and of arguments passed to it.
-            attributes.Push(ctx.dst->Disable(ast::DisabledValidation::kIgnoreStorageClass));
+            // Disable validation of the parameter's address space and of arguments passed to it.
+            attributes.Push(ctx.dst->Disable(ast::DisabledValidation::kIgnoreAddressSpace));
             attributes.Push(
                 ctx.dst->Disable(ast::DisabledValidation::kIgnoreInvalidPointerArgument));
         }
@@ -311,7 +321,7 @@ struct ModuleScopeVarToEntryPointParam::State {
 
             bool needs_processing = false;
             for (auto* var : func_sem->TransitivelyReferencedGlobals()) {
-                if (var->StorageClass() != ast::StorageClass::kNone) {
+                if (var->AddressSpace() != ast::AddressSpace::kNone) {
                     needs_processing = true;
                     break;
                 }
@@ -345,6 +355,7 @@ struct ModuleScopeVarToEntryPointParam::State {
         for (auto* func_ast : functions_to_process) {
             auto* func_sem = ctx.src->Sem().Get(func_ast);
             bool is_entry_point = func_ast->IsEntryPoint();
+            bool needs_pointer_aliasing = false;
 
             // Map module-scope variables onto their replacement.
             struct NewVar {
@@ -367,7 +378,7 @@ struct ModuleScopeVarToEntryPointParam::State {
 
             // Process and redeclare all variables referenced by the function.
             for (auto* var : func_sem->TransitivelyReferencedGlobals()) {
-                if (var->StorageClass() == ast::StorageClass::kNone) {
+                if (var->AddressSpace() == ast::AddressSpace::kNone) {
                     continue;
                 }
                 if (local_private_vars_.count(var)) {
@@ -385,7 +396,7 @@ struct ModuleScopeVarToEntryPointParam::State {
 
                 // Check if this is a private variable that is only referenced by this function.
                 bool local_private = false;
-                if (var->StorageClass() == ast::StorageClass::kPrivate) {
+                if (var->AddressSpace() == ast::AddressSpace::kPrivate) {
                     local_private = true;
                     for (auto* user : var->Users()) {
                         auto* stmt = user->Stmt();
@@ -399,11 +410,11 @@ struct ModuleScopeVarToEntryPointParam::State {
                 if (local_private) {
                     // Redeclare the variable at function scope.
                     auto* disable_validation =
-                        ctx.dst->Disable(ast::DisabledValidation::kIgnoreStorageClass);
-                    auto* constructor = ctx.Clone(var->Declaration()->constructor);
+                        ctx.dst->Disable(ast::DisabledValidation::kIgnoreAddressSpace);
+                    auto* initializer = ctx.Clone(var->Declaration()->initializer);
                     auto* local_var = ctx.dst->Var(new_var_symbol,
                                                    CreateASTTypeFor(ctx, var->Type()->UnwrapRef()),
-                                                   ast::StorageClass::kPrivate, constructor,
+                                                   ast::AddressSpace::kPrivate, initializer,
                                                    utils::Vector{disable_validation});
                     ctx.InsertFront(func_ast->body->statements, ctx.dst->Decl(local_var));
                     local_private_vars_.insert(var);
@@ -415,6 +426,9 @@ struct ModuleScopeVarToEntryPointParam::State {
                                                     is_wrapped);
                     } else {
                         ProcessVariableInUserFunction(func_ast, var, new_var_symbol, is_pointer);
+                        if (var->AddressSpace() == ast::AddressSpace::kWorkgroup) {
+                            needs_pointer_aliasing = true;
+                        }
                     }
 
                     // Record the replacement symbol.
@@ -425,17 +439,25 @@ struct ModuleScopeVarToEntryPointParam::State {
                 ReplaceUsesInFunction(func_ast, var, new_var_symbol, is_pointer, is_wrapped);
             }
 
+            // Allow pointer aliasing if needed.
+            if (needs_pointer_aliasing) {
+                ctx.InsertBack(func_ast->attributes,
+                               ctx.dst->Disable(ast::DisabledValidation::kIgnorePointerAliasing));
+            }
+
             if (!workgroup_parameter_members.IsEmpty()) {
                 // Create the workgroup memory parameter.
                 // The parameter is a struct that contains members for each workgroup variable.
                 auto* str =
                     ctx.dst->Structure(ctx.dst->Sym(), std::move(workgroup_parameter_members));
                 auto* param_type =
-                    ctx.dst->ty.pointer(ctx.dst->ty.Of(str), ast::StorageClass::kWorkgroup);
-                auto* disable_validation =
-                    ctx.dst->Disable(ast::DisabledValidation::kEntryPointParameter);
-                auto* param = ctx.dst->Param(workgroup_param(), param_type,
-                                             utils::Vector{disable_validation});
+                    ctx.dst->ty.pointer(ctx.dst->ty.Of(str), ast::AddressSpace::kWorkgroup);
+                auto* param = ctx.dst->Param(
+                    workgroup_param(), param_type,
+                    utils::Vector{
+                        ctx.dst->Disable(ast::DisabledValidation::kEntryPointParameter),
+                        ctx.dst->Disable(ast::DisabledValidation::kIgnoreAddressSpace),
+                    });
                 ctx.InsertFront(func_ast->params, param);
             }
 
@@ -447,8 +469,8 @@ struct ModuleScopeVarToEntryPointParam::State {
                 // Add new arguments for any variables that are needed by the callee.
                 // For entry points, pass non-handle types as pointers.
                 for (auto* target_var : target_sem->TransitivelyReferencedGlobals()) {
-                    auto sc = target_var->StorageClass();
-                    if (sc == ast::StorageClass::kNone) {
+                    auto sc = target_var->AddressSpace();
+                    if (sc == ast::AddressSpace::kNone) {
                         continue;
                     }
 
@@ -476,10 +498,10 @@ struct ModuleScopeVarToEntryPointParam::State {
             }
         }
 
-        // Now remove all module-scope variables with these storage classes.
+        // Now remove all module-scope variables with these address spaces.
         for (auto* var_ast : ctx.src->AST().GlobalVariables()) {
             auto* var_sem = ctx.src->Sem().Get(var_ast);
-            if (var_sem->StorageClass() != ast::StorageClass::kNone) {
+            if (var_sem->AddressSpace() != ast::AddressSpace::kNone) {
                 ctx.Remove(ctx.src->AST().GlobalDeclarations(), var_ast);
             }
         }
@@ -501,19 +523,20 @@ ModuleScopeVarToEntryPointParam::ModuleScopeVarToEntryPointParam() = default;
 
 ModuleScopeVarToEntryPointParam::~ModuleScopeVarToEntryPointParam() = default;
 
-bool ModuleScopeVarToEntryPointParam::ShouldRun(const Program* program, const DataMap&) const {
-    for (auto* decl : program->AST().GlobalDeclarations()) {
-        if (decl->Is<ast::Variable>()) {
-            return true;
-        }
+Transform::ApplyResult ModuleScopeVarToEntryPointParam::Apply(const Program* src,
+                                                              const DataMap&,
+                                                              DataMap&) const {
+    if (!ShouldRun(src)) {
+        return SkipTransform;
     }
-    return false;
-}
 
-void ModuleScopeVarToEntryPointParam::Run(CloneContext& ctx, const DataMap&, DataMap&) const {
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     State state{ctx};
     state.Process();
+
     ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

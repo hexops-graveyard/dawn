@@ -18,6 +18,7 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
 
 	"dawn.googlesource.com/dawn/tools/src/tint/intrinsic/ast"
 	"dawn.googlesource.com/dawn/tools/src/tint/intrinsic/lexer"
@@ -71,8 +72,8 @@ func (p *parser) parse() (*ast.AST, error) {
 		case tok.Operator:
 			out.Operators = append(out.Operators, p.operatorDecl(attributes))
 			attributes = nil
-		case tok.Constructor:
-			out.Constructors = append(out.Constructors, p.constructorDecl(attributes))
+		case tok.Initializer:
+			out.Initializers = append(out.Initializers, p.initializerDecl(attributes))
 			attributes = nil
 		case tok.Converter:
 			out.Converters = append(out.Converters, p.converterDecl(attributes))
@@ -145,10 +146,26 @@ func (p *parser) attributes() ast.Attributes {
 	var out ast.Attributes
 	for p.match(tok.Attr) != nil && p.err == nil {
 		name := p.expect(tok.Identifier, "attribute name")
-		values := []string{}
+		var values []any
 		if p.match(tok.Lparen) != nil {
+		loop:
 			for p.err == nil {
-				values = append(values, string(p.next().Runes))
+				t := p.next()
+				switch t.Kind {
+				case tok.Rparen:
+					break loop
+				case tok.String:
+					values = append(values, string(t.Runes))
+				case tok.Integer:
+					i, _ := strconv.ParseInt(string(t.Runes), 10, 64)
+					values = append(values, int(i))
+				case tok.Float:
+					f, _ := strconv.ParseFloat(string(t.Runes), 64)
+					values = append(values, f)
+				default:
+					p.err = fmt.Errorf("%v invalid attribute value kind: %v", t.Source, t.Kind)
+					return nil
+				}
 				if p.match(tok.Comma) == nil {
 					break
 				}
@@ -204,12 +221,12 @@ func (p *parser) operatorDecl(decos ast.Attributes) ast.IntrinsicDecl {
 	return f
 }
 
-func (p *parser) constructorDecl(decos ast.Attributes) ast.IntrinsicDecl {
-	p.expect(tok.Constructor, "constructor declaration")
+func (p *parser) initializerDecl(decos ast.Attributes) ast.IntrinsicDecl {
+	p.expect(tok.Initializer, "initializer declaration")
 	name := p.next()
 	f := ast.IntrinsicDecl{
 		Source:     name.Source,
-		Kind:       ast.Constructor,
+		Kind:       ast.Initializer,
 		Attributes: decos,
 		Name:       string(name.Runes),
 	}

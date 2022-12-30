@@ -97,11 +97,11 @@ ResultOrError<UploadHandle> UploadTextureDataAligningBytesPerRowAndOffset(
     // since both of them are powers of two, we only need to align to the max value.
     uint64_t offsetAlignment = std::max(optimalOffsetAlignment, uint64_t(blockInfo.byteSize));
 
-    // For depth-stencil texture, buffer offset must be a multiple of 4, which is required
-    // by WebGPU and Vulkan SPEC.
+    // Buffer offset alignments must follow additional restrictions when we copy with depth stencil
+    // formats.
     if (hasDepthOrStencil) {
-        constexpr uint64_t kOffsetAlignmentForDepthStencil = 4;
-        offsetAlignment = std::max(offsetAlignment, kOffsetAlignmentForDepthStencil);
+        offsetAlignment =
+            std::max(offsetAlignment, device->GetBufferCopyOffsetAlignmentForDepthStencil());
     }
 
     UploadHandle uploadHandle;
@@ -130,13 +130,16 @@ ResultOrError<UploadHandle> UploadTextureDataAligningBytesPerRowAndOffset(
     return uploadHandle;
 }
 
-struct SubmittedWorkDone : QueueBase::TaskInFlight {
-    SubmittedWorkDone(WGPUQueueWorkDoneCallback callback, void* userdata)
-        : mCallback(callback), mUserdata(userdata) {}
-    void Finish(dawn::platform::Platform* platform, ExecutionSerial serial) override {
+struct SubmittedWorkDone : TrackTaskCallback {
+    SubmittedWorkDone(dawn::platform::Platform* platform,
+                      WGPUQueueWorkDoneCallback callback,
+                      void* userdata)
+        : TrackTaskCallback(platform), mCallback(callback), mUserdata(userdata) {}
+    void Finish() override {
         ASSERT(mCallback != nullptr);
-        TRACE_EVENT1(platform, General, "Queue::SubmittedWorkDone::Finished", "serial",
-                     uint64_t(serial));
+        ASSERT(mSerial != kMaxExecutionSerial);
+        TRACE_EVENT1(mPlatform, General, "Queue::SubmittedWorkDone::Finished", "serial",
+                     uint64_t(mSerial));
         mCallback(WGPUQueueWorkDoneStatus_Success, mUserdata);
         mCallback = nullptr;
     }
@@ -145,6 +148,7 @@ struct SubmittedWorkDone : QueueBase::TaskInFlight {
         mCallback(WGPUQueueWorkDoneStatus_DeviceLost, mUserdata);
         mCallback = nullptr;
     }
+    void HandleShutDown() override { HandleDeviceLoss(); }
     ~SubmittedWorkDone() override = default;
 
   private:
@@ -163,9 +167,11 @@ class ErrorQueue : public QueueBase {
 };
 }  // namespace
 
-// QueueBase
+void TrackTaskCallback::SetFinishedSerial(ExecutionSerial serial) {
+    mSerial = serial;
+}
 
-QueueBase::TaskInFlight::~TaskInFlight() {}
+// QueueBase
 
 QueueBase::QueueBase(DeviceBase* device, const QueueDescriptor* descriptor)
     : ApiObjectBase(device, descriptor->label) {}
@@ -206,21 +212,28 @@ void QueueBase::APIOnSubmittedWorkDone(uint64_t signalValue,
     }
 
     std::unique_ptr<SubmittedWorkDone> task =
-        std::make_unique<SubmittedWorkDone>(callback, userdata);
+        std::make_unique<SubmittedWorkDone>(GetDevice()->GetPlatform(), callback, userdata);
 
     // Technically we only need to wait for previously submitted work but OnSubmittedWorkDone is
     // also used to make sure ALL queue work is finished in tests, so we also wait for pending
     // commands (this is non-observable outside of tests so it's ok to do deviate a bit from the
     // spec).
-    TrackTask(std::move(task), GetDevice()->GetPendingCommandSerial());
+    TrackTask(std::move(task));
 
     TRACE_EVENT1(GetDevice()->GetPlatform(), General, "Queue::APIOnSubmittedWorkDone", "serial",
                  uint64_t(GetDevice()->GetPendingCommandSerial()));
 }
 
-void QueueBase::TrackTask(std::unique_ptr<TaskInFlight> task, ExecutionSerial serial) {
-    mTasksInFlight.Enqueue(std::move(task), serial);
-    GetDevice()->AddFutureSerial(serial);
+void QueueBase::TrackTask(std::unique_ptr<TrackTaskCallback> task) {
+    GetDevice()->ForceEventualFlushOfCommands();
+    // we can move the task to the callback task manager, as it's ready to be called if there are no
+    // scheduled commands.
+    if (!GetDevice()->HasScheduledCommands()) {
+        task->SetFinishedSerial(GetDevice()->GetCompletedCommandSerial());
+        GetDevice()->GetCallbackTaskManager()->AddCallbackTask(std::move(task));
+    } else {
+        mTasksInFlight.Enqueue(std::move(task), GetDevice()->GetScheduledWorkDoneSerial());
+    }
 }
 
 void QueueBase::Tick(ExecutionSerial finishedSerial) {
@@ -232,14 +245,17 @@ void QueueBase::Tick(ExecutionSerial finishedSerial) {
     TRACE_EVENT1(GetDevice()->GetPlatform(), General, "Queue::Tick", "finishedSerial",
                  uint64_t(finishedSerial));
 
-    std::vector<std::unique_ptr<TaskInFlight>> tasks;
+    std::vector<std::unique_ptr<TrackTaskCallback>> tasks;
     for (auto& task : mTasksInFlight.IterateUpTo(finishedSerial)) {
         tasks.push_back(std::move(task));
     }
     mTasksInFlight.ClearUpTo(finishedSerial);
 
+    // Tasks' serials have passed. Move them to the callback task manager. They
+    // are ready to be called.
     for (auto& task : tasks) {
-        task->Finish(GetDevice()->GetPlatform(), finishedSerial);
+        task->SetFinishedSerial(finishedSerial);
+        GetDevice()->GetCallbackTaskManager()->AddCallbackTask(std::move(task));
     }
 }
 
@@ -285,8 +301,6 @@ MaybeError QueueBase::WriteBufferImpl(BufferBase* buffer,
     ASSERT(uploadHandle.mappedBuffer != nullptr);
 
     memcpy(uploadHandle.mappedBuffer, data, size);
-
-    device->AddFutureSerial(device->GetPendingCommandSerial());
 
     return device->CopyFromStagingToBuffer(uploadHandle.stagingBuffer, uploadHandle.startOffset,
                                            buffer, bufferOffset, size);
@@ -356,8 +370,6 @@ MaybeError QueueBase::WriteTextureImpl(const ImageCopyTexture& destination,
 
     DeviceBase* device = GetDevice();
 
-    device->AddFutureSerial(device->GetPendingCommandSerial());
-
     return device->CopyFromStagingToTexture(uploadHandle.stagingBuffer, passDataLayout,
                                             &textureCopy, writeSizePixel);
 }
@@ -368,6 +380,14 @@ void QueueBase::APICopyTextureForBrowser(const ImageCopyTexture* source,
                                          const CopyTextureForBrowserOptions* options) {
     GetDevice()->ConsumedError(
         CopyTextureForBrowserInternal(source, destination, copySize, options));
+}
+
+void QueueBase::APICopyExternalTextureForBrowser(const ImageCopyExternalTexture* source,
+                                                 const ImageCopyTexture* destination,
+                                                 const Extent3D* copySize,
+                                                 const CopyTextureForBrowserOptions* options) {
+    GetDevice()->ConsumedError(
+        CopyExternalTextureForBrowserInternal(source, destination, copySize, options));
 }
 
 MaybeError QueueBase::CopyTextureForBrowserInternal(const ImageCopyTexture* source,
@@ -382,6 +402,21 @@ MaybeError QueueBase::CopyTextureForBrowserInternal(const ImageCopyTexture* sour
     }
 
     return DoCopyTextureForBrowser(GetDevice(), source, destination, copySize, options);
+}
+
+MaybeError QueueBase::CopyExternalTextureForBrowserInternal(
+    const ImageCopyExternalTexture* source,
+    const ImageCopyTexture* destination,
+    const Extent3D* copySize,
+    const CopyTextureForBrowserOptions* options) {
+    if (GetDevice()->IsValidationEnabled()) {
+        DAWN_TRY_CONTEXT(ValidateCopyExternalTextureForBrowser(GetDevice(), source, destination,
+                                                               copySize, options),
+                         "validating CopyExternalTextureForBrowser from %s to %s",
+                         source->externalTexture, destination->texture);
+    }
+
+    return DoCopyExternalTextureForBrowser(GetDevice(), source, destination, copySize, options);
 }
 
 MaybeError QueueBase::ValidateSubmit(uint32_t commandCount,

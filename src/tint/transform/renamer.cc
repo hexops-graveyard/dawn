@@ -21,7 +21,10 @@
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/member_accessor_expression.h"
+#include "src/tint/sem/type_conversion.h"
+#include "src/tint/sem/type_initializer.h"
 #include "src/tint/text/unicode.h"
+#include "src/tint/type/short_name.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::transform::Renamer);
 TINT_INSTANTIATE_TYPEINFO(tint::transform::Renamer::Data);
@@ -1252,41 +1255,69 @@ Renamer::Config::~Config() = default;
 Renamer::Renamer() = default;
 Renamer::~Renamer() = default;
 
-Output Renamer::Run(const Program* in, const DataMap& inputs) const {
-    ProgramBuilder out;
-    // Disable auto-cloning of symbols, since we want to rename them.
-    CloneContext ctx(&out, in, false);
+Transform::ApplyResult Renamer::Apply(const Program* src,
+                                      const DataMap& inputs,
+                                      DataMap& outputs) const {
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ false};
 
-    // Swizzles, builtin calls and builtin structure members need to keep their
-    // symbols preserved.
-    std::unordered_set<const ast::IdentifierExpression*> preserve;
-    for (auto* node : in->ASTNodes().Objects()) {
-        if (auto* member = node->As<ast::MemberAccessorExpression>()) {
-            auto* sem = in->Sem().Get(member);
-            if (!sem) {
-                TINT_ICE(Transform, out.Diagnostics())
-                    << "MemberAccessorExpression has no semantic info";
-                continue;
-            }
-            if (sem->Is<sem::Swizzle>()) {
-                preserve.emplace(member->member);
-            } else if (auto* str_expr = in->Sem().Get(member->structure)) {
-                if (auto* ty = str_expr->Type()->UnwrapRef()->As<sem::Struct>()) {
-                    if (ty->Declaration() == nullptr) {  // Builtin structure
-                        preserve.emplace(member->member);
-                    }
+    // Identifiers that need to keep their symbols preserved.
+    utils::Hashset<const ast::IdentifierExpression*, 8> preserved_identifiers;
+    // Type names that need to keep their symbols preserved.
+    utils::Hashset<const ast::TypeName*, 8> preserved_type_names;
+
+    auto is_type_short_name = [&](const Symbol& symbol) {
+        auto name = src->Symbols().NameFor(symbol);
+        if (type::ParseShortName(name) != type::ShortName::kUndefined) {
+            // Identifier *looks* like a builtin short-name, but check the using actually
+            // shadowing a short-name with a type alias.
+            for (auto* decl : src->AST().TypeDecls()) {
+                if (decl->name == symbol) {
+                    return false;
                 }
             }
-        } else if (auto* call = node->As<ast::CallExpression>()) {
-            auto* sem = in->Sem().Get(call)->UnwrapMaterialize()->As<sem::Call>();
-            if (!sem) {
-                TINT_ICE(Transform, out.Diagnostics()) << "CallExpression has no semantic info";
-                continue;
-            }
-            if (sem->Target()->Is<sem::Builtin>()) {
-                preserve.emplace(call->target.name);
-            }
+            return true;
         }
+        return false;
+    };
+
+    for (auto* node : src->ASTNodes().Objects()) {
+        Switch(
+            node,
+            [&](const ast::MemberAccessorExpression* accessor) {
+                auto* sem = src->Sem().Get(accessor)->UnwrapLoad();
+                if (sem->Is<sem::Swizzle>()) {
+                    preserved_identifiers.Add(accessor->member);
+                } else if (auto* str_expr = src->Sem().Get(accessor->structure)) {
+                    if (auto* ty = str_expr->Type()->UnwrapRef()->As<sem::Struct>()) {
+                        if (ty->Declaration() == nullptr) {  // Builtin structure
+                            preserved_identifiers.Add(accessor->member);
+                        }
+                    }
+                }
+            },
+            [&](const ast::CallExpression* call) {
+                if (auto* ident = call->target.name) {
+                    Switch(
+                        src->Sem().Get(call)->UnwrapMaterialize()->As<sem::Call>()->Target(),
+                        [&](const sem::Builtin*) { preserved_identifiers.Add(ident); },
+                        [&](const sem::TypeConversion*) {
+                            if (is_type_short_name(ident->symbol)) {
+                                preserved_identifiers.Add(ident);
+                            }
+                        },
+                        [&](const sem::TypeInitializer*) {
+                            if (is_type_short_name(ident->symbol)) {
+                                preserved_identifiers.Add(ident);
+                            }
+                        });
+                }
+            },
+            [&](const ast::TypeName* type_name) {
+                if (is_type_short_name(type_name->name)) {
+                    preserved_type_names.Add(type_name);
+                }
+            });
     }
 
     Data::Remappings remappings;
@@ -1300,7 +1331,7 @@ Output Renamer::Run(const Program* in, const DataMap& inputs) const {
     }
 
     ctx.ReplaceAll([&](Symbol sym_in) {
-        auto name_in = ctx.src->Symbols().NameFor(sym_in);
+        auto name_in = src->Symbols().NameFor(sym_in);
         if (preserve_unicode || text::utf8::IsASCII(name_in)) {
             switch (target) {
                 case Target::kAll:
@@ -1343,17 +1374,30 @@ Output Renamer::Run(const Program* in, const DataMap& inputs) const {
     });
 
     ctx.ReplaceAll([&](const ast::IdentifierExpression* ident) -> const ast::IdentifierExpression* {
-        if (preserve.count(ident)) {
+        if (preserved_identifiers.Contains(ident)) {
             auto sym_in = ident->symbol;
-            auto str = in->Symbols().NameFor(sym_in);
-            auto sym_out = out.Symbols().Register(str);
+            auto str = src->Symbols().NameFor(sym_in);
+            auto sym_out = b.Symbols().Register(str);
             return ctx.dst->create<ast::IdentifierExpression>(ctx.Clone(ident->source), sym_out);
         }
         return nullptr;  // Clone ident. Uses the symbol remapping above.
     });
-    ctx.Clone();
 
-    return Output(Program(std::move(out)), std::make_unique<Data>(std::move(remappings)));
+    ctx.ReplaceAll([&](const ast::TypeName* type_name) -> const ast::TypeName* {
+        if (preserved_type_names.Contains(type_name)) {
+            auto sym_in = type_name->name;
+            auto str = src->Symbols().NameFor(sym_in);
+            auto sym_out = b.Symbols().Register(str);
+            return ctx.dst->create<ast::TypeName>(ctx.Clone(type_name->source), sym_out);
+        }
+        return nullptr;  // Clone ident. Uses the symbol remapping above.
+    });
+
+    ctx.Clone();  // Must come before the std::move()
+
+    outputs.Add<Data>(std::move(remappings));
+
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

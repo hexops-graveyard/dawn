@@ -48,8 +48,8 @@ MaybeError ValidateStorageTextureViewDimension(wgpu::TextureViewDimension dimens
     switch (dimension) {
         case wgpu::TextureViewDimension::Cube:
         case wgpu::TextureViewDimension::CubeArray:
-            return DAWN_FORMAT_VALIDATION_ERROR(
-                "%s texture views cannot be used as storage textures.", dimension);
+            return DAWN_VALIDATION_ERROR("%s texture views cannot be used as storage textures.",
+                                         dimension);
 
         case wgpu::TextureViewDimension::e1D:
         case wgpu::TextureViewDimension::e2D:
@@ -113,6 +113,12 @@ MaybeError ValidateBindGroupLayoutEntry(DeviceBase* device,
         DAWN_INVALID_IF(texture.multisampled && viewDimension != wgpu::TextureViewDimension::e2D,
                         "View dimension (%s) for a multisampled texture bindings was not %s.",
                         viewDimension, wgpu::TextureViewDimension::e2D);
+
+        if (texture.multisampled && texture.sampleType == wgpu::TextureSampleType::Float) {
+            DAWN_TRY(DAWN_MAKE_DEPRECATION_ERROR(
+                device, "Sample type %s for multisampled texture bindings was %s.",
+                texture.sampleType, wgpu::TextureSampleType::Float));
+        }
     }
 
     if (entry.storageTexture.access != wgpu::StorageTextureAccess::Undefined) {
@@ -183,8 +189,8 @@ std::vector<BindGroupLayoutEntry> ExtractAndExpandBglEntries(
     std::vector<BindGroupLayoutEntry> expandedOutput;
 
     // When new bgl entries are created, we use binding numbers larger than
-    // kMaxBindingNumber to ensure there are no collisions.
-    uint32_t nextOpenBindingNumberForNewEntry = kMaxBindingNumber + 1;
+    // kMaxBindingsPerBindGroup to ensure there are no collisions.
+    uint32_t nextOpenBindingNumberForNewEntry = kMaxBindingsPerBindGroup;
     for (uint32_t i = 0; i < descriptor->entryCount; i++) {
         const BindGroupLayoutEntry& entry = descriptor->entries[i];
         const ExternalTextureBindingLayout* externalTextureBindingLayout = nullptr;
@@ -250,9 +256,9 @@ MaybeError ValidateBindGroupLayoutDescriptor(DeviceBase* device,
         const BindGroupLayoutEntry& entry = descriptor->entries[i];
         BindingNumber bindingNumber = BindingNumber(entry.binding);
 
-        DAWN_INVALID_IF(bindingNumber > kMaxBindingNumberTyped,
-                        "Binding number (%u) exceeds the maximum binding number (%u).",
-                        uint32_t(bindingNumber), uint32_t(kMaxBindingNumberTyped));
+        DAWN_INVALID_IF(bindingNumber >= kMaxBindingsPerBindGroupTyped,
+                        "Binding number (%u) exceeds the maxBindingsPerBindGroup limit (%u).",
+                        uint32_t(bindingNumber), kMaxBindingsPerBindGroup);
         DAWN_INVALID_IF(bindingsSet.count(bindingNumber) != 0,
                         "On entries[%u]: binding index (%u) was specified by a previous entry.", i,
                         entry.binding);
@@ -481,7 +487,7 @@ BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device,
                                          const BindGroupLayoutDescriptor* descriptor,
                                          PipelineCompatibilityToken pipelineCompatibilityToken)
     : BindGroupLayoutBase(device, descriptor, pipelineCompatibilityToken, kUntrackedByDevice) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device, ObjectBase::ErrorTag tag)
@@ -489,7 +495,7 @@ BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device, ObjectBase::ErrorTa
 
 BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device)
     : ApiObjectBase(device, kLabelNotImplemented) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 BindGroupLayoutBase::~BindGroupLayoutBase() = default;

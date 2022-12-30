@@ -91,7 +91,7 @@ TEST_F(MslGeneratorImplTest, Emit_Attribute_EntryPoint_WithInOutVars) {
     // fn frag_main(@location(0) foo : f32) -> @location(1) f32 {
     //   return foo;
     // }
-    auto* foo_in = Param("foo", ty.f32(), utils::Vector{Location(0)});
+    auto* foo_in = Param("foo", ty.f32(), utils::Vector{Location(0_a)});
     Func("frag_main", utils::Vector{foo_in}, ty.f32(),
          utils::Vector{
              Return("foo"),
@@ -100,7 +100,7 @@ TEST_F(MslGeneratorImplTest, Emit_Attribute_EntryPoint_WithInOutVars) {
              Stage(ast::PipelineStage::kFragment),
          },
          utils::Vector{
-             Location(1),
+             Location(1_a),
          });
 
     GeneratorImpl& gen = SanitizeAndBuild();
@@ -188,8 +188,8 @@ TEST_F(MslGeneratorImplTest, Emit_Attribute_EntryPoint_SharedStruct_DifferentSta
     auto* interface_struct = Structure(
         "Interface",
         utils::Vector{
-            Member("col1", ty.f32(), utils::Vector{Location(1)}),
-            Member("col2", ty.f32(), utils::Vector{Location(2)}),
+            Member("col1", ty.f32(), utils::Vector{Location(1_a)}),
+            Member("col2", ty.f32(), utils::Vector{Location(2_a)}),
             Member("pos", ty.vec4<f32>(), utils::Vector{Builtin(ast::BuiltinValue::kPosition)}),
         });
 
@@ -224,7 +224,7 @@ struct tint_symbol {
 };
 
 Interface vert_main_inner() {
-  Interface const tint_symbol_3 = {.col1=0.5f, .col2=0.25f, .pos=float4(0.0f)};
+  Interface const tint_symbol_3 = Interface{.col1=0.5f, .col2=0.25f, .pos=float4(0.0f)};
   return tint_symbol_3;
 }
 
@@ -342,10 +342,10 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_EntryPoint_With_RW_StorageBu
                                     Member("b", ty.f32()),
                                 });
 
-    GlobalVar("coord", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-              GroupAndBinding(0, 0));
+    GlobalVar("coord", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kReadWrite, Group(0_a),
+              Binding(0_a));
 
-    auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, MemberAccessor("coord", "b"));
+    auto* var = Var("v", ty.f32(), MemberAccessor("coord", "b"));
 
     Func("frag_main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -381,10 +381,10 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_EntryPoint_With_RO_StorageBu
                                     Member("b", ty.f32()),
                                 });
 
-    GlobalVar("coord", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              GroupAndBinding(0, 0));
+    GlobalVar("coord", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Group(0_a),
+              Binding(0_a));
 
-    auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, MemberAccessor("coord", "b"));
+    auto* var = Var("v", ty.f32(), MemberAccessor("coord", "b"));
 
     Func("frag_main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -416,7 +416,8 @@ fragment void frag_main(const device Data* tint_symbol [[buffer(0)]]) {
 
 TEST_F(MslGeneratorImplTest, Emit_Attribute_Called_By_EntryPoint_With_Uniform) {
     auto* ubo_ty = Structure("UBO", utils::Vector{Member("coord", ty.vec4<f32>())});
-    auto* ubo = GlobalVar("ubo", ty.Of(ubo_ty), ast::StorageClass::kUniform, GroupAndBinding(0, 0));
+    auto* ubo =
+        GlobalVar("ubo", ty.Of(ubo_ty), ast::AddressSpace::kUniform, Group(0_a), Binding(0_a));
 
     Func("sub_func",
          utils::Vector{
@@ -427,7 +428,7 @@ TEST_F(MslGeneratorImplTest, Emit_Attribute_Called_By_EntryPoint_With_Uniform) {
              Return(MemberAccessor(MemberAccessor(ubo, "coord"), "x")),
          });
 
-    auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, Call("sub_func", 1_f));
+    auto* var = Var("v", ty.f32(), Call("sub_func", 1_f));
 
     Func("frag_main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -466,8 +467,8 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_Called_By_EntryPoint_With_RW
                                     Member("b", ty.f32()),
                                 });
 
-    GlobalVar("coord", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-              GroupAndBinding(0, 0));
+    GlobalVar("coord", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kReadWrite, Group(0_a),
+              Binding(0_a));
 
     Func("sub_func",
          utils::Vector{
@@ -478,7 +479,7 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_Called_By_EntryPoint_With_RW
              Return(MemberAccessor("coord", "b")),
          });
 
-    auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, Call("sub_func", 1_f));
+    auto* var = Var("v", ty.f32(), Call("sub_func", 1_f));
 
     Func("frag_main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -518,8 +519,8 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_Called_By_EntryPoint_With_RO
                                     Member("b", ty.f32()),
                                 });
 
-    GlobalVar("coord", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kRead,
-              GroupAndBinding(0, 0));
+    GlobalVar("coord", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Group(0_a),
+              Binding(0_a));
 
     Func("sub_func",
          utils::Vector{
@@ -530,7 +531,7 @@ TEST_F(MslGeneratorImplTest, Emit_FunctionAttribute_Called_By_EntryPoint_With_RO
              Return(MemberAccessor("coord", "b")),
          });
 
-    auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, Call("sub_func", 1_f));
+    auto* var = Var("v", ty.f32(), Call("sub_func", 1_f));
 
     Func("frag_main", utils::Empty, ty.void_(),
          utils::Vector{
@@ -656,11 +657,11 @@ TEST_F(MslGeneratorImplTest, Emit_Function_Multiple_EntryPoint_With_Same_ModuleV
 
     auto* s = Structure("Data", utils::Vector{Member("d", ty.f32())});
 
-    GlobalVar("data", ty.Of(s), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-              GroupAndBinding(0, 0));
+    GlobalVar("data", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kReadWrite, Group(0_a),
+              Binding(0_a));
 
     {
-        auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, MemberAccessor("data", "d"));
+        auto* var = Var("v", ty.f32(), MemberAccessor("data", "d"));
 
         Func("a", utils::Empty, ty.void_(),
              utils::Vector{
@@ -674,7 +675,7 @@ TEST_F(MslGeneratorImplTest, Emit_Function_Multiple_EntryPoint_With_Same_ModuleV
     }
 
     {
-        auto* var = Var("v", ty.f32(), ast::StorageClass::kNone, MemberAccessor("data", "d"));
+        auto* var = Var("v", ty.f32(), MemberAccessor("data", "d"));
 
         Func("b", utils::Empty, ty.void_(),
              utils::Vector{

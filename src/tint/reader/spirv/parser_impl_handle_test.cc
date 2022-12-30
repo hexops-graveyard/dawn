@@ -1484,10 +1484,6 @@ TEST_P(SpvParserHandleTest_SampledImageAccessTest, Variable) {
     }
 }
 
-// TODO(dneto): Test variable declaration and texture builtins provoked by
-// use of an image access instruction inside helper function.
-TEST_P(SpvParserHandleTest_RegisterHandleUsage_SampledImage, DISABLED_FunctionParam) {}
-
 INSTANTIATE_TEST_SUITE_P(
     ImageGather,
     SpvParserHandleTest_SampledImageAccessTest,
@@ -2407,10 +2403,10 @@ INSTANTIATE_TEST_SUITE_P(ImageWrite_OptionalParams,
 INSTANTIATE_TEST_SUITE_P(
     // SPIR-V's texel parameter is a scalar or vector with at least as many
     // components as there are channels in the underlying format, and the
-    // componet type matches the sampled type (modulo signed/unsigned integer).
+    // component type matches the sampled type (modulo signed/unsigned integer).
     // WGSL's texel parameter is a 4-element vector scalar or vector, with
     // component type equal to the 32-bit form of the channel type.
-    ImageWrite_ConvertTexelOperand_Arity,
+    ImageWrite_ConvertTexelOperand_Arity_Float,
     SpvParserHandleTest_ImageAccessTest,
     ::testing::ValuesIn(std::vector<ImageAccessCase>{
         // Source 1 component
@@ -2447,6 +2443,86 @@ INSTANTIATE_TEST_SUITE_P(
          "@group(2) @binding(1) var x_20 : "
          "texture_storage_2d<rgba32float, write>;",
          "textureStore(x_20, vi12, vf1234);"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    // As above, but unsigned integer.
+    ImageWrite_ConvertTexelOperand_Arity_Uint,
+    SpvParserHandleTest_ImageAccessTest,
+    ::testing::ValuesIn(std::vector<ImageAccessCase>{
+        // Source 1 component
+        {"%uint 2D 0 0 0 2 R32ui", "OpImageWrite %im %vi12 %u1",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32uint, write>;)",
+         "textureStore(x_20, vi12, vec4<u32>(u1, 0u, 0u, 0u));"},
+        // Source 2 component, dest 1 component
+        {"%uint 2D 0 0 0 2 R32ui", "OpImageWrite %im %vi12 %vu12",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32uint, write>;)",
+         "textureStore(x_20, vi12, vec4<u32>(vu12, 0u, 0u));"},
+        // Source 3 component, dest 1 component
+        {"%uint 2D 0 0 0 2 R32ui", "OpImageWrite %im %vi12 %vu123",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32uint, write>;)",
+         "textureStore(x_20, vi12, vec4<u32>(vu123, 0u));"},
+        // Source 4 component, dest 1 component
+        {"%uint 2D 0 0 0 2 R32ui", "OpImageWrite %im %vi12 %vu1234",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32uint, write>;)",
+         "textureStore(x_20, vi12, vu1234);"},
+        // Source 2 component, dest 2 component
+        {"%uint 2D 0 0 0 2 Rg32ui", "OpImageWrite %im %vi12 %vu12",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32uint, write>;)",
+         "textureStore(x_20, vi12, vec4<u32>(vu12, 0u, 0u));"},
+        // Source 3 component, dest 2 component
+        {"%uint 2D 0 0 0 2 Rg32ui", "OpImageWrite %im %vi12 %vu123",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32uint, write>;)",
+         "textureStore(x_20, vi12, vec4<u32>(vu123, 0u));"},
+        // Source 4 component, dest 2 component
+        {"%uint 2D 0 0 0 2 Rg32ui", "OpImageWrite %im %vi12 %vu1234",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32uint, write>;)",
+         "textureStore(x_20, vi12, vu1234);"},
+        // WGSL does not support 3-component storage textures.
+        // Source 4 component, dest 4 component
+        {"%uint 2D 0 0 0 2 Rgba32ui", "OpImageWrite %im %vi12 %vu1234",
+         "@group(2) @binding(1) var x_20 : "
+         "texture_storage_2d<rgba32uint, write>;",
+         "textureStore(x_20, vi12, vu1234);"}}));
+
+INSTANTIATE_TEST_SUITE_P(
+    // As above, but signed integer.
+    ImageWrite_ConvertTexelOperand_Arity_Sint,
+    SpvParserHandleTest_ImageAccessTest,
+    ::testing::ValuesIn(std::vector<ImageAccessCase>{
+        // Source 1 component
+        {"%int 2D 0 0 0 2 R32i", "OpImageWrite %im %vi12 %i1",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32sint, write>;)",
+         "textureStore(x_20, vi12, vec4<i32>(i1, 0i, 0i, 0i));"},
+        // Source 2 component, dest 1 component
+        {"%int 2D 0 0 0 2 R32i", "OpImageWrite %im %vi12 %vi12",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32sint, write>;)",
+         "textureStore(x_20, vi12, vec4<i32>(vi12, 0i, 0i));"},
+        // Source 3 component, dest 1 component
+        {"%int 2D 0 0 0 2 R32i", "OpImageWrite %im %vi12 %vi123",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32sint, write>;)",
+         "textureStore(x_20, vi12, vec4<i32>(vi123, 0i));"},
+        // Source 4 component, dest 1 component
+        {"%int 2D 0 0 0 2 R32i", "OpImageWrite %im %vi12 %vi1234",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<r32sint, write>;)",
+         "textureStore(x_20, vi12, vi1234);"},
+        // Source 2 component, dest 2 component
+        {"%int 2D 0 0 0 2 Rg32i", "OpImageWrite %im %vi12 %vi12",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32sint, write>;)",
+         "textureStore(x_20, vi12, vec4<i32>(vi12, 0i, 0i));"},
+        // Source 3 component, dest 2 component
+        {"%int 2D 0 0 0 2 Rg32i", "OpImageWrite %im %vi12 %vi123",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32sint, write>;)",
+         "textureStore(x_20, vi12, vec4<i32>(vi123, 0i));"},
+        // Source 4 component, dest 2 component
+        {"%int 2D 0 0 0 2 Rg32i", "OpImageWrite %im %vi12 %vi1234",
+         R"(@group(2) @binding(1) var x_20 : texture_storage_2d<rg32sint, write>;)",
+         "textureStore(x_20, vi12, vi1234);"},
+        // WGSL does not support 3-component storage textures.
+        // Source 4 component, dest 4 component
+        {"%int 2D 0 0 0 2 Rgba32i", "OpImageWrite %im %vi12 %vi1234",
+         "@group(2) @binding(1) var x_20 : "
+         "texture_storage_2d<rgba32sint, write>;",
+         "textureStore(x_20, vi12, vi1234);"}}));
 
 TEST_F(SpvParserHandleTest, ImageWrite_TooFewSrcTexelComponents_1_vs_4) {
     const auto assembly = Preamble() + R"(
@@ -2766,7 +2842,7 @@ INSTANTIATE_TEST_SUITE_P(
          "%99 = OpImageQuerySize %v3int %im \n"
          "%98 = OpImageRead %v4float %im %vi123\n",
          R"(@group(2) @binding(1) var x_20 : texture_2d_array<f32>;)",
-         R"(let x_99 : vec3<i32> = vec3<i32>(textureDimensions(x_20), textureNumLayers(x_20));)"}
+         R"(let x_99 : vec3<i32> = vec3<i32>(vec3<u32>(textureDimensions(x_20), textureNumLayers(x_20)));)"}
         // 3D array storage image doesn't exist.
 
         // Multisampled array
@@ -2822,7 +2898,7 @@ INSTANTIATE_TEST_SUITE_P(
         // 2D array
         {"%float 2D 0 1 0 1 Unknown", "%99 = OpImageQuerySizeLod %v3int %im %i1\n",
          R"(@group(2) @binding(1) var x_20 : texture_2d_array<f32>;)",
-         R"(let x_99 : vec3<i32> = vec3<i32>(textureDimensions(x_20, i1), textureNumLayers(x_20));)"},
+         R"(let x_99 : vec3<i32> = vec3<i32>(vec3<u32>(textureDimensions(x_20, i1), textureNumLayers(x_20)));)"},
 
         // There is no 3D array
 
@@ -2833,12 +2909,12 @@ INSTANTIATE_TEST_SUITE_P(
         // https://github.com/gpuweb/gpuweb/issues/1345
         {"%float Cube 0 1 0 1 Unknown", "%99 = OpImageQuerySizeLod %v3int %im %i1\n",
          R"(@group(2) @binding(1) var x_20 : texture_cube_array<f32>;)",
-         R"(let x_99 : vec3<i32> = vec3<i32>(textureDimensions(x_20, i1).xy, textureNumLayers(x_20));)"},
+         R"(let x_99 : vec3<i32> = vec3<i32>(vec3<u32>(textureDimensions(x_20, i1).xy, textureNumLayers(x_20)));)"},
 
         // Depth 2D array
         {"%float 2D 1 1 0 1 Unknown", "%99 = OpImageQuerySizeLod %v3int %im %i1\n",
          R"(@group(2) @binding(1) var x_20 : texture_depth_2d_array;)",
-         R"(let x_99 : vec3<i32> = vec3<i32>(textureDimensions(x_20, i1), textureNumLayers(x_20));)"},
+         R"(let x_99 : vec3<i32> = vec3<i32>(vec3<u32>(textureDimensions(x_20, i1), textureNumLayers(x_20)));)"},
 
         // Depth Cube Array
         //
@@ -2847,23 +2923,21 @@ INSTANTIATE_TEST_SUITE_P(
         // https://github.com/gpuweb/gpuweb/issues/1345
         {"%float Cube 1 1 0 1 Unknown", "%99 = OpImageQuerySizeLod %v3int %im %i1\n",
          R"(@group(2) @binding(1) var x_20 : texture_depth_cube_array;)",
-         R"(let x_99 : vec3<i32> = vec3<i32>(textureDimensions(x_20, i1).xy, textureNumLayers(x_20));)"}}));
+         R"(let x_99 : vec3<i32> = vec3<i32>(vec3<u32>(textureDimensions(x_20, i1).xy, textureNumLayers(x_20)));)"}}));
 
 INSTANTIATE_TEST_SUITE_P(
-    // When the level-of-detail value is given as an unsigned
-    // integer, we must convert it before using it as an argument
-    // to textureDimensions.
+    // textureDimensions accepts both signed and unsigned the level-of-detail values.
     ImageQuerySizeLod_NonArrayed_SignedResult_UnsignedLevel,
     SpvParserHandleTest_SampledImageAccessTest,
     ::testing::ValuesIn(std::vector<ImageAccessCase>{
 
         {"%float 1D 0 0 0 1 Unknown", "%99 = OpImageQuerySizeLod %int %im %u1\n",
          R"(@group(2) @binding(1) var x_20 : texture_1d<f32>;)",
-         R"(let x_99 : i32 = i32(textureDimensions(x_20, i32(u1)));)"}}));
+         R"(let x_99 : i32 = i32(textureDimensions(x_20, u1));)"}}));
 
 INSTANTIATE_TEST_SUITE_P(
     // When SPIR-V wants the result type to be unsigned, we have to
-    // insert a type constructor or bitcast for WGSL to do the type
+    // insert a type initializer or bitcast for WGSL to do the type
     // coercion. But the algorithm already does that as a matter
     // of course.
     ImageQuerySizeLod_NonArrayed_UnsignedResult_SignedLevel,
@@ -2872,7 +2946,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         {"%float 1D 0 0 0 1 Unknown", "%99 = OpImageQuerySizeLod %uint %im %i1\n",
          R"(@group(2) @binding(1) var x_20 : texture_1d<f32>;)",
-         R"(let x_99 : u32 = u32(textureDimensions(x_20, i1));)"}}));
+         R"(let x_99 : i32 = i32(textureDimensions(x_20, i1));)"}}));
 
 INSTANTIATE_TEST_SUITE_P(ImageQueryLevels_SignedResult,
                          SpvParserHandleTest_SampledImageAccessTest,
@@ -2885,47 +2959,47 @@ INSTANTIATE_TEST_SUITE_P(ImageQueryLevels_SignedResult,
                              // 2D
                              {"%float 2D 0 0 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_2d<f32>;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // 2D array
                              {"%float 2D 0 1 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_2d_array<f32>;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // 3D
                              {"%float 3D 0 0 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_3d<f32>;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // Cube
                              {"%float Cube 0 0 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_cube<f32>;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // Cube array
                              {"%float Cube 0 1 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_cube_array<f32>;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // depth 2d
                              {"%float 2D 1 0 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_depth_2d;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // depth 2d array
                              {"%float 2D 1 1 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_depth_2d_array;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // depth cube
                              {"%float Cube 1 0 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_depth_cube;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"},
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"},
 
                              // depth cube array
                              {"%float Cube 1 1 0 1 Unknown", "%99 = OpImageQueryLevels %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_depth_cube_array;)",
-                              R"(let x_99 : i32 = textureNumLevels(x_20);)"}}));
+                              R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"}}));
 
 INSTANTIATE_TEST_SUITE_P(
     // Spot check that a type conversion is inserted when SPIR-V asks for
@@ -2935,7 +3009,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::ValuesIn(std::vector<ImageAccessCase>{
         {"%float 2D 0 0 0 1 Unknown", "%99 = OpImageQueryLevels %uint %im\n",
          R"(@group(2) @binding(1) var x_20 : texture_2d<f32>;)",
-         R"(let x_99 : u32 = u32(textureNumLevels(x_20));)"}}));
+         R"(let x_99 : u32 = textureNumLevels(x_20);)"}}));
 
 INSTANTIATE_TEST_SUITE_P(ImageQuerySamples_SignedResult,
                          SpvParserHandleTest_SampledImageAccessTest,
@@ -2943,21 +3017,21 @@ INSTANTIATE_TEST_SUITE_P(ImageQuerySamples_SignedResult,
                              // Multsample 2D
                              {"%float 2D 0 0 1 1 Unknown", "%99 = OpImageQuerySamples %int %im\n",
                               R"(@group(2) @binding(1) var x_20 : texture_multisampled_2d<f32>;)",
-                              R"(let x_99 : i32 = textureNumSamples(x_20);)"}  // namespace
+                              R"(let x_99 : i32 = i32(textureNumSamples(x_20));)"}
 
                              // Multisample 2D array
                              // Not in WebGPU
                          }));
 
 INSTANTIATE_TEST_SUITE_P(
-    // Translation must inject a type coersion from signed to unsigned.
+    // Translation must inject a type coersion from unsigned to signed.
     ImageQuerySamples_UnsignedResult,
     SpvParserHandleTest_SampledImageAccessTest,
     ::testing::ValuesIn(std::vector<ImageAccessCase>{
-        // Multsample 2D
+        // Multisample 2D
         {"%float 2D 0 0 1 1 Unknown", "%99 = OpImageQuerySamples %uint %im\n",
          R"(@group(2) @binding(1) var x_20 : texture_multisampled_2d<f32>;)",
-         R"(let x_99 : u32 = u32(textureNumSamples(x_20));)"}
+         R"(let x_99 : u32 = textureNumSamples(x_20);)"}
 
         // Multisample 2D array
         // Not in WebGPU
@@ -3392,9 +3466,10 @@ INSTANTIATE_TEST_SUITE_P(Bad_Coordinate,
                              {"%float 1D 0 0 0 1 Unknown",
                               "%result = OpImageSampleImplicitLod "
                               // bad type for coordinate: not a number
-                              "%v4float %sampled_image %float_var",
+                              // %10 is the sampler variable
+                              "%v4float %sampled_image %10",
                               "bad or unsupported coordinate type for image access: %73 = "
-                              "OpImageSampleImplicitLod %42 %72 %1",
+                              "OpImageSampleImplicitLod %42 %72 %10",
                               {}},
                              {"%float 2D 0 0 0 1 Unknown",  // 2D
                               "%result = OpImageSampleImplicitLod "
@@ -3748,6 +3823,253 @@ TEST_F(SpvParserHandleTest, NeverGenerateConstDeclForHandle_UseVariableDirectly)
 let x_22 : vec4<f32> = textureSample(x_2, x_3, vec2<f32>());
 let x_26 : vec4<f32> = textureSample(x_2, x_3, vec2<f32>());
 var_1 = (x_22 + x_26);
+return;
+)";
+    ASSERT_EQ(expect, got);
+}
+
+TEST_F(SpvParserHandleTest, ImageCoordinateCanBeHoistedConstant) {
+    // Demonstrates fix for crbug.com/tint/1646
+    // The problem is the coordinate for an image operation
+    // can be a combinatorial value that has been hoisted out
+    // to a 'var' declaration.
+    //
+    // In this test (and the original case form the bug), the
+    // definition for the value is in an outer construct, and
+    // the image operation using it is in a doubly nested
+    // construct.
+    //
+    // The coordinate handling has to unwrap the ref type it
+    // made for the 'var' declaration.
+    const auto assembly = Preamble() + R"(
+
+OpEntryPoint Fragment %100 "main"
+OpExecutionMode %100 OriginUpperLeft
+OpDecorate %10 DescriptorSet 0
+OpDecorate %10 Binding 0
+OpDecorate %20 DescriptorSet 2
+OpDecorate %20 Binding 1
+
+%void = OpTypeVoid
+%voidfn = OpTypeFunction %void
+
+%bool = OpTypeBool
+%true = OpConstantTrue %bool
+%float = OpTypeFloat 32
+
+%v4float = OpTypeVector %float 4
+
+%float_null = OpConstantNull %float
+
+%sampler = OpTypeSampler
+%ptr_sampler = OpTypePointer UniformConstant %sampler
+%im_ty = OpTypeImage %float 1D 0 0 0 1 Unknown
+%ptr_im_ty = OpTypePointer UniformConstant %im_ty
+%si_ty = OpTypeSampledImage %im_ty
+
+%10 = OpVariable %ptr_sampler UniformConstant
+%20 = OpVariable %ptr_im_ty UniformConstant
+
+%100 = OpFunction %void None %voidfn
+%entry = OpLabel
+%900 = OpCopyObject %float %float_null        ; definition here
+OpSelectionMerge %99 None
+OpBranchConditional %true %40 %99
+
+  %40 = OpLabel
+  OpSelectionMerge %80 None
+  OpBranchConditional %true %50 %80
+
+    %50 = OpLabel
+    %sam = OpLoad %sampler %10
+    %im = OpLoad %im_ty %20
+    %sampled_image = OpSampledImage %si_ty %im %sam
+    %result = OpImageSampleImplicitLod %v4float %sampled_image %900 ; usage here
+    OpBranch %80
+
+  %80 = OpLabel
+  OpBranch %99
+
+%99 = OpLabel
+OpReturn
+OpFunctionEnd
+
+  )";
+    auto p = parser(test::Assemble(assembly));
+    EXPECT_TRUE(p->BuildAndParseInternalModule()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    EXPECT_TRUE(p->error().empty()) << p->error();
+    auto ast_body = fe.ast_body();
+    const auto got = test::ToString(p->program(), ast_body);
+    auto* expect = R"(var x_900 : f32;
+x_900 = 0.0f;
+if (true) {
+  if (true) {
+    let x_18 : vec4<f32> = textureSample(x_20, x_10, x_900);
+  }
+}
+return;
+)";
+    ASSERT_EQ(expect, got);
+}
+
+TEST_F(SpvParserHandleTest, TexelTypeWhenLoop) {
+    // Demonstrates fix for crbug.com/tint/1642
+    // The problem is the texel value for an image write
+    // can be given in 'var' declaration.
+    //
+    // The texel value handling has to unwrap the ref type first.
+    const auto assembly = Preamble() + R"(
+               OpCapability Shader
+               OpCapability StorageImageExtendedFormats
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %100 "main"
+               OpExecutionMode %100 LocalSize 8 8 1
+               OpSource HLSL 600
+               OpName %type_2d_image "type.2d.image"
+               OpName %Output2Texture2D "Output2Texture2D"
+               OpName %100 "main"
+               OpDecorate %Output2Texture2D DescriptorSet 0
+               OpDecorate %Output2Texture2D Binding 0
+      %float = OpTypeFloat 32
+    %float_0 = OpConstant %float 0
+    %v2float = OpTypeVector %float 2
+          %7 = OpConstantComposite %v2float %float_0 %float_0
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+      %int_2 = OpConstant %int 2
+    %float_1 = OpConstant %float 1
+         %12 = OpConstantComposite %v2float %float_1 %float_1
+      %int_1 = OpConstant %int 1
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+     %v2uint = OpTypeVector %uint 2
+         %17 = OpConstantComposite %v2uint %uint_1 %uint_1
+%type_2d_image = OpTypeImage %float 2D 2 0 0 2 Rg32f
+%_ptr_UniformConstant_type_2d_image = OpTypePointer UniformConstant %type_2d_image
+       %void = OpTypeVoid
+         %20 = OpTypeFunction %void
+       %bool = OpTypeBool
+%Output2Texture2D = OpVariable %_ptr_UniformConstant_type_2d_image UniformConstant
+        %100 = OpFunction %void None %20
+         %22 = OpLabel
+               OpBranch %23
+         %23 = OpLabel
+         %24 = OpPhi %v2float %7 %22 %12 %25
+         %26 = OpPhi %int %int_0 %22 %27 %25
+         %28 = OpSLessThan %bool %26 %int_2
+               OpLoopMerge %29 %25 None
+               OpBranchConditional %28 %25 %29
+         %25 = OpLabel
+         %27 = OpIAdd %int %26 %int_1
+               OpBranch %23
+         %29 = OpLabel
+         %30 = OpLoad %type_2d_image %Output2Texture2D
+               OpImageWrite %30 %17 %24 None
+               OpReturn
+               OpFunctionEnd
+  )";
+    auto p = parser(test::Assemble(assembly));
+    EXPECT_TRUE(p->BuildAndParseInternalModule()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    EXPECT_TRUE(p->error().empty()) << p->error();
+    auto ast_body = fe.ast_body();
+    const auto got = test::ToString(p->program(), ast_body);
+    auto* expect = R"(var x_24 : vec2<f32>;
+var x_26 : i32;
+x_24 = vec2<f32>(0.0f, 0.0f);
+x_26 = 0i;
+loop {
+  var x_27 : i32;
+  if ((x_26 < 2i)) {
+  } else {
+    break;
+  }
+
+  continuing {
+    x_27 = (x_26 + 1i);
+    x_24 = vec2<f32>(1.0f, 1.0f);
+    x_26 = x_27;
+  }
+}
+textureStore(Output2Texture2D, vec2<i32>(vec2<u32>(1u, 1u)), vec4<f32>(x_24, 0.0f, 0.0f));
+return;
+)";
+    ASSERT_EQ(expect, got);
+}
+
+TEST_F(SpvParserHandleTest, SimpleSelectCanSelectFromHoistedConstant) {
+    // Demonstrates fix for crbug.com/tint/1642
+    // The problem is an operand to a simple select can be a value
+    // that is hoisted into a 'var' declaration.
+    //
+    // The selection-generation logic has to UnwrapRef if needed.
+    const auto assembly = Preamble() + R"(
+               OpCapability Shader
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Vertex %100 "main" %gl_Position
+               OpSource HLSL 600
+               OpName %100 "main"
+               OpDecorate %gl_Position BuiltIn Position
+      %float = OpTypeFloat 32
+    %float_0 = OpConstant %float 0
+    %float_1 = OpConstant %float 1
+    %v4float = OpTypeVector %float 4
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+       %void = OpTypeVoid
+          %9 = OpTypeFunction %void
+       %bool = OpTypeBool
+%gl_Position = OpVariable %_ptr_Output_v4float Output
+         %11 = OpUndef %float
+        %100 = OpFunction %void None %9
+         %12 = OpLabel
+               OpBranch %13
+         %13 = OpLabel
+         %14 = OpPhi %float %11 %12 %15 %16
+         %15 = OpPhi %float %float_0 %12 %17 %16
+         %18 = OpFOrdLessThan %bool %15 %float_1
+               OpLoopMerge %19 %16 None
+               OpBranchConditional %18 %16 %19
+         %16 = OpLabel
+         %17 = OpFAdd %float %15 %float_1
+               OpBranch %13
+         %19 = OpLabel
+         %20 = OpFOrdGreaterThan %bool %14 %float_1
+         %21 = OpSelect %float %20 %14 %float_0
+         %22 = OpCompositeConstruct %v4float %21 %21 %21 %21
+               OpStore %gl_Position %22
+               OpReturn
+               OpFunctionEnd
+  )";
+    auto p = parser(test::Assemble(assembly));
+    EXPECT_TRUE(p->BuildAndParseInternalModule()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    EXPECT_TRUE(p->error().empty()) << p->error();
+    auto ast_body = fe.ast_body();
+    const auto got = test::ToString(p->program(), ast_body);
+    auto* expect = R"(var x_14 : f32;
+var x_15 : f32;
+x_14 = 0.0f;
+x_15 = 0.0f;
+loop {
+  var x_17 : f32;
+  if ((x_15 < 1.0f)) {
+  } else {
+    break;
+  }
+
+  continuing {
+    x_17 = (x_15 + 1.0f);
+    let x_15_c16_1 = x_15;
+    x_14 = x_15_c16_1;
+    x_15 = x_17;
+  }
+}
+let x_21 : f32 = select(0.0f, x_14, (x_14 > 1.0f));
+x_1 = vec4<f32>(x_21, x_21, x_21, x_21);
 return;
 )";
     ASSERT_EQ(expect, got);

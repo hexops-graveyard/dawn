@@ -42,7 +42,7 @@ ResultOrError<ComputePipelineBase*> GetOrCreateIndirectDispatchValidationPipelin
 
     // TODO(https://crbug.com/dawn/1108): Propagate validation feedback from this
     // shader in various failure modes.
-    // Type 'bool' cannot be used in storage class 'uniform' as it is non-host-shareable.
+    // Type 'bool' cannot be used in address space 'uniform' as it is non-host-shareable.
     Ref<ShaderModuleBase> shaderModule;
     DAWN_TRY_ASSIGN(shaderModule, utils::CreateShaderModule(device, R"(
                 struct UniformParams {
@@ -114,7 +114,7 @@ ComputePassEncoder::ComputePassEncoder(DeviceBase* device,
                                        EncodingContext* encodingContext)
     : ProgrammableEncoder(device, descriptor->label, encodingContext),
       mCommandEncoder(commandEncoder) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 // static
@@ -167,15 +167,20 @@ void ComputePassEncoder::APIEnd() {
 }
 
 void ComputePassEncoder::APIEndPass() {
-    GetDevice()->EmitDeprecationWarning("endPass() has been deprecated. Use end() instead.");
+    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
+            GetDevice(), "endPass() has been deprecated. Use end() instead."))) {
+        return;
+    }
     APIEnd();
 }
 
 void ComputePassEncoder::APIDispatch(uint32_t workgroupCountX,
                                      uint32_t workgroupCountY,
                                      uint32_t workgroupCountZ) {
-    GetDevice()->EmitDeprecationWarning(
-        "dispatch() has been deprecated. Use dispatchWorkgroups() instead.");
+    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
+            GetDevice(), "dispatch() has been deprecated. Use dispatchWorkgroups() instead."))) {
+        return;
+    }
     APIDispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ);
 }
 
@@ -258,7 +263,7 @@ ComputePassEncoder::TransformIndirectDispatchBuffer(Ref<BufferBase> indirectBuff
         kDispatchIndirectSize + clientOffsetFromAlignedBoundary;
 
     // Neither 'enableValidation' nor 'duplicateNumWorkgroups' can be declared as 'bool' as
-    // currently in WGSL type 'bool' cannot be used in storage class 'uniform' as 'it is
+    // currently in WGSL type 'bool' cannot be used in address space 'uniform' as 'it is
     // non-host-shareable'.
     struct UniformParams {
         uint32_t maxComputeWorkgroupsPerDimension;
@@ -313,8 +318,11 @@ ComputePassEncoder::TransformIndirectDispatchBuffer(Ref<BufferBase> indirectBuff
 }
 
 void ComputePassEncoder::APIDispatchIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset) {
-    GetDevice()->EmitDeprecationWarning(
-        "dispatchIndirect() has been deprecated. Use dispatchWorkgroupsIndirect() instead.");
+    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
+            GetDevice(),
+            "dispatchIndirect() has been deprecated. Use dispatchWorkgroupsIndirect() instead."))) {
+        return;
+    }
     APIDispatchWorkgroupsIndirect(indirectBuffer, indirectOffset);
 }
 
@@ -433,7 +441,8 @@ void ComputePassEncoder::APIWriteTimestamp(QuerySetBase* querySet, uint32_t quer
         this,
         [&](CommandAllocator* allocator) -> MaybeError {
             if (IsValidationEnabled()) {
-                DAWN_TRY(ValidateTimestampQuery(GetDevice(), querySet, queryIndex));
+                DAWN_TRY(ValidateTimestampQuery(GetDevice(), querySet, queryIndex,
+                                                Feature::TimestampQueryInsidePasses));
             }
 
             mCommandEncoder->TrackQueryAvailability(querySet, queryIndex);

@@ -41,6 +41,35 @@ TEST_F(ParserImplTest, Attribute_Workgroup) {
     EXPECT_EQ(values[2], nullptr);
 }
 
+TEST_F(ParserImplTest, Attribute_Workgroup_Expression) {
+    auto p = parser("workgroup_size(4 + 2)");
+    auto attr = p->attribute();
+    EXPECT_TRUE(attr.matched);
+    EXPECT_FALSE(attr.errored);
+    ASSERT_NE(attr.value, nullptr) << p->error();
+    ASSERT_FALSE(p->has_error());
+    auto* func_attr = attr.value->As<ast::Attribute>();
+    ASSERT_NE(func_attr, nullptr);
+    ASSERT_TRUE(func_attr->Is<ast::WorkgroupAttribute>());
+
+    auto values = func_attr->As<ast::WorkgroupAttribute>()->Values();
+
+    ASSERT_TRUE(values[0]->Is<ast::BinaryExpression>());
+    auto* expr = values[0]->As<ast::BinaryExpression>();
+    EXPECT_EQ(expr->op, ast::BinaryOp::kAdd);
+
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->value, 4);
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->value, 2);
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    EXPECT_EQ(values[1], nullptr);
+    EXPECT_EQ(values[2], nullptr);
+}
+
 TEST_F(ParserImplTest, Attribute_Workgroup_1Param_TrailingComma) {
     auto p = parser("workgroup_size(4,)");
     auto attr = p->attribute();
@@ -94,6 +123,39 @@ TEST_F(ParserImplTest, Attribute_Workgroup_2Param) {
     ASSERT_TRUE(values[1]->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(values[1]->As<ast::IntLiteralExpression>()->value, 5);
     EXPECT_EQ(values[1]->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    EXPECT_EQ(values[2], nullptr);
+}
+
+TEST_F(ParserImplTest, Attribute_Workgroup_2Param_Expression) {
+    auto p = parser("workgroup_size(4, 5 - 2)");
+    auto attr = p->attribute();
+    EXPECT_TRUE(attr.matched);
+    EXPECT_FALSE(attr.errored);
+    ASSERT_NE(attr.value, nullptr) << p->error();
+    ASSERT_FALSE(p->has_error());
+    auto* func_attr = attr.value->As<ast::Attribute>();
+    ASSERT_NE(func_attr, nullptr) << p->error();
+    ASSERT_TRUE(func_attr->Is<ast::WorkgroupAttribute>());
+
+    auto values = func_attr->As<ast::WorkgroupAttribute>()->Values();
+
+    ASSERT_TRUE(values[0]->Is<ast::IntLiteralExpression>());
+    EXPECT_EQ(values[0]->As<ast::IntLiteralExpression>()->value, 4);
+    EXPECT_EQ(values[0]->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    ASSERT_TRUE(values[1]->Is<ast::BinaryExpression>());
+    auto* expr = values[1]->As<ast::BinaryExpression>();
+    EXPECT_EQ(expr->op, ast::BinaryOp::kSubtract);
+
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->value, 5);
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->value, 2);
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->suffix,
               ast::IntLiteralExpression::Suffix::kNone);
 
     EXPECT_EQ(values[2], nullptr);
@@ -161,6 +223,42 @@ TEST_F(ParserImplTest, Attribute_Workgroup_3Param) {
     ASSERT_TRUE(values[2]->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(values[2]->As<ast::IntLiteralExpression>()->value, 6);
     EXPECT_EQ(values[2]->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+}
+
+TEST_F(ParserImplTest, Attribute_Workgroup_3Param_Expression) {
+    auto p = parser("workgroup_size(4, 5, 6 << 1)");
+    auto attr = p->attribute();
+    EXPECT_TRUE(attr.matched);
+    EXPECT_FALSE(attr.errored);
+    ASSERT_NE(attr.value, nullptr) << p->error();
+    ASSERT_FALSE(p->has_error());
+    auto* func_attr = attr.value->As<ast::Attribute>();
+    ASSERT_NE(func_attr, nullptr);
+    ASSERT_TRUE(func_attr->Is<ast::WorkgroupAttribute>());
+
+    auto values = func_attr->As<ast::WorkgroupAttribute>()->Values();
+
+    ASSERT_TRUE(values[0]->Is<ast::IntLiteralExpression>());
+    EXPECT_EQ(values[0]->As<ast::IntLiteralExpression>()->value, 4);
+    EXPECT_EQ(values[0]->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    ASSERT_TRUE(values[1]->Is<ast::IntLiteralExpression>());
+    EXPECT_EQ(values[1]->As<ast::IntLiteralExpression>()->value, 5);
+    EXPECT_EQ(values[1]->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    ASSERT_TRUE(values[2]->Is<ast::BinaryExpression>());
+    auto* expr = values[2]->As<ast::BinaryExpression>();
+    EXPECT_EQ(expr->op, ast::BinaryOp::kShiftLeft);
+
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->value, 6);
+    EXPECT_EQ(expr->lhs->As<ast::IntLiteralExpression>()->suffix,
+              ast::IntLiteralExpression::Suffix::kNone);
+
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->value, 1);
+    EXPECT_EQ(expr->rhs->As<ast::IntLiteralExpression>()->suffix,
               ast::IntLiteralExpression::Suffix::kNone);
 }
 
@@ -297,61 +395,6 @@ TEST_F(ParserImplTest, Attribute_Workgroup_Missing_Z_Comma) {
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
     EXPECT_EQ(p->error(), "1:21: expected ')' for workgroup_size attribute");
-}
-
-// TODO(crbug.com/tint/1503): Remove when @stage is removed
-TEST_F(ParserImplTest, Attribute_Stage) {
-    auto p = parser("stage(compute)");
-    auto attr = p->attribute();
-    EXPECT_TRUE(attr.matched);
-    EXPECT_FALSE(attr.errored);
-    ASSERT_NE(attr.value, nullptr) << p->error();
-    ASSERT_FALSE(p->has_error());
-    auto* func_attr = attr.value->As<ast::Attribute>();
-    ASSERT_NE(func_attr, nullptr);
-    ASSERT_TRUE(func_attr->Is<ast::StageAttribute>());
-    EXPECT_EQ(func_attr->As<ast::StageAttribute>()->stage, ast::PipelineStage::kCompute);
-}
-
-TEST_F(ParserImplTest, Attribute_Stage_MissingValue) {
-    auto p = parser("stage()");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:7: invalid value for stage attribute");
-}
-
-TEST_F(ParserImplTest, Attribute_Stage_MissingInvalid) {
-    auto p = parser("stage(nan)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:7: invalid value for stage attribute");
-}
-
-TEST_F(ParserImplTest, Attribute_Stage_MissingLeftParen) {
-    auto p = parser("stage compute)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:7: expected '(' for stage attribute");
-}
-
-TEST_F(ParserImplTest, Attribute_Stage_MissingRightParen) {
-    auto p = parser("stage(compute");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:1: use of deprecated language feature: remove stage and use @compute
-1:14: expected ')' for stage attribute)");
 }
 
 TEST_F(ParserImplTest, Attribute_Compute) {

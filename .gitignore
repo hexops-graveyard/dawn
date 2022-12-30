@@ -4,6 +4,8 @@
 /.cipd
 /.gclient
 /.gclient_entries
+/.gclient_previous_custom_vars
+/.gclient_previous_sync_commits
 /build
 /buildtools
 /testing
@@ -21,6 +23,7 @@
 /third_party/jsoncpp
 /third_party/llvm-build
 /third_party/markupsafe
+/third_party/ninja
 /third_party/node
 /third_party/node-addon-api
 /third_party/node-api-headers
@@ -36,6 +39,9 @@
 /tools/golang
 /tools/memory
 /out
+
+# Tint test validation cache file
+/test/tint/validation.cache
 
 # Modified from https://www.gitignore.io/api/vim,macos,linux,emacs,windows,sublimetext,visualstudio,visualstudiocode,intellij
 
@@ -126,3 +132,4 @@ lcov.info
 ### Clang-Tidy files
 all_findings.json
 
+tint.dot

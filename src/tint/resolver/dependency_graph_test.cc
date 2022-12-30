@@ -425,7 +425,7 @@ const ast::Node* SymbolTestHelper::Add(SymbolDeclKind kind, Symbol symbol, Sourc
     auto& b = *builder;
     switch (kind) {
         case SymbolDeclKind::GlobalVar:
-            return b.GlobalVar(source, symbol, b.ty.i32(), ast::StorageClass::kPrivate);
+            return b.GlobalVar(source, symbol, b.ty.i32(), ast::AddressSpace::kPrivate);
         case SymbolDeclKind::GlobalConst:
             return b.GlobalConst(source, symbol, b.ty.i32(), b.Expr(1_i));
         case SymbolDeclKind::Alias:
@@ -468,27 +468,27 @@ const ast::Node* SymbolTestHelper::Add(SymbolUseKind kind, Symbol symbol, Source
     switch (kind) {
         case SymbolUseKind::GlobalVarType: {
             auto* node = b.ty.type_name(source, symbol);
-            b.GlobalVar(b.Sym(), node, ast::StorageClass::kPrivate);
+            b.GlobalVar(b.Sym(), node, ast::AddressSpace::kPrivate);
             return node;
         }
         case SymbolUseKind::GlobalVarArrayElemType: {
             auto* node = b.ty.type_name(source, symbol);
-            b.GlobalVar(b.Sym(), b.ty.array(node, 4_i), ast::StorageClass::kPrivate);
+            b.GlobalVar(b.Sym(), b.ty.array(node, 4_i), ast::AddressSpace::kPrivate);
             return node;
         }
         case SymbolUseKind::GlobalVarArraySizeValue: {
             auto* node = b.Expr(source, symbol);
-            b.GlobalVar(b.Sym(), b.ty.array(b.ty.i32(), node), ast::StorageClass::kPrivate);
+            b.GlobalVar(b.Sym(), b.ty.array(b.ty.i32(), node), ast::AddressSpace::kPrivate);
             return node;
         }
         case SymbolUseKind::GlobalVarVectorElemType: {
             auto* node = b.ty.type_name(source, symbol);
-            b.GlobalVar(b.Sym(), b.ty.vec3(node), ast::StorageClass::kPrivate);
+            b.GlobalVar(b.Sym(), b.ty.vec3(node), ast::AddressSpace::kPrivate);
             return node;
         }
         case SymbolUseKind::GlobalVarMatrixElemType: {
             auto* node = b.ty.type_name(source, symbol);
-            b.GlobalVar(b.Sym(), b.ty.mat3x4(node), ast::StorageClass::kPrivate);
+            b.GlobalVar(b.Sym(), b.ty.mat3x4(node), ast::AddressSpace::kPrivate);
             return node;
         }
         case SymbolUseKind::GlobalVarSampledTexElemType: {
@@ -503,7 +503,7 @@ const ast::Node* SymbolTestHelper::Add(SymbolUseKind kind, Symbol symbol, Source
         }
         case SymbolUseKind::GlobalVarValue: {
             auto* node = b.Expr(source, symbol);
-            b.GlobalVar(b.Sym(), b.ty.i32(), ast::StorageClass::kPrivate, node);
+            b.GlobalVar(b.Sym(), b.ty.i32(), ast::AddressSpace::kPrivate, node);
             return node;
         }
         case SymbolUseKind::GlobalConstType: {
@@ -724,7 +724,7 @@ TEST_F(ResolverDependencyGraphUsedBeforeDeclTest, VarUsed) {
              Block(Assign(Expr(Source{{12, 34}}, "G"), 3.14_f)),
          });
 
-    GlobalVar(Source{{56, 78}}, "G", ty.f32(), ast::StorageClass::kPrivate, Expr(2.1_f));
+    GlobalVar(Source{{56, 78}}, "G", ty.f32(), ast::AddressSpace::kPrivate, Expr(2.1_f));
 
     Build();
 }
@@ -970,7 +970,7 @@ TEST_F(ResolverDependencyGraphCyclicRefTest, Mixed_RecursiveDependencies) {
          utils::Vector{Return(Expr(Source{{1, 10}}, "Z"))});
     Alias(Source{{2, 1}}, "A", ty.type_name(Source{{2, 10}}, "S"));
     Structure(Source{{3, 1}}, "S", utils::Vector{Member("a", ty.type_name(Source{{3, 10}}, "A"))});
-    GlobalVar(Source{{4, 1}}, "Z", nullptr, Expr(Source{{4, 10}}, "L"));
+    GlobalVar(Source{{4, 1}}, "Z", Expr(Source{{4, 10}}, "L"));
     Alias(Source{{5, 1}}, "R", ty.type_name(Source{{5, 10}}, "A"));
     GlobalConst(Source{{6, 1}}, "L", ty.type_name(Source{{5, 5}}, "S"), Expr(Source{{5, 10}}, "Z"));
 
@@ -1092,9 +1092,9 @@ TEST_F(ResolverDependencyGraphOrderedGlobalsTest, EnableFirst) {
     // Although all enable directives in a valid WGSL program must go before any other global
     // declaration, a transform may produce such a AST tree that has some declarations before enable
     // nodes. DependencyGraph should deal with these cases.
-    auto* var_1 = GlobalVar("SYMBOL1", ty.i32(), nullptr);
+    auto* var_1 = GlobalVar("SYMBOL1", ty.i32());
     auto* enable_1 = Enable(ast::Extension::kF16);
-    auto* var_2 = GlobalVar("SYMBOL2", ty.f32(), nullptr);
+    auto* var_2 = GlobalVar("SYMBOL2", ty.f32());
     auto* enable_2 = Enable(ast::Extension::kF16);
 
     EXPECT_THAT(AST().GlobalDeclarations(), ElementsAre(var_1, enable_1, var_2, enable_2));
@@ -1128,9 +1128,10 @@ TEST_P(ResolverDependencyGraphResolvedSymbolTest, Test) {
 
     if (expect_pass) {
         // Check that the use resolves to the declaration
-        auto* resolved_symbol = graph.resolved_symbols[use];
-        EXPECT_EQ(resolved_symbol, decl)
-            << "resolved: " << (resolved_symbol ? resolved_symbol->TypeInfo().name : "<null>")
+        auto resolved_symbol = graph.resolved_symbols.Find(use);
+        ASSERT_TRUE(resolved_symbol);
+        EXPECT_EQ(*resolved_symbol, decl)
+            << "resolved: " << (*resolved_symbol ? (*resolved_symbol)->TypeInfo().name : "<null>")
             << "\n"
             << "decl:     " << decl->TypeInfo().name;
     }
@@ -1177,7 +1178,10 @@ TEST_P(ResolverDependencyShadowTest, Test) {
                           : helper.parameters[0];
     helper.Build();
 
-    EXPECT_EQ(Build().shadows[inner_var], outer);
+    auto shadows = Build().shadows;
+    auto shadow = shadows.Find(inner_var);
+    ASSERT_TRUE(shadow);
+    EXPECT_EQ(*shadow, outer);
 }
 
 INSTANTIATE_TEST_SUITE_P(LocalShadowGlobal,
@@ -1207,7 +1211,7 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
     const auto type_sym = Sym("TYPE");
     const auto func_sym = Sym("FUNC");
 
-    const auto* value_decl = GlobalVar(value_sym, ty.i32(), ast::StorageClass::kPrivate);
+    const auto* value_decl = GlobalVar(value_sym, ty.i32(), ast::AddressSpace::kPrivate);
     const auto* type_decl = Alias(type_sym, ty.i32());
     const auto* func_decl = Func(func_sym, utils::Empty, ty.void_(), utils::Empty);
 
@@ -1229,12 +1233,22 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
 #define F add_use(func_decl, Expr(func_sym), __LINE__, "F()")
 
     Alias(Sym(), T);
-    Structure(Sym(), utils::Vector{Member(Sym(), T)});
+    Structure(Sym(),  //
+              utils::Vector{Member(Sym(), T,
+                                   utils::Vector{
+                                       //
+                                       MemberAlign(V), MemberSize(V)  //
+                                   })});
     GlobalVar(Sym(), T, V);
     GlobalConst(Sym(), T, V);
-    Func(Sym(),                           //
-         utils::Vector{Param(Sym(), T)},  //
-         T,                               // Return type
+    Func(Sym(),
+         utils::Vector{
+             Param(Sym(), T,
+                   utils::Vector{
+                       Location(V),  // Parameter attributes
+                   }),
+         },
+         T,  // Return type
          utils::Vector{
              Decl(Var(Sym(), T, V)),                    //
              Decl(Let(Sym(), T, V)),                    //
@@ -1255,17 +1269,17 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
                    Block(                               //
                        Assign(V, V))),                  //
              Loop(Block(Assign(V, V)),                  //
-                  Block(Assign(V, V))),                 //
+                  Block(Assign(V, V), BreakIf(V))),     //
              Switch(V,                                  //
-                    Case(Expr(1_i),                     //
+                    Case(CaseSelector(1_i),             //
                          Block(Assign(V, V))),          //
-                    Case(Expr(2_i),                     //
-                         Block(Fallthrough())),         //
                     DefaultCase(Block(Assign(V, V)))),  //
              Return(V),                                 //
              Break(),                                   //
              Discard(),                                 //
-         });                                            //
+         },
+         utils::Empty,                 // function attributes
+         utils::Vector{Location(V)});  // return attributes
     // Exercise type traversal
     GlobalVar(Sym(), ty.atomic(T));
     GlobalVar(Sym(), ty.bool_());
@@ -1275,7 +1289,7 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
     GlobalVar(Sym(), ty.array(T, V, 4));
     GlobalVar(Sym(), ty.vec3(T));
     GlobalVar(Sym(), ty.mat3x2(T));
-    GlobalVar(Sym(), ty.pointer(T, ast::StorageClass::kPrivate));
+    GlobalVar(Sym(), ty.pointer(T, ast::AddressSpace::kPrivate));
     GlobalVar(Sym(), ty.sampled_texture(ast::TextureDimension::k2d, T));
     GlobalVar(Sym(), ty.depth_texture(ast::TextureDimension::k2d));
     GlobalVar(Sym(), ty.depth_multisampled_texture(ast::TextureDimension::k2d));
@@ -1284,6 +1298,11 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
     GlobalVar(Sym(), ty.storage_texture(ast::TextureDimension::k2d, ast::TexelFormat::kR32Float,
                                         ast::Access::kRead));  //
     GlobalVar(Sym(), ty.sampler(ast::SamplerKind::kSampler));
+
+    GlobalVar(Sym(), ty.i32(), utils::Vector{Binding(V), Group(V)});
+    GlobalVar(Sym(), ty.i32(), utils::Vector{Location(V)});
+    Override(Sym(), ty.i32(), utils::Vector{Id(V)});
+
     Func(Sym(), utils::Empty, ty.void_(), utils::Empty);
 #undef V
 #undef T
@@ -1291,17 +1310,18 @@ TEST_F(ResolverDependencyGraphTraversalTest, SymbolsReached) {
 
     auto graph = Build();
     for (auto use : symbol_uses) {
-        auto* resolved_symbol = graph.resolved_symbols[use.use];
-        EXPECT_EQ(resolved_symbol, use.decl) << use.where;
+        auto resolved_symbol = graph.resolved_symbols.Find(use.use);
+        ASSERT_TRUE(resolved_symbol) << use.where;
+        EXPECT_EQ(*resolved_symbol, use.decl) << use.where;
     }
 }
 
 TEST_F(ResolverDependencyGraphTraversalTest, InferredType) {
     // Check that the nullptr of the var / const / let type doesn't make things explode
-    GlobalVar("a", nullptr, Expr(1_i));
-    GlobalConst("b", nullptr, Expr(1_i));
-    WrapInFunction(Var("c", nullptr, Expr(1_i)),  //
-                   Let("d", nullptr, Expr(1_i)));
+    GlobalVar("a", Expr(1_i));
+    GlobalConst("b", Expr(1_i));
+    WrapInFunction(Var("c", Expr(1_i)),  //
+                   Let("d", Expr(1_i)));
     Build();
 }
 

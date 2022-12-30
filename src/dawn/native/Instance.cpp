@@ -125,6 +125,17 @@ InstanceBase::InstanceBase() = default;
 
 InstanceBase::~InstanceBase() = default;
 
+void InstanceBase::WillDropLastExternalRef() {
+    // InstanceBase uses RefCountedWithExternalCount to break refcycles.
+    //
+    // InstanceBase holds Refs to AdapterBases it has discovered, which hold Refs back to the
+    // InstanceBase.
+    // In order to break this cycle and prevent leaks, when the application drops the last external
+    // ref and WillDropLastExternalRef is called, the instance clears out any member refs to
+    // adapters that hold back-refs to the instance - thus breaking any reference cycles.
+    mAdapters.clear();
+}
+
 // TODO(crbug.com/dawn/832): make the platform an initialization parameter of the instance.
 MaybeError InstanceBase::Initialize(const InstanceDescriptor* descriptor) {
     DAWN_TRY(ValidateSingleSType(descriptor->nextInChain, wgpu::SType::DawnInstanceDescriptor));
@@ -183,9 +194,9 @@ ResultOrError<Ref<AdapterBase>> InstanceBase::RequestAdapterInternal(
 
             MaybeError result = DiscoverAdaptersInternal(&vulkanOptions);
             if (result.IsError()) {
-                dawn::WarningLog()
-                    << "Skipping Vulkan Swiftshader adapter because initialization failed: "
-                    << result.AcquireError()->GetFormattedMessage();
+                dawn::WarningLog() << absl::StrFormat(
+                    "Skipping Vulkan Swiftshader adapter because initialization failed: %s",
+                    result.AcquireError()->GetFormattedMessage());
                 return Ref<AdapterBase>(nullptr);
             }
         }
@@ -286,9 +297,9 @@ bool InstanceBase::DiscoverAdapters(const AdapterDiscoveryOptionsBase* options) 
     MaybeError result = DiscoverAdaptersInternal(options);
 
     if (result.IsError()) {
-        dawn::WarningLog() << "Skipping " << options->backendType
-                           << " adapter because initialization failed: "
-                           << result.AcquireError()->GetFormattedMessage();
+        dawn::WarningLog() << absl::StrFormat(
+            "Skipping %s adapter because initialization failed: %s", FromAPI(options->backendType),
+            result.AcquireError()->GetFormattedMessage());
         return false;
     }
 
@@ -374,7 +385,7 @@ MaybeError InstanceBase::DiscoverAdaptersInternal(const AdapterDiscoveryOptionsB
     DAWN_TRY(ValidateBackendType(backendType));
 
     if (!GetEnabledBackends()[backendType]) {
-        return DAWN_FORMAT_VALIDATION_ERROR("%s not supported.", backendType);
+        return DAWN_VALIDATION_ERROR("%s not supported.", backendType);
     }
 
     EnsureBackendConnection(backendType);
@@ -445,8 +456,11 @@ dawn::platform::Platform* InstanceBase::GetPlatform() {
     return mPlatform;
 }
 
-BlobCache* InstanceBase::GetBlobCache() {
-    return mBlobCache.get();
+BlobCache* InstanceBase::GetBlobCache(bool enabled) {
+    if (enabled) {
+        return mBlobCache.get();
+    }
+    return &mPassthroughBlobCache;
 }
 
 uint64_t InstanceBase::GetDeviceCountForTesting() const {

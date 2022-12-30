@@ -33,6 +33,7 @@
 #include "src/dawn/node/binding/GPURenderPipeline.h"
 #include "src/dawn/node/binding/GPUSampler.h"
 #include "src/dawn/node/binding/GPUShaderModule.h"
+#include "src/dawn/node/binding/GPUSupportedFeatures.h"
 #include "src/dawn/node/binding/GPUSupportedLimits.h"
 #include "src/dawn/node/binding/GPUTexture.h"
 #include "src/dawn/node/utils/Debug.h"
@@ -178,12 +179,11 @@ GPUDevice::~GPUDevice() {
 }
 
 interop::Interface<interop::GPUSupportedFeatures> GPUDevice::getFeatures(Napi::Env env) {
-    class Features : public interop::GPUSupportedFeatures {
-      public:
-        bool has(Napi::Env, std::string feature) override { UNIMPLEMENTED(); }
-        std::vector<std::string> keys(Napi::Env) override { UNIMPLEMENTED(); }
-    };
-    return interop::GPUSupportedFeatures::Create<Features>(env);
+    size_t count = device_.EnumerateFeatures(nullptr);
+    std::vector<wgpu::FeatureName> features(count);
+    device_.EnumerateFeatures(&features[0]);
+    return interop::GPUSupportedFeatures::Create<GPUSupportedFeatures>(env, env,
+                                                                       std::move(features));
 }
 
 interop::Interface<interop::GPUSupportedLimits> GPUDevice::getLimits(Napi::Env env) {
@@ -225,7 +225,7 @@ interop::Interface<interop::GPUBuffer> GPUDevice::createBuffer(
 interop::Interface<interop::GPUTexture> GPUDevice::createTexture(
     Napi::Env env,
     interop::GPUTextureDescriptor descriptor) {
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::TextureDescriptor desc{};
     if (!conv(desc.label, descriptor.label) || !conv(desc.usage, descriptor.usage) ||  //
@@ -237,7 +237,7 @@ interop::Interface<interop::GPUTexture> GPUDevice::createTexture(
         !conv(desc.viewFormats, desc.viewFormatCount, descriptor.viewFormats)) {
         return {};
     }
-    return interop::GPUTexture::Create<GPUTexture>(env, device_.CreateTexture(&desc));
+    return interop::GPUTexture::Create<GPUTexture>(env, device_, device_.CreateTexture(&desc));
 }
 
 interop::Interface<interop::GPUSampler> GPUDevice::createSampler(
@@ -271,7 +271,7 @@ interop::Interface<interop::GPUExternalTexture> GPUDevice::importExternalTexture
 interop::Interface<interop::GPUBindGroupLayout> GPUDevice::createBindGroupLayout(
     Napi::Env env,
     interop::GPUBindGroupLayoutDescriptor descriptor) {
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::BindGroupLayoutDescriptor desc{};
     if (!conv(desc.label, descriptor.label) ||
@@ -345,7 +345,7 @@ interop::Interface<interop::GPUComputePipeline> GPUDevice::createComputePipeline
 interop::Interface<interop::GPURenderPipeline> GPUDevice::createRenderPipeline(
     Napi::Env env,
     interop::GPURenderPipelineDescriptor descriptor) {
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::RenderPipelineDescriptor desc{};
     if (!conv(desc, descriptor)) {
@@ -404,7 +404,7 @@ GPUDevice::createRenderPipelineAsync(Napi::Env env,
                                      interop::GPURenderPipelineDescriptor descriptor) {
     using Promise = interop::Promise<interop::Interface<interop::GPURenderPipeline>>;
 
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::RenderPipelineDescriptor desc{};
     if (!conv(desc, descriptor)) {
@@ -447,13 +447,13 @@ interop::Interface<interop::GPUCommandEncoder> GPUDevice::createCommandEncoder(
     interop::GPUCommandEncoderDescriptor descriptor) {
     wgpu::CommandEncoderDescriptor desc{};
     return interop::GPUCommandEncoder::Create<GPUCommandEncoder>(
-        env, device_.CreateCommandEncoder(&desc));
+        env, device_, device_.CreateCommandEncoder(&desc));
 }
 
 interop::Interface<interop::GPURenderBundleEncoder> GPUDevice::createRenderBundleEncoder(
     Napi::Env env,
     interop::GPURenderBundleEncoderDescriptor descriptor) {
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::RenderBundleEncoderDescriptor desc{};
     if (!conv(desc.label, descriptor.label) ||
@@ -472,7 +472,7 @@ interop::Interface<interop::GPURenderBundleEncoder> GPUDevice::createRenderBundl
 interop::Interface<interop::GPUQuerySet> GPUDevice::createQuerySet(
     Napi::Env env,
     interop::GPUQuerySetDescriptor descriptor) {
-    Converter conv(env);
+    Converter conv(env, device_);
 
     wgpu::QuerySetDescriptor desc{};
     if (!conv(desc.label, descriptor.label) || !conv(desc.type, descriptor.type) ||
@@ -495,6 +495,9 @@ void GPUDevice::pushErrorScope(Napi::Env env, interop::GPUErrorFilter filter) {
             break;
         case interop::GPUErrorFilter::kValidation:
             f = wgpu::ErrorFilter::Validation;
+            break;
+        case interop::GPUErrorFilter::kInternal:
+            f = wgpu::ErrorFilter::Internal;
             break;
         default:
             Napi::Error::New(env, "unhandled GPUErrorFilter value").ThrowAsJavaScriptException();

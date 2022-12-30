@@ -29,6 +29,13 @@ id<MTLCommandBuffer> CommandRecordingContext::GetCommands() {
     return mCommands.Get();
 }
 
+void CommandRecordingContext::SetNeedsSubmit() {
+    mNeedsSubmit = true;
+}
+bool CommandRecordingContext::NeedsSubmit() const {
+    return mNeedsSubmit;
+}
+
 void CommandRecordingContext::MarkUsed() {
     mUsed = true;
 }
@@ -38,6 +45,7 @@ bool CommandRecordingContext::WasUsed() const {
 
 MaybeError CommandRecordingContext::PrepareNextCommandBuffer(id<MTLCommandQueue> queue) {
     ASSERT(mCommands == nil);
+    ASSERT(!mNeedsSubmit);
     ASSERT(!mUsed);
 
     // The MTLCommandBuffer will be autoreleased by default.
@@ -58,8 +66,23 @@ NSPRef<id<MTLCommandBuffer>> CommandRecordingContext::AcquireCommands() {
     }
 
     ASSERT(!mInEncoder);
+    mNeedsSubmit = false;
     mUsed = false;
     return std::move(mCommands);
+}
+
+id<MTLBlitCommandEncoder> CommandRecordingContext::BeginBlit(MTLBlitPassDescriptor* descriptor)
+    API_AVAILABLE(macos(11.0), ios(14.0)) {
+    ASSERT(descriptor);
+    ASSERT(mCommands != nullptr);
+    ASSERT(mBlit == nullptr);
+    ASSERT(!mInEncoder);
+
+    mInEncoder = true;
+    // The encoder is created autoreleased. Retain it to avoid the autoreleasepool from
+    // draining from under us.
+    mBlit.Acquire([[*mCommands blitCommandEncoderWithDescriptor:descriptor] retain]);
+    return mBlit.Get();
 }
 
 id<MTLBlitCommandEncoder> CommandRecordingContext::EnsureBlit() {
@@ -95,6 +118,20 @@ id<MTLComputeCommandEncoder> CommandRecordingContext::BeginCompute() {
     // The encoder is created autoreleased. Retain it to avoid the autoreleasepool from
     // draining from under us.
     mCompute.Acquire([[*mCommands computeCommandEncoder] retain]);
+    return mCompute.Get();
+}
+
+id<MTLComputeCommandEncoder> CommandRecordingContext::BeginCompute(
+    MTLComputePassDescriptor* descriptor) API_AVAILABLE(macos(11.0), ios(14.0)) {
+    ASSERT(descriptor);
+    ASSERT(mCommands != nullptr);
+    ASSERT(mCompute == nullptr);
+    ASSERT(!mInEncoder);
+
+    mInEncoder = true;
+    // The encoder is created autoreleased. Retain it to avoid the autoreleasepool from
+    // draining from under us.
+    mCompute.Acquire([[*mCommands computeCommandEncoderWithDescriptor:descriptor] retain]);
     return mCompute.Get();
 }
 

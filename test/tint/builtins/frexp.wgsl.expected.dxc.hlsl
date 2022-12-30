@@ -1,18 +1,11 @@
-struct frexp_result {
-  float sig;
+struct frexp_result_f32 {
+  float fract;
   int exp;
 };
-frexp_result tint_frexp(float param_0) {
-  float exp;
-  float sig = frexp(param_0, exp);
-  frexp_result result = {sig, int(exp)};
-  return result;
-}
-
 [numthreads(1, 1, 1)]
 void main() {
-  const frexp_result res = tint_frexp(1.230000019f);
+  const frexp_result_f32 res = {0.61500001f, 1};
   const int exp = res.exp;
-  const float sig = res.sig;
+  const float fract = res.fract;
   return;
 }

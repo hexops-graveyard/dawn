@@ -7,7 +7,7 @@ static bool x_8 = false;
 void main_1() {
   const bool x_101 = x_7;
   const bool x_102 = x_8;
-  [loop] while (true) {
+  while (true) {
     uint x_2_phi = 0u;
     if (x_101) {
       break;
@@ -36,3 +36,6 @@ void main() {
   main_1();
   return;
 }
+FXC validation failure:
+C:\src\dawn\test\tint\Shader@0x0000025B50880850(8,17-20): error X3696: infinite loop detected - loop never exits
+

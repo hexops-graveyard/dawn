@@ -17,6 +17,9 @@ vars = {
   'dawn_cmake_version': 'version:2@3.23.3',
   'dawn_cmake_win32_sha1': 'b106d66bcdc8a71ea2cdf5446091327bfdb1bcd7',
   'dawn_gn_version': 'git_revision:bd99dbf98cbdefe18a4128189665c5761263bcfb',
+  # ninja CIPD package version.
+  # https://chrome-infra-packages.appspot.com/p/infra/3pp/tools/ninja
+  'dawn_ninja_version': 'version:2@1.8.2.chromium.3',
   'dawn_go_version': 'version:2@1.18.4',
 
   'node_darwin_arm64_sha': '31859fc1fa0994a95f44f09c367d6ff63607cfde',
@@ -34,11 +37,11 @@ vars = {
 deps = {
   # Dependencies required to use GN/Clang in standalone
   'build': {
-    'url': '{chromium_git}/chromium/src/build@f14f6d206b9a0c81a0fefba487bcba0d90ddb5fe',
+    'url': '{chromium_git}/chromium/src/build@01569374d46a14b225586c564146a8e1749520b6',
     'condition': 'dawn_standalone',
   },
   'buildtools': {
-    'url': '{chromium_git}/chromium/src/buildtools@fe57e98eeb2172d7517f6dec1072ca641a019893',
+    'url': '{chromium_git}/chromium/src/buildtools@cccaf48c82bcf4ddafa6f8aa9f06014a1ef434bf',
     'condition': 'dawn_standalone',
   },
   'buildtools/clang_format/script': {
@@ -71,17 +74,17 @@ deps = {
   },
 
   'buildtools/third_party/libc++/trunk': {
-    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@eb79671bfbedd77b747d01dee8c0479ff1693f88',
+    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@26d0ab4151fd10c523fdbb5bbdb59aa5a5774820',
     'condition': 'dawn_standalone',
   },
 
   'buildtools/third_party/libc++abi/trunk': {
-    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxxabi.git@b954e3e65634a9e2f7b595598a30c455f5f2eb26',
+    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxxabi.git@5c3e02e92ae8bbc1bf1001bd9ef0d76e044ddb86',
     'condition': 'dawn_standalone',
   },
 
   'tools/clang': {
-    'url': '{chromium_git}/chromium/src/tools/clang@3d8d88e8bb600789ba3e798f38ff314521aac524',
+    'url': '{chromium_git}/chromium/src/tools/clang@a5e0d72349d028a4023927d6d166a8478355fac3',
     'condition': 'dawn_standalone',
   },
   'tools/clang/dsymutil': {
@@ -95,16 +98,16 @@ deps = {
 
   # Testing, GTest and GMock
   'testing': {
-    'url': '{chromium_git}/chromium/src/testing@1f497ac0b0afc242222780a4789d13fbf00073eb',
+    'url': '{chromium_git}/chromium/src/testing@e3e8c19554e8f47da85d35e4f990cdc30a061196',
     'condition': 'dawn_standalone',
   },
   'third_party/googletest': {
-    'url': '{chromium_git}/external/github.com/google/googletest@bda85449f48f2d80a494c8c07766b6aba3170f3b',
+    'url': '{chromium_git}/external/github.com/google/googletest@d1a0039b97291dd1dc14f123b906bb7622ffe07c',
     'condition': 'dawn_standalone',
   },
   # This is a dependency of //testing
   'third_party/catapult': {
-    'url': '{chromium_git}/catapult.git@fa35beefb3429605035f98211ddb8750dee6a13d',
+    'url': '{chromium_git}/catapult.git@4a0e6f034e9756605cfc837c8526588d6c13436b',
     'condition': 'dawn_standalone',
   },
 
@@ -129,17 +132,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@0d5ba4dc4c0b33934c14734696c8f0fa34a6a1fd',
+    'url': '{chromium_git}/angle/angle@03b2c124e5e92c5121acc7fa8d497688c697c012',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@ed9d5ae1e79c3ecc3bee8e07e852ba24868d27d5',
+    'url': '{swiftshader_git}/SwiftShader@5f9ed9b16931c7155171d31f75004f73f0a3abc8',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@4b211a6a98e61b2f9e45138498b17701b3062b95',
+    'url': '{chromium_git}/vulkan-deps@38322277250a2dc00e2cfbd771601f4ae6651624',
     'condition': 'dawn_standalone',
   },
 
@@ -155,7 +158,7 @@ deps = {
 
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
   'third_party/webgpu-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@94fd83896c67bb1a995337c501bbed02bd63361f',
+    'url': '{chromium_git}/external/github.com/gpuweb/cts@09447faf1a22821f35ca4a3fc9c06e3bf1125756',
     'condition': 'build_with_chromium',
   },
 
@@ -169,12 +172,11 @@ deps = {
     'condition': 'dawn_node',
   },
   'third_party/gpuweb': {
-    'url': '{github_git}/gpuweb/gpuweb.git@3c4734b09c68eb800b15da5e9ecefeca735fa7df',
+    'url': '{github_git}/gpuweb/gpuweb.git@0f5fc665a0d5b281e8119f0201e9067b05cf7927',
     'condition': 'dawn_node',
   },
 
   'tools/golang': {
-    'condition': 'dawn_node',
     'packages': [{
       'package': 'infra/3pp/tools/go/${{platform}}',
       'version': Var('dawn_go_version'),
@@ -188,6 +190,16 @@ deps = {
       'package': 'infra/3pp/tools/cmake/${{platform}}',
       'version': Var('dawn_cmake_version'),
     }],
+    'dep_type': 'cipd',
+  },
+
+  'third_party/ninja': {
+    'packages': [
+      {
+        'package': 'infra/3pp/tools/ninja/${{platform}}',
+        'version': Var('dawn_ninja_version'),
+      }
+    ],
     'dep_type': 'cipd',
   },
 

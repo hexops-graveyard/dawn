@@ -37,46 +37,6 @@ class UnsafeAPIValidationTest : public ValidationTest {
     }
 };
 
-// Check that pipeline overridable constants are disallowed as part of unsafe APIs.
-// TODO(dawn:1041) Remove when implementation for all backend is added
-TEST_F(UnsafeAPIValidationTest, PipelineOverridableConstants) {
-    // Create the placeholder compute pipeline.
-    wgpu::ComputePipelineDescriptor pipelineDescBase;
-    pipelineDescBase.compute.entryPoint = "main";
-
-    // Control case: shader without overridable constant is allowed.
-    {
-        wgpu::ComputePipelineDescriptor pipelineDesc = pipelineDescBase;
-        pipelineDesc.compute.module =
-            utils::CreateShaderModule(device, "@compute @workgroup_size(1) fn main() {}");
-
-        device.CreateComputePipeline(&pipelineDesc);
-    }
-
-    // Error case: shader with overridable constant with default value
-    {
-        ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, R"(
-@id(1000) override c0: u32 = 1u;
-@id(1000) override c1: u32;
-
-@compute @workgroup_size(1) fn main() {
-    _ = c0;
-    _ = c1;
-})"));
-    }
-
-    // Error case: pipeline stage with constant entry is disallowed
-    {
-        wgpu::ComputePipelineDescriptor pipelineDesc = pipelineDescBase;
-        pipelineDesc.compute.module =
-            utils::CreateShaderModule(device, "@compute @workgroup_size(1) fn main() {}");
-        std::vector<wgpu::ConstantEntry> constants{{nullptr, "c", 1u}};
-        pipelineDesc.compute.constants = constants.data();
-        pipelineDesc.compute.constantCount = constants.size();
-        ASSERT_DEVICE_ERROR(device.CreateComputePipeline(&pipelineDesc));
-    }
-}
-
 class UnsafeQueryAPIValidationTest : public ValidationTest {
   protected:
     WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
@@ -134,4 +94,19 @@ TEST_F(UnsafeQueryAPIValidationTest, TimestampQueryDisallowed) {
         descriptor.type = wgpu::QueryType::Timestamp;
         ASSERT_DEVICE_ERROR(device.CreateQuerySet(&descriptor));
     }
+}
+
+// Check chromium_disable_uniformity_analysis is an unsafe API.
+TEST_F(UnsafeAPIValidationTest, chromium_disable_uniformity_analysis) {
+    ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, R"(
+        enable chromium_disable_uniformity_analysis;
+
+        @compute @workgroup_size(8) fn uniformity_error(
+            @builtin(local_invocation_id) local_invocation_id : vec3<u32>
+        ) {
+            if (local_invocation_id.x == 0u) {
+                workgroupBarrier();
+            }
+        }
+    )"));
 }

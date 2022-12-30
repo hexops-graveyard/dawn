@@ -32,11 +32,12 @@ namespace tint::ast {
 /// An enumerator of WGSL extensions
 /// @see src/tint/intrinsics.def for extension descriptions
 enum class Extension {
-    kInvalid,
-    kF16,
-    kChromiumExperimentalDp4A,
+    kUndefined,
     kChromiumDisableUniformityAnalysis,
+    kChromiumExperimentalDp4A,
+    kChromiumExperimentalFullPtrParameters,
     kChromiumExperimentalPushConstant,
+    kF16,
 };
 
 /// @param out the std::ostream to write to
@@ -46,11 +47,19 @@ std::ostream& operator<<(std::ostream& out, Extension value);
 
 /// ParseExtension parses a Extension from a string.
 /// @param str the string to parse
-/// @returns the parsed enum, or Extension::kInvalid if the string could not be parsed.
+/// @returns the parsed enum, or Extension::kUndefined if the string could not be parsed.
 Extension ParseExtension(std::string_view str);
 
+constexpr const char* kExtensionStrings[] = {
+    "chromium_disable_uniformity_analysis",
+    "chromium_experimental_dp4a",
+    "chromium_experimental_full_ptr_parameters",
+    "chromium_experimental_push_constant",
+    "f16",
+};
+
 // A unique vector of extensions
-using Extensions = utils::UniqueVector<Extension>;
+using Extensions = utils::UniqueVector<Extension, 4>;
 
 }  // namespace tint::ast
 

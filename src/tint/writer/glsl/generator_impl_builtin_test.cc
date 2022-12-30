@@ -198,19 +198,19 @@ TEST_P(GlslBuiltinTest, Emit) {
     if (param.type == CallParamType::kF16) {
         Enable(ast::Extension::kF16);
 
-        GlobalVar("h2", ty.vec2<f16>(), ast::StorageClass::kPrivate);
-        GlobalVar("h3", ty.vec3<f16>(), ast::StorageClass::kPrivate);
-        GlobalVar("hm2x2", ty.mat2x2<f16>(), ast::StorageClass::kPrivate);
-        GlobalVar("hm3x2", ty.mat3x2<f16>(), ast::StorageClass::kPrivate);
+        GlobalVar("h2", ty.vec2<f16>(), ast::AddressSpace::kPrivate);
+        GlobalVar("h3", ty.vec3<f16>(), ast::AddressSpace::kPrivate);
+        GlobalVar("hm2x2", ty.mat2x2<f16>(), ast::AddressSpace::kPrivate);
+        GlobalVar("hm3x2", ty.mat3x2<f16>(), ast::AddressSpace::kPrivate);
     }
 
-    GlobalVar("f2", ty.vec2<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("f3", ty.vec3<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("u2", ty.vec2<u32>(), ast::StorageClass::kPrivate);
-    GlobalVar("i2", ty.vec2<i32>(), ast::StorageClass::kPrivate);
-    GlobalVar("b2", ty.vec2<bool>(), ast::StorageClass::kPrivate);
-    GlobalVar("m2x2", ty.mat2x2<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("m3x2", ty.mat3x2<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("f2", ty.vec2<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("f3", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("u2", ty.vec2<u32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("i2", ty.vec2<i32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("b2", ty.vec2<bool>(), ast::AddressSpace::kPrivate);
+    GlobalVar("m2x2", ty.mat2x2<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("m3x2", ty.mat3x2<f32>(), ast::AddressSpace::kPrivate);
 
     auto* call = GenerateCall(param.builtin, param.type, this);
     ASSERT_NE(nullptr, call) << "Unhandled builtin";
@@ -342,8 +342,8 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_F(GlslGeneratorImplTest_Builtin, Builtin_Call) {
     auto* call = Call("dot", "param1", "param2");
 
-    GlobalVar("param1", ty.vec3<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("param2", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("param1", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("param2", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     WrapInFunction(CallStmt(call));
 
@@ -356,33 +356,37 @@ TEST_F(GlslGeneratorImplTest_Builtin, Builtin_Call) {
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, Select_Scalar) {
-    auto* call = Call("select", 1_f, 2_f, true);
+    GlobalVar("a", Expr(1_f), ast::AddressSpace::kPrivate);
+    GlobalVar("b", Expr(2_f), ast::AddressSpace::kPrivate);
+    auto* call = Call("select", "a", "b", true);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
     std::stringstream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
-    EXPECT_EQ(out.str(), "(true ? 2.0f : 1.0f)");
+    EXPECT_EQ(out.str(), "(true ? b : a)");
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, Select_Vector) {
-    auto* call = Call("select", vec2<i32>(1_i, 2_i), vec2<i32>(3_i, 4_i), vec2<bool>(true, false));
+    GlobalVar("a", vec2<i32>(1_i, 2_i), ast::AddressSpace::kPrivate);
+    GlobalVar("b", vec2<i32>(3_i, 4_i), ast::AddressSpace::kPrivate);
+    auto* call = Call("select", "a", "b", vec2<bool>(true, false));
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
     std::stringstream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
-    EXPECT_EQ(out.str(), "mix(ivec2(1, 2), ivec2(3, 4), bvec2(true, false))");
+    EXPECT_EQ(out.str(), "mix(a, b, bvec2(true, false))");
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, FMA_f32) {
     auto* call = Call("fma", "a", "b", "c");
 
-    GlobalVar("a", ty.vec3<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.vec3<f32>(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     WrapInFunction(CallStmt(call));
 
@@ -397,9 +401,9 @@ TEST_F(GlslGeneratorImplTest_Builtin, FMA_f32) {
 TEST_F(GlslGeneratorImplTest_Builtin, FMA_f16) {
     Enable(ast::Extension::kF16);
 
-    GlobalVar("a", ty.vec3<f16>(), ast::StorageClass::kPrivate);
-    GlobalVar("b", ty.vec3<f16>(), ast::StorageClass::kPrivate);
-    GlobalVar("c", ty.vec3<f16>(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.vec3<f16>(), ast::AddressSpace::kPrivate);
+    GlobalVar("b", ty.vec3<f16>(), ast::AddressSpace::kPrivate);
+    GlobalVar("c", ty.vec3<f16>(), ast::AddressSpace::kPrivate);
 
     auto* call = Call("fma", "a", "b", "c");
     WrapInFunction(CallStmt(call));
@@ -412,29 +416,30 @@ TEST_F(GlslGeneratorImplTest_Builtin, FMA_f16) {
     EXPECT_EQ(out.str(), "((a) * (b) + (c))");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Modf_Scalar_f32) {
-    auto* call = Call("modf", 1_f);
-    WrapInFunction(CallStmt(call));
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Modf_Scalar_f32) {
+    WrapInFunction(Decl(Let("f", Expr(1.5_f))),  //
+                   Decl(Let("v", Call("modf", "f"))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(#version 310 es
 
-struct modf_result {
+struct modf_result_f32 {
   float fract;
   float whole;
 };
 
-modf_result tint_modf(float param_0) {
-  modf_result result;
+modf_result_f32 tint_modf(float param_0) {
+  modf_result_f32 result;
   result.fract = modf(param_0, result.whole);
   return result;
 }
 
 
 void test_function() {
-  tint_modf(1.0f);
+  float f = 1.5f;
+  modf_result_f32 v = tint_modf(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -445,11 +450,11 @@ void main() {
 )");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Modf_Scalar_f16) {
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Modf_Scalar_f16) {
     Enable(ast::Extension::kF16);
 
-    auto* call = Call("modf", 1_h);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Let("f", Expr(1.5_h))),  //
+                   Decl(Let("v", Call("modf", "f"))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -470,7 +475,8 @@ modf_result_f16 tint_modf(float16_t param_0) {
 
 
 void test_function() {
-  tint_modf(1.0hf);
+  float16_t f = 1.5hf;
+  modf_result_f16 v = tint_modf(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -481,29 +487,30 @@ void main() {
 )");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Modf_Vector_f32) {
-    auto* call = Call("modf", vec3<f32>());
-    WrapInFunction(CallStmt(call));
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Modf_Vector_f32) {
+    WrapInFunction(Decl(Let("f", vec3<f32>(1.5_f, 2.5_f, 3.5_f))),  //
+                   Decl(Let("v", Call("modf", "f"))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(#version 310 es
 
-struct modf_result_vec3 {
+struct modf_result_vec3_f32 {
   vec3 fract;
   vec3 whole;
 };
 
-modf_result_vec3 tint_modf(vec3 param_0) {
-  modf_result_vec3 result;
+modf_result_vec3_f32 tint_modf(vec3 param_0) {
+  modf_result_vec3_f32 result;
   result.fract = modf(param_0, result.whole);
   return result;
 }
 
 
 void test_function() {
-  tint_modf(vec3(0.0f));
+  vec3 f = vec3(1.5f, 2.5f, 3.5f);
+  modf_result_vec3_f32 v = tint_modf(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -514,11 +521,11 @@ void main() {
 )");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Modf_Vector_f16) {
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Modf_Vector_f16) {
     Enable(ast::Extension::kF16);
 
-    auto* call = Call("modf", vec3<f16>());
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Let("f", vec3<f16>(1.5_h, 2.5_h, 3.5_h))),  //
+                   Decl(Let("v", Call("modf", "f"))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -539,7 +546,8 @@ modf_result_vec3_f16 tint_modf(f16vec3 param_0) {
 
 
 void test_function() {
-  tint_modf(f16vec3(0.0hf));
+  f16vec3 f = f16vec3(1.5hf, 2.5hf, 3.5hf);
+  modf_result_vec3_f16 v = tint_modf(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -550,126 +558,248 @@ void main() {
 )");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Frexp_Scalar_f32) {
-    auto* call = Call("frexp", 1_f);
-    WrapInFunction(CallStmt(call));
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Modf_Scalar_f32) {
+    WrapInFunction(Decl(Let("v", Call("modf", 1.5_f))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
-    EXPECT_THAT(gen.result(), HasSubstr(R"(
-  float sig;
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+struct modf_result_f32 {
+  float fract;
+  float whole;
+};
+
+
+void test_function() {
+  modf_result_f32 v = modf_result_f32(0.5f, 1.0f);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Modf_Scalar_f16) {
+    Enable(ast::Extension::kF16);
+
+    WrapInFunction(Decl(Let("v", Call("modf", 1.5_h))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+#extension GL_AMD_gpu_shader_half_float : require
+
+struct modf_result_f16 {
+  float16_t fract;
+  float16_t whole;
+};
+
+
+void test_function() {
+  modf_result_f16 v = modf_result_f16(0.5hf, 1.0hf);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Modf_Vector_f32) {
+    WrapInFunction(Decl(Let("v", Call("modf", vec3<f32>(1.5_f, 2.5_f, 3.5_f)))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+struct modf_result_vec3_f32 {
+  vec3 fract;
+  vec3 whole;
+};
+
+
+void test_function() {
+  modf_result_vec3_f32 v = modf_result_vec3_f32(vec3(0.5f), vec3(1.0f, 2.0f, 3.0f));
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Modf_Vector_f16) {
+    Enable(ast::Extension::kF16);
+
+    WrapInFunction(Decl(Let("v", Call("modf", vec3<f16>(1.5_h, 2.5_h, 3.5_h)))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+#extension GL_AMD_gpu_shader_half_float : require
+
+struct modf_result_vec3_f16 {
+  f16vec3 fract;
+  f16vec3 whole;
+};
+
+
+void test_function() {
+  modf_result_vec3_f16 v = modf_result_vec3_f16(f16vec3(0.5hf), f16vec3(1.0hf, 2.0hf, 3.0hf));
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Frexp_Scalar_f32) {
+    WrapInFunction(Var("f", Expr(1_f)),  //
+                   Var("v", Call("frexp", "f")));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+struct frexp_result_f32 {
+  float fract;
   int exp;
 };
 
-frexp_result tint_frexp(float param_0) {
-  frexp_result result;
-  result.sig = frexp(param_0, result.exp);
+frexp_result_f32 tint_frexp(float param_0) {
+  frexp_result_f32 result;
+  result.fract = frexp(param_0, result.exp);
   return result;
 }
 
 
 void test_function() {
-  tint_frexp(1.0f);
+  float f = 1.0f;
+  frexp_result_f32 v = tint_frexp(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-)"));
+void main() {
+  test_function();
+  return;
+}
+)");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Frexp_Scalar_f16) {
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Frexp_Scalar_f16) {
     Enable(ast::Extension::kF16);
 
-    auto* call = Call("frexp", 1_h);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Var("f", Expr(1_h)),  //
+                   Var("v", Call("frexp", "f")));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
-    EXPECT_THAT(gen.result(), HasSubstr(R"(#version 310 es
+    EXPECT_EQ(gen.result(), R"(#version 310 es
 #extension GL_AMD_gpu_shader_half_float : require
 
 struct frexp_result_f16 {
-  float16_t sig;
+  float16_t fract;
   int exp;
 };
 
 frexp_result_f16 tint_frexp(float16_t param_0) {
   frexp_result_f16 result;
-  result.sig = frexp(param_0, result.exp);
+  result.fract = frexp(param_0, result.exp);
   return result;
 }
 
 
 void test_function() {
-  tint_frexp(1.0hf);
+  float16_t f = 1.0hf;
+  frexp_result_f16 v = tint_frexp(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
   test_function();
   return;
-)"));
+}
+)");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Frexp_Vector_f32) {
-    auto* call = Call("frexp", vec3<f32>());
-    WrapInFunction(CallStmt(call));
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Frexp_Vector_f32) {
+    WrapInFunction(Var("f", Expr(vec3<f32>())),  //
+                   Var("v", Call("frexp", "f")));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
-    EXPECT_THAT(gen.result(), HasSubstr(R"(
+    EXPECT_EQ(gen.result(), R"(#version 310 es
 
-struct frexp_result_vec3 {
-  vec3 sig;
+struct frexp_result_vec3_f32 {
+  vec3 fract;
   ivec3 exp;
 };
 
-frexp_result_vec3 tint_frexp(vec3 param_0) {
-  frexp_result_vec3 result;
-  result.sig = frexp(param_0, result.exp);
+frexp_result_vec3_f32 tint_frexp(vec3 param_0) {
+  frexp_result_vec3_f32 result;
+  result.fract = frexp(param_0, result.exp);
   return result;
 }
 
 
 void test_function() {
-  tint_frexp(vec3(0.0f));
+  vec3 f = vec3(0.0f);
+  frexp_result_vec3_f32 v = tint_frexp(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main() {
   test_function();
   return;
-)"));
+}
+)");
 }
 
-TEST_F(GlslGeneratorImplTest_Builtin, Frexp_Vector_f16) {
+TEST_F(GlslGeneratorImplTest_Builtin, Runtime_Frexp_Vector_f16) {
     Enable(ast::Extension::kF16);
 
-    auto* call = Call("frexp", vec3<f16>());
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Var("f", Expr(vec3<f16>())),  //
+                   Var("v", Call("frexp", "f")));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
-    EXPECT_THAT(gen.result(), HasSubstr(R"(#version 310 es
+    EXPECT_EQ(gen.result(), R"(#version 310 es
 #extension GL_AMD_gpu_shader_half_float : require
 
 struct frexp_result_vec3_f16 {
-  f16vec3 sig;
+  f16vec3 fract;
   ivec3 exp;
 };
 
 frexp_result_vec3_f16 tint_frexp(f16vec3 param_0) {
   frexp_result_vec3_f16 result;
-  result.sig = frexp(param_0, result.exp);
+  result.fract = frexp(param_0, result.exp);
   return result;
 }
 
 
 void test_function() {
-  tint_frexp(f16vec3(0.0hf));
+  f16vec3 f = f16vec3(0.0hf);
+  frexp_result_vec3_f16 v = tint_frexp(f);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -677,7 +807,138 @@ void main() {
   test_function();
   return;
 }
-)"));
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Frexp_Scalar_f32) {
+    WrapInFunction(Decl(Let("v", Call("frexp", 1_f))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+struct frexp_result_f32 {
+  float fract;
+  int exp;
+};
+
+
+void test_function() {
+  frexp_result_f32 v = frexp_result_f32(0.5f, 1);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Frexp_Scalar_f16) {
+    Enable(ast::Extension::kF16);
+
+    WrapInFunction(Decl(Let("v", Call("frexp", 1_h))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+#extension GL_AMD_gpu_shader_half_float : require
+
+struct frexp_result_f16 {
+  float16_t fract;
+  int exp;
+};
+
+
+void test_function() {
+  frexp_result_f16 v = frexp_result_f16(0.5hf, 1);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Frexp_Vector_f32) {
+    WrapInFunction(Decl(Let("v", Call("frexp", vec3<f32>()))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+struct frexp_result_vec3_f32 {
+  vec3 fract;
+  ivec3 exp;
+};
+
+
+void test_function() {
+  frexp_result_vec3_f32 v = frexp_result_vec3_f32(vec3(0.0f), ivec3(0));
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, Const_Frexp_Vector_f16) {
+    Enable(ast::Extension::kF16);
+
+    WrapInFunction(Decl(Let("v", Call("frexp", vec3<f16>()))));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+#extension GL_AMD_gpu_shader_half_float : require
+
+struct frexp_result_vec3_f16 {
+  f16vec3 fract;
+  ivec3 exp;
+};
+
+
+void test_function() {
+  frexp_result_vec3_f16 v = frexp_result_vec3_f16(f16vec3(0.0hf), ivec3(0));
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+// TODO(crbug.com/tint/1757): Remove once deprecation period for `frexp().sig` is over
+TEST_F(GlslGeneratorImplTest_Builtin, Frexp_Sig_Deprecation) {
+    WrapInFunction(MemberAccessor(Call("frexp", 1_f), "sig"));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+void test_function() {
+  float tint_symbol = 0.5f;
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, Degrees_Scalar_f32) {
@@ -986,7 +1247,7 @@ void main() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Pack4x8Snorm) {
     auto* call = Call("pack4x8snorm", "p1");
-    GlobalVar("p1", ty.vec4<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.vec4<f32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1004,7 +1265,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Pack4x8Unorm) {
     auto* call = Call("pack4x8unorm", "p1");
-    GlobalVar("p1", ty.vec4<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.vec4<f32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1022,7 +1283,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Pack2x16Snorm) {
     auto* call = Call("pack2x16snorm", "p1");
-    GlobalVar("p1", ty.vec2<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.vec2<f32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1040,7 +1301,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Pack2x16Unorm) {
     auto* call = Call("pack2x16unorm", "p1");
-    GlobalVar("p1", ty.vec2<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.vec2<f32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1058,7 +1319,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Pack2x16Float) {
     auto* call = Call("pack2x16float", "p1");
-    GlobalVar("p1", ty.vec2<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.vec2<f32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1076,7 +1337,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Unpack4x8Snorm) {
     auto* call = Call("unpack4x8snorm", "p1");
-    GlobalVar("p1", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.u32(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1094,7 +1355,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Unpack4x8Unorm) {
     auto* call = Call("unpack4x8unorm", "p1");
-    GlobalVar("p1", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.u32(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1112,7 +1373,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Unpack2x16Snorm) {
     auto* call = Call("unpack2x16snorm", "p1");
-    GlobalVar("p1", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.u32(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1130,7 +1391,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Unpack2x16Unorm) {
     auto* call = Call("unpack2x16unorm", "p1");
-    GlobalVar("p1", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.u32(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1148,7 +1409,7 @@ void test_function() {
 
 TEST_F(GlslGeneratorImplTest_Builtin, Unpack2x16Float) {
     auto* call = Call("unpack2x16float", "p1");
-    GlobalVar("p1", ty.u32(), ast::StorageClass::kPrivate);
+    GlobalVar("p1", ty.u32(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(call));
     GeneratorImpl& gen = Build();
 
@@ -1211,7 +1472,7 @@ void main() {
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, DotI32) {
-    GlobalVar("v", ty.vec3<i32>(), ast::StorageClass::kPrivate);
+    GlobalVar("v", ty.vec3<i32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(Call("dot", "v", "v")));
 
     GeneratorImpl& gen = SanitizeAndBuild();
@@ -1237,7 +1498,7 @@ void main() {
 }
 
 TEST_F(GlslGeneratorImplTest_Builtin, DotU32) {
-    GlobalVar("v", ty.vec3<u32>(), ast::StorageClass::kPrivate);
+    GlobalVar("v", ty.vec3<u32>(), ast::AddressSpace::kPrivate);
     WrapInFunction(CallStmt(Call("dot", "v", "v")));
 
     GeneratorImpl& gen = SanitizeAndBuild();
@@ -1252,6 +1513,118 @@ uint tint_int_dot(uvec3 a, uvec3 b) {
 uvec3 v = uvec3(0u, 0u, 0u);
 void test_function() {
   tint_int_dot(v, v);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, QuantizeToF16_Scalar) {
+    GlobalVar("v", Expr(2_f), ast::AddressSpace::kPrivate);
+    WrapInFunction(Call("quantizeToF16", "v"));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+float tint_quantizeToF16(float param_0) {
+  return unpackHalf2x16(packHalf2x16(vec2(param_0))).x;
+}
+
+
+float v = 2.0f;
+void test_function() {
+  float tint_symbol = tint_quantizeToF16(v);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, QuantizeToF16_Vec2) {
+    GlobalVar("v", vec2<f32>(2_f), ast::AddressSpace::kPrivate);
+    WrapInFunction(Call("quantizeToF16", "v"));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+vec2 tint_quantizeToF16(vec2 param_0) {
+  return unpackHalf2x16(packHalf2x16(param_0));
+}
+
+
+vec2 v = vec2(2.0f);
+void test_function() {
+  vec2 tint_symbol = tint_quantizeToF16(v);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, QuantizeToF16_Vec3) {
+    GlobalVar("v", vec3<f32>(2_f), ast::AddressSpace::kPrivate);
+    WrapInFunction(Call("quantizeToF16", "v"));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+vec3 tint_quantizeToF16(vec3 param_0) {
+  return vec3(
+    unpackHalf2x16(packHalf2x16(param_0.xy)),
+    unpackHalf2x16(packHalf2x16(param_0.zz)).x);
+}
+
+
+vec3 v = vec3(2.0f);
+void test_function() {
+  vec3 tint_symbol = tint_quantizeToF16(v);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main() {
+  test_function();
+  return;
+}
+)");
+}
+
+TEST_F(GlslGeneratorImplTest_Builtin, QuantizeToF16_Vec4) {
+    GlobalVar("v", vec4<f32>(2_f), ast::AddressSpace::kPrivate);
+    WrapInFunction(Call("quantizeToF16", "v"));
+
+    GeneratorImpl& gen = SanitizeAndBuild();
+
+    ASSERT_TRUE(gen.Generate()) << gen.error();
+    EXPECT_EQ(gen.result(), R"(#version 310 es
+
+vec4 tint_quantizeToF16(vec4 param_0) {
+  return vec4(
+    unpackHalf2x16(packHalf2x16(param_0.xy)),
+    unpackHalf2x16(packHalf2x16(param_0.zw)));
+}
+
+
+vec4 v = vec4(2.0f);
+void test_function() {
+  vec4 tint_symbol = tint_quantizeToF16(v);
 }
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;

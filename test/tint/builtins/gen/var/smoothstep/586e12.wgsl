@@ -25,9 +25,9 @@ enable f16;
 
 // fn smoothstep(f16, f16, f16) -> f16
 fn smoothstep_586e12() {
-  var arg_0 = f16();
-  var arg_1 = f16();
-  var arg_2 = f16();
+  var arg_0 = 2.h;
+  var arg_1 = 4.h;
+  var arg_2 = 3.h;
   var res: f16 = smoothstep(arg_0, arg_1, arg_2);
 }
 

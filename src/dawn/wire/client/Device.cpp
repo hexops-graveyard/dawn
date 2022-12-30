@@ -199,9 +199,8 @@ WGPUBuffer Device::CreateBuffer(const WGPUBufferDescriptor* descriptor) {
     return Buffer::Create(this, descriptor);
 }
 
-WGPUBuffer Device::CreateErrorBuffer() {
-    WGPUBufferDescriptor fakeDescriptor = {};
-    return Buffer::CreateError(this, &fakeDescriptor);
+WGPUBuffer Device::CreateErrorBuffer(const WGPUBufferDescriptor* descriptor) {
+    return Buffer::CreateError(this, descriptor);
 }
 
 WGPUQuerySet Device::CreateQuerySet(const WGPUQuerySetDescriptor* descriptor) {
@@ -214,6 +213,12 @@ WGPUTexture Device::CreateTexture(const WGPUTextureDescriptor* descriptor) {
 
 WGPUTexture Device::CreateErrorTexture(const WGPUTextureDescriptor* descriptor) {
     return Texture::CreateError(this, descriptor);
+}
+
+WGPUAdapter Device::GetAdapter() {
+    // Not implemented in the wire.
+    UNREACHABLE();
+    return nullptr;
 }
 
 WGPUQueue Device::GetQueue() {

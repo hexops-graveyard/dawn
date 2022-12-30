@@ -8,10 +8,11 @@ struct S {
   mat4 a;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  mat4 a;
+layout(binding = 0, std430) buffer v_block_ssbo {
+  S inner;
 } v;
+
 void foo() {
-  v.a = (v.a * mat4(vec4(0.0f), vec4(0.0f), vec4(0.0f), vec4(0.0f)));
+  v.inner.a = (v.inner.a * mat4(vec4(0.0f), vec4(0.0f), vec4(0.0f), vec4(0.0f)));
 }
 

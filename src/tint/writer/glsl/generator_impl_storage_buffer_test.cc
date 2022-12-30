@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
+#include "src/tint/number.h"
 #include "src/tint/writer/glsl/test_helper.h"
 
 using ::testing::HasSubstr;
+using namespace tint::number_suffixes;  // NOLINT
 
 namespace tint::writer::glsl {
 namespace {
@@ -31,15 +33,12 @@ void TestAlign(ProgramBuilder* ctx) {
     // @group(0) @binding(0) var<storage, read_write> nephews : Nephews;
     auto* nephews = ctx->Structure(
         "Nephews", utils::Vector{
-                       ctx->Member("huey", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256)}),
-                       ctx->Member("dewey", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256)}),
-                       ctx->Member("louie", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256)}),
+                       ctx->Member("huey", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256_i)}),
+                       ctx->Member("dewey", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256_i)}),
+                       ctx->Member("louie", ctx->ty.f32(), utils::Vector{ctx->MemberAlign(256_i)}),
                    });
-    ctx->GlobalVar("nephews", ctx->ty.Of(nephews), ast::StorageClass::kStorage,
-                   utils::Vector{
-                       ctx->create<ast::BindingAttribute>(0u),
-                       ctx->create<ast::GroupAttribute>(0u),
-                   });
+    ctx->GlobalVar("nephews", ctx->ty.Of(nephews), ast::AddressSpace::kStorage, ctx->Binding(0_a),
+                   ctx->Group(0_a));
 }
 
 TEST_F(GlslGeneratorImplTest_StorageBuffer, Align) {
@@ -58,11 +57,12 @@ struct Nephews {
   float louie;
 };
 
-layout(binding = 0, std430) buffer Nephews_1 {
+layout(binding = 0, std430) buffer Nephews_ssbo {
   float huey;
   float dewey;
   float louie;
 } nephews;
+
 )");
 }
 
@@ -80,11 +80,12 @@ struct Nephews {
   float louie;
 };
 
-layout(binding = 0, std430) buffer Nephews_1 {
+layout(binding = 0, std430) buffer Nephews_ssbo {
   float huey;
-  layout(offset=256) float dewey;
-  layout(offset=512) float louie;
+  float dewey;
+  float louie;
 } nephews;
+
 )");
 }
 

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/// Package gen holds types and helpers for generating templated code from the
-/// intrinsic.def file.
-///
-/// Used by tools/src/cmd/gen/main.go
+// Package gen holds types and helpers for generating templated code from the
+// intrinsic.def file.
+//
+// Used by tools/src/cmd/gen/main.go
 package gen
 
 import (
@@ -50,7 +50,7 @@ type IntrinsicTable struct {
 	Builtins                  []Intrinsic      // kBuiltins table content
 	UnaryOperators            []Intrinsic      // kUnaryOperators table content
 	BinaryOperators           []Intrinsic      // kBinaryOperators table content
-	ConstructorsAndConverters []Intrinsic      // kConstructorsAndConverters table content
+	InitializersAndConverters []Intrinsic      // kInitializersAndConverters table content
 }
 
 // TemplateType is used to create the C++ TemplateTypeInfo structure
@@ -338,9 +338,12 @@ func (b *overloadBuilder) matcherIndex(n sem.Named) (int, error) {
 // The order of returned matcher indices is always the order of the fully
 // qualified name as read from left to right.
 // For example, calling collectMatcherIndices() for the fully qualified name:
-//    A<B<C, D>, E<F, G<H>, I>
+//
+//	A<B<C, D>, E<F, G<H>, I>
+//
 // Would return the matcher indices:
-//    A, B, C, D, E, F, G, H, I
+//
+//	A, B, C, D, E, F, G, H, I
 func (b *overloadBuilder) collectMatcherIndices(fqn sem.FullyQualifiedName) ([]int, error) {
 	idx, err := b.matcherIndex(fqn.Target)
 	if err != nil {
@@ -381,7 +384,7 @@ func BuildIntrinsicTable(s *sem.Sem) (*IntrinsicTable, error) {
 		{s.Builtins, &b.Builtins},
 		{s.UnaryOperators, &b.UnaryOperators},
 		{s.BinaryOperators, &b.BinaryOperators},
-		{s.ConstructorsAndConverters, &b.ConstructorsAndConverters},
+		{s.InitializersAndConverters, &b.InitializersAndConverters},
 	} {
 		out := make([]Intrinsic, len(intrinsics.in))
 		for i, f := range intrinsics.in {
@@ -416,9 +419,12 @@ func BuildIntrinsicTable(s *sem.Sem) (*IntrinsicTable, error) {
 // SplitDisplayName splits displayName into parts, where text wrapped in {}
 // braces are not quoted and the rest is quoted. This is used to help process
 // the string value of the [[display()]] decoration. For example:
-//   SplitDisplayName("vec{N}<{T}>")
+//
+//	SplitDisplayName("vec{N}<{T}>")
+//
 // would return the strings:
-//   [`"vec"`, `N`, `"<"`, `T`, `">"`]
+//
+//	[`"vec"`, `N`, `"<"`, `T`, `">"`]
 func SplitDisplayName(displayName string) []string {
 	parts := []string{}
 	pending := strings.Builder{}

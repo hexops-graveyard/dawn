@@ -35,16 +35,16 @@ class ErrorSwapChain final : public SwapChainBase {
                       wgpu::TextureUsage allowedUsage,
                       uint32_t width,
                       uint32_t height) override {
-        GetDevice()->ConsumedError(DAWN_FORMAT_VALIDATION_ERROR("%s is an error swapchain.", this));
+        GetDevice()->ConsumedError(DAWN_VALIDATION_ERROR("%s is an error swapchain.", this));
     }
 
     TextureViewBase* APIGetCurrentTextureView() override {
-        GetDevice()->ConsumedError(DAWN_FORMAT_VALIDATION_ERROR("%s is an error swapchain.", this));
+        GetDevice()->ConsumedError(DAWN_VALIDATION_ERROR("%s is an error swapchain.", this));
         return TextureViewBase::MakeError(GetDevice());
     }
 
     void APIPresent() override {
-        GetDevice()->ConsumedError(DAWN_FORMAT_VALIDATION_ERROR("%s is an error swapchain.", this));
+        GetDevice()->ConsumedError(DAWN_VALIDATION_ERROR("%s is an error swapchain.", this));
     }
 };
 
@@ -117,7 +117,7 @@ TextureDescriptor GetSwapChainBaseTextureDescriptor(NewSwapChainBase* swapChain)
 // SwapChainBase
 
 SwapChainBase::SwapChainBase(DeviceBase* device) : ApiObjectBase(device, kLabelNotImplemented) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 SwapChainBase::SwapChainBase(DeviceBase* device, ObjectBase::ErrorTag tag)
@@ -301,7 +301,7 @@ void NewSwapChainBase::APIConfigure(wgpu::TextureFormat format,
                                     uint32_t width,
                                     uint32_t height) {
     GetDevice()->ConsumedError(
-        DAWN_FORMAT_VALIDATION_ERROR("Configure is invalid for surface-based swapchains."));
+        DAWN_VALIDATION_ERROR("Configure is invalid for surface-based swapchains."));
 }
 
 TextureViewBase* NewSwapChainBase::APIGetCurrentTextureView() {

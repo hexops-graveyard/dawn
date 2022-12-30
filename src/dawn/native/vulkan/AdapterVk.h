@@ -41,12 +41,20 @@ class Adapter : public AdapterBase {
 
     bool IsDepthStencilFormatSupported(VkFormat format);
 
+    bool IsAndroidQualcomm();
+
   private:
     MaybeError InitializeImpl() override;
     MaybeError InitializeSupportedFeaturesImpl() override;
     MaybeError InitializeSupportedLimitsImpl(CombinedLimits* limits) override;
 
-    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(const DeviceDescriptor* descriptor) override;
+    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(
+        const DeviceDescriptor* descriptor,
+        const TripleStateTogglesSet& userProvidedToggles) override;
+
+    MaybeError ValidateFeatureSupportedWithTogglesImpl(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles) override;
 
     VkPhysicalDevice mPhysicalDevice;
     Ref<VulkanInstance> mVulkanInstance;

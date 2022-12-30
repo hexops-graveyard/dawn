@@ -9,12 +9,13 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_atomic_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW_atomic inner;
 } sb_rw;
+
 void atomicOr_8d96a0() {
   int res = 0;
-  int x_9 = atomicOr(sb_rw.arg_0, 1);
+  int x_9 = atomicOr(sb_rw.inner.arg_0, 1);
   res = x_9;
   return;
 }
@@ -42,12 +43,13 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_atomic_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW_atomic inner;
 } sb_rw;
+
 void atomicOr_8d96a0() {
   int res = 0;
-  int x_9 = atomicOr(sb_rw.arg_0, 1);
+  int x_9 = atomicOr(sb_rw.inner.arg_0, 1);
   res = x_9;
   return;
 }

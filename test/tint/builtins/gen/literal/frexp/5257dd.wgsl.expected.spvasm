@@ -8,7 +8,6 @@
                OpCapability UniformAndStorageBuffer16BitAccess
                OpCapability StorageBuffer16BitAccess
                OpCapability StorageInputOutput16
-         %17 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical GLSL450
                OpEntryPoint Vertex %vertex_main "vertex_main" %value %vertex_point_size
                OpEntryPoint Fragment %fragment_main "fragment_main"
@@ -19,7 +18,7 @@
                OpName %vertex_point_size "vertex_point_size"
                OpName %frexp_5257dd "frexp_5257dd"
                OpName %__frexp_result_f16 "__frexp_result_f16"
-               OpMemberName %__frexp_result_f16 0 "sig"
+               OpMemberName %__frexp_result_f16 0 "fract"
                OpMemberName %__frexp_result_f16 1 "exp"
                OpName %res "res"
                OpName %vertex_main_inner "vertex_main_inner"
@@ -43,7 +42,9 @@
        %half = OpTypeFloat 16
         %int = OpTypeInt 32 1
 %__frexp_result_f16 = OpTypeStruct %half %int
-         %18 = OpConstantNull %half
+%half_0x1pn1 = OpConstant %half 0x1p-1
+      %int_1 = OpConstant %int 1
+         %18 = OpConstantComposite %__frexp_result_f16 %half_0x1pn1 %int_1
 %_ptr_Function___frexp_result_f16 = OpTypePointer Function %__frexp_result_f16
          %21 = OpConstantNull %__frexp_result_f16
          %22 = OpTypeFunction %v4float
@@ -51,8 +52,7 @@
 %frexp_5257dd = OpFunction %void None %9
          %12 = OpLabel
         %res = OpVariable %_ptr_Function___frexp_result_f16 Function %21
-         %13 = OpExtInst %__frexp_result_f16 %17 FrexpStruct %18
-               OpStore %res %13
+               OpStore %res %18
                OpReturn
                OpFunctionEnd
 %vertex_main_inner = OpFunction %v4float None %22

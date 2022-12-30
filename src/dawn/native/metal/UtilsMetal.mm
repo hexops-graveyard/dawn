@@ -111,23 +111,6 @@ ResultOrError<SavedMetalAttachment> PatchAttachmentWithTemporary(
     return result;
 }
 
-// Same as PatchAttachmentWithTemporary but for the resolve attachment.
-ResultOrError<SavedMetalAttachment> PatchResolveAttachmentWithTemporary(
-    Device* device,
-    MTLRenderPassAttachmentDescriptor* attachment) {
-    SavedMetalAttachment result;
-    DAWN_TRY_ASSIGN(
-        result, SaveAttachmentCreateTemporary(device, attachment.resolveTexture,
-                                              attachment.resolveLevel, attachment.resolveSlice));
-
-    // Replace the resolve attachment with the tempoary.
-    attachment.resolveTexture = result.temporary.Get();
-    attachment.resolveLevel = 0;
-    attachment.resolveSlice = 0;
-
-    return result;
-}
-
 // Helper function for Toggle EmulateStoreAndMSAAResolve
 void ResolveInAnotherRenderPass(
     CommandRecordingContext* commandContext,
@@ -196,12 +179,15 @@ TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
     const Format textureFormat = texture->GetFormat();
     const TexelBlockInfo& blockInfo = textureFormat.GetAspectInfo(aspect).block;
 
-    // When copying textures from/to an unpacked buffer, the Metal validation layer doesn't
-    // compute the correct range when checking if the buffer is big enough to contain the
-    // data for the whole copy. Instead of looking at the position of the last texel in the
-    // buffer, it computes the volume of the 3D box with bytesPerRow * (rowsPerImage /
-    // format.blockHeight) * copySize.depthOrArrayLayers. For example considering the pixel
-    // buffer below where in memory, each row data (D) of the texture is followed by some
+    // When copying textures from/to an unpacked buffer, the Metal validation layer has 3
+    // issues.
+    //
+    // 1. The metal validation layer doesn't compute the correct range when checking if the
+    // buffer is big enough to contain the data for the whole copy. Instead of looking at
+    // the position of the last texel in the buffer, it computes the volume of the 3D box
+    // with bytesPerRow * (rowsPerImage / format.blockHeight) * copySize.depthOrArrayLayers.
+    // For example considering the pixel buffer below where in memory, each row data (D) of
+    // the texture is followed by some
     // padding data (P):
     //     |DDDDDDD|PP|
     //     |DDDDDDD|PP|
@@ -213,6 +199,28 @@ TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
 
     // We work around this limitation by detecting when Metal would complain and copy the
     // last image and row separately using tight sourceBytesPerRow or sourceBytesPerImage.
+
+    // 2. Metal requires `destinationBytesPerRow` is less than or equal to the size
+    // of the maximum texture dimension in bytes.
+
+    // 3. Some Metal Drivers (Intel Pre MacOS 13.1?) Incorrectly calculation the size
+    // needed for the destination buffer. Their calculation is something like
+    //
+    //   sizeNeeded = bufferOffset + desintationBytesPerImage * numImages +
+    //                destinationBytesPerRow * (numRows - 1) +
+    //                bytesPerPixel * width
+    //
+    // where as it should be
+    //
+    //   sizeNeeded = bufferOffset + desintationBytesPerImage * (numImages - 1) +
+    //                destinationBytesPerRow * (numRows - 1) +
+    //                bytesPerPixel * width
+    //
+    // since you won't actually go to the next image if there is only 1 image.
+    //
+    // The workaround is if you're only copying a single row then pass 0 for
+    // destinationBytesPerImage
+
     uint32_t bytesPerImage = bytesPerRow * rowsPerImage;
 
     // Metal validation layer requires that if the texture's pixel format is a compressed
@@ -222,32 +230,63 @@ TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
     const Extent3D clampedCopyExtent =
         texture->ClampToMipLevelVirtualSize(mipLevel, origin, copyExtent);
 
-    // Check whether buffer size is big enough.
-    bool needWorkaround = bufferSize - bufferOffset < bytesPerImage * copyExtent.depthOrArrayLayers;
-    if (!needWorkaround) {
-        copy.count = 1;
-        copy.copies[0].bufferOffset = bufferOffset;
-        copy.copies[0].bytesPerRow = bytesPerRow;
-        copy.copies[0].bytesPerImage = bytesPerImage;
-        copy.copies[0].textureOrigin = origin;
-        copy.copies[0].copyExtent = {clampedCopyExtent.width, clampedCopyExtent.height,
-                                     copyExtent.depthOrArrayLayers};
+    // Note: all current GPUs have a 3D texture size limit of 2048 and otherwise 16348
+    // for non-3D textures except for Apple2 GPUs (iPhone6) which has a non-3D texture
+    // limit of 8192. Dawn doesn't support Apple2 GPUs
+    // See: https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf
+    const uint32_t kMetalMax3DTextureDimensions = 2048u;
+    const uint32_t kMetalMaxNon3DTextureDimensions = 16384u;
+    uint32_t maxTextureDimension = texture->GetDimension() == wgpu::TextureDimension::e3D
+                                       ? kMetalMax3DTextureDimensions
+                                       : kMetalMaxNon3DTextureDimensions;
+    uint32_t bytesPerPixel = blockInfo.byteSize;
+    uint32_t maxBytesPerRow = maxTextureDimension * bytesPerPixel;
+
+    bool needCopyRowByRow = bytesPerRow > maxBytesPerRow;
+    if (needCopyRowByRow) {
+        // handle workaround case 2
+        // Since we're copying a row at a time bytesPerRow shouldn't matter but just to
+        // try to have it make sense, pass correct or max valid value
+        const uint32_t localBytesPerRow = std::min(bytesPerRow, maxBytesPerRow);
+        const uint32_t localBytesPerImage = 0;  // workaround case 3
+        ASSERT(copyExtent.height % blockInfo.height == 0);
+        ASSERT(copyExtent.width % blockInfo.width == 0);
+        const uint32_t blockRows = copyExtent.height / blockInfo.height;
+        for (uint32_t slice = 0; slice < copyExtent.depthOrArrayLayers; ++slice) {
+            for (uint32_t blockRow = 0; blockRow < blockRows; ++blockRow) {
+                copy.push_back(TextureBufferCopySplit::CopyInfo(
+                    bufferOffset + slice * rowsPerImage * bytesPerRow + blockRow * bytesPerRow,
+                    localBytesPerRow, localBytesPerImage,
+                    {origin.x, origin.y + blockRow * blockInfo.height, origin.z + slice},
+                    {clampedCopyExtent.width, blockInfo.height, 1}));
+            }
+        }
         return copy;
     }
 
+    // Check whether buffer size is big enough.
+    bool needCopyLastImageAndLastRowSeparately =
+        bufferSize - bufferOffset < bytesPerImage * copyExtent.depthOrArrayLayers;
+    if (!needCopyLastImageAndLastRowSeparately) {
+        const uint32_t localBytesPerImage =
+            copyExtent.depthOrArrayLayers == 1 ? 0 : bytesPerImage;  // workaround case 3
+        copy.push_back(TextureBufferCopySplit::CopyInfo(
+            bufferOffset, bytesPerRow, localBytesPerImage, origin,
+            {clampedCopyExtent.width, clampedCopyExtent.height, copyExtent.depthOrArrayLayers}));
+        return copy;
+    }
+
+    // handle workaround case 1
     uint64_t currentOffset = bufferOffset;
 
     // Doing all the copy except the last image.
     if (copyExtent.depthOrArrayLayers > 1) {
-        copy.copies[copy.count].bufferOffset = currentOffset;
-        copy.copies[copy.count].bytesPerRow = bytesPerRow;
-        copy.copies[copy.count].bytesPerImage = bytesPerImage;
-        copy.copies[copy.count].textureOrigin = origin;
-        copy.copies[copy.count].copyExtent = {clampedCopyExtent.width, clampedCopyExtent.height,
-                                              copyExtent.depthOrArrayLayers - 1};
-
-        ++copy.count;
-
+        const uint32_t localDepthOrArrayLayers = copyExtent.depthOrArrayLayers - 1;
+        const uint32_t localBytesPerImage =
+            localDepthOrArrayLayers == 1 ? 0 : bytesPerImage;  // workaround case 3
+        copy.push_back(TextureBufferCopySplit::CopyInfo(
+            currentOffset, bytesPerRow, localBytesPerImage, origin,
+            {clampedCopyExtent.width, clampedCopyExtent.height, localDepthOrArrayLayers}));
         // Update offset to copy to the last image.
         currentOffset += (copyExtent.depthOrArrayLayers - 1) * bytesPerImage;
     }
@@ -255,18 +294,13 @@ TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
     // Doing all the copy in last image except the last row.
     uint32_t copyBlockRowCount = copyExtent.height / blockInfo.height;
     if (copyBlockRowCount > 1) {
-        copy.copies[copy.count].bufferOffset = currentOffset;
-        copy.copies[copy.count].bytesPerRow = bytesPerRow;
-        copy.copies[copy.count].bytesPerImage = bytesPerRow * (copyBlockRowCount - 1);
-        copy.copies[copy.count].textureOrigin = {origin.x, origin.y,
-                                                 origin.z + copyExtent.depthOrArrayLayers - 1};
-
         ASSERT(copyExtent.height - blockInfo.height <
                texture->GetMipLevelSingleSubresourceVirtualSize(mipLevel).height);
-        copy.copies[copy.count].copyExtent = {clampedCopyExtent.width,
-                                              copyExtent.height - blockInfo.height, 1};
-
-        ++copy.count;
+        const uint32_t localBytesPerImage = 0;  // workaround case 3
+        copy.push_back(TextureBufferCopySplit::CopyInfo(
+            currentOffset, bytesPerRow, localBytesPerImage,
+            {origin.x, origin.y, origin.z + copyExtent.depthOrArrayLayers - 1},
+            {clampedCopyExtent.width, copyExtent.height - blockInfo.height, 1}));
 
         // Update offset to copy to the last row.
         currentOffset += (copyBlockRowCount - 1) * bytesPerRow;
@@ -275,18 +309,16 @@ TextureBufferCopySplit ComputeTextureBufferCopySplit(const Texture* texture,
     // Doing the last row copy with the exact number of bytes in last row.
     // Workaround this issue in a way just like the copy to a 1D texture.
     uint32_t lastRowDataSize = (copyExtent.width / blockInfo.width) * blockInfo.byteSize;
+    uint32_t lastImageDataSize = 0;  // workaround case 3
     uint32_t lastRowCopyExtentHeight =
         blockInfo.height + clampedCopyExtent.height - copyExtent.height;
     ASSERT(lastRowCopyExtentHeight <= blockInfo.height);
 
-    copy.copies[copy.count].bufferOffset = currentOffset;
-    copy.copies[copy.count].bytesPerRow = lastRowDataSize;
-    copy.copies[copy.count].bytesPerImage = lastRowDataSize;
-    copy.copies[copy.count].textureOrigin = {origin.x,
-                                             origin.y + copyExtent.height - blockInfo.height,
-                                             origin.z + copyExtent.depthOrArrayLayers - 1};
-    copy.copies[copy.count].copyExtent = {clampedCopyExtent.width, lastRowCopyExtentHeight, 1};
-    ++copy.count;
+    copy.push_back(
+        TextureBufferCopySplit::CopyInfo(currentOffset, lastRowDataSize, lastImageDataSize,
+                                         {origin.x, origin.y + copyExtent.height - blockInfo.height,
+                                          origin.z + copyExtent.depthOrArrayLayers - 1},
+                                         {clampedCopyExtent.width, lastRowCopyExtentHeight, 1}));
 
     return copy;
 }
@@ -323,152 +355,16 @@ MTLBlitOption ComputeMTLBlitOption(const Format& format, Aspect aspect) {
     return MTLBlitOptionNone;
 }
 
-MaybeError CreateMTLFunction(const ProgrammableStage& programmableStage,
-                             SingleShaderStage singleShaderStage,
-                             PipelineLayout* pipelineLayout,
-                             ShaderModule::MetalFunctionData* functionData,
-                             uint32_t sampleMask,
-                             const RenderPipeline* renderPipeline) {
-    ShaderModule* shaderModule = ToBackend(programmableStage.module.Get());
-    const char* shaderEntryPoint = programmableStage.entryPoint.c_str();
-    const auto& entryPointMetadata = programmableStage.module->GetEntryPoint(shaderEntryPoint);
-    if (entryPointMetadata.overrides.size() == 0) {
-        DAWN_TRY(shaderModule->CreateFunction(shaderEntryPoint, singleShaderStage, pipelineLayout,
-                                              functionData, nil, sampleMask, renderPipeline));
-        return {};
-    }
-
-    if (@available(macOS 10.12, *)) {
-        // MTLFunctionConstantValues can only be created within the if available branch
-        NSRef<MTLFunctionConstantValues> constantValues =
-            AcquireNSRef([MTLFunctionConstantValues new]);
-
-        std::unordered_set<std::string> overriddenConstants;
-
-        auto switchType = [&](EntryPointMetadata::Override::Type dawnType,
-                              MTLDataType* type, OverrideScalar* entry,
-                              double value = 0) {
-            switch (dawnType) {
-                case EntryPointMetadata::Override::Type::Boolean:
-                    *type = MTLDataTypeBool;
-                    if (entry) {
-                        entry->b = static_cast<int32_t>(value);
-                    }
-                    break;
-                case EntryPointMetadata::Override::Type::Float32:
-                    *type = MTLDataTypeFloat;
-                    if (entry) {
-                        entry->f32 = static_cast<float>(value);
-                    }
-                    break;
-                case EntryPointMetadata::Override::Type::Int32:
-                    *type = MTLDataTypeInt;
-                    if (entry) {
-                        entry->i32 = static_cast<int32_t>(value);
-                    }
-                    break;
-                case EntryPointMetadata::Override::Type::Uint32:
-                    *type = MTLDataTypeUInt;
-                    if (entry) {
-                        entry->u32 = static_cast<uint32_t>(value);
-                    }
-                    break;
-                default:
-                    UNREACHABLE();
-            }
-        };
-
-        for (const auto& [name, value] : programmableStage.constants) {
-            overriddenConstants.insert(name);
-
-            // This is already validated so `name` must exist
-            const auto& moduleConstant = entryPointMetadata.overrides.at(name);
-
-            MTLDataType type;
-            OverrideScalar entry{};
-
-            switchType(moduleConstant.type, &type, &entry, value);
-
-            [constantValues.Get() setConstantValue:&entry type:type atIndex:moduleConstant.id];
-        }
-
-        // Set shader initialized default values because MSL function_constant
-        // has no default value
-        for (const std::string& name : entryPointMetadata.initializedOverrides) {
-            if (overriddenConstants.count(name) != 0) {
-                // This constant already has overridden value
-                continue;
-            }
-
-            // Must exist because it is validated
-            const auto& moduleConstant = entryPointMetadata.overrides.at(name);
-            ASSERT(moduleConstant.isInitialized);
-            MTLDataType type;
-
-            switchType(moduleConstant.type, &type, nullptr);
-
-            [constantValues.Get() setConstantValue:&moduleConstant.defaultValue
-                                              type:type
-                                           atIndex:moduleConstant.id];
-        }
-
-        DAWN_TRY(shaderModule->CreateFunction(shaderEntryPoint, singleShaderStage, pipelineLayout,
-                                              functionData, constantValues.Get(), sampleMask,
-                                              renderPipeline));
-    } else {
-        UNREACHABLE();
-    }
-    return {};
-}
-
 MaybeError EncodeMetalRenderPass(Device* device,
                                  CommandRecordingContext* commandContext,
                                  MTLRenderPassDescriptor* mtlRenderPass,
                                  uint32_t width,
                                  uint32_t height,
-                                 EncodeInsideRenderPass encodeInside) {
+                                 EncodeInsideRenderPass encodeInside,
+                                 BeginRenderPassCmd* renderPassCmd) {
     // This function handles multiple workarounds. Because some cases requires multiple
     // workarounds to happen at the same time, it handles workarounds one by one and calls
     // itself recursively to handle the next workaround if needed.
-
-    // Handle Toggle AlwaysResolveIntoZeroLevelAndLayer. We must handle this before applying
-    // the store + MSAA resolve workaround, otherwise this toggle will never be handled because
-    // the resolve texture is removed when applying the store + MSAA resolve workaround.
-    if (device->IsToggleEnabled(Toggle::AlwaysResolveIntoZeroLevelAndLayer)) {
-        std::array<SavedMetalAttachment, kMaxColorAttachments> trueResolveAttachments = {};
-        bool workaroundUsed = false;
-        for (uint32_t i = 0; i < kMaxColorAttachments; ++i) {
-            if (mtlRenderPass.colorAttachments[i].resolveTexture == nullptr) {
-                continue;
-            }
-
-            if (mtlRenderPass.colorAttachments[i].resolveLevel == 0 &&
-                mtlRenderPass.colorAttachments[i].resolveSlice == 0) {
-                continue;
-            }
-
-            DAWN_TRY_ASSIGN(
-                trueResolveAttachments[i],
-                PatchResolveAttachmentWithTemporary(device, mtlRenderPass.colorAttachments[i]));
-            workaroundUsed = true;
-        }
-
-        // If we need to use a temporary resolve texture we need to copy the result of MSAA
-        // resolve back to the true resolve targets.
-        if (workaroundUsed) {
-            DAWN_TRY(EncodeMetalRenderPass(device, commandContext, mtlRenderPass, width, height,
-                                           std::move(encodeInside)));
-
-            for (uint32_t i = 0; i < kMaxColorAttachments; ++i) {
-                if (trueResolveAttachments[i].texture == nullptr) {
-                    continue;
-                }
-
-                trueResolveAttachments[i].CopyFromTemporaryToAttachment(commandContext);
-            }
-            return {};
-        }
-    }
 
     // Handles the workaround for r8unorm rg8unorm mipmap rendering being broken on some
     // devices. Render to a temporary texture instead and then copy back to the attachment.
@@ -501,7 +397,7 @@ MaybeError EncodeMetalRenderPass(Device* device,
 
         if (workaroundUsed) {
             DAWN_TRY(EncodeMetalRenderPass(device, commandContext, mtlRenderPass, width, height,
-                                           std::move(encodeInside)));
+                                           std::move(encodeInside), renderPassCmd));
 
             for (uint32_t i = 0; i < kMaxColorAttachments; ++i) {
                 if (originalAttachments[i].texture == nullptr) {
@@ -537,7 +433,7 @@ MaybeError EncodeMetalRenderPass(Device* device,
         // If we found a store + MSAA resolve we need to resolve in a different render pass.
         if (hasStoreAndMSAAResolve) {
             DAWN_TRY(EncodeMetalRenderPass(device, commandContext, mtlRenderPass, width, height,
-                                           std::move(encodeInside)));
+                                           std::move(encodeInside), renderPassCmd));
 
             ResolveInAnotherRenderPass(commandContext, mtlRenderPass, resolveTextures);
             return {};
@@ -546,7 +442,7 @@ MaybeError EncodeMetalRenderPass(Device* device,
 
     // No (more) workarounds needed! We can finally encode the actual render pass.
     commandContext->EndBlit();
-    DAWN_TRY(encodeInside(commandContext->BeginRender(mtlRenderPass)));
+    DAWN_TRY(encodeInside(commandContext->BeginRender(mtlRenderPass), renderPassCmd));
     commandContext->EndRender();
     return {};
 }
@@ -555,8 +451,26 @@ MaybeError EncodeEmptyMetalRenderPass(Device* device,
                                       CommandRecordingContext* commandContext,
                                       MTLRenderPassDescriptor* mtlRenderPass,
                                       Extent3D size) {
-    return EncodeMetalRenderPass(device, commandContext, mtlRenderPass, size.width, size.height,
-                                 [&](id<MTLRenderCommandEncoder>) -> MaybeError { return {}; });
+    return EncodeMetalRenderPass(
+        device, commandContext, mtlRenderPass, size.width, size.height,
+        [&](id<MTLRenderCommandEncoder>, BeginRenderPassCmd*) -> MaybeError { return {}; });
+}
+
+DAWN_NOINLINE bool SupportCounterSamplingAtCommandBoundary(id<MTLDevice> device)
+    API_AVAILABLE(macos(11.0), ios(14.0)) {
+    bool isBlitBoundarySupported =
+        [device supportsCounterSampling:MTLCounterSamplingPointAtBlitBoundary];
+    bool isDispatchBoundarySupported =
+        [device supportsCounterSampling:MTLCounterSamplingPointAtDispatchBoundary];
+    bool isDrawBoundarySupported =
+        [device supportsCounterSampling:MTLCounterSamplingPointAtDrawBoundary];
+
+    return isBlitBoundarySupported && isDispatchBoundarySupported && isDrawBoundarySupported;
+}
+
+DAWN_NOINLINE bool SupportCounterSamplingAtStageBoundary(id<MTLDevice> device)
+    API_AVAILABLE(macos(11.0), ios(14.0)) {
+    return [device supportsCounterSampling:MTLCounterSamplingPointAtStageBoundary];
 }
 
 }  // namespace dawn::native::metal

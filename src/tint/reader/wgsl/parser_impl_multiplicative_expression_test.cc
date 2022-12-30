@@ -18,17 +18,12 @@ namespace tint::reader::wgsl {
 namespace {
 
 TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Multiply) {
-    auto p = parser("a * true");
-    auto e = p->multiplicative_expression();
-    EXPECT_TRUE(e.matched);
+    auto p = parser("a * b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
-
-    EXPECT_EQ(e->source.range.begin.line, 1u);
-    EXPECT_EQ(e->source.range.begin.column, 3u);
-    EXPECT_EQ(e->source.range.end.line, 1u);
-    EXPECT_EQ(e->source.range.end.column, 4u);
 
     ASSERT_TRUE(e->Is<ast::BinaryExpression>());
     auto* rel = e->As<ast::BinaryExpression>();
@@ -38,14 +33,40 @@ TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Multiply) {
     auto* ident = rel->lhs->As<ast::IdentifierExpression>();
     EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
 
-    ASSERT_TRUE(rel->rhs->Is<ast::BoolLiteralExpression>());
-    ASSERT_TRUE(rel->rhs->As<ast::BoolLiteralExpression>()->value);
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+}
+
+TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Multiply_UnaryIndirect) {
+    auto p = parser("a **b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
+    EXPECT_FALSE(e.errored);
+    EXPECT_FALSE(p->has_error()) << p->error();
+    ASSERT_NE(e.value, nullptr);
+
+    ASSERT_TRUE(e->Is<ast::BinaryExpression>());
+    auto* rel = e->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kMultiply, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    auto* ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::UnaryOpExpression>());
+    auto* unary = rel->rhs->As<ast::UnaryOpExpression>();
+    EXPECT_EQ(ast::UnaryOp::kIndirection, unary->op);
+
+    ASSERT_TRUE(unary->expr->Is<ast::IdentifierExpression>());
+    ident = unary->expr->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
 }
 
 TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Divide) {
-    auto p = parser("a / true");
-    auto e = p->multiplicative_expression();
-    EXPECT_TRUE(e.matched);
+    auto p = parser("a / b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
@@ -58,14 +79,15 @@ TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Divide) {
     auto* ident = rel->lhs->As<ast::IdentifierExpression>();
     EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
 
-    ASSERT_TRUE(rel->rhs->Is<ast::BoolLiteralExpression>());
-    ASSERT_TRUE(rel->rhs->As<ast::BoolLiteralExpression>()->value);
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
 }
 
 TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Modulo) {
-    auto p = parser("a % true");
-    auto e = p->multiplicative_expression();
-    EXPECT_TRUE(e.matched);
+    auto p = parser("a % b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
@@ -78,37 +100,86 @@ TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Modulo) {
     auto* ident = rel->lhs->As<ast::IdentifierExpression>();
     EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
 
-    ASSERT_TRUE(rel->rhs->Is<ast::BoolLiteralExpression>());
-    ASSERT_TRUE(rel->rhs->As<ast::BoolLiteralExpression>()->value);
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
 }
 
-TEST_F(ParserImplTest, MultiplicativeExpression_InvalidLHS) {
-    auto p = parser("if (a) {} * true");
-    auto e = p->multiplicative_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_FALSE(e.errored);
-    EXPECT_FALSE(p->has_error()) << p->error();
-    EXPECT_EQ(e.value, nullptr);
-}
-
-TEST_F(ParserImplTest, MultiplicativeExpression_InvalidRHS) {
-    auto p = parser("true * if (a) {}");
-    auto e = p->multiplicative_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_TRUE(e.errored);
-    EXPECT_EQ(e.value, nullptr);
-    ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:8: unable to parse right side of * expression");
-}
-
-TEST_F(ParserImplTest, MultiplicativeExpression_NoOr_ReturnsLHS) {
-    auto p = parser("a true");
-    auto e = p->multiplicative_expression();
-    EXPECT_TRUE(e.matched);
+TEST_F(ParserImplTest, MultiplicativeExpression_Parses_Grouping) {
+    auto p = parser("a * b / c % d * e");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
-    ASSERT_TRUE(e->Is<ast::IdentifierExpression>());
+
+    ASSERT_TRUE(e->Is<ast::BinaryExpression>());
+    // lhs: ((a * b) / c) % d
+    // op: *
+    // rhs: e
+    auto* rel = e->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kMultiply, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    auto* ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("e"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: (a * b) / c
+    // op: %
+    // rhs: d
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kModulo, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("d"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: a * b
+    // op: /
+    // rhs: c
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kDivide, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("c"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: a
+    // op: *
+    // rhs: b
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kMultiply, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+}
+
+TEST_F(ParserImplTest, MultiplicativeExpression_InvalidRHS) {
+    auto p = parser("a * if (a) {}");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
+    EXPECT_TRUE(e.errored);
+    EXPECT_EQ(e.value, nullptr);
+    ASSERT_TRUE(p->has_error());
+    EXPECT_EQ(p->error(), "1:5: unable to parse right side of * expression");
+}
+
+TEST_F(ParserImplTest, MultiplicativeExpression_NoMatch_ReturnsLHS) {
+    auto p = parser("a + b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_multiplicative_expression_post_unary_expression(lhs.value);
+    EXPECT_FALSE(e.errored);
+    EXPECT_FALSE(p->has_error()) << p->error();
+    ASSERT_NE(e.value, nullptr);
+    EXPECT_EQ(lhs.value, e.value);
 }
 
 }  // namespace

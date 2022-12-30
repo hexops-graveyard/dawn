@@ -24,6 +24,7 @@
 #include "dawn/native/MetalBackend.h"
 #include "dawn/native/metal/BufferMTL.h"
 #include "dawn/native/metal/DeviceMTL.h"
+#include "dawn/native/metal/UtilsMetal.h"
 
 #if DAWN_PLATFORM_IS(MACOS)
 #import <IOKit/IOKitLib.h>
@@ -158,37 +159,17 @@ MaybeError GetDevicePCIInfo(id<MTLDevice> device, PCIIDs* ids) {
     return GetVendorIdFromVendors(device, ids);
 }
 
-bool IsMetalSupported() {
-    // Metal was first introduced in macOS 10.11
-    // WebGPU is targeted at macOS 10.12+
-    // TODO(dawn:1181): Dawn native should allow non-conformant WebGPU on macOS 10.11
-    return IsMacOSVersionAtLeast(10, 12);
-}
 #elif DAWN_PLATFORM_IS(IOS)
+
 MaybeError GetDevicePCIInfo(id<MTLDevice> device, PCIIDs* ids) {
     DAWN_UNUSED(device);
     *ids = PCIIDs{0, 0};
     return {};
 }
 
-bool IsMetalSupported() {
-    return true;
-}
 #else
 #error "Unsupported Apple platform."
 #endif
-
-DAWN_NOINLINE bool IsCounterSamplingBoundarySupport(id<MTLDevice> device)
-    API_AVAILABLE(macos(11.0), ios(14.0)) {
-    bool isBlitBoundarySupported =
-        [device supportsCounterSampling:MTLCounterSamplingPointAtBlitBoundary];
-    bool isDispatchBoundarySupported =
-        [device supportsCounterSampling:MTLCounterSamplingPointAtDispatchBoundary];
-    bool isDrawBoundarySupported =
-        [device supportsCounterSampling:MTLCounterSamplingPointAtDrawBoundary];
-
-    return isBlitBoundarySupported && isDispatchBoundarySupported && isDrawBoundarySupported;
-}
 
 // This method has seen hard-to-debug crashes. See crbug.com/dawn/1102.
 // For now, it is written defensively, with many potentially unnecessary guards until
@@ -254,11 +235,13 @@ DAWN_NOINLINE bool IsGPUCounterSupported(id<MTLDevice> device,
     }
 
     if (@available(macOS 11.0, iOS 14.0, *)) {
-        // Check whether it can read GPU counters at the specified command boundary. Apple
-        // family GPUs do not support sampling between different Metal commands, because
-        // they defer fragment processing until after the GPU processes all the primitives
-        // in the render pass.
-        if (!IsCounterSamplingBoundarySupport(device)) {
+        // Check whether it can read GPU counters at the specified command boundary or stage
+        // boundary. Apple family GPUs do not support sampling between different Metal commands,
+        // because they defer fragment processing until after the GPU processes all the primitives
+        // in the render pass. GPU counters are only available if sampling at least one of the
+        // command or stage boundaries is supported.
+        if (!SupportCounterSamplingAtCommandBoundary(device) &&
+            !SupportCounterSamplingAtStageBoundary(device)) {
             return false;
         }
     }
@@ -307,8 +290,10 @@ class Adapter : public AdapterBase {
     }
 
   private:
-    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(const DeviceDescriptor* descriptor) override {
-        return Device::Create(this, mDevice, descriptor);
+    ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(
+        const DeviceDescriptor* descriptor,
+        const TripleStateTogglesSet& userProvidedToggles) override {
+        return Device::Create(this, mDevice, descriptor, userProvidedToggles);
     }
 
     MaybeError InitializeImpl() override { return {}; }
@@ -354,6 +339,12 @@ class Adapter : public AdapterBase {
             if (IsGPUCounterSupported(*mDevice, MTLCommonCounterSetTimestamp,
                                       {MTLCommonCounterTimestamp})) {
                 bool enableTimestampQuery = true;
+                bool enableTimestampQueryInsidePasses = true;
+
+                if (@available(macOS 11.0, iOS 14.0, *)) {
+                    enableTimestampQueryInsidePasses =
+                        SupportCounterSamplingAtCommandBoundary(*mDevice);
+                }
 
 #if DAWN_PLATFORM_IS(MACOS)
                 // Disable timestamp query on < macOS 11.0 on AMD GPU because WriteTimestamp
@@ -361,11 +352,16 @@ class Adapter : public AdapterBase {
                 // has been fixed on macOS 11.0. See crbug.com/dawn/545.
                 if (gpu_info::IsAMD(mVendorId) && !IsMacOSVersionAtLeast(11)) {
                     enableTimestampQuery = false;
+                    enableTimestampQueryInsidePasses = false;
                 }
 #endif
 
                 if (enableTimestampQuery) {
                     mSupportedFeatures.EnableFeature(Feature::TimestampQuery);
+                }
+
+                if (enableTimestampQueryInsidePasses) {
+                    mSupportedFeatures.EnableFeature(Feature::TimestampQueryInsidePasses);
                 }
             }
         }
@@ -385,6 +381,8 @@ class Adapter : public AdapterBase {
         }
 
         mSupportedFeatures.EnableFeature(Feature::IndirectFirstInstance);
+        mSupportedFeatures.EnableFeature(Feature::ShaderF16);
+        mSupportedFeatures.EnableFeature(Feature::RG11B10UfloatRenderable);
 
         return {};
     }
@@ -414,7 +412,7 @@ class Adapter : public AdapterBase {
         if (mDeviceId != 0) {
             mArchitectureName = gpu_info::GetArchitectureName(mVendorId, mDeviceId);
         }
-    };
+    }
 
     enum class MTLGPUFamily {
         Apple1,
@@ -467,10 +465,8 @@ class Adapter : public AdapterBase {
                 return MTLGPUFamily::Mac2;
             }
         }
-        if (@available(macOS 10.11, *)) {
-            if ([*mDevice supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1]) {
-                return MTLGPUFamily::Mac1;
-            }
+        if ([*mDevice supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1]) {
+            return MTLGPUFamily::Mac1;
         }
 #elif TARGET_OS_IOS
         if (@available(iOS 10.11, *)) {
@@ -613,6 +609,7 @@ class Adapter : public AdapterBase {
         limits->v1.minStorageBufferOffsetAlignment = mtlLimits.minBufferOffsetAlignment;
 
         uint64_t maxBufferSize = Buffer::QueryMaxBufferLength(*mDevice);
+        limits->v1.maxBufferSize = maxBufferSize;
 
         // Metal has no documented limit on the size of a binding. Use the maximum
         // buffer size.
@@ -627,6 +624,12 @@ class Adapter : public AdapterBase {
         // TODO(crbug.com/dawn/1448):
         // - maxInterStageShaderVariables
 
+        return {};
+    }
+
+    MaybeError ValidateFeatureSupportedWithTogglesImpl(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles) override {
         return {};
     }
 
@@ -658,43 +661,29 @@ ResultOrError<std::vector<Ref<AdapterBase>>> Backend::DiscoverAdapters(
     ASSERT(optionsBase->backendType == WGPUBackendType_Metal);
 
     std::vector<Ref<AdapterBase>> adapters;
-    BOOL supportedVersion = NO;
 #if DAWN_PLATFORM_IS(MACOS)
-    if (@available(macOS 10.11, *)) {
-        supportedVersion = YES;
+    NSRef<NSArray<id<MTLDevice>>> devices = AcquireNSRef(MTLCopyAllDevices());
 
-        NSRef<NSArray<id<MTLDevice>>> devices = AcquireNSRef(MTLCopyAllDevices());
-
-        for (id<MTLDevice> device in devices.Get()) {
-            Ref<Adapter> adapter = AcquireRef(new Adapter(GetInstance(), device));
-            if (!GetInstance()->ConsumedError(adapter->Initialize())) {
-                adapters.push_back(std::move(adapter));
-            }
-        }
-    }
-#endif
-
-#if DAWN_PLATFORM_IS(IOS)
-    if (@available(iOS 8.0, *)) {
-        supportedVersion = YES;
-        // iOS only has a single device so MTLCopyAllDevices doesn't exist there.
-        Ref<Adapter> adapter =
-            AcquireRef(new Adapter(GetInstance(), MTLCreateSystemDefaultDevice()));
+    for (id<MTLDevice> device in devices.Get()) {
+        Ref<Adapter> adapter = AcquireRef(new Adapter(GetInstance(), device));
         if (!GetInstance()->ConsumedError(adapter->Initialize())) {
             adapters.push_back(std::move(adapter));
         }
     }
 #endif
-    if (!supportedVersion) {
-        UNREACHABLE();
+
+    // iOS only has a single device so MTLCopyAllDevices doesn't exist there.
+#if defined(DAWN_PLATFORM_IOS)
+    Ref<Adapter> adapter = AcquireRef(new Adapter(GetInstance(), MTLCreateSystemDefaultDevice()));
+    if (!GetInstance()->ConsumedError(adapter->Initialize())) {
+        adapters.push_back(std::move(adapter));
     }
+#endif
+
     return adapters;
 }
 
 BackendConnection* Connect(InstanceBase* instance) {
-    if (!IsMetalSupported()) {
-        return nullptr;
-    }
     return new Backend(instance);
 }
 

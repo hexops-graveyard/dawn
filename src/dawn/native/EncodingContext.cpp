@@ -44,7 +44,7 @@ void EncodingContext::Destroy() {
     // If we weren't already finished, then we want to handle an error here so that any calls
     // to Finish after Destroy will return a meaningful error.
     if (!IsFinished()) {
-        HandleError(DAWN_FORMAT_VALIDATION_ERROR("Destroyed encoder cannot be finished."));
+        HandleError(DAWN_VALIDATION_ERROR("Destroyed encoder cannot be finished."));
     }
     mDestroyed = true;
     mCurrentEncoder = nullptr;
@@ -127,9 +127,12 @@ MaybeError EncodingContext::ExitRenderPass(const ApiObjectBase* passEncoder,
         // mPendingCommands contains only the commands from BeginRenderPassCmd to
         // EndRenderPassCmd, inclusive. Now we swap out this allocator with a fresh one to give
         // the validation encoder a chance to insert its commands first.
+        // Note: If encoding validation commands fails, no commands should be in mPendingCommands,
+        //       so swap back the renderCommands to ensure that they are not leaked.
         CommandAllocator renderCommands = std::move(mPendingCommands);
-        DAWN_TRY(EncodeIndirectDrawValidationCommands(mDevice, commandEncoder, &usageTracker,
-                                                      &indirectDrawMetadata));
+        DAWN_TRY_WITH_CLEANUP(EncodeIndirectDrawValidationCommands(
+                                  mDevice, commandEncoder, &usageTracker, &indirectDrawMetadata),
+                              { mPendingCommands = std::move(renderCommands); });
         CommitCommands(std::move(mPendingCommands));
         CommitCommands(std::move(renderCommands));
     }
@@ -151,8 +154,8 @@ void EncodingContext::EnsurePassExited(const ApiObjectBase* passEncoder) {
     if (mCurrentEncoder != mTopLevelEncoder && mCurrentEncoder == passEncoder) {
         // The current pass encoder is being deleted. Implicitly end the pass with an error.
         mCurrentEncoder = mTopLevelEncoder;
-        HandleError(DAWN_FORMAT_VALIDATION_ERROR(
-            "Command buffer recording ended before %s was ended.", passEncoder));
+        HandleError(DAWN_VALIDATION_ERROR("Command buffer recording ended before %s was ended.",
+                                          passEncoder));
     }
 }
 

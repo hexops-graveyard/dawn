@@ -234,7 +234,7 @@ INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
                                          MslImportData{"clamp", "clamp"}));
 
 TEST_F(MslGeneratorImplTest, MslImportData_Determinant) {
-    GlobalVar("var", ty.mat3x3<f32>(), ast::StorageClass::kPrivate);
+    GlobalVar("var", ty.mat3x3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* expr = Call("determinant", "var");
 
@@ -245,6 +245,32 @@ TEST_F(MslGeneratorImplTest, MslImportData_Determinant) {
     std::stringstream out;
     ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
     EXPECT_EQ(out.str(), std::string("determinant(var)"));
+}
+
+TEST_F(MslGeneratorImplTest, MslImportData_QuantizeToF16_Scalar) {
+    GlobalVar("v", Expr(2_f), ast::AddressSpace::kPrivate);
+
+    auto* expr = Call("quantizeToF16", "v");
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "float(half(v))");
+}
+
+TEST_F(MslGeneratorImplTest, MslImportData_QuantizeToF16_Vector) {
+    GlobalVar("v", vec3<f32>(2_f), ast::AddressSpace::kPrivate);
+
+    auto* expr = Call("quantizeToF16", "v");
+    WrapInFunction(expr);
+
+    GeneratorImpl& gen = Build();
+
+    std::stringstream out;
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    EXPECT_EQ(out.str(), "float3(half3(v))");
 }
 
 }  // namespace

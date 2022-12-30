@@ -170,19 +170,18 @@ ResultOrError<Ref<PipelineLayoutBase>> ValidateLayoutAndGetRenderPipelineDescrip
 
 // DeviceBase
 
-DeviceBase::DeviceBase(AdapterBase* adapter, const DeviceDescriptor* descriptor)
-    : mInstance(adapter->GetInstance()), mAdapter(adapter), mNextPipelineCompatibilityToken(1) {
-    mInstance->IncrementDeviceCountForTesting();
+DeviceBase::DeviceBase(AdapterBase* adapter,
+                       const DeviceDescriptor* descriptor,
+                       const TripleStateTogglesSet& userProvidedToggles)
+    : mAdapter(adapter),
+      mEnabledToggles(userProvidedToggles.providedTogglesEnabled),
+      mOverridenToggles(userProvidedToggles.togglesIsProvided),
+      mNextPipelineCompatibilityToken(1) {
+    mAdapter->GetInstance()->IncrementDeviceCountForTesting();
     ASSERT(descriptor != nullptr);
 
     AdapterProperties adapterProperties;
     adapter->APIGetProperties(&adapterProperties);
-
-    const DawnTogglesDeviceDescriptor* togglesDesc = nullptr;
-    FindInChain(descriptor->nextInChain, &togglesDesc);
-    if (togglesDesc != nullptr) {
-        ApplyToggleOverrides(togglesDesc);
-    }
 
     SetDefaultToggles();
     ApplyFeatures(descriptor);
@@ -221,9 +220,9 @@ DeviceBase::~DeviceBase() {
     // We need to explicitly release the Queue before we complete the destructor so that the
     // Queue does not get destroyed after the Device.
     mQueue = nullptr;
-    // mInstance is not set for mock test devices.
-    if (mInstance != nullptr) {
-        mInstance->DecrementDeviceCountForTesting();
+    // mAdapter is not set for mock test devices.
+    if (mAdapter != nullptr) {
+        mAdapter->GetInstance()->DecrementDeviceCountForTesting();
     }
 }
 
@@ -339,7 +338,7 @@ void DeviceBase::DestroyObjects() {
     // can destroy the frontend cache.
 
     // clang-format off
-        static constexpr std::array<ObjectType, 19> kObjectTypeDependencyOrder = {
+        static constexpr std::array<ObjectType, 18> kObjectTypeDependencyOrder = {
             ObjectType::ComputePassEncoder,
             ObjectType::RenderPassEncoder,
             ObjectType::RenderBundleEncoder,
@@ -354,26 +353,15 @@ void DeviceBase::DestroyObjects() {
             ObjectType::BindGroupLayout,
             ObjectType::ShaderModule,
             ObjectType::ExternalTexture,
-            ObjectType::TextureView,
-            ObjectType::Texture,
+            ObjectType::Texture,  // Note that Textures own the TextureViews.
             ObjectType::QuerySet,
             ObjectType::Sampler,
             ObjectType::Buffer,
         };
     // clang-format on
 
-    // We first move all objects out from the tracking list into a separate list so that we can
-    // avoid locking the same mutex twice. We can then iterate across the separate list to call
-    // the actual destroy function.
-    LinkedList<ApiObjectBase> objects;
     for (ObjectType type : kObjectTypeDependencyOrder) {
-        ApiObjectList& objList = mObjectLists[type];
-        const std::lock_guard<std::mutex> lock(objList.mutex);
-        objList.objects.MoveInto(&objects);
-    }
-    while (!objects.empty()) {
-        // The destroy call should also remove the object from the list.
-        objects.head()->value()->Destroy();
+        mObjectLists[type].Destroy();
     }
 }
 
@@ -440,7 +428,6 @@ void DeviceBase::Destroy() {
             break;
     }
     ASSERT(mCompletedSerial == mLastSubmittedSerial);
-    ASSERT(mFutureSerial <= mCompletedSerial);
 
     if (mState != State::BeingCreated) {
         // The GPU timeline is finished.
@@ -452,6 +439,9 @@ void DeviceBase::Destroy() {
         // Call TickImpl once last time to clean up resources
         // Ignore errors so that we can continue with destruction
         IgnoreErrors(TickImpl());
+
+        // Trigger all in-flight TrackTask callbacks from 'mQueue'.
+        FlushCallbackTaskQueue();
     }
 
     // At this point GPU operations are always finished, so we are in the disconnected state.
@@ -479,7 +469,9 @@ void DeviceBase::APIDestroy() {
     Destroy();
 }
 
-void DeviceBase::HandleError(InternalErrorType type, const char* message) {
+void DeviceBase::HandleError(InternalErrorType type,
+                             const char* message,
+                             WGPUDeviceLostReason lost_reason) {
     if (type == InternalErrorType::DeviceLost) {
         mState = State::Disconnected;
 
@@ -509,7 +501,6 @@ void DeviceBase::HandleError(InternalErrorType type, const char* message) {
         IgnoreErrors(WaitForIdleForDestruction());
         IgnoreErrors(TickImpl());
         AssumeCommandsComplete();
-        ASSERT(mFutureSerial <= mCompletedSerial);
         mState = State::Disconnected;
 
         // Now everything is as if the device was lost.
@@ -519,7 +510,7 @@ void DeviceBase::HandleError(InternalErrorType type, const char* message) {
     if (type == InternalErrorType::DeviceLost) {
         // The device was lost, call the application callback.
         if (mDeviceLostCallback != nullptr) {
-            mDeviceLostCallback(WGPUDeviceLostReason_Undefined, message, mDeviceLostUserdata);
+            mDeviceLostCallback(lost_reason, message, mDeviceLostUserdata);
             mDeviceLostCallback = nullptr;
         }
 
@@ -627,27 +618,18 @@ BlobCache* DeviceBase::GetBlobCache() {
     // TODO(crbug.com/dawn/1481): Shader caching currently has a dependency on the WGSL writer to
     // generate cache keys. We can lift the dependency once we also cache frontend parsing,
     // transformations, and reflection.
-    if (IsToggleEnabled(Toggle::EnableBlobCache)) {
-        return mInstance->GetBlobCache();
-    }
+    return mAdapter->GetInstance()->GetBlobCache(!IsToggleEnabled(Toggle::DisableBlobCache));
 #endif
-    return nullptr;
+    return mAdapter->GetInstance()->GetBlobCache(false);
 }
 
 Blob DeviceBase::LoadCachedBlob(const CacheKey& key) {
-    BlobCache* blobCache = GetBlobCache();
-    if (!blobCache) {
-        return Blob();
-    }
-    return blobCache->Load(key);
+    return GetBlobCache()->Load(key);
 }
 
 void DeviceBase::StoreCachedBlob(const CacheKey& key, const Blob& blob) {
     if (!blob.Empty()) {
-        BlobCache* blobCache = GetBlobCache();
-        if (blobCache) {
-            blobCache->Store(key, blob);
-        }
+        GetBlobCache()->Store(key, blob);
     }
 }
 
@@ -668,12 +650,11 @@ MaybeError DeviceBase::ValidateIsAlive() const {
     return {};
 }
 
-void DeviceBase::APILoseForTesting() {
+void DeviceBase::APIForceLoss(wgpu::DeviceLostReason reason, const char* message) {
     if (mState != State::Alive) {
         return;
     }
-
-    HandleError(InternalErrorType::Internal, "Device lost for testing");
+    HandleError(InternalErrorType::Internal, message, ToAPI(reason));
 }
 
 DeviceBase::State DeviceBase::GetState() const {
@@ -685,18 +666,12 @@ bool DeviceBase::IsLost() const {
     return mState != State::Alive;
 }
 
-void DeviceBase::TrackObject(ApiObjectBase* object) {
-    ApiObjectList& objectList = mObjectLists[object->GetType()];
-    std::lock_guard<std::mutex> lock(objectList.mutex);
-    object->InsertBefore(objectList.objects.head());
-}
-
-std::mutex* DeviceBase::GetObjectListMutex(ObjectType type) {
-    return &mObjectLists[type].mutex;
+ApiObjectList* DeviceBase::GetObjectTrackingList(ObjectType type) {
+    return &mObjectLists[type];
 }
 
 AdapterBase* DeviceBase::GetAdapter() const {
-    return mAdapter;
+    return mAdapter.Get();
 }
 
 dawn::platform::Platform* DeviceBase::GetPlatform() const {
@@ -711,10 +686,6 @@ ExecutionSerial DeviceBase::GetLastSubmittedCommandSerial() const {
     return mLastSubmittedSerial;
 }
 
-ExecutionSerial DeviceBase::GetFutureSerial() const {
-    return mFutureSerial;
-}
-
 InternalPipelineStore* DeviceBase::GetInternalPipelineStore() {
     return mInternalPipelineStore.get();
 }
@@ -724,32 +695,23 @@ void DeviceBase::IncrementLastSubmittedCommandSerial() {
 }
 
 void DeviceBase::AssumeCommandsComplete() {
-    ExecutionSerial maxSerial =
-        ExecutionSerial(std::max(mLastSubmittedSerial + ExecutionSerial(1), mFutureSerial));
-    mLastSubmittedSerial = maxSerial;
-    mCompletedSerial = maxSerial;
+    // Bump serials so any pending callbacks can be fired.
+    mLastSubmittedSerial++;
+    mCompletedSerial = mLastSubmittedSerial;
 }
 
 bool DeviceBase::IsDeviceIdle() {
     if (mAsyncTaskManager->HasPendingTasks()) {
         return false;
     }
-
-    ExecutionSerial maxSerial = std::max(mLastSubmittedSerial, mFutureSerial);
-    if (mCompletedSerial == maxSerial) {
-        return true;
+    if (!mCallbackTaskManager->IsEmpty()) {
+        return false;
     }
-    return false;
+    return !HasScheduledCommands();
 }
 
 ExecutionSerial DeviceBase::GetPendingCommandSerial() const {
     return mLastSubmittedSerial + ExecutionSerial(1);
-}
-
-void DeviceBase::AddFutureSerial(ExecutionSerial serial) {
-    if (serial > mFutureSerial) {
-        mFutureSerial = serial;
-    }
 }
 
 MaybeError DeviceBase::CheckPassedSerials() {
@@ -1222,9 +1184,27 @@ TextureBase* DeviceBase::APICreateTexture(const TextureDescriptor* descriptor) {
 
 // For Dawn Wire
 
-BufferBase* DeviceBase::APICreateErrorBuffer() {
-    BufferDescriptor desc = {};
-    return BufferBase::MakeError(this, &desc);
+BufferBase* DeviceBase::APICreateErrorBuffer(const BufferDescriptor* desc) {
+    BufferDescriptor fakeDescriptor = *desc;
+    fakeDescriptor.nextInChain = nullptr;
+
+    // The validation errors on BufferDescriptor should be prior to any OOM errors when
+    // MapppedAtCreation == false.
+    MaybeError maybeError = ValidateBufferDescriptor(this, &fakeDescriptor);
+    if (maybeError.IsError()) {
+        ConsumedError(maybeError.AcquireError(), "calling %s.CreateBuffer(%s).", this, desc);
+    } else {
+        const DawnBufferDescriptorErrorInfoFromWireClient* clientErrorInfo = nullptr;
+        FindInChain(desc->nextInChain, &clientErrorInfo);
+        if (clientErrorInfo != nullptr && clientErrorInfo->outOfMemory) {
+            ConsumedError(DAWN_OUT_OF_MEMORY_ERROR("Failed to allocate memory for buffer mapping"));
+        }
+    }
+
+    // Set the size of the error buffer to 0 as this function is called only when an OOM happens at
+    // the client side.
+    fakeDescriptor.size = 0;
+    return BufferBase::MakeError(this, &fakeDescriptor);
 }
 
 ExternalTextureBase* DeviceBase::APICreateErrorExternalTexture() {
@@ -1255,20 +1235,12 @@ bool DeviceBase::APITick() {
 MaybeError DeviceBase::Tick() {
     DAWN_TRY(ValidateIsAlive());
 
-    // to avoid overly ticking, we only want to tick when:
+    // To avoid overly ticking, we only want to tick when:
     // 1. the last submitted serial has moved beyond the completed serial
-    // 2. or the completed serial has not reached the future serial set by the trackers
-    if (mLastSubmittedSerial > mCompletedSerial || mCompletedSerial < mFutureSerial) {
+    // 2. or the backend still has pending commands to submit.
+    if (HasScheduledCommands()) {
         DAWN_TRY(CheckPassedSerials());
         DAWN_TRY(TickImpl());
-
-        // There is no GPU work in flight, we need to move the serials forward so that
-        // so that CPU operations waiting on GPU completion can know they don't have to wait.
-        // AssumeCommandsComplete will assign the max serial we must tick to in order to
-        // fire the awaiting callbacks.
-        if (mCompletedSerial == mLastSubmittedSerial) {
-            AssumeCommandsComplete();
-        }
 
         // TODO(crbug.com/dawn/833): decouple TickImpl from updating the serial so that we can
         // tick the dynamic uploader before the backend resource allocators. This would allow
@@ -1282,6 +1254,11 @@ MaybeError DeviceBase::Tick() {
     FlushCallbackTaskQueue();
 
     return {};
+}
+
+AdapterBase* DeviceBase::APIGetAdapter() {
+    mAdapter->Reference();
+    return mAdapter.Get();
 }
 
 QueueBase* DeviceBase::APIGetQueue() {
@@ -1314,16 +1291,21 @@ void DeviceBase::ApplyFeatures(const DeviceDescriptor* deviceDescriptor) {
     }
 }
 
-bool DeviceBase::IsFeatureEnabled(Feature feature) const {
+bool DeviceBase::HasFeature(Feature feature) const {
     return mEnabledFeatures.IsEnabled(feature);
 }
 
 void DeviceBase::SetWGSLExtensionAllowList() {
     // Set the WGSL extensions allow list based on device's enabled features and other
-    // propority. For example:
-    //     mWGSLExtensionAllowList.insert("InternalExtensionForTesting");
-    if (IsFeatureEnabled(Feature::ChromiumExperimentalDp4a)) {
+    // properties.
+    if (mEnabledFeatures.IsEnabled(Feature::ChromiumExperimentalDp4a)) {
         mWGSLExtensionAllowList.insert("chromium_experimental_dp4a");
+    }
+    if (mEnabledFeatures.IsEnabled(Feature::ShaderF16)) {
+        mWGSLExtensionAllowList.insert("f16");
+    }
+    if (!IsToggleEnabled(Toggle::DisallowUnsafeAPIs)) {
+        mWGSLExtensionAllowList.insert("chromium_disable_uniformity_analysis");
     }
 }
 
@@ -1351,10 +1333,10 @@ size_t DeviceBase::GetDeprecationWarningCountForTesting() {
     return mDeprecationWarnings->count;
 }
 
-void DeviceBase::EmitDeprecationWarning(const char* warning) {
+void DeviceBase::EmitDeprecationWarning(const std::string& message) {
     mDeprecationWarnings->count++;
-    if (mDeprecationWarnings->emitted.insert(warning).second) {
-        dawn::WarningLog() << warning;
+    if (mDeprecationWarnings->emitted.insert(message).second) {
+        dawn::WarningLog() << message;
     }
 }
 
@@ -1435,7 +1417,7 @@ ResultOrError<Ref<BindGroupLayoutBase>> DeviceBase::CreateBindGroupLayout(
 ResultOrError<Ref<BufferBase>> DeviceBase::CreateBuffer(const BufferDescriptor* descriptor) {
     DAWN_TRY(ValidateIsAlive());
     if (IsValidationEnabled()) {
-        DAWN_TRY_CONTEXT(ValidateBufferDescriptor(this, descriptor), "validating %s", descriptor);
+        DAWN_TRY(ValidateBufferDescriptor(this, descriptor));
     }
 
     Ref<BufferBase> buffer;
@@ -1603,7 +1585,8 @@ ResultOrError<Ref<RenderBundleEncoder>> DeviceBase::CreateRenderBundleEncoder(
     const RenderBundleEncoderDescriptor* descriptor) {
     DAWN_TRY(ValidateIsAlive());
     if (IsValidationEnabled()) {
-        DAWN_TRY(ValidateRenderBundleEncoderDescriptor(this, descriptor));
+        DAWN_TRY_CONTEXT(ValidateRenderBundleEncoderDescriptor(this, descriptor),
+                         "validating render bundle encoder descriptor.");
     }
     return RenderBundleEncoder::Create(this, descriptor);
 }
@@ -1791,27 +1774,6 @@ void DeviceBase::SetDefaultToggles() {
     SetToggle(Toggle::DisallowUnsafeAPIs, true);
 }
 
-void DeviceBase::ApplyToggleOverrides(const DawnTogglesDeviceDescriptor* togglesDescriptor) {
-    ASSERT(togglesDescriptor != nullptr);
-
-    for (uint32_t i = 0; i < togglesDescriptor->forceEnabledTogglesCount; ++i) {
-        Toggle toggle = GetAdapter()->GetInstance()->ToggleNameToEnum(
-            togglesDescriptor->forceEnabledToggles[i]);
-        if (toggle != Toggle::InvalidEnum) {
-            mEnabledToggles.Set(toggle, true);
-            mOverridenToggles.Set(toggle, true);
-        }
-    }
-    for (uint32_t i = 0; i < togglesDescriptor->forceDisabledTogglesCount; ++i) {
-        Toggle toggle = GetAdapter()->GetInstance()->ToggleNameToEnum(
-            togglesDescriptor->forceDisabledToggles[i]);
-        if (toggle != Toggle::InvalidEnum) {
-            mEnabledToggles.Set(toggle, false);
-            mOverridenToggles.Set(toggle, true);
-        }
-    }
-}
-
 void DeviceBase::FlushCallbackTaskQueue() {
     if (!mCallbackTaskManager->IsEmpty()) {
         // If a user calls Queue::Submit inside the callback, then the device will be ticked,
@@ -1926,6 +1888,60 @@ bool DeviceBase::MayRequireDuplicationOfIndirectParameters() const {
 bool DeviceBase::ShouldDuplicateParametersForDrawIndirect(
     const RenderPipelineBase* renderPipelineBase) const {
     return false;
+}
+
+uint64_t DeviceBase::GetBufferCopyOffsetAlignmentForDepthStencil() const {
+    // For depth-stencil texture, buffer offset must be a multiple of 4, which is required
+    // by WebGPU and Vulkan SPEC.
+    return 4u;
+}
+
+bool DeviceBase::HasScheduledCommands() const {
+    return mLastSubmittedSerial > mCompletedSerial || HasPendingCommands();
+}
+
+void DeviceBase::AssumeCommandsCompleteForTesting() {
+    AssumeCommandsComplete();
+}
+
+// All prevously submitted works at the moment will supposedly complete at this serial.
+// Internally the serial is computed according to whether frontend and backend have pending
+// commands. There are 4 cases of combination:
+//   1) Frontend(No), Backend(No)
+//   2) Frontend(No), Backend(Yes)
+//   3) Frontend(Yes), Backend(No)
+//   4) Frontend(Yes), Backend(Yes)
+// For case 1, we don't need the serial to track the task as we can ack it right now.
+// For case 2 and 4, there will be at least an eventual submission, so we can use
+// 'GetPendingCommandSerial' as the serial.
+// For case 3, we can't use 'GetPendingCommandSerial' as it won't be submitted surely. Instead we
+// use 'GetLastSubmittedCommandSerial', which must be fired eventually.
+ExecutionSerial DeviceBase::GetScheduledWorkDoneSerial() const {
+    return HasPendingCommands() ? GetPendingCommandSerial() : GetLastSubmittedCommandSerial();
+}
+
+MaybeError DeviceBase::CopyFromStagingToBuffer(StagingBufferBase* source,
+                                               uint64_t sourceOffset,
+                                               BufferBase* destination,
+                                               uint64_t destinationOffset,
+                                               uint64_t size) {
+    DAWN_TRY(
+        CopyFromStagingToBufferImpl(source, sourceOffset, destination, destinationOffset, size));
+    if (GetDynamicUploader()->ShouldFlush()) {
+        ForceEventualFlushOfCommands();
+    }
+    return {};
+}
+
+MaybeError DeviceBase::CopyFromStagingToTexture(const StagingBufferBase* source,
+                                                const TextureDataLayout& src,
+                                                TextureCopy* dst,
+                                                const Extent3D& copySizePixels) {
+    DAWN_TRY(CopyFromStagingToTextureImpl(source, src, dst, copySizePixels));
+    if (GetDynamicUploader()->ShouldFlush()) {
+        ForceEventualFlushOfCommands();
+    }
+    return {};
 }
 
 }  // namespace dawn::native

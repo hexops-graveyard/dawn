@@ -57,11 +57,17 @@ bool IsDerivativeBuiltin(BuiltinType i) {
 }
 
 bool IsTextureBuiltin(BuiltinType i) {
-    return IsImageQueryBuiltin(i) || i == BuiltinType::kTextureLoad ||
-           i == BuiltinType::kTextureGather || i == BuiltinType::kTextureGatherCompare ||
-           i == BuiltinType::kTextureSample || i == BuiltinType::kTextureSampleLevel ||
-           i == BuiltinType::kTextureSampleBias || i == BuiltinType::kTextureSampleCompare ||
-           i == BuiltinType::kTextureSampleCompareLevel || i == BuiltinType::kTextureSampleGrad ||
+    return IsImageQueryBuiltin(i) ||                           //
+           i == BuiltinType::kTextureGather ||                 //
+           i == BuiltinType::kTextureGatherCompare ||          //
+           i == BuiltinType::kTextureLoad ||                   //
+           i == BuiltinType::kTextureSample ||                 //
+           i == BuiltinType::kTextureSampleBaseClampToEdge ||  //
+           i == BuiltinType::kTextureSampleBias ||             //
+           i == BuiltinType::kTextureSampleCompare ||          //
+           i == BuiltinType::kTextureSampleCompareLevel ||     //
+           i == BuiltinType::kTextureSampleGrad ||             //
+           i == BuiltinType::kTextureSampleLevel ||            //
            i == BuiltinType::kTextureStore;
 }
 
@@ -71,15 +77,15 @@ bool IsImageQueryBuiltin(BuiltinType i) {
 }
 
 bool IsDataPackingBuiltin(BuiltinType i) {
-    return i == BuiltinType::kPack4x8snorm || i == BuiltinType::kPack4x8unorm ||
-           i == BuiltinType::kPack2x16snorm || i == BuiltinType::kPack2x16unorm ||
-           i == BuiltinType::kPack2x16float;
+    return i == BuiltinType::kPack4X8Snorm || i == BuiltinType::kPack4X8Unorm ||
+           i == BuiltinType::kPack2X16Snorm || i == BuiltinType::kPack2X16Unorm ||
+           i == BuiltinType::kPack2X16Float;
 }
 
 bool IsDataUnpackingBuiltin(BuiltinType i) {
-    return i == BuiltinType::kUnpack4x8snorm || i == BuiltinType::kUnpack4x8unorm ||
-           i == BuiltinType::kUnpack2x16snorm || i == BuiltinType::kUnpack2x16unorm ||
-           i == BuiltinType::kUnpack2x16float;
+    return i == BuiltinType::kUnpack4X8Snorm || i == BuiltinType::kUnpack4X8Unorm ||
+           i == BuiltinType::kUnpack2X16Snorm || i == BuiltinType::kUnpack2X16Unorm ||
+           i == BuiltinType::kUnpack2X16Float;
 }
 
 bool IsBarrierBuiltin(BuiltinType i) {
@@ -100,7 +106,7 @@ bool IsDP4aBuiltin(BuiltinType i) {
 }
 
 Builtin::Builtin(BuiltinType type,
-                 const sem::Type* return_type,
+                 const type::Type* return_type,
                  utils::VectorRef<Parameter*> parameters,
                  EvaluationStage eval_stage,
                  PipelineStageSet supported_stages,
@@ -153,11 +159,21 @@ bool Builtin::IsDP4a() const {
 }
 
 bool Builtin::HasSideEffects() const {
-    if (IsAtomic() && type_ != sem::BuiltinType::kAtomicLoad) {
-        return true;
-    }
-    if (type_ == sem::BuiltinType::kTextureStore) {
-        return true;
+    switch (type_) {
+        case sem::BuiltinType::kAtomicAdd:
+        case sem::BuiltinType::kAtomicAnd:
+        case sem::BuiltinType::kAtomicCompareExchangeWeak:
+        case sem::BuiltinType::kAtomicExchange:
+        case sem::BuiltinType::kAtomicMax:
+        case sem::BuiltinType::kAtomicMin:
+        case sem::BuiltinType::kAtomicOr:
+        case sem::BuiltinType::kAtomicStore:
+        case sem::BuiltinType::kAtomicSub:
+        case sem::BuiltinType::kAtomicXor:
+        case sem::BuiltinType::kTextureStore:
+            return true;
+        default:
+            break;
     }
     return false;
 }
@@ -166,7 +182,7 @@ ast::Extension Builtin::RequiredExtension() const {
     if (IsDP4a()) {
         return ast::Extension::kChromiumExperimentalDp4A;
     }
-    return ast::Extension::kInvalid;
+    return ast::Extension::kUndefined;
 }
 
 }  // namespace tint::sem

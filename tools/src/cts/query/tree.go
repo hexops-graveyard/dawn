@@ -252,7 +252,7 @@ func NewTree[Data any](entries ...QueryData[Data]) (Tree[Data], error) {
 }
 
 // Add adds a new data to the tree.
-// Returns ErrDuplicateData if the tree already contains a data for the given
+// Returns ErrDuplicateData if the tree already contains a data for the given node at query
 func (t *Tree[Data]) Add(q Query, d Data) error {
 	node := &t.TreeNode
 	q.Walk(func(q Query, t Target, n string) error {
@@ -264,6 +264,37 @@ func (t *Tree[Data]) Add(q Query, d Data) error {
 	}
 	node.Data = &d
 	return nil
+}
+
+// Split adds a new data to the tree, clearing any ancestor node's data.
+// Returns ErrDuplicateData if the tree already contains a data for the given node at query
+func (t *Tree[Data]) Split(q Query, d Data) error {
+	node := &t.TreeNode
+	q.Walk(func(q Query, t Target, n string) error {
+		delete(node.Children, TreeNodeChildKey{Name: "*", Target: t})
+		node.Data = nil
+		node = node.getOrCreateChild(TreeNodeChildKey{n, t})
+		return nil
+	})
+	if node.Data != nil {
+		return ErrDuplicateData{node.Query}
+	}
+	node.Data = &d
+	return nil
+}
+
+// GetOrCreate returns existing, or adds a new data to the tree.
+func (t *Tree[Data]) GetOrCreate(q Query, create func() Data) *Data {
+	node := &t.TreeNode
+	q.Walk(func(q Query, t Target, n string) error {
+		node = node.getOrCreateChild(TreeNodeChildKey{n, t})
+		return nil
+	})
+	if node.Data == nil {
+		data := create()
+		node.Data = &data
+	}
+	return node.Data
 }
 
 // Reduce reduces the tree using the Merger function f.
@@ -383,12 +414,12 @@ func (t *Tree[Data]) List() []QueryData[Data] {
 // Glob returns a list of QueryData's for every node that is under the given
 // query, which holds data.
 // Glob handles wildcards as well as non-wildcard queries:
-//  * A non-wildcard query will match the node itself, along with every node
-//    under the query. For example: 'a:b' will match every File and Test
-//    node under 'a:b', including 'a:b' itself.
-//  * A wildcard Query will include every node under the parent node with the
-//    matching Query target. For example: 'a:b:*' will match every Test
-//    node (excluding File nodes) under 'a:b', 'a:b' will not be included.
+//   - A non-wildcard query will match the node itself, along with every node
+//     under the query. For example: 'a:b' will match every File and Test
+//     node under 'a:b', including 'a:b' itself.
+//   - A wildcard Query will include every node under the parent node with the
+//     matching Query target. For example: 'a:b:*' will match every Test
+//     node (excluding File nodes) under 'a:b', 'a:b' will not be included.
 func (t *Tree[Data]) Glob(q Query) ([]QueryData[Data], error) {
 	out := []QueryData[Data]{}
 	err := t.glob(q, func(n *TreeNode[Data]) error {

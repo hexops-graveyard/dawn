@@ -17,7 +17,7 @@
 #include <string>
 #include <tuple>
 
-#include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 #include "src/tint/utils/bitcast.h"
 
@@ -79,22 +79,30 @@ static_assert(std::is_same_v<VectorCommonType<const C2a*, C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<C2a*, const C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<const C2a*, const C2b*>, const C1*>);
 
-static_assert(CanReinterpretSlice<const C0*, C0*>, "apply const");
-static_assert(!CanReinterpretSlice<C0*, const C0*>, "remove const");
-static_assert(CanReinterpretSlice<C0*, C1*>, "up cast");
-static_assert(CanReinterpretSlice<const C0*, const C1*>, "up cast");
-static_assert(CanReinterpretSlice<const C0*, C1*>, "up cast, apply const");
-static_assert(!CanReinterpretSlice<C0*, const C1*>, "up cast, remove const");
-static_assert(!CanReinterpretSlice<C1*, C0*>, "down cast");
-static_assert(!CanReinterpretSlice<const C1*, const C0*>, "down cast");
-static_assert(!CanReinterpretSlice<const C1*, C0*>, "down cast, apply const");
-static_assert(!CanReinterpretSlice<C1*, const C0*>, "down cast, remove const");
-static_assert(!CanReinterpretSlice<const C1*, C0*>, "down cast, apply const");
-static_assert(!CanReinterpretSlice<C1*, const C0*>, "down cast, remove const");
-static_assert(!CanReinterpretSlice<C2a*, C2b*>, "sideways cast");
-static_assert(!CanReinterpretSlice<const C2a*, const C2b*>, "sideways cast");
-static_assert(!CanReinterpretSlice<const C2a*, C2b*>, "sideways cast, apply const");
-static_assert(!CanReinterpretSlice<C2a*, const C2b*>, "sideways cast, remove const");
+static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, C0*>, "apply const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C0*, const C0*>, "remove const");
+static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, C0*, C1*>, "up cast");
+static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, const C1*>, "up cast");
+static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, C1*>, "up cast, apply const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C0*, const C1*>,
+              "up cast, remove const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, C0*>, "down cast");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, const C0*>, "down cast");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, C0*>,
+              "down cast, apply const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, const C0*>,
+              "down cast, remove const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, C0*>,
+              "down cast, apply const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, const C0*>,
+              "down cast, remove const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C2a*, C2b*>, "sideways cast");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C2a*, const C2b*>,
+              "sideways cast");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C2a*, C2b*>,
+              "sideways cast, apply const");
+static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C2a*, const C2b*>,
+              "sideways cast, remove const");
 
 ////////////////////////////////////////////////////////////////////////////////
 // TintVectorTest
@@ -144,6 +152,17 @@ TEST(TintVectorTest, InitializerList_WithSpill) {
 
 TEST(TintVectorTest, InitializerList_NoSmallArray) {
     Vector<std::string, 0> vec{"one", "two"};
+    EXPECT_EQ(vec.Length(), 2u);
+    EXPECT_EQ(vec.Capacity(), 2u);
+    EXPECT_EQ(vec[0], "one");
+    EXPECT_EQ(vec[1], "two");
+    EXPECT_TRUE(AllExternallyHeld(vec));
+}
+
+TEST(TintVectorTest, Push_NoSmallArray) {
+    Vector<std::string, 0> vec;
+    vec.Push("one");
+    vec.Push("two");
     EXPECT_EQ(vec.Length(), 2u);
     EXPECT_EQ(vec.Capacity(), 2u);
     EXPECT_EQ(vec[0], "one");
@@ -1784,6 +1803,21 @@ TEST(TintVectorTest, ConstBeginEnd_WithSpill) {
     EXPECT_EQ(vec.end(), &vec[0] + 3);
 }
 
+TEST(TintVectorTest, Equality) {
+    EXPECT_EQ((Vector<int, 2>{1, 2}), (Vector<int, 2>{1, 2}));
+    EXPECT_EQ((Vector<int, 1>{1, 2}), (Vector<int, 3>{1, 2}));
+    EXPECT_NE((Vector{1, 2}), (Vector{1}));
+    EXPECT_NE((Vector{1}), (Vector{1, 2}));
+    EXPECT_NE((Vector{1, 2}), (Vector{2, 1}));
+    EXPECT_NE((Vector{2, 1}), (Vector{1, 2}));
+}
+
+TEST(TintVectorTest, ostream) {
+    std::stringstream ss;
+    ss << Vector{1, 2, 3};
+    EXPECT_EQ(ss.str(), "[1, 2, 3]");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // TintVectorRefTest
 ////////////////////////////////////////////////////////////////////////////////
@@ -1975,12 +2009,36 @@ TEST(TintVectorRefTest, MoveVector_UpcastAndAddConst) {
     EXPECT_TRUE(AllExternallyHeld(vec_b));  // Moved, not copied
 }
 
+TEST(TintVectorRefTest, MoveVector_ReinterpretCast) {
+    C2a c2a;
+    C2b c2b;
+    Vector<C0*, 1> vec_a{&c2a, &c2b};
+    VectorRef<const C0*> vec_ref(std::move(vec_a));  // Move
+    EXPECT_EQ(vec_ref[0], &c2a);
+    EXPECT_EQ(vec_ref[1], &c2b);
+    VectorRef<const C1*> reinterpret = vec_ref.ReinterpretCast<const C1*>();
+    EXPECT_EQ(reinterpret[0], &c2a);
+    EXPECT_EQ(reinterpret[1], &c2b);
+}
+
 TEST(TintVectorRefTest, Index) {
     Vector<std::string, 2> vec{"one", "two"};
     VectorRef<std::string> vec_ref(vec);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(vec_ref[0])>>);
     EXPECT_EQ(vec_ref[0], "one");
     EXPECT_EQ(vec_ref[1], "two");
+}
+
+TEST(TintVectorRefTest, Sort) {
+    Vector vec{1, 5, 3, 4, 2};
+    vec.Sort();
+    EXPECT_THAT(vec, testing::ElementsAre(1, 2, 3, 4, 5));
+}
+
+TEST(TintVectorRefTest, SortPredicate) {
+    Vector vec{1, 5, 3, 4, 2};
+    vec.Sort([](int a, int b) { return b < a; });
+    EXPECT_THAT(vec, testing::ElementsAre(5, 4, 3, 2, 1));
 }
 
 TEST(TintVectorRefTest, ConstIndex) {
@@ -2015,15 +2073,6 @@ TEST(TintVectorRefTest, IsEmpty) {
 
 TEST(TintVectorRefTest, FrontBack) {
     Vector<std::string, 3> vec{"front", "mid", "back"};
-    VectorRef<std::string> vec_ref(vec);
-    static_assert(!std::is_const_v<std::remove_reference_t<decltype(vec_ref.Front())>>);
-    static_assert(!std::is_const_v<std::remove_reference_t<decltype(vec_ref.Back())>>);
-    EXPECT_EQ(vec_ref.Front(), "front");
-    EXPECT_EQ(vec_ref.Back(), "back");
-}
-
-TEST(TintVectorRefTest, ConstFrontBack) {
-    Vector<std::string, 3> vec{"front", "mid", "back"};
     const VectorRef<std::string> vec_ref(vec);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(vec_ref.Front())>>);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(vec_ref.Back())>>);
@@ -2033,15 +2082,6 @@ TEST(TintVectorRefTest, ConstFrontBack) {
 
 TEST(TintVectorRefTest, BeginEnd) {
     Vector<std::string, 3> vec{"front", "mid", "back"};
-    VectorRef<std::string> vec_ref(vec);
-    static_assert(!std::is_const_v<std::remove_reference_t<decltype(*vec_ref.begin())>>);
-    static_assert(!std::is_const_v<std::remove_reference_t<decltype(*vec_ref.end())>>);
-    EXPECT_EQ(vec_ref.begin(), &vec[0]);
-    EXPECT_EQ(vec_ref.end(), &vec[0] + 3);
-}
-
-TEST(TintVectorRefTest, ConstBeginEnd) {
-    Vector<std::string, 3> vec{"front", "mid", "back"};
     const VectorRef<std::string> vec_ref(vec);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(*vec_ref.begin())>>);
     static_assert(std::is_const_v<std::remove_reference_t<decltype(*vec_ref.end())>>);
@@ -2049,6 +2089,13 @@ TEST(TintVectorRefTest, ConstBeginEnd) {
     EXPECT_EQ(vec_ref.end(), &vec[0] + 3);
 }
 
+TEST(TintVectorRefTest, ostream) {
+    std::stringstream ss;
+    Vector vec{1, 2, 3};
+    const VectorRef<int> vec_ref(vec);
+    ss << vec_ref;
+    EXPECT_EQ(ss.str(), "[1, 2, 3]");
+}
 }  // namespace
 }  // namespace tint::utils
 

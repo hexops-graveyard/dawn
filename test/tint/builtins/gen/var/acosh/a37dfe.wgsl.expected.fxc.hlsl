@@ -5,7 +5,7 @@ float16_t tint_acosh(float16_t x) {
 }
 
 void acosh_a37dfe() {
-  float16_t arg_0 = float16_t(0.0h);
+  float16_t arg_0 = float16_t(2.0h);
   float16_t res = tint_acosh(arg_0);
 }
 
@@ -35,6 +35,3 @@ void compute_main() {
   acosh_a37dfe();
   return;
 }
-FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x000001D63F571640(1,1-9): error X3000: unrecognized identifier 'float16_t'
-

@@ -20,19 +20,19 @@ struct tint_symbol_2 {
 void main_inner(uint3 GlobalInvocationID) {
   int2 tint_tmp;
   src.GetDimensions(tint_tmp.x, tint_tmp.y);
-  int2 size = tint_tmp;
-  int2 dstTexCoord = int2(GlobalInvocationID.xy);
-  int2 srcTexCoord = dstTexCoord;
+  uint2 size = tint_tmp;
+  uint2 dstTexCoord = GlobalInvocationID.xy;
+  uint2 srcTexCoord = dstTexCoord;
   if ((uniforms[0].x == 1u)) {
-    srcTexCoord.y = ((size.y - dstTexCoord.y) - 1);
+    srcTexCoord.y = ((size.y - dstTexCoord.y) - 1u);
   }
-  float4 srcColor = src.Load(int3(srcTexCoord, 0));
-  float4 dstColor = tint_symbol.Load(int3(dstTexCoord, 0));
+  float4 srcColor = src.Load(uint3(srcTexCoord, uint(0)));
+  float4 dstColor = tint_symbol.Load(uint3(dstTexCoord, uint(0)));
   bool success = true;
   uint4 srcColorBits = uint4(0u, 0u, 0u, 0u);
   uint4 dstColorBits = uint4(dstColor);
   {
-    [loop] for(uint i = 0u; (i < uniforms[0].w); i = (i + 1u)) {
+    for(uint i = 0u; (i < uniforms[0].w); i = (i + 1u)) {
       const uint tint_symbol_3 = ConvertToFp16FloatValue(srcColor[i]);
       set_uint4(srcColorBits, i, tint_symbol_3);
       bool tint_tmp_1 = success;

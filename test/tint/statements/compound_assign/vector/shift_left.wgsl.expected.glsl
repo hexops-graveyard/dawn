@@ -8,10 +8,11 @@ struct S {
   ivec4 a;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  ivec4 a;
+layout(binding = 0, std430) buffer v_block_ssbo {
+  S inner;
 } v;
+
 void foo() {
-  v.a = (v.a << uvec4(2u));
+  v.inner.a = (v.inner.a << uvec4(2u));
 }
 

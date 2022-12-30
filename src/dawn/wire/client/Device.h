@@ -39,11 +39,9 @@ class Device final : public ObjectBase {
     void SetLoggingCallback(WGPULoggingCallback errorCallback, void* errorUserdata);
     void SetDeviceLostCallback(WGPUDeviceLostCallback errorCallback, void* errorUserdata);
     void InjectError(WGPUErrorType type, const char* message);
-    void PushErrorScope(WGPUErrorFilter filter);
     bool PopErrorScope(WGPUErrorCallback callback, void* userdata);
     WGPUBuffer CreateBuffer(const WGPUBufferDescriptor* descriptor);
-    WGPUBuffer CreateErrorBuffer();
-    WGPUComputePipeline CreateComputePipeline(WGPUComputePipelineDescriptor const* descriptor);
+    WGPUBuffer CreateErrorBuffer(const WGPUBufferDescriptor* descriptor);
     void CreateComputePipelineAsync(WGPUComputePipelineDescriptor const* descriptor,
                                     WGPUCreateComputePipelineAsyncCallback callback,
                                     void* userdata);
@@ -71,6 +69,7 @@ class Device final : public ObjectBase {
     void SetLimits(const WGPUSupportedLimits* limits);
     void SetFeatures(const WGPUFeatureName* features, uint32_t featuresCount);
 
+    WGPUAdapter GetAdapter();  // Not implemented in the wire.
     WGPUQueue GetQueue();
 
     void CancelCallbacksForDisconnect() override;

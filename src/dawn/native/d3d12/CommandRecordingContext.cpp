@@ -60,6 +60,7 @@ MaybeError CommandRecordingContext::Open(ID3D12Device* d3d12Device,
     }
 
     mIsOpen = true;
+    mNeedsSubmit = false;
 
     return {};
 }
@@ -124,10 +125,11 @@ MaybeError CommandRecordingContext::ExecuteCommandList(Device* device) {
         device->GetCommandQueue()->ExecuteCommandLists(1, &d3d12CommandList);
 
         for (Texture* texture : mSharedTextures) {
-            texture->SynchronizeImportedTextureAfterUse();
+            DAWN_TRY(texture->SynchronizeImportedTextureAfterUse());
         }
 
         mIsOpen = false;
+        mNeedsSubmit = false;
         mSharedTextures.clear();
         mHeapsPendingUsage.clear();
         mTempBuffers.clear();
@@ -162,6 +164,7 @@ void CommandRecordingContext::Release() {
     mD3d12CommandList.Reset();
     mD3d12CommandList4.Reset();
     mIsOpen = false;
+    mNeedsSubmit = false;
     mSharedTextures.clear();
     mHeapsPendingUsage.clear();
     mTempBuffers.clear();
@@ -169,6 +172,14 @@ void CommandRecordingContext::Release() {
 
 bool CommandRecordingContext::IsOpen() const {
     return mIsOpen;
+}
+
+bool CommandRecordingContext::NeedsSubmit() const {
+    return mNeedsSubmit;
+}
+
+void CommandRecordingContext::SetNeedsSubmit() {
+    mNeedsSubmit = true;
 }
 
 void CommandRecordingContext::AddToTempBuffers(Ref<Buffer> tempBuffer) {

@@ -55,6 +55,10 @@ class Inspector {
     /// @returns vector of entry point information
     std::vector<EntryPoint> GetEntryPoints();
 
+    /// @param entry_point name of the entry point to get information about
+    /// @returns the entry point information
+    EntryPoint GetEntryPoint(const std::string& entry_point);
+
     /// @returns map of override identifier to initial value
     std::map<OverrideId, Scalar> GetOverrideDefaultValues();
 
@@ -122,7 +126,7 @@ class Inspector {
     /// @param entry_point name of the entry point to get information about.
     /// @returns vector of all of the sampler/texture sampling pairs that are used
     /// by that entry point.
-    std::vector<sem::SamplerTexturePair> GetSamplerTextureUses(const std::string& entry_point);
+    utils::VectorRef<sem::SamplerTexturePair> GetSamplerTextureUses(const std::string& entry_point);
 
     /// @param entry_point name of the entry point to get information about.
     /// @param placeholder the sampler binding point to use for texture-only
@@ -153,7 +157,8 @@ class Inspector {
   private:
     const Program* program_;
     diag::List diagnostics_;
-    std::unique_ptr<std::unordered_map<std::string, utils::UniqueVector<sem::SamplerTexturePair>>>
+    std::unique_ptr<
+        std::unordered_map<std::string, utils::UniqueVector<sem::SamplerTexturePair, 4>>>
         sampler_targets_;
 
     /// @param name name of the entry point to find
@@ -167,17 +172,19 @@ class Inspector {
     /// @param name the name of the variable being added
     /// @param type the type of the variable
     /// @param attributes the variable attributes
+    /// @param location the location value if provided
     /// @param variables the list to add the variables to
     void AddEntryPointInOutVariables(std::string name,
-                                     const sem::Type* type,
+                                     const type::Type* type,
                                      utils::VectorRef<const ast::Attribute*> attributes,
+                                     std::optional<uint32_t> location,
                                      std::vector<StageVariable>& variables) const;
 
     /// Recursively determine if the type contains builtin.
     /// If `type` is a struct, recurse into members to check for the attribute.
     /// Otherwise, check `attributes` for the attribute.
     bool ContainsBuiltin(ast::BuiltinValue builtin,
-                         const sem::Type* type,
+                         const type::Type* type,
                          utils::VectorRef<const ast::Attribute*> attributes) const;
 
     /// Gathers all the texture resource bindings of the given type for the given
@@ -229,6 +236,10 @@ class Inspector {
     /// whenever a set of expressions are resolved to globals.
     template <size_t N, typename F>
     void GetOriginatingResources(std::array<const ast::Expression*, N> exprs, F&& cb);
+
+    /// @param func the function of the entry point. Must be non-nullptr and true for IsEntryPoint()
+    /// @returns the entry point information
+    EntryPoint GetEntryPoint(const tint::ast::Function* func);
 };
 
 }  // namespace tint::inspector

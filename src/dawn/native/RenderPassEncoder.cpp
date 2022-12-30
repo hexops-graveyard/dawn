@@ -59,7 +59,8 @@ RenderPassEncoder::RenderPassEncoder(DeviceBase* device,
                                      uint32_t renderTargetWidth,
                                      uint32_t renderTargetHeight,
                                      bool depthReadOnly,
-                                     bool stencilReadOnly)
+                                     bool stencilReadOnly,
+                                     std::function<void()> endCallback)
     : RenderEncoderBase(device,
                         descriptor->label,
                         encodingContext,
@@ -69,14 +70,15 @@ RenderPassEncoder::RenderPassEncoder(DeviceBase* device,
       mCommandEncoder(commandEncoder),
       mRenderTargetWidth(renderTargetWidth),
       mRenderTargetHeight(renderTargetHeight),
-      mOcclusionQuerySet(descriptor->occlusionQuerySet) {
+      mOcclusionQuerySet(descriptor->occlusionQuerySet),
+      mEndCallback(std::move(endCallback)) {
     mUsageTracker = std::move(usageTracker);
     const RenderPassDescriptorMaxDrawCount* maxDrawCountInfo = nullptr;
     FindInChain(descriptor->nextInChain, &maxDrawCountInfo);
     if (maxDrawCountInfo) {
         mMaxDrawCount = maxDrawCountInfo->maxDrawCount;
     }
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 // static
@@ -89,11 +91,12 @@ Ref<RenderPassEncoder> RenderPassEncoder::Create(DeviceBase* device,
                                                  uint32_t renderTargetWidth,
                                                  uint32_t renderTargetHeight,
                                                  bool depthReadOnly,
-                                                 bool stencilReadOnly) {
+                                                 bool stencilReadOnly,
+                                                 std::function<void()> endCallback) {
     return AcquireRef(new RenderPassEncoder(device, descriptor, commandEncoder, encodingContext,
                                             std::move(usageTracker), std::move(attachmentState),
                                             renderTargetWidth, renderTargetHeight, depthReadOnly,
-                                            stencilReadOnly));
+                                            stencilReadOnly, std::move(endCallback)));
 }
 
 RenderPassEncoder::RenderPassEncoder(DeviceBase* device,
@@ -157,10 +160,17 @@ void RenderPassEncoder::APIEnd() {
             return {};
         },
         "encoding %s.End().", this);
+
+    if (mEndCallback) {
+        mEndCallback();
+    }
 }
 
 void RenderPassEncoder::APIEndPass() {
-    GetDevice()->EmitDeprecationWarning("endPass() has been deprecated. Use end() instead.");
+    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
+            GetDevice(), "endPass() has been deprecated. Use end() instead."))) {
+        return;
+    }
     APIEnd();
 }
 
@@ -400,7 +410,8 @@ void RenderPassEncoder::APIWriteTimestamp(QuerySetBase* querySet, uint32_t query
         this,
         [&](CommandAllocator* allocator) -> MaybeError {
             if (IsValidationEnabled()) {
-                DAWN_TRY(ValidateTimestampQuery(GetDevice(), querySet, queryIndex));
+                DAWN_TRY(ValidateTimestampQuery(GetDevice(), querySet, queryIndex,
+                                                Feature::TimestampQueryInsidePasses));
                 DAWN_TRY_CONTEXT(ValidateQueryIndexOverwrite(
                                      querySet, queryIndex, mUsageTracker.GetQueryAvailabilityMap()),
                                  "validating the timestamp query index (%u) of %s", queryIndex,

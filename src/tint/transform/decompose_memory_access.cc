@@ -26,14 +26,14 @@
 #include "src/tint/ast/type_name.h"
 #include "src/tint/ast/unary_op.h"
 #include "src/tint/program_builder.h"
-#include "src/tint/sem/array.h"
-#include "src/tint/sem/atomic.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/member_accessor_expression.h"
-#include "src/tint/sem/reference.h"
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/variable.h"
+#include "src/tint/type/array.h"
+#include "src/tint/type/atomic.h"
+#include "src/tint/type/reference.h"
 #include "src/tint/utils/block_allocator.h"
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/map.h"
@@ -46,6 +46,18 @@ TINT_INSTANTIATE_TYPEINFO(tint::transform::DecomposeMemoryAccess::Intrinsic);
 namespace tint::transform {
 
 namespace {
+
+bool ShouldRun(const Program* program) {
+    for (auto* decl : program->AST().GlobalDeclarations()) {
+        if (auto* var = program->Sem().Get<sem::Variable>(decl)) {
+            if (var->AddressSpace() == ast::AddressSpace::kStorage ||
+                var->AddressSpace() == ast::AddressSpace::kUniform) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 
 /// Offset is a simple ast::Expression builder interface, used to build byte
 /// offsets for storage and uniform buffer accesses.
@@ -64,7 +76,7 @@ struct OffsetExpr : Offset {
     const ast::Expression* Build(CloneContext& ctx) const override {
         auto* type = ctx.src->Sem().Get(expr)->Type()->UnwrapRef();
         auto* res = ctx.Clone(expr);
-        if (!type->Is<sem::U32>()) {
+        if (!type->Is<type::U32>()) {
             res = ctx.dst->Construct<u32>(res);
         }
         return res;
@@ -97,27 +109,27 @@ struct OffsetBinOp : Offset {
 
 /// LoadStoreKey is the unordered map key to a load or store intrinsic.
 struct LoadStoreKey {
-    ast::StorageClass const storage_class;  // buffer storage class
+    ast::AddressSpace const address_space;  // buffer address space
     ast::Access const access;               // buffer access
-    sem::Type const* buf_ty = nullptr;      // buffer type
-    sem::Type const* el_ty = nullptr;       // element type
+    type::Type const* buf_ty = nullptr;     // buffer type
+    type::Type const* el_ty = nullptr;      // element type
     bool operator==(const LoadStoreKey& rhs) const {
-        return storage_class == rhs.storage_class && access == rhs.access && buf_ty == rhs.buf_ty &&
+        return address_space == rhs.address_space && access == rhs.access && buf_ty == rhs.buf_ty &&
                el_ty == rhs.el_ty;
     }
     struct Hasher {
         inline std::size_t operator()(const LoadStoreKey& u) const {
-            return utils::Hash(u.storage_class, u.access, u.buf_ty, u.el_ty);
+            return utils::Hash(u.address_space, u.access, u.buf_ty, u.el_ty);
         }
     };
 };
 
 /// AtomicKey is the unordered map key to an atomic intrinsic.
 struct AtomicKey {
-    ast::Access const access;           // buffer access
-    sem::Type const* buf_ty = nullptr;  // buffer type
-    sem::Type const* el_ty = nullptr;   // element type
-    sem::BuiltinType const op;          // atomic op
+    ast::Access const access;            // buffer access
+    type::Type const* buf_ty = nullptr;  // buffer type
+    type::Type const* el_ty = nullptr;   // element type
+    sem::BuiltinType const op;           // atomic op
     bool operator==(const AtomicKey& rhs) const {
         return access == rhs.access && buf_ty == rhs.buf_ty && el_ty == rhs.el_ty && op == rhs.op;
     }
@@ -128,60 +140,76 @@ struct AtomicKey {
     };
 };
 
-bool IntrinsicDataTypeFor(const sem::Type* ty, DecomposeMemoryAccess::Intrinsic::DataType& out) {
-    if (ty->Is<sem::I32>()) {
+bool IntrinsicDataTypeFor(const type::Type* ty, DecomposeMemoryAccess::Intrinsic::DataType& out) {
+    if (ty->Is<type::I32>()) {
         out = DecomposeMemoryAccess::Intrinsic::DataType::kI32;
         return true;
     }
-    if (ty->Is<sem::U32>()) {
+    if (ty->Is<type::U32>()) {
         out = DecomposeMemoryAccess::Intrinsic::DataType::kU32;
         return true;
     }
-    if (ty->Is<sem::F32>()) {
+    if (ty->Is<type::F32>()) {
         out = DecomposeMemoryAccess::Intrinsic::DataType::kF32;
         return true;
     }
-    if (auto* vec = ty->As<sem::Vector>()) {
+    if (ty->Is<type::F16>()) {
+        out = DecomposeMemoryAccess::Intrinsic::DataType::kF16;
+        return true;
+    }
+    if (auto* vec = ty->As<type::Vector>()) {
         switch (vec->Width()) {
             case 2:
-                if (vec->type()->Is<sem::I32>()) {
+                if (vec->type()->Is<type::I32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec2I32;
                     return true;
                 }
-                if (vec->type()->Is<sem::U32>()) {
+                if (vec->type()->Is<type::U32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec2U32;
                     return true;
                 }
-                if (vec->type()->Is<sem::F32>()) {
+                if (vec->type()->Is<type::F32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec2F32;
+                    return true;
+                }
+                if (vec->type()->Is<type::F16>()) {
+                    out = DecomposeMemoryAccess::Intrinsic::DataType::kVec2F16;
                     return true;
                 }
                 break;
             case 3:
-                if (vec->type()->Is<sem::I32>()) {
+                if (vec->type()->Is<type::I32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec3I32;
                     return true;
                 }
-                if (vec->type()->Is<sem::U32>()) {
+                if (vec->type()->Is<type::U32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec3U32;
                     return true;
                 }
-                if (vec->type()->Is<sem::F32>()) {
+                if (vec->type()->Is<type::F32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec3F32;
+                    return true;
+                }
+                if (vec->type()->Is<type::F16>()) {
+                    out = DecomposeMemoryAccess::Intrinsic::DataType::kVec3F16;
                     return true;
                 }
                 break;
             case 4:
-                if (vec->type()->Is<sem::I32>()) {
+                if (vec->type()->Is<type::I32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec4I32;
                     return true;
                 }
-                if (vec->type()->Is<sem::U32>()) {
+                if (vec->type()->Is<type::U32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec4U32;
                     return true;
                 }
-                if (vec->type()->Is<sem::F32>()) {
+                if (vec->type()->Is<type::F32>()) {
                     out = DecomposeMemoryAccess::Intrinsic::DataType::kVec4F32;
+                    return true;
+                }
+                if (vec->type()->Is<type::F16>()) {
+                    out = DecomposeMemoryAccess::Intrinsic::DataType::kVec4F16;
                     return true;
                 }
                 break;
@@ -195,36 +223,36 @@ bool IntrinsicDataTypeFor(const sem::Type* ty, DecomposeMemoryAccess::Intrinsic:
 /// @returns a DecomposeMemoryAccess::Intrinsic attribute that can be applied
 /// to a stub function to load the type `ty`.
 DecomposeMemoryAccess::Intrinsic* IntrinsicLoadFor(ProgramBuilder* builder,
-                                                   ast::StorageClass storage_class,
-                                                   const sem::Type* ty) {
+                                                   ast::AddressSpace address_space,
+                                                   const type::Type* ty) {
     DecomposeMemoryAccess::Intrinsic::DataType type;
     if (!IntrinsicDataTypeFor(ty, type)) {
         return nullptr;
     }
     return builder->ASTNodes().Create<DecomposeMemoryAccess::Intrinsic>(
         builder->ID(), builder->AllocateNodeID(), DecomposeMemoryAccess::Intrinsic::Op::kLoad,
-        storage_class, type);
+        address_space, type);
 }
 
 /// @returns a DecomposeMemoryAccess::Intrinsic attribute that can be applied
 /// to a stub function to store the type `ty`.
 DecomposeMemoryAccess::Intrinsic* IntrinsicStoreFor(ProgramBuilder* builder,
-                                                    ast::StorageClass storage_class,
-                                                    const sem::Type* ty) {
+                                                    ast::AddressSpace address_space,
+                                                    const type::Type* ty) {
     DecomposeMemoryAccess::Intrinsic::DataType type;
     if (!IntrinsicDataTypeFor(ty, type)) {
         return nullptr;
     }
     return builder->ASTNodes().Create<DecomposeMemoryAccess::Intrinsic>(
         builder->ID(), builder->AllocateNodeID(), DecomposeMemoryAccess::Intrinsic::Op::kStore,
-        storage_class, type);
+        address_space, type);
 }
 
 /// @returns a DecomposeMemoryAccess::Intrinsic attribute that can be applied
 /// to a stub function for the atomic op and the type `ty`.
 DecomposeMemoryAccess::Intrinsic* IntrinsicAtomicFor(ProgramBuilder* builder,
                                                      sem::BuiltinType ity,
-                                                     const sem::Type* ty) {
+                                                     const type::Type* ty) {
     auto op = DecomposeMemoryAccess::Intrinsic::Op::kAtomicLoad;
     switch (ity) {
         case sem::BuiltinType::kAtomicLoad:
@@ -272,14 +300,14 @@ DecomposeMemoryAccess::Intrinsic* IntrinsicAtomicFor(ProgramBuilder* builder,
         return nullptr;
     }
     return builder->ASTNodes().Create<DecomposeMemoryAccess::Intrinsic>(
-        builder->ID(), builder->AllocateNodeID(), op, ast::StorageClass::kStorage, type);
+        builder->ID(), builder->AllocateNodeID(), op, ast::AddressSpace::kStorage, type);
 }
 
 /// BufferAccess describes a single storage or uniform buffer access
 struct BufferAccess {
     sem::Expression const* var = nullptr;  // Storage buffer variable
     Offset const* offset = nullptr;        // The byte offset on var
-    sem::Type const* type = nullptr;       // The type of the access
+    type::Type const* type = nullptr;      // The type of the access
     operator bool() const { return var; }  // Returns true if valid
 };
 
@@ -291,7 +319,7 @@ struct Store {
 
 }  // namespace
 
-/// State holds the current transform state
+/// PIMPL state for the transform
 struct DecomposeMemoryAccess::State {
     /// The clone context
     CloneContext& ctx;
@@ -328,7 +356,7 @@ struct DecomposeMemoryAccess::State {
     /// @returns an Offset for the given ast::Expression
     const Offset* ToOffset(const ast::Expression* expr) {
         if (auto* lit = expr->As<ast::IntLiteralExpression>()) {
-            if (lit->value > 0) {
+            if (lit->value >= 0) {
                 return offsets_.Create<OffsetLiteral>(static_cast<uint32_t>(lit->value));
             }
         }
@@ -433,23 +461,26 @@ struct DecomposeMemoryAccess::State {
     /// @param el_ty the storage or uniform buffer element type
     /// @param var_user the variable user
     /// @return the name of the function that performs the load
-    Symbol LoadFunc(const sem::Type* buf_ty,
-                    const sem::Type* el_ty,
+    Symbol LoadFunc(const type::Type* buf_ty,
+                    const type::Type* el_ty,
                     const sem::VariableUser* var_user) {
-        auto storage_class = var_user->Variable()->StorageClass();
+        auto address_space = var_user->Variable()->AddressSpace();
         auto access = var_user->Variable()->Access();
+        if (address_space != ast::AddressSpace::kStorage) {
+            access = ast::Access::kUndefined;
+        }
         return utils::GetOrCreate(
-            load_funcs, LoadStoreKey{storage_class, access, buf_ty, el_ty}, [&] {
+            load_funcs, LoadStoreKey{address_space, access, buf_ty, el_ty}, [&] {
                 utils::Vector params{
                     b.Param("buffer",
-                            b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), storage_class, access),
+                            b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), address_space, access),
                             utils::Vector{b.Disable(ast::DisabledValidation::kFunctionParameter)}),
                     b.Param("offset", b.ty.u32()),
                 };
 
                 auto name = b.Sym();
 
-                if (auto* intrinsic = IntrinsicLoadFor(ctx.dst, storage_class, el_ty)) {
+                if (auto* intrinsic = IntrinsicLoadFor(ctx.dst, address_space, el_ty)) {
                     auto* el_ast_ty = CreateASTTypeFor(ctx, el_ty);
                     auto* func = b.create<ast::Function>(
                         name, params, el_ast_ty, nullptr,
@@ -459,7 +490,7 @@ struct DecomposeMemoryAccess::State {
                         },
                         utils::Empty);
                     b.AST().AddFunction(func);
-                } else if (auto* arr_ty = el_ty->As<sem::Array>()) {
+                } else if (auto* arr_ty = el_ty->As<type::Array>()) {
                     // fn load_func(buffer : buf_ty, offset : u32) -> array<T, N> {
                     //   var arr : array<T, N>;
                     //   for (var i = 0u; i < array_count; i = i + 1) {
@@ -469,10 +500,20 @@ struct DecomposeMemoryAccess::State {
                     // }
                     auto load = LoadFunc(buf_ty, arr_ty->ElemType()->UnwrapRef(), var_user);
                     auto* arr = b.Var(b.Symbols().New("arr"), CreateASTTypeFor(ctx, arr_ty));
-                    auto* i = b.Var(b.Symbols().New("i"), nullptr, b.Expr(0_u));
+                    auto* i = b.Var(b.Symbols().New("i"), b.Expr(0_u));
                     auto* for_init = b.Decl(i);
+                    auto arr_cnt = arr_ty->ConstantCount();
+                    if (!arr_cnt) {
+                        // Non-constant counts should not be possible:
+                        // * Override-expression counts can only be applied to workgroup arrays, and
+                        //   this method only handles storage and uniform.
+                        // * Runtime-sized arrays are not loadable.
+                        TINT_ICE(Transform, b.Diagnostics())
+                            << "unexpected non-constant array count";
+                        arr_cnt = 1;
+                    }
                     auto* for_cond = b.create<ast::BinaryExpression>(
-                        ast::BinaryOp::kLessThan, b.Expr(i), b.Expr(u32(arr_ty->Count())));
+                        ast::BinaryOp::kLessThan, b.Expr(i), b.Expr(u32(arr_cnt.value())));
                     auto* for_cont = b.Assign(i, b.Add(i, 1_u));
                     auto* arr_el = b.IndexAccessor(arr, i);
                     auto* el_offset = b.Add(b.Expr("offset"), b.Mul(i, u32(arr_ty->Stride())));
@@ -488,7 +529,7 @@ struct DecomposeMemoryAccess::State {
                            });
                 } else {
                     utils::Vector<const ast::Expression*, 8> values;
-                    if (auto* mat_ty = el_ty->As<sem::Matrix>()) {
+                    if (auto* mat_ty = el_ty->As<type::Matrix>()) {
                         auto* vec_ty = mat_ty->ColumnType();
                         Symbol load = LoadFunc(buf_ty, vec_ty, var_user);
                         for (uint32_t i = 0; i < mat_ty->columns(); i++) {
@@ -519,16 +560,19 @@ struct DecomposeMemoryAccess::State {
     /// @param el_ty the storage buffer element type
     /// @param var_user the variable user
     /// @return the name of the function that performs the store
-    Symbol StoreFunc(const sem::Type* buf_ty,
-                     const sem::Type* el_ty,
+    Symbol StoreFunc(const type::Type* buf_ty,
+                     const type::Type* el_ty,
                      const sem::VariableUser* var_user) {
-        auto storage_class = var_user->Variable()->StorageClass();
+        auto address_space = var_user->Variable()->AddressSpace();
         auto access = var_user->Variable()->Access();
+        if (address_space != ast::AddressSpace::kStorage) {
+            access = ast::Access::kUndefined;
+        }
         return utils::GetOrCreate(
-            store_funcs, LoadStoreKey{storage_class, access, buf_ty, el_ty}, [&] {
+            store_funcs, LoadStoreKey{address_space, access, buf_ty, el_ty}, [&] {
                 utils::Vector params{
                     b.Param("buffer",
-                            b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), storage_class, access),
+                            b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), address_space, access),
                             utils::Vector{b.Disable(ast::DisabledValidation::kFunctionParameter)}),
                     b.Param("offset", b.ty.u32()),
                     b.Param("value", CreateASTTypeFor(ctx, el_ty)),
@@ -536,7 +580,7 @@ struct DecomposeMemoryAccess::State {
 
                 auto name = b.Sym();
 
-                if (auto* intrinsic = IntrinsicStoreFor(ctx.dst, storage_class, el_ty)) {
+                if (auto* intrinsic = IntrinsicStoreFor(ctx.dst, address_space, el_ty)) {
                     auto* func = b.create<ast::Function>(
                         name, params, b.ty.void_(), nullptr,
                         utils::Vector{
@@ -548,7 +592,7 @@ struct DecomposeMemoryAccess::State {
                 } else {
                     auto body = Switch<utils::Vector<const ast::Statement*, 8>>(
                         el_ty,  //
-                        [&](const sem::Array* arr_ty) {
+                        [&](const type::Array* arr_ty) {
                             // fn store_func(buffer : buf_ty, offset : u32, value : el_ty) {
                             //   var array = value; // No dynamic indexing on constant arrays
                             //   for (var i = 0u; i < array_count; i = i + 1) {
@@ -557,13 +601,23 @@ struct DecomposeMemoryAccess::State {
                             //   }
                             //   return arr;
                             // }
-                            auto* array = b.Var(b.Symbols().New("array"), nullptr, b.Expr("value"));
+                            auto* array = b.Var(b.Symbols().New("array"), b.Expr("value"));
                             auto store =
                                 StoreFunc(buf_ty, arr_ty->ElemType()->UnwrapRef(), var_user);
-                            auto* i = b.Var(b.Symbols().New("i"), nullptr, b.Expr(0_u));
+                            auto* i = b.Var(b.Symbols().New("i"), b.Expr(0_u));
                             auto* for_init = b.Decl(i);
+                            auto arr_cnt = arr_ty->ConstantCount();
+                            if (!arr_cnt) {
+                                // Non-constant counts should not be possible:
+                                // * Override-expression counts can only be applied to workgroup
+                                //   arrays, and this method only handles storage and uniform.
+                                // * Runtime-sized arrays are not storable.
+                                TINT_ICE(Transform, b.Diagnostics())
+                                    << "unexpected non-constant array count";
+                                arr_cnt = 1;
+                            }
                             auto* for_cond = b.create<ast::BinaryExpression>(
-                                ast::BinaryOp::kLessThan, b.Expr(i), b.Expr(u32(arr_ty->Count())));
+                                ast::BinaryOp::kLessThan, b.Expr(i), b.Expr(u32(arr_cnt.value())));
                             auto* for_cont = b.Assign(i, b.Add(i, 1_u));
                             auto* arr_el = b.IndexAccessor(array, i);
                             auto* el_offset =
@@ -575,7 +629,7 @@ struct DecomposeMemoryAccess::State {
 
                             return utils::Vector{b.Decl(array), for_loop};
                         },
-                        [&](const sem::Matrix* mat_ty) {
+                        [&](const type::Matrix* mat_ty) {
                             auto* vec_ty = mat_ty->ColumnType();
                             Symbol store = StoreFunc(buf_ty, vec_ty, var_user);
                             utils::Vector<const ast::Statement*, 4> stmts;
@@ -591,8 +645,8 @@ struct DecomposeMemoryAccess::State {
                             utils::Vector<const ast::Statement*, 8> stmts;
                             for (auto* member : str->Members()) {
                                 auto* offset = b.Add("offset", u32(member->Offset()));
-                                auto* element = b.MemberAccessor(
-                                    "value", ctx.Clone(member->Declaration()->symbol));
+                                auto* element =
+                                    b.MemberAccessor("value", ctx.Clone(member->Name()));
                                 Symbol store =
                                     StoreFunc(buf_ty, member->Type()->UnwrapRef(), var_user);
                                 auto* call = b.Call(store, "buffer", offset, element);
@@ -617,18 +671,22 @@ struct DecomposeMemoryAccess::State {
     /// @param intrinsic the atomic intrinsic
     /// @param var_user the variable user
     /// @return the name of the function that performs the load
-    Symbol AtomicFunc(const sem::Type* buf_ty,
-                      const sem::Type* el_ty,
+    Symbol AtomicFunc(const type::Type* buf_ty,
+                      const type::Type* el_ty,
                       const sem::Builtin* intrinsic,
                       const sem::VariableUser* var_user) {
         auto op = intrinsic->Type();
+        auto address_space = var_user->Variable()->AddressSpace();
         auto access = var_user->Variable()->Access();
+        if (address_space != ast::AddressSpace::kStorage) {
+            access = ast::Access::kUndefined;
+        }
         return utils::GetOrCreate(atomic_funcs, AtomicKey{access, buf_ty, el_ty, op}, [&] {
             // The first parameter to all WGSL atomics is the expression to the
             // atomic. This is replaced with two parameters: the buffer and offset.
             utils::Vector params{
                 b.Param("buffer",
-                        b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), ast::StorageClass::kStorage,
+                        b.ty.pointer(CreateASTTypeFor(ctx, buf_ty), ast::AddressSpace::kStorage,
                                      access),
                         utils::Vector{b.Disable(ast::DisabledValidation::kFunctionParameter)}),
                 b.Param("offset", b.ty.u32()),
@@ -656,7 +714,7 @@ struct DecomposeMemoryAccess::State {
                 TINT_ASSERT(Transform, str && str->Declaration() == nullptr);
 
                 utils::Vector<const ast::StructMember*, 8> ast_members;
-                ast_members.Reserve(str->Members().size());
+                ast_members.Reserve(str->Members().Length());
                 for (auto& m : str->Members()) {
                     ast_members.Push(
                         b.Member(ctx.Clone(m->Name()), CreateASTTypeFor(ctx, m->Type())));
@@ -686,9 +744,9 @@ struct DecomposeMemoryAccess::State {
 DecomposeMemoryAccess::Intrinsic::Intrinsic(ProgramID pid,
                                             ast::NodeID nid,
                                             Op o,
-                                            ast::StorageClass sc,
+                                            ast::AddressSpace sc,
                                             DataType ty)
-    : Base(pid, nid), op(o), storage_class(sc), type(ty) {}
+    : Base(pid, nid), op(o), address_space(sc), type(ty) {}
 DecomposeMemoryAccess::Intrinsic::~Intrinsic() = default;
 std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
     std::stringstream ss;
@@ -733,7 +791,7 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
             ss << "intrinsic_atomic_compare_exchange_weak_";
             break;
     }
-    ss << storage_class << "_";
+    ss << address_space << "_";
     switch (type) {
         case DataType::kU32:
             ss << "u32";
@@ -744,6 +802,9 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
         case DataType::kI32:
             ss << "i32";
             break;
+        case DataType::kF16:
+            ss << "f16";
+            break;
         case DataType::kVec2U32:
             ss << "vec2_u32";
             break;
@@ -752,6 +813,9 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
             break;
         case DataType::kVec2I32:
             ss << "vec2_i32";
+            break;
+        case DataType::kVec2F16:
+            ss << "vec2_f16";
             break;
         case DataType::kVec3U32:
             ss << "vec3_u32";
@@ -762,6 +826,9 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
         case DataType::kVec3I32:
             ss << "vec3_i32";
             break;
+        case DataType::kVec3F16:
+            ss << "vec3_f16";
+            break;
         case DataType::kVec4U32:
             ss << "vec4_u32";
             break;
@@ -771,6 +838,9 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
         case DataType::kVec4I32:
             ss << "vec4_i32";
             break;
+        case DataType::kVec4F16:
+            ss << "vec4_f16";
+            break;
     }
     return ss.str();
 }
@@ -778,7 +848,7 @@ std::string DecomposeMemoryAccess::Intrinsic::InternalName() const {
 const DecomposeMemoryAccess::Intrinsic* DecomposeMemoryAccess::Intrinsic::Clone(
     CloneContext* ctx) const {
     return ctx->dst->ASTNodes().Create<DecomposeMemoryAccess::Intrinsic>(
-        ctx->dst->ID(), ctx->dst->AllocateNodeID(), op, storage_class, type);
+        ctx->dst->ID(), ctx->dst->AllocateNodeID(), op, address_space, type);
 }
 
 bool DecomposeMemoryAccess::Intrinsic::IsAtomic() const {
@@ -788,21 +858,16 @@ bool DecomposeMemoryAccess::Intrinsic::IsAtomic() const {
 DecomposeMemoryAccess::DecomposeMemoryAccess() = default;
 DecomposeMemoryAccess::~DecomposeMemoryAccess() = default;
 
-bool DecomposeMemoryAccess::ShouldRun(const Program* program, const DataMap&) const {
-    for (auto* decl : program->AST().GlobalDeclarations()) {
-        if (auto* var = program->Sem().Get<sem::Variable>(decl)) {
-            if (var->StorageClass() == ast::StorageClass::kStorage ||
-                var->StorageClass() == ast::StorageClass::kUniform) {
-                return true;
-            }
-        }
+Transform::ApplyResult DecomposeMemoryAccess::Apply(const Program* src,
+                                                    const DataMap&,
+                                                    DataMap&) const {
+    if (!ShouldRun(src)) {
+        return SkipTransform;
     }
-    return false;
-}
 
-void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) const {
-    auto& sem = ctx.src->Sem();
-
+    auto& sem = src->Sem();
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     State state(ctx);
 
     // Scan the AST nodes for storage and uniform buffer accesses. Complex
@@ -812,19 +877,21 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
     //
     // Inner-most expression nodes are guaranteed to be visited first because AST
     // nodes are fully immutable and require their children to be constructed
-    // first so their pointer can be passed to the parent's constructor.
-    for (auto* node : ctx.src->ASTNodes().Objects()) {
+    // first so their pointer can be passed to the parent's initializer.
+    for (auto* node : src->ASTNodes().Objects()) {
         if (auto* ident = node->As<ast::IdentifierExpression>()) {
             // X
-            if (auto* var = sem.Get<sem::VariableUser>(ident)) {
-                if (var->Variable()->StorageClass() == ast::StorageClass::kStorage ||
-                    var->Variable()->StorageClass() == ast::StorageClass::kUniform) {
-                    // Variable to a storage or uniform buffer
-                    state.AddAccess(ident, {
-                                               var,
-                                               state.ToOffset(0u),
-                                               var->Type()->UnwrapRef(),
-                                           });
+            if (auto* sem_ident = sem.Get(ident)) {
+                if (auto* var = sem_ident->UnwrapLoad()->As<sem::VariableUser>()) {
+                    if (var->Variable()->AddressSpace() == ast::AddressSpace::kStorage ||
+                        var->Variable()->AddressSpace() == ast::AddressSpace::kUniform) {
+                        // Variable to a storage or uniform buffer
+                        state.AddAccess(ident, {
+                                                   var,
+                                                   state.ToOffset(0u),
+                                                   var->Type()->UnwrapRef(),
+                                               });
+                    }
                 }
             }
             continue;
@@ -832,16 +899,16 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
 
         if (auto* accessor = node->As<ast::MemberAccessorExpression>()) {
             // X.Y
-            auto* accessor_sem = sem.Get(accessor);
+            auto* accessor_sem = sem.Get(accessor)->UnwrapLoad();
             if (auto* swizzle = accessor_sem->As<sem::Swizzle>()) {
                 if (swizzle->Indices().Length() == 1) {
                     if (auto access = state.TakeAccess(accessor->structure)) {
-                        auto* vec_ty = access.type->As<sem::Vector>();
+                        auto* vec_ty = access.type->As<type::Vector>();
                         auto* offset = state.Mul(vec_ty->type()->Size(), swizzle->Indices()[0u]);
                         state.AddAccess(accessor, {
                                                       access.var,
                                                       state.Add(access.offset, offset),
-                                                      vec_ty->type()->UnwrapRef(),
+                                                      vec_ty->type(),
                                                   });
                     }
                 }
@@ -853,7 +920,7 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
                     state.AddAccess(accessor, {
                                                   access.var,
                                                   state.Add(access.offset, offset),
-                                                  member->Type()->UnwrapRef(),
+                                                  member->Type(),
                                               });
                 }
             }
@@ -863,25 +930,25 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
         if (auto* accessor = node->As<ast::IndexAccessorExpression>()) {
             if (auto access = state.TakeAccess(accessor->object)) {
                 // X[Y]
-                if (auto* arr = access.type->As<sem::Array>()) {
+                if (auto* arr = access.type->As<type::Array>()) {
                     auto* offset = state.Mul(arr->Stride(), accessor->index);
                     state.AddAccess(accessor, {
                                                   access.var,
                                                   state.Add(access.offset, offset),
-                                                  arr->ElemType()->UnwrapRef(),
+                                                  arr->ElemType(),
                                               });
                     continue;
                 }
-                if (auto* vec_ty = access.type->As<sem::Vector>()) {
+                if (auto* vec_ty = access.type->As<type::Vector>()) {
                     auto* offset = state.Mul(vec_ty->type()->Size(), accessor->index);
                     state.AddAccess(accessor, {
                                                   access.var,
                                                   state.Add(access.offset, offset),
-                                                  vec_ty->type()->UnwrapRef(),
+                                                  vec_ty->type(),
                                               });
                     continue;
                 }
-                if (auto* mat_ty = access.type->As<sem::Matrix>()) {
+                if (auto* mat_ty = access.type->As<type::Matrix>()) {
                     auto* offset = state.Mul(mat_ty->ColumnStride(), accessor->index);
                     state.AddAccess(accessor, {
                                                   access.var,
@@ -929,7 +996,7 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
                             auto* buf = access.var->Declaration();
                             auto* offset = access.offset->Build(ctx);
                             auto* buf_ty = access.var->Type()->UnwrapRef();
-                            auto* el_ty = access.type->UnwrapRef()->As<sem::Atomic>()->Type();
+                            auto* el_ty = access.type->UnwrapRef()->As<type::Atomic>()->Type();
                             Symbol func = state.AtomicFunc(buf_ty, el_ty, builtin,
                                                            access.var->As<sem::VariableUser>());
 
@@ -949,6 +1016,7 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
 
     // All remaining accesses are loads, transform these into calls to the
     // corresponding load function
+    // TODO(crbug.com/tint/1784): Use `sem::Load`s instead of maintaining `state.expression_order`.
     for (auto* expr : state.expression_order) {
         auto access_it = state.accesses.find(expr);
         if (access_it == state.accesses.end()) {
@@ -981,6 +1049,7 @@ void DecomposeMemoryAccess::Run(CloneContext& ctx, const DataMap&, DataMap&) con
     }
 
     ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

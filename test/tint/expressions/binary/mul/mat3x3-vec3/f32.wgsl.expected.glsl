@@ -4,15 +4,15 @@ precision mediump float;
 struct S {
   mat3 matrix;
   vec3 vector;
+  uint pad;
 };
 
-layout(binding = 0) uniform S_1 {
-  mat3 matrix;
-  vec3 vector;
+layout(binding = 0, std140) uniform data_block_ubo {
+  S inner;
 } data;
 
 void tint_symbol() {
-  vec3 x = (data.matrix * data.vector);
+  vec3 x = (data.inner.matrix * data.inner.vector);
 }
 
 void main() {

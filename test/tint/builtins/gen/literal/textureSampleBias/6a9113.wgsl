@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 // fn textureSampleBias(texture: texture_2d<f32>, sampler: sampler, coords: vec2<f32>, bias: f32) -> vec4<f32>
 fn textureSampleBias_6a9113() {
-  var res: vec4<f32> = textureSampleBias(arg_0, arg_1, vec2<f32>(), 1.f);
+  var res: vec4<f32> = textureSampleBias(arg_0, arg_1, vec2<f32>(1.f), 1.f);
 }
 
 @fragment

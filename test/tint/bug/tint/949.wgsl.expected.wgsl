@@ -1,15 +1,3 @@
-bug/tint/949.wgsl:326:29 warning: 'textureSample' must only be called from uniform control flow
-    let x_397 : vec4<f32> = textureSample(TextureSamplerTexture, TextureSamplerSampler, (x_394 + x_395));
-                            ^^^^^^^^^^^^^
-
-bug/tint/949.wgsl:330:5 note: control flow depends on non-uniform value
-    if ((x_400 > x_401)) {
-    ^^
-
-bug/tint/949.wgsl:308:27 note: reading from module-scope private variable 'v_output2' may result in a non-uniform value
-  let x_366 : vec4<f32> = v_output2;
-                          ^^^^^^^^^
-
 struct lightingInfo {
   diffuse : vec3<f32>,
   specular : vec3<f32>,
@@ -317,7 +305,7 @@ fn main_1() {
   let x_362 : vec3<f32> = output5;
   let x_365 : mat3x3<f32> = invTBN;
   let x_366 : vec4<f32> = v_output2;
-  numSamples = (15.0 + (dot((x_361 * -(x_362)), (x_365 * vec3<f32>(x_366.x, x_366.y, x_366.z))) * -11.0));
+  numSamples = (15.0 + (dot((x_361 * -(x_362)), (x_365 * vec3<f32>(x_366.x, x_366.y, x_366.z))) * -(11.0)));
   let x_374 : f32 = numSamples;
   stepSize = (1.0 / x_374);
   currRayHeight = 1.0;
@@ -334,7 +322,7 @@ fn main_1() {
     }
     let x_394 : vec2<f32> = v_uv;
     let x_395 : vec2<f32> = vCurrOffset;
-    let x_397 : vec4<f32> = textureSample(TextureSamplerTexture, TextureSamplerSampler, (x_394 + x_395));
+    let x_397 : vec4<f32> = vec4<f32>();
     currSampledHeight = x_397.w;
     let x_400 : f32 = currSampledHeight;
     let x_401 : f32 = currRayHeight;

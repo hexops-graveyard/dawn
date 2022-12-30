@@ -1,7 +1,7 @@
 SKIP: FAILED
 
 void ldexp_3d90b4() {
-  vector<float16_t, 2> arg_0 = (float16_t(0.0h)).xx;
+  vector<float16_t, 2> arg_0 = (float16_t(1.0h)).xx;
   int2 arg_1 = (1).xx;
   vector<float16_t, 2> res = ldexp(arg_0, arg_1);
 }
@@ -33,6 +33,6 @@ void compute_main() {
   return;
 }
 FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x00000297E2767C20(2,10-18): error X3000: syntax error: unexpected token 'float16_t'
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x00000297E2767C20(4,10-18): error X3000: syntax error: unexpected token 'float16_t'
+C:\src\dawn\test\tint\Shader@0x00000297E3FBEC10(2,10-18): error X3000: syntax error: unexpected token 'float16_t'
+C:\src\dawn\test\tint\Shader@0x00000297E3FBEC10(4,10-18): error X3000: syntax error: unexpected token 'float16_t'
 

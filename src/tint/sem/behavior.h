@@ -23,10 +23,8 @@ namespace tint::sem {
 /// @see https://www.w3.org/TR/WGSL/#behaviors
 enum class Behavior {
     kReturn,
-    kDiscard,
     kBreak,
     kContinue,
-    kFallthrough,
     kNext,
 };
 

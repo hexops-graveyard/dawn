@@ -40,9 +40,6 @@ MaybeError ValidateProgrammableStage(DeviceBase* device,
                                      const PipelineLayoutBase* layout,
                                      SingleShaderStage stage);
 
-// Use map to make sure constant keys are sorted for creating shader cache keys
-using PipelineConstantEntries = std::map<std::string, double>;
-
 struct ProgrammableStage {
     Ref<ShaderModuleBase> module;
     std::string entryPoint;
@@ -87,7 +84,7 @@ class PipelineBase : public ApiObjectBase, public CachedObject {
     explicit PipelineBase(DeviceBase* device);
 
   private:
-    MaybeError ValidateGetBindGroupLayout(uint32_t group);
+    MaybeError ValidateGetBindGroupLayout(BindGroupIndex group);
 
     wgpu::ShaderStage mStageMask = wgpu::ShaderStage::None;
     PerStage<ProgrammableStage> mStages;

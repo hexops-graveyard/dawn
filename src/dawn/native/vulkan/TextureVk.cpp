@@ -216,6 +216,31 @@ void FillVulkanCreateInfoSizesAndType(const Texture& texture, VkImageCreateInfo*
     }
 }
 
+Aspect ComputeCombinedAspect(Device* device, const Format& format) {
+    // In early Vulkan versions it is not possible to transition depth and stencil separetely so
+    // textures with Depth|Stencil will be promoted to a single CombinedDepthStencil aspect
+    // internally.
+    if (format.aspects == (Aspect::Depth | Aspect::Stencil)) {
+        return Aspect::CombinedDepthStencil;
+    }
+    // Same thing for Stencil8 if it is emulated with a depth-stencil format and not directly S8.
+    if (format.format == wgpu::TextureFormat::Stencil8 &&
+        !device->IsToggleEnabled(Toggle::VulkanUseS8)) {
+        return Aspect::CombinedDepthStencil;
+    }
+
+    // Some multiplanar images cannot have planes transitioned separately and instead Vulkan
+    // requires that the "Color" aspect be used for barriers, so Plane0|Plane1 is promoted to just
+    // Color. The Vulkan spec requires: "If image has a single-plane color format or is not
+    // disjoint, then the aspectMask member of subresourceRange must be VK_IMAGE_ASPECT_COLOR_BIT.".
+    if (format.aspects == (Aspect::Plane0 | Aspect::Plane1)) {
+        return Aspect::Color;
+    }
+
+    // No need to combine aspects.
+    return Aspect::None;
+}
+
 }  // namespace
 
 // Converts Dawn texture format to Vulkan formats.
@@ -631,14 +656,14 @@ Ref<Texture> Texture::CreateForSwapChain(Device* device,
 
 Texture::Texture(Device* device, const TextureDescriptor* descriptor, TextureState state)
     : TextureBase(device, descriptor, state),
+      mCombinedAspect(ComputeCombinedAspect(device, GetFormat())),
       // A usage of none will make sure the texture is transitioned before its first use as
       // required by the Vulkan spec.
-      mSubresourceLastUsages(std::make_unique<SubresourceStorage<wgpu::TextureUsage>>(
-          (ShouldCombineDepthStencilBarriers() ? Aspect::CombinedDepthStencil
-                                               : GetFormat().aspects),
+      mSubresourceLastUsages(
+          mCombinedAspect != Aspect::None ? mCombinedAspect : GetFormat().aspects,
           GetArrayLayers(),
           GetNumMipLevels(),
-          wgpu::TextureUsage::None)) {}
+          wgpu::TextureUsage::None) {}
 
 MaybeError Texture::InitializeAsInternalTexture(VkImageUsageFlags extraUsages) {
     Device* device = ToBackend(GetDevice());
@@ -720,18 +745,20 @@ MaybeError Texture::InitializeFromExternal(const ExternalImageDescriptorVk* desc
     Device* device = ToBackend(GetDevice());
     VkFormat format = VulkanImageFormat(device, GetFormat().format);
     VkImageUsageFlags usage = VulkanImageUsage(GetInternalUsage(), GetFormat());
-    DAWN_INVALID_IF(!externalMemoryService->SupportsCreateImage(descriptor, format, usage,
-                                                                &mSupportsDisjointVkImage),
-                    "Creating an image from external memory is not supported.");
-    // mSubresourceLastUsages was initialized with Plane0/Plane1 in the constructor for
-    // multiplanar formats, so we need to correct it to Color here.
-    if (ShouldCombineMultiPlaneBarriers()) {
-        mSubresourceLastUsages = std::make_unique<SubresourceStorage<wgpu::TextureUsage>>(
-            ComputeAspectsForSubresourceStorage(), GetArrayLayers(), GetNumMipLevels(),
-            wgpu::TextureUsage::None);
-    }
+
+    bool supportsDisjoint;
+    DAWN_INVALID_IF(
+        !externalMemoryService->SupportsCreateImage(descriptor, format, usage, &supportsDisjoint),
+        "Creating an image from external memory is not supported.");
+    // The creation of mSubresourceLastUsage assumes that multi-planar are always disjoint and sets
+    // the combined aspect without checking for disjoint support.
+    // TODO(dawn:1548): Support multi-planar images with the DISJOINT feature and potentially allow
+    // acting on planes individually? Always using Color is valid even for disjoint images.
+    DAWN_UNUSED(supportsDisjoint);
+    ASSERT(!GetFormat().IsMultiPlanar() || mCombinedAspect == Aspect::Color);
 
     mExternalState = ExternalState::PendingAcquire;
+    mExportQueueFamilyIndex = externalMemoryService->GetQueueFamilyIndex();
 
     mPendingAcquireOldLayout = descriptor->releasedOldLayout;
     mPendingAcquireNewLayout = descriptor->releasedNewLayout;
@@ -783,7 +810,6 @@ void Texture::InitializeForSwapChain(VkImage nativeImage) {
 }
 
 MaybeError Texture::BindExternalMemory(const ExternalImageDescriptorVk* descriptor,
-                                       VkSemaphore signalSemaphore,
                                        VkDeviceMemory externalMemoryAllocation,
                                        std::vector<VkSemaphore> waitSemaphores) {
     Device* device = ToBackend(GetDevice());
@@ -798,17 +824,57 @@ MaybeError Texture::BindExternalMemory(const ExternalImageDescriptorVk* descript
 
     // Success, acquire all the external objects.
     mExternalAllocation = externalMemoryAllocation;
-    mSignalSemaphore = signalSemaphore;
     mWaitRequirements = std::move(waitSemaphores);
     return {};
 }
 
+void Texture::TransitionEagerlyForExport(CommandRecordingContext* recordingContext) {
+    mExternalState = ExternalState::EagerlyTransitioned;
+
+    // Get any usage, ideally the last one to do nothing
+    ASSERT(GetNumMipLevels() == 1 && GetArrayLayers() == 1);
+    SubresourceRange range = {GetDisjointVulkanAspects(), {0, 1}, {0, 1}};
+
+    wgpu::TextureUsage usage = mSubresourceLastUsages.Get(range.aspects, 0, 0);
+
+    std::vector<VkImageMemoryBarrier> barriers;
+    VkPipelineStageFlags srcStages = 0;
+    VkPipelineStageFlags dstStages = 0;
+
+    // Same usage as last.
+    TransitionUsageAndGetResourceBarrier(usage, range, &barriers, &srcStages, &dstStages);
+
+    ASSERT(barriers.size() == 1);
+    VkImageMemoryBarrier& barrier = barriers[0];
+    // The barrier must be paired with another barrier that will specify the dst access mask on the
+    // importing queue.
+    barrier.dstAccessMask = 0;
+
+    if (mDesiredExportLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
+        barrier.newLayout = mDesiredExportLayout;
+    }
+
+    Device* device = ToBackend(GetDevice());
+    barrier.srcQueueFamilyIndex = device->GetGraphicsQueueFamily();
+    barrier.dstQueueFamilyIndex = mExportQueueFamilyIndex;
+
+    // We don't know when the importing queue will need the texture, so pass
+    // VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to ensure the barrier happens-before any usage in the
+    // importing queue.
+    dstStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+    device->fn.CmdPipelineBarrier(recordingContext->commandBuffer, srcStages, dstStages, 0, 0,
+                                  nullptr, 0, nullptr, 1, &barrier);
+}
+
+std::vector<VkSemaphore> Texture::AcquireWaitRequirements() {
+    return std::move(mWaitRequirements);
+}
+
 MaybeError Texture::ExportExternalTexture(VkImageLayout desiredLayout,
-                                          VkSemaphore* signalSemaphore,
+                                          ExternalSemaphoreHandle* handle,
                                           VkImageLayout* releasedOldLayout,
                                           VkImageLayout* releasedNewLayout) {
-    Device* device = ToBackend(GetDevice());
-
     DAWN_INVALID_IF(mExternalState == ExternalState::Released,
                     "Can't export a signal semaphore from signaled texture %s.", this);
 
@@ -816,70 +882,59 @@ MaybeError Texture::ExportExternalTexture(VkImageLayout desiredLayout,
                     "Can't export a signal semaphore from destroyed or non-external texture %s.",
                     this);
 
-    ASSERT(mSignalSemaphore != VK_NULL_HANDLE);
+    DAWN_INVALID_IF(desiredLayout != VK_IMAGE_LAYOUT_UNDEFINED,
+                    "desiredLayout (%d) was not VK_IMAGE_LAYOUT_UNDEFINED", desiredLayout);
 
     // Release the texture
     mExternalState = ExternalState::Released;
 
-    Aspect aspects = ComputeAspectsForSubresourceStorage();
     ASSERT(GetNumMipLevels() == 1 && GetArrayLayers() == 1);
-    wgpu::TextureUsage usage = mSubresourceLastUsages->Get(aspects, 0, 0);
+    wgpu::TextureUsage usage = mSubresourceLastUsages.Get(GetDisjointVulkanAspects(), 0, 0);
 
-    VkImageMemoryBarrier barrier;
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.pNext = nullptr;
-    barrier.image = GetHandle();
-    barrier.subresourceRange.aspectMask = VulkanAspectMask(aspects);
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-
-    barrier.srcAccessMask = VulkanAccessFlags(usage, GetFormat());
-    barrier.dstAccessMask = 0;  // The barrier must be paired with another barrier that will
-                                // specify the dst access mask on the importing queue.
-
-    barrier.oldLayout = VulkanImageLayout(this, usage);
-    if (desiredLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
-        // VK_IMAGE_LAYOUT_UNDEFINED is invalid here. We use it as a
-        // special value to indicate no layout transition should be done.
-        barrier.newLayout = barrier.oldLayout;
+    // Compute the layouts for the queue transition for export. desiredLayout == UNDEFINED is a tag
+    // value used to export with whatever the current layout is. However queue transitioning to the
+    // UNDEFINED layout is disallowed so we handle the case where currentLayout is UNDEFINED by
+    // promoting to GENERAL.
+    VkImageLayout currentLayout = VulkanImageLayout(this, usage);
+    VkImageLayout targetLayout;
+    if (currentLayout != VK_IMAGE_LAYOUT_UNDEFINED) {
+        targetLayout = currentLayout;
     } else {
-        barrier.newLayout = desiredLayout;
+        targetLayout = VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    barrier.srcQueueFamilyIndex = device->GetGraphicsQueueFamily();
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL_KHR;
+    // We have to manually trigger a transition if the texture hasn't been actually used or if we
+    // need a layout transition.
+    // TODO(dawn:1509): Avoid the empty submit.
+    if (mExternalSemaphoreHandle == kNullExternalSemaphoreHandle || targetLayout != currentLayout) {
+        mDesiredExportLayout = targetLayout;
 
-    VkPipelineStageFlags srcStages = VulkanPipelineStage(usage, GetFormat());
-    VkPipelineStageFlags dstStages =
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;  // We don't know when the importing queue will need
-                                            // the texture, so pass
-                                            // VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT to ensure
-                                            // the barrier happens-before any usage in the
-                                            // importing queue.
+        Device* device = ToBackend(GetDevice());
+        CommandRecordingContext* recordingContext = device->GetPendingRecordingContext();
+        recordingContext->externalTexturesForEagerTransition.insert(this);
+        DAWN_TRY(device->SubmitPendingCommands());
 
-    CommandRecordingContext* recordingContext = device->GetPendingRecordingContext();
-    device->fn.CmdPipelineBarrier(recordingContext->commandBuffer, srcStages, dstStages, 0, 0,
-                                  nullptr, 0, nullptr, 1, &barrier);
-
-    // Queue submit to signal we are done with the texture
-    recordingContext->signalSemaphores.push_back(mSignalSemaphore);
-    DAWN_TRY(device->SubmitPendingCommands());
+        currentLayout = targetLayout;
+    }
+    ASSERT(mExternalSemaphoreHandle != kNullExternalSemaphoreHandle);
 
     // Write out the layouts and signal semaphore
-    *releasedOldLayout = barrier.oldLayout;
-    *releasedNewLayout = barrier.newLayout;
-    *signalSemaphore = mSignalSemaphore;
-
-    mSignalSemaphore = VK_NULL_HANDLE;
+    *releasedOldLayout = currentLayout;
+    *releasedNewLayout = targetLayout;
+    *handle = mExternalSemaphoreHandle;
+    mExternalSemaphoreHandle = kNullExternalSemaphoreHandle;
 
     // Destroy the texture so it can't be used again
     Destroy();
     return {};
 }
 
-Texture::~Texture() {}
+Texture::~Texture() {
+    if (mExternalSemaphoreHandle != kNullExternalSemaphoreHandle) {
+        external_semaphore::Service::CloseHandle(mExternalSemaphoreHandle);
+    }
+    mExternalSemaphoreHandle = kNullExternalSemaphoreHandle;
+}
 
 void Texture::SetLabelHelper(const char* prefix) {
     SetDebugName(ToBackend(GetDevice()), mHandle, prefix, GetLabel());
@@ -907,8 +962,6 @@ void Texture::DestroyImpl() {
 
         mHandle = VK_NULL_HANDLE;
         mExternalAllocation = VK_NULL_HANDLE;
-        // If a signal semaphore exists it should be requested before we delete the texture
-        ASSERT(mSignalSemaphore == VK_NULL_HANDLE);
     }
     // For Vulkan, we currently run the base destruction code after the internal changes because
     // of the dependency on the texture state which the base code overwrites too early.
@@ -929,16 +982,18 @@ void Texture::TweakTransitionForExternalUsage(CommandRecordingContext* recording
     // have already added into the vector during current transition.
     ASSERT(barriers->size() - transitionBarrierStart <= 1);
 
-    if (mExternalState == ExternalState::PendingAcquire) {
+    if (mExternalState == ExternalState::PendingAcquire ||
+        mExternalState == ExternalState::EagerlyTransitioned) {
+        recordingContext->externalTexturesForEagerTransition.insert(this);
         if (barriers->size() == transitionBarrierStart) {
             barriers->push_back(BuildMemoryBarrier(
                 this, wgpu::TextureUsage::None, wgpu::TextureUsage::None,
-                SubresourceRange::SingleMipAndLayer(0, 0, ComputeAspectsForSubresourceStorage())));
+                SubresourceRange::SingleMipAndLayer(0, 0, GetDisjointVulkanAspects())));
         }
 
         VkImageMemoryBarrier* barrier = &(*barriers)[transitionBarrierStart];
         // Transfer texture from external queue to graphics queue
-        barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL_KHR;
+        barrier->srcQueueFamilyIndex = mExportQueueFamilyIndex;
         barrier->dstQueueFamilyIndex = ToBackend(GetDevice())->GetGraphicsQueueFamily();
 
         // srcAccessMask means nothing when importing. Queue transfers require a barrier on
@@ -946,27 +1001,35 @@ void Texture::TweakTransitionForExternalUsage(CommandRecordingContext* recording
         // this.
         barrier->srcAccessMask = 0;
 
-        // This should be the first barrier after import.
-        ASSERT(barrier->oldLayout == VK_IMAGE_LAYOUT_UNDEFINED);
-
         // Save the desired layout. We may need to transition through an intermediate
         // |mPendingAcquireLayout| first.
         VkImageLayout desiredLayout = barrier->newLayout;
 
-        bool isInitialized = IsSubresourceContentInitialized(GetAllSubresources());
+        if (mExternalState == ExternalState::PendingAcquire) {
+            bool isInitialized = IsSubresourceContentInitialized(GetAllSubresources());
 
-        // We don't care about the pending old layout if the texture is uninitialized. The
-        // driver is free to discard it. Also it is invalid to transition to layout UNDEFINED or
-        // PREINITIALIZED. If the embedder provided no new layout, or we don't care about the
-        // previous contents, we can skip the layout transition.
-        // https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-VkImageMemoryBarrier-newLayout-01198
-        if (!isInitialized || mPendingAcquireNewLayout == VK_IMAGE_LAYOUT_UNDEFINED ||
-            mPendingAcquireNewLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-            barrier->oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier->newLayout = desiredLayout;
+            // We don't care about the pending old layout if the texture is uninitialized. The
+            // driver is free to discard it. Also it is invalid to transition to layout UNDEFINED or
+            // PREINITIALIZED. If the embedder provided no new layout, or we don't care about the
+            // previous contents, we can skip the layout transition.
+            // https://www.khronos.org/registry/vulkan/specs/1.3-extensions/html/vkspec.html#VUID-VkImageMemoryBarrier-newLayout-01198
+            if (!isInitialized || mPendingAcquireNewLayout == VK_IMAGE_LAYOUT_UNDEFINED ||
+                mPendingAcquireNewLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+                barrier->oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                barrier->newLayout = desiredLayout;
+            } else {
+                barrier->oldLayout = mPendingAcquireOldLayout;
+                barrier->newLayout = mPendingAcquireNewLayout;
+            }
         } else {
-            barrier->oldLayout = mPendingAcquireOldLayout;
-            barrier->newLayout = mPendingAcquireNewLayout;
+            // In case of ExternalState::EagerlyTransitioned, the layouts of the texture's queue
+            // release were always same. So we exactly match that here for the queue acquire.
+            // The spec text:
+            // If the transfer is via an image memory barrier, and an image layout transition is
+            // desired, then the values of oldLayout and newLayout in the release operation's memory
+            // barrier must be equal to values of oldLayout and newLayout in the acquire operation's
+            // memory barrier.
+            barrier->newLayout = barrier->oldLayout;
         }
 
         // If these are unequal, we need an another barrier to transition the layout.
@@ -981,9 +1044,8 @@ void Texture::TweakTransitionForExternalUsage(CommandRecordingContext* recording
             layoutBarrier.oldLayout = barrier->newLayout;
             layoutBarrier.newLayout = desiredLayout;
 
-            // We already transitioned these.
             layoutBarrier.srcAccessMask = 0;
-            layoutBarrier.dstAccessMask = 0;
+            layoutBarrier.dstAccessMask = barrier->dstAccessMask;
             layoutBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             layoutBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
@@ -994,10 +1056,6 @@ void Texture::TweakTransitionForExternalUsage(CommandRecordingContext* recording
     }
 
     mLastExternalState = mExternalState;
-
-    recordingContext->waitSemaphores.insert(recordingContext->waitSemaphores.end(),
-                                            mWaitRequirements.begin(), mWaitRequirements.end());
-    mWaitRequirements.clear();
 }
 
 bool Texture::CanReuseWithoutBarrier(wgpu::TextureUsage lastUsage, wgpu::TextureUsage usage) {
@@ -1009,53 +1067,17 @@ bool Texture::CanReuseWithoutBarrier(wgpu::TextureUsage lastUsage, wgpu::Texture
     return false;
 }
 
-// Base Vulkan doesn't support transitioning depth and stencil separately. We work around
-// this limitation by combining the usages in the two planes of `textureUsages` into a
-// single plane in a new SubresourceStorage<TextureUsage>. The barriers will be produced
-// for DEPTH | STENCIL since the SubresourceRange uses Aspect::CombinedDepthStencil.
-bool Texture::ShouldCombineDepthStencilBarriers() const {
-    // If the Stencil8 format is being emulated then memory barriers also need to include
-    // the depth aspect. (See: crbug.com/dawn/1331)
-    if (GetFormat().format == wgpu::TextureFormat::Stencil8 &&
-        !GetDevice()->IsToggleEnabled(Toggle::VulkanUseS8)) {
-        return true;
-    }
-    return GetFormat().aspects == (Aspect::Depth | Aspect::Stencil);
-}
-
-// The Vulkan spec requires:
-// "If image has a single-plane color format or is not disjoint, then the aspectMask member of
-// subresourceRange must be VK_IMAGE_ASPECT_COLOR_BIT.".
-// For multi-planar formats, we currently only support import them in non-disjoint way.
-bool Texture::ShouldCombineMultiPlaneBarriers() const {
-    // TODO(chromium:1258986): Figure out how to support disjoint vkImage.
-    ASSERT(!mSupportsDisjointVkImage);
-    return GetFormat().aspects == (Aspect::Plane0 | Aspect::Plane1);
-}
-
-Aspect Texture::ComputeAspectsForSubresourceStorage() const {
-    if (ShouldCombineDepthStencilBarriers()) {
-        return Aspect::CombinedDepthStencil;
-    }
-    // Force to use Aspect::Color for Aspect::Plane0/1.
-    if (ShouldCombineMultiPlaneBarriers()) {
-        return Aspect::Color;
-    }
-    return GetFormat().aspects;
-}
-
 void Texture::TransitionUsageForPass(CommandRecordingContext* recordingContext,
                                      const TextureSubresourceUsage& textureUsages,
                                      std::vector<VkImageMemoryBarrier>* imageBarriers,
                                      VkPipelineStageFlags* srcStages,
                                      VkPipelineStageFlags* dstStages) {
-    if (ShouldCombineBarriers()) {
-        Aspect combinedAspect = ComputeAspectsForSubresourceStorage();
-        SubresourceStorage<wgpu::TextureUsage> combinedUsages(combinedAspect, GetArrayLayers(),
+    if (UseCombinedAspects()) {
+        SubresourceStorage<wgpu::TextureUsage> combinedUsages(mCombinedAspect, GetArrayLayers(),
                                                               GetNumMipLevels());
         textureUsages.Iterate([&](const SubresourceRange& range, wgpu::TextureUsage usage) {
             SubresourceRange updateRange = range;
-            updateRange.aspects = combinedAspect;
+            updateRange.aspects = mCombinedAspect;
 
             combinedUsages.Update(updateRange,
                                   [&](const SubresourceRange&, wgpu::TextureUsage* combinedUsage) {
@@ -1083,9 +1105,9 @@ void Texture::TransitionUsageForPassImpl(
     wgpu::TextureUsage allUsages = wgpu::TextureUsage::None;
     wgpu::TextureUsage allLastUsages = wgpu::TextureUsage::None;
 
-    mSubresourceLastUsages->Merge(subresourceUsages, [&](const SubresourceRange& range,
-                                                         wgpu::TextureUsage* lastUsage,
-                                                         const wgpu::TextureUsage& newUsage) {
+    mSubresourceLastUsages.Merge(subresourceUsages, [&](const SubresourceRange& range,
+                                                        wgpu::TextureUsage* lastUsage,
+                                                        const wgpu::TextureUsage& newUsage) {
         if (newUsage == wgpu::TextureUsage::None || CanReuseWithoutBarrier(*lastUsage, newUsage)) {
             return;
         }
@@ -1133,9 +1155,9 @@ void Texture::TransitionUsageAndGetResourceBarrier(wgpu::TextureUsage usage,
                                                    std::vector<VkImageMemoryBarrier>* imageBarriers,
                                                    VkPipelineStageFlags* srcStages,
                                                    VkPipelineStageFlags* dstStages) {
-    if (ShouldCombineBarriers()) {
+    if (UseCombinedAspects()) {
         SubresourceRange updatedRange = range;
-        updatedRange.aspects = ComputeAspectsForSubresourceStorage();
+        updatedRange.aspects = mCombinedAspect;
         TransitionUsageAndGetResourceBarrierImpl(usage, updatedRange, imageBarriers, srcStages,
                                                  dstStages);
     } else {
@@ -1153,7 +1175,7 @@ void Texture::TransitionUsageAndGetResourceBarrierImpl(
     const Format& format = GetFormat();
 
     wgpu::TextureUsage allLastUsages = wgpu::TextureUsage::None;
-    mSubresourceLastUsages->Update(
+    mSubresourceLastUsages.Update(
         range, [&](const SubresourceRange& range, wgpu::TextureUsage* lastUsage) {
             if (CanReuseWithoutBarrier(*lastUsage, usage)) {
                 return;
@@ -1322,9 +1344,27 @@ void Texture::EnsureSubresourceContentInitialized(CommandRecordingContext* recor
     }
 }
 
+void Texture::UpdateExternalSemaphoreHandle(ExternalSemaphoreHandle handle) {
+    if (mExternalSemaphoreHandle != kNullExternalSemaphoreHandle) {
+        external_semaphore::Service::CloseHandle(mExternalSemaphoreHandle);
+    }
+    mExternalSemaphoreHandle = handle;
+}
+
 VkImageLayout Texture::GetCurrentLayoutForSwapChain() const {
     ASSERT(GetFormat().aspects == Aspect::Color);
-    return VulkanImageLayout(this, mSubresourceLastUsages->Get(Aspect::Color, 0, 0));
+    return VulkanImageLayout(this, mSubresourceLastUsages.Get(Aspect::Color, 0, 0));
+}
+
+bool Texture::UseCombinedAspects() const {
+    return mCombinedAspect != Aspect::None;
+}
+
+Aspect Texture::GetDisjointVulkanAspects() const {
+    if (UseCombinedAspects()) {
+        return mCombinedAspect;
+    }
+    return GetFormat().aspects;
 }
 
 // static

@@ -1,8 +1,8 @@
 enable f16;
 
 fn ldexp_624e0c() {
-  var arg_0 = f16();
-  var arg_1 = 1;
+  var arg_0 = 1.0h;
+  var arg_1 = 1i;
   var res : f16 = ldexp(arg_0, arg_1);
 }
 

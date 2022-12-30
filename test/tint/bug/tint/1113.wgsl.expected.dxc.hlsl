@@ -1,7 +1,3 @@
-uint value_or_one_if_zero_uint(uint value) {
-  return value == 0u ? 1u : value;
-}
-
 cbuffer cbuffer_uniforms : register(b0, space0) {
   uint4 uniforms[3];
 };
@@ -28,10 +24,18 @@ uint toIndex1D(uint gridSize, float3 voxelPos) {
   return ((icoord.x + (gridSize * icoord.y)) + ((gridSize * gridSize) * icoord.z));
 }
 
+uint tint_div(uint lhs, uint rhs) {
+  return (lhs / ((rhs == 0u) ? 1u : rhs));
+}
+
+uint tint_mod(uint lhs, uint rhs) {
+  return (lhs % ((rhs == 0u) ? 1u : rhs));
+}
+
 uint3 toIndex3D(uint gridSize, uint index) {
-  uint z_1 = (index / value_or_one_if_zero_uint((gridSize * gridSize)));
-  uint y_1 = ((index - ((gridSize * gridSize) * z_1)) / (gridSize == 0u ? 1u : gridSize));
-  uint x_1 = (index % (gridSize == 0u ? 1u : gridSize));
+  uint z_1 = tint_div(index, (gridSize * gridSize));
+  uint y_1 = tint_div((index - ((gridSize * gridSize) * z_1)), gridSize);
+  uint x_1 = tint_mod(index, gridSize);
   return uint3(x_1, y_1, z_1);
 }
 
@@ -57,10 +61,10 @@ int tint_atomicLoad_1(RWByteAddressBuffer buffer, uint offset) {
 void doIgnore() {
   uint g42 = uniforms[0].x;
   uint kj6 = dbg.Load(20u);
-  uint b53 = tint_atomicLoad(counters, (4u * 0u));
-  uint rwg = indices.Load((4u * 0u));
-  float rb5 = asfloat(positions.Load((4u * 0u)));
-  int g55 = tint_atomicLoad_1(LUT, (4u * 0u));
+  uint b53 = tint_atomicLoad(counters, 0u);
+  uint rwg = indices.Load(0u);
+  float rb5 = asfloat(positions.Load(0u));
+  int g55 = tint_atomicLoad_1(LUT, 0u);
 }
 
 struct tint_symbol_1 {

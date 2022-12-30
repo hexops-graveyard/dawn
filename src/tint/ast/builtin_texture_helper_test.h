@@ -19,7 +19,7 @@
 
 #include "src/tint/ast/access.h"
 #include "src/tint/program_builder.h"
-#include "src/tint/sem/storage_texture.h"
+#include "src/tint/type/storage_texture.h"
 
 namespace tint::ast::builtin::test {
 
@@ -241,7 +241,7 @@ struct TextureOverloadCase {
     Access const access = Access::kReadWrite;
     /// The image format for the storage texture
     /// Used only when texture_kind is kStorage
-    ast::TexelFormat const texel_format = ast::TexelFormat::kInvalid;
+    ast::TexelFormat const texel_format = ast::TexelFormat::kUndefined;
     /// The dimensions of the texture parameter
     ast::TextureDimension const texture_dimension;
     /// The data type of the texture parameter

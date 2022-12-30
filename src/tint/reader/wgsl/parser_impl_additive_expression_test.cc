@@ -18,9 +18,9 @@ namespace tint::reader::wgsl {
 namespace {
 
 TEST_F(ParserImplTest, AdditiveExpression_Parses_Plus) {
-    auto p = parser("a + true");
-    auto e = p->additive_expression();
-    EXPECT_TRUE(e.matched);
+    auto p = parser("a + b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
@@ -38,14 +38,15 @@ TEST_F(ParserImplTest, AdditiveExpression_Parses_Plus) {
     auto* ident = rel->lhs->As<ast::IdentifierExpression>();
     EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
 
-    ASSERT_TRUE(rel->rhs->Is<ast::BoolLiteralExpression>());
-    ASSERT_TRUE(rel->rhs->As<ast::BoolLiteralExpression>()->value);
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
 }
 
 TEST_F(ParserImplTest, AdditiveExpression_Parses_Minus) {
-    auto p = parser("a - true");
-    auto e = p->additive_expression();
-    EXPECT_TRUE(e.matched);
+    auto p = parser("a - b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
@@ -58,37 +59,146 @@ TEST_F(ParserImplTest, AdditiveExpression_Parses_Minus) {
     auto* ident = rel->lhs->As<ast::IdentifierExpression>();
     EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
 
-    ASSERT_TRUE(rel->rhs->Is<ast::BoolLiteralExpression>());
-    ASSERT_TRUE(rel->rhs->As<ast::BoolLiteralExpression>()->value);
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
 }
 
-TEST_F(ParserImplTest, AdditiveExpression_InvalidLHS) {
-    auto p = parser("if (a) {} + true");
-    auto e = p->additive_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_FALSE(e.errored);
-    EXPECT_FALSE(p->has_error()) << p->error();
-    EXPECT_EQ(e.value, nullptr);
-}
-
-TEST_F(ParserImplTest, AdditiveExpression_InvalidRHS) {
-    auto p = parser("true + if (a) {}");
-    auto e = p->additive_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_TRUE(e.errored);
-    EXPECT_EQ(e.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:8: unable to parse right side of + expression");
-}
-
-TEST_F(ParserImplTest, AdditiveExpression_NoOr_ReturnsLHS) {
-    auto p = parser("a true");
-    auto e = p->additive_expression();
-    EXPECT_TRUE(e.matched);
+TEST_F(ParserImplTest, AdditiveExpression_Parses_MinusMinus) {
+    auto p = parser("a--b");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
     EXPECT_FALSE(e.errored);
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
-    ASSERT_TRUE(e->Is<ast::IdentifierExpression>());
+
+    ASSERT_TRUE(e->Is<ast::BinaryExpression>());
+    auto* rel = e->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kSubtract, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    auto* ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::UnaryOpExpression>());
+    auto* unary = rel->rhs->As<ast::UnaryOpExpression>();
+    EXPECT_EQ(ast::UnaryOp::kNegation, unary->op);
+
+    ASSERT_TRUE(unary->expr->Is<ast::IdentifierExpression>());
+    ident = unary->expr->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+}
+
+TEST_F(ParserImplTest, AdditiveExpression_Parses_MultipleOps) {
+    auto p = parser("a - b + c - d");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
+    EXPECT_FALSE(e.errored);
+    EXPECT_FALSE(p->has_error()) << p->error();
+    ASSERT_NE(e.value, nullptr);
+
+    ASSERT_TRUE(e->Is<ast::BinaryExpression>());
+    // lhs: ((a - b) + c
+    // op: -
+    // rhs: d
+    auto* rel = e->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kSubtract, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    auto* ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("d"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: a - b
+    // op: +
+    // rhs: c
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kAdd, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("c"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: a
+    // op: -
+    // rhs: b
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kSubtract, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+}
+
+TEST_F(ParserImplTest, AdditiveExpression_Parses_MultipleOps_MixedMultiplication) {
+    auto p = parser("a - b * c - d");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
+    EXPECT_FALSE(e.errored);
+    EXPECT_FALSE(p->has_error()) << p->error();
+    ASSERT_NE(e.value, nullptr);
+
+    ASSERT_TRUE(e->Is<ast::BinaryExpression>());
+    // lhs: a - (b * c)
+    // op: -
+    // rhs: d
+    auto* rel = e->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kSubtract, rel->op);
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    auto* ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("d"));
+
+    ASSERT_TRUE(rel->lhs->Is<ast::BinaryExpression>());
+    // lhs: a
+    // op: -
+    // rhs: b * c
+    rel = rel->lhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kSubtract, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::BinaryExpression>());
+    // lhs: b
+    // op: *
+    // rhs: c
+    rel = rel->rhs->As<ast::BinaryExpression>();
+    EXPECT_EQ(ast::BinaryOp::kMultiply, rel->op);
+
+    ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
+    ident = rel->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+
+    ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
+    ident = rel->rhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("c"));
+}
+
+TEST_F(ParserImplTest, AdditiveExpression_InvalidRHS) {
+    auto p = parser("a + if (a) {}");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
+    EXPECT_TRUE(e.errored);
+    EXPECT_EQ(e.value, nullptr);
+    EXPECT_TRUE(p->has_error());
+    EXPECT_EQ(p->error(), "1:5: unable to parse right side of + expression");
+}
+
+TEST_F(ParserImplTest, AdditiveExpression_NoMatch_ReturnsLHS) {
+    auto p = parser("a true");
+    auto lhs = p->unary_expression();
+    auto e = p->expect_additive_expression_post_unary_expression(lhs.value);
+    EXPECT_FALSE(e.errored);
+    EXPECT_FALSE(p->has_error()) << p->error();
+    ASSERT_NE(e.value, nullptr);
+    EXPECT_EQ(lhs.value, e.value);
 }
 
 }  // namespace

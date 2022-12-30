@@ -115,6 +115,37 @@ if (build_with_chromium) {
 }
 
 ###############################################################################
+# Copy target for DXC
+###############################################################################
+
+# When building with chromium under Windows, we need to copy the DXC from
+# Windows SDK into build folder, in order to ensure a DXC of verison 1.6 is
+# avaliable when running end-to-end tests in Chromium. Note that currently DXC
+# only provided for x86 and x64 in Windows SDK 20348.
+if (build_with_chromium && is_win &&
+    (target_cpu == "x64" || target_cpu == "x86")) {
+  # The windows_sdk_path is acquired in visual_studio_version.gni.
+  import("//build/config/win/visual_studio_version.gni")
+
+  # Windows 10 SDK version 10.0.20348.0 is required for building Chromium, and
+  # it provided DXC compiler and validator both of v1.6.
+  assert(defined(windows_sdk_path))
+  assert(windows_sdk_path != "")
+
+  # Declare a copy target to copy DXC binary from Windows SDK for running Dawn
+  # end-to-end test in Chromium.
+  copy("copy_dxc_binary") {
+    sources = [
+      "$windows_sdk_path/bin/10.0.20348.0/$target_cpu/dxc.exe",
+      "$windows_sdk_path/bin/10.0.20348.0/$target_cpu/dxcompiler.dll",
+      "$windows_sdk_path/bin/10.0.20348.0/$target_cpu/dxil.dll",
+    ]
+
+    outputs = [ "$root_out_dir/{{source_file_part}}" ]
+  }
+}
+
+###############################################################################
 # Dawn test template
 ###############################################################################
 template("dawn_test") {
@@ -126,6 +157,17 @@ template("dawn_test") {
     }
 
     configs += [ "${dawn_root}/src/dawn/common:internal_config" ]
+
+    # Running Dawn tests within Chromium in Windows may require DXC, copy DXC
+    # binary from Windows SDK.
+    if (build_with_chromium && is_win &&
+        (target_cpu == "x64" || target_cpu == "x86")) {
+      if (defined(data_deps)) {
+        data_deps += [ ":copy_dxc_binary" ]
+      } else {
+        data_deps = [ ":copy_dxc_binary" ]
+      }
+    }
   }
 }
 
@@ -265,6 +307,7 @@ dawn_test("dawn_unittests") {
     "unittests/native/CreatePipelineAsyncTaskTests.cpp",
     "unittests/native/DestroyObjectTests.cpp",
     "unittests/native/DeviceCreationTests.cpp",
+    "unittests/native/ObjectContentHasherTests.cpp",
     "unittests/native/StreamTests.cpp",
     "unittests/validation/BindGroupValidationTests.cpp",
     "unittests/validation/BufferValidationTests.cpp",
@@ -274,6 +317,8 @@ dawn_test("dawn_unittests") {
     "unittests/validation/CopyCommandsValidationTests.cpp",
     "unittests/validation/CopyTextureForBrowserTests.cpp",
     "unittests/validation/DebugMarkerValidationTests.cpp",
+    "unittests/validation/DeprecatedAPITests.cpp",
+    "unittests/validation/DeprecatedAPITests.h",
     "unittests/validation/DeviceValidationTests.cpp",
     "unittests/validation/DrawIndirectValidationTests.cpp",
     "unittests/validation/DrawVertexAndIndexBufferOOBValidationTests.cpp",
@@ -371,10 +416,12 @@ source_set("test_infra_sources") {
 
   if (dawn_supports_glfw_for_windowing || dawn_enable_opengl) {
     assert(dawn_supports_glfw_for_windowing)
-    public_deps += [ "${dawn_root}/src/dawn/utils:glfw" ]
+    public_deps += [ "${dawn_root}/src/dawn/glfw" ]
   }
 
   sources = [
+    "AdapterTestConfig.cpp",
+    "AdapterTestConfig.h",
     "DawnTest.cpp",
     "DawnTest.h",
     "MockCallback.h",
@@ -435,12 +482,12 @@ source_set("end2end_tests_sources") {
     "end2end/ComputeLayoutMemoryBufferTests.cpp",
     "end2end/ComputeSharedMemoryTests.cpp",
     "end2end/ComputeStorageBufferBarrierTests.cpp",
+    "end2end/CopyExternalTextureForBrowserTests.cpp",
     "end2end/CopyTests.cpp",
     "end2end/CopyTextureForBrowserTests.cpp",
     "end2end/CreatePipelineAsyncTests.cpp",
     "end2end/CullingTests.cpp",
     "end2end/DebugMarkerTests.cpp",
-    "end2end/DeprecatedAPITests.cpp",
     "end2end/DepthBiasTests.cpp",
     "end2end/DepthStencilCopyTests.cpp",
     "end2end/DepthStencilLoadOpTests.cpp",
@@ -485,8 +532,9 @@ source_set("end2end_tests_sources") {
     "end2end/SamplerFilterAnisotropicTests.cpp",
     "end2end/SamplerTests.cpp",
     "end2end/ScissorTests.cpp",
-    "end2end/ShaderFloat16Tests.cpp",
+    "end2end/ShaderF16Tests.cpp",
     "end2end/ShaderTests.cpp",
+    "end2end/ShaderValidationTests.cpp",
     "end2end/StorageTextureTests.cpp",
     "end2end/SubresourceRenderAttachmentTests.cpp",
     "end2end/Texture3DTests.cpp",

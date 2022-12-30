@@ -416,7 +416,7 @@ std::string WgslMutator::ChooseRandomReplacementForOperator(const std::string& e
         "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="};
     std::vector<std::string> expression_operators{"+",  "-",  "*", "/",  "%",  "&&", "||",
                                                   "&",  "|",  "^", "<<", ">>", "<",  ">",
-                                                  "<=", ">=", "!", "!=", "~"};
+                                                  "<=", ">=", "!", "==", "!=", "~"};
     std::vector<std::string> increment_operators{"++", "--"};
     for (auto operators : {assignment_operators, expression_operators, increment_operators}) {
         auto it = std::find(operators.begin(), operators.end(), existing_operator);
@@ -463,14 +463,20 @@ std::optional<std::pair<uint32_t, uint32_t>> WgslMutator::FindOperatorOccurrence
         // case where search has reached the end of the code string.
         char first_character = wgsl_code[current_index];
         char second_character =
-            current_index == wgsl_code.size() - 1 ? '\0' : wgsl_code[current_index + 1];
+            current_index + 1 == wgsl_code.size() ? '\0' : wgsl_code[current_index + 1];
         char third_character =
-            current_index >= wgsl_code.size() - 2 ? '\0' : wgsl_code[current_index + 2];
+            current_index + 2 >= wgsl_code.size() ? '\0' : wgsl_code[current_index + 2];
 
         // This uses the extracted characters to match for the various WGSL operators.
         switch (first_character) {
             case '!':
             case '^':
+            case '*':
+            case '/':
+            case '%':
+            case '=':
+                // The above cases are all stand-alone operators, and if followed by '=' are also
+                // operators.
                 switch (second_character) {
                     case '=':
                         return {{current_index, 2}};
@@ -481,26 +487,15 @@ std::optional<std::pair<uint32_t, uint32_t>> WgslMutator::FindOperatorOccurrence
             case '&':
             case '+':
             case '-':
+                // The above cases are all stand-alone operators, and if repeated or followed by '='
+                // are also operators.
                 if (second_character == first_character || second_character == '=') {
-                    return {{current_index, 2}};
-                }
-                return {{current_index, 1}};
-            case '*':
-            case '/':
-            case '%':
-                switch (second_character) {
-                    case '=':
-                        return {{current_index, 2}};
-                    default:
-                        return {{current_index, 1}};
-                }
-            case '=':
-                if (second_character == '=') {
                     return {{current_index, 2}};
                 }
                 return {{current_index, 1}};
             case '<':
             case '>':
+                // The following caters for '<', '<=', '<<', '<<=', '>', '>=', '>>' and '>>='.
                 if (second_character == '=') {
                     return {{current_index, 2}};
                 }
@@ -697,15 +692,15 @@ bool WgslMutator::AddSwizzle(std::string& wgsl_code) {
     auto identifiers = GetIdentifiers(function_body);
     // - existing swizzles, e.g. to turn v.xy into v.xy.xx
     auto swizzles = GetSwizzles(function_body);
-    // - vector constructors, e.g. to turn vec3<f32>(...) into vec3<f32>(...).yyz
-    auto vector_constructors = GetVectorConstructors(function_body);
+    // - vector initializers, e.g. to turn vec3<f32>(...) into vec3<f32>(...).yyz
+    auto vector_initializers = GetVectorInitializers(function_body);
 
     // Create a combined vector of all the possibilities for swizzling, so that they can be sampled
     // from as a whole.
     std::vector<std::pair<size_t, size_t>> combined;
     combined.insert(combined.end(), identifiers.begin(), identifiers.end());
     combined.insert(combined.end(), swizzles.begin(), swizzles.end());
-    combined.insert(combined.end(), vector_constructors.begin(), vector_constructors.end());
+    combined.insert(combined.end(), vector_initializers.begin(), vector_initializers.end());
 
     if (combined.empty()) {
         // No opportunities for swizzling: give up.
@@ -714,7 +709,7 @@ bool WgslMutator::AddSwizzle(std::string& wgsl_code) {
 
     // Randomly create a swizzle operation. This is done without checking the potential length of
     // the target vector. For identifiers this isn't possible without proper context. For existing
-    // swizzles and vector constructors it would be possible to check the length, but it is anyway
+    // swizzles and vector initializers it would be possible to check the length, but it is anyway
     // good to stress-test swizzle validation code paths.
     std::string swizzle = ".";
     {
@@ -763,28 +758,28 @@ std::vector<std::pair<size_t, size_t>> WgslMutator::GetSwizzles(const std::strin
     return result;
 }
 
-std::vector<std::pair<size_t, size_t>> WgslMutator::GetVectorConstructors(
+std::vector<std::pair<size_t, size_t>> WgslMutator::GetVectorInitializers(
     const std::string& wgsl_code) {
-    // This regex recognises the prefixes of vector constructors, which have the form:
+    // This regex recognises the prefixes of vector initializers, which have the form:
     // "vecn<type>(", with possible whitespace between tokens.
-    std::regex vector_constructor_prefix_regex("vec\\d[ \\n]*<[ \\n]*[a-z0-9_]+[ \\n]*>[^\\(]*\\(");
+    std::regex vector_initializer_prefix_regex("vec\\d[ \\n]*<[ \\n]*[a-z0-9_]+[ \\n]*>[^\\(]*\\(");
     std::vector<std::pair<size_t, size_t>> result;
 
-    auto vector_constructor_prefixes_begin =
-        std::sregex_iterator(wgsl_code.begin(), wgsl_code.end(), vector_constructor_prefix_regex);
-    auto vector_constructor_prefixes_end = std::sregex_iterator();
+    auto vector_initializer_prefixes_begin =
+        std::sregex_iterator(wgsl_code.begin(), wgsl_code.end(), vector_initializer_prefix_regex);
+    auto vector_initializer_prefixes_end = std::sregex_iterator();
 
-    // Look through all of the vector constructor prefixes and see whether each one appears to
+    // Look through all of the vector initializer prefixes and see whether each one appears to
     // correspond to a complete vector construction.
-    for (std::sregex_iterator i = vector_constructor_prefixes_begin;
-         i != vector_constructor_prefixes_end; ++i) {
+    for (std::sregex_iterator i = vector_initializer_prefixes_begin;
+         i != vector_initializer_prefixes_end; ++i) {
         // A prefix is deemed to correspond to a complete vector construction if it is possible to
         // find a corresponding closing bracket for the "(" at the end of the prefix.
         size_t closing_bracket = FindClosingBracket(
             static_cast<size_t>(i->suffix().first - wgsl_code.cbegin()), wgsl_code, '(', ')');
         if (closing_bracket != 0) {
             // A closing bracket was found, so record the start and size of the entire vector
-            // constructor.
+            // initializer.
             size_t start = static_cast<size_t>(i->prefix().second - wgsl_code.cbegin());
             result.push_back({start, closing_bracket - start + 1});
         }

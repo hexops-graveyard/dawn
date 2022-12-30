@@ -42,12 +42,13 @@ expected_texture_overload_spirv expected_texture_overload(
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
-%11 = OpConstant %9 0
+%9 = OpTypeInt 32 0
+%11 = OpTypeInt 32 1
+%12 = OpConstant %11 0
 )",
                 R"(
 %10 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %10 %11
+%8 = OpImageQuerySizeLod %9 %10 %12
 )",
                 R"(
 OpCapability Sampled1D
@@ -63,13 +64,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 0
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 0
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -84,13 +86,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 1
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 1
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -105,14 +108,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 0
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 0
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -128,14 +132,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 1
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 1
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -151,13 +156,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 3
-%12 = OpConstant %10 0
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 0
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -172,13 +178,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 3
-%12 = OpConstant %10 1
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 1
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -193,13 +200,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 0
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 0
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -214,13 +222,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 1
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 1
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -235,14 +244,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 0
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 0
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -259,14 +269,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 1
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 1
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -283,7 +294,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 )",
                 R"(
@@ -303,13 +314,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 0
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 0
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -324,13 +336,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 1
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 1
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -345,14 +358,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 0
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 0
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -368,14 +382,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 1
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 1
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -391,13 +406,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 0
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 0
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -412,13 +428,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
-%12 = OpConstant %10 1
+%12 = OpTypeInt 32 1
+%13 = OpConstant %12 1
 )",
                 R"(
 %11 = OpLoad %3 %1
-%8 = OpImageQuerySizeLod %9 %11 %12
+%8 = OpImageQuerySizeLod %9 %11 %13
 )",
                 R"(
 OpCapability ImageQuery
@@ -433,14 +450,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 0
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 0
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -457,14 +475,15 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
-%14 = OpConstant %10 1
+%14 = OpTypeInt 32 1
+%15 = OpConstant %14 1
 )",
                 R"(
 %13 = OpLoad %3 %1
-%11 = OpImageQuerySizeLod %12 %13 %14
+%11 = OpImageQuerySizeLod %12 %13 %15
 %8 = OpVectorShuffle %9 %11 %11 0 1
 )",
                 R"(
@@ -481,7 +500,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 )",
                 R"(
@@ -501,7 +520,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                 R"(
 %10 = OpLoad %3 %1
@@ -521,7 +540,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 )",
                 R"(
@@ -541,7 +560,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 2
 %12 = OpTypeVector %10 3
 )",
@@ -563,7 +582,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%10 = OpTypeInt 32 1
+%10 = OpTypeInt 32 0
 %9 = OpTypeVector %10 3
 )",
                 R"(
@@ -614,18 +633,19 @@ OpCapability ImageQuery
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
 %17 = OpConstantComposite %14 %15 %16
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstantNull %18
-%20 = OpTypeVector %18 2
-%21 = OpConstant %18 3
-%22 = OpConstant %18 4
-%23 = OpConstantComposite %20 %21 %22
+%21 = OpTypeInt 32 1
+%20 = OpTypeVector %21 2
+%22 = OpConstant %21 3
+%23 = OpConstant %21 4
+%24 = OpConstantComposite %20 %22 %23
 )",
                     R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%8 = OpImageGather %9 %13 %17 %19 ConstOffset %23
+%8 = OpImageGather %9 %13 %17 %19 ConstOffset %24
 )",
                     R"(
 )"};
@@ -671,21 +691,22 @@ OpCapability ImageQuery
 %14 = OpTypeVector %4 3
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 3
 %21 = OpConstantNull %18
-%22 = OpTypeVector %18 2
-%23 = OpConstant %18 4
-%24 = OpConstant %18 5
-%25 = OpConstantComposite %22 %23 %24
+%23 = OpTypeInt 32 1
+%22 = OpTypeVector %23 2
+%24 = OpConstant %23 4
+%25 = OpConstant %23 5
+%26 = OpConstantComposite %22 %24 %25
 )",
                     R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %14 %15 %16 %17
-%8 = OpImageGather %9 %13 %20 %21 ConstOffset %25
+%8 = OpImageGather %9 %13 %20 %21 ConstOffset %26
 )",
                     R"(
 )"};
@@ -730,7 +751,7 @@ OpCapability ImageQuery
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %16 = OpConstant %4 3
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 4
 %21 = OpConstantNull %18
 )",
@@ -738,7 +759,7 @@ OpCapability ImageQuery
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %9 %14 %15 %16 %17
 %8 = OpImageGather %9 %13 %20 %21
 )",
@@ -815,17 +836,18 @@ OpCapability SampledCubeArray
 %14 = OpTypeVector %4 3
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 3
-%21 = OpConstant %18 0
+%21 = OpTypeInt 32 1
+%22 = OpConstant %21 0
 )",
                     R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %14 %15 %16 %17
-%8 = OpImageGather %9 %13 %20 %21
+%8 = OpImageGather %9 %13 %20 %22
 )",
                     R"(
 )"};
@@ -902,17 +924,18 @@ OpCapability SampledCubeArray
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %16 = OpConstant %4 3
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 4
-%21 = OpConstant %18 0
+%21 = OpTypeInt 32 1
+%22 = OpConstant %21 0
 )",
                     R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %9 %14 %15 %16 %17
-%8 = OpImageGather %9 %13 %20 %21
+%8 = OpImageGather %9 %13 %20 %22
 )",
                     R"(
 OpCapability SampledCubeArray
@@ -1072,7 +1095,7 @@ OpCapability SampledCubeArray
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %16 = OpConstant %4 3
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 4
 %21 = OpConstant %4 5
 )",
@@ -1080,7 +1103,7 @@ OpCapability SampledCubeArray
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %9 %14 %15 %16 %17
 %8 = OpImageDrefGather %9 %13 %20 %21
 )",
@@ -1096,13 +1119,14 @@ OpCapability SampledCubeArray
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 %11 = OpTypeVector %9 3
-%13 = OpConstant %9 0
+%13 = OpTypeInt 32 1
+%14 = OpConstant %13 0
 )",
                     R"(
 %12 = OpLoad %3 %1
-%10 = OpImageQuerySizeLod %11 %12 %13
+%10 = OpImageQuerySizeLod %11 %12 %14
 %8 = OpCompositeExtract %9 %10 2
 )",
                     R"(
@@ -1117,13 +1141,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 %11 = OpTypeVector %9 3
-%13 = OpConstant %9 0
+%13 = OpTypeInt 32 1
+%14 = OpConstant %13 0
 )",
                     R"(
 %12 = OpLoad %3 %1
-%10 = OpImageQuerySizeLod %11 %12 %13
+%10 = OpImageQuerySizeLod %11 %12 %14
 %8 = OpCompositeExtract %9 %10 2
 )",
                     R"(
@@ -1139,13 +1164,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 %11 = OpTypeVector %9 3
-%13 = OpConstant %9 0
+%13 = OpTypeInt 32 1
+%14 = OpConstant %13 0
 )",
                     R"(
 %12 = OpLoad %3 %1
-%10 = OpImageQuerySizeLod %11 %12 %13
+%10 = OpImageQuerySizeLod %11 %12 %14
 %8 = OpCompositeExtract %9 %10 2
 )",
                     R"(
@@ -1160,13 +1186,14 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 %11 = OpTypeVector %9 3
-%13 = OpConstant %9 0
+%13 = OpTypeInt 32 1
+%14 = OpConstant %13 0
 )",
                     R"(
 %12 = OpLoad %3 %1
-%10 = OpImageQuerySizeLod %11 %12 %13
+%10 = OpImageQuerySizeLod %11 %12 %14
 %8 = OpCompositeExtract %9 %10 2
 )",
                     R"(
@@ -1182,7 +1209,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 %11 = OpTypeVector %9 3
 )",
                     R"(
@@ -1202,7 +1229,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1220,7 +1247,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1238,7 +1265,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1256,7 +1283,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1274,7 +1301,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1293,7 +1320,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1311,7 +1338,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1329,7 +1356,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1347,7 +1374,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1366,7 +1393,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1384,7 +1411,7 @@ OpCapability ImageQuery
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
-%9 = OpTypeInt 32 1
+%9 = OpTypeInt 32 0
 )",
                     R"(
 %10 = OpLoad %3 %1
@@ -1514,20 +1541,21 @@ OpCapability Sampled1D
 %14 = OpTypeVector %4 3
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 3
-%21 = OpTypeVector %18 2
-%22 = OpConstant %18 4
-%23 = OpConstant %18 5
-%24 = OpConstantComposite %21 %22 %23
+%22 = OpTypeInt 32 1
+%21 = OpTypeVector %22 2
+%23 = OpConstant %22 4
+%24 = OpConstant %22 5
+%25 = OpConstantComposite %21 %23 %24
 )",
                 R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %14 %15 %16 %17
-%8 = OpImageSampleImplicitLod %9 %13 %20 ConstOffset %24
+%8 = OpImageSampleImplicitLod %9 %13 %20 ConstOffset %25
 )",
                 R"(
 )"};
@@ -1805,14 +1833,14 @@ OpCapability SampledCubeArray
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
 %17 = OpConstant %4 3
-%19 = OpTypeInt 32 1
+%19 = OpTypeInt 32 0
 %20 = OpConstant %19 4
 )",
                 R"(
 %11 = OpLoad %7 %5
 %12 = OpLoad %3 %1
 %14 = OpSampledImage %13 %12 %11
-%18 = OpConvertSToF %4 %20
+%18 = OpConvertUToF %4 %20
 %21 = OpCompositeConstruct %10 %15 %16 %17 %18
 %9 = OpImageSampleImplicitLod %10 %14 %21
 %8 = OpCompositeExtract %4 %9 0
@@ -1892,7 +1920,7 @@ OpCapability SampledCubeArray
 %14 = OpTypeVector %4 3
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 4
 %21 = OpConstant %4 3
 )",
@@ -1900,7 +1928,7 @@ OpCapability SampledCubeArray
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %14 %15 %16 %17
 %8 = OpImageSampleImplicitLod %9 %13 %20 Bias %21
 )",
@@ -2308,7 +2336,7 @@ OpCapability SampledCubeArray
 %16 = OpConstant %4 1
 %17 = OpConstant %4 2
 %18 = OpConstantComposite %15 %16 %17
-%20 = OpTypeInt 32 1
+%20 = OpTypeInt 32 0
 %21 = OpConstant %20 3
 )",
                 R"(
@@ -2369,7 +2397,7 @@ OpCapability SampledCubeArray
 %15 = OpTypeVector %4 3
 %16 = OpConstant %4 1
 %17 = OpConstant %4 2
-%19 = OpTypeInt 32 1
+%19 = OpTypeInt 32 0
 %20 = OpConstant %19 3
 %23 = OpConstant %19 4
 )",
@@ -2377,7 +2405,7 @@ OpCapability SampledCubeArray
 %11 = OpLoad %7 %5
 %12 = OpLoad %3 %1
 %14 = OpSampledImage %13 %12 %11
-%18 = OpConvertSToF %4 %20
+%18 = OpConvertUToF %4 %20
 %21 = OpCompositeConstruct %15 %16 %17 %18
 %22 = OpConvertSToF %4 %23
 %9 = OpImageSampleExplicitLod %10 %14 %21 Lod %22
@@ -2400,22 +2428,23 @@ OpCapability SampledCubeArray
 %15 = OpTypeVector %4 3
 %16 = OpConstant %4 1
 %17 = OpConstant %4 2
-%19 = OpTypeInt 32 1
+%19 = OpTypeInt 32 0
 %20 = OpConstant %19 3
 %23 = OpConstant %19 4
-%24 = OpTypeVector %19 2
-%25 = OpConstant %19 5
-%26 = OpConstant %19 6
-%27 = OpConstantComposite %24 %25 %26
+%25 = OpTypeInt 32 1
+%24 = OpTypeVector %25 2
+%26 = OpConstant %25 5
+%27 = OpConstant %25 6
+%28 = OpConstantComposite %24 %26 %27
 )",
                 R"(
 %11 = OpLoad %7 %5
 %12 = OpLoad %3 %1
 %14 = OpSampledImage %13 %12 %11
-%18 = OpConvertSToF %4 %20
+%18 = OpConvertUToF %4 %20
 %21 = OpCompositeConstruct %15 %16 %17 %18
 %22 = OpConvertSToF %4 %23
-%9 = OpImageSampleExplicitLod %10 %14 %21 Lod|ConstOffset %22 %27
+%9 = OpImageSampleExplicitLod %10 %14 %21 Lod|ConstOffset %22 %28
 %8 = OpCompositeExtract %4 %9 0
 )",
                 R"(
@@ -2598,7 +2627,7 @@ OpCapability SampledCubeArray
 %14 = OpTypeVector %4 3
 %15 = OpConstant %4 1
 %16 = OpConstant %4 2
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 3
 %21 = OpTypeVector %4 2
 %22 = OpConstant %4 4
@@ -2607,18 +2636,19 @@ OpCapability SampledCubeArray
 %25 = OpConstant %4 6
 %26 = OpConstant %4 7
 %27 = OpConstantComposite %21 %25 %26
-%28 = OpTypeVector %18 2
-%29 = OpConstant %18 6
-%30 = OpConstant %18 7
-%31 = OpConstantComposite %28 %29 %30
+%29 = OpTypeInt 32 1
+%28 = OpTypeVector %29 2
+%30 = OpConstant %29 6
+%31 = OpConstant %29 7
+%32 = OpConstantComposite %28 %30 %31
 )",
                 R"(
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %14 %15 %16 %17
-%8 = OpImageSampleExplicitLod %9 %13 %20 Grad|ConstOffset %24 %27 %31
+%8 = OpImageSampleExplicitLod %9 %13 %20 Grad|ConstOffset %24 %27 %32
 )",
                 R"(
 )"};
@@ -2745,7 +2775,7 @@ OpCapability SampledCubeArray
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %16 = OpConstant %4 3
-%18 = OpTypeInt 32 1
+%18 = OpTypeInt 32 0
 %19 = OpConstant %18 4
 %21 = OpTypeVector %4 3
 %22 = OpConstant %4 5
@@ -2761,7 +2791,7 @@ OpCapability SampledCubeArray
 %10 = OpLoad %7 %5
 %11 = OpLoad %3 %1
 %13 = OpSampledImage %12 %11 %10
-%17 = OpConvertSToF %4 %19
+%17 = OpConvertUToF %4 %19
 %20 = OpCompositeConstruct %9 %14 %15 %16 %17
 %8 = OpImageSampleExplicitLod %9 %13 %20 Grad %25 %29
 )",
@@ -2865,21 +2895,22 @@ OpCapability SampledCubeArray
 %13 = OpTypeVector %4 3
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
-%17 = OpTypeInt 32 1
+%17 = OpTypeInt 32 0
 %18 = OpConstant %17 4
 %20 = OpConstant %4 3
-%21 = OpTypeVector %17 2
-%22 = OpConstant %17 5
-%23 = OpConstant %17 6
-%24 = OpConstantComposite %21 %22 %23
+%22 = OpTypeInt 32 1
+%21 = OpTypeVector %22 2
+%23 = OpConstant %22 5
+%24 = OpConstant %22 6
+%25 = OpConstantComposite %21 %23 %24
 )",
                 R"(
 %9 = OpLoad %7 %5
 %10 = OpLoad %3 %1
 %12 = OpSampledImage %11 %10 %9
-%16 = OpConvertSToF %4 %18
+%16 = OpConvertUToF %4 %18
 %19 = OpCompositeConstruct %13 %14 %15 %16
-%8 = OpImageSampleDrefImplicitLod %4 %12 %19 %20 ConstOffset %24
+%8 = OpImageSampleDrefImplicitLod %4 %12 %19 %20 ConstOffset %25
 )",
                 R"(
 )"};
@@ -3011,8 +3042,8 @@ OpCapability SampledCubeArray
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %17 = OpTypeInt 32 1
-%18 = OpConstant %17 4
-%20 = OpConstant %4 3
+%18 = OpConstant %17 3
+%20 = OpConstant %4 4
 %21 = OpConstant %4 0
 )",
                 R"(
@@ -3040,8 +3071,8 @@ OpCapability SampledCubeArray
 %14 = OpConstant %4 1
 %15 = OpConstant %4 2
 %17 = OpTypeInt 32 1
-%18 = OpConstant %17 4
-%20 = OpConstant %4 3
+%18 = OpConstant %17 3
+%20 = OpConstant %4 4
 %21 = OpConstant %4 0
 %22 = OpTypeVector %17 2
 %23 = OpConstant %17 5
@@ -3127,7 +3158,7 @@ OpCapability SampledCubeArray
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%11 = OpTypeInt 32 1
+%11 = OpTypeInt 32 0
 %12 = OpConstant %11 1
 %13 = OpConstant %11 3
 )",
@@ -3192,7 +3223,7 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%12 = OpTypeInt 32 1
+%12 = OpTypeInt 32 0
 %11 = OpTypeVector %12 2
 %13 = OpConstant %12 1
 %14 = OpConstant %12 2
@@ -3240,15 +3271,16 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%11 = OpTypeVector %4 2
-%12 = OpConstant %4 1
-%13 = OpConstant %4 2
-%14 = OpConstantComposite %11 %12 %13
-%15 = OpConstant %4 3
+%12 = OpTypeInt 32 0
+%11 = OpTypeVector %12 2
+%13 = OpConstant %12 1
+%14 = OpConstant %12 2
+%15 = OpConstantComposite %11 %13 %14
+%16 = OpConstant %12 3
 )",
                 R"(
 %10 = OpLoad %3 %1
-%8 = OpImageFetch %9 %10 %14 Lod %15
+%8 = OpImageFetch %9 %10 %15 Lod %16
 )",
                 R"(
 )"};
@@ -3313,16 +3345,17 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%11 = OpTypeVector %4 3
-%12 = OpConstant %4 1
-%13 = OpConstant %4 2
-%14 = OpConstant %4 3
-%15 = OpConstantComposite %11 %12 %13 %14
-%16 = OpConstant %4 4
+%12 = OpTypeInt 32 0
+%11 = OpTypeVector %12 3
+%13 = OpConstant %12 1
+%14 = OpConstant %12 2
+%15 = OpConstant %12 3
+%16 = OpConstantComposite %11 %13 %14 %15
+%17 = OpConstant %12 4
 )",
                 R"(
 %10 = OpLoad %3 %1
-%8 = OpImageFetch %9 %10 %15 Lod %16
+%8 = OpImageFetch %9 %10 %16 Lod %17
 )",
                 R"(
 )"};
@@ -3387,16 +3420,17 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%11 = OpTypeVector %4 3
-%12 = OpConstant %4 1
-%13 = OpConstant %4 2
-%14 = OpConstant %4 3
-%15 = OpConstantComposite %11 %12 %13 %14
-%16 = OpConstant %4 4
+%12 = OpTypeInt 32 0
+%11 = OpTypeVector %12 3
+%13 = OpConstant %12 1
+%14 = OpConstant %12 2
+%15 = OpConstant %12 3
+%16 = OpConstantComposite %11 %13 %14 %15
+%17 = OpConstant %12 4
 )",
                 R"(
 %10 = OpLoad %3 %1
-%8 = OpImageFetch %9 %10 %15 Lod %16
+%8 = OpImageFetch %9 %10 %16 Lod %17
 )",
                 R"(
 )"};
@@ -3459,15 +3493,16 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVector %4 4
-%11 = OpTypeVector %4 2
-%12 = OpConstant %4 1
-%13 = OpConstant %4 2
-%14 = OpConstantComposite %11 %12 %13
-%15 = OpConstant %4 3
+%12 = OpTypeInt 32 0
+%11 = OpTypeVector %12 2
+%13 = OpConstant %12 1
+%14 = OpConstant %12 2
+%15 = OpConstantComposite %11 %13 %14
+%16 = OpConstant %12 3
 )",
                 R"(
 %10 = OpLoad %3 %1
-%8 = OpImageFetch %9 %10 %14 Sample %15
+%8 = OpImageFetch %9 %10 %15 Sample %16
 )",
                 R"(
 )"};
@@ -3507,7 +3542,7 @@ OpCapability Sampled1D
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %10 = OpTypeVector %4 4
-%13 = OpTypeInt 32 1
+%13 = OpTypeInt 32 0
 %12 = OpTypeVector %13 3
 %14 = OpConstant %13 1
 %15 = OpConstant %13 2
@@ -3526,24 +3561,23 @@ OpCapability Sampled1D
             return {
                 R"(
 %4 = OpTypeFloat 32
-%3 = OpTypeImage %4 2D 0 1 0 1 Unknown
+%3 = OpTypeImage %4 2D 0 0 1 1 Unknown
 %2 = OpTypePointer UniformConstant %3
 %1 = OpVariable %2 UniformConstant
 %7 = OpTypeSampler
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %10 = OpTypeVector %4 4
-%13 = OpTypeInt 32 1
-%12 = OpTypeVector %13 3
+%13 = OpTypeInt 32 0
+%12 = OpTypeVector %13 2
 %14 = OpConstant %13 1
 %15 = OpConstant %13 2
-%16 = OpConstant %13 3
-%17 = OpConstantComposite %12 %14 %15 %16
-%18 = OpConstant %13 4
+%16 = OpConstantComposite %12 %14 %15
+%17 = OpConstant %13 3
 )",
                 R"(
 %11 = OpLoad %3 %1
-%9 = OpImageFetch %10 %11 %17 Sample %18
+%9 = OpImageFetch %10 %11 %16 Sample %17
 %8 = OpCompositeExtract %4 %9 0
 )",
                 R"(
@@ -3615,7 +3649,7 @@ OpImageWrite %10 %15 %21
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVoid
-%12 = OpTypeInt 32 1
+%12 = OpTypeInt 32 0
 %11 = OpTypeVector %12 3
 %13 = OpConstant %12 1
 %14 = OpConstant %12 2
@@ -3645,7 +3679,7 @@ OpImageWrite %10 %16 %22
 %6 = OpTypePointer UniformConstant %7
 %5 = OpVariable %6 UniformConstant
 %9 = OpTypeVoid
-%12 = OpTypeInt 32 1
+%12 = OpTypeInt 32 0
 %11 = OpTypeVector %12 3
 %13 = OpConstant %12 1
 %14 = OpConstant %12 2

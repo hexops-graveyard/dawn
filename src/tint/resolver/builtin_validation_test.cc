@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <unordered_set>
+
 #include "src/tint/ast/builtin_texture_helper_test.h"
 #include "src/tint/resolver/resolver_test_helper.h"
+#include "src/tint/sem/type_initializer.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -96,48 +99,169 @@ TEST_F(ResolverBuiltinValidationTest, InvalidPipelineStageIndirect) {
 7:8 note: called by entry point 'main')");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunction) {
-    Func(Source{{12, 34}}, "mix", utils::Empty, ty.i32(), {});
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunctionUsedAsFunction) {
+    auto* mix = Func(Source{{12, 34}}, "mix", utils::Empty, ty.i32(),
+                     utils::Vector{
+                         Return(1_i),
+                     });
+    auto* use = Call("mix");
+    WrapInFunction(use);
 
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(),
-              R"(12:34 error: 'mix' is a builtin and cannot be redeclared as a function)");
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+    auto* sem = Sem().Get<sem::Call>(use);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->Target(), Sem().Get(mix));
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConst) {
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunctionUsedAsVariable) {
+    Func(Source{{12, 34}}, "mix", utils::Empty, ty.i32(),
+         utils::Vector{
+             Return(1_i),
+         });
+    WrapInFunction(Decl(Var("v", Expr(Source{{56, 78}}, "mix"))));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(56:78 error: missing '(' for function call)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunctionUsedAsType) {
+    Func(Source{{12, 34}}, "mix", utils::Empty, ty.i32(),
+         utils::Vector{
+             Return(1_i),
+         });
+    WrapInFunction(Construct(ty.type_name(Source{{56, 78}}, "mix")));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use function 'mix' as type
+12:34 note: 'mix' declared here)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsFunction) {
     GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
+    WrapInFunction(Call(Expr(Source{{56, 78}}, "mix"), 1_f, 2_f, 3_f));
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(),
-              R"(12:34 error: 'mix' is a builtin and cannot be redeclared as a 'const')");
+    EXPECT_EQ(r()->error(), R"(56:78 error: cannot call variable 'mix'
+12:34 note: 'mix' declared here)");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVar) {
-    GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), ast::StorageClass::kPrivate);
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsVariable) {
+    auto* mix = GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
+    auto* use = Expr("mix");
+    WrapInFunction(Decl(Var("v", use)));
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+    auto* sem = Sem().Get<sem::VariableUser>(use);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->Variable(), Sem().Get(mix));
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsType) {
+    GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
+    WrapInFunction(Construct(ty.type_name(Source{{56, 78}}, "mix")));
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(
-        r()->error(),
-        R"(12:34 error: 'mix' is a builtin and cannot be redeclared as a module-scope 'var')");
+    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use variable 'mix' as type
+12:34 note: 'mix' declared here)");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAlias) {
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsFunction) {
+    GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), ast::AddressSpace::kPrivate);
+    WrapInFunction(Call(Expr(Source{{56, 78}}, "mix"), 1_f, 2_f, 3_f));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(56:78 error: cannot call variable 'mix'
+12:34 note: 'mix' declared here)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsVariable) {
+    auto* mix =
+        GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), ast::AddressSpace::kPrivate);
+    auto* use = Expr("mix");
+    WrapInFunction(Decl(Var("v", use)));
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+    auto* sem = Sem().Get(use)->UnwrapLoad()->As<sem::VariableUser>();
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->Variable(), Sem().Get(mix));
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsType) {
+    GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), ast::AddressSpace::kPrivate);
+    WrapInFunction(Construct(ty.type_name(Source{{56, 78}}, "mix")));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use variable 'mix' as type
+12:34 note: 'mix' declared here)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsFunction) {
     Alias(Source{{12, 34}}, "mix", ty.i32());
+    WrapInFunction(Call(Source{{56, 78}}, "mix", 1_f, 2_f, 3_f));
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(),
-              R"(12:34 error: 'mix' is a builtin and cannot be redeclared as an alias)");
+    EXPECT_EQ(r()->error(), R"(56:78 error: no matching initializer for i32(f32, f32, f32)
+
+2 candidate initializers:
+  i32(i32) -> i32
+  i32() -> i32
+
+1 candidate conversion:
+  i32<T>(T) -> i32  where: T is abstract-int, abstract-float, f32, f16, u32 or bool
+)");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStruct) {
-    Structure(Source{{12, 34}}, "mix",
-              utils::Vector{
-                  Member("m", ty.i32()),
-              });
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsVariable) {
+    Alias(Source{{12, 34}}, "mix", ty.i32());
+    WrapInFunction(Decl(Var("v", Expr(Source{{56, 78}}, "mix"))));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(56:78 error: missing '(' for builtin call)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsType) {
+    auto* mix = Alias(Source{{12, 34}}, "mix", ty.i32());
+    auto* use = Construct(ty.type_name("mix"));
+    WrapInFunction(use);
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+    auto* sem = Sem().Get<sem::Call>(use);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->Type(), Sem().Get(mix));
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsFunction) {
+    Structure("mix", utils::Vector{
+                         Member("m", ty.i32()),
+                     });
+    WrapInFunction(Call(Source{{12, 34}}, "mix", 1_f, 2_f, 3_f));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
-              R"(12:34 error: 'mix' is a builtin and cannot be redeclared as a struct)");
+              R"(12:34 error: struct initializer has too many inputs: expected 1, found 3)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsVariable) {
+    Structure("mix", utils::Vector{
+                         Member("m", ty.i32()),
+                     });
+    WrapInFunction(Decl(Var("v", Expr(Source{{12, 34}}, "mix"))));
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), R"(12:34 error: missing '(' for builtin call)");
+}
+
+TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsType) {
+    auto* mix = Structure("mix", utils::Vector{
+                                     Member("m", ty.i32()),
+                                 });
+    auto* use = Construct(ty.type_name("mix"));
+    WrapInFunction(use);
+
+    ASSERT_TRUE(r()->Resolve()) << r()->error();
+    auto* sem = Sem().Get<sem::Call>(use);
+    ASSERT_NE(sem, nullptr);
+    EXPECT_EQ(sem->Type(), Sem().Get(mix));
 }
 
 namespace texture_constexpr_args {
@@ -257,11 +381,10 @@ TEST_P(BuiltinTextureConstExprArgValidationTest, Immediate) {
     auto*& arg_to_replace = (param.position == Position::kFirst) ? args.Front() : args.Back();
 
     // BuildTextureVariable() uses a Literal for scalars, and a CallExpression for
-    // a vector constructor.
+    // a vector initializer.
     bool is_vector = arg_to_replace->Is<ast::CallExpression>();
 
-    // Make the expression to be replaced, reachable. This keeps the resolver
-    // happy.
+    // Make the expression to be replaced, reachable. This keeps the resolver happy.
     WrapInFunction(arg_to_replace);
 
     arg_to_replace = expr(Source{{12, 34}}, *this);
@@ -305,18 +428,70 @@ TEST_P(BuiltinTextureConstExprArgValidationTest, GlobalConst) {
     overload.BuildSamplerVariable(this);
 
     // Build the module-scope const 'G' with the offset value
-    GlobalConst("G", nullptr, expr({}, *this));
+    GlobalConst("G", expr({}, *this));
 
     auto args = overload.args(this);
     auto*& arg_to_replace = (param.position == Position::kFirst) ? args.Front() : args.Back();
 
-    // Make the expression to be replaced, reachable. This keeps the resolver
-    // happy.
+    // BuildTextureVariable() uses a Literal for scalars, and a CallExpression for
+    // a vector initializer.
+    bool is_vector = arg_to_replace->Is<ast::CallExpression>();
+
+    // Make the expression to be replaced, reachable. This keeps the resolver happy.
     WrapInFunction(arg_to_replace);
 
     arg_to_replace = Expr(Source{{12, 34}}, "G");
 
-    // Call the builtin with the constexpr argument replaced
+    // Call the builtin with the constant-expression argument replaced
+    Func("func", utils::Empty, ty.void_(),
+         utils::Vector{
+             CallStmt(Call(overload.function, args)),
+         },
+         utils::Vector{
+             Stage(ast::PipelineStage::kFragment),
+         });
+
+    if (expr.invalid_index == Constexpr::kValid) {
+        EXPECT_TRUE(r()->Resolve()) << r()->error();
+    } else {
+        EXPECT_FALSE(r()->Resolve());
+        std::stringstream err;
+        if (is_vector) {
+            err << "12:34 error: each component of the " << param.name
+                << " argument must be at least " << param.min << " and at most " << param.max
+                << ". " << param.name << " component " << expr.invalid_index << " is "
+                << std::to_string(expr.values[static_cast<size_t>(expr.invalid_index)]);
+        } else {
+            err << "12:34 error: the " << param.name << " argument must be at least " << param.min
+                << " and at most " << param.max << ". " << param.name << " is "
+                << std::to_string(expr.values[static_cast<size_t>(expr.invalid_index)]);
+        }
+        EXPECT_EQ(r()->error(), err.str());
+    }
+}
+
+TEST_P(BuiltinTextureConstExprArgValidationTest, GlobalVar) {
+    auto& p = GetParam();
+    auto overload = std::get<0>(p);
+    auto param = std::get<1>(p);
+    auto expr = std::get<2>(p);
+
+    // Build the global texture and sampler variables
+    overload.BuildTextureVariable(this);
+    overload.BuildSamplerVariable(this);
+
+    // Build the module-scope var 'G' with the offset value
+    GlobalVar("G", expr({}, *this), ast::AddressSpace::kPrivate);
+
+    auto args = overload.args(this);
+    auto*& arg_to_replace = (param.position == Position::kFirst) ? args.Front() : args.Back();
+
+    // Make the expression to be replaced, reachable. This keeps the resolver happy.
+    WrapInFunction(arg_to_replace);
+
+    arg_to_replace = Expr(Source{{12, 34}}, "G");
+
+    // Call the builtin with the constant-expression argument replaced
     Func("func", utils::Empty, ty.void_(),
          utils::Vector{
              CallStmt(Call(overload.function, args)),
@@ -327,7 +502,7 @@ TEST_P(BuiltinTextureConstExprArgValidationTest, GlobalConst) {
 
     EXPECT_FALSE(r()->Resolve());
     std::stringstream err;
-    err << "12:34 error: the " << param.name << " argument must be a const_expression";
+    err << "12:34 error: the " << param.name << " argument must be a const-expression";
     EXPECT_EQ(r()->error(), err.str());
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -392,20 +567,23 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Component,
     BuiltinTextureConstExprArgValidationTest,
-    testing::Combine(testing::ValuesIn(TextureCases({ValidTextureOverload::kGather2dF32,
-                                                     ValidTextureOverload::kGather2dOffsetF32,
-                                                     ValidTextureOverload::kGather2dArrayF32,
-                                                     ValidTextureOverload::kGather2dArrayOffsetF32,
-                                                     ValidTextureOverload::kGatherCubeF32,
-                                                     ValidTextureOverload::kGatherCubeArrayF32})),
-                     testing::Values(Parameter{"component", Position::kFirst, 0, 3}),
-                     testing::Values(Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 0},
-                                     Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 1},
-                                     Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 2},
-                                     Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 3},
-                                     Constexpr{0, Constexpr::Kind::kScalar, 4},
-                                     Constexpr{0, Constexpr::Kind::kScalar, 123},
-                                     Constexpr{0, Constexpr::Kind::kScalar, -1})));
+    testing::Combine(
+        testing::ValuesIn(TextureCases({
+            ValidTextureOverload::kGather2dF32, ValidTextureOverload::kGather2dOffsetF32,
+            ValidTextureOverload::kGather2dArrayF32, ValidTextureOverload::kGatherCubeF32,
+            // The below require mixed integer signedness.
+            // See https://github.com/gpuweb/gpuweb/issues/3536
+            // ValidTextureOverload::kGather2dArrayOffsetF32,
+            // ValidTextureOverload::kGatherCubeArrayF32,
+        })),
+        testing::Values(Parameter{"component", Position::kFirst, 0, 3}),
+        testing::Values(Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 0},
+                        Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 1},
+                        Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 2},
+                        Constexpr{Constexpr::kValid, Constexpr::Kind::kScalar, 3},
+                        Constexpr{0, Constexpr::Kind::kScalar, 4},
+                        Constexpr{0, Constexpr::Kind::kScalar, 123},
+                        Constexpr{0, Constexpr::Kind::kScalar, -1})));
 
 }  // namespace texture_constexpr_args
 

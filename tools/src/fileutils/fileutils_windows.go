@@ -15,6 +15,8 @@
 // Package fileutils contains utility functions for files
 package fileutils
 
+const ExeExt = ".exe"
+
 // IsExe returns true if the file at path is an executable
 func IsExe(path string) bool {
 	return true

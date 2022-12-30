@@ -3,8 +3,10 @@
 @group(1) @binding(2) var arg_2 : sampler;
 
 fn textureGather_af55b3() {
-  var arg_3 = vec2<f32>();
-  var res : vec4<f32> = textureGather(1, arg_1, arg_2, arg_3, vec2<i32>());
+  const arg_0 = 1i;
+  var arg_3 = vec2<f32>(1.0f);
+  const arg_4 = vec2<i32>(1i);
+  var res : vec4<f32> = textureGather(arg_0, arg_1, arg_2, arg_3, arg_4);
 }
 
 @vertex

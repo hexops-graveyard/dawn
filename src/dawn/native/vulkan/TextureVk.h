@@ -24,6 +24,7 @@
 #include "dawn/native/Texture.h"
 #include "dawn/native/vulkan/ExternalHandle.h"
 #include "dawn/native/vulkan/external_memory/MemoryService.h"
+#include "dawn/native/vulkan/external_semaphore/SemaphoreService.h"
 
 namespace dawn::native::vulkan {
 
@@ -64,6 +65,8 @@ class Texture final : public TextureBase {
                                            VkImage nativeImage);
 
     VkImage GetHandle() const;
+    // Returns the aspects used for tracking of Vulkan state. These can be the combined aspects.
+    Aspect GetDisjointVulkanAspects() const;
 
     // Transitions the texture to be used as `usage`, recording any necessary barrier in
     // `commands`.
@@ -77,6 +80,10 @@ class Texture final : public TextureBase {
                                 VkPipelineStageFlags* srcStages,
                                 VkPipelineStageFlags* dstStages);
 
+    // Eagerly transition the texture for export.
+    void TransitionEagerlyForExport(CommandRecordingContext* recordingContext);
+    std::vector<VkSemaphore> AcquireWaitRequirements();
+
     void EnsureSubresourceContentInitialized(CommandRecordingContext* recordingContext,
                                              const SubresourceRange& range);
 
@@ -85,12 +92,12 @@ class Texture final : public TextureBase {
     // Binds externally allocated memory to the VkImage and on success, takes ownership of
     // semaphores.
     MaybeError BindExternalMemory(const ExternalImageDescriptorVk* descriptor,
-                                  VkSemaphore signalSemaphore,
                                   VkDeviceMemory externalMemoryAllocation,
                                   std::vector<VkSemaphore> waitSemaphores);
-
+    // Update the 'ExternalSemaphoreHandle' to be used for export with the newly submitted one.
+    void UpdateExternalSemaphoreHandle(ExternalSemaphoreHandle handle);
     MaybeError ExportExternalTexture(VkImageLayout desiredLayout,
-                                     VkSemaphore* signalSemaphore,
+                                     ExternalSemaphoreHandle* handle,
                                      VkImageLayout* releasedOldLayout,
                                      VkImageLayout* releasedNewLayout);
 
@@ -134,44 +141,51 @@ class Texture final : public TextureBase {
                                          size_t transitionBarrierStart);
     bool CanReuseWithoutBarrier(wgpu::TextureUsage lastUsage, wgpu::TextureUsage usage);
 
-    // In base Vulkan, Depth and stencil can only be transitioned together. This function
-    // indicates whether we should combine depth and stencil barriers to accommodate this
-    // limitation.
-    bool ShouldCombineDepthStencilBarriers() const;
-
-    // This indicates whether the VK_IMAGE_ASPECT_COLOR_BIT instead of
-    // VK_IMAGE_ASPECT_PLANE_n_BIT must be used.
-    bool ShouldCombineMultiPlaneBarriers() const;
-
-    bool ShouldCombineBarriers() const {
-        return ShouldCombineDepthStencilBarriers() || ShouldCombineMultiPlaneBarriers();
-    }
-
-    // Compute the Aspects of the SubresourceStoage for this texture depending on whether we're
-    // doing the workaround for combined depth and stencil barriers, or combining multi-plane
-    // barriers.
-    Aspect ComputeAspectsForSubresourceStorage() const;
-
     VkImage mHandle = VK_NULL_HANDLE;
     ResourceMemoryAllocation mMemoryAllocation;
     VkDeviceMemory mExternalAllocation = VK_NULL_HANDLE;
 
-    enum class ExternalState { InternalOnly, PendingAcquire, Acquired, Released };
+    // The states of an external texture:
+    //   InternalOnly: Not initialized as an external texture yet.
+    //   PendingAcquire: Intialized as an external texture already, but unavailable for access yet.
+    //   Acquired: Ready for access.
+    //   EagerlyTransitioned: The texture has ever been used, and eagerly transitioned for export.
+    //   Now it can be acquired for access again, or directly exported. Released: The texture has
+    //   been destoried, and should no longer be used.
+    enum class ExternalState {
+        InternalOnly,
+        PendingAcquire,
+        Acquired,
+        EagerlyTransitioned,
+        Released
+    };
     ExternalState mExternalState = ExternalState::InternalOnly;
     ExternalState mLastExternalState = ExternalState::InternalOnly;
+    uint32_t mExportQueueFamilyIndex = VK_QUEUE_FAMILY_EXTERNAL_KHR;
 
     VkImageLayout mPendingAcquireOldLayout;
     VkImageLayout mPendingAcquireNewLayout;
 
-    VkSemaphore mSignalSemaphore = VK_NULL_HANDLE;
+    VkImageLayout mDesiredExportLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    ExternalSemaphoreHandle mExternalSemaphoreHandle = kNullExternalSemaphoreHandle;
+
     std::vector<VkSemaphore> mWaitRequirements;
 
-    // Note that in early Vulkan versions it is not possible to transition depth and stencil
-    // separately so textures with Depth|Stencil aspects will have a single Depth aspect in the
-    // storage.
-    std::unique_ptr<SubresourceStorage<wgpu::TextureUsage>> mSubresourceLastUsages;
+    // Sometimes the WebGPU aspects don't directly map to Vulkan aspects:
+    //
+    //  - In early Vulkan versions it is not possible to transition depth and stencil separetely so
+    //    textures with Depth|Stencil will be promoted to a single CombinedDepthStencil aspect
+    //    internally.
+    //  - Some multiplanar images cannot have planes transitioned separately and instead Vulkan
+    //    requires that the "Color" aspect be used for barriers, so Plane0|Plane1 is promoted to
+    //    just Color.
+    //
+    // This variable, if not Aspect::None, is the combined aspect to use for all transitions.
+    const Aspect mCombinedAspect;
+    SubresourceStorage<wgpu::TextureUsage> mSubresourceLastUsages;
 
-    bool mSupportsDisjointVkImage = false;
+    bool UseCombinedAspects() const;
 };
 
 class TextureView final : public TextureViewBase {

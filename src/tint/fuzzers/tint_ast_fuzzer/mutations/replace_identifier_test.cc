@@ -62,7 +62,7 @@ TEST(ReplaceIdentifierTest, NotApplicable_Simple) {
     auto b_var_id = node_id_map.GetId(b_var);
     ASSERT_NE(b_var_id, 0);
 
-    const auto* sum_expr = b_var->constructor->As<ast::BinaryExpression>();
+    const auto* sum_expr = b_var->initializer->As<ast::BinaryExpression>();
     ASSERT_NE(sum_expr, nullptr);
 
     auto a_ident_id = node_id_map.GetId(sum_expr->lhs);
@@ -75,7 +75,7 @@ TEST(ReplaceIdentifierTest, NotApplicable_Simple) {
     ASSERT_NE(e_var_id, 0);
 
     auto vec_member_access_id =
-        node_id_map.GetId(e_var->constructor->As<ast::MemberAccessorExpression>()->member);
+        node_id_map.GetId(e_var->initializer->As<ast::MemberAccessorExpression>()->member);
     ASSERT_NE(vec_member_access_id, 0);
 
     // use_id is invalid.
@@ -272,7 +272,7 @@ fn f(b: i32) {
 
 TEST(ReplaceIdentifierTest, NotApplicable5) {
     // Can't replace `a` with `b` since the latter has a wrong access mode
-    // (`read` for uniform storage class).
+    // (`read` for uniform address space).
     std::string shader = R"(
 struct S {
   a: i32
@@ -343,7 +343,7 @@ fn f() {
 
 TEST(ReplaceIdentifierTest, NotApplicable8) {
     // Can't replace `ptr_b` with `c` since the latter has a wrong access mode and
-    // storage class.
+    // address space.
     std::string shader = R"(
 struct S {
   a: i32
@@ -386,7 +386,7 @@ struct S {
 }
 
 var<private> a: S;
-let e = 3;
+const e = 3;
 @group(1) @binding(1) var<uniform> b: S;
 fn f() {
   *&a = *&b;
@@ -451,7 +451,7 @@ fn f() {
 }
 
 TEST(ReplaceIdentifierTest, Applicable1) {
-    // Can replace `a` with `b` (same storage class).
+    // Can replace `a` with `b` (same address space).
     std::string shader = R"(
 fn f() {
   var b : vec2<u32>;
@@ -596,7 +596,7 @@ fn f() {
                                         .Functions()[0]
                                         ->body->statements[1]
                                         ->As<ast::VariableDeclStatement>()
-                                        ->variable->constructor->As<ast::IndexAccessorExpression>()
+                                        ->variable->initializer->As<ast::IndexAccessorExpression>()
                                         ->object->As<ast::UnaryOpExpression>()
                                         ->expr->As<ast::UnaryOpExpression>()
                                         ->expr);
@@ -611,7 +611,7 @@ fn f() {
 
 TEST(ReplaceIdentifierTest, NotApplicable14) {
     // Can't replace `ptr_a` with `ptr_b` (both are pointers with different
-    // storage class).
+    // address space).
     std::string shader = R"(
 var<private> b: vec2<u32>;
 fn f() {
@@ -631,7 +631,7 @@ fn f() {
                                         .Functions()[0]
                                         ->body->statements[3]
                                         ->As<ast::VariableDeclStatement>()
-                                        ->variable->constructor->As<ast::IndexAccessorExpression>()
+                                        ->variable->initializer->As<ast::IndexAccessorExpression>()
                                         ->object->As<ast::UnaryOpExpression>()
                                         ->expr);
     ASSERT_NE(use_id, 0);

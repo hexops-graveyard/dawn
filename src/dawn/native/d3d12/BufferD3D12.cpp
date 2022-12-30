@@ -155,7 +155,7 @@ MaybeError Buffer::Initialize(bool mappedAtCreation) {
 
     DAWN_TRY_ASSIGN(
         mResourceAllocation,
-        ToBackend(GetDevice())->AllocateMemory(heapType, resourceDescriptor, bufferUsage));
+        ToBackend(GetDevice())->AllocateMemory(heapType, resourceDescriptor, bufferUsage, 0));
 
     SetLabelImpl();
 
@@ -488,8 +488,8 @@ MaybeError Buffer::ClearBuffer(CommandRecordingContext* commandContext,
 
         memset(uploadHandle.mappedBuffer, clearValue, size);
 
-        device->CopyFromStagingToBufferImpl(commandContext, uploadHandle.stagingBuffer,
-                                            uploadHandle.startOffset, this, offset, size);
+        device->CopyFromStagingToBufferHelper(commandContext, uploadHandle.stagingBuffer,
+                                              uploadHandle.startOffset, this, offset, size);
     }
 
     return {};

@@ -59,7 +59,10 @@ group("abseil") {
 }
 
 config("internal") {
-  configs = [ "${dawn_root}/src/dawn/common:internal_config" ]
+  configs = [
+    "${dawn_root}/src/dawn/common:internal_config",
+    "${dawn_root}/src/tint:tint_public_config",
+  ]
 }
 
 config("weak_framework") {
@@ -175,6 +178,8 @@ source_set("sources") {
   sources += [
     "Adapter.cpp",
     "Adapter.h",
+    "ApplyClearColorValueWithDrawHelper.cpp",
+    "ApplyClearColorValueWithDrawHelper.h",
     "AsyncTask.cpp",
     "AsyncTask.h",
     "AttachmentState.cpp",
@@ -311,6 +316,7 @@ source_set("sources") {
     "Sampler.h",
     "ScratchBuffer.cpp",
     "ScratchBuffer.h",
+    "Serializable.h",
     "ShaderModule.cpp",
     "ShaderModule.h",
     "StagingBuffer.cpp",
@@ -414,6 +420,8 @@ source_set("sources") {
       "d3d12/DeviceD3D12.h",
       "d3d12/ExternalImageDXGIImpl.cpp",
       "d3d12/ExternalImageDXGIImpl.h",
+      "d3d12/FenceD3D12.cpp",
+      "d3d12/FenceD3D12.h",
       "d3d12/Forward.h",
       "d3d12/GPUDescriptorHeapAllocationD3D12.cpp",
       "d3d12/GPUDescriptorHeapAllocationD3D12.h",
@@ -665,6 +673,7 @@ source_set("sources") {
       "vulkan/VulkanFunctions.h",
       "vulkan/VulkanInfo.cpp",
       "vulkan/VulkanInfo.h",
+      "vulkan/external_memory/MemoryService.cpp",
       "vulkan/external_memory/MemoryService.h",
       "vulkan/external_semaphore/SemaphoreService.h",
     ]
@@ -685,6 +694,12 @@ source_set("sources") {
         "vulkan/external_memory/MemoryServiceZirconHandle.cpp",
         "vulkan/external_semaphore/SemaphoreServiceZirconHandle.cpp",
       ]
+    } else if (is_android) {
+      sources += [
+        "vulkan/external_memory/MemoryServiceAHardwareBuffer.cpp",
+        "vulkan/external_semaphore/SemaphoreServiceFD.cpp",
+      ]
+      defines += [ "DAWN_USE_SYNC_FDS" ]
     } else {
       sources += [
         "vulkan/external_memory/MemoryServiceNull.cpp",

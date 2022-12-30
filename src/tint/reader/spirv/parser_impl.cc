@@ -27,9 +27,9 @@
 #include "src/tint/ast/type_name.h"
 #include "src/tint/ast/unary_op_expression.h"
 #include "src/tint/reader/spirv/function.h"
-#include "src/tint/sem/depth_texture.h"
-#include "src/tint/sem/multisampled_texture.h"
-#include "src/tint/sem/sampled_texture.h"
+#include "src/tint/type/depth_texture.h"
+#include "src/tint/type/multisampled_texture.h"
+#include "src/tint/type/sampled_texture.h"
 #include "src/tint/utils/unique_vector.h"
 
 namespace tint::reader::spirv {
@@ -41,6 +41,17 @@ namespace {
 // tighten up the code so that the output of the SPIR-V *writer*
 // will satisfy SPV_ENV_WEBGPU_0 validation.
 const spv_target_env kInputEnv = SPV_ENV_VULKAN_1_1;
+
+/// @param inst a SPIR-V instruction
+/// @returns Returns the opcode for an instruciton
+inline spv::Op opcode(const spvtools::opt::Instruction& inst) {
+    return inst.opcode();
+}
+/// @param inst a SPIR-V instruction pointer
+/// @returns Returns the opcode for an instruciton
+inline spv::Op opcode(const spvtools::opt::Instruction* inst) {
+    return inst->opcode();
+}
 
 // A FunctionTraverser is used to compute an ordering of functions in the
 // module such that callees precede callers.
@@ -70,7 +81,7 @@ class FunctionTraverser {
         visited_.insert(&f);
         for (const auto& bb : f) {
             for (const auto& inst : bb) {
-                if (inst.opcode() != SpvOpFunctionCall) {
+                if (opcode(inst) != spv::Op::OpFunctionCall) {
                     continue;
                 }
                 const auto* callee = id_to_func_[inst.GetSingleWordInOperand(0)];
@@ -89,17 +100,17 @@ class FunctionTraverser {
 };
 
 // Returns true if the opcode operates as if its operands are signed integral.
-bool AssumesSignedOperands(SpvOp opcode) {
+bool AssumesSignedOperands(spv::Op opcode) {
     switch (opcode) {
-        case SpvOpSNegate:
-        case SpvOpSDiv:
-        case SpvOpSRem:
-        case SpvOpSMod:
-        case SpvOpSLessThan:
-        case SpvOpSLessThanEqual:
-        case SpvOpSGreaterThan:
-        case SpvOpSGreaterThanEqual:
-        case SpvOpConvertSToF:
+        case spv::Op::OpSNegate:
+        case spv::Op::OpSDiv:
+        case spv::Op::OpSRem:
+        case spv::Op::OpSMod:
+        case spv::Op::OpSLessThan:
+        case spv::Op::OpSLessThanEqual:
+        case spv::Op::OpSGreaterThan:
+        case spv::Op::OpSGreaterThanEqual:
+        case spv::Op::OpConvertSToF:
             return true;
         default:
             break;
@@ -117,6 +128,7 @@ bool AssumesSignedOperands(GLSLstd450 extended_opcode) {
         case GLSLstd450SMin:
         case GLSLstd450SMax:
         case GLSLstd450SClamp:
+        case GLSLstd450FindSMsb:
             return true;
         default:
             break;
@@ -125,15 +137,15 @@ bool AssumesSignedOperands(GLSLstd450 extended_opcode) {
 }
 
 // Returns true if the opcode operates as if its operands are unsigned integral.
-bool AssumesUnsignedOperands(SpvOp opcode) {
+bool AssumesUnsignedOperands(spv::Op opcode) {
     switch (opcode) {
-        case SpvOpUDiv:
-        case SpvOpUMod:
-        case SpvOpULessThan:
-        case SpvOpULessThanEqual:
-        case SpvOpUGreaterThan:
-        case SpvOpUGreaterThanEqual:
-        case SpvOpConvertUToF:
+        case spv::Op::OpUDiv:
+        case spv::Op::OpUMod:
+        case spv::Op::OpULessThan:
+        case spv::Op::OpULessThanEqual:
+        case spv::Op::OpUGreaterThan:
+        case spv::Op::OpUGreaterThanEqual:
+        case spv::Op::OpConvertUToF:
             return true;
         default:
             break;
@@ -150,6 +162,7 @@ bool AssumesUnsignedOperands(GLSLstd450 extended_opcode) {
         case GLSLstd450UMin:
         case GLSLstd450UMax:
         case GLSLstd450UClamp:
+        case GLSLstd450FindUMsb:
             return true;
         default:
             break;
@@ -161,18 +174,18 @@ bool AssumesUnsignedOperands(GLSLstd450 extended_opcode) {
 // the signedness of the second operand to match the signedness of the
 // first operand, and it's not one of the OpU* or OpS* instructions.
 // (Those are handled via MakeOperand.)
-bool AssumesSecondOperandSignednessMatchesFirstOperand(SpvOp opcode) {
+bool AssumesSecondOperandSignednessMatchesFirstOperand(spv::Op opcode) {
     switch (opcode) {
         // All the OpI* integer binary operations.
-        case SpvOpIAdd:
-        case SpvOpISub:
-        case SpvOpIMul:
-        case SpvOpIEqual:
-        case SpvOpINotEqual:
+        case spv::Op::OpIAdd:
+        case spv::Op::OpISub:
+        case spv::Op::OpIMul:
+        case spv::Op::OpIEqual:
+        case spv::Op::OpINotEqual:
         // All the bitwise integer binary operations.
-        case SpvOpBitwiseAnd:
-        case SpvOpBitwiseOr:
-        case SpvOpBitwiseXor:
+        case spv::Op::OpBitwiseAnd:
+        case spv::Op::OpBitwiseOr:
+        case spv::Op::OpBitwiseXor:
             return true;
         default:
             break;
@@ -182,24 +195,24 @@ bool AssumesSecondOperandSignednessMatchesFirstOperand(SpvOp opcode) {
 
 // Returns true if the corresponding WGSL operation requires
 // the signedness of the result to match the signedness of the first operand.
-bool AssumesResultSignednessMatchesFirstOperand(SpvOp opcode) {
+bool AssumesResultSignednessMatchesFirstOperand(spv::Op opcode) {
     switch (opcode) {
-        case SpvOpNot:
-        case SpvOpSNegate:
-        case SpvOpBitCount:
-        case SpvOpBitReverse:
-        case SpvOpSDiv:
-        case SpvOpSMod:
-        case SpvOpSRem:
-        case SpvOpIAdd:
-        case SpvOpISub:
-        case SpvOpIMul:
-        case SpvOpBitwiseAnd:
-        case SpvOpBitwiseOr:
-        case SpvOpBitwiseXor:
-        case SpvOpShiftLeftLogical:
-        case SpvOpShiftRightLogical:
-        case SpvOpShiftRightArithmetic:
+        case spv::Op::OpNot:
+        case spv::Op::OpSNegate:
+        case spv::Op::OpBitCount:
+        case spv::Op::OpBitReverse:
+        case spv::Op::OpSDiv:
+        case spv::Op::OpSMod:
+        case spv::Op::OpSRem:
+        case spv::Op::OpIAdd:
+        case spv::Op::OpISub:
+        case spv::Op::OpIMul:
+        case spv::Op::OpBitwiseAnd:
+        case spv::Op::OpBitwiseOr:
+        case spv::Op::OpBitwiseXor:
+        case spv::Op::OpShiftLeftLogical:
+        case spv::Op::OpShiftRightLogical:
+        case spv::Op::OpShiftRightArithmetic:
             return true;
         default:
             break;
@@ -221,8 +234,9 @@ bool AssumesResultSignednessMatchesFirstOperand(GLSLstd450 extended_opcode) {
         case GLSLstd450UMin:
         case GLSLstd450UMax:
         case GLSLstd450UClamp:
-            // TODO(dneto): FindSMsb?
-            // TODO(dneto): FindUMsb?
+        case GLSLstd450FindILsb:
+        case GLSLstd450FindSMsb:
+        case GLSLstd450FindUMsb:
             return true;
         default:
             break;
@@ -237,12 +251,12 @@ bool IsPipelineDecoration(const Decoration& deco) {
     if (deco.size() < 1) {
         return false;
     }
-    switch (deco[0]) {
-        case SpvDecorationLocation:
-        case SpvDecorationFlat:
-        case SpvDecorationNoPerspective:
-        case SpvDecorationCentroid:
-        case SpvDecorationSample:
+    switch (static_cast<spv::Decoration>(deco[0])) {
+        case spv::Decoration::Location:
+        case spv::Decoration::Flat:
+        case spv::Decoration::NoPerspective:
+        case spv::Decoration::Centroid:
+        case spv::Decoration::Sample:
             return true;
         default:
             break;
@@ -385,16 +399,16 @@ DecorationList ParserImpl::GetDecorationsFor(uint32_t id) const {
     const auto& decorations = deco_mgr_->GetDecorationsFor(id, true);
     std::unordered_set<uint32_t> visited;
     for (const auto* inst : decorations) {
-        if (inst->opcode() != SpvOpDecorate) {
+        if (opcode(inst) != spv::Op::OpDecorate) {
             continue;
         }
         // Example: OpDecorate %struct_id Block
         // Example: OpDecorate %array_ty ArrayStride 16
         auto decoration_kind = inst->GetSingleWordInOperand(1);
-        switch (decoration_kind) {
+        switch (static_cast<spv::Decoration>(decoration_kind)) {
             // Restrict and RestrictPointer have no effect in graphics APIs.
-            case SpvDecorationRestrict:
-            case SpvDecorationRestrictPointer:
+            case spv::Decoration::Restrict:
+            case spv::Decoration::RestrictPointer:
                 break;
             default:
                 if (visited.emplace(decoration_kind).second) {
@@ -415,15 +429,15 @@ DecorationList ParserImpl::GetDecorationsForMember(uint32_t id, uint32_t member_
     std::unordered_set<uint32_t> visited;
     for (const auto* inst : decorations) {
         // Example: OpMemberDecorate %struct_id 1 Offset 16
-        if ((inst->opcode() != SpvOpMemberDecorate) ||
+        if ((opcode(inst) != spv::Op::OpMemberDecorate) ||
             (inst->GetSingleWordInOperand(1) != member_index)) {
             continue;
         }
         auto decoration_kind = inst->GetSingleWordInOperand(2);
-        switch (decoration_kind) {
+        switch (static_cast<spv::Decoration>(decoration_kind)) {
             // Restrict and RestrictPointer have no effect in graphics APIs.
-            case SpvDecorationRestrict:
-            case SpvDecorationRestrictPointer:
+            case spv::Decoration::Restrict:
+            case spv::Decoration::RestrictPointer:
                 break;
             default:
                 if (visited.emplace(decoration_kind).second) {
@@ -455,8 +469,8 @@ ParserImpl::AttributeList ParserImpl::ConvertMemberDecoration(uint32_t struct_ty
         Fail() << "malformed SPIR-V decoration: it's empty";
         return {};
     }
-    switch (decoration[0]) {
-        case SpvDecorationOffset:
+    switch (static_cast<spv::Decoration>(decoration[0])) {
+        case spv::Decoration::Offset:
             if (decoration.size() != 2) {
                 Fail() << "malformed Offset decoration: expected 1 literal operand, has "
                        << decoration.size() - 1 << ": member " << member_index << " of "
@@ -464,26 +478,26 @@ ParserImpl::AttributeList ParserImpl::ConvertMemberDecoration(uint32_t struct_ty
                 return {};
             }
             return {
-                create<ast::StructMemberOffsetAttribute>(Source{}, decoration[1]),
+                builder_.MemberOffset(Source{}, AInt(decoration[1])),
             };
-        case SpvDecorationNonReadable:
+        case spv::Decoration::NonReadable:
             // WGSL doesn't have a member decoration for this.  Silently drop it.
             return {};
-        case SpvDecorationNonWritable:
+        case spv::Decoration::NonWritable:
             // WGSL doesn't have a member decoration for this.
             return {};
-        case SpvDecorationColMajor:
+        case spv::Decoration::ColMajor:
             // WGSL only supports column major matrices.
             return {};
-        case SpvDecorationRelaxedPrecision:
+        case spv::Decoration::RelaxedPrecision:
             // WGSL doesn't support relaxed precision.
             return {};
-        case SpvDecorationRowMajor:
+        case spv::Decoration::RowMajor:
             Fail() << "WGSL does not support row-major matrices: can't "
                       "translate member "
                    << member_index << " of " << ShowType(struct_type_id);
             return {};
-        case SpvDecorationMatrixStride: {
+        case spv::Decoration::MatrixStride: {
             if (decoration.size() != 2) {
                 Fail() << "malformed MatrixStride decoration: expected 1 literal "
                           "operand, has "
@@ -586,15 +600,15 @@ void ParserImpl::RegisterLineNumbers() {
         [this, &in_op_line_scope, &op_line_source,
          &instruction_number](const spvtools::opt::Instruction* inst) {
             ++instruction_number.line;
-            switch (inst->opcode()) {
-                case SpvOpLine:
+            switch (opcode(inst)) {
+                case spv::Op::OpLine:
                     in_op_line_scope = true;
                     // TODO(dneto): This ignores the File ID (operand 0), since the Tint
                     // Source concept doesn't represent that.
                     op_line_source.line = inst->GetSingleWordInOperand(1);
                     op_line_source.column = inst->GetSingleWordInOperand(2);
                     break;
-                case SpvOpNoLine:
+                case spv::Op::OpNoLine:
                     in_op_line_scope = false;
                     break;
                 default:
@@ -667,12 +681,12 @@ bool ParserImpl::RegisterExtendedInstructionImports() {
 }
 
 bool ParserImpl::IsGlslExtendedInstruction(const spvtools::opt::Instruction& inst) const {
-    return (inst.opcode() == SpvOpExtInst) &&
+    return (opcode(inst) == spv::Op::OpExtInst) &&
            (glsl_std_450_imports_.count(inst.GetSingleWordInOperand(0)) > 0);
 }
 
 bool ParserImpl::IsIgnoredExtendedInstruction(const spvtools::opt::Instruction& inst) const {
-    return (inst.opcode() == SpvOpExtInst) &&
+    return (opcode(inst) == spv::Op::OpExtInst) &&
            (ignored_imports_.count(inst.GetSingleWordInOperand(0)) > 0);
 }
 
@@ -719,15 +733,15 @@ bool ParserImpl::RegisterUserAndStructMemberNames() {
 
     // Register names from OpName and OpMemberName
     for (const auto& inst : module_->debugs2()) {
-        switch (inst.opcode()) {
-            case SpvOpName: {
+        switch (opcode(inst)) {
+            case spv::Op::OpName: {
                 const auto name = inst.GetInOperand(1).AsString();
                 if (!name.empty()) {
                     namer_.SuggestSanitizedName(inst.GetSingleWordInOperand(0), name);
                 }
                 break;
             }
-            case SpvOpMemberName: {
+            case spv::Op::OpMemberName: {
                 const auto name = inst.GetInOperand(2).AsString();
                 if (!name.empty()) {
                     namer_.SuggestSanitizedMemberName(inst.GetSingleWordInOperand(0),
@@ -742,7 +756,7 @@ bool ParserImpl::RegisterUserAndStructMemberNames() {
 
     // Fill in struct member names, and disambiguate them.
     for (const auto* type_inst : module_->GetTypes()) {
-        if (type_inst->opcode() == SpvOpTypeStruct) {
+        if (opcode(type_inst) == spv::Op::OpTypeStruct) {
             namer_.ResolveMemberNamesForStruct(type_inst->result_id(), type_inst->NumInOperands());
         }
     }
@@ -776,13 +790,13 @@ bool ParserImpl::IsValidIdentifier(const std::string& str) {
 bool ParserImpl::RegisterWorkgroupSizeBuiltin() {
     WorkgroupSizeInfo& info = workgroup_size_builtin_;
     for (const spvtools::opt::Instruction& inst : module_->annotations()) {
-        if (inst.opcode() != SpvOpDecorate) {
+        if (opcode(inst) != spv::Op::OpDecorate) {
             continue;
         }
-        if (inst.GetSingleWordInOperand(1) != SpvDecorationBuiltIn) {
+        if (inst.GetSingleWordInOperand(1) != uint32_t(spv::Decoration::BuiltIn)) {
             continue;
         }
-        if (inst.GetSingleWordInOperand(2) != SpvBuiltInWorkgroupSize) {
+        if (inst.GetSingleWordInOperand(2) != uint32_t(spv::BuiltIn::WorkgroupSize)) {
             continue;
         }
         info.id = inst.GetSingleWordInOperand(0);
@@ -803,8 +817,8 @@ bool ParserImpl::RegisterWorkgroupSizeBuiltin() {
     // const-expr yet, so avoid supporting OpSpecConstantOp here.
     // TODO(dneto): See https://github.com/gpuweb/gpuweb/issues/1272 for WGSL
     // const_expr proposals.
-    if ((composite_def->opcode() != SpvOpSpecConstantComposite &&
-         composite_def->opcode() != SpvOpConstantComposite)) {
+    if ((opcode(composite_def) != spv::Op::OpSpecConstantComposite &&
+         opcode(composite_def) != spv::Op::OpConstantComposite)) {
         return Fail() << "Invalid WorkgroupSize builtin.  Expected 3-element "
                          "OpSpecConstantComposite or OpConstantComposite:  "
                       << composite_def->PrettyPrint();
@@ -819,7 +833,8 @@ bool ParserImpl::RegisterWorkgroupSizeBuiltin() {
                                            int index) -> bool {
         const auto id = composite_def->GetSingleWordInOperand(static_cast<uint32_t>(index));
         const auto* def = def_use_mgr_->GetDef(id);
-        if (!def || (def->opcode() != SpvOpSpecConstant && def->opcode() != SpvOpConstant) ||
+        if (!def ||
+            (opcode(def) != spv::Op::OpSpecConstant && opcode(def) != spv::Op::OpConstant) ||
             (def->NumInOperands() != 1)) {
             return Fail() << "invalid component " << index << " of workgroupsize "
                           << (def ? def->PrettyPrint() : std::string("no definition"));
@@ -839,8 +854,8 @@ bool ParserImpl::RegisterEntryPoints() {
     // decorations.
     std::unordered_map<uint32_t, GridSize> local_size;
     for (const spvtools::opt::Instruction& inst : module_->execution_modes()) {
-        auto mode = static_cast<SpvExecutionMode>(inst.GetSingleWordInOperand(1));
-        if (mode == SpvExecutionModeLocalSize) {
+        auto mode = static_cast<spv::ExecutionMode>(inst.GetSingleWordInOperand(1));
+        if (mode == spv::ExecutionMode::LocalSize) {
             if (inst.NumInOperands() != 5) {
                 // This won't even get past SPIR-V binary parsing.
                 return Fail() << "invalid LocalSize execution mode: " << inst.PrettyPrint();
@@ -853,7 +868,7 @@ bool ParserImpl::RegisterEntryPoints() {
     }
 
     for (const spvtools::opt::Instruction& entry_point : module_->entry_points()) {
-        const auto stage = SpvExecutionModel(entry_point.GetSingleWordInOperand(0));
+        const auto stage = spv::ExecutionModel(entry_point.GetSingleWordInOperand(0));
         const uint32_t function_id = entry_point.GetSingleWordInOperand(1);
 
         const std::string ep_name = entry_point.GetOperand(2).AsString();
@@ -878,17 +893,17 @@ bool ParserImpl::RegisterEntryPoints() {
         TINT_ASSERT(Reader, !inner_implementation_name.empty());
         TINT_ASSERT(Reader, ep_name != inner_implementation_name);
 
-        utils::UniqueVector<uint32_t> inputs;
-        utils::UniqueVector<uint32_t> outputs;
+        utils::UniqueVector<uint32_t, 8> inputs;
+        utils::UniqueVector<uint32_t, 8> outputs;
         for (unsigned iarg = 3; iarg < entry_point.NumInOperands(); iarg++) {
             const uint32_t var_id = entry_point.GetSingleWordInOperand(iarg);
             if (const auto* var_inst = def_use_mgr_->GetDef(var_id)) {
-                switch (SpvStorageClass(var_inst->GetSingleWordInOperand(0))) {
-                    case SpvStorageClassInput:
-                        inputs.add(var_id);
+                switch (spv::StorageClass(var_inst->GetSingleWordInOperand(0))) {
+                    case spv::StorageClass::Input:
+                        inputs.Add(var_id);
                         break;
-                    case SpvStorageClassOutput:
-                        outputs.add(var_id);
+                    case spv::StorageClass::Output:
+                        outputs.Add(var_id);
                         break;
                     default:
                         break;
@@ -896,9 +911,9 @@ bool ParserImpl::RegisterEntryPoints() {
             }
         }
         // Save the lists, in ID-sorted order.
-        std::vector<uint32_t> sorted_inputs(inputs);
+        utils::Vector<uint32_t, 8> sorted_inputs(inputs);
         std::sort(sorted_inputs.begin(), sorted_inputs.end());
-        std::vector<uint32_t> sorted_outputs(outputs);
+        utils::Vector<uint32_t, 8> sorted_outputs(outputs);
         std::sort(sorted_outputs.begin(), sorted_outputs.end());
 
         const auto ast_stage = enum_converter_.ToPipelineStage(stage);
@@ -1033,7 +1048,7 @@ bool ParserImpl::ParseArrayDecorations(const spvtools::opt::analysis::Type* spv_
     *array_stride = 0;  // Implicit stride case.
     const auto type_id = type_mgr_->GetId(spv_type);
     for (auto& decoration : this->GetDecorationsFor(type_id)) {
-        if (decoration.size() == 2 && decoration[0] == SpvDecorationArrayStride) {
+        if (decoration.size() == 2 && decoration[0] == uint32_t(spv::Decoration::ArrayStride)) {
             const auto stride = decoration[1];
             if (stride == 0) {
                 return Fail() << "invalid array type ID " << type_id << ": ArrayStride can't be 0";
@@ -1054,9 +1069,9 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
     auto struct_decorations = this->GetDecorationsFor(type_id);
     if (struct_decorations.size() == 1) {
         const auto decoration = struct_decorations[0][0];
-        if (decoration == SpvDecorationBufferBlock) {
+        if (decoration == uint32_t(spv::Decoration::BufferBlock)) {
             remap_buffer_block_type_.insert(type_id);
-        } else if (decoration != SpvDecorationBlock) {
+        } else if (decoration != uint32_t(spv::Decoration::Block)) {
             Fail() << "struct with ID " << type_id
                    << " has unrecognized decoration: " << int(decoration);
         }
@@ -1094,22 +1109,22 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
                 Fail() << "malformed SPIR-V decoration: it's empty";
                 return nullptr;
             }
-            if ((decoration[0] == SpvDecorationBuiltIn) && (decoration.size() > 1)) {
-                switch (decoration[1]) {
-                    case SpvBuiltInPosition:
+            if ((decoration[0] == uint32_t(spv::Decoration::BuiltIn)) && (decoration.size() > 1)) {
+                switch (static_cast<spv::BuiltIn>(decoration[1])) {
+                    case spv::BuiltIn::Position:
                         // Record this built-in variable specially.
                         builtin_position_.struct_type_id = type_id;
                         builtin_position_.position_member_index = member_index;
                         builtin_position_.position_member_type_id = member_type_id;
                         create_ast_member = false;  // Not part of the WGSL structure.
                         break;
-                    case SpvBuiltInPointSize:  // not supported in WGSL, but ignore
+                    case spv::BuiltIn::PointSize:  // not supported in WGSL, but ignore
                         builtin_position_.pointsize_member_index = member_index;
                         create_ast_member = false;  // Not part of the WGSL structure.
                         break;
-                    case SpvBuiltInClipDistance:    // not supported in WGSL
-                    case SpvBuiltInCullDistance:    // not supported in WGSL
-                        create_ast_member = false;  // Not part of the WGSL structure.
+                    case spv::BuiltIn::ClipDistance:  // not supported in WGSL
+                    case spv::BuiltIn::CullDistance:  // not supported in WGSL
+                        create_ast_member = false;    // Not part of the WGSL structure.
                         break;
                     default:
                         Fail() << "unrecognized builtin " << decoration[1];
@@ -1128,7 +1143,7 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
             if (IsPipelineDecoration(decoration)) {
                 // IO decorations are handled when emitting the entry point.
                 continue;
-            } else if (decoration[0] == SpvDecorationNonWritable) {
+            } else if (decoration[0] == uint32_t(spv::Decoration::NonWritable)) {
                 // WGSL doesn't represent individual members as non-writable. Instead,
                 // apply the ReadOnly access control to the containing struct if all
                 // the members are non-writable.
@@ -1190,12 +1205,12 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
                                     const spvtools::opt::analysis::Pointer*) {
     const auto* inst = def_use_mgr_->GetDef(type_id);
     const auto pointee_type_id = inst->GetSingleWordInOperand(1);
-    const auto storage_class = SpvStorageClass(inst->GetSingleWordInOperand(0));
+    const auto storage_class = spv::StorageClass(inst->GetSingleWordInOperand(0));
 
     if (pointee_type_id == builtin_position_.struct_type_id) {
         builtin_position_.pointer_type_id = type_id;
         // Pipeline IO builtins map to private variables.
-        builtin_position_.storage_class = SpvStorageClassPrivate;
+        builtin_position_.storage_class = spv::StorageClass::Private;
         return nullptr;
     }
     auto* ast_elem_ty = ConvertType(pointee_type_id, PtrAs::Ptr);
@@ -1205,28 +1220,28 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
         return nullptr;
     }
 
-    auto ast_storage_class = enum_converter_.ToStorageClass(storage_class);
-    if (ast_storage_class == ast::StorageClass::kInvalid) {
+    auto ast_address_space = enum_converter_.ToAddressSpace(storage_class);
+    if (ast_address_space == ast::AddressSpace::kUndefined) {
         Fail() << "SPIR-V pointer type with ID " << type_id << " has invalid storage class "
                << static_cast<uint32_t>(storage_class);
         return nullptr;
     }
-    if (ast_storage_class == ast::StorageClass::kUniform &&
+    if (ast_address_space == ast::AddressSpace::kUniform &&
         remap_buffer_block_type_.count(pointee_type_id)) {
-        ast_storage_class = ast::StorageClass::kStorage;
+        ast_address_space = ast::AddressSpace::kStorage;
         remap_buffer_block_type_.insert(type_id);
     }
 
     // Pipeline input and output variables map to private variables.
-    if (ast_storage_class == ast::StorageClass::kIn ||
-        ast_storage_class == ast::StorageClass::kOut) {
-        ast_storage_class = ast::StorageClass::kPrivate;
+    if (ast_address_space == ast::AddressSpace::kIn ||
+        ast_address_space == ast::AddressSpace::kOut) {
+        ast_address_space = ast::AddressSpace::kPrivate;
     }
     switch (ptr_as) {
         case PtrAs::Ref:
-            return ty_.Reference(ast_elem_ty, ast_storage_class);
+            return ty_.Reference(ast_elem_ty, ast_address_space);
         case PtrAs::Ptr:
-            return ty_.Pointer(ast_elem_ty, ast_storage_class);
+            return ty_.Pointer(ast_elem_ty, ast_address_space);
     }
     Fail() << "invalid value for ptr_as: " << static_cast<int>(ptr_as);
     return nullptr;
@@ -1241,21 +1256,21 @@ bool ParserImpl::RegisterTypes() {
     // in WGSL. In particular, exclude user-defined pipeline IO in a
     // block-decorated struct.
     for (const auto& type_or_value : module_->types_values()) {
-        if (type_or_value.opcode() != SpvOpVariable) {
+        if (opcode(type_or_value) != spv::Op::OpVariable) {
             continue;
         }
         const auto& var = type_or_value;
-        const auto spirv_storage_class = SpvStorageClass(var.GetSingleWordInOperand(0));
-        if ((spirv_storage_class != SpvStorageClassStorageBuffer) &&
-            (spirv_storage_class != SpvStorageClassUniform)) {
+        const auto spirv_storage_class = spv::StorageClass(var.GetSingleWordInOperand(0));
+        if ((spirv_storage_class != spv::StorageClass::StorageBuffer) &&
+            (spirv_storage_class != spv::StorageClass::Uniform)) {
             continue;
         }
         const auto* ptr_type = def_use_mgr_->GetDef(var.type_id());
-        if (ptr_type->opcode() != SpvOpTypePointer) {
+        if (opcode(ptr_type) != spv::Op::OpTypePointer) {
             return Fail() << "OpVariable type expected to be a pointer: " << var.PrettyPrint();
         }
         const auto* store_type = def_use_mgr_->GetDef(ptr_type->GetSingleWordInOperand(1));
-        if (store_type->opcode() == SpvOpTypeStruct) {
+        if (opcode(store_type) == spv::Op::OpTypeStruct) {
             struct_types_for_buffers_.insert(store_type->result_id());
         } else {
             Fail() << "WGSL does not support arrays of buffers: " << var.PrettyPrint();
@@ -1287,13 +1302,13 @@ bool ParserImpl::RejectInvalidPointerRoots() {
     for (auto& inst : module_->types_values()) {
         if (const auto* result_type = type_mgr_->GetType(inst.type_id())) {
             if (result_type->AsPointer()) {
-                switch (inst.opcode()) {
-                    case SpvOpVariable:
+                switch (opcode(inst)) {
+                    case spv::Op::OpVariable:
                         // This is the only valid case.
                         break;
-                    case SpvOpUndef:
+                    case spv::Op::OpUndef:
                         return Fail() << "undef pointer is not valid: " << inst.PrettyPrint();
-                    case SpvOpConstantNull:
+                    case spv::Op::OpConstantNull:
                         return Fail() << "null pointer is not valid: " << inst.PrettyPrint();
                     default:
                         return Fail()
@@ -1316,15 +1331,15 @@ bool ParserImpl::EmitScalarSpecConstants() {
         const Type* ast_type = nullptr;
         ast::LiteralExpression* ast_expr = nullptr;
 
-        switch (inst.opcode()) {
-            case SpvOpSpecConstantTrue:
-            case SpvOpSpecConstantFalse: {
+        switch (opcode(inst)) {
+            case spv::Op::OpSpecConstantTrue:
+            case spv::Op::OpSpecConstantFalse: {
                 ast_type = ConvertType(inst.type_id());
                 ast_expr = create<ast::BoolLiteralExpression>(
-                    Source{}, inst.opcode() == SpvOpSpecConstantTrue);
+                    Source{}, opcode(inst) == spv::Op::OpSpecConstantTrue);
                 break;
             }
-            case SpvOpSpecConstant: {
+            case spv::Op::OpSpecConstant: {
                 ast_type = ConvertType(inst.type_id());
                 const uint32_t literal_value = inst.GetSingleWordInOperand(0);
                 ast_expr = Switch(
@@ -1359,14 +1374,14 @@ bool ParserImpl::EmitScalarSpecConstants() {
         if (ast_type && ast_expr) {
             AttributeList spec_id_decos;
             for (const auto& deco : GetDecorationsFor(inst.result_id())) {
-                if ((deco.size() == 2) && (deco[0] == SpvDecorationSpecId)) {
+                if ((deco.size() == 2) && (deco[0] == uint32_t(spv::Decoration::SpecId))) {
                     const uint32_t id = deco[1];
                     if (id > 65535) {
                         return Fail() << "SpecId too large. WGSL override IDs must be "
                                          "between 0 and 65535: ID %"
                                       << inst.result_id() << " has SpecId " << id;
                     }
-                    auto* cid = create<ast::IdAttribute>(Source{}, id);
+                    auto* cid = builder_.Id(Source{}, AInt(id));
                     spec_id_decos.Push(cid);
                     break;
                 }
@@ -1427,31 +1442,31 @@ bool ParserImpl::EmitModuleScopeVariables() {
         return false;
     }
     for (const auto& type_or_value : module_->types_values()) {
-        if (type_or_value.opcode() != SpvOpVariable) {
+        if (opcode(type_or_value) != spv::Op::OpVariable) {
             continue;
         }
         const auto& var = type_or_value;
-        const auto spirv_storage_class = SpvStorageClass(var.GetSingleWordInOperand(0));
+        const auto spirv_storage_class = spv::StorageClass(var.GetSingleWordInOperand(0));
 
         uint32_t type_id = var.type_id();
         if ((type_id == builtin_position_.pointer_type_id) &&
-            ((spirv_storage_class == SpvStorageClassInput) ||
-             (spirv_storage_class == SpvStorageClassOutput))) {
+            ((spirv_storage_class == spv::StorageClass::Input) ||
+             (spirv_storage_class == spv::StorageClass::Output))) {
             // Skip emitting gl_PerVertex.
             builtin_position_.per_vertex_var_id = var.result_id();
             builtin_position_.per_vertex_var_init_id =
                 var.NumInOperands() > 1 ? var.GetSingleWordInOperand(1) : 0u;
             continue;
         }
-        switch (enum_converter_.ToStorageClass(spirv_storage_class)) {
-            case ast::StorageClass::kNone:
-            case ast::StorageClass::kIn:
-            case ast::StorageClass::kOut:
-            case ast::StorageClass::kUniform:
-            case ast::StorageClass::kHandle:
-            case ast::StorageClass::kStorage:
-            case ast::StorageClass::kWorkgroup:
-            case ast::StorageClass::kPrivate:
+        switch (enum_converter_.ToAddressSpace(spirv_storage_class)) {
+            case ast::AddressSpace::kNone:
+            case ast::AddressSpace::kIn:
+            case ast::AddressSpace::kOut:
+            case ast::AddressSpace::kUniform:
+            case ast::AddressSpace::kHandle:
+            case ast::AddressSpace::kStorage:
+            case ast::AddressSpace::kWorkgroup:
+            case ast::AddressSpace::kPrivate:
                 break;
             default:
                 return Fail() << "invalid SPIR-V storage class " << int(spirv_storage_class)
@@ -1460,40 +1475,46 @@ bool ParserImpl::EmitModuleScopeVariables() {
         if (!success_) {
             return false;
         }
-        const Type* ast_type = nullptr;
-        if (spirv_storage_class == SpvStorageClassUniformConstant) {
+        const Type* ast_store_type = nullptr;
+        ast::AddressSpace ast_address_space = ast::AddressSpace::kNone;
+        if (spirv_storage_class == spv::StorageClass::UniformConstant) {
             // These are opaque handles: samplers or textures
-            ast_type = GetTypeForHandleVar(var);
-            if (!ast_type) {
+            ast_store_type = GetHandleTypeForSpirvHandle(var);
+            if (!ast_store_type) {
                 return false;
             }
+            // ast_storage_class should remain kNone because handle variables
+            // are never declared with an explicit address space.
         } else {
-            ast_type = ConvertType(type_id);
+            const Type* ast_type = ConvertType(type_id);
             if (ast_type == nullptr) {
                 return Fail() << "internal error: failed to register Tint AST type for "
                                  "SPIR-V type with ID: "
                               << var.type_id();
             }
-            if (!ast_type->Is<Pointer>()) {
+            if (auto* ast_ptr_type = ast_type->As<Pointer>()) {
+                ast_store_type = ast_ptr_type->type;
+                ast_address_space = ast_ptr_type->address_space;
+            } else {
                 return Fail() << "variable with ID " << var.result_id() << " has non-pointer type "
                               << var.type_id();
             }
         }
+        TINT_ASSERT(Reader, ast_store_type != nullptr);
 
-        auto* ast_store_type = ast_type->As<Pointer>()->type;
-        auto ast_storage_class = ast_type->As<Pointer>()->storage_class;
-        const ast::Expression* ast_constructor = nullptr;
+        const ast::Expression* ast_initializer = nullptr;
         if (var.NumInOperands() > 1) {
             // SPIR-V initializers are always constants.
             // (OpenCL also allows the ID of an OpVariable, but we don't handle that
             // here.)
-            ast_constructor = MakeConstantExpression(var.GetSingleWordInOperand(1)).expr;
+            ast_initializer = MakeConstantExpression(var.GetSingleWordInOperand(1)).expr;
         }
-        auto* ast_var = MakeVar(var.result_id(), ast_storage_class, ast_store_type, ast_constructor,
+        auto* ast_var = MakeVar(var.result_id(), ast_address_space, ast_store_type, ast_initializer,
                                 utils::Empty);
-        // TODO(dneto): initializers (a.k.a. constructor expression)
+        // TODO(dneto): initializers (a.k.a. initializer expression)
         if (ast_var) {
             builder_.AST().AddGlobalVariable(ast_var);
+            module_variable_.GetOrCreate(var.result_id(), [ast_var] { return ast_var; });
         }
     }
 
@@ -1501,14 +1522,14 @@ bool ParserImpl::EmitModuleScopeVariables() {
     if (builtin_position_.per_vertex_var_id) {
         // Make sure the variable has a name.
         namer_.SuggestSanitizedName(builtin_position_.per_vertex_var_id, "gl_Position");
-        const ast::Expression* ast_constructor = nullptr;
+        const ast::Expression* ast_initializer = nullptr;
         if (builtin_position_.per_vertex_var_init_id) {
             // The initializer is complex.
             const auto* init = def_use_mgr_->GetDef(builtin_position_.per_vertex_var_init_id);
-            switch (init->opcode()) {
-                case SpvOpConstantComposite:
-                case SpvOpSpecConstantComposite:
-                    ast_constructor =
+            switch (opcode(init)) {
+                case spv::Op::OpConstantComposite:
+                case spv::Op::OpSpecConstantComposite:
+                    ast_initializer =
                         MakeConstantExpression(
                             init->GetSingleWordInOperand(builtin_position_.position_member_index))
                             .expr;
@@ -1522,10 +1543,12 @@ bool ParserImpl::EmitModuleScopeVariables() {
         }
         auto* ast_var =
             MakeVar(builtin_position_.per_vertex_var_id,
-                    enum_converter_.ToStorageClass(builtin_position_.storage_class),
-                    ConvertType(builtin_position_.position_member_type_id), ast_constructor, {});
+                    enum_converter_.ToAddressSpace(builtin_position_.storage_class),
+                    ConvertType(builtin_position_.position_member_type_id), ast_initializer, {});
 
         builder_.AST().AddGlobalVariable(ast_var);
+        module_variable_.GetOrCreate(builtin_position_.per_vertex_var_id,
+                                     [ast_var] { return ast_var; });
     }
     return success_;
 }
@@ -1535,15 +1558,15 @@ bool ParserImpl::EmitModuleScopeVariables() {
 // @returns the IntConstant for the size of the array, or nullptr
 const spvtools::opt::analysis::IntConstant* ParserImpl::GetArraySize(uint32_t var_id) {
     auto* var = def_use_mgr_->GetDef(var_id);
-    if (!var || var->opcode() != SpvOpVariable) {
+    if (!var || opcode(var) != spv::Op::OpVariable) {
         return nullptr;
     }
     auto* ptr_type = def_use_mgr_->GetDef(var->type_id());
-    if (!ptr_type || ptr_type->opcode() != SpvOpTypePointer) {
+    if (!ptr_type || opcode(ptr_type) != spv::Op::OpTypePointer) {
         return nullptr;
     }
     auto* array_type = def_use_mgr_->GetDef(ptr_type->GetSingleWordInOperand(1));
-    if (!array_type || array_type->opcode() != SpvOpTypeArray) {
+    if (!array_type || opcode(array_type) != spv::Op::OpTypeArray) {
         return nullptr;
     }
     auto* size = constant_mgr_->FindDeclaredConstant(array_type->GetSingleWordInOperand(1));
@@ -1554,9 +1577,9 @@ const spvtools::opt::analysis::IntConstant* ParserImpl::GetArraySize(uint32_t va
 }
 
 ast::Var* ParserImpl::MakeVar(uint32_t id,
-                              ast::StorageClass sc,
+                              ast::AddressSpace address_space,
                               const Type* storage_type,
-                              const ast::Expression* constructor,
+                              const ast::Expression* initializer,
                               AttributeList decorations) {
     if (storage_type == nullptr) {
         Fail() << "internal error: can't make ast::Variable for null type";
@@ -1564,7 +1587,7 @@ ast::Var* ParserImpl::MakeVar(uint32_t id,
     }
 
     ast::Access access = ast::Access::kUndefined;
-    if (sc == ast::StorageClass::kStorage) {
+    if (address_space == ast::AddressSpace::kStorage) {
         bool read_only = false;
         if (auto* tn = storage_type->As<Named>()) {
             read_only = read_only_struct_types_.count(tn->name) > 0;
@@ -1575,35 +1598,35 @@ ast::Var* ParserImpl::MakeVar(uint32_t id,
     }
 
     // Handle variables (textures and samplers) are always in the handle
-    // storage class, so we don't mention the storage class.
-    if (sc == ast::StorageClass::kHandle) {
-        sc = ast::StorageClass::kNone;
+    // address space, so we don't mention the address space.
+    if (address_space == ast::AddressSpace::kHandle) {
+        address_space = ast::AddressSpace::kNone;
     }
 
     if (!ConvertDecorationsForVariable(id, &storage_type, &decorations,
-                                       sc != ast::StorageClass::kPrivate)) {
+                                       address_space != ast::AddressSpace::kPrivate)) {
         return nullptr;
     }
 
     auto sym = builder_.Symbols().Register(namer_.Name(id));
-    return create<ast::Var>(Source{}, sym, storage_type->Build(builder_), sc, access, constructor,
-                            decorations);
+    return create<ast::Var>(Source{}, sym, storage_type->Build(builder_), address_space, access,
+                            initializer, decorations);
 }
 
-ast::Let* ParserImpl::MakeLet(uint32_t id, const Type* type, const ast::Expression* constructor) {
+ast::Let* ParserImpl::MakeLet(uint32_t id, const Type* type, const ast::Expression* initializer) {
     auto sym = builder_.Symbols().Register(namer_.Name(id));
-    return create<ast::Let>(Source{}, sym, type->Build(builder_), constructor, utils::Empty);
+    return create<ast::Let>(Source{}, sym, type->Build(builder_), initializer, utils::Empty);
 }
 
 ast::Override* ParserImpl::MakeOverride(uint32_t id,
                                         const Type* type,
-                                        const ast::Expression* constructor,
+                                        const ast::Expression* initializer,
                                         AttributeList decorations) {
     if (!ConvertDecorationsForVariable(id, &type, &decorations, false)) {
         return nullptr;
     }
     auto sym = builder_.Symbols().Register(namer_.Name(id));
-    return create<ast::Override>(Source{}, sym, type->Build(builder_), constructor, decorations);
+    return create<ast::Override>(Source{}, sym, type->Build(builder_), initializer, decorations);
 }
 
 ast::Parameter* ParserImpl::MakeParameter(uint32_t id,
@@ -1626,23 +1649,23 @@ bool ParserImpl::ConvertDecorationsForVariable(uint32_t id,
         if (deco.empty()) {
             return Fail() << "malformed decoration on ID " << id << ": it is empty";
         }
-        if (deco[0] == SpvDecorationBuiltIn) {
+        if (deco[0] == uint32_t(spv::Decoration::BuiltIn)) {
             if (deco.size() == 1) {
                 return Fail() << "malformed BuiltIn decoration on ID " << id << ": has no operand";
             }
-            const auto spv_builtin = static_cast<SpvBuiltIn>(deco[1]);
+            const auto spv_builtin = static_cast<spv::BuiltIn>(deco[1]);
             switch (spv_builtin) {
-                case SpvBuiltInPointSize:
+                case spv::BuiltIn::PointSize:
                     special_builtins_[id] = spv_builtin;
                     return false;  // This is not an error
-                case SpvBuiltInSampleId:
-                case SpvBuiltInVertexIndex:
-                case SpvBuiltInInstanceIndex:
-                case SpvBuiltInLocalInvocationId:
-                case SpvBuiltInLocalInvocationIndex:
-                case SpvBuiltInGlobalInvocationId:
-                case SpvBuiltInWorkgroupId:
-                case SpvBuiltInNumWorkgroups:
+                case spv::BuiltIn::SampleId:
+                case spv::BuiltIn::VertexIndex:
+                case spv::BuiltIn::InstanceIndex:
+                case spv::BuiltIn::LocalInvocationId:
+                case spv::BuiltIn::LocalInvocationIndex:
+                case spv::BuiltIn::GlobalInvocationId:
+                case spv::BuiltIn::WorkgroupId:
+                case spv::BuiltIn::NumWorkgroups:
                     // The SPIR-V variable may signed (because GLSL requires signed for
                     // some of these), but WGSL requires unsigned.  Handle specially
                     // so we always perform the conversion at load and store.
@@ -1654,7 +1677,7 @@ bool ParserImpl::ConvertDecorationsForVariable(uint32_t id,
                         }
                     }
                     break;
-                case SpvBuiltInSampleMask: {
+                case spv::BuiltIn::SampleMask: {
                     // In SPIR-V this is used for both input and output variable.
                     // The SPIR-V variable has store type of array of integer scalar,
                     // either signed or unsigned.
@@ -1674,7 +1697,7 @@ bool ParserImpl::ConvertDecorationsForVariable(uint32_t id,
                     break;
             }
             auto ast_builtin = enum_converter_.ToBuiltin(spv_builtin);
-            if (ast_builtin == ast::BuiltinValue::kInvalid) {
+            if (ast_builtin == ast::BuiltinValue::kUndefined) {
                 // A diagnostic has already been emitted.
                 return false;
             }
@@ -1685,18 +1708,18 @@ bool ParserImpl::ConvertDecorationsForVariable(uint32_t id,
         if (transfer_pipeline_io && IsPipelineDecoration(deco)) {
             non_builtin_pipeline_decorations.push_back(deco);
         }
-        if (deco[0] == SpvDecorationDescriptorSet) {
+        if (deco[0] == uint32_t(spv::Decoration::DescriptorSet)) {
             if (deco.size() == 1) {
                 return Fail() << "malformed DescriptorSet decoration on ID " << id
                               << ": has no operand";
             }
-            decorations->Push(create<ast::GroupAttribute>(Source{}, deco[1]));
+            decorations->Push(builder_.Group(Source{}, AInt(deco[1])));
         }
-        if (deco[0] == SpvDecorationBinding) {
+        if (deco[0] == uint32_t(spv::Decoration::Binding)) {
             if (deco.size() == 1) {
                 return Fail() << "malformed Binding decoration on ID " << id << ": has no operand";
             }
-            decorations->Push(create<ast::BindingAttribute>(Source{}, deco[1]));
+            decorations->Push(builder_.Binding(Source{}, AInt(deco[1])));
         }
     }
 
@@ -1723,25 +1746,22 @@ DecorationList ParserImpl::GetMemberPipelineDecorations(const Struct& struct_typ
     return result;
 }
 
-const ast::Attribute* ParserImpl::SetLocation(AttributeList* attributes,
-                                              const ast::Attribute* replacement) {
+void ParserImpl::SetLocation(AttributeList* attributes, const ast::Attribute* replacement) {
     if (!replacement) {
-        return nullptr;
+        return;
     }
     for (auto*& attribute : *attributes) {
         if (attribute->Is<ast::LocationAttribute>()) {
             // Replace this location attribute with the replacement.
             // The old one doesn't leak because it's kept in the builder's AST node
             // list.
-            const ast::Attribute* result = nullptr;
-            result = attribute;
             attribute = replacement;
-            return result;  // Assume there is only one such decoration.
+            return;  // Assume there is only one such decoration.
         }
     }
     // The list didn't have a location. Add it.
     attributes->Push(replacement);
-    return nullptr;
+    return;
 }
 
 bool ParserImpl::ConvertPipelineDecorations(const Type* store_type,
@@ -1749,40 +1769,40 @@ bool ParserImpl::ConvertPipelineDecorations(const Type* store_type,
                                             AttributeList* attributes) {
     // Vulkan defaults to perspective-correct interpolation.
     ast::InterpolationType type = ast::InterpolationType::kPerspective;
-    ast::InterpolationSampling sampling = ast::InterpolationSampling::kNone;
+    ast::InterpolationSampling sampling = ast::InterpolationSampling::kUndefined;
 
     for (const auto& deco : decorations) {
         TINT_ASSERT(Reader, deco.size() > 0);
-        switch (deco[0]) {
-            case SpvDecorationLocation:
+        switch (static_cast<spv::Decoration>(deco[0])) {
+            case spv::Decoration::Location:
                 if (deco.size() != 2) {
                     return Fail() << "malformed Location decoration on ID requires one "
                                      "literal operand";
                 }
-                SetLocation(attributes, create<ast::LocationAttribute>(Source{}, deco[1]));
+                SetLocation(attributes, builder_.Location(AInt(deco[1])));
                 if (store_type->IsIntegerScalarOrVector()) {
                     // Default to flat interpolation for integral user-defined IO types.
                     type = ast::InterpolationType::kFlat;
                 }
                 break;
-            case SpvDecorationFlat:
+            case spv::Decoration::Flat:
                 type = ast::InterpolationType::kFlat;
                 break;
-            case SpvDecorationNoPerspective:
+            case spv::Decoration::NoPerspective:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "NoPerspective is invalid on integral IO";
                 }
                 type = ast::InterpolationType::kLinear;
                 break;
-            case SpvDecorationCentroid:
+            case spv::Decoration::Centroid:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "Centroid interpolation sampling is invalid on integral IO";
                 }
                 sampling = ast::InterpolationSampling::kCentroid;
                 break;
-            case SpvDecorationSample:
+            case spv::Decoration::Sample:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "Sample interpolation sampling is invalid on integral IO";
@@ -1798,13 +1818,13 @@ bool ParserImpl::ConvertPipelineDecorations(const Type* store_type,
         !ast::HasAttribute<ast::LocationAttribute>(*attributes)) {
         // WGSL requires that '@interpolate(flat)' needs to be paired with '@location', however
         // SPIR-V requires all fragment shader integer Inputs are 'flat'. If the decorations do not
-        // contain a SpvDecorationLocation, then make this perspective.
+        // contain a spv::Decoration::Location, then make this perspective.
         type = ast::InterpolationType::kPerspective;
     }
 
     // Apply interpolation.
     if (type == ast::InterpolationType::kPerspective &&
-        sampling == ast::InterpolationSampling::kNone) {
+        sampling == ast::InterpolationSampling::kUndefined) {
         // This is the default. Don't add a decoration.
     } else {
         attributes->Push(create<ast::InterpolateAttribute>(type, sampling));
@@ -1822,7 +1842,7 @@ bool ParserImpl::CanMakeConstantExpression(uint32_t id) {
     if (!inst) {
         return false;
     }
-    if (inst->opcode() == SpvOpUndef) {
+    if (opcode(inst) == spv::Op::OpUndef) {
         return true;
     }
     return nullptr != constant_mgr_->FindDeclaredConstant(id);
@@ -1877,13 +1897,13 @@ TypedExpression ParserImpl::MakeConstantExpression(uint32_t id) {
         return {};
     }
 
-    switch (inst->opcode()) {
-        case SpvOpUndef:  // Remap undef to null.
-        case SpvOpConstantNull:
+    switch (opcode(inst)) {
+        case spv::Op::OpUndef:  // Remap undef to null.
+        case spv::Op::OpConstantNull:
             return {original_ast_type, MakeNullValue(original_ast_type)};
-        case SpvOpConstantTrue:
-        case SpvOpConstantFalse:
-        case SpvOpConstant: {
+        case spv::Op::OpConstantTrue:
+        case spv::Op::OpConstantFalse:
+        case spv::Op::OpConstant: {
             const auto* spirv_const = constant_mgr_->FindDeclaredConstant(id);
             if (spirv_const == nullptr) {
                 Fail() << "ID " << id << " is not a constant";
@@ -1892,7 +1912,7 @@ TypedExpression ParserImpl::MakeConstantExpression(uint32_t id) {
             return MakeConstantExpressionForScalarSpirvConstant(source, original_ast_type,
                                                                 spirv_const);
         }
-        case SpvOpConstantComposite: {
+        case spv::Op::OpConstantComposite: {
             // Handle vector, matrix, array, and struct
 
             // Generate a composite from explicit components.
@@ -1945,10 +1965,15 @@ TypedExpression ParserImpl::MakeConstantExpressionForScalarSpirvConstant(
                                        ast::IntLiteralExpression::Suffix::kU)};
         },
         [&](const F32*) {
-            return TypedExpression{ty_.F32(),
-                                   create<ast::FloatLiteralExpression>(
-                                       source, static_cast<double>(spirv_const->GetFloat()),
-                                       ast::FloatLiteralExpression::Suffix::kF)};
+            if (auto f = CheckedConvert<f32>(AFloat(spirv_const->GetFloat()))) {
+                return TypedExpression{ty_.F32(),
+                                       create<ast::FloatLiteralExpression>(
+                                           source, static_cast<double>(spirv_const->GetFloat()),
+                                           ast::FloatLiteralExpression::Suffix::kF)};
+            } else {
+                Fail() << "value cannot be represented as 'f32': " << spirv_const->GetFloat();
+                return TypedExpression{};
+            }
         },
         [&](const Bool*) {
             const bool value =
@@ -1962,7 +1987,7 @@ TypedExpression ParserImpl::MakeConstantExpressionForScalarSpirvConstant(
 }
 
 const ast::Expression* ParserImpl::MakeNullValue(const Type* type) {
-    // TODO(dneto): Use the no-operands constructor syntax when it becomes
+    // TODO(dneto): Use the no-operands initializer syntax when it becomes
     // available in Tint.
     // https://github.com/gpuweb/gpuweb/issues/685
     // https://bugs.chromium.org/p/tint/issues/detail?id=34
@@ -2044,9 +2069,9 @@ TypedExpression ParserImpl::RectifyOperandSignedness(const spvtools::opt::Instru
         requires_signed = AssumesSignedOperands(extended_opcode);
         requires_unsigned = AssumesUnsignedOperands(extended_opcode);
     } else {
-        const auto opcode = inst.opcode();
-        requires_signed = AssumesSignedOperands(opcode);
-        requires_unsigned = AssumesUnsignedOperands(opcode);
+        const auto op = opcode(inst);
+        requires_signed = AssumesSignedOperands(op);
+        requires_unsigned = AssumesUnsignedOperands(op);
     }
     if (!requires_signed && !requires_unsigned) {
         // No conversion is required, assuming our tables are complete.
@@ -2056,7 +2081,8 @@ TypedExpression ParserImpl::RectifyOperandSignedness(const spvtools::opt::Instru
         Fail() << "internal error: RectifyOperandSignedness given a null expr\n";
         return {};
     }
-    auto* type = expr.type;
+    // TODO(crbug.com/tint/1669) should this unpack aliases too?
+    auto* type = expr.type->UnwrapRef();
     if (!type) {
         Fail() << "internal error: unmapped type for: " << expr.expr->TypeInfo().name << "\n";
         return {};
@@ -2081,12 +2107,12 @@ TypedExpression ParserImpl::RectifyOperandSignedness(const spvtools::opt::Instru
 TypedExpression ParserImpl::RectifySecondOperandSignedness(const spvtools::opt::Instruction& inst,
                                                            const Type* first_operand_type,
                                                            TypedExpression&& second_operand_expr) {
-    if ((first_operand_type != second_operand_expr.type) &&
-        AssumesSecondOperandSignednessMatchesFirstOperand(inst.opcode())) {
+    const Type* target_type = first_operand_type->UnwrapRef();
+    if ((target_type != second_operand_expr.type->UnwrapRef()) &&
+        AssumesSecondOperandSignednessMatchesFirstOperand(opcode(inst))) {
         // Conversion is required.
-        return {first_operand_type,
-                create<ast::BitcastExpression>(Source{}, first_operand_type->Build(builder_),
-                                               second_operand_expr.expr)};
+        return {target_type, create<ast::BitcastExpression>(Source{}, target_type->Build(builder_),
+                                                            second_operand_expr.expr)};
     }
     // No conversion necessary.
     return std::move(second_operand_expr);
@@ -2094,8 +2120,9 @@ TypedExpression ParserImpl::RectifySecondOperandSignedness(const spvtools::opt::
 
 const Type* ParserImpl::ForcedResultType(const spvtools::opt::Instruction& inst,
                                          const Type* first_operand_type) {
-    const auto opcode = inst.opcode();
-    if (AssumesResultSignednessMatchesFirstOperand(opcode)) {
+    first_operand_type = first_operand_type->UnwrapRef();
+    const auto op = opcode(inst);
+    if (AssumesResultSignednessMatchesFirstOperand(op)) {
         return first_operand_type;
     }
     if (IsGlslExtendedInstruction(inst)) {
@@ -2234,36 +2261,36 @@ const spvtools::opt::Instruction* ParserImpl::GetMemoryObjectDeclarationForHandl
         if (inst == nullptr) {
             return local_fail();
         }
-        switch (inst->opcode()) {
-            case SpvOpFunctionParameter:
-            case SpvOpVariable:
+        switch (opcode(inst)) {
+            case spv::Op::OpFunctionParameter:
+            case spv::Op::OpVariable:
                 // We found the memory object declaration.
                 // Remember it as the answer for the whole path.
                 for (auto iter : visited) {
                     memo_table[iter] = inst;
                 }
                 return inst;
-            case SpvOpLoad:
+            case spv::Op::OpLoad:
                 // Follow the pointer being loaded
                 id = inst->GetSingleWordInOperand(0);
                 break;
-            case SpvOpCopyObject:
+            case spv::Op::OpCopyObject:
                 // Follow the object being copied.
                 id = inst->GetSingleWordInOperand(0);
                 break;
-            case SpvOpAccessChain:
-            case SpvOpInBoundsAccessChain:
-            case SpvOpPtrAccessChain:
-            case SpvOpInBoundsPtrAccessChain:
+            case spv::Op::OpAccessChain:
+            case spv::Op::OpInBoundsAccessChain:
+            case spv::Op::OpPtrAccessChain:
+            case spv::Op::OpInBoundsPtrAccessChain:
                 // Follow the base pointer.
                 id = inst->GetSingleWordInOperand(0);
                 break;
-            case SpvOpSampledImage:
+            case spv::Op::OpSampledImage:
                 // Follow the image or the sampler, depending on the follow_image
                 // parameter.
                 id = inst->GetSingleWordInOperand(follow_image ? 0 : 1);
                 break;
-            case SpvOpImage:
+            case spv::Op::OpImage:
                 // Follow the sampled image
                 id = inst->GetSingleWordInOperand(0);
                 break;
@@ -2278,8 +2305,8 @@ const spvtools::opt::Instruction* ParserImpl::GetMemoryObjectDeclarationForHandl
     }
 }
 
-const spvtools::opt::Instruction* ParserImpl::GetSpirvTypeForHandleMemoryObjectDeclaration(
-    const spvtools::opt::Instruction& var) {
+const spvtools::opt::Instruction* ParserImpl::GetSpirvTypeForHandleOrHandleMemoryObjectDeclaration(
+    const spvtools::opt::Instruction& obj) {
     if (!success()) {
         return nullptr;
     }
@@ -2294,57 +2321,75 @@ const spvtools::opt::Instruction* ParserImpl::GetSpirvTypeForHandleMemoryObjectD
     // are the only SPIR-V handles supported by WGSL.
 
     // Get the SPIR-V handle type.
-    const auto* ptr_type = def_use_mgr_->GetDef(var.type_id());
-    if (!ptr_type || (ptr_type->opcode() != SpvOpTypePointer)) {
-        Fail() << "Invalid type for variable or function parameter " << var.PrettyPrint();
+    const auto* type = def_use_mgr_->GetDef(obj.type_id());
+    if (!type) {
+        Fail() << "Invalid type for image, sampler, variable or function parameter to image or "
+                  "sampler "
+               << obj.PrettyPrint();
         return nullptr;
     }
-    const auto* raw_handle_type = def_use_mgr_->GetDef(ptr_type->GetSingleWordInOperand(1));
+    switch (opcode(type)) {
+        case spv::Op::OpTypeSampler:
+        case spv::Op::OpTypeImage:
+            return type;
+        case spv::Op::OpTypePointer:
+            // The remaining cases.
+            break;
+        default:
+            Fail() << "Invalid type for image, sampler, variable or function parameter to image or "
+                      "sampler "
+                   << obj.PrettyPrint();
+            return nullptr;
+    }
+
+    // Look at the pointee type instead.
+    const auto* raw_handle_type = def_use_mgr_->GetDef(type->GetSingleWordInOperand(1));
     if (!raw_handle_type) {
-        Fail() << "Invalid pointer type for variable or function parameter " << var.PrettyPrint();
+        Fail() << "Invalid pointer type for variable or function parameter " << obj.PrettyPrint();
         return nullptr;
     }
-    switch (raw_handle_type->opcode()) {
-        case SpvOpTypeSampler:
-        case SpvOpTypeImage:
+    switch (opcode(raw_handle_type)) {
+        case spv::Op::OpTypeSampler:
+        case spv::Op::OpTypeImage:
             // The expected cases.
             break;
-        case SpvOpTypeArray:
-        case SpvOpTypeRuntimeArray:
+        case spv::Op::OpTypeArray:
+        case spv::Op::OpTypeRuntimeArray:
             Fail() << "arrays of textures or samplers are not supported in WGSL; can't "
                       "translate variable or function parameter: "
-                   << var.PrettyPrint();
+                   << obj.PrettyPrint();
             return nullptr;
-        case SpvOpTypeSampledImage:
-            Fail() << "WGSL does not support combined image-samplers: " << var.PrettyPrint();
+        case spv::Op::OpTypeSampledImage:
+            Fail() << "WGSL does not support combined image-samplers: " << obj.PrettyPrint();
             return nullptr;
         default:
             Fail() << "invalid type for image or sampler variable or function "
                       "parameter: "
-                   << var.PrettyPrint();
+                   << obj.PrettyPrint();
             return nullptr;
     }
     return raw_handle_type;
 }
 
-const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction& var) {
-    auto where = handle_type_.find(&var);
+const Type* ParserImpl::GetHandleTypeForSpirvHandle(const spvtools::opt::Instruction& obj) {
+    auto where = handle_type_.find(&obj);
     if (where != handle_type_.end()) {
         return where->second;
     }
 
     const spvtools::opt::Instruction* raw_handle_type =
-        GetSpirvTypeForHandleMemoryObjectDeclaration(var);
+        GetSpirvTypeForHandleOrHandleMemoryObjectDeclaration(obj);
     if (!raw_handle_type) {
         return nullptr;
     }
 
-    // The variable could be a sampler or image.
+    // The memory object declaration could be a sampler or image.
     // Where possible, determine which one it is from the usage inferred
     // for the variable.
-    Usage usage = handle_usage_[&var];
+    Usage usage = handle_usage_[&obj];
     if (!usage.IsValid()) {
-        Fail() << "Invalid sampler or texture usage for variable " << var.PrettyPrint() << "\n"
+        Fail() << "Invalid sampler or texture usage for variable or function parameter "
+               << obj.PrettyPrint() << "\n"
                << usage;
         return nullptr;
     }
@@ -2353,7 +2398,7 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
         // In SPIR-V you could statically reference a texture or sampler without
         // using it in a way that gives us a clue on how to declare it.  Look inside
         // the store type to infer a usage.
-        if (raw_handle_type->opcode() == SpvOpTypeSampler) {
+        if (opcode(raw_handle_type) == spv::Op::OpTypeSampler) {
             usage.AddSampler();
         } else {
             // It's a texture.
@@ -2365,29 +2410,29 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
             const auto sampled_param = raw_handle_type->GetSingleWordInOperand(5);
             const auto format_param = raw_handle_type->GetSingleWordInOperand(6);
             // Only storage images have a format.
-            if ((format_param != SpvImageFormatUnknown) ||
+            if ((format_param != uint32_t(spv::ImageFormat::Unknown)) ||
                 sampled_param == 2 /* without sampler */) {
                 // Get NonWritable and NonReadable attributes of the variable.
                 bool is_nonwritable = false;
                 bool is_nonreadable = false;
-                for (const auto& deco : GetDecorationsFor(var.result_id())) {
+                for (const auto& deco : GetDecorationsFor(obj.result_id())) {
                     if (deco.size() != 1) {
                         continue;
                     }
-                    if (deco[0] == SpvDecorationNonWritable) {
+                    if (deco[0] == uint32_t(spv::Decoration::NonWritable)) {
                         is_nonwritable = true;
                     }
-                    if (deco[0] == SpvDecorationNonReadable) {
+                    if (deco[0] == uint32_t(spv::Decoration::NonReadable)) {
                         is_nonreadable = true;
                     }
                 }
                 if (is_nonwritable && is_nonreadable) {
                     Fail() << "storage image variable is both NonWritable and NonReadable"
-                           << var.PrettyPrint();
+                           << obj.PrettyPrint();
                 }
                 if (!is_nonwritable && !is_nonreadable) {
                     Fail() << "storage image variable is neither NonWritable nor NonReadable"
-                           << var.PrettyPrint();
+                           << obj.PrettyPrint();
                 }
                 // Let's make it one of the storage textures.
                 if (is_nonwritable) {
@@ -2407,9 +2452,9 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
     }
 
     // Construct the Tint handle type.
-    const Type* ast_store_type = nullptr;
+    const Type* ast_handle_type = nullptr;
     if (usage.IsSampler()) {
-        ast_store_type =
+        ast_handle_type =
             ty_.Sampler(usage.IsComparisonSampler() ? ast::SamplerKind::kComparisonSampler
                                                     : ast::SamplerKind::kSampler);
     } else if (usage.IsTexture()) {
@@ -2424,14 +2469,14 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
         if (image_type->is_arrayed()) {
             // Give a nicer error message here, where we have the offending variable
             // in hand, rather than inside the enum converter.
-            switch (image_type->dim()) {
-                case SpvDim2D:
-                case SpvDimCube:
+            switch (static_cast<spv::Dim>(image_type->dim())) {
+                case spv::Dim::Dim2D:
+                case spv::Dim::Cube:
                     break;
                 default:
                     Fail() << "WGSL arrayed textures must be 2d_array or cube_array: "
-                              "invalid multisampled texture variable "
-                           << namer_.Name(var.result_id()) << ": " << var.PrettyPrint();
+                              "invalid multisampled texture variable or function parameter "
+                           << namer_.Name(obj.result_id()) << ": " << obj.PrettyPrint();
                     return nullptr;
             }
         }
@@ -2445,7 +2490,7 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
         // WGSL textures are always formatted.  Unformatted textures are always
         // sampled.
         if (usage.IsSampledTexture() || usage.IsStorageReadTexture() ||
-            (image_type->format() == SpvImageFormatUnknown)) {
+            (uint32_t(image_type->format()) == uint32_t(spv::ImageFormat::Unknown))) {
             // Make a sampled texture type.
             auto* ast_sampled_component_type =
                 ConvertType(raw_handle_type->GetSingleWordInOperand(0));
@@ -2456,41 +2501,39 @@ const Pointer* ParserImpl::GetTypeForHandleVar(const spvtools::opt::Instruction&
             // treat that as a depth texture.
             if (image_type->depth() || usage.IsDepthTexture()) {
                 if (image_type->is_multisampled()) {
-                    ast_store_type = ty_.DepthMultisampledTexture(dim);
+                    ast_handle_type = ty_.DepthMultisampledTexture(dim);
                 } else {
-                    ast_store_type = ty_.DepthTexture(dim);
+                    ast_handle_type = ty_.DepthTexture(dim);
                 }
             } else if (image_type->is_multisampled()) {
                 if (dim != ast::TextureDimension::k2d) {
                     Fail() << "WGSL multisampled textures must be 2d and non-arrayed: "
-                              "invalid multisampled texture variable "
-                           << namer_.Name(var.result_id()) << ": " << var.PrettyPrint();
+                              "invalid multisampled texture variable or function parameter "
+                           << namer_.Name(obj.result_id()) << ": " << obj.PrettyPrint();
                 }
                 // Multisampled textures are never depth textures.
-                ast_store_type = ty_.MultisampledTexture(dim, ast_sampled_component_type);
+                ast_handle_type = ty_.MultisampledTexture(dim, ast_sampled_component_type);
             } else {
-                ast_store_type = ty_.SampledTexture(dim, ast_sampled_component_type);
+                ast_handle_type = ty_.SampledTexture(dim, ast_sampled_component_type);
             }
         } else {
             const auto access = ast::Access::kWrite;
             const auto format = enum_converter_.ToTexelFormat(image_type->format());
-            if (format == ast::TexelFormat::kInvalid) {
+            if (format == ast::TexelFormat::kUndefined) {
                 return nullptr;
             }
-            ast_store_type = ty_.StorageTexture(dim, format, access);
+            ast_handle_type = ty_.StorageTexture(dim, format, access);
         }
     } else {
-        Fail() << "unsupported: UniformConstant variable is not a recognized "
-                  "sampler or texture"
-               << var.PrettyPrint();
+        Fail() << "unsupported: UniformConstant variable or function parameter is not a recognized "
+                  "sampler or texture "
+               << obj.PrettyPrint();
         return nullptr;
     }
 
-    // Form the pointer type.
-    auto* result = ty_.Pointer(ast_store_type, ast::StorageClass::kHandle);
     // Remember it for later.
-    handle_type_[&var] = result;
-    return result;
+    handle_type_[&obj] = ast_handle_type;
+    return ast_handle_type;
 }
 
 const Type* ParserImpl::GetComponentTypeForFormat(ast::TexelFormat format) {
@@ -2602,34 +2645,34 @@ bool ParserImpl::RegisterHandleUsage() {
     for (const auto* f : topologically_ordered_functions_) {
         for (const auto& bb : *f) {
             for (const auto& inst : bb) {
-                switch (inst.opcode()) {
+                switch (opcode(inst)) {
                         // Single texel reads and writes
 
-                    case SpvOpImageRead:
+                    case spv::Op::OpImageRead:
                         handle_usage_[get_image(inst)].AddStorageReadTexture();
                         break;
-                    case SpvOpImageWrite:
+                    case spv::Op::OpImageWrite:
                         handle_usage_[get_image(inst)].AddStorageWriteTexture();
                         break;
-                    case SpvOpImageFetch:
+                    case spv::Op::OpImageFetch:
                         handle_usage_[get_image(inst)].AddSampledTexture();
                         break;
 
                         // Sampling and gathering from a sampled image.
 
-                    case SpvOpImageSampleImplicitLod:
-                    case SpvOpImageSampleExplicitLod:
-                    case SpvOpImageSampleProjImplicitLod:
-                    case SpvOpImageSampleProjExplicitLod:
-                    case SpvOpImageGather:
+                    case spv::Op::OpImageSampleImplicitLod:
+                    case spv::Op::OpImageSampleExplicitLod:
+                    case spv::Op::OpImageSampleProjImplicitLod:
+                    case spv::Op::OpImageSampleProjExplicitLod:
+                    case spv::Op::OpImageGather:
                         handle_usage_[get_image(inst)].AddSampledTexture();
                         handle_usage_[get_sampler(inst)].AddSampler();
                         break;
-                    case SpvOpImageSampleDrefImplicitLod:
-                    case SpvOpImageSampleDrefExplicitLod:
-                    case SpvOpImageSampleProjDrefImplicitLod:
-                    case SpvOpImageSampleProjDrefExplicitLod:
-                    case SpvOpImageDrefGather:
+                    case spv::Op::OpImageSampleDrefImplicitLod:
+                    case spv::Op::OpImageSampleDrefExplicitLod:
+                    case spv::Op::OpImageSampleProjDrefImplicitLod:
+                    case spv::Op::OpImageSampleProjDrefExplicitLod:
+                    case spv::Op::OpImageDrefGather:
                         // Depth reference access implies usage as a depth texture, which
                         // in turn is a sampled texture.
                         handle_usage_[get_image(inst)].AddDepthTexture();
@@ -2638,29 +2681,29 @@ bool ParserImpl::RegisterHandleUsage() {
 
                         // Image queries
 
-                    case SpvOpImageQuerySizeLod:
+                    case spv::Op::OpImageQuerySizeLod:
                         // Vulkan requires Sampled=1 for this. SPIR-V already requires MS=0.
                         handle_usage_[get_image(inst)].AddSampledTexture();
                         break;
-                    case SpvOpImageQuerySize:
+                    case spv::Op::OpImageQuerySize:
                         // Applies to either MS=1 or Sampled=0 or 2.
                         // So we can't force it to be multisampled, or storage image.
                         break;
-                    case SpvOpImageQueryLod:
+                    case spv::Op::OpImageQueryLod:
                         handle_usage_[get_image(inst)].AddSampledTexture();
                         handle_usage_[get_sampler(inst)].AddSampler();
                         break;
-                    case SpvOpImageQueryLevels:
+                    case spv::Op::OpImageQueryLevels:
                         // We can't tell anything more than that it's an image.
                         handle_usage_[get_image(inst)].AddTexture();
                         break;
-                    case SpvOpImageQuerySamples:
+                    case spv::Op::OpImageQuerySamples:
                         handle_usage_[get_image(inst)].AddMultisampledTexture();
                         break;
 
                         // Function calls
 
-                    case SpvOpFunctionCall: {
+                    case spv::Op::OpFunctionCall: {
                         // Propagate handle usages from callee function formal parameters to
                         // the matching caller parameters.  This is where we rely on the
                         // fact that callees have been processed earlier in the flow.

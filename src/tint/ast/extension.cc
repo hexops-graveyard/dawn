@@ -26,35 +26,40 @@ namespace tint::ast {
 
 /// ParseExtension parses a Extension from a string.
 /// @param str the string to parse
-/// @returns the parsed enum, or Extension::kInvalid if the string could not be parsed.
+/// @returns the parsed enum, or Extension::kUndefined if the string could not be parsed.
 Extension ParseExtension(std::string_view str) {
-    if (str == "f16") {
-        return Extension::kF16;
+    if (str == "chromium_disable_uniformity_analysis") {
+        return Extension::kChromiumDisableUniformityAnalysis;
     }
     if (str == "chromium_experimental_dp4a") {
         return Extension::kChromiumExperimentalDp4A;
     }
-    if (str == "chromium_disable_uniformity_analysis") {
-        return Extension::kChromiumDisableUniformityAnalysis;
+    if (str == "chromium_experimental_full_ptr_parameters") {
+        return Extension::kChromiumExperimentalFullPtrParameters;
     }
     if (str == "chromium_experimental_push_constant") {
         return Extension::kChromiumExperimentalPushConstant;
     }
-    return Extension::kInvalid;
+    if (str == "f16") {
+        return Extension::kF16;
+    }
+    return Extension::kUndefined;
 }
 
 std::ostream& operator<<(std::ostream& out, Extension value) {
     switch (value) {
-        case Extension::kInvalid:
-            return out << "invalid";
-        case Extension::kF16:
-            return out << "f16";
-        case Extension::kChromiumExperimentalDp4A:
-            return out << "chromium_experimental_dp4a";
+        case Extension::kUndefined:
+            return out << "undefined";
         case Extension::kChromiumDisableUniformityAnalysis:
             return out << "chromium_disable_uniformity_analysis";
+        case Extension::kChromiumExperimentalDp4A:
+            return out << "chromium_experimental_dp4a";
+        case Extension::kChromiumExperimentalFullPtrParameters:
+            return out << "chromium_experimental_full_ptr_parameters";
         case Extension::kChromiumExperimentalPushConstant:
             return out << "chromium_experimental_push_constant";
+        case Extension::kF16:
+            return out << "f16";
     }
     return out << "<unknown>";
 }

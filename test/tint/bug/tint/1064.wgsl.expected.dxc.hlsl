@@ -1,14 +1,11 @@
 void main() {
-  [loop] while (true) {
+  while (true) {
     if (false) {
     } else {
       break;
     }
     {
-      if (true) {
-      } else {
-        break;
-      }
+      if (false) { break; }
     }
   }
   return;

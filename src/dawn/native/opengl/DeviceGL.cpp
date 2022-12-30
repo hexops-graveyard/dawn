@@ -108,8 +108,10 @@ namespace dawn::native::opengl {
 ResultOrError<Ref<Device>> Device::Create(AdapterBase* adapter,
                                           const DeviceDescriptor* descriptor,
                                           const OpenGLFunctions& functions,
-                                          std::unique_ptr<Context> context) {
-    Ref<Device> device = AcquireRef(new Device(adapter, descriptor, functions, std::move(context)));
+                                          std::unique_ptr<Context> context,
+                                          const TripleStateTogglesSet& userProvidedToggles) {
+    Ref<Device> device = AcquireRef(
+        new Device(adapter, descriptor, functions, std::move(context), userProvidedToggles));
     DAWN_TRY(device->Initialize(descriptor));
     return device;
 }
@@ -117,8 +119,11 @@ ResultOrError<Ref<Device>> Device::Create(AdapterBase* adapter,
 Device::Device(AdapterBase* adapter,
                const DeviceDescriptor* descriptor,
                const OpenGLFunctions& functions,
-               std::unique_ptr<Context> context)
-    : DeviceBase(adapter, descriptor), mGL(functions), mContext(std::move(context)) {}
+               std::unique_ptr<Context> context,
+               const TripleStateTogglesSet& userProvidedToggles)
+    : DeviceBase(adapter, descriptor, userProvidedToggles),
+      mGL(functions),
+      mContext(std::move(context)) {}
 
 Device::~Device() {
     Destroy();
@@ -299,7 +304,7 @@ ResultOrError<Ref<NewSwapChainBase>> Device::CreateSwapChainImpl(
     Surface* surface,
     NewSwapChainBase* previousSwapChain,
     const SwapChainDescriptor* descriptor) {
-    return DAWN_FORMAT_VALIDATION_ERROR("New swapchains not implemented.");
+    return DAWN_VALIDATION_ERROR("New swapchains not implemented.");
 }
 ResultOrError<Ref<TextureBase>> Device::CreateTextureImpl(const TextureDescriptor* descriptor) {
     return AcquireRef(new Texture(this, descriptor));
@@ -364,7 +369,7 @@ TextureBase* Device::CreateTextureWrappingEGLImage(const ExternalImageDescriptor
     if (textureDescriptor->size.width != static_cast<uint32_t>(width) ||
         textureDescriptor->size.height != static_cast<uint32_t>(height) ||
         textureDescriptor->size.depthOrArrayLayers != 1) {
-        ConsumedError(DAWN_FORMAT_VALIDATION_ERROR(
+        ConsumedError(DAWN_VALIDATION_ERROR(
             "EGLImage size (width: %u, height: %u, depth: 1) doesn't match descriptor size %s.",
             width, height, &textureDescriptor->size));
         gl.DeleteTextures(1, &tex);
@@ -413,18 +418,18 @@ ResultOrError<std::unique_ptr<StagingBufferBase>> Device::CreateStagingBuffer(si
     return DAWN_UNIMPLEMENTED_ERROR("Device unable to create staging buffer.");
 }
 
-MaybeError Device::CopyFromStagingToBuffer(StagingBufferBase* source,
-                                           uint64_t sourceOffset,
-                                           BufferBase* destination,
-                                           uint64_t destinationOffset,
-                                           uint64_t size) {
+MaybeError Device::CopyFromStagingToBufferImpl(StagingBufferBase* source,
+                                               uint64_t sourceOffset,
+                                               BufferBase* destination,
+                                               uint64_t destinationOffset,
+                                               uint64_t size) {
     return DAWN_UNIMPLEMENTED_ERROR("Device unable to copy from staging buffer.");
 }
 
-MaybeError Device::CopyFromStagingToTexture(const StagingBufferBase* source,
-                                            const TextureDataLayout& src,
-                                            TextureCopy* dst,
-                                            const Extent3D& copySizePixels) {
+MaybeError Device::CopyFromStagingToTextureImpl(const StagingBufferBase* source,
+                                                const TextureDataLayout& src,
+                                                TextureCopy* dst,
+                                                const Extent3D& copySizePixels) {
     return DAWN_UNIMPLEMENTED_ERROR("Device unable to copy from staging buffer to texture.");
 }
 
@@ -441,6 +446,12 @@ MaybeError Device::WaitForIdleForDestruction() {
     return {};
 }
 
+bool Device::HasPendingCommands() const {
+    // Technically we could have scheduled commands inside the GL driver that are waiting for a
+    // glFlush but we can't know for sure so we might as well pretend there are no commands.
+    return false;
+}
+
 uint32_t Device::GetOptimalBytesPerRowAlignment() const {
     return 1;
 }
@@ -452,6 +463,8 @@ uint64_t Device::GetOptimalBufferToTextureCopyOffsetAlignment() const {
 float Device::GetTimestampPeriodInNS() const {
     return 1.0f;
 }
+
+void Device::ForceEventualFlushOfCommands() {}
 
 const OpenGLFunctions& Device::GetGL() const {
     if (mContext) {

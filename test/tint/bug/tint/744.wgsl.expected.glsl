@@ -4,27 +4,30 @@ struct Uniforms {
   uvec2 aShape;
   uvec2 bShape;
   uvec2 outShape;
+  uint pad;
+  uint pad_1;
 };
 
-layout(binding = 0, std430) buffer Matrix_1 {
+layout(binding = 0, std430) buffer Matrix_ssbo {
   uint numbers[];
 } firstMatrix;
-layout(binding = 1, std430) buffer Matrix_2 {
+
+layout(binding = 1, std430) buffer Matrix_ssbo_1 {
   uint numbers[];
 } secondMatrix;
-layout(binding = 2, std430) buffer Matrix_3 {
+
+layout(binding = 2, std430) buffer Matrix_ssbo_2 {
   uint numbers[];
 } resultMatrix;
-layout(binding = 3) uniform Uniforms_1 {
-  uvec2 aShape;
-  uvec2 bShape;
-  uvec2 outShape;
+
+layout(binding = 3, std140) uniform uniforms_block_ubo {
+  Uniforms inner;
 } uniforms;
 
 void tint_symbol(uvec3 global_id) {
   uvec2 resultCell = uvec2(global_id.y, global_id.x);
-  uint dimInner = uniforms.aShape.y;
-  uint dimOutter = uniforms.outShape.y;
+  uint dimInner = uniforms.inner.aShape.y;
+  uint dimOutter = uniforms.inner.outShape.y;
   uint result = 0u;
   {
     for(uint i = 0u; (i < dimInner); i = (i + 1u)) {

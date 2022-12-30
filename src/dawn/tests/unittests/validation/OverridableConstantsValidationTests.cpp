@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <limits>
 #include <vector>
 
 #include "dawn/common/Constants.h"
@@ -120,6 +121,11 @@ TEST_F(ComputePipelineOverridableConstantsValidationTest, ConstantsIdentifierLoo
         TestCreatePipeline(constants);
     }
     {
+        // Error: c10 already has a constant numeric id specified
+        std::vector<wgpu::ConstantEntry> constants{{nullptr, "c10", 0}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
         // Error: constant numeric id not specified
         std::vector<wgpu::ConstantEntry> constants{{nullptr, "9999", 0}};
         ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
@@ -210,5 +216,79 @@ TEST_F(ComputePipelineOverridableConstantsValidationTest, ConstantsIdentifierUni
         // Error: constant with numeric id cannot be referenced with variable name
         std::vector<wgpu::ConstantEntry> constants{{nullptr, "c10", 0}};
         ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+}
+
+// Test that values like NaN and Inf are treated as invalid.
+TEST_F(ComputePipelineOverridableConstantsValidationTest, InvalidValue) {
+    SetUpShadersWithDefaultValueConstants();
+    {
+        // Error: NaN
+        std::vector<wgpu::ConstantEntry> constants{{nullptr, "c3", std::nan("")}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: -NaN
+        std::vector<wgpu::ConstantEntry> constants{{nullptr, "c3", -std::nan("")}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: Inf
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c3", std::numeric_limits<double>::infinity()}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: -Inf
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c3", -std::numeric_limits<double>::infinity()}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Valid: Max
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c3", std::numeric_limits<float>::max()}};
+        TestCreatePipeline(constants);
+    }
+    {
+        // Valid: Lowest
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c3", std::numeric_limits<float>::lowest()}};
+        TestCreatePipeline(constants);
+    }
+}
+
+// Test that values that are not representable by WGSL type i32/u32/f16/f32
+TEST_F(ComputePipelineOverridableConstantsValidationTest, OutofRangeValue) {
+    SetUpShadersWithDefaultValueConstants();
+    {
+        // Error: 1.79769e+308 cannot be represented by f32
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c3", std::numeric_limits<double>::max()}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: i32 out of range
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c5", static_cast<double>(std::numeric_limits<int32_t>::max()) + 1.0}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: i32 out of range (negative)
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c5", static_cast<double>(std::numeric_limits<int32_t>::lowest()) - 1.0}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Error: u32 out of range
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c8", static_cast<double>(std::numeric_limits<uint32_t>::max()) + 1.0}};
+        ASSERT_DEVICE_ERROR(TestCreatePipeline(constants));
+    }
+    {
+        // Valid: conversion to boolean can't fail
+        std::vector<wgpu::ConstantEntry> constants{
+            {nullptr, "c0", static_cast<double>(std::numeric_limits<int32_t>::max()) + 1.0}};
+        TestCreatePipeline(constants);
     }
 }

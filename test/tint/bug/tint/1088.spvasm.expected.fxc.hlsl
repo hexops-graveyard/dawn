@@ -23,8 +23,7 @@ void main_1() {
   const float4 x_21 = q;
   p = float3(x_21.x, x_21.y, x_21.z);
   const float x_27 = p.x;
-  const uint scalar_offset_4 = ((208u + (16u * 0u))) / 4;
-  const float x_41 = asfloat(x_14[scalar_offset_4 / 4][scalar_offset_4 % 4]);
+  const float x_41 = asfloat(x_14[13].x);
   const float x_45 = position.y;
   const float x_49 = asfloat(x_14[4].x);
   p.x = (x_27 + sin(((x_41 * x_45) + x_49)));
@@ -34,7 +33,8 @@ void main_1() {
   const float4x4 x_69 = tint_symbol_4(x_14, 0u);
   const float3 x_70 = p;
   gl_Position = mul(float4(x_70.x, x_70.y, x_70.z, 1.0f), x_69);
-  vUV = uv;
+  const float2 x_83 = uv;
+  vUV = x_83;
   const float x_87 = gl_Position.y;
   gl_Position.y = (x_87 * -1.0f);
   return;

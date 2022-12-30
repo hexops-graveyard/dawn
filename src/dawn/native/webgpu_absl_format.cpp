@@ -46,6 +46,18 @@ AbslFormatConvert(const Color* value, const absl::FormatConversionSpec& spec, ab
 }
 
 absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
+    const Extent2D* value,
+    const absl::FormatConversionSpec& spec,
+    absl::FormatSink* s) {
+    if (value == nullptr) {
+        s->Append("[null]");
+        return {true};
+    }
+    s->Append(absl::StrFormat("[Extent2D width:%u, height:%u]", value->width, value->height));
+    return {true};
+}
+
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
     const Extent3D* value,
     const absl::FormatConversionSpec& spec,
     absl::FormatSink* s) {
@@ -55,6 +67,18 @@ absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConv
     }
     s->Append(absl::StrFormat("[Extent3D width:%u, height:%u, depthOrArrayLayers:%u]", value->width,
                               value->height, value->depthOrArrayLayers));
+    return {true};
+}
+
+absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConvert(
+    const Origin2D* value,
+    const absl::FormatConversionSpec& spec,
+    absl::FormatSink* s) {
+    if (value == nullptr) {
+        s->Append("[null]");
+        return {true};
+    }
+    s->Append(absl::StrFormat("[Origin2D x:%u, y:%u]", value->x, value->y));
     return {true};
 }
 
@@ -181,14 +205,14 @@ absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConv
 
     bool needsComma = false;
     for (ColorAttachmentIndex i : IterateBitSet(value->GetColorAttachmentsMask())) {
+        if (needsComma) {
+            s->Append(", ");
+        }
+
         while (nextColorIndex < i) {
             s->Append(absl::StrFormat("%s, ", wgpu::TextureFormat::Undefined));
             nextColorIndex++;
             needsComma = false;
-        }
-
-        if (needsComma) {
-            s->Append(", ");
         }
 
         s->Append(absl::StrFormat("%s", value->GetColorAttachmentFormat(i)));
@@ -385,14 +409,17 @@ absl::FormatConvertResult<absl::FormatConversionCharSet::kString> AbslFormatConv
     const absl::FormatConversionSpec& spec,
     absl::FormatSink* s) {
     switch (value) {
-        case InterStageComponentType::Float:
-            s->Append("Float");
+        case InterStageComponentType::F32:
+            s->Append("f32");
             break;
-        case InterStageComponentType::Uint:
-            s->Append("Uint");
+        case InterStageComponentType::F16:
+            s->Append("f16");
             break;
-        case InterStageComponentType::Sint:
-            s->Append("Sint");
+        case InterStageComponentType::U32:
+            s->Append("u32");
+            break;
+        case InterStageComponentType::I32:
+            s->Append("i32");
             break;
     }
     return {true};

@@ -224,11 +224,11 @@ TEST_P(ReadOnlyDepthAttachmentTests, SampleFromAttachment) {
 
     // The top part is not rendered by the pipeline. Its color is the default clear color for
     // color attachment.
-    const std::vector<RGBA8> kExpectedTopColors(kSize * kSize / 2, {0, 0, 0, 0});
+    const std::vector<utils::RGBA8> kExpectedTopColors(kSize * kSize / 2, {0, 0, 0, 0});
     // The bottom part is rendered, whose red channel is sampled from depth attachment, which
     // is initialized into 0.2.
-    const std::vector<RGBA8> kExpectedBottomColors(kSize * kSize / 2,
-                                                   {static_cast<uint8_t>(0.2 * 255), 0, 0, 0});
+    const std::vector<utils::RGBA8> kExpectedBottomColors(
+        kSize * kSize / 2, {static_cast<uint8_t>(0.2 * 255), 0, 0, 0});
     EXPECT_TEXTURE_EQ(kExpectedTopColors.data(), colorTexture, {0, 0}, {kSize, kSize / 2});
     EXPECT_TEXTURE_EQ(kExpectedBottomColors.data(), colorTexture, {0, kSize / 2},
                       {kSize, kSize / 2});
@@ -248,12 +248,43 @@ TEST_P(ReadOnlyDepthAttachmentTests, NotSampleFromAttachment) {
 
     // The top part is not rendered by the pipeline. Its color is the default clear color for
     // color attachment.
-    const std::vector<RGBA8> kExpectedTopColors(kSize * kSize / 2, {0, 0, 0, 0});
+    const std::vector<utils::RGBA8> kExpectedTopColors(kSize * kSize / 2, {0, 0, 0, 0});
     // The bottom part is rendered. Its color is set to blue.
-    const std::vector<RGBA8> kExpectedBottomColors(kSize * kSize / 2, {0, 0, 255, 0});
+    const std::vector<utils::RGBA8> kExpectedBottomColors(kSize * kSize / 2, {0, 0, 255, 0});
     EXPECT_TEXTURE_EQ(kExpectedTopColors.data(), colorTexture, {0, 0}, {kSize, kSize / 2});
     EXPECT_TEXTURE_EQ(kExpectedBottomColors.data(), colorTexture, {0, kSize / 2},
                       {kSize, kSize / 2});
+}
+
+// Regression test for crbug.com/dawn/1512 where having aspectReadOnly for an unused aspect of a
+// depth-stencil texture would cause the attachment to be considered read-only, causing layout
+// mismatch issues.
+TEST_P(ReadOnlyDepthAttachmentTests, UnusedAspectWithReadOnly) {
+    wgpu::TextureFormat format = GetParam().mTextureFormat;
+    wgpu::Texture depthStencilTexture = CreateTexture(format, wgpu::TextureUsage::RenderAttachment);
+
+    utils::ComboRenderPassDescriptor passDescriptor({}, depthStencilTexture.CreateView());
+    if (utils::IsStencilOnlyFormat(format)) {
+        passDescriptor.cDepthStencilAttachmentInfo.depthReadOnly = true;
+        passDescriptor.cDepthStencilAttachmentInfo.depthLoadOp = wgpu::LoadOp::Undefined;
+        passDescriptor.cDepthStencilAttachmentInfo.depthStoreOp = wgpu::StoreOp::Undefined;
+    } else {
+        passDescriptor.cDepthStencilAttachmentInfo.depthReadOnly = false;
+    }
+    if (utils::IsDepthOnlyFormat(format)) {
+        passDescriptor.cDepthStencilAttachmentInfo.stencilReadOnly = true;
+        passDescriptor.cDepthStencilAttachmentInfo.stencilLoadOp = wgpu::LoadOp::Undefined;
+        passDescriptor.cDepthStencilAttachmentInfo.stencilStoreOp = wgpu::StoreOp::Undefined;
+    } else {
+        passDescriptor.cDepthStencilAttachmentInfo.stencilReadOnly = false;
+    }
+
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&passDescriptor);
+    pass.End();
+    wgpu::CommandBuffer commands = encoder.Finish();
+
+    queue.Submit(1, &commands);
 }
 
 class ReadOnlyStencilAttachmentTests : public ReadOnlyDepthStencilAttachmentTests {
@@ -277,14 +308,14 @@ TEST_P(ReadOnlyStencilAttachmentTests, SampleFromAttachment) {
     // stencilRefValue < stencilValue (stencilInitValue), so stencil test passes. The pipeline
     // samples from stencil buffer and writes into color buffer.
     DoTest(wgpu::TextureAspect::StencilOnly, stencilFormat, colorTexture, &values, true);
-    const std::vector<RGBA8> kSampledColors(kSize * kSize, {3, 0, 0, 0});
+    const std::vector<utils::RGBA8> kSampledColors(kSize * kSize, {3, 0, 0, 0});
     EXPECT_TEXTURE_EQ(kSampledColors.data(), colorTexture, {0, 0}, {kSize, kSize});
 
     values.stencilInitValue = 1;
     // stencilRefValue > stencilValue (stencilInitValue), so stencil test fails. The pipeline
     // doesn't change color buffer. Sampled data from stencil buffer is discarded.
     DoTest(wgpu::TextureAspect::StencilOnly, stencilFormat, colorTexture, &values, true);
-    const std::vector<RGBA8> kInitColors(kSize * kSize, {0, 0, 0, 0});
+    const std::vector<utils::RGBA8> kInitColors(kSize * kSize, {0, 0, 0, 0});
     EXPECT_TEXTURE_EQ(kInitColors.data(), colorTexture, {0, 0}, {kSize, kSize});
 }
 
@@ -301,14 +332,14 @@ TEST_P(ReadOnlyStencilAttachmentTests, NotSampleFromAttachment) {
     // stencilRefValue < stencilValue (stencilInitValue), so stencil test passes. The pipeline
     // draw solid blue into color buffer.
     DoTest(wgpu::TextureAspect::StencilOnly, stencilFormat, colorTexture, &values, false);
-    const std::vector<RGBA8> kSampledColors(kSize * kSize, {0, 0, 255, 0});
+    const std::vector<utils::RGBA8> kSampledColors(kSize * kSize, {0, 0, 255, 0});
     EXPECT_TEXTURE_EQ(kSampledColors.data(), colorTexture, {0, 0}, {kSize, kSize});
 
     values.stencilInitValue = 1;
     // stencilRefValue > stencilValue (stencilInitValue), so stencil test fails. The pipeline
     // doesn't change color buffer. drawing data is discarded.
     DoTest(wgpu::TextureAspect::StencilOnly, stencilFormat, colorTexture, &values, false);
-    const std::vector<RGBA8> kInitColors(kSize * kSize, {0, 0, 0, 0});
+    const std::vector<utils::RGBA8> kInitColors(kSize * kSize, {0, 0, 0, 0});
     EXPECT_TEXTURE_EQ(kInitColors.data(), colorTexture, {0, 0}, {kSize, kSize});
 }
 

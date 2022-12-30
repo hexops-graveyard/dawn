@@ -5,11 +5,12 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW inner;
 } sb_rw;
+
 void atomicMin_8e38dc() {
-  int res = atomicMin(sb_rw.arg_0, 1);
+  int res = atomicMin(sb_rw.inner.arg_0, 1);
 }
 
 void fragment_main() {
@@ -26,11 +27,12 @@ struct SB_RW {
   int arg_0;
 };
 
-layout(binding = 0, std430) buffer SB_RW_1 {
-  int arg_0;
+layout(binding = 0, std430) buffer sb_rw_block_ssbo {
+  SB_RW inner;
 } sb_rw;
+
 void atomicMin_8e38dc() {
-  int res = atomicMin(sb_rw.arg_0, 1);
+  int res = atomicMin(sb_rw.inner.arg_0, 1);
 }
 
 void compute_main() {

@@ -31,8 +31,19 @@ using namespace tint::number_suffixes;  // NOLINT
 namespace tint::transform {
 namespace {
 
-/// This struct stores symbols for new bindings created as a result of
-/// transforming a texture_external instance.
+bool ShouldRun(const Program* program) {
+    for (auto* node : program->ASTNodes().Objects()) {
+        if (auto* ty = node->As<ast::Type>()) {
+            if (program->Sem().Get<type::ExternalTexture>(ty)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+/// This struct stores symbols for new bindings created as a result of transforming a
+/// texture_external instance.
 struct NewBindingSymbols {
     Symbol params;
     Symbol plane_0;
@@ -40,7 +51,7 @@ struct NewBindingSymbols {
 };
 }  // namespace
 
-/// State holds the current transform state
+/// PIMPL state for the transform
 struct MultiplanarExternalTexture::State {
     /// The clone context.
     CloneContext& ctx;
@@ -58,17 +69,20 @@ struct MultiplanarExternalTexture::State {
     /// Symbol for the ExternalTextureParams struct
     Symbol params_struct_sym;
 
-    /// Symbol for the textureLoadExternal function
-    Symbol texture_load_external_sym;
+    /// Symbol for the textureLoadExternal functions
+    utils::Hashmap<const sem::CallTarget*, Symbol, 2> texture_load_external_fns;
 
     /// Symbol for the textureSampleExternal function
     Symbol texture_sample_external_sym;
 
+    /// Symbol for the textureSampleExternalDEPRECATED function
+    Symbol texture_sample_external_deprecated_sym;
+
     /// Symbol for the gammaCorrection function
     Symbol gamma_correction_sym;
 
-    /// Storage for new bindings that have been created corresponding to an
-    /// original texture_external binding.
+    /// Storage for new bindings that have been created corresponding to an original
+    /// texture_external binding.
     std::unordered_map<const sem::Variable*, NewBindingSymbols> new_binding_symbols;
 
     /// Constructor
@@ -82,35 +96,31 @@ struct MultiplanarExternalTexture::State {
     void Process() {
         auto& sem = ctx.src->Sem();
 
-        // For each texture_external binding, we replace it with a texture_2d<f32>
-        // binding and create two additional bindings (one texture_2d<f32> to
-        // represent the secondary plane and one uniform buffer for the
-        // ExternalTextureParams struct).
+        // For each texture_external binding, we replace it with a texture_2d<f32> binding and
+        // create two additional bindings (one texture_2d<f32> to represent the secondary plane and
+        // one uniform buffer for the ExternalTextureParams struct).
         for (auto* global : ctx.src->AST().GlobalVariables()) {
-            auto* sem_var = sem.Get(global);
-            if (!sem_var->Type()->UnwrapRef()->Is<sem::ExternalTexture>()) {
+            auto* sem_var = sem.Get<sem::GlobalVariable>(global);
+            if (!sem_var->Type()->UnwrapRef()->Is<type::ExternalTexture>()) {
                 continue;
             }
 
-            // If the attributes are empty, then this must be a texture_external
-            // passed as a function parameter. These variables are transformed
-            // elsewhere.
+            // If the attributes are empty, then this must be a texture_external passed as a
+            // function parameter. These variables are transformed elsewhere.
             if (global->attributes.IsEmpty()) {
                 continue;
             }
 
-            // If we find a texture_external binding, we know we must emit the
-            // ExternalTextureParams struct.
+            // If we find a texture_external binding, we know we must emit the ExternalTextureParams
+            // struct.
             if (!params_struct_sym.IsValid()) {
                 createExtTexParamsStructs();
             }
 
-            // The binding points for the newly introduced bindings must have been
-            // provided to this transform. We fetch the new binding points by
-            // providing the original texture_external binding points into the
-            // passed map.
-            BindingPoint bp = {global->BindingPoint().group->value,
-                               global->BindingPoint().binding->value};
+            // The binding points for the newly introduced bindings must have been provided to this
+            // transform. We fetch the new binding points by providing the original texture_external
+            // binding points into the passed map.
+            BindingPoint bp = sem_var->BindingPoint();
 
             BindingsMap::const_iterator it = new_binding_points->bindings_map.find(bp);
             if (it == new_binding_points->bindings_map.end()) {
@@ -123,49 +133,46 @@ struct MultiplanarExternalTexture::State {
 
             BindingPoints bps = it->second;
 
-            // Symbols for the newly created bindings must be saved so they can be
-            // passed as parameters later. These are placed in a map and keyed by
-            // the source symbol associated with the texture_external binding that
-            // corresponds with the new destination bindings.
+            // Symbols for the newly created bindings must be saved so they can be passed as
+            // parameters later. These are placed in a map and keyed by the source symbol associated
+            // with the texture_external binding that corresponds with the new destination bindings.
             // NewBindingSymbols new_binding_syms;
             auto& syms = new_binding_symbols[sem_var];
             syms.plane_0 = ctx.Clone(global->symbol);
             syms.plane_1 = b.Symbols().New("ext_tex_plane_1");
             b.GlobalVar(syms.plane_1, b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32()),
-                        b.GroupAndBinding(bps.plane_1.group, bps.plane_1.binding));
+                        b.Group(AInt(bps.plane_1.group)), b.Binding(AInt(bps.plane_1.binding)));
             syms.params = b.Symbols().New("ext_tex_params");
             b.GlobalVar(syms.params, b.ty.type_name("ExternalTextureParams"),
-                        ast::StorageClass::kUniform,
-                        b.GroupAndBinding(bps.params.group, bps.params.binding));
+                        ast::AddressSpace::kUniform, b.Group(AInt(bps.params.group)),
+                        b.Binding(AInt(bps.params.binding)));
 
-            // Replace the original texture_external binding with a texture_2d<f32>
-            // binding.
+            // Replace the original texture_external binding with a texture_2d<f32> binding.
             auto cloned_attributes = ctx.Clone(global->attributes);
-            const ast::Expression* cloned_constructor = ctx.Clone(global->constructor);
+            const ast::Expression* cloned_initializer = ctx.Clone(global->initializer);
 
             auto* replacement =
                 b.Var(syms.plane_0, b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32()),
-                      cloned_constructor, cloned_attributes);
+                      cloned_initializer, cloned_attributes);
             ctx.Replace(global, replacement);
         }
 
-        // We must update all the texture_external parameters for user declared
-        // functions.
+        // We must update all the texture_external parameters for user declared functions.
         for (auto* fn : ctx.src->AST().Functions()) {
             for (const ast::Variable* param : fn->params) {
                 if (auto* sem_var = sem.Get(param)) {
-                    if (!sem_var->Type()->UnwrapRef()->Is<sem::ExternalTexture>()) {
+                    if (!sem_var->Type()->UnwrapRef()->Is<type::ExternalTexture>()) {
                         continue;
                     }
-                    // If we find a texture_external, we must ensure the
-                    // ExternalTextureParams struct exists.
+                    // If we find a texture_external, we must ensure the ExternalTextureParams
+                    // struct exists.
                     if (!params_struct_sym.IsValid()) {
                         createExtTexParamsStructs();
                     }
-                    // When a texture_external is found, we insert all components
-                    // the texture_external into the parameter list. We must also place
-                    // the new symbols into the transform state so they can be used when
-                    // transforming function calls.
+                    // When a texture_external is found, we insert all components the
+                    // texture_external into the parameter list. We must also place the new symbols
+                    // into the transform state so they can be used when transforming function
+                    // calls.
                     auto& syms = new_binding_symbols[sem_var];
                     syms.plane_0 = ctx.Clone(param->symbol);
                     syms.plane_1 = b.Symbols().New("ext_tex_plane_1");
@@ -181,42 +188,42 @@ struct MultiplanarExternalTexture::State {
             }
         }
 
-        // Transform the original textureLoad and textureSampleLevel calls into
-        // textureLoadExternal and textureSampleExternal calls.
+        // Transform the external texture builtin calls into calls to the external texture
+        // functions.
         ctx.ReplaceAll([&](const ast::CallExpression* expr) -> const ast::CallExpression* {
             auto* call = sem.Get(expr)->UnwrapMaterialize()->As<sem::Call>();
             auto* builtin = call->Target()->As<sem::Builtin>();
 
             if (builtin && !builtin->Parameters().IsEmpty() &&
-                builtin->Parameters()[0]->Type()->Is<sem::ExternalTexture>() &&
+                builtin->Parameters()[0]->Type()->Is<type::ExternalTexture>() &&
                 builtin->Type() != sem::BuiltinType::kTextureDimensions) {
-                if (auto* var_user = sem.Get<sem::VariableUser>(expr->args[0])) {
+                if (auto* var_user =
+                        sem.Get(expr->args[0])->UnwrapLoad()->As<sem::VariableUser>()) {
                     auto it = new_binding_symbols.find(var_user->Variable());
                     if (it == new_binding_symbols.end()) {
-                        // If valid new binding locations were not provided earlier, we
-                        // would have been unable to create these symbols. An error
-                        // message was emitted earlier, so just return early to avoid
-                        // internal compiler errors and retain a clean error message.
+                        // If valid new binding locations were not provided earlier, we would have
+                        // been unable to create these symbols. An error message was emitted
+                        // earlier, so just return early to avoid internal compiler errors and
+                        // retain a clean error message.
                         return nullptr;
                     }
                     auto& syms = it->second;
 
-                    if (builtin->Type() == sem::BuiltinType::kTextureLoad) {
-                        return createTexLdExt(expr, syms);
-                    }
-
-                    if (builtin->Type() == sem::BuiltinType::kTextureSampleLevel) {
-                        return createTexSmpExt(expr, syms);
+                    switch (builtin->Type()) {
+                        case sem::BuiltinType::kTextureLoad:
+                            return createTextureLoad(call, syms);
+                        case sem::BuiltinType::kTextureSampleBaseClampToEdge:
+                            return createTextureSampleBaseClampToEdge(expr, syms);
+                        default:
+                            break;
                     }
                 }
-
             } else if (call->Target()->Is<sem::Function>()) {
-                // The call expression may be to a user-defined function that
-                // contains a texture_external parameter. These need to be expanded
-                // out to multiple plane textures and the texture parameters
-                // structure.
+                // The call expression may be to a user-defined function that contains a
+                // texture_external parameter. These need to be expanded out to multiple plane
+                // textures and the texture parameters structure.
                 for (auto* arg : expr->args) {
-                    if (auto* var_user = sem.Get<sem::VariableUser>(arg)) {
+                    if (auto* var_user = sem.Get(arg)->UnwrapLoad()->As<sem::VariableUser>()) {
                         // Check if a parameter is a texture_external by trying to find
                         // it in the transform state.
                         auto it = new_binding_symbols.find(var_user->Variable());
@@ -252,10 +259,11 @@ struct MultiplanarExternalTexture::State {
         utils::Vector ext_tex_params_member_list{
             b.Member("numPlanes", b.ty.u32()),
             b.Member("doYuvToRgbConversionOnly", b.ty.u32()),
-            b.Member("yuvToRgbConversionMatrix", b.ty.mat3x4(b.ty.f32())),
+            b.Member("yuvToRgbConversionMatrix", b.ty.mat3x4<f32>()),
             b.Member("gammaDecodeParams", b.ty.type_name("GammaTransferParams")),
             b.Member("gammaEncodeParams", b.ty.type_name("GammaTransferParams")),
-            b.Member("gamutConversionMatrix", b.ty.mat3x3(b.ty.f32()))};
+            b.Member("gamutConversionMatrix", b.ty.mat3x3<f32>()),
+            b.Member("coordTransformationMatrix", b.ty.mat2x3<f32>())};
 
         params_struct_sym = b.Symbols().New("ExternalTextureParams");
 
@@ -276,61 +284,88 @@ struct MultiplanarExternalTexture::State {
             b.ty.vec3<f32>(),
             utils::Vector{
                 // let cond = abs(v) < vec3(params.D);
-                b.Decl(b.Let(
-                    "cond", nullptr,
-                    b.LessThan(b.Call("abs", "v"), b.vec3<f32>(b.MemberAccessor("params", "D"))))),
+                b.Decl(b.Let("cond", b.LessThan(b.Call("abs", "v"),
+                                                b.vec3<f32>(b.MemberAccessor("params", "D"))))),
                 // let t = sign(v) * ((params.C * abs(v)) + params.F);
-                b.Decl(b.Let("t", nullptr,
+                b.Decl(b.Let("t",
                              b.Mul(b.Call("sign", "v"),
                                    b.Add(b.Mul(b.MemberAccessor("params", "C"), b.Call("abs", "v")),
                                          b.MemberAccessor("params", "F"))))),
                 // let f = (sign(v) * pow(((params.A * abs(v)) + params.B),
                 // vec3(params.G))) + params.E;
-                b.Decl(b.Let("f", nullptr,
-                             b.Mul(b.Call("sign", "v"),
-                                   b.Add(b.Call("pow",
-                                                b.Add(b.Mul(b.MemberAccessor("params", "A"),
-                                                            b.Call("abs", "v")),
-                                                      b.MemberAccessor("params", "B")),
-                                                b.vec3<f32>(b.MemberAccessor("params", "G"))),
-                                         b.MemberAccessor("params", "E"))))),
+                b.Decl(b.Let("f", b.Mul(b.Call("sign", "v"),
+                                        b.Add(b.Call("pow",
+                                                     b.Add(b.Mul(b.MemberAccessor("params", "A"),
+                                                                 b.Call("abs", "v")),
+                                                           b.MemberAccessor("params", "B")),
+                                                     b.vec3<f32>(b.MemberAccessor("params", "G"))),
+                                              b.MemberAccessor("params", "E"))))),
                 // return select(f, t, cond);
                 b.Return(b.Call("select", "f", "t", "cond")),
             });
     }
 
-    /// Constructs a StatementList containing all the statements making up the
-    /// bodies of the textureSampleExternal and textureLoadExternal functions.
+    /// Constructs a StatementList containing all the statements making up the body of the texture
+    /// builtin function.
     /// @param call_type determines which function body to generate
     /// @returns a statement list that makes of the body of the chosen function
-    auto createTexFnExtStatementList(sem::BuiltinType call_type) {
+    auto buildTextureBuiltinBody(sem::BuiltinType call_type) {
+        utils::Vector<const ast::Statement*, 16> stmts;
         const ast::CallExpression* single_plane_call = nullptr;
         const ast::CallExpression* plane_0_call = nullptr;
         const ast::CallExpression* plane_1_call = nullptr;
-        if (call_type == sem::BuiltinType::kTextureSampleLevel) {
-            // textureSampleLevel(plane0, smp, coord.xy, 0.0);
-            single_plane_call = b.Call("textureSampleLevel", "plane0", "smp", "coord", 0_f);
-            // textureSampleLevel(plane0, smp, coord.xy, 0.0);
-            plane_0_call = b.Call("textureSampleLevel", "plane0", "smp", "coord", 0_f);
-            // textureSampleLevel(plane1, smp, coord.xy, 0.0);
-            plane_1_call = b.Call("textureSampleLevel", "plane1", "smp", "coord", 0_f);
-        } else if (call_type == sem::BuiltinType::kTextureLoad) {
-            // textureLoad(plane0, coords.xy, 0);
-            single_plane_call = b.Call("textureLoad", "plane0", "coord", 0_i);
-            // textureLoad(plane0, coords.xy, 0);
-            plane_0_call = b.Call("textureLoad", "plane0", "coord", 0_i);
-            // textureLoad(plane1, coords.xy, 0);
-            plane_1_call = b.Call("textureLoad", "plane1", "coord", 0_i);
-        } else {
-            TINT_ICE(Transform, b.Diagnostics()) << "unhandled builtin: " << call_type;
+        switch (call_type) {
+            case sem::BuiltinType::kTextureSampleBaseClampToEdge:
+                // TODO(dawn:1614): Change this statement to incorporate the "- 0.5" into the
+                // matrix.
+                stmts.Push(
+                    b.Decl(b.Let("modifiedCoords",
+                                 b.Mul(b.vec3<f32>(b.Sub("coord", f32(0.5)), f32(1.0f)),
+                                       b.MemberAccessor("params", "coordTransformationMatrix")))));
+
+                stmts.Push(b.Decl(b.Let(
+                    "plane0_dims",
+                    b.Construct(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane0", 0_a)))));
+                stmts.Push(
+                    b.Decl(b.Let("plane0_half_texel", b.Div(b.vec2<f32>(0.5_a), "plane0_dims"))));
+                stmts.Push(b.Decl(
+                    b.Let("plane0_clamped", b.Call("clamp", "modifiedCoords", "plane0_half_texel",
+                                                   b.Sub(1_a, "plane0_half_texel")))));
+                stmts.Push(b.Decl(b.Let(
+                    "plane1_dims",
+                    b.Construct(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane1", 0_a)))));
+                stmts.Push(
+                    b.Decl(b.Let("plane1_half_texel", b.Div(b.vec2<f32>(0.5_a), "plane1_dims"))));
+                stmts.Push(b.Decl(
+                    b.Let("plane1_clamped", b.Call("clamp", "modifiedCoords", "plane1_half_texel",
+                                                   b.Sub(1_a, "plane1_half_texel")))));
+
+                // textureSampleLevel(plane0, smp, plane0_clamped, 0.0);
+                single_plane_call =
+                    b.Call("textureSampleLevel", "plane0", "smp", "plane0_clamped", 0_a);
+                // textureSampleLevel(plane0, smp, plane0_clamped, 0.0);
+                plane_0_call = b.Call("textureSampleLevel", "plane0", "smp", "plane0_clamped", 0_a);
+                // textureSampleLevel(plane1, smp, plane1_clamped, 0.0);
+                plane_1_call = b.Call("textureSampleLevel", "plane1", "smp", "plane1_clamped", 0_a);
+                break;
+            case sem::BuiltinType::kTextureLoad:
+                // textureLoad(plane0, coord, 0);
+                single_plane_call = b.Call("textureLoad", "plane0", "coord", 0_a);
+                // textureLoad(plane0, coord, 0);
+                plane_0_call = b.Call("textureLoad", "plane0", "coord", 0_a);
+                // textureLoad(plane1, coord, 0);
+                plane_1_call = b.Call("textureLoad", "plane1", "coord", 0_a);
+                break;
+            default:
+                TINT_ICE(Transform, b.Diagnostics()) << "unhandled builtin: " << call_type;
         }
 
-        return utils::Vector{
-            // var color: vec3<f32>;
-            b.Decl(b.Var("color", b.ty.vec3(b.ty.f32()))),
-            // if ((params.numPlanes == 1u))
-            b.If(b.create<ast::BinaryExpression>(
-                     ast::BinaryOp::kEqual, b.MemberAccessor("params", "numPlanes"), b.Expr(1_u)),
+        // var color: vec3<f32>;
+        stmts.Push(b.Decl(b.Var("color", b.ty.vec3(b.ty.f32()))));
+
+        // if ((params.numPlanes == 1u))
+        stmts.Push(
+            b.If(b.Equal(b.MemberAccessor("params", "numPlanes"), b.Expr(1_a)),
                  b.Block(
                      // color = textureLoad(plane0, coord, 0).rgb;
                      b.Assign("color", b.MemberAccessor(single_plane_call, "rgb"))),
@@ -339,12 +374,12 @@ struct MultiplanarExternalTexture::State {
                      //         params.yuvToRgbConversionMatrix;
                      b.Assign("color",
                               b.Mul(b.vec4<f32>(b.MemberAccessor(plane_0_call, "r"),
-                                                b.MemberAccessor(plane_1_call, "rg"), 1_f),
-                                    b.MemberAccessor("params", "yuvToRgbConversionMatrix")))))),
-            // if (params.doYuvToRgbConversionOnly == 0u)
-            b.If(b.create<ast::BinaryExpression>(
-                     ast::BinaryOp::kEqual, b.MemberAccessor("params", "doYuvToRgbConversionOnly"),
-                     b.Expr(0_u)),
+                                                b.MemberAccessor(plane_1_call, "rg"), 1_a),
+                                    b.MemberAccessor("params", "yuvToRgbConversionMatrix")))))));
+
+        // if (params.doYuvToRgbConversionOnly == 0u)
+        stmts.Push(
+            b.If(b.Equal(b.MemberAccessor("params", "doYuvToRgbConversionOnly"), b.Expr(0_a)),
                  b.Block(
                      // color = gammaConversion(color, gammaDecodeParams);
                      b.Assign("color", b.Call("gammaCorrection", "color",
@@ -354,24 +389,27 @@ struct MultiplanarExternalTexture::State {
                               b.Mul(b.MemberAccessor("params", "gamutConversionMatrix"), "color")),
                      // color = gammaConversion(color, gammaEncodeParams);
                      b.Assign("color", b.Call("gammaCorrection", "color",
-                                              b.MemberAccessor("params", "gammaEncodeParams"))))),
-            // return vec4<f32>(color, 1.f);
-            b.Return(b.vec4<f32>("color", 1_f))};
+                                              b.MemberAccessor("params", "gammaEncodeParams"))))));
+
+        // return vec4<f32>(color, 1.f);
+        stmts.Push(b.Return(b.vec4<f32>("color", 1_a)));
+
+        return stmts;
     }
 
-    /// Creates the textureSampleExternal function if needed and returns a call
-    /// expression to it.
+    /// Creates the textureSampleExternal function if needed and returns a call expression to it.
     /// @param expr the call expression being transformed
     /// @param syms the expanded symbols to be used in the new call
     /// @returns a call expression to textureSampleExternal
-    const ast::CallExpression* createTexSmpExt(const ast::CallExpression* expr,
-                                               NewBindingSymbols syms) {
+    const ast::CallExpression* createTextureSampleBaseClampToEdge(const ast::CallExpression* expr,
+                                                                  NewBindingSymbols syms) {
         const ast::Expression* plane_0_binding_param = ctx.Clone(expr->args[0]);
 
         if (expr->args.Length() != 3) {
-            TINT_ICE(Transform, b.Diagnostics()) << "expected textureSampleLevel call with a "
-                                                    "texture_external to have 3 parameters, found "
-                                                 << expr->args.Length() << " parameters";
+            TINT_ICE(Transform, b.Diagnostics())
+                << "expected textureSampleBaseClampToEdge call with a "
+                   "texture_external to have 3 parameters, found "
+                << expr->args.Length() << " parameters";
         }
 
         // TextureSampleExternal calls the gammaCorrection function, so ensure it
@@ -394,9 +432,7 @@ struct MultiplanarExternalTexture::State {
                     b.Param("params", b.ty.type_name(params_struct_sym)),
                 },
                 b.ty.vec4(b.ty.f32()),
-                utils::Vector{
-                    createTexFnExtStatementList(sem::BuiltinType::kTextureSampleLevel),
-                });
+                buildTextureBuiltinBody(sem::BuiltinType::kTextureSampleBaseClampToEdge));
         }
 
         const ast::IdentifierExpression* exp = b.Expr(texture_sample_external_sym);
@@ -409,48 +445,49 @@ struct MultiplanarExternalTexture::State {
                            });
     }
 
-    /// Creates the textureLoadExternal function if needed and returns a call
-    /// expression to it.
-    /// @param expr the call expression being transformed
+    /// Creates the textureLoadExternal function if needed and returns a call expression to it.
+    /// @param call the call expression being transformed
     /// @param syms the expanded symbols to be used in the new call
     /// @returns a call expression to textureLoadExternal
-    const ast::CallExpression* createTexLdExt(const ast::CallExpression* expr,
-                                              NewBindingSymbols syms) {
-        const ast::Expression* plane_0_binding_param = ctx.Clone(expr->args[0]);
-
-        if (expr->args.Length() != 2) {
+    const ast::CallExpression* createTextureLoad(const sem::Call* call, NewBindingSymbols syms) {
+        if (call->Arguments().Length() != 2) {
             TINT_ICE(Transform, b.Diagnostics())
-                << "expected textureLoad call with a texture_external "
-                   "to have 2 parameters, found "
-                << expr->args.Length() << " parameters";
+                << "expected textureLoad call with a texture_external to have 2 arguments, found "
+                << call->Arguments().Length() << " arguments";
         }
 
-        // TextureLoadExternal calls the gammaCorrection function, so ensure it
-        // exists.
+        auto& args = call->Arguments();
+
+        // TextureLoadExternal calls the gammaCorrection function, so ensure it exists.
         if (!gamma_correction_sym.IsValid()) {
             createGammaCorrectionFn();
         }
 
-        if (!texture_load_external_sym.IsValid()) {
-            texture_load_external_sym = b.Symbols().New("textureLoadExternal");
+        auto texture_load_external_sym = texture_load_external_fns.GetOrCreate(call->Target(), [&] {
+            auto& sig = call->Target()->Signature();
+            auto* coord_ty = sig.Parameter(sem::ParameterUsage::kCoords)->Type();
 
-            // Emit the textureLoadExternal function.
+            auto name = b.Symbols().New("textureLoadExternal");
+
+            // Emit the textureLoadExternal() function.
             b.Func(
-                texture_load_external_sym,
+                name,
                 utils::Vector{
                     b.Param("plane0", b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32())),
                     b.Param("plane1", b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32())),
-                    b.Param("coord", b.ty.vec2(b.ty.i32())),
+                    b.Param("coord", CreateASTTypeFor(ctx, coord_ty)),
                     b.Param("params", b.ty.type_name(params_struct_sym)),
                 },
-                b.ty.vec4(b.ty.f32()),
-                utils::Vector{
-                    createTexFnExtStatementList(sem::BuiltinType::kTextureLoad),
-                });
-        }
+                b.ty.vec4(b.ty.f32()),  //
+                buildTextureBuiltinBody(sem::BuiltinType::kTextureLoad));
 
-        return b.Call(texture_load_external_sym, plane_0_binding_param, syms.plane_1,
-                      ctx.Clone(expr->args[1]), syms.params);
+            return name;
+        });
+
+        auto plane_0_binding_arg = ctx.Clone(args[0]->Declaration());
+
+        return b.Call(texture_load_external_sym, plane_0_binding_arg, syms.plane_1,
+                      ctx.Clone(args[1]->Declaration()), syms.params);
     }
 };
 
@@ -461,32 +498,26 @@ MultiplanarExternalTexture::NewBindingPoints::~NewBindingPoints() = default;
 MultiplanarExternalTexture::MultiplanarExternalTexture() = default;
 MultiplanarExternalTexture::~MultiplanarExternalTexture() = default;
 
-bool MultiplanarExternalTexture::ShouldRun(const Program* program, const DataMap&) const {
-    for (auto* node : program->ASTNodes().Objects()) {
-        if (auto* ty = node->As<ast::Type>()) {
-            if (program->Sem().Get<sem::ExternalTexture>(ty)) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// Within this transform, an instance of a texture_external binding is unpacked
-// into two texture_2d<f32> bindings representing two possible planes of a
-// single texture and a uniform buffer binding representing a struct of
-// parameters. Calls to textureLoad or textureSampleLevel that contain a
-// texture_external parameter will be transformed into a newly generated version
-// of the function, which can perform the desired operation on a single RGBA
-// plane or on separate Y and UV planes.
-void MultiplanarExternalTexture::Run(CloneContext& ctx, const DataMap& inputs, DataMap&) const {
+// Within this transform, an instance of a texture_external binding is unpacked into two
+// texture_2d<f32> bindings representing two possible planes of a single texture and a uniform
+// buffer binding representing a struct of parameters. Calls to texture builtins that contain a
+// texture_external parameter will be transformed into a newly generated version of the function,
+// which can perform the desired operation on a single RGBA plane or on separate Y and UV planes.
+Transform::ApplyResult MultiplanarExternalTexture::Apply(const Program* src,
+                                                         const DataMap& inputs,
+                                                         DataMap&) const {
     auto* new_binding_points = inputs.Get<NewBindingPoints>();
 
+    if (!ShouldRun(src)) {
+        return SkipTransform;
+    }
+
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     if (!new_binding_points) {
-        ctx.dst->Diagnostics().add_error(
-            diag::System::Transform,
-            "missing new binding point data for " + std::string(TypeInfo().name));
-        return;
+        b.Diagnostics().add_error(diag::System::Transform, "missing new binding point data for " +
+                                                               std::string(TypeInfo().name));
+        return Program(std::move(b));
     }
 
     State state(ctx, new_binding_points);
@@ -494,6 +525,7 @@ void MultiplanarExternalTexture::Run(CloneContext& ctx, const DataMap& inputs, D
     state.Process();
 
     ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

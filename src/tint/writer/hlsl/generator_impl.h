@@ -43,9 +43,8 @@
 // Forward declarations
 namespace tint::sem {
 class Call;
-class Constant;
 class Builtin;
-class TypeConstructor;
+class TypeInitializer;
 class TypeConversion;
 }  // namespace tint::sem
 
@@ -93,12 +92,6 @@ class GeneratorImpl : public TextGenerator {
     /// @param stmt the statement to emit
     /// @returns true if the statement was emitted successfully
     bool EmitAssign(const ast::AssignmentStatement* stmt);
-    /// Emits code such that if `expr` is zero, it emits one, else `expr`.
-    /// Used to avoid divide-by-zeros by substituting constant zeros with ones.
-    /// @param out the output of the expression stream
-    /// @param expr the expression
-    /// @returns true if the expression was emitted, false otherwise
-    bool EmitExpressionOrOneIfZero(std::ostream& out, const ast::Expression* expr);
     /// Handles generating a binary expression
     /// @param out the output of the expression stream
     /// @param expr the binary expression
@@ -125,6 +118,10 @@ class GeneratorImpl : public TextGenerator {
     /// @param stmt the statement to emit
     /// @returns true if the statement was emitted successfully
     bool EmitBreak(const ast::BreakStatement* stmt);
+    /// Handles a break-if statement
+    /// @param stmt the statement to emit
+    /// @returns true if the statement was emitted successfully
+    bool EmitBreakIf(const ast::BreakIfStatement* stmt);
     /// Handles generating a call expression
     /// @param out the output of the expression stream
     /// @param expr the call expression
@@ -150,14 +147,14 @@ class GeneratorImpl : public TextGenerator {
     bool EmitTypeConversion(std::ostream& out,
                             const sem::Call* call,
                             const sem::TypeConversion* conv);
-    /// Handles generating a type constructor expression
+    /// Handles generating a type initializer expression
     /// @param out the output of the expression stream
     /// @param call the call expression
-    /// @param ctor the type constructor
+    /// @param ctor the type initializer
     /// @returns true if the expression is emitted
-    bool EmitTypeConstructor(std::ostream& out,
+    bool EmitTypeInitializer(std::ostream& out,
                              const sem::Call* call,
-                             const sem::TypeConstructor* ctor);
+                             const sem::TypeInitializer* ctor);
     /// Handles generating a call expression to a
     /// transform::DecomposeMemoryAccess::Intrinsic for a uniform buffer
     /// @param out the output of the expression stream
@@ -263,6 +260,14 @@ class GeneratorImpl : public TextGenerator {
     bool EmitDataUnpackingCall(std::ostream& out,
                                const ast::CallExpression* expr,
                                const sem::Builtin* builtin);
+    /// Handles generating a call to the `quantizeToF16()` intrinsic
+    /// @param out the output of the expression stream
+    /// @param expr the call expression
+    /// @param builtin the semantic information for the builtin
+    /// @returns true if the call expression is emitted
+    bool EmitQuantizeToF16Call(std::ostream& out,
+                               const ast::CallExpression* expr,
+                               const sem::Builtin* builtin);
     /// Handles generating a call to DP4a builtins (dot4I8Packed and dot4U8Packed)
     /// @param out the output of the expression stream
     /// @param expr the call expression
@@ -303,30 +308,30 @@ class GeneratorImpl : public TextGenerator {
     /// @returns true on success
     bool EmitGlobalVariable(const ast::Variable* global);
 
-    /// Handles emitting a global variable with the uniform storage class
+    /// Handles emitting a global variable with the uniform address space
     /// @param var the AST node for the 'var'
     /// @param sem the semantic node for the 'var'
     /// @returns true on success
     bool EmitUniformVariable(const ast::Var* var, const sem::Variable* sem);
 
-    /// Handles emitting a global variable with the storage storage class
+    /// Handles emitting a global variable with the storage address space
     /// @param var the AST node for the 'var'
     /// @param sem the semantic node for the 'var'
     /// @returns true on success
     bool EmitStorageVariable(const ast::Var* var, const sem::Variable* sem);
 
-    /// Handles emitting a global variable with the handle storage class
+    /// Handles emitting a global variable with the handle address space
     /// @param var the AST node for the 'var'
     /// @param sem the semantic node for the 'var'
     /// @returns true on success
     bool EmitHandleVariable(const ast::Var* var, const sem::Variable* sem);
 
-    /// Handles emitting a global variable with the private storage class
+    /// Handles emitting a global variable with the private address space
     /// @param var the global variable
     /// @returns true on success
     bool EmitPrivateVariable(const sem::Variable* var);
 
-    /// Handles emitting a global variable with the workgroup storage class
+    /// Handles emitting a global variable with the workgroup address space
     /// @param var the global variable
     /// @returns true on success
     bool EmitWorkgroupVariable(const sem::Variable* var);
@@ -342,8 +347,12 @@ class GeneratorImpl : public TextGenerator {
     /// Handles a constant value
     /// @param out the output stream
     /// @param constant the constant value to emit
+    /// @param is_variable_initializer true if the constant is used as the RHS of a variable
+    /// initializer
     /// @returns true if the constant value was successfully emitted
-    bool EmitConstant(std::ostream& out, const sem::Constant* constant);
+    bool EmitConstant(std::ostream& out,
+                      const constant::Value* constant,
+                      bool is_variable_initializer);
     /// Handles a literal
     /// @param out the output stream
     /// @param lit the literal to emit
@@ -390,41 +399,36 @@ class GeneratorImpl : public TextGenerator {
     /// Handles generating type
     /// @param out the output stream
     /// @param type the type to generate
-    /// @param storage_class the storage class of the variable
+    /// @param address_space the address space of the variable
     /// @param access the access control type of the variable
     /// @param name the name of the variable, used for array emission.
     /// @param name_printed (optional) if not nullptr and an array was printed
     /// then the boolean is set to true.
     /// @returns true if the type is emitted
     bool EmitType(std::ostream& out,
-                  const sem::Type* type,
-                  ast::StorageClass storage_class,
+                  const type::Type* type,
+                  ast::AddressSpace address_space,
                   ast::Access access,
                   const std::string& name,
                   bool* name_printed = nullptr);
     /// Handles generating type and name
     /// @param out the output stream
     /// @param type the type to generate
-    /// @param storage_class the storage class of the variable
+    /// @param address_space the address space of the variable
     /// @param access the access control type of the variable
     /// @param name the name to emit
     /// @returns true if the type is emitted
     bool EmitTypeAndName(std::ostream& out,
-                         const sem::Type* type,
-                         ast::StorageClass storage_class,
+                         const type::Type* type,
+                         ast::AddressSpace address_space,
                          ast::Access access,
                          const std::string& name);
-    /// Handles generating a structure declaration
+    /// Handles generating a structure declaration. If the structure has already been emitted, then
+    /// this function will simply return `true` without emitting anything.
     /// @param buffer the text buffer that the type declaration will be written to
     /// @param ty the struct to generate
     /// @returns true if the struct is emitted
     bool EmitStructType(TextBuffer* buffer, const sem::Struct* ty);
-    /// Handles generating a structure declaration only the first time called. Subsequent calls are
-    /// a no-op and return true.
-    /// @param buffer the text buffer that the type declaration will be written to
-    /// @param ty the struct to generate
-    /// @returns true if the struct is emitted
-    bool EmitStructTypeOnce(TextBuffer* buffer, const sem::Struct* ty);
     /// Handles a unary op expression
     /// @param out the output of the expression stream
     /// @param expr the expression to emit
@@ -435,12 +439,12 @@ class GeneratorImpl : public TextGenerator {
     /// @param type the type to emit the value for
     /// @param value the value to emit
     /// @returns true if the value was successfully emitted.
-    bool EmitValue(std::ostream& out, const sem::Type* type, int value);
+    bool EmitValue(std::ostream& out, const type::Type* type, int value);
     /// Emits the zero value for the given type
     /// @param out the output stream
     /// @param type the type to emit the value for
     /// @returns true if the zero value was successfully emitted.
-    bool EmitZeroValue(std::ostream& out, const sem::Type* type);
+    bool EmitZeroValue(std::ostream& out, const type::Type* type);
     /// Handles generating a 'var' declaration
     /// @param var the variable to generate
     /// @returns true if the variable was emitted
@@ -449,10 +453,6 @@ class GeneratorImpl : public TextGenerator {
     /// @param let the variable to generate
     /// @returns true if the variable was emitted
     bool EmitLet(const ast::Let* let);
-    /// Handles generating a module-scope 'override' declaration
-    /// @param override the 'override' to emit
-    /// @returns true if the variable was emitted
-    bool EmitOverride(const ast::Override* override);
     /// Emits call to a helper vector assignment function for the input assignment
     /// statement and vector type. This is used to work around FXC issues where
     /// assignments to vectors with dynamic indices cause compilation failures.
@@ -460,7 +460,7 @@ class GeneratorImpl : public TextGenerator {
     /// via an accessor expression
     /// @param vec the vector type being assigned to
     /// @returns true on success
-    bool EmitDynamicVectorAssignment(const ast::AssignmentStatement* stmt, const sem::Vector* vec);
+    bool EmitDynamicVectorAssignment(const ast::AssignmentStatement* stmt, const type::Vector* vec);
     /// Emits call to a helper matrix assignment function for the input assignment
     /// statement and matrix type. This is used to work around FXC issues where
     /// assignment of a vector to a matrix with a dynamic index causes compilation
@@ -470,7 +470,7 @@ class GeneratorImpl : public TextGenerator {
     /// @param mat the matrix type being assigned to
     /// @returns true on success
     bool EmitDynamicMatrixVectorAssignment(const ast::AssignmentStatement* stmt,
-                                           const sem::Matrix* mat);
+                                           const type::Matrix* mat);
     /// Emits call to a helper matrix assignment function for the input assignment
     /// statement and matrix type. This is used to work around FXC issues where
     /// assignment of a scalar to a matrix with at least one dynamic index causes
@@ -480,7 +480,7 @@ class GeneratorImpl : public TextGenerator {
     /// @param mat the matrix type being assigned to
     /// @returns true on success
     bool EmitDynamicMatrixScalarAssignment(const ast::AssignmentStatement* stmt,
-                                           const sem::Matrix* mat);
+                                           const type::Matrix* mat);
 
     /// Handles generating a builtin method name
     /// @param builtin the semantic info for the builtin
@@ -541,12 +541,12 @@ class GeneratorImpl : public TextGenerator {
 
     TextBuffer helpers_;  // Helper functions emitted at the top of the output
     std::function<bool()> emit_continuing_;
-    std::unordered_map<const sem::Matrix*, std::string> matrix_scalar_ctors_;
+    std::unordered_map<const type::Matrix*, std::string> matrix_scalar_inits_;
     std::unordered_map<const sem::Builtin*, std::string> builtins_;
-    std::unordered_map<const sem::Vector*, std::string> dynamic_vector_write_;
-    std::unordered_map<const sem::Matrix*, std::string> dynamic_matrix_vector_write_;
-    std::unordered_map<const sem::Matrix*, std::string> dynamic_matrix_scalar_write_;
-    std::unordered_map<const sem::Type*, std::string> value_or_one_if_zero_;
+    std::unordered_map<const type::Vector*, std::string> dynamic_vector_write_;
+    std::unordered_map<const type::Matrix*, std::string> dynamic_matrix_vector_write_;
+    std::unordered_map<const type::Matrix*, std::string> dynamic_matrix_scalar_write_;
+    std::unordered_map<const type::Type*, std::string> value_or_one_if_zero_;
     std::unordered_set<const sem::Struct*> emitted_structs_;
 };
 

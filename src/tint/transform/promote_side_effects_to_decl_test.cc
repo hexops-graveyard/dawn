@@ -614,7 +614,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InTypeCtor) {
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Arith_InTypeInit) {
     auto* src = R"(
 
 fn a(i : i32) -> i32 {
@@ -1639,7 +1639,7 @@ fn f() {
   var b = true;
   var c = true;
   var d = true;
-  let r = b && a(0) || c && a(1) && c && d || a(2);
+  let r = (b && a(0)) || (c && a(1) && c && d) || a(2);
 }
 )";
 
@@ -1860,7 +1860,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InTypeCtor) {
+TEST_F(PromoteSideEffectsToDeclTest, Binary_Logical_InTypeInit) {
     auto* src = R"(
 
 fn a(i : i32) -> bool {
@@ -1869,7 +1869,7 @@ fn a(i : i32) -> bool {
 
 fn f() {
   var b = true;
-  let r = bool(a(0)) && bool(a(1) && b) || bool(a(2) && a(3));
+  let r = (bool(a(0)) && bool(a(1) && b)) || bool(a(2) && a(3));
 }
 )";
 
@@ -1916,7 +1916,7 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = true;
-  let r = bool(a(0)) && bool(a(1)) || b;
+  let r = (bool(a(0)) && bool(a(1))) || b;
 }
 )";
 
@@ -1994,7 +1994,7 @@ fn a(i : i32) -> bool {
 
 fn f() {
   var b = true;
-  let r = all(a(0)) && all(a(1) && b) || all(a(2) && a(3));
+  let r = (all(a(0)) && all(a(1) && b)) || all(a(2) && a(3));
 }
 )";
 
@@ -3030,7 +3030,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Struct) {
+TEST_F(PromoteSideEffectsToDeclTest, TypeInitializer_Struct) {
     auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
@@ -3072,7 +3072,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Array1D) {
+TEST_F(PromoteSideEffectsToDeclTest, TypeInitializer_Array1D) {
     auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
@@ -3102,7 +3102,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, TypeConstructor_Array2D) {
+TEST_F(PromoteSideEffectsToDeclTest, TypeInitializer_Array2D) {
     auto* src = R"(
 fn a(i : i32) -> i32 {
   return 1;
@@ -3809,7 +3809,7 @@ fn f() {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(PromoteSideEffectsToDeclTest, TypeCtor_VarPlusI32CtorPlusVar) {
+TEST_F(PromoteSideEffectsToDeclTest, TypeInit_VarPlusI32InitPlusVar) {
     auto* src = R"(
 fn f() {
   var b = 0;
@@ -4081,5 +4081,54 @@ fn f() {
 
     EXPECT_EQ(expect, str(got));
 }
+
+TEST_F(PromoteSideEffectsToDeclTest, TextureSamplerParameter) {
+    auto* src = R"(
+@group(0) @binding(0) var T : texture_2d<f32>;
+@group(0) @binding(1) var S : sampler;
+
+var<private> P : vec2<f32>;
+fn side_effects() -> vec2<f32> {
+  P += vec2(1.0);
+  return P;
+}
+
+fn f(t : texture_2d<f32>, s : sampler) -> vec4<f32> {
+  return textureSample(t, s, side_effects());
+}
+
+fn m() -> vec4<f32>{
+  return f(T, S);
+}
+)";
+
+    auto* expect = R"(
+@group(0) @binding(0) var T : texture_2d<f32>;
+
+@group(0) @binding(1) var S : sampler;
+
+var<private> P : vec2<f32>;
+
+fn side_effects() -> vec2<f32> {
+  P += vec2(1.0);
+  return P;
+}
+
+fn f(t : texture_2d<f32>, s : sampler) -> vec4<f32> {
+  let tint_symbol = side_effects();
+  return textureSample(t, s, tint_symbol);
+}
+
+fn m() -> vec4<f32> {
+  return f(T, S);
+}
+)";
+
+    DataMap data;
+    auto got = Run<PromoteSideEffectsToDecl>(src, data);
+
+    EXPECT_EQ(expect, str(got));
+}
+
 }  // namespace
 }  // namespace tint::transform

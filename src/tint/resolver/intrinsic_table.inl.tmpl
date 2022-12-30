@@ -1,6 +1,6 @@
 {{- /*
 --------------------------------------------------------------------------------
-Template file for use with tools/src/cmd/gen to generate builtin_table.inl
+Template file for use with tools/src/cmd/gen to generate intrinsic_table.inl
 Used by BuiltinTable.cc for builtin overload resolution.
 
 To update the generated file, run:
@@ -160,8 +160,8 @@ constexpr IntrinsicInfo kBinaryOperators[] = {
 constexpr uint8_t kBinaryOperator{{ template "ExpandName" $o.Name}} = {{$i}};
 {{- end }}
 
-constexpr IntrinsicInfo kConstructorsAndConverters[] = {
-{{- range $i, $o := .ConstructorsAndConverters }}
+constexpr IntrinsicInfo kInitializersAndConverters[] = {
+{{- range $i, $o := .InitializersAndConverters }}
   {
     /* [{{$i}}] */
 {{-   range $o.OverloadDescriptions }}
@@ -190,18 +190,18 @@ class {{$class}} : public TypeMatcher {
   /// @param state the MatchState
   /// @param type the type to match
   /// @returns the canonicalized type on match, otherwise nullptr
-  const sem::Type* Match(MatchState& state,
-                         const sem::Type* type) const override;
+  const type::Type* Match(MatchState& state,
+                         const type::Type* type) const override;
   /// @param state the MatchState
   /// @return a string representation of the matcher.
   std::string String(MatchState* state) const override;
 };
 
-const sem::Type* {{$class}}::Match(MatchState& state, const sem::Type* ty) const {
+const type::Type* {{$class}}::Match(MatchState& state, const type::Type* ty) const {
 {{- range .TemplateParams }}
 {{-   template "DeclareLocalTemplateParam" . }}
 {{- end  }}
-  if (!match_{{TrimLeft .Name "_"}}(ty{{range .TemplateParams}}, {{.GetName}}{{end}})) {
+  if (!match_{{TrimLeft .Name "_"}}(state, ty{{range .TemplateParams}}, {{.GetName}}{{end}})) {
     return nullptr;
   }
 {{- range .TemplateParams }}
@@ -245,16 +245,16 @@ class {{$class}} : public TypeMatcher {
   /// @param state the MatchState
   /// @param type the type to match
   /// @returns the canonicalized type on match, otherwise nullptr
-  const sem::Type* Match(MatchState& state,
-                         const sem::Type* type) const override;
+  const type::Type* Match(MatchState& state,
+                         const type::Type* type) const override;
   /// @param state the MatchState
   /// @return a string representation of the matcher.
   std::string String(MatchState* state) const override;
 };
 
-const sem::Type* {{$class}}::Match(MatchState& state, const sem::Type* ty) const {
+const type::Type* {{$class}}::Match(MatchState& state, const type::Type* ty) const {
 {{- range .PrecedenceSortedTypes }}
-  if (match_{{.Name}}(ty)) {
+  if (match_{{.Name}}(state, ty)) {
     return build_{{.Name}}(state);
   }
 {{- end }}
@@ -400,7 +400,7 @@ Matchers::~Matchers() = default;
 {{-                     define "DeclareLocalTemplateParam"                   -}}
 {{- /* ------------------------------------------------------------------ */ -}}
 {{-   if      IsTemplateTypeParam . }}
-  const sem::Type* {{.Name}} = nullptr;
+  const type::Type* {{.Name}} = nullptr;
 {{-   else if IsTemplateNumberParam . }}
   Number {{.Name}} = Number::invalid;
 {{-   else if IsTemplateEnumParam . }}

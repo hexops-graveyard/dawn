@@ -16,14 +16,18 @@
 
 #include <algorithm>
 #include <limits>
+#include <sstream>
+#include <string>
 #include <utility>
 
 #include "dawn/common/BitSetIterator.h"
+#include "dawn/native/Adapter.h"
 #include "dawn/native/BindGroup.h"
 #include "dawn/native/Buffer.h"
 #include "dawn/native/CommandBufferStateTracker.h"
 #include "dawn/native/Commands.h"
 #include "dawn/native/Device.h"
+#include "dawn/native/Instance.h"
 #include "dawn/native/PassResourceUsage.h"
 #include "dawn/native/QuerySet.h"
 #include "dawn/native/RenderBundle.h"
@@ -55,7 +59,7 @@ MaybeError ValidateSyncScopeResourceUsage(const SyncScopeResourceUsage& scope) {
             bool readOnly = IsSubset(usage, kReadOnlyTextureUsages);
             bool singleUse = wgpu::HasZeroOrOneBits(usage);
             if (!readOnly && !singleUse && !error.IsError()) {
-                error = DAWN_FORMAT_VALIDATION_ERROR(
+                error = DAWN_VALIDATION_ERROR(
                     "%s usage (%s) includes writable usage and another usage in the same "
                     "synchronization scope.",
                     scope.textures[i], usage);
@@ -68,8 +72,16 @@ MaybeError ValidateSyncScopeResourceUsage(const SyncScopeResourceUsage& scope) {
 
 MaybeError ValidateTimestampQuery(const DeviceBase* device,
                                   const QuerySetBase* querySet,
-                                  uint32_t queryIndex) {
+                                  uint32_t queryIndex,
+                                  Feature requiredFeature) {
     DAWN_TRY(device->ValidateObject(querySet));
+
+    DAWN_INVALID_IF(!device->HasFeature(requiredFeature),
+                    "Timestamp queries used without the %s feature enabled.",
+                    device->GetAdapter()
+                        ->GetInstance()
+                        ->GetFeatureInfo(FeatureEnumToAPIFeature(requiredFeature))
+                        ->name);
 
     DAWN_INVALID_IF(querySet->GetQueryType() != wgpu::QueryType::Timestamp,
                     "The type of %s is not %s.", querySet, wgpu::QueryType::Timestamp);
@@ -420,7 +432,7 @@ MaybeError ValidateTextureToTextureCopyCommonRestrictions(const ImageCopyTexture
         switch (src.texture->GetDimension()) {
             case wgpu::TextureDimension::e1D:
                 ASSERT(src.mipLevel == 0 && src.origin.z == 0 && dst.origin.z == 0);
-                return DAWN_FORMAT_VALIDATION_ERROR("Copy is from %s to itself.", src.texture);
+                return DAWN_VALIDATION_ERROR("Copy is from %s to itself.", src.texture);
 
             case wgpu::TextureDimension::e2D:
                 DAWN_INVALID_IF(
@@ -478,6 +490,36 @@ MaybeError ValidateCanUseAs(const BufferBase* buffer, wgpu::BufferUsage usage) {
     ASSERT(wgpu::HasZeroOrOneBits(usage));
     DAWN_INVALID_IF(!(buffer->GetUsageExternalOnly() & usage), "%s usage (%s) doesn't include %s.",
                     buffer, buffer->GetUsageExternalOnly(), usage);
+    return {};
+}
+
+namespace {
+std::string TextureFormatsToString(const ColorAttachmentFormats& formats) {
+    std::ostringstream ss;
+    ss << "[ ";
+    for (const Format* format : formats) {
+        ss << absl::StrFormat("%s", format->format) << " ";
+    }
+    ss << "]";
+    return ss.str();
+}
+}  // anonymous namespace
+
+MaybeError ValidateColorAttachmentBytesPerSample(DeviceBase* device,
+                                                 const ColorAttachmentFormats& formats) {
+    uint32_t totalByteSize = 0;
+    for (const Format* format : formats) {
+        totalByteSize = Align(totalByteSize, format->renderTargetComponentAlignment);
+        totalByteSize += format->renderTargetPixelByteCost;
+    }
+    uint32_t maxColorAttachmentBytesPerSample =
+        device->GetLimits().v1.maxColorAttachmentBytesPerSample;
+    // TODO(dawn:1522) Promote to DAWN_INVALID_IF after deprecation period.
+    DAWN_DEPRECATED_IF(
+        device, totalByteSize > maxColorAttachmentBytesPerSample,
+        "Total color attachment bytes per sample (%u) exceeds maximum (%u) with formats (%s).",
+        totalByteSize, maxColorAttachmentBytesPerSample, TextureFormatsToString(formats));
+
     return {};
 }
 

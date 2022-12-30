@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "src/tint/transform/var_for_dynamic_index.h"
+
+#include <utility>
+
 #include "src/tint/program_builder.h"
 #include "src/tint/transform/utils/hoist_to_decl_before.h"
 
@@ -22,7 +25,12 @@ VarForDynamicIndex::VarForDynamicIndex() = default;
 
 VarForDynamicIndex::~VarForDynamicIndex() = default;
 
-void VarForDynamicIndex::Run(CloneContext& ctx, const DataMap&, DataMap&) const {
+Transform::ApplyResult VarForDynamicIndex::Apply(const Program* src,
+                                                 const DataMap&,
+                                                 DataMap&) const {
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+
     HoistToDeclBefore hoist_to_decl_before(ctx);
 
     // Extracts array and matrix values that are dynamically indexed to a
@@ -30,7 +38,7 @@ void VarForDynamicIndex::Run(CloneContext& ctx, const DataMap&, DataMap&) const 
     auto dynamic_index_to_var = [&](const ast::IndexAccessorExpression* access_expr) {
         auto* index_expr = access_expr->index;
         auto* object_expr = access_expr->object;
-        auto& sem = ctx.src->Sem();
+        auto& sem = src->Sem();
 
         if (sem.Get(index_expr)->ConstantValue()) {
             // Index expression resolves to a compile time value.
@@ -39,26 +47,32 @@ void VarForDynamicIndex::Run(CloneContext& ctx, const DataMap&, DataMap&) const 
         }
 
         auto* indexed = sem.Get(object_expr);
-        if (!indexed->Type()->IsAnyOf<sem::Array, sem::Matrix>()) {
+        if (!indexed->Type()->IsAnyOf<type::Array, type::Matrix>()) {
             // We only care about array and matrices.
             return true;
         }
 
         // TODO(bclayton): group multiple accesses in the same object.
         // e.g. arr[i] + arr[i+1] // Don't create two vars for this
-        return hoist_to_decl_before.Add(indexed, object_expr, false, "var_for_index");
+        return hoist_to_decl_before.Add(indexed, object_expr, HoistToDeclBefore::VariableKind::kVar,
+                                        "var_for_index");
     };
 
-    for (auto* node : ctx.src->ASTNodes().Objects()) {
+    bool index_accessor_found = false;
+    for (auto* node : src->ASTNodes().Objects()) {
         if (auto* access_expr = node->As<ast::IndexAccessorExpression>()) {
             if (!dynamic_index_to_var(access_expr)) {
-                return;
+                return Program(std::move(b));
             }
+            index_accessor_found = true;
         }
     }
+    if (!index_accessor_found) {
+        return SkipTransform;
+    }
 
-    hoist_to_decl_before.Apply();
     ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

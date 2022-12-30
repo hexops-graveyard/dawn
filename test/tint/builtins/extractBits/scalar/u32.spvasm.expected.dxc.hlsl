@@ -3,14 +3,18 @@ uint tint_extract_bits(uint v, uint offset, uint count) {
   const uint e = min(32u, (s + count));
   const uint shl = (32u - e);
   const uint shr = (shl + s);
-  return ((v << shl) >> shr);
+  const uint shl_result = ((shl < 32u) ? (v << shl) : 0u);
+  return ((shr < 32u) ? (shl_result >> shr) : ((shl_result >> 31u) >> 1u));
 }
 
 void f_1() {
   uint v = 0u;
   uint offset_1 = 0u;
   uint count = 0u;
-  const uint x_11 = tint_extract_bits(v, offset_1, count);
+  const uint x_13 = v;
+  const uint x_14 = offset_1;
+  const uint x_15 = count;
+  const uint x_11 = tint_extract_bits(x_13, x_14, x_15);
   return;
 }
 

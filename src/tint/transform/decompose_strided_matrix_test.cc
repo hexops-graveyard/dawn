@@ -71,12 +71,12 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(16u),
+                              b.MemberOffset(16_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Decl(b.Let("x", b.ty.mat2x2<f32>(), b.MemberAccessor("s", "m"))),
@@ -90,6 +90,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix) {
 struct S {
   @size(16)
   padding : u32,
+  /* @offset(16) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -127,12 +128,12 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformColumn) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(16u),
+                              b.MemberOffset(16_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
     b.Func(
         "f", utils::Empty, b.ty.void_(),
         utils::Vector{
@@ -147,6 +148,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformColumn) {
 struct S {
   @size(16)
   padding : u32,
+  /* @offset(16) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -180,12 +182,12 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix_DefaultStride) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(16u),
+                              b.MemberOffset(16_u),
                               b.create<ast::StrideAttribute>(8u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kUniform, b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Decl(b.Let("x", b.ty.mat2x2<f32>(), b.MemberAccessor("s", "m"))),
@@ -199,6 +201,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadUniformMatrix_DefaultStride) {
 struct S {
   @size(16)
   padding : u32,
+  /* @offset(16u) */
   @stride(8) @internal(disable_validation__ignore_stride)
   m : mat2x2<f32>,
 }
@@ -233,13 +236,13 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageMatrix) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-                b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kStorage, ast::Access::kReadWrite, b.Group(0_a),
+                b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Decl(b.Let("x", b.ty.mat2x2<f32>(), b.MemberAccessor("s", "m"))),
@@ -253,6 +256,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageMatrix) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -290,13 +294,13 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageColumn) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(16u),
+                              b.MemberOffset(16_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-                b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kStorage, ast::Access::kReadWrite, b.Group(0_a),
+                b.Binding(0_a));
     b.Func(
         "f", utils::Empty, b.ty.void_(),
         utils::Vector{
@@ -311,6 +315,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadStorageColumn) {
 struct S {
   @size(16)
   padding : u32,
+  /* @offset(16) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -344,13 +349,13 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageMatrix) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-                b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kStorage, ast::Access::kReadWrite, b.Group(0_a),
+                b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Assign(b.MemberAccessor("s", "m"),
@@ -365,6 +370,7 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageMatrix) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -402,13 +408,13 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageColumn) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-                b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kStorage, ast::Access::kReadWrite, b.Group(0_a),
+                b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Assign(b.IndexAccessor(b.MemberAccessor("s", "m"), 1_i), b.vec2<f32>(1_f, 2_f)),
@@ -422,6 +428,7 @@ TEST_F(DecomposeStridedMatrixTest, WriteStorageColumn) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -461,20 +468,20 @@ TEST_F(DecomposeStridedMatrixTest, ReadWriteViaPointerLets) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kStorage, ast::Access::kReadWrite,
-                b.GroupAndBinding(0, 0));
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kStorage, ast::Access::kReadWrite, b.Group(0_a),
+                b.Binding(0_a));
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
-               b.Decl(b.Let("a", nullptr, b.AddressOf(b.MemberAccessor("s", "m")))),
-               b.Decl(b.Let("b", nullptr, b.AddressOf(b.Deref(b.AddressOf(b.Deref("a")))))),
-               b.Decl(b.Let("x", nullptr, b.Deref("b"))),
-               b.Decl(b.Let("y", nullptr, b.IndexAccessor(b.Deref("b"), 1_i))),
-               b.Decl(b.Let("z", nullptr, b.IndexAccessor("x", 1_i))),
+               b.Decl(b.Let("a", b.AddressOf(b.MemberAccessor("s", "m")))),
+               b.Decl(b.Let("b", b.AddressOf(b.Deref(b.AddressOf(b.Deref("a")))))),
+               b.Decl(b.Let("x", b.Deref("b"))),
+               b.Decl(b.Let("y", b.IndexAccessor(b.Deref("b"), 1_i))),
+               b.Decl(b.Let("z", b.IndexAccessor("x", 1_i))),
                b.Assign(b.Deref("b"), b.mat2x2<f32>(b.vec2<f32>(1_f, 2_f), b.vec2<f32>(3_f, 4_f))),
                b.Assign(b.IndexAccessor(b.Deref("b"), 1_i), b.vec2<f32>(5_f, 6_f)),
            },
@@ -487,6 +494,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadWriteViaPointerLets) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8) */
   m : @stride(32) array<vec2<f32>, 2u>,
 }
 
@@ -532,12 +540,12 @@ TEST_F(DecomposeStridedMatrixTest, ReadPrivateMatrix) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kPrivate);
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kPrivate);
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Decl(b.Let("x", b.ty.mat2x2<f32>(), b.MemberAccessor("s", "m"))),
@@ -551,6 +559,7 @@ TEST_F(DecomposeStridedMatrixTest, ReadPrivateMatrix) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8u) */
   @stride(32) @internal(disable_validation__ignore_stride)
   m : mat2x2<f32>,
 }
@@ -585,12 +594,12 @@ TEST_F(DecomposeStridedMatrixTest, WritePrivateMatrix) {
         "S", utils::Vector{
                  b.Member("m", b.ty.mat2x2<f32>(),
                           utils::Vector{
-                              b.create<ast::StructMemberOffsetAttribute>(8u),
+                              b.MemberOffset(8_u),
                               b.create<ast::StrideAttribute>(32u),
                               b.Disable(ast::DisabledValidation::kIgnoreStrideAttribute),
                           }),
              });
-    b.GlobalVar("s", b.ty.Of(S), ast::StorageClass::kPrivate);
+    b.GlobalVar("s", b.ty.Of(S), ast::AddressSpace::kPrivate);
     b.Func("f", utils::Empty, b.ty.void_(),
            utils::Vector{
                b.Assign(b.MemberAccessor("s", "m"),
@@ -605,6 +614,7 @@ TEST_F(DecomposeStridedMatrixTest, WritePrivateMatrix) {
 struct S {
   @size(8)
   padding : u32,
+  /* @offset(8u) */
   @stride(32) @internal(disable_validation__ignore_stride)
   m : mat2x2<f32>,
 }

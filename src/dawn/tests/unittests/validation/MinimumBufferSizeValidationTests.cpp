@@ -55,18 +55,19 @@ void WithEachSizeOffsetBy(int64_t offset, const std::vector<uint64_t>& originalS
 template <typename F>
 void CheckSizeBounds(const std::vector<uint64_t>& correctSizes, F func) {
     // To validate size:
-    // Check invalid with bind group with one less
+    // Check invalid with bind group with 4 less (the effective storage / read-only storage buffer
+    // size must be a multiple of 4).
     // Check valid with bind group with correct size
 
-    // Make sure (every size - 1) produces an error
-    WithEachSizeOffsetBy(-1, correctSizes,
+    // Make sure (every size - 4) produces an error
+    WithEachSizeOffsetBy(-4, correctSizes,
                          [&](const std::vector<uint64_t>& sizes) { func(sizes, false); });
 
     // Make sure correct sizes work
     func(correctSizes, true);
 
-    // Make sure (every size + 1) works
-    WithEachSizeOffsetBy(1, correctSizes,
+    // Make sure (every size + 4) works
+    WithEachSizeOffsetBy(4, correctSizes,
                          [&](const std::vector<uint64_t>& sizes) { func(sizes, true); });
 }
 
@@ -324,8 +325,8 @@ class MinBufferSizePipelineCreationTests : public MinBufferSizeTestsBase {};
 
 // Pipeline can be created if minimum buffer size in layout is specified as 0
 TEST_F(MinBufferSizePipelineCreationTests, ZeroMinBufferSize) {
-    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                               {0, 1, "c : f32,", "f32", "c", 4}};
+    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32, c : f32", "f32", "a", 12},
+                                               {0, 1, "d : f32, e : f32", "f32", "d", 8}};
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
     std::string vertexShader = CreateVertexShaderWithBindings({});
@@ -338,14 +339,14 @@ TEST_F(MinBufferSizePipelineCreationTests, ZeroMinBufferSize) {
 
 // Fail if layout given has non-zero minimum sizes smaller than shader requirements
 TEST_F(MinBufferSizePipelineCreationTests, LayoutSizesTooSmall) {
-    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                               {0, 1, "c : f32,", "f32", "c", 4}};
+    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32, c: f32", "f32", "a", 12},
+                                               {0, 1, "d : f32, e : f32", "f32", "d", 8}};
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
     std::string vertexShader = CreateVertexShaderWithBindings({});
     std::string fragShader = CreateFragmentShaderWithBindings(bindings);
 
-    CheckSizeBounds({8, 4}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({12, 8}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         wgpu::BindGroupLayout layout = CreateBindGroupLayout(bindings, sizes);
         if (expectation) {
             CreateRenderPipeline({layout}, vertexShader, fragShader);
@@ -359,18 +360,19 @@ TEST_F(MinBufferSizePipelineCreationTests, LayoutSizesTooSmall) {
 
 // Fail if layout given has non-zero minimum sizes smaller than shader requirements
 TEST_F(MinBufferSizePipelineCreationTests, LayoutSizesTooSmallMultipleGroups) {
-    std::vector<BindingDescriptor> bg0Bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                                  {0, 1, "c : f32,", "f32", "c", 4}};
+    std::vector<BindingDescriptor> bg0Bindings = {
+        {0, 0, "a : f32, b : f32, c : f32", "f32", "a", 12},
+        {0, 1, "d : f32, e : f32", "f32", "d", 8}};
     std::vector<BindingDescriptor> bg1Bindings = {
-        {1, 0, "d : f32, e : f32, f : f32,", "f32", "e", 12},
-        {1, 1, "g : mat2x2<f32>,", "mat2x2<f32>", "g", 16}};
+        {1, 0, "f : f32, g : f32, h : f32,", "f32", "f", 12},
+        {1, 1, "i : mat2x2<f32>,", "mat2x2<f32>", "i", 16}};
     std::vector<BindingDescriptor> bindings = CombineBindings({bg0Bindings, bg1Bindings});
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
     std::string vertexShader = CreateVertexShaderWithBindings({});
     std::string fragShader = CreateFragmentShaderWithBindings(bindings);
 
-    CheckSizeBounds({8, 4, 12, 16}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({12, 8, 12, 16}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         wgpu::BindGroupLayout layout0 = CreateBindGroupLayout(bg0Bindings, {sizes[0], sizes[1]});
         wgpu::BindGroupLayout layout1 = CreateBindGroupLayout(bg1Bindings, {sizes[2], sizes[3]});
         if (expectation) {
@@ -388,11 +390,11 @@ class MinBufferSizeBindGroupCreationTests : public MinBufferSizeTestsBase {};
 
 // Fail if a binding is smaller than minimum buffer size
 TEST_F(MinBufferSizeBindGroupCreationTests, BindingTooSmall) {
-    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                               {0, 1, "c : f32,", "f32", "c", 4}};
-    wgpu::BindGroupLayout layout = CreateBindGroupLayout(bindings, {8, 4});
+    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32, c : f32", "f32", "a", 12},
+                                               {0, 1, "d : f32, e : f32", "f32", "d", 8}};
+    wgpu::BindGroupLayout layout = CreateBindGroupLayout(bindings, {12, 8});
 
-    CheckSizeBounds({8, 4}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({12, 8}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         if (expectation) {
             CreateBindGroup(layout, bindings, sizes);
         } else {
@@ -422,8 +424,8 @@ class MinBufferSizeDrawTimeValidationTests : public MinBufferSizeTestsBase {};
 
 // Fail if binding sizes are too small at draw time
 TEST_F(MinBufferSizeDrawTimeValidationTests, ZeroMinSizeAndTooSmallBinding) {
-    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                               {0, 1, "c : f32,", "f32", "c", 4}};
+    std::vector<BindingDescriptor> bindings = {{0, 0, "a : f32, b : f32, c : f32", "f32", "a", 12},
+                                               {0, 1, "d : f32, e : f32", "f32", "d", 8}};
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
     std::string vertexShader = CreateVertexShaderWithBindings({});
@@ -434,7 +436,7 @@ TEST_F(MinBufferSizeDrawTimeValidationTests, ZeroMinSizeAndTooSmallBinding) {
     wgpu::ComputePipeline computePipeline = CreateComputePipeline({layout}, computeShader);
     wgpu::RenderPipeline renderPipeline = CreateRenderPipeline({layout}, vertexShader, fragShader);
 
-    CheckSizeBounds({8, 4}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({12, 8}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         wgpu::BindGroup bindGroup = CreateBindGroup(layout, bindings, sizes);
         TestDispatch(computePipeline, {bindGroup}, expectation);
         TestDraw(renderPipeline, {bindGroup}, expectation);
@@ -445,8 +447,8 @@ TEST_F(MinBufferSizeDrawTimeValidationTests, ZeroMinSizeAndTooSmallBinding) {
 TEST_F(MinBufferSizeDrawTimeValidationTests, UnorderedBindings) {
     std::vector<BindingDescriptor> bindings = {
         {0, 2, "a : f32, b : f32,", "f32", "a", 8},
-        {0, 0, "c : f32,", "f32", "c", 4},
-        {0, 4, "d : f32, e : f32, f : f32,", "f32", "e", 12}};
+        {0, 0, "c : f32, d : f32, e : f32", "f32", "c", 12},
+        {0, 4, "f : f32, g : f32, h : f32, i : f32", "f32", "f", 16}};
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
     std::string vertexShader = CreateVertexShaderWithBindings({});
@@ -457,7 +459,7 @@ TEST_F(MinBufferSizeDrawTimeValidationTests, UnorderedBindings) {
     wgpu::ComputePipeline computePipeline = CreateComputePipeline({layout}, computeShader);
     wgpu::RenderPipeline renderPipeline = CreateRenderPipeline({layout}, vertexShader, fragShader);
 
-    CheckSizeBounds({8, 4, 12}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({8, 12, 16}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         wgpu::BindGroup bindGroup = CreateBindGroup(layout, bindings, sizes);
         TestDispatch(computePipeline, {bindGroup}, expectation);
         TestDraw(renderPipeline, {bindGroup}, expectation);
@@ -466,11 +468,12 @@ TEST_F(MinBufferSizeDrawTimeValidationTests, UnorderedBindings) {
 
 // Draw time validation works for multiple bind groups
 TEST_F(MinBufferSizeDrawTimeValidationTests, MultipleGroups) {
-    std::vector<BindingDescriptor> bg0Bindings = {{0, 0, "a : f32, b : f32,", "f32", "a", 8},
-                                                  {0, 1, "c : f32,", "f32", "c", 4}};
+    std::vector<BindingDescriptor> bg0Bindings = {
+        {0, 0, "a : f32, b : f32, c : f32", "f32", "a", 12},
+        {0, 1, "d : f32, e : f32", "f32", "d", 8}};
     std::vector<BindingDescriptor> bg1Bindings = {
-        {1, 0, "d : f32, e : f32, f : f32,", "f32", "e", 12},
-        {1, 1, "g : mat2x2<f32>,", "mat2x2<f32>", "g", 16}};
+        {1, 0, "f : f32, g : f32, h : f32,", "f32", "f", 12},
+        {1, 1, "i : mat2x2<f32>,", "mat2x2<f32>", "i", 16}};
     std::vector<BindingDescriptor> bindings = CombineBindings({bg0Bindings, bg1Bindings});
 
     std::string computeShader = CreateComputeShaderWithBindings(bindings);
@@ -485,7 +488,7 @@ TEST_F(MinBufferSizeDrawTimeValidationTests, MultipleGroups) {
     wgpu::RenderPipeline renderPipeline =
         CreateRenderPipeline({layout0, layout1}, vertexShader, fragShader);
 
-    CheckSizeBounds({8, 4, 12, 16}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+    CheckSizeBounds({12, 8, 12, 16}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
         wgpu::BindGroup bindGroup0 = CreateBindGroup(layout0, bg0Bindings, {sizes[0], sizes[1]});
         wgpu::BindGroup bindGroup1 = CreateBindGroup(layout0, bg0Bindings, {sizes[2], sizes[3]});
         TestDispatch(computePipeline, {bindGroup0, bindGroup1}, expectation);
@@ -568,7 +571,7 @@ TEST_F(MinBufferSizeDefaultLayoutTests, MultipleBindGroups) {
 TEST_F(MinBufferSizeDefaultLayoutTests, NonDefaultLayout) {
     CheckShaderBindingSizeReflection(
         {{{0, 0, "@size(256) a : u32, b : u32,", "u32", "a", 260},
-          {0, 1, "c : u32, @align(16) d : u32,", "u32", "c", 20},
+          {0, 1, "c : u32, @align(16) d : u32,", "u32", "c", 32},
           {0, 2, "d : array<array<u32, 10>, 3>,", "u32", "d[0][0]", 120},
           {0, 3, "e : array<array<u32, 10>>,", "u32", "e[0][0]", 40}}});
 }
@@ -589,4 +592,32 @@ TEST_F(MinBufferSizeDefaultLayoutTests, RenderPassConsidersBothStages) {
     wgpu::BindGroupLayout renderLayout = GetBGLFromRenderShaders(vertexShader, fragShader, 0);
 
     CheckLayoutBindingSizeValidation(renderLayout, {{0, 0, "", "", "", 8}, {0, 1, "", "", "", 16}});
+}
+
+// Make sure that buffers with non-struct vec3 types do not include padding in the min buffer size.
+TEST_F(MinBufferSizePipelineCreationTests, NonStructVec3) {
+    std::vector<BindingDescriptor> bindings = {{0, 0, "", "", "", 12}, {0, 1, "", "", "", 12}};
+
+    auto MakeShader = [](const char* stageAttributes) {
+        std::ostringstream ostream;
+        ostream << "@group(0) @binding(0) var<storage, read_write> buffer : vec3<u32>;\n";
+        ostream << stageAttributes << " fn main() { buffer = vec3(42, 0, 7); }\n";
+        return ostream.str();
+    };
+    std::string computeShader = MakeShader("@compute @workgroup_size(1)");
+    std::string fragShader = MakeShader("@fragment");
+    std::string vertexShader = CreateVertexShaderWithBindings({});
+
+    CheckSizeBounds({12}, [&](const std::vector<uint64_t>& sizes, bool expectation) {
+        wgpu::BindGroupLayout layout = utils::MakeBindGroupLayout(
+            device, {{0, wgpu::ShaderStage::Compute | wgpu::ShaderStage::Fragment,
+                      wgpu::BufferBindingType::Storage, false, sizes[0]}});
+        if (expectation) {
+            CreateRenderPipeline({layout}, vertexShader, fragShader);
+            CreateComputePipeline({layout}, computeShader);
+        } else {
+            ASSERT_DEVICE_ERROR(CreateRenderPipeline({layout}, vertexShader, fragShader));
+            ASSERT_DEVICE_ERROR(CreateComputePipeline({layout}, computeShader));
+        }
+    });
 }

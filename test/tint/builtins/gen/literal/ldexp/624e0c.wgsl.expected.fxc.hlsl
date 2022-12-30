@@ -1,7 +1,7 @@
 SKIP: FAILED
 
 void ldexp_624e0c() {
-  float16_t res = ldexp(float16_t(0.0h), 1);
+  float16_t res = float16_t(2.0h);
 }
 
 struct tint_symbol {
@@ -31,6 +31,6 @@ void compute_main() {
   return;
 }
 FXC validation failure:
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x000001F949F984D0(2,3-11): error X3000: unrecognized identifier 'float16_t'
-D:\Projects\RampUp\dawn\test\tint\builtins\Shader@0x000001F949F984D0(2,13-15): error X3000: unrecognized identifier 'res'
+C:\src\dawn\test\tint\Shader@0x00000246DEBE4390(2,3-11): error X3000: unrecognized identifier 'float16_t'
+C:\src\dawn\test\tint\Shader@0x00000246DEBE4390(2,13-15): error X3000: unrecognized identifier 'res'
 

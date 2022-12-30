@@ -23,10 +23,12 @@ namespace {
 using MslGeneratorImplTest = TestHelper;
 
 TEST_F(MslGeneratorImplTest, Emit_Loop) {
-    auto* body = Block(create<ast::DiscardStatement>());
+    auto* body = Block(Break());
     auto* continuing = Block();
     auto* l = Loop(body, continuing);
-    WrapInFunction(l);
+
+    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
+         utils::Vector{Stage(ast::PipelineStage::kFragment)});
 
     GeneratorImpl& gen = Build();
 
@@ -34,7 +36,7 @@ TEST_F(MslGeneratorImplTest, Emit_Loop) {
 
     ASSERT_TRUE(gen.EmitStatement(l)) << gen.error();
     EXPECT_EQ(gen.result(), R"(  while (true) {
-    discard_fragment();
+    break;
   }
 )");
 }
@@ -42,10 +44,12 @@ TEST_F(MslGeneratorImplTest, Emit_Loop) {
 TEST_F(MslGeneratorImplTest, Emit_LoopWithContinuing) {
     Func("a_statement", {}, ty.void_(), utils::Empty);
 
-    auto* body = Block(create<ast::DiscardStatement>());
+    auto* body = Block(Break());
     auto* continuing = Block(CallStmt(Call("a_statement")));
     auto* l = Loop(body, continuing);
-    WrapInFunction(l);
+
+    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
+         utils::Vector{Stage(ast::PipelineStage::kFragment)});
 
     GeneratorImpl& gen = Build();
 
@@ -53,9 +57,34 @@ TEST_F(MslGeneratorImplTest, Emit_LoopWithContinuing) {
 
     ASSERT_TRUE(gen.EmitStatement(l)) << gen.error();
     EXPECT_EQ(gen.result(), R"(  while (true) {
-    discard_fragment();
+    break;
     {
       a_statement();
+    }
+  }
+)");
+}
+
+TEST_F(MslGeneratorImplTest, Emit_LoopWithContinuing_BreakIf) {
+    Func("a_statement", {}, ty.void_(), {});
+
+    auto* body = Block(Break());
+    auto* continuing = Block(CallStmt(Call("a_statement")), BreakIf(true));
+    auto* l = Loop(body, continuing);
+
+    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
+         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+
+    GeneratorImpl& gen = Build();
+
+    gen.increment_indent();
+
+    ASSERT_TRUE(gen.EmitStatement(l)) << gen.error();
+    EXPECT_EQ(gen.result(), R"(  while (true) {
+    break;
+    {
+      a_statement();
+      if (true) { break; }
     }
   }
 )");
@@ -64,19 +93,21 @@ TEST_F(MslGeneratorImplTest, Emit_LoopWithContinuing) {
 TEST_F(MslGeneratorImplTest, Emit_LoopNestedWithContinuing) {
     Func("a_statement", {}, ty.void_(), utils::Empty);
 
-    GlobalVar("lhs", ty.f32(), ast::StorageClass::kPrivate);
-    GlobalVar("rhs", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("lhs", ty.f32(), ast::AddressSpace::kPrivate);
+    GlobalVar("rhs", ty.f32(), ast::AddressSpace::kPrivate);
 
-    auto* body = Block(create<ast::DiscardStatement>());
+    auto* body = Block(Break());
     auto* continuing = Block(CallStmt(Call("a_statement")));
     auto* inner = Loop(body, continuing);
 
     body = Block(inner);
 
-    continuing = Block(Assign("lhs", "rhs"));
+    continuing = Block(Assign("lhs", "rhs"), BreakIf(true));
 
     auto* outer = Loop(body, continuing);
-    WrapInFunction(outer);
+
+    Func("F", utils::Empty, ty.void_(), utils::Vector{outer},
+         utils::Vector{Stage(ast::PipelineStage::kFragment)});
 
     GeneratorImpl& gen = Build();
 
@@ -85,13 +116,14 @@ TEST_F(MslGeneratorImplTest, Emit_LoopNestedWithContinuing) {
     ASSERT_TRUE(gen.EmitStatement(outer)) << gen.error();
     EXPECT_EQ(gen.result(), R"(  while (true) {
     while (true) {
-      discard_fragment();
+      break;
       {
         a_statement();
       }
     }
     {
       lhs = rhs;
+      if (true) { break; }
     }
   }
 )");
@@ -107,7 +139,7 @@ TEST_F(MslGeneratorImplTest, Emit_LoopWithVarUsedInContinuing) {
     // }
     //
 
-    GlobalVar("rhs", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("rhs", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* body = Block(Decl(Var("lhs", ty.f32(), Expr(2.4_f))),  //
                        Decl(Var("other", ty.f32())),             //
@@ -184,7 +216,7 @@ TEST_F(MslGeneratorImplTest, Emit_ForLoopWithMultiStmtInit) {
     Func("f", utils::Vector{Param("i", ty.i32())}, ty.void_(), utils::Empty);
     auto f = [&](auto&& expr) { return CallStmt(Call("f", expr)); };
 
-    GlobalVar("a", ty.atomic<i32>(), ast::StorageClass::kWorkgroup);
+    GlobalVar("a", ty.atomic<i32>(), ast::AddressSpace::kWorkgroup);
     auto* multi_stmt = Block(f(1_i), f(2_i));
     auto* loop = For(multi_stmt, nullptr, nullptr,  //
                      Block(Return()));
@@ -260,7 +292,7 @@ TEST_F(MslGeneratorImplTest, Emit_ForLoopWithMultiStmtCont) {
     Func("f", utils::Vector{Param("i", ty.i32())}, ty.void_(), utils::Empty);
     auto f = [&](auto&& expr) { return CallStmt(Call("f", expr)); };
 
-    GlobalVar("a", ty.atomic<i32>(), ast::StorageClass::kWorkgroup);
+    GlobalVar("a", ty.atomic<i32>(), ast::AddressSpace::kWorkgroup);
     auto* multi_stmt = Block(f(1_i), f(2_i));
     auto* loop = For(nullptr, nullptr, multi_stmt,  //
                      Block(Return()));
@@ -315,7 +347,7 @@ TEST_F(MslGeneratorImplTest, Emit_ForLoopWithMultiStmtInitCondCont) {
     Func("f", utils::Vector{Param("i", ty.i32())}, ty.void_(), utils::Empty);
     auto f = [&](auto&& expr) { return CallStmt(Call("f", expr)); };
 
-    GlobalVar("a", ty.atomic<i32>(), ast::StorageClass::kWorkgroup);
+    GlobalVar("a", ty.atomic<i32>(), ast::AddressSpace::kWorkgroup);
     auto* multi_stmt_a = Block(f(1_i), f(2_i));
     auto* multi_stmt_b = Block(f(3_i), f(4_i));
     auto* loop = For(multi_stmt_a, Expr(true), multi_stmt_b,  //
@@ -387,17 +419,18 @@ TEST_F(MslGeneratorImplTest, Emit_WhileWithMultiCond) {
     //   return;
     // }
 
-    auto* multi_stmt =
-        create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr(true), Expr(false));
+    auto* t = Let("t", Expr(true));
+    auto* multi_stmt = LogicalAnd(t, false);
+    // create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr(t), Expr(false));
     auto* f = While(multi_stmt, Block(Return()));
-    WrapInFunction(f);
+    WrapInFunction(t, f);
 
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
 
     ASSERT_TRUE(gen.EmitStatement(f)) << gen.error();
-    EXPECT_EQ(gen.result(), R"(  while((true && false)) {
+    EXPECT_EQ(gen.result(), R"(  while((t && false)) {
     return;
   }
 )");

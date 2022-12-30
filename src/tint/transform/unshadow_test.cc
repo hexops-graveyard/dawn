@@ -384,82 +384,6 @@ var<private> a : i32;
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(UnshadowTest, LocalShadowsGlobalLet) {
-    auto* src = R"(
-let a : i32 = 1;
-
-fn X() {
-  var a = (a == 123);
-}
-
-fn Y() {
-  let a = (a == 321);
-}
-
-fn Z() {
-  const a = 321;
-}
-)";
-
-    auto* expect = R"(
-const a : i32 = 1;
-
-fn X() {
-  var a_1 = (a == 123);
-}
-
-fn Y() {
-  let a_2 = (a == 321);
-}
-
-fn Z() {
-  const a_3 = 321;
-}
-)";
-
-    auto got = Run<Unshadow>(src);
-
-    EXPECT_EQ(expect, str(got));
-}
-
-TEST_F(UnshadowTest, LocalShadowsGlobalLet_OutOfOrder) {
-    auto* src = R"(
-fn X() {
-  var a = (a == 123);
-}
-
-fn Y() {
-  let a = (a == 321);
-}
-
-fn Z() {
-  const a = 321;
-}
-
-let a : i32 = 1;
-)";
-
-    auto* expect = R"(
-fn X() {
-  var a_1 = (a == 123);
-}
-
-fn Y() {
-  let a_2 = (a == 321);
-}
-
-fn Z() {
-  const a_3 = 321;
-}
-
-const a : i32 = 1;
-)";
-
-    auto got = Run<Unshadow>(src);
-
-    EXPECT_EQ(expect, str(got));
-}
-
 TEST_F(UnshadowTest, LocalShadowsGlobalConst) {
     auto* src = R"(
 const a : i32 = 1;
@@ -732,46 +656,6 @@ fn F(a_1 : bool) {
     EXPECT_EQ(expect, str(got));
 }
 
-TEST_F(UnshadowTest, ParamShadowsGlobalLet) {
-    auto* src = R"(
-let a : i32 = 1;
-
-fn F(a : bool) {
-}
-)";
-
-    auto* expect = R"(
-const a : i32 = 1;
-
-fn F(a_1 : bool) {
-}
-)";
-
-    auto got = Run<Unshadow>(src);
-
-    EXPECT_EQ(expect, str(got));
-}
-
-TEST_F(UnshadowTest, ParamShadowsGlobalLet_OutOfOrder) {
-    auto* src = R"(
-fn F(a : bool) {
-}
-
-let a : i32 = 1;
-)";
-
-    auto* expect = R"(
-fn F(a_1 : bool) {
-}
-
-const a : i32 = 1;
-)";
-
-    auto got = Run<Unshadow>(src);
-
-    EXPECT_EQ(expect, str(got));
-}
-
 TEST_F(UnshadowTest, ParamShadowsGlobalConst) {
     auto* src = R"(
 const a : i32 = 1;
@@ -869,6 +753,32 @@ fn F(a_1 : a) {
 }
 
 type a = i32;
+)";
+
+    auto got = Run<Unshadow>(src);
+
+    EXPECT_EQ(expect, str(got));
+}
+
+TEST_F(UnshadowTest, RenamedVarHasUsers) {
+    auto* src = R"(
+fn F() {
+  var a : bool;
+  {
+    var a : i32;
+    var b = a + 1;
+  }
+}
+)";
+
+    auto* expect = R"(
+fn F() {
+  var a : bool;
+  {
+    var a_1 : i32;
+    var b = (a_1 + 1);
+  }
+}
 )";
 
     auto got = Run<Unshadow>(src);

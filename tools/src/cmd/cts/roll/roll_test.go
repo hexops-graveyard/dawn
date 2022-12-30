@@ -58,9 +58,11 @@ func TestRollCommitMessage(t *testing.T) {
 	)
 	expect := `Roll third_party/webgpu-cts/ d5e605a55..29275672e (2 commits)
 
-Update:
+Regenerated:
  - expectations.txt
  - ts_sources.txt
+ - test_list.txt
+ - cache_list.txt
  - resource_files.txt
  - webtest .html files
 
@@ -72,6 +74,7 @@ https://chromium.googlesource.com/external/github.com/gpuweb/cts/+log/d5e605a556
 Created with './tools/run cts roll'
 
 Cq-Include-Trybots: luci.chromium.try:linux-dawn-rel,win-dawn-rel;luci.dawn.try:mac-dbg
+Include-Ci-Only-Tests: true
 Change-Id: I4aa059c6c183e622975b74dbdfdfe0b12341ae15
 `
 	if diff := cmp.Diff(msg, expect); diff != "" {

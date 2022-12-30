@@ -197,7 +197,7 @@ ResultOrError<wgpu::TextureFormat> GetFormatEquivalentToIOSurfaceFormat(uint32_t
         case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
             return wgpu::TextureFormat::R8BG8Biplanar420Unorm;
         default:
-            return DAWN_FORMAT_VALIDATION_ERROR("Unsupported IOSurface format (%x).", format);
+            return DAWN_VALIDATION_ERROR("Unsupported IOSurface format (%x).", format);
     }
 }
 
@@ -691,14 +691,17 @@ ResultOrError<Ref<Texture>> Texture::Create(Device* device, const TextureDescrip
 }
 
 // static
-ResultOrError<Ref<Texture>> Texture::CreateFromIOSurface(Device* device,
-                                                         const ExternalImageDescriptor* descriptor,
-                                                         IOSurfaceRef ioSurface) {
+ResultOrError<Ref<Texture>> Texture::CreateFromIOSurface(
+    Device* device,
+    const ExternalImageDescriptor* descriptor,
+    IOSurfaceRef ioSurface,
+    std::vector<MTLSharedEventAndSignalValue> waitEvents) {
     const TextureDescriptor* textureDescriptor = FromAPI(descriptor->cTextureDescriptor);
 
     Ref<Texture> texture =
         AcquireRef(new Texture(device, textureDescriptor, TextureState::OwnedExternal));
-    DAWN_TRY(texture->InitializeFromIOSurface(descriptor, textureDescriptor, ioSurface));
+    DAWN_TRY(texture->InitializeFromIOSurface(descriptor, textureDescriptor, ioSurface,
+                                              std::move(waitEvents)));
     return texture;
 }
 
@@ -739,8 +742,10 @@ void Texture::InitializeAsWrapping(const TextureDescriptor* descriptor,
 
 MaybeError Texture::InitializeFromIOSurface(const ExternalImageDescriptor* descriptor,
                                             const TextureDescriptor* textureDescriptor,
-                                            IOSurfaceRef ioSurface) {
+                                            IOSurfaceRef ioSurface,
+                                            std::vector<MTLSharedEventAndSignalValue> waitEvents) {
     mIOSurface = ioSurface;
+    mWaitEvents = std::move(waitEvents);
 
     // Uses WGPUTexture which wraps multiplanar ioSurface needs to create
     // texture view explicitly. Wrap the ioSurface and delay to extract
@@ -761,6 +766,31 @@ MaybeError Texture::InitializeFromIOSurface(const ExternalImageDescriptor* descr
     }
     SetIsSubresourceContentInitialized(descriptor->isInitialized, GetAllSubresources());
     return {};
+}
+
+void Texture::SynchronizeTextureBeforeUse(CommandRecordingContext* commandContext) {
+    if (@available(macOS 10.14, *)) {
+        if (!mWaitEvents.empty()) {
+            // There may be an open blit encoder from a copy command or writeBuffer.
+            // Wait events are only allowed if there is no encoder open.
+            commandContext->EndBlit();
+        }
+        auto commandBuffer = commandContext->GetCommands();
+        // Consume the wait events on the texture. They will be empty after this loop.
+        for (auto waitEvent : std::move(mWaitEvents)) {
+            id rawEvent = *waitEvent.sharedEvent;
+            id<MTLSharedEvent> sharedEvent = static_cast<id<MTLSharedEvent>>(rawEvent);
+            [commandBuffer encodeWaitForEvent:sharedEvent value:waitEvent.signaledValue];
+        }
+    }
+}
+
+void Texture::IOSurfaceEndAccess(ExternalImageIOSurfaceEndAccessDescriptor* descriptor) {
+    ASSERT(descriptor);
+    ToBackend(GetDevice())->ExportLastSignaledEvent(descriptor);
+    descriptor->isInitialized = IsSubresourceContentInitialized(GetAllSubresources());
+    // Destroy the texture as it should not longer be used after EndAccess.
+    Destroy();
 }
 
 Texture::Texture(DeviceBase* dev, const TextureDescriptor* desc, TextureState st)
@@ -1060,8 +1090,7 @@ MaybeError TextureView::Initialize(const TextureViewDescriptor* descriptor) {
             if (@available(macOS 10.12, iOS 10.0, *)) {
                 if (textureFormat == MTLPixelFormatDepth32Float_Stencil8) {
                     viewFormat = MTLPixelFormatX32_Stencil8;
-                }
-                else {
+                } else {
                     UNREACHABLE();
                 }
             } else {
@@ -1093,6 +1122,10 @@ MaybeError TextureView::Initialize(const TextureViewDescriptor* descriptor) {
     }
 
     return {};
+}
+
+void TextureView::DestroyImpl() {
+    mMtlTextureView = nil;
 }
 
 id<MTLTexture> TextureView::GetMTLTexture() const {

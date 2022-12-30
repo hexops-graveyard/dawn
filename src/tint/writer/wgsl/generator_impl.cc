@@ -50,6 +50,7 @@
 #include "src/tint/ast/void.h"
 #include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/sem/struct.h"
+#include "src/tint/sem/switch_statement.h"
 #include "src/tint/utils/math.h"
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/writer/float_to_string.h"
@@ -263,7 +264,11 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
             // Note that all normal and subnormal f16 values are normal f32 values, and since NaN
             // and Inf are not allowed to be spelled in literal, it should be fine to emit f16
             // literals in this way.
-            out << FloatToBitPreservingString(static_cast<float>(l->value)) << l->suffix;
+            if (l->suffix == ast::FloatLiteralExpression::Suffix::kNone) {
+                out << DoubleToBitPreservingString(l->value);
+            } else {
+                out << FloatToBitPreservingString(static_cast<float>(l->value)) << l->suffix;
+            }
             return true;
         },
         [&](const ast::IntLiteralExpression* l) {  //
@@ -346,7 +351,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
 
 bool GeneratorImpl::EmitImageFormat(std::ostream& out, const ast::TexelFormat fmt) {
     switch (fmt) {
-        case ast::TexelFormat::kInvalid:
+        case ast::TexelFormat::kUndefined:
             diagnostics_.add_error(diag::System::Writer, "unknown image format");
             return false;
         default:
@@ -429,7 +434,7 @@ bool GeneratorImpl::EmitType(std::ostream& out, const ast::Type* ty) {
             return true;
         },
         [&](const ast::Pointer* ptr) {
-            out << "ptr<" << ptr->storage_class << ", ";
+            out << "ptr<" << ptr->address_space << ", ";
             if (!EmitType(out, ptr->type)) {
                 return false;
             }
@@ -601,8 +606,8 @@ bool GeneratorImpl::EmitStructType(const ast::Struct* str) {
     increment_indent();
     uint32_t offset = 0;
     for (auto* mem : str->members) {
-        // TODO(crbug.com/tint/798) move the @offset attribute handling to the
-        // transform::Wgsl sanitizer.
+        // TODO(crbug.com/tint/798) move the @offset attribute handling to the transform::Wgsl
+        // sanitizer.
         if (auto* mem_sem = program_->Sem().Get(mem)) {
             offset = utils::RoundUp(mem_sem->Align(), offset);
             if (uint32_t padding = mem_sem->Offset() - offset) {
@@ -618,7 +623,14 @@ bool GeneratorImpl::EmitStructType(const ast::Struct* str) {
         utils::Vector<const ast::Attribute*, 4> attributes_sanitized;
         attributes_sanitized.Reserve(mem->attributes.Length());
         for (auto* attr : mem->attributes) {
-            if (!attr->Is<ast::StructMemberOffsetAttribute>()) {
+            if (attr->Is<ast::StructMemberOffsetAttribute>()) {
+                auto l = line();
+                l << "/* ";
+                if (!EmitAttributes(l, utils::Vector{attr})) {
+                    return false;
+                }
+                l << " */";
+            } else {
                 attributes_sanitized.Push(attr);
             }
         }
@@ -654,10 +666,10 @@ bool GeneratorImpl::EmitVariable(std::ostream& out, const ast::Variable* v) {
         v,  //
         [&](const ast::Var* var) {
             out << "var";
-            auto sc = var->declared_storage_class;
+            auto address_space = var->declared_address_space;
             auto ac = var->declared_access;
-            if (sc != ast::StorageClass::kNone || ac != ast::Access::kUndefined) {
-                out << "<" << sc;
+            if (address_space != ast::AddressSpace::kNone || ac != ast::Access::kUndefined) {
+                out << "<" << address_space;
                 if (ac != ast::Access::kUndefined) {
                     out << ", ";
                     if (!EmitAccess(out, ac)) {
@@ -697,9 +709,9 @@ bool GeneratorImpl::EmitVariable(std::ostream& out, const ast::Variable* v) {
         }
     }
 
-    if (v->constructor != nullptr) {
+    if (v->initializer != nullptr) {
         out << " = ";
-        if (!EmitExpression(out, v->constructor)) {
+        if (!EmitExpression(out, v->initializer)) {
             return false;
         }
     }
@@ -740,15 +752,27 @@ bool GeneratorImpl::EmitAttributes(std::ostream& out,
                 return true;
             },
             [&](const ast::BindingAttribute* binding) {
-                out << "binding(" << binding->value << ")";
+                out << "binding(";
+                if (!EmitExpression(out, binding->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::GroupAttribute* group) {
-                out << "group(" << group->value << ")";
+                out << "group(";
+                if (!EmitExpression(out, group->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::LocationAttribute* location) {
-                out << "location(" << location->value << ")";
+                out << "location(";
+                if (!EmitExpression(out, location->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::BuiltinAttribute* builtin) {
@@ -757,7 +781,7 @@ bool GeneratorImpl::EmitAttributes(std::ostream& out,
             },
             [&](const ast::InterpolateAttribute* interpolate) {
                 out << "interpolate(" << interpolate->type;
-                if (interpolate->sampling != ast::InterpolationSampling::kNone) {
+                if (interpolate->sampling != ast::InterpolationSampling::kUndefined) {
                     out << ", " << interpolate->sampling;
                 }
                 out << ")";
@@ -768,15 +792,35 @@ bool GeneratorImpl::EmitAttributes(std::ostream& out,
                 return true;
             },
             [&](const ast::IdAttribute* override_deco) {
-                out << "id(" << override_deco->value << ")";
+                out << "id(";
+                if (!EmitExpression(out, override_deco->expr)) {
+                    return false;
+                }
+                out << ")";
+                return true;
+            },
+            [&](const ast::StructMemberOffsetAttribute* offset) {
+                out << "offset(";
+                if (!EmitExpression(out, offset->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::StructMemberSizeAttribute* size) {
-                out << "size(" << size->size << ")";
+                out << "size(";
+                if (!EmitExpression(out, size->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::StructMemberAlignAttribute* align) {
-                out << "align(" << align->align << ")";
+                out << "align(";
+                if (!EmitExpression(out, align->expr)) {
+                    return false;
+                }
+                out << ")";
                 return true;
             },
             [&](const ast::StrideAttribute* stride) {
@@ -929,6 +973,7 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
         [&](const ast::AssignmentStatement* a) { return EmitAssign(a); },
         [&](const ast::BlockStatement* b) { return EmitBlock(b); },
         [&](const ast::BreakStatement* b) { return EmitBreak(b); },
+        [&](const ast::BreakIfStatement* b) { return EmitBreakIf(b); },
         [&](const ast::CallStatement* c) {
             auto out = line();
             if (!EmitCall(out, c->expr)) {
@@ -940,7 +985,6 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
         [&](const ast::CompoundAssignmentStatement* c) { return EmitCompoundAssign(c); },
         [&](const ast::ContinueStatement* c) { return EmitContinue(c); },
         [&](const ast::DiscardStatement* d) { return EmitDiscard(d); },
-        [&](const ast::FallthroughStatement* f) { return EmitFallthrough(f); },
         [&](const ast::IfStatement* i) { return EmitIf(i); },
         [&](const ast::IncrementDecrementStatement* l) { return EmitIncrementDecrement(l); },
         [&](const ast::LoopStatement* l) { return EmitLoop(l); },
@@ -994,27 +1038,40 @@ bool GeneratorImpl::EmitBreak(const ast::BreakStatement*) {
     return true;
 }
 
+bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
+    auto out = line();
+
+    out << "break if ";
+    if (!EmitExpression(out, b->condition)) {
+        return false;
+    }
+    out << ";";
+    return true;
+}
+
 bool GeneratorImpl::EmitCase(const ast::CaseStatement* stmt) {
-    if (stmt->IsDefault()) {
+    if (stmt->selectors.Length() == 1 && stmt->ContainsDefault()) {
         line() << "default: {";
     } else {
         auto out = line();
         out << "case ";
 
         bool first = true;
-        for (auto* selector : stmt->selectors) {
+        for (auto* sel : stmt->selectors) {
             if (!first) {
                 out << ", ";
             }
 
             first = false;
-            if (!EmitLiteral(out, selector)) {
+
+            if (sel->IsDefault()) {
+                out << "default";
+            } else if (!EmitExpression(out, sel->expr)) {
                 return false;
             }
         }
         out << ": {";
     }
-
     if (!EmitStatementsWithIndent(stmt->body->statements)) {
         return false;
     }
@@ -1047,11 +1104,6 @@ bool GeneratorImpl::EmitCompoundAssign(const ast::CompoundAssignmentStatement* s
 
 bool GeneratorImpl::EmitContinue(const ast::ContinueStatement*) {
     line() << "continue;";
-    return true;
-}
-
-bool GeneratorImpl::EmitFallthrough(const ast::FallthroughStatement*) {
-    line() << "fallthrough;";
     return true;
 }
 

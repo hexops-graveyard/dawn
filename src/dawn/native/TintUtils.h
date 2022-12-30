@@ -26,6 +26,7 @@ namespace dawn::native {
 
 class DeviceBase;
 class PipelineLayoutBase;
+struct ProgrammableStage;
 class RenderPipelineBase;
 
 // Indicates that for the lifetime of this object tint internal compiler errors should be
@@ -44,8 +45,10 @@ tint::transform::MultiplanarExternalTexture::BindingsMap BuildExternalTextureTra
 
 tint::transform::VertexPulling::Config BuildVertexPullingTransformConfig(
     const RenderPipelineBase& renderPipeline,
-    const std::string_view& entryPoint,
     BindGroupIndex pullingBufferBindingSet);
+
+tint::transform::SubstituteOverride::Config BuildSubstituteOverridesTransformConfig(
+    const ProgrammableStage& stage);
 
 }  // namespace dawn::native
 

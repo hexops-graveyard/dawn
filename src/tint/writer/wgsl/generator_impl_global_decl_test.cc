@@ -14,7 +14,7 @@
 
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/variable_decl_statement.h"
-#include "src/tint/sem/sampled_texture.h"
+#include "src/tint/type/sampled_texture.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -28,7 +28,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalDeclAfterFunction) {
     auto* func_var = Var("a", ty.f32());
     WrapInFunction(func_var);
 
-    GlobalVar("a", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("a", ty.f32(), ast::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -45,7 +45,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalDeclAfterFunction) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
-    GlobalVar("a0", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("a0", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* s0 = Structure("S0", utils::Vector{
                                    Member("a", ty.i32()),
@@ -57,7 +57,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
          },
          utils::Empty);
 
-    GlobalVar("a1", ty.f32(), ast::StorageClass::kPrivate);
+    GlobalVar("a1", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* s1 = Structure("S1", utils::Vector{
                                    Member("a", ty.i32()),
@@ -105,11 +105,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_Global_Sampler) {
-    GlobalVar("s", ty.sampler(ast::SamplerKind::kSampler),
-              utils::Vector{
-                  create<ast::GroupAttribute>(0u),
-                  create<ast::BindingAttribute>(0u),
-              });
+    GlobalVar("s", ty.sampler(ast::SamplerKind::kSampler), Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build();
 
@@ -121,11 +117,7 @@ TEST_F(WgslGeneratorImplTest, Emit_Global_Sampler) {
 
 TEST_F(WgslGeneratorImplTest, Emit_Global_Texture) {
     auto* st = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
-    GlobalVar("t", st,
-              utils::Vector{
-                  create<ast::GroupAttribute>(0u),
-                  create<ast::BindingAttribute>(0u),
-              });
+    GlobalVar("t", st, Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build();
 
@@ -137,7 +129,7 @@ TEST_F(WgslGeneratorImplTest, Emit_Global_Texture) {
 
 TEST_F(WgslGeneratorImplTest, Emit_GlobalConst) {
     GlobalConst("explicit", ty.f32(), Expr(1_f));
-    GlobalConst("inferred", nullptr, Expr(1_f));
+    GlobalConst("inferred", Expr(1_f));
 
     GeneratorImpl& gen = Build();
 
@@ -151,11 +143,8 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalConst) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_OverridableConstants) {
-    Override("a", ty.f32(), nullptr);
-    Override("b", ty.f32(), nullptr,
-             utils::Vector{
-                 Id(7u),
-             });
+    Override("a", ty.f32());
+    Override("b", ty.f32(), Id(7_a));
 
     GeneratorImpl& gen = Build();
 

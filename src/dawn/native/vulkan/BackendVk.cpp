@@ -73,12 +73,12 @@ constexpr SkippedMessage kSkippedMessages[] = {
     // considers the image read-only and produces a hazard. Dawn can't rely on storeOp=NONE and
     // so this is not expected to be worked around.
     // See http://crbug.com/dawn/1225 for more details.
-    {"SYNC-HAZARD-WRITE_AFTER_READ",
+    {"SYNC-HAZARD-WRITE-AFTER-READ",
      "depth aspect during store with storeOp VK_ATTACHMENT_STORE_OP_STORE. Access info (usage: "
      "SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, prior_usage: "
      "SYNC_FRAGMENT_SHADER_SHADER_STORAGE_READ, read_barriers: VK_PIPELINE_STAGE_2_NONE"},
 
-    {"SYNC-HAZARD-WRITE_AFTER_READ",
+    {"SYNC-HAZARD-WRITE-AFTER-READ",
      "stencil aspect during store with stencilStoreOp VK_ATTACHMENT_STORE_OP_STORE. Access info "
      "(usage: SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, prior_usage: "
      "SYNC_FRAGMENT_SHADER_SHADER_STORAGE_READ, read_barriers: VK_PIPELINE_STAGE_2_NONE"},
@@ -86,6 +86,11 @@ constexpr SkippedMessage kSkippedMessages[] = {
     // http://anglebug.com/7513
     {"VUID-VkGraphicsPipelineCreateInfo-pStages-06896",
      "contains fragment shader state, but stages"},
+
+    // A warning that's generated on valid usage of the WebGPU API where a fragment output doesn't
+    // have a corresponding attachment
+    {"UNASSIGNED-CoreValidation-Shader-OutputNotConsumed",
+     "fragment shader writes to output location 0 with no matching attachment"},
 };
 
 namespace dawn::native::vulkan {
@@ -120,33 +125,40 @@ OnDebugUtilsCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                      VkDebugUtilsMessageTypeFlagsEXT /* messageTypes */,
                      const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                      void* pUserData) {
-    if (ShouldReportDebugMessage(pCallbackData->pMessageIdName, pCallbackData->pMessage)) {
-        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
-            dawn::ErrorLog() << pCallbackData->pMessage;
+    if (!ShouldReportDebugMessage(pCallbackData->pMessageIdName, pCallbackData->pMessage)) {
+        return VK_FALSE;
+    }
 
-            if (pUserData != nullptr) {
-                // Look through all the object labels attached to the debug message and try to parse
-                // a device debug prefix out of one of them. If a debug prefix is found and matches
-                // a registered device, forward the message on to it.
-                for (uint32_t i = 0; i < pCallbackData->objectCount; ++i) {
-                    const VkDebugUtilsObjectNameInfoEXT& object = pCallbackData->pObjects[i];
-                    std::string deviceDebugPrefix =
-                        GetDeviceDebugPrefixFromDebugName(object.pObjectName);
-                    if (deviceDebugPrefix.empty()) {
-                        continue;
-                    }
+    if (!(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)) {
+        dawn::WarningLog() << pCallbackData->pMessage;
+        return VK_FALSE;
+    }
 
-                    VulkanInstance* instance = reinterpret_cast<VulkanInstance*>(pUserData);
-                    if (instance->HandleDeviceMessage(std::move(deviceDebugPrefix),
-                                                      pCallbackData->pMessage)) {
-                        return VK_FALSE;
-                    }
-                }
-            }
-        } else {
-            dawn::WarningLog() << pCallbackData->pMessage;
+    if (pUserData == nullptr) {
+        return VK_FALSE;
+    }
+    VulkanInstance* instance = reinterpret_cast<VulkanInstance*>(pUserData);
+
+    // Look through all the object labels attached to the debug message and try to parse
+    // a device debug prefix out of one of them. If a debug prefix is found and matches
+    // a registered device, forward the message on to it.
+    for (uint32_t i = 0; i < pCallbackData->objectCount; ++i) {
+        const VkDebugUtilsObjectNameInfoEXT& object = pCallbackData->pObjects[i];
+        std::string deviceDebugPrefix = GetDeviceDebugPrefixFromDebugName(object.pObjectName);
+        if (deviceDebugPrefix.empty()) {
+            continue;
+        }
+
+        if (instance->HandleDeviceMessage(std::move(deviceDebugPrefix), pCallbackData->pMessage)) {
+            return VK_FALSE;
         }
     }
+
+    // We get to this line if no device was associated with the message. Crash so that the failure
+    // is loud and makes tests fail in Debug.
+    dawn::ErrorLog() << pCallbackData->pMessage;
+    ASSERT(false);
+
     return VK_FALSE;
 }
 

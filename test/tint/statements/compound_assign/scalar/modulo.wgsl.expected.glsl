@@ -8,10 +8,16 @@ struct S {
   int a;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  int a;
+layout(binding = 0, std430) buffer v_block_ssbo {
+  S inner;
 } v;
+
+int tint_mod(int lhs, int rhs) {
+  return (lhs % (bool(uint((rhs == 0)) | uint(bool(uint((lhs == -2147483648)) & uint((rhs == -1))))) ? 1 : rhs));
+}
+
 void foo() {
-  v.a = (v.a % 2);
+  int tint_symbol = tint_mod(v.inner.a, 2);
+  v.inner.a = tint_symbol;
 }
 

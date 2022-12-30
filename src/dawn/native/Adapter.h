@@ -19,11 +19,13 @@
 
 #include "dawn/native/DawnNative.h"
 
+#include "dawn/common/GPUInfo.h"
 #include "dawn/common/RefCounted.h"
 #include "dawn/common/ityp_span.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/Features.h"
 #include "dawn/native/Limits.h"
+#include "dawn/native/Toggles.h"
 #include "dawn/native/dawn_platform.h"
 
 namespace dawn::native {
@@ -33,7 +35,7 @@ class DeviceBase;
 class AdapterBase : public RefCounted {
   public:
     AdapterBase(InstanceBase* instance, wgpu::BackendType backend);
-    ~AdapterBase() override = default;
+    ~AdapterBase() override;
 
     MaybeError Initialize();
 
@@ -49,6 +51,7 @@ class AdapterBase : public RefCounted {
 
     uint32_t GetVendorId() const;
     uint32_t GetDeviceId() const;
+    const gpu_info::DriverVersion& GetDriverVersion() const;
     wgpu::BackendType GetBackendType() const;
     InstanceBase* GetInstance() const;
 
@@ -71,15 +74,26 @@ class AdapterBase : public RefCounted {
     uint32_t mDeviceId = 0xFFFFFFFF;
     std::string mName;
     wgpu::AdapterType mAdapterType = wgpu::AdapterType::Unknown;
+    gpu_info::DriverVersion mDriverVersion;
     std::string mDriverDescription;
+
+    // Features set that CAN be supported by devices of this adapter. Some features in this set may
+    // be guarded by toggles, and creating a device with these features required may result in a
+    // validation error if proper toggles are not enabled/disabled.
     FeaturesSet mSupportedFeatures;
+    // Check if a feature os supported by this adapter AND suitable with given toggles.
+    MaybeError ValidateFeatureSupportedWithToggles(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles);
 
   private:
-    virtual ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(const DeviceDescriptor* descriptor) = 0;
+    virtual ResultOrError<Ref<DeviceBase>> CreateDeviceImpl(
+        const DeviceDescriptor* descriptor,
+        const TripleStateTogglesSet& userProvidedToggles) = 0;
 
     virtual MaybeError InitializeImpl() = 0;
 
-    // Check base WebGPU features and discover supported featurees.
+    // Check base WebGPU features and discover supported features.
     virtual MaybeError InitializeSupportedFeaturesImpl() = 0;
 
     // Check base WebGPU limits and populate supported limits.
@@ -87,10 +101,14 @@ class AdapterBase : public RefCounted {
 
     virtual void InitializeVendorArchitectureImpl();
 
+    virtual MaybeError ValidateFeatureSupportedWithTogglesImpl(
+        wgpu::FeatureName feature,
+        const TripleStateTogglesSet& userProvidedToggles) = 0;
+
     ResultOrError<Ref<DeviceBase>> CreateDeviceInternal(const DeviceDescriptor* descriptor);
 
     virtual MaybeError ResetInternalDeviceForTestingImpl();
-    InstanceBase* mInstance = nullptr;
+    Ref<InstanceBase> mInstance;
     wgpu::BackendType mBackend;
     CombinedLimits mLimits;
     bool mUseTieredLimits = false;

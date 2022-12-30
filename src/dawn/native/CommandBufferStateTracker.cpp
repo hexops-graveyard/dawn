@@ -14,6 +14,8 @@
 
 #include "dawn/native/CommandBufferStateTracker.h"
 
+#include <optional>
+
 #include "dawn/common/Assert.h"
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/native/BindGroup.h"
@@ -31,17 +33,21 @@
 namespace dawn::native {
 
 namespace {
-bool BufferSizesAtLeastAsBig(const ityp::span<uint32_t, uint64_t> unverifiedBufferSizes,
-                             const std::vector<uint64_t>& pipelineMinBufferSizes) {
+// Returns nullopt if all buffers in unverifiedBufferSizes are at least large enough to satisfy the
+// minimum listed in pipelineMinBufferSizes, or the index of the first detected failing buffer
+// otherwise.
+std::optional<uint32_t> FindFirstUndersizedBuffer(
+    const ityp::span<uint32_t, uint64_t> unverifiedBufferSizes,
+    const std::vector<uint64_t>& pipelineMinBufferSizes) {
     ASSERT(unverifiedBufferSizes.size() == pipelineMinBufferSizes.size());
 
     for (uint32_t i = 0; i < unverifiedBufferSizes.size(); ++i) {
         if (unverifiedBufferSizes[i] < pipelineMinBufferSizes[i]) {
-            return false;
+            return i;
         }
     }
 
-    return true;
+    return std::nullopt;
 }
 }  // namespace
 
@@ -234,8 +240,9 @@ void CommandBufferStateTracker::RecomputeLazyAspects(ValidationAspects aspects) 
         for (BindGroupIndex i : IterateBitSet(mLastPipelineLayout->GetBindGroupLayoutsMask())) {
             if (mBindgroups[i] == nullptr ||
                 mLastPipelineLayout->GetBindGroupLayout(i) != mBindgroups[i]->GetLayout() ||
-                !BufferSizesAtLeastAsBig(mBindgroups[i]->GetUnverifiedBufferSizes(),
-                                         (*mMinBufferSizes)[i])) {
+                FindFirstUndersizedBuffer(mBindgroups[i]->GetUnverifiedBufferSizes(),
+                                          (*mMinBufferSizes)[i])
+                    .has_value()) {
                 matches = false;
                 break;
             }
@@ -297,18 +304,25 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
         // because to have invalid aspects one of the above conditions must have failed earlier.
         // If this is reached, make sure lazy aspects and the error checks above are consistent.
         UNREACHABLE();
-        return DAWN_FORMAT_VALIDATION_ERROR("Index buffer is invalid.");
+        return DAWN_VALIDATION_ERROR("Index buffer is invalid.");
     }
 
-    // TODO(dawn:563): Indicate which slots were not set.
-    DAWN_INVALID_IF(aspects[VALIDATION_ASPECT_VERTEX_BUFFERS],
-                    "Vertex buffer slots required by %s were not set.", GetRenderPipeline());
+    if (aspects[VALIDATION_ASPECT_VERTEX_BUFFERS]) {
+        const ityp::bitset<VertexBufferSlot, kMaxVertexBuffers> missingVertexBuffers =
+            GetRenderPipeline()->GetVertexBufferSlotsUsed() & ~mVertexBufferSlotsUsed;
+        ASSERT(missingVertexBuffers.any());
+
+        VertexBufferSlot firstMissing = ityp::Sub(GetHighestBitIndexPlusOne(missingVertexBuffers),
+                                                  VertexBufferSlot(uint8_t(1)));
+        return DAWN_VALIDATION_ERROR("Vertex buffer slot %u required by %s was not set.",
+                                     uint8_t(firstMissing), GetRenderPipeline());
+    }
 
     if (DAWN_UNLIKELY(aspects[VALIDATION_ASPECT_BIND_GROUPS])) {
         for (BindGroupIndex i : IterateBitSet(mLastPipelineLayout->GetBindGroupLayoutsMask())) {
             ASSERT(HasPipeline());
 
-            DAWN_INVALID_IF(mBindgroups[i] == nullptr, "No bind group set at index %u.",
+            DAWN_INVALID_IF(mBindgroups[i] == nullptr, "No bind group set at group index %u.",
                             static_cast<uint32_t>(i));
 
             BindGroupLayoutBase* requiredBGL = mLastPipelineLayout->GetBindGroupLayout(i);
@@ -319,8 +333,8 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
                     currentBGL->GetPipelineCompatibilityToken() !=
                         requiredBGL->GetPipelineCompatibilityToken(),
                 "The current pipeline (%s) was created with a default layout, and is not "
-                "compatible with the %s at index %u which uses a %s that was not created by "
-                "the pipeline. Either use the bind group layout returned by calling "
+                "compatible with the %s set at group index %u which uses a %s that was not "
+                "created by the pipeline. Either use the bind group layout returned by calling "
                 "getBindGroupLayout(%u) on the pipeline when creating the bind group, or "
                 "provide an explicit pipeline layout when creating the pipeline.",
                 mLastPipeline, mBindgroups[i], static_cast<uint32_t>(i), currentBGL,
@@ -329,8 +343,9 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
             DAWN_INVALID_IF(
                 requiredBGL->GetPipelineCompatibilityToken() == PipelineCompatibilityToken(0) &&
                     currentBGL->GetPipelineCompatibilityToken() != PipelineCompatibilityToken(0),
-                "%s at index %u uses a %s which was created as part of the default layout for "
-                "a different pipeline than the current one (%s), and as a result is not "
+                "%s set at group index %u uses a %s which was created as part of the default "
+                "layout "
+                "for a different pipeline than the current one (%s), and as a result is not "
                 "compatible. Use an explicit bind group layout when creating bind groups and "
                 "an explicit pipeline layout when creating pipelines to share bind groups "
                 "between pipelines.",
@@ -339,15 +354,27 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
             DAWN_INVALID_IF(
                 mLastPipelineLayout->GetBindGroupLayout(i) != mBindgroups[i]->GetLayout(),
                 "Bind group layout %s of pipeline layout %s does not match layout %s of bind "
-                "group %s at index %u.",
+                "group %s set at group index %u.",
                 requiredBGL, mLastPipelineLayout, currentBGL, mBindgroups[i],
                 static_cast<uint32_t>(i));
 
-            // TODO(dawn:563): Report the binding sizes and which ones are failing.
-            DAWN_INVALID_IF(!BufferSizesAtLeastAsBig(mBindgroups[i]->GetUnverifiedBufferSizes(),
-                                                     (*mMinBufferSizes)[i]),
-                            "Binding sizes are too small for bind group %s at index %u",
-                            mBindgroups[i], static_cast<uint32_t>(i));
+            // TODO(dawn:563): Report which buffer bindings are failing. This requires the ability
+            // to look up the binding index from the packed index.
+            std::optional<uint32_t> packedIndex = FindFirstUndersizedBuffer(
+                mBindgroups[i]->GetUnverifiedBufferSizes(), (*mMinBufferSizes)[i]);
+            if (packedIndex.has_value()) {
+                uint64_t bufferSize =
+                    mBindgroups[i]->GetUnverifiedBufferSizes()[packedIndex.value()];
+                uint64_t minBufferSize = (*mMinBufferSizes)[i][packedIndex.value()];
+                return DAWN_VALIDATION_ERROR(
+                    "Binding sizes are too small for %s set at group index %u. A bound buffer "
+                    "contained %u bytes, but the current pipeline (%s) requires a buffer which is "
+                    "at least %u bytes. (Note that uniform buffer bindings must be a multiple of "
+                    "16 bytes, and as a result may be larger than the associated data in the "
+                    "shader source.)",
+                    mBindgroups[i], static_cast<uint32_t>(i), bufferSize, mLastPipeline,
+                    minBufferSize);
+            }
         }
 
         // The chunk of code above should be similar to the one in |RecomputeLazyAspects|.
@@ -355,7 +382,7 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
         // because to have invalid aspects one of the above conditions must have failed earlier.
         // If this is reached, make sure lazy aspects and the error checks above are consistent.
         UNREACHABLE();
-        return DAWN_FORMAT_VALIDATION_ERROR("Bind groups are invalid.");
+        return DAWN_VALIDATION_ERROR("Bind groups are invalid.");
     }
 
     UNREACHABLE();

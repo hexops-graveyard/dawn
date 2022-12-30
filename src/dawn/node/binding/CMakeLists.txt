@@ -59,6 +59,8 @@ add_library(dawn_node_binding STATIC
     "GPUSampler.h"
     "GPUShaderModule.cpp"
     "GPUShaderModule.h"
+    "GPUSupportedFeatures.cpp"
+    "GPUSupportedFeatures.h"
     "GPUSupportedLimits.cpp"
     "GPUSupportedLimits.h"
     "GPUTexture.cpp"
@@ -70,7 +72,7 @@ common_compile_options(dawn_node_binding)
 
 target_include_directories(dawn_node_binding
     PRIVATE
-        "${CMAKE_SOURCE_DIR}"
+        "${PROJECT_SOURCE_DIR}"
         "${DAWN_THIRD_PARTY_DIR}"
         "${NODE_API_HEADERS_DIR}/include"
         "${DAWN_NODE_GEN_DIR}"

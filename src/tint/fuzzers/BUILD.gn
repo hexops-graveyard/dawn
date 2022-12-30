@@ -33,8 +33,6 @@ if (build_with_chromium) {
       rebase_path(fuzzer_corpus_wgsl_dir, root_build_dir),
     ]
     outputs = [ fuzzer_corpus_wgsl_stamp ]
-
-    deps = [ "${dawn_root}/generator:remove_stale_autogen_files" ]
   }
 
   tint_fuzzer_common_libfuzzer_options = [
@@ -85,6 +83,10 @@ if (build_with_chromium) {
       "tint_reader_writer_fuzzer.h",
       "transform_builder.h",
     ]
+
+    if (is_mac) {
+      sources += [ "//testing/libfuzzer/libfuzzer_exports.h" ]
+    }
   }
 
   source_set("tint_fuzzer_common_with_init_src") {
@@ -159,6 +161,18 @@ if (build_with_chromium) {
       libfuzzer_options = tint_fuzzer_common_libfuzzer_options
       seed_corpus = fuzzer_corpus_wgsl_dir
       seed_corpus_deps = [ ":tint_generate_wgsl_corpus" ]
+    }
+
+    # Disable this fuzzer on windows + ASAN. See crbug.com/1357188.
+    if (!(is_win && is_asan)) {
+      fuzzer_test("tint_concurrency_fuzzer") {
+        sources = [ "tint_concurrency_fuzzer.cc" ]
+        deps = [ ":tint_fuzzer_common_with_init_src" ]
+        dict = "dictionary.txt"
+        libfuzzer_options = tint_fuzzer_common_libfuzzer_options
+        seed_corpus = fuzzer_corpus_wgsl_dir
+        seed_corpus_deps = [ ":tint_generate_wgsl_corpus" ]
+      }
     }
 
     fuzzer_test("tint_first_index_offset_fuzzer") {

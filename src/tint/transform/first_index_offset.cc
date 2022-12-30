@@ -35,6 +35,15 @@ namespace {
 constexpr char kFirstVertexName[] = "first_vertex_index";
 constexpr char kFirstInstanceName[] = "first_instance_index";
 
+bool ShouldRun(const Program* program) {
+    for (auto* fn : program->AST().Functions()) {
+        if (fn->PipelineStage() == ast::PipelineStage::kVertex) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 FirstIndexOffset::BindingPoint::BindingPoint() = default;
@@ -49,16 +58,16 @@ FirstIndexOffset::Data::~Data() = default;
 FirstIndexOffset::FirstIndexOffset() = default;
 FirstIndexOffset::~FirstIndexOffset() = default;
 
-bool FirstIndexOffset::ShouldRun(const Program* program, const DataMap&) const {
-    for (auto* fn : program->AST().Functions()) {
-        if (fn->PipelineStage() == ast::PipelineStage::kVertex) {
-            return true;
-        }
+Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
+                                               const DataMap& inputs,
+                                               DataMap& outputs) const {
+    if (!ShouldRun(src)) {
+        return SkipTransform;
     }
-    return false;
-}
 
-void FirstIndexOffset::Run(CloneContext& ctx, const DataMap& inputs, DataMap& outputs) const {
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+
     // Get the uniform buffer binding point
     uint32_t ub_binding = binding_;
     uint32_t ub_group = group_;
@@ -115,23 +124,22 @@ void FirstIndexOffset::Run(CloneContext& ctx, const DataMap& inputs, DataMap& ou
     if (has_vertex_or_instance_index) {
         // Add uniform buffer members and calculate byte offsets
         utils::Vector<const ast::StructMember*, 8> members;
-        members.Push(ctx.dst->Member(kFirstVertexName, ctx.dst->ty.u32()));
-        members.Push(ctx.dst->Member(kFirstInstanceName, ctx.dst->ty.u32()));
-        auto* struct_ = ctx.dst->Structure(ctx.dst->Sym(), std::move(members));
+        members.Push(b.Member(kFirstVertexName, b.ty.u32()));
+        members.Push(b.Member(kFirstInstanceName, b.ty.u32()));
+        auto* struct_ = b.Structure(b.Sym(), std::move(members));
 
         // Create a global to hold the uniform buffer
-        Symbol buffer_name = ctx.dst->Sym();
-        ctx.dst->GlobalVar(buffer_name, ctx.dst->ty.Of(struct_), ast::StorageClass::kUniform,
-                           nullptr,
-                           utils::Vector{
-                               ctx.dst->create<ast::BindingAttribute>(ub_binding),
-                               ctx.dst->create<ast::GroupAttribute>(ub_group),
-                           });
+        Symbol buffer_name = b.Sym();
+        b.GlobalVar(buffer_name, b.ty.Of(struct_), ast::AddressSpace::kUniform,
+                    utils::Vector{
+                        b.Binding(AInt(ub_binding)),
+                        b.Group(AInt(ub_group)),
+                    });
 
         // Fix up all references to the builtins with the offsets
         ctx.ReplaceAll([=, &ctx](const ast::Expression* expr) -> const ast::Expression* {
             if (auto* sem = ctx.src->Sem().Get(expr)) {
-                if (auto* user = sem->As<sem::VariableUser>()) {
+                if (auto* user = sem->UnwrapLoad()->As<sem::VariableUser>()) {
                     auto it = builtin_vars.find(user->Variable());
                     if (it != builtin_vars.end()) {
                         return ctx.dst->Add(ctx.CloneWithoutTransform(expr),
@@ -146,14 +154,15 @@ void FirstIndexOffset::Run(CloneContext& ctx, const DataMap& inputs, DataMap& ou
                     }
                 }
             }
-            // Not interested in this experssion. Just clone.
+            // Not interested in this expression. Just clone.
             return nullptr;
         });
     }
 
-    ctx.Clone();
-
     outputs.Add<Data>(has_vertex_or_instance_index);
+
+    ctx.Clone();
+    return Program(std::move(b));
 }
 
 }  // namespace tint::transform

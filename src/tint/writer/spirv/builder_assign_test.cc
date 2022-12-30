@@ -23,7 +23,7 @@ namespace {
 using BuilderTest = TestHelper;
 
 TEST_F(BuilderTest, Assign_Var) {
-    auto* v = GlobalVar("var", ty.f32(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign("var", 1_f);
 
@@ -51,7 +51,7 @@ TEST_F(BuilderTest, Assign_Var) {
 }
 
 TEST_F(BuilderTest, Assign_Var_OutsideFunction_IsError) {
-    auto* v = GlobalVar("var", ty.f32(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.f32(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign("var", Expr(1_f));
 
@@ -69,8 +69,8 @@ TEST_F(BuilderTest, Assign_Var_OutsideFunction_IsError) {
               "function");
 }
 
-TEST_F(BuilderTest, Assign_Var_ZeroConstructor) {
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+TEST_F(BuilderTest, Assign_Var_ZeroInitializer) {
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* val = vec3<f32>();
     auto* assign = Assign("var", val);
@@ -98,10 +98,10 @@ TEST_F(BuilderTest, Assign_Var_ZeroConstructor) {
 )");
 }
 
-TEST_F(BuilderTest, Assign_Var_Complex_ConstructorNestedVector) {
+TEST_F(BuilderTest, Assign_Var_Complex_InitializerNestedVector) {
     auto* init = vec3<f32>(vec2<f32>(1_f, 2_f), 3_f);
 
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign("var", init);
 
@@ -131,10 +131,10 @@ TEST_F(BuilderTest, Assign_Var_Complex_ConstructorNestedVector) {
 )");
 }
 
-TEST_F(BuilderTest, Assign_Var_Complex_Constructor) {
+TEST_F(BuilderTest, Assign_Var_Complex_Initializer) {
     auto* init = vec3<f32>(1_f, 2_f, 3_f);
 
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign("var", init);
 
@@ -186,7 +186,7 @@ TEST_F(BuilderTest, Assign_StructMember) {
     spirv::Builder& b = Build();
 
     b.push_function(Function{});
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
+    EXPECT_TRUE(b.GenerateFunctionVariable(v)) << b.error();
     ASSERT_FALSE(b.has_error()) << b.error();
 
     EXPECT_TRUE(b.GenerateAssignStatement(assign)) << b.error();
@@ -195,21 +195,21 @@ TEST_F(BuilderTest, Assign_StructMember) {
     EXPECT_EQ(DumpInstructions(b.types()), R"(%4 = OpTypeFloat 32
 %3 = OpTypeStruct %4 %4
 %2 = OpTypePointer Function %3
-%1 = OpVariable %2 Function
-%5 = OpTypeInt 32 0
-%6 = OpConstant %5 1
-%7 = OpTypePointer Function %4
-%9 = OpConstant %4 4
+%5 = OpConstantNull %3
+%6 = OpTypeInt 32 0
+%7 = OpConstant %6 1
+%8 = OpTypePointer Function %4
+%10 = OpConstant %4 4
 )");
 
     EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
-              R"(%8 = OpAccessChain %7 %1 %6
-OpStore %8 %9
+              R"(%9 = OpAccessChain %8 %1 %7
+OpStore %9 %10
 )");
 }
 
 TEST_F(BuilderTest, Assign_Vector) {
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* val = vec3<f32>(1_f, 1_f, 3_f);
     auto* assign = Assign("var", val);
@@ -243,7 +243,7 @@ TEST_F(BuilderTest, Assign_Vector) {
 TEST_F(BuilderTest, Assign_Vector_MemberByName) {
     // var.y = 1
 
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign(MemberAccessor("var", "y"), Expr(1_f));
 
@@ -278,7 +278,7 @@ OpStore %9 %10
 TEST_F(BuilderTest, Assign_Vector_MemberByIndex) {
     // var[1] = 1
 
-    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::StorageClass::kPrivate);
+    auto* v = GlobalVar("var", ty.vec3<f32>(), ast::AddressSpace::kPrivate);
 
     auto* assign = Assign(IndexAccessor("var", 1_i), Expr(1_f));
 

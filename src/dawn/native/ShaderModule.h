@@ -33,10 +33,12 @@
 #include "dawn/native/Format.h"
 #include "dawn/native/Forward.h"
 #include "dawn/native/IntegerTypes.h"
+#include "dawn/native/Limits.h"
 #include "dawn/native/ObjectBase.h"
 #include "dawn/native/PerStage.h"
 #include "dawn/native/VertexFormat.h"
 #include "dawn/native/dawn_platform.h"
+#include "tint/override_id.h"
 
 namespace tint {
 
@@ -58,9 +60,10 @@ struct EntryPointMetadata;
 
 // Base component type of an inter-stage variable
 enum class InterStageComponentType {
-    Sint,
-    Uint,
-    Float,
+    I32,
+    U32,
+    F32,
+    F16,
 };
 
 enum class InterpolationType {
@@ -76,10 +79,8 @@ enum class InterpolationSampling {
     Sample,
 };
 
-using PipelineLayoutEntryPointPair = std::pair<const PipelineLayoutBase*, std::string>;
-struct PipelineLayoutEntryPointPairHashFunc {
-    size_t operator()(const PipelineLayoutEntryPointPair& pair) const;
-};
+// Use map to make sure constant keys are sorted for creating shader cache keys
+using PipelineConstantEntries = std::map<std::string, double>;
 
 // A map from name to EntryPointMetadata.
 using EntryPointMetadataTable =
@@ -107,6 +108,13 @@ MaybeError ValidateAndParseShaderModule(DeviceBase* device,
 MaybeError ValidateCompatibilityWithPipelineLayout(DeviceBase* device,
                                                    const EntryPointMetadata& entryPoint,
                                                    const PipelineLayoutBase* layout);
+
+// Return extent3D with workgroup size dimension info if it is valid
+// width = x, height = y, depthOrArrayLength = z
+ResultOrError<Extent3D> ValidateComputeStageWorkgroupSize(
+    const tint::Program& program,
+    const char* entryPointName,
+    const LimitsForCompilationRequest& limits);
 
 RequiredBufferSizes ComputeRequiredBufferSizesForLayout(const EntryPointMetadata& entryPoint,
                                                         const PipelineLayoutBase* layout);
@@ -203,15 +211,14 @@ struct EntryPointMetadata {
     // inputs and outputs in one shader stage.
     std::bitset<kMaxInterStageShaderVariables> usedInterStageVariables;
     std::array<InterStageVariableInfo, kMaxInterStageShaderVariables> interStageVariables;
-
-    // The local workgroup size declared for a compute entry point (or 0s otehrwise).
-    Origin3D localWorkgroupSize;
+    uint32_t totalInterStageShaderComponents;
 
     // The shader stage for this binding.
     SingleShaderStage stage;
 
     struct Override {
-        uint32_t id;
+        tint::OverrideId id;
+
         // Match tint::inspector::Override::Type
         // Bool is defined as a macro on linux X11 and cannot compile
         enum class Type { Boolean, Float32, Uint32, Int32 } type;
@@ -220,11 +227,6 @@ struct EntryPointMetadata {
         // Then it is required for the pipeline stage to have a constant record to initialize a
         // value
         bool isInitialized;
-
-        // Store the default initialized value in shader
-        // This is used by metal backend as the function_constant does not have dafault values
-        // Initialized when isInitialized == true
-        OverrideScalar defaultValue;
     };
 
     using OverridesMap = std::unordered_map<std::string, Override>;
@@ -273,6 +275,7 @@ class ShaderModuleBase : public ApiObjectBase, public CachedObject {
         bool operator()(const ShaderModuleBase* a, const ShaderModuleBase* b) const;
     };
 
+    // This returns tint program before running transforms.
     const tint::Program* GetTintProgram() const;
 
     void APIGetCompilationInfo(wgpu::CompilationInfoCallback callback, void* userdata);

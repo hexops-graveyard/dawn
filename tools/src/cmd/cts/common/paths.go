@@ -18,19 +18,33 @@ import (
 	"os"
 	"path/filepath"
 
-	"dawn.googlesource.com/dawn/tools/src/utils"
+	"dawn.googlesource.com/dawn/tools/src/fileutils"
 )
 
 const (
 	// RelativeExpectationsPath is the dawn-root relative path to the
 	// expectations.txt file.
 	RelativeExpectationsPath = "webgpu-cts/expectations.txt"
+
+	// RelativeTestListPath is the dawn-root relative path to the
+	// test_list.txt file.
+	RelativeTestListPath = "third_party/gn/webgpu-cts/test_list.txt"
 )
 
 // DefaultExpectationsPath returns the default path to the expectations.txt
 // file. Returns an empty string if the file cannot be found.
 func DefaultExpectationsPath() string {
-	path := filepath.Join(utils.DawnRoot(), RelativeExpectationsPath)
+	path := filepath.Join(fileutils.DawnRoot(), RelativeExpectationsPath)
+	if _, err := os.Stat(path); err != nil {
+		return ""
+	}
+	return path
+}
+
+// DefaultTestListPath returns the default path to the test_list.txt
+// file. Returns an empty string if the file cannot be found.
+func DefaultTestListPath() string {
+	path := filepath.Join(fileutils.DawnRoot(), RelativeTestListPath)
 	if _, err := os.Stat(path); err != nil {
 		return ""
 	}

@@ -1,14 +1,4 @@
-bug/tint/1118.wgsl:64:31 warning: 'dpdx' must only be called from uniform control flow
-  normalW = normalize(-(cross(dpdx(x_62), dpdy(x_64))));
-                              ^^^^
-
-bug/tint/1118.wgsl:47:3 note: control flow depends on non-uniform value
-  if ((x_9 > 0.0)) {
-  ^^
-
-bug/tint/1118.wgsl:46:19 note: reading from module-scope private variable 'fClipDistance3' may result in a non-uniform value
-  let x_9 : f32 = fClipDistance3;
-                  ^^^^^^^^^^^^^^
+static bool tint_discarded = false;
 
 static float fClipDistance3 = 0.0f;
 static float fClipDistance4 = 0.0f;
@@ -22,7 +12,6 @@ cbuffer cbuffer_x_137 : register(b2, space0) {
   uint4 x_137[1];
 };
 static float4 glFragColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
-static bool tint_discard = false;
 
 void main_1() {
   float3 viewDirectionW = float3(0.0f, 0.0f, 0.0f);
@@ -41,13 +30,13 @@ void main_1() {
   float3 finalDiffuse = float3(0.0f, 0.0f, 0.0f);
   float3 finalSpecular = float3(0.0f, 0.0f, 0.0f);
   float4 color = float4(0.0f, 0.0f, 0.0f, 0.0f);
-  if ((fClipDistance3 > 0.0f)) {
-    tint_discard = true;
-    return;
+  const float x_9 = fClipDistance3;
+  if ((x_9 > 0.0f)) {
+    tint_discarded = true;
   }
-  if ((fClipDistance4 > 0.0f)) {
-    tint_discard = true;
-    return;
+  const float x_17 = fClipDistance4;
+  if ((x_17 > 0.0f)) {
+    tint_discarded = true;
   }
   const float4 x_34 = asfloat(x_29[0]);
   const float3 x_38 = (0.0f).xxx;
@@ -59,12 +48,12 @@ void main_1() {
   alpha = x_60;
   const float3 x_62 = (0.0f).xxx;
   const float3 x_64 = (0.0f).xxx;
-  normalW = normalize(-(cross(ddx(x_62), ddy(x_64))));
   uvOffset = (0.0f).xx;
   const float4 x_74 = (0.0f).xxxx;
   const float4 x_76 = baseColor;
   const float3 x_78 = (float3(x_76.x, x_76.y, x_76.z) * float3(x_74.x, x_74.y, x_74.z));
-  baseColor = float4(x_78.x, x_78.y, x_78.z, baseColor.w);
+  const float4 x_79 = baseColor;
+  baseColor = float4(x_78.x, x_78.y, x_78.z, x_79.w);
   baseAmbientColor = (1.0f).xxx;
   glossiness = 0.0f;
   diffuseBase = (0.0f).xxx;
@@ -80,17 +69,23 @@ void main_1() {
   const float4 x_108 = baseColor;
   finalDiffuse = (clamp((((x_96 * x_97) + x_99) + x_103), (0.0f).xxx, (1.0f).xxx) * float3(x_108.x, x_108.y, x_108.z));
   finalSpecular = (0.0f).xxx;
+  const float3 x_113 = finalDiffuse;
+  const float3 x_114 = baseAmbientColor;
+  const float3 x_116 = finalSpecular;
   const float4 x_118 = reflectionColor;
   const float4 x_121 = refractionColor;
-  const float3 x_123 = ((((finalDiffuse * baseAmbientColor) + finalSpecular) + float3(x_118.x, x_118.y, x_118.z)) + float3(x_121.x, x_121.y, x_121.z));
-  color = float4(x_123.x, x_123.y, x_123.z, alpha);
+  const float3 x_123 = ((((x_113 * x_114) + x_116) + float3(x_118.x, x_118.y, x_118.z)) + float3(x_121.x, x_121.y, x_121.z));
+  const float x_124 = alpha;
+  color = float4(x_123.x, x_123.y, x_123.z, x_124);
   const float4 x_129 = color;
   const float3 x_132 = max(float3(x_129.x, x_129.y, x_129.z), (0.0f).xxx);
-  color = float4(x_132.x, x_132.y, x_132.z, color.w);
+  const float4 x_133 = color;
+  color = float4(x_132.x, x_132.y, x_132.z, x_133.w);
   const float x_140 = asfloat(x_137[0].x);
   const float x_142 = color.w;
   color.w = (x_142 * x_140);
-  glFragColor = color;
+  const float4 x_147 = color;
+  glFragColor = x_147;
   return;
 }
 
@@ -109,26 +104,16 @@ main_out main_inner(float fClipDistance3_param, float fClipDistance4_param) {
   fClipDistance3 = fClipDistance3_param;
   fClipDistance4 = fClipDistance4_param;
   main_1();
-  if (tint_discard) {
-    const main_out tint_symbol_8 = (main_out)0;
-    return tint_symbol_8;
-  }
-  const main_out tint_symbol_9 = {glFragColor};
-  return tint_symbol_9;
-}
-
-void tint_discard_func() {
-  discard;
+  const main_out tint_symbol_8 = {glFragColor};
+  return tint_symbol_8;
 }
 
 tint_symbol_2 main(tint_symbol_1 tint_symbol) {
   const main_out inner_result = main_inner(tint_symbol.fClipDistance3_param, tint_symbol.fClipDistance4_param);
-  if (tint_discard) {
-    tint_discard_func();
-    const tint_symbol_2 tint_symbol_10 = (tint_symbol_2)0;
-    return tint_symbol_10;
-  }
   tint_symbol_2 wrapper_result = (tint_symbol_2)0;
   wrapper_result.glFragColor_1 = inner_result.glFragColor_1;
+  if (tint_discarded) {
+    discard;
+  }
   return wrapper_result;
 }

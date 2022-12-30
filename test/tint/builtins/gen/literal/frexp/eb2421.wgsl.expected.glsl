@@ -1,19 +1,13 @@
 #version 310 es
 
-struct frexp_result_vec2 {
-  vec2 sig;
+struct frexp_result_vec2_f32 {
+  vec2 fract;
   ivec2 exp;
 };
 
-frexp_result_vec2 tint_frexp(vec2 param_0) {
-  frexp_result_vec2 result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_eb2421() {
-  frexp_result_vec2 res = tint_frexp(vec2(1.0f));
+  frexp_result_vec2_f32 res = frexp_result_vec2_f32(vec2(0.5f), ivec2(1));
 }
 
 vec4 vertex_main() {
@@ -32,20 +26,14 @@ void main() {
 #version 310 es
 precision mediump float;
 
-struct frexp_result_vec2 {
-  vec2 sig;
+struct frexp_result_vec2_f32 {
+  vec2 fract;
   ivec2 exp;
 };
 
-frexp_result_vec2 tint_frexp(vec2 param_0) {
-  frexp_result_vec2 result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_eb2421() {
-  frexp_result_vec2 res = tint_frexp(vec2(1.0f));
+  frexp_result_vec2_f32 res = frexp_result_vec2_f32(vec2(0.5f), ivec2(1));
 }
 
 void fragment_main() {
@@ -58,20 +46,14 @@ void main() {
 }
 #version 310 es
 
-struct frexp_result_vec2 {
-  vec2 sig;
+struct frexp_result_vec2_f32 {
+  vec2 fract;
   ivec2 exp;
 };
 
-frexp_result_vec2 tint_frexp(vec2 param_0) {
-  frexp_result_vec2 result;
-  result.sig = frexp(param_0, result.exp);
-  return result;
-}
-
 
 void frexp_eb2421() {
-  frexp_result_vec2 res = tint_frexp(vec2(1.0f));
+  frexp_result_vec2_f32 res = frexp_result_vec2_f32(vec2(0.5f), ivec2(1));
 }
 
 void compute_main() {

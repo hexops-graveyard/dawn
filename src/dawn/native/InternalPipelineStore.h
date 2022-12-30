@@ -17,6 +17,7 @@
 
 #include <unordered_map>
 
+#include "dawn/native/ApplyClearColorValueWithDrawHelper.h"
 #include "dawn/native/ObjectBase.h"
 #include "dawn/native/ScratchBuffer.h"
 #include "dawn/native/dawn_platform.h"
@@ -34,11 +35,15 @@ struct InternalPipelineStore {
     ~InternalPipelineStore();
 
     std::unordered_map<wgpu::TextureFormat, Ref<RenderPipelineBase>> copyTextureForBrowserPipelines;
+    std::unordered_map<wgpu::TextureFormat, Ref<RenderPipelineBase>>
+        copyExternalTextureForBrowserPipelines;
 
-    Ref<ShaderModuleBase> copyTextureForBrowser;
+    Ref<ShaderModuleBase> copyForBrowser;
 
     Ref<ComputePipelineBase> timestampComputePipeline;
     Ref<ShaderModuleBase> timestampCS;
+
+    ApplyClearColorValueWithDrawPipelinesCache applyClearColorValueWithDrawPipelines;
 
     Ref<ShaderModuleBase> placeholderFragmentShader;
 

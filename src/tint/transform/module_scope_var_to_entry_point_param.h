@@ -27,7 +27,7 @@ namespace tint::transform {
 /// then passes them as pointer parameters to any function that references them.
 ///
 /// Since WGSL does not allow entry point parameters or function-scope variables
-/// to have these storage classes, we annotate the new variable declarations
+/// to have these address spaces, we annotate the new variable declarations
 /// with an attribute that bypasses that validation rule.
 ///
 /// Before:
@@ -69,20 +69,12 @@ class ModuleScopeVarToEntryPointParam final
     /// Destructor
     ~ModuleScopeVarToEntryPointParam() override;
 
-    /// @param program the program to inspect
-    /// @param data optional extra transform-specific input data
-    /// @returns true if this transform should be run for the given program
-    bool ShouldRun(const Program* program, const DataMap& data = {}) const override;
+    /// @copydoc Transform::Apply
+    ApplyResult Apply(const Program* program,
+                      const DataMap& inputs,
+                      DataMap& outputs) const override;
 
-  protected:
-    /// Runs the transform using the CloneContext built for transforming a
-    /// program. Run() is responsible for calling Clone() on the CloneContext.
-    /// @param ctx the CloneContext primed with the input program and
-    /// ProgramBuilder
-    /// @param inputs optional extra transform-specific input data
-    /// @param outputs optional extra transform-specific output data
-    void Run(CloneContext& ctx, const DataMap& inputs, DataMap& outputs) const override;
-
+  private:
     struct State;
 };
 

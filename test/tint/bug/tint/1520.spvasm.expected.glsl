@@ -4,42 +4,50 @@ precision mediump float;
 layout(location = 0) in vec4 vcolor_S0_param_1;
 layout(location = 0) out vec4 sk_FragColor_1_1;
 struct UniformBuffer {
+  uint pad;
+  uint pad_1;
+  uint pad_2;
+  uint pad_3;
   float unknownInput_S1_c0;
+  uint pad_4;
+  uint pad_5;
+  uint pad_6;
   vec4 ucolorRed_S1_c0;
   vec4 ucolorGreen_S1_c0;
   mat3 umatrix_S1;
 };
 
-layout(binding = 0) uniform UniformBuffer_1 {
-  float unknownInput_S1_c0;
-  vec4 ucolorRed_S1_c0;
-  vec4 ucolorGreen_S1_c0;
-  mat3 umatrix_S1;
+layout(binding = 0, std140) uniform x_4_block_ubo {
+  UniformBuffer inner;
 } x_4;
 
 vec4 sk_FragColor = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 bool sk_Clockwise = false;
 vec4 vcolor_S0 = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+ivec4 tint_div(ivec4 lhs, ivec4 rhs) {
+  return (lhs / mix(rhs, ivec4(1), bvec4(uvec4(equal(rhs, ivec4(0))) | uvec4(bvec4(uvec4(equal(lhs, ivec4(-2147483648))) & uvec4(equal(rhs, ivec4(-1))))))));
+}
+
 bool test_int_S1_c0_b() {
   int unknown = 0;
   bool ok = false;
   ivec4 val = ivec4(0, 0, 0, 0);
   bool x_40 = false;
+  bool x_41 = false;
   bool x_54 = false;
+  bool x_55 = false;
   bool x_65 = false;
-  bool x_41_phi = false;
-  bool x_55_phi = false;
-  bool x_66_phi = false;
-  float x_26 = x_4.unknownInput_S1_c0;
+  bool x_66 = false;
+  float x_26 = x_4.inner.unknownInput_S1_c0;
   int x_27 = int(x_26);
   unknown = x_27;
   ok = true;
-  x_41_phi = false;
+  x_41 = false;
   if (true) {
-    x_40 = all(equal((ivec4(0) / ivec4(x_27, x_27, x_27, x_27)), ivec4(0)));
-    x_41_phi = x_40;
+    ivec4 tint_symbol_1 = tint_div(ivec4(0), ivec4(x_27, x_27, x_27, x_27));
+    x_40 = all(equal(tint_symbol_1, ivec4(0)));
+    x_41 = x_40;
   }
-  bool x_41 = x_41_phi;
   ok = x_41;
   ivec4 x_44 = ivec4(x_27, x_27, x_27, x_27);
   val = x_44;
@@ -51,27 +59,25 @@ bool test_int_S1_c0_b() {
   val = x_49;
   ivec4 x_50 = (x_49 - ivec4(1));
   val = x_50;
-  x_55_phi = false;
+  x_55 = false;
   if (x_41) {
     x_54 = all(equal(x_50, x_44));
-    x_55_phi = x_54;
+    x_55 = x_54;
   }
-  bool x_55 = x_55_phi;
   ok = x_55;
   ivec4 x_58 = (x_50 * ivec4(2));
   val = x_58;
-  ivec4 x_59 = (x_58 / ivec4(2));
+  ivec4 x_59 = tint_div(x_58, ivec4(2));
   val = x_59;
   ivec4 x_60 = (x_59 * ivec4(2));
   val = x_60;
-  ivec4 x_61 = (x_60 / ivec4(2));
+  ivec4 x_61 = tint_div(x_60, ivec4(2));
   val = x_61;
-  x_66_phi = false;
+  x_66 = false;
   if (x_55) {
     x_65 = all(equal(x_61, x_44));
-    x_66_phi = x_65;
+    x_66 = x_65;
   }
-  bool x_66 = x_66_phi;
   ok = x_66;
   return x_66;
 }
@@ -84,23 +90,23 @@ void main_1() {
   vec4 x_10_val = vec4(0.0f, 0.0f, 0.0f, 0.0f);
   vec4 x_116 = vec4(0.0f, 0.0f, 0.0f, 0.0f);
   bool x_86 = false;
+  bool x_87 = false;
   bool x_99 = false;
+  bool x_100 = false;
   bool x_110 = false;
+  bool x_111 = false;
   bool x_114 = false;
-  bool x_87_phi = false;
-  bool x_100_phi = false;
-  bool x_111_phi = false;
-  bool x_115_phi = false;
-  outputColor_S0 = vcolor_S0;
-  float x_77 = x_4.unknownInput_S1_c0;
+  bool x_115 = false;
+  vec4 x_72 = vcolor_S0;
+  outputColor_S0 = x_72;
+  float x_77 = x_4.inner.unknownInput_S1_c0;
   x_8_unknown = x_77;
   x_9_ok = true;
-  x_87_phi = false;
+  x_87 = false;
   if (true) {
     x_86 = all(equal((vec4(0.0f) / vec4(x_77, x_77, x_77, x_77)), vec4(0.0f)));
-    x_87_phi = x_86;
+    x_87 = x_86;
   }
-  bool x_87 = x_87_phi;
   x_9_ok = x_87;
   vec4 x_89 = vec4(x_77, x_77, x_77, x_77);
   x_10_val = x_89;
@@ -112,12 +118,11 @@ void main_1() {
   x_10_val = x_94;
   vec4 x_95 = (x_94 - vec4(1.0f));
   x_10_val = x_95;
-  x_100_phi = false;
+  x_100 = false;
   if (x_87) {
     x_99 = all(equal(x_95, x_89));
-    x_100_phi = x_99;
+    x_100 = x_99;
   }
-  bool x_100 = x_100_phi;
   x_9_ok = x_100;
   vec4 x_103 = (x_95 * vec4(2.0f));
   x_10_val = x_103;
@@ -127,23 +132,22 @@ void main_1() {
   x_10_val = x_105;
   vec4 x_106 = (x_105 / vec4(2.0f));
   x_10_val = x_106;
-  x_111_phi = false;
+  x_111 = false;
   if (x_100) {
     x_110 = all(equal(x_106, x_89));
-    x_111_phi = x_110;
+    x_111 = x_110;
   }
-  bool x_111 = x_111_phi;
   x_9_ok = x_111;
-  x_115_phi = false;
+  x_115 = false;
   if (x_111) {
     x_114 = test_int_S1_c0_b();
-    x_115_phi = x_114;
+    x_115 = x_114;
   }
-  if (x_115_phi) {
-    vec4 x_122 = x_4.ucolorGreen_S1_c0;
+  if (x_115) {
+    vec4 x_122 = x_4.inner.ucolorGreen_S1_c0;
     x_116 = x_122;
   } else {
-    vec4 x_124 = x_4.ucolorRed_S1_c0;
+    vec4 x_124 = x_4.inner.ucolorRed_S1_c0;
     x_116 = x_124;
   }
   vec4 x_125 = x_116;
@@ -160,8 +164,8 @@ main_out tint_symbol(bool sk_Clockwise_param, vec4 vcolor_S0_param) {
   sk_Clockwise = sk_Clockwise_param;
   vcolor_S0 = vcolor_S0_param;
   main_1();
-  main_out tint_symbol_1 = main_out(sk_FragColor);
-  return tint_symbol_1;
+  main_out tint_symbol_2 = main_out(sk_FragColor);
+  return tint_symbol_2;
 }
 
 void main() {

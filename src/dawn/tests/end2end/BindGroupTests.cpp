@@ -228,8 +228,8 @@ TEST_P(BindGroupTests, ReusedUBO) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(0, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(0, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -304,13 +304,13 @@ TEST_P(BindGroupTests, UBOSamplerAndTexture) {
     wgpu::TextureView textureView = texture.CreateView();
 
     uint32_t width = kRTSize, height = kRTSize;
-    uint32_t widthInBytes = width * sizeof(RGBA8);
+    uint32_t widthInBytes = width * sizeof(utils::RGBA8);
     widthInBytes = (widthInBytes + 255) & ~255;
     uint32_t sizeInBytes = widthInBytes * height;
-    uint32_t size = sizeInBytes / sizeof(RGBA8);
-    std::vector<RGBA8> data = std::vector<RGBA8>(size);
+    uint32_t size = sizeInBytes / sizeof(utils::RGBA8);
+    std::vector<utils::RGBA8> data = std::vector<utils::RGBA8>(size);
     for (uint32_t i = 0; i < size; i++) {
-        data[i] = RGBA8(0, 255, 0, 255);
+        data[i] = utils::RGBA8(0, 255, 0, 255);
     }
     wgpu::Buffer stagingBuffer =
         utils::CreateBufferFromData(device, data.data(), sizeInBytes, wgpu::BufferUsage::CopySrc);
@@ -334,8 +334,8 @@ TEST_P(BindGroupTests, UBOSamplerAndTexture) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(0, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(0, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -422,8 +422,8 @@ TEST_P(BindGroupTests, MultipleBindLayouts) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(255, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -590,8 +590,8 @@ TEST_P(BindGroupTests, DrawTwiceInSamePipelineWithFourBindGroupSets) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(255, 0, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 0, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -632,8 +632,8 @@ TEST_P(BindGroupTests, SetBindGroupBeforePipeline) {
     queue.Submit(1, &commands);
 
     // The result should be red.
-    RGBA8 filled(255, 0, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 0, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -693,8 +693,8 @@ TEST_P(BindGroupTests, SetDynamicBindGroupBeforePipeline) {
     queue.Submit(1, &commands);
 
     // The result should be RGBAunorm(1, 0, 0, 0.5) + RGBAunorm(0, 1, 0, 0.5)
-    RGBA8 filled(255, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -770,8 +770,8 @@ TEST_P(BindGroupTests, BindGroupsPersistAfterPipelineChange) {
     queue.Submit(1, &commands);
 
     // The result should be RGBAunorm(1, 0, 0, 0.5) + RGBAunorm(0, 1, 0, 0.5)
-    RGBA8 filled(255, 255, 0, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 255, 0, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -878,8 +878,8 @@ TEST_P(BindGroupTests, DrawThenChangePipelineAndBindGroup) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(255, 255, 255, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 255, 255, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -980,8 +980,8 @@ TEST_P(BindGroupTests, DrawThenChangePipelineTwiceAndBindGroup) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    RGBA8 filled(255, 255, 255, 255);
-    RGBA8 notFilled(0, 0, 0, 0);
+    utils::RGBA8 filled(255, 255, 255, 255);
+    utils::RGBA8 notFilled(0, 0, 0, 0);
     uint32_t min = 1, max = kRTSize - 3;
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, min, min);
     EXPECT_PIXEL_RGBA8_EQ(filled, renderPass.color, max, min);
@@ -1045,17 +1045,13 @@ TEST_P(BindGroupTests, DynamicOffsetOrder) {
             value : u32
         }
 
-        struct OutputBuffer {
-            value : vec3<u32>
-        }
-
         @group(0) @binding(2) var<uniform> buffer2 : Buffer;
         @group(0) @binding(3) var<storage, read> buffer3 : Buffer;
         @group(0) @binding(0) var<storage, read> buffer0 : Buffer;
-        @group(0) @binding(4) var<storage, read_write> outputBuffer : OutputBuffer;
+        @group(0) @binding(4) var<storage, read_write> outputBuffer : vec3<u32>;
 
         @compute @workgroup_size(1) fn main() {
-            outputBuffer.value = vec3<u32>(buffer0.value, buffer2.value, buffer3.value);
+            outputBuffer = vec3<u32>(buffer0.value, buffer2.value, buffer3.value);
         })");
     pipelineDescriptor.compute.entryPoint = "main";
     pipelineDescriptor.layout = utils::MakeBasicPipelineLayout(device, &bgl);
@@ -1235,6 +1231,9 @@ TEST_P(BindGroupTests, DynamicBindingNoneVisibility) {
 TEST_P(BindGroupTests, ArbitraryBindingNumbers) {
     // TODO(crbug.com/dawn/736): Test output is wrong with D3D12 + WARP.
     DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsWARP());
+    // TODO(crbug.com/dawn/1617): VUID-vkUpdateDescriptorSets-None-03047 on UHD630
+    // driver 31.0.101.2111
+    DAWN_SUPPRESS_TEST_IF(IsWindows() && IsVulkan() && IsIntel());
 
     utils::BasicRenderPass renderPass = utils::CreateBasicRenderPass(device, kRTSize, kRTSize);
 
@@ -1254,7 +1253,7 @@ TEST_P(BindGroupTests, ArbitraryBindingNumbers) {
             color : vec4<f32>
         }
 
-        @group(0) @binding(953) var <uniform> ubo1 : Ubo;
+        @group(0) @binding(553) var <uniform> ubo1 : Ubo;
         @group(0) @binding(47) var <uniform> ubo2 : Ubo;
         @group(0) @binding(111) var <uniform> ubo3 : Ubo;
 
@@ -1278,7 +1277,8 @@ TEST_P(BindGroupTests, ArbitraryBindingNumbers) {
     wgpu::Buffer blue =
         utils::CreateBufferFromData(device, wgpu::BufferUsage::Uniform, {0.0f, 0.0f, 0.251f, 0.0f});
 
-    auto DoTest = [&](wgpu::Buffer color1, wgpu::Buffer color2, wgpu::Buffer color3, RGBA8 filled) {
+    auto DoTest = [&](wgpu::Buffer color1, wgpu::Buffer color2, wgpu::Buffer color3,
+                      utils::RGBA8 filled) {
         auto DoTestInner = [&](wgpu::BindGroup bindGroup) {
             wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
             wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPass.renderPassInfo);
@@ -1294,7 +1294,7 @@ TEST_P(BindGroupTests, ArbitraryBindingNumbers) {
         };
 
         utils::BindingInitializationHelper bindings[] = {
-            {953, color1, 0, 4 * sizeof(float)},  //
+            {553, color1, 0, 4 * sizeof(float)},  //
             {47, color2, 0, 4 * sizeof(float)},   //
             {111, color3, 0, 4 * sizeof(float)},  //
         };
@@ -1309,25 +1309,25 @@ TEST_P(BindGroupTests, ArbitraryBindingNumbers) {
     };
 
     // first color is normal, second is 2x, third is 3x.
-    DoTest(black, black, black, RGBA8(0, 0, 0, 0));
+    DoTest(black, black, black, utils::RGBA8(0, 0, 0, 0));
 
     // Check the first binding maps to the first slot. We know this because the colors are
     // multiplied 1x.
-    DoTest(red, black, black, RGBA8(64, 0, 0, 0));
-    DoTest(green, black, black, RGBA8(0, 64, 0, 0));
-    DoTest(blue, black, black, RGBA8(0, 0, 64, 0));
+    DoTest(red, black, black, utils::RGBA8(64, 0, 0, 0));
+    DoTest(green, black, black, utils::RGBA8(0, 64, 0, 0));
+    DoTest(blue, black, black, utils::RGBA8(0, 0, 64, 0));
 
     // Use multiple bindings and check the second color maps to the second slot.
     // We know this because the second slot is multiplied 2x.
-    DoTest(green, blue, black, RGBA8(0, 64, 128, 0));
-    DoTest(blue, green, black, RGBA8(0, 128, 64, 0));
-    DoTest(red, green, black, RGBA8(64, 128, 0, 0));
+    DoTest(green, blue, black, utils::RGBA8(0, 64, 128, 0));
+    DoTest(blue, green, black, utils::RGBA8(0, 128, 64, 0));
+    DoTest(red, green, black, utils::RGBA8(64, 128, 0, 0));
 
     // Use multiple bindings and check the third color maps to the third slot.
     // We know this because the third slot is multiplied 4x.
-    DoTest(black, blue, red, RGBA8(255, 0, 128, 0));
-    DoTest(blue, black, green, RGBA8(0, 255, 64, 0));
-    DoTest(red, black, blue, RGBA8(64, 0, 255, 0));
+    DoTest(black, blue, red, utils::RGBA8(255, 0, 128, 0));
+    DoTest(blue, black, green, utils::RGBA8(0, 255, 64, 0));
+    DoTest(red, black, blue, utils::RGBA8(64, 0, 255, 0));
 }
 
 // This is a regression test for crbug.com/dawn/355 which tests that destruction of a bind group
@@ -1427,7 +1427,7 @@ TEST_P(BindGroupTests, ReadonlyStorage) {
     wgpu::CommandBuffer commands = encoder.Finish();
     queue.Submit(1, &commands);
 
-    EXPECT_PIXEL_RGBA8_EQ(RGBA8::kGreen, renderPass.color, 0, 0);
+    EXPECT_PIXEL_RGBA8_EQ(utils::RGBA8::kGreen, renderPass.color, 0, 0);
 }
 
 // Test that creating a large bind group, with each binding type at the max count, works and can be

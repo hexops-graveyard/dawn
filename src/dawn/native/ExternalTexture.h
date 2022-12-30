@@ -35,6 +35,7 @@ struct ExternalTextureParams {
     std::array<float, 8> gammaDecodingParams = {};
     std::array<float, 8> gammaEncodingParams = {};
     std::array<float, 12> gamutConversionMatrix = {};
+    std::array<float, 8> coordTransformMatrix = {};
 };
 
 MaybeError ValidateExternalTextureDescriptor(const DeviceBase* device,
@@ -49,6 +50,9 @@ class ExternalTextureBase : public ApiObjectBase {
     BufferBase* GetParamsBuffer() const;
     const std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat>& GetTextureViews() const;
     ObjectType GetType() const override;
+
+    const Extent2D& GetVisibleSize() const;
+    const Origin2D& GetVisibleOrigin() const;
 
     MaybeError ValidateCanUseInSubmitNow() const;
     static ExternalTextureBase* MakeError(DeviceBase* device);
@@ -72,6 +76,11 @@ class ExternalTextureBase : public ApiObjectBase {
     Ref<TextureBase> mPlaceholderTexture;
     Ref<BufferBase> mParamsBuffer;
     std::array<Ref<TextureViewBase>, kMaxPlanesPerFormat> mTextureViews;
+
+    // TODO(dawn:1082) Use the visible size and origin in the external texture shader
+    // code to sample video content.
+    Origin2D mVisibleOrigin;
+    Extent2D mVisibleSize;
 
     ExternalTextureState mState;
 };

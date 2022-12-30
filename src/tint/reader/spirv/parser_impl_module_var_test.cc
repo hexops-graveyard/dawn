@@ -119,7 +119,7 @@ TEST_F(SpvModuleScopeVarParserTest, NoVar) {
     EXPECT_THAT(module_ast, Not(HasSubstr("Variable"))) << module_ast;
 }
 
-TEST_F(SpvModuleScopeVarParserTest, BadStorageClass_NotAWebGPUStorageClass) {
+TEST_F(SpvModuleScopeVarParserTest, BadAddressSpace_NotAWebGPUAddressSpace) {
     auto p = parser(test::Assemble(Preamble() + FragMain() + R"(
     %float = OpTypeFloat 32
     %ptr = OpTypePointer CrossWorkgroup %float
@@ -135,7 +135,7 @@ TEST_F(SpvModuleScopeVarParserTest, BadStorageClass_NotAWebGPUStorageClass) {
     EXPECT_THAT(p->error(), HasSubstr("unknown SPIR-V storage class: 5"));
 }
 
-TEST_F(SpvModuleScopeVarParserTest, BadStorageClass_Function) {
+TEST_F(SpvModuleScopeVarParserTest, BadAddressSpace_Function) {
     auto p = parser(test::Assemble(Preamble() + FragMain() + R"(
     %float = OpTypeFloat 32
     %ptr = OpTypePointer Function %float
@@ -1254,8 +1254,11 @@ TEST_F(SpvModuleScopeVarParserTest, StructMember_NonReadableDecoration_Dropped) 
     EXPECT_THAT(module_str, HasSubstr(R"(type Arr = @stride(4) array<u32, 2u>;
 
 struct S {
+  /* @offset(0) */
   field0 : u32,
+  /* @offset(4) */
   field1 : f32,
+  /* @offset(8) */
   field2 : Arr,
 }
 
@@ -1286,6 +1289,7 @@ TEST_F(SpvModuleScopeVarParserTest, ColMajorDecoration_Dropped) {
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   field0 : mat3x2<f32>,
 }
 
@@ -1301,6 +1305,7 @@ TEST_F(SpvModuleScopeVarParserTest, MatrixStrideDecoration_Natural_Dropped) {
      OpDecorate %s Block
      OpMemberDecorate %s 0 MatrixStride 8
      OpMemberDecorate %s 0 Offset 0
+     OpMemberDecorate %s 0 ColMajor
      %void = OpTypeVoid
      %voidfn = OpTypeFunction %void
      %float = OpTypeFloat 32
@@ -1315,6 +1320,7 @@ TEST_F(SpvModuleScopeVarParserTest, MatrixStrideDecoration_Natural_Dropped) {
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   field0 : mat3x2<f32>,
 }
 
@@ -1330,6 +1336,7 @@ TEST_F(SpvModuleScopeVarParserTest, MatrixStrideDecoration) {
      OpDecorate %s Block
      OpMemberDecorate %s 0 MatrixStride 64
      OpMemberDecorate %s 0 Offset 0
+     OpMemberDecorate %s 0 ColMajor
      %void = OpTypeVoid
      %voidfn = OpTypeFunction %void
      %float = OpTypeFloat 32
@@ -1344,6 +1351,7 @@ TEST_F(SpvModuleScopeVarParserTest, MatrixStrideDecoration) {
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   @stride(64) @internal(disable_validation__ignore_stride)
   field0 : mat3x2<f32>,
 }
@@ -1397,7 +1405,9 @@ TEST_F(SpvModuleScopeVarParserTest, StorageBuffer_NonWritable_AllMembers) {
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   field0 : f32,
+  /* @offset(4) */
   field1 : f32,
 }
 
@@ -1426,7 +1436,9 @@ TEST_F(SpvModuleScopeVarParserTest, StorageBuffer_NonWritable_NotAllMembers) {
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   field0 : f32,
+  /* @offset(4) */
   field1 : f32,
 }
 
@@ -1457,7 +1469,9 @@ TEST_F(SpvModuleScopeVarParserTest,
     EXPECT_TRUE(p->error().empty());
     const auto module_str = test::ToString(p->program());
     EXPECT_THAT(module_str, HasSubstr(R"(struct S {
+  /* @offset(0) */
   field0 : f32,
+  /* @offset(4) */
   field1 : f32,
 }
 
@@ -1794,7 +1808,7 @@ TEST_F(SpvModuleScopeVarParserTest, SampleId_I32_FunctParam) {
     // as a function parameter.
     EXPECT_FALSE(p->Parse());
     EXPECT_FALSE(p->success());
-    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand 1"));
+    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand '1"));
 }
 
 TEST_F(SpvModuleScopeVarParserTest, SampleId_U32_Load_Direct) {
@@ -1904,7 +1918,7 @@ TEST_F(SpvModuleScopeVarParserTest, SampleId_U32_FunctParam) {
     // This example is invalid because you can't pass pointer-to-Input
     // as a function parameter.
     EXPECT_FALSE(p->Parse());
-    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand 1"));
+    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand '1"));
 }
 
 // Returns the start of a shader for testing SampleMask
@@ -2806,7 +2820,7 @@ TEST_F(SpvModuleScopeVarParserTest, VertexIndex_U32_FunctParam) {
     // This example is invalid because you can't pass pointer-to-Input
     // as a function parameter.
     EXPECT_FALSE(p->Parse());
-    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand 1"));
+    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand '1"));
 }
 
 // Returns the start of a shader for testing InstanceIndex,
@@ -2964,7 +2978,7 @@ TEST_F(SpvModuleScopeVarParserTest, InstanceIndex_I32_FunctParam) {
     // This example is invalid because you can't pass pointer-to-Input
     // as a function parameter.
     EXPECT_FALSE(p->Parse());
-    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand 1"));
+    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand '1"));
 }
 
 TEST_F(SpvModuleScopeVarParserTest, InstanceIndex_U32_Load_Direct) {
@@ -3098,12 +3112,20 @@ TEST_F(SpvModuleScopeVarParserTest, InstanceIndex_U32_FunctParam) {
     // This example is invalid because you can't pass pointer-to-Input
     // as a function parameter.
     EXPECT_FALSE(p->Parse());
-    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand 1"));
+    EXPECT_THAT(p->error(), HasSubstr("Invalid storage class for pointer operand '1"));
 }
 
 // Returns the start of a shader for testing LocalInvocationIndex,
 // parameterized by store type of %int or %uint
 std::string ComputeBuiltinInputPreamble(std::string builtin, std::string store_type) {
+    std::string ptr_component_type;
+    if (store_type == "%v3int") {
+        ptr_component_type = " %ptr_comp_ty = OpTypePointer Input %int\n";
+    }
+    if (store_type == "%v3uint") {
+        ptr_component_type = " %ptr_comp_ty = OpTypePointer Input %uint\n";
+    }
+
     return R"(
     OpCapability Shader
     OpMemoryModel Logical Simple
@@ -3116,10 +3138,11 @@ std::string ComputeBuiltinInputPreamble(std::string builtin, std::string store_t
     %float = OpTypeFloat 32
     %uint = OpTypeInt 32 0
     %int = OpTypeInt 32 1
+    %int_1 = OpConstant %int 1
     %v3uint = OpTypeVector %uint 3
     %v3int = OpTypeVector %int 3
     %ptr_ty = OpTypePointer Input )" +
-           store_type + R"(
+           store_type + ptr_component_type + R"(
     %1 = OpVariable %ptr_ty Input
 )";
 }
@@ -3329,14 +3352,84 @@ INSTANTIATE_TEST_SUITE_P(Samples,
                              {"LocalInvocationId", "%v3int", "local_invocation_id"},
                              {"GlobalInvocationId", "%v3uint", "global_invocation_id"},
                              {"GlobalInvocationId", "%v3int", "global_invocation_id"},
+                             {"NumWorkgroups", "%v3uint", "num_workgroups"},
+                             {"NumWorkgroups", "%v3int", "num_workgroups"},
                              {"WorkgroupId", "%v3uint", "workgroup_id"},
                              {"WorkgroupId", "%v3int", "workgroup_id"}}));
 
-// TODO(dneto): crbug.com/tint/752
-// NumWorkgroups support is blocked by crbug.com/tint/752
-// When the AST supports NumWorkgroups, add these cases:
-//        {"NumWorkgroups", "%uint", "num_workgroups"}
-//        {"NumWorkgroups", "%int", "num_workgroups"}
+// For compute shader builtins that are vectors, test loading one component.
+struct ComputeBuiltinInputVectorCase {
+    std::string spirv_builtin;
+    std::string spirv_store_type;
+    std::string spirv_component_store_type;
+    std::string wgsl_builtin;
+};
+inline std::ostream& operator<<(std::ostream& o, ComputeBuiltinInputVectorCase c) {
+    return o << "ComputeBuiltinInputVectorCase(" << c.spirv_builtin << " " << c.spirv_store_type
+             << " " << c.spirv_component_store_type << " " << c.wgsl_builtin << ")";
+}
+
+using SpvModuleScopeVarParserTest_ComputeBuiltinVector =
+    SpvParserTestBase<::testing::TestWithParam<ComputeBuiltinInputVectorCase>>;
+
+TEST_P(SpvModuleScopeVarParserTest_ComputeBuiltinVector, Load_Component_Direct) {
+    const auto wgsl_type = WgslType(GetParam().spirv_store_type);
+    const auto wgsl_component_type = WgslType(GetParam().spirv_component_store_type);
+    const auto wgsl_builtin = GetParam().wgsl_builtin;
+    const auto unsigned_wgsl_type = UnsignedWgslType(wgsl_type);
+    const auto signed_wgsl_type = SignedWgslType(wgsl_type);
+    const std::string assembly =
+        ComputeBuiltinInputPreamble(GetParam().spirv_builtin, GetParam().spirv_store_type) +
+        R"(
+    %main = OpFunction %void None %voidfn
+    %entry = OpLabel
+    %3 = OpAccessChain %ptr_comp_ty %1 %int_1
+    %2 = OpLoad )" +
+        GetParam().spirv_component_store_type + R"( %3
+    OpReturn
+    OpFunctionEnd
+ )";
+    auto p = parser(test::Assemble(assembly));
+    ASSERT_TRUE(p->BuildAndParseInternalModule()) << p->error() << assembly;
+    EXPECT_TRUE(p->error().empty());
+    const auto module_str = test::ToString(p->program());
+    std::string expected = R"(var<private> x_1 : ${wgsl_type};
+
+fn main_1() {
+  let x_2 : ${wgsl_component_type} = x_1.y;
+  return;
+}
+
+@compute @workgroup_size(1i, 1i, 1i)
+fn main(@builtin(${wgsl_builtin}) x_1_param : ${unsigned_wgsl_type}) {
+  x_1 = ${assignment_value};
+  main_1();
+}
+)";
+
+    expected = utils::ReplaceAll(expected, "${wgsl_type}", wgsl_type);
+    expected = utils::ReplaceAll(expected, "${wgsl_component_type}", wgsl_component_type);
+    expected = utils::ReplaceAll(expected, "${unsigned_wgsl_type}", unsigned_wgsl_type);
+    expected = utils::ReplaceAll(expected, "${wgsl_builtin}", wgsl_builtin);
+    expected = utils::ReplaceAll(expected, "${assignment_value}",
+                                 (wgsl_type == unsigned_wgsl_type)
+                                     ? "x_1_param"
+                                     : "bitcast<" + signed_wgsl_type + ">(x_1_param)");
+
+    EXPECT_EQ(module_str, expected) << module_str;
+}
+
+INSTANTIATE_TEST_SUITE_P(Samples,
+                         SpvModuleScopeVarParserTest_ComputeBuiltinVector,
+                         ::testing::ValuesIn(std::vector<ComputeBuiltinInputVectorCase>{
+                             {"LocalInvocationId", "%v3uint", "%uint", "local_invocation_id"},
+                             {"LocalInvocationId", "%v3int", "%int", "local_invocation_id"},
+                             {"GlobalInvocationId", "%v3uint", "%uint", "global_invocation_id"},
+                             {"GlobalInvocationId", "%v3int", "%int", "global_invocation_id"},
+                             {"NumWorkgroups", "%v3uint", "%uint", "num_workgroups"},
+                             {"NumWorkgroups", "%v3int", "%int", "num_workgroups"},
+                             {"WorkgroupId", "%v3uint", "%uint", "workgroup_id"},
+                             {"WorkgroupId", "%v3int", "%int", "workgroup_id"}}));
 
 TEST_F(SpvModuleScopeVarParserTest, RegisterInputOutputVars) {
     const std::string assembly =
@@ -3428,13 +3521,13 @@ TEST_F(SpvModuleScopeVarParserTest, RegisterInputOutputVars) {
 
     const auto& info_1000 = p->GetEntryPointInfo(1000);
     EXPECT_EQ(1u, info_1000.size());
-    EXPECT_TRUE(info_1000[0].inputs.empty());
-    EXPECT_TRUE(info_1000[0].outputs.empty());
+    EXPECT_TRUE(info_1000[0].inputs.IsEmpty());
+    EXPECT_TRUE(info_1000[0].outputs.IsEmpty());
 
     const auto& info_1100 = p->GetEntryPointInfo(1100);
     EXPECT_EQ(1u, info_1100.size());
     EXPECT_THAT(info_1100[0].inputs, ElementsAre(1));
-    EXPECT_TRUE(info_1100[0].outputs.empty());
+    EXPECT_TRUE(info_1100[0].outputs.IsEmpty());
 
     const auto& info_1200 = p->GetEntryPointInfo(1200);
     EXPECT_EQ(1u, info_1200.size());

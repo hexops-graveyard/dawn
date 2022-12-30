@@ -8,10 +8,16 @@ struct S {
   mat2 m;
 };
 
-layout(binding = 0, std430) buffer S_1 {
-  mat2 m;
+struct S_std140 {
+  vec2 m_0;
+  vec2 m_1;
+};
+
+layout(binding = 0, std430) buffer SSBO_block_ssbo {
+  S inner;
 } SSBO;
-layout(binding = 0) uniform S_2 {
-  mat2 m;
+
+layout(binding = 0, std140) uniform SSBO_block_std140_ubo {
+  S_std140 inner;
 } UBO;
 

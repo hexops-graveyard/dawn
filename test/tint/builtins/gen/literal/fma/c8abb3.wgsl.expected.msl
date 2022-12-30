@@ -2,7 +2,7 @@
 
 using namespace metal;
 void fma_c8abb3() {
-  half res = fma(0.0h, 0.0h, 0.0h);
+  half res = 2.0h;
 }
 
 struct tint_symbol {

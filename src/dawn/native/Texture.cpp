@@ -54,7 +54,7 @@ MaybeError ValidateCanViewTextureAs(const DeviceBase* device,
         if (viewFormat.format == aspectFormat) {
             return {};
         } else {
-            return DAWN_FORMAT_VALIDATION_ERROR(
+            return DAWN_VALIDATION_ERROR(
                 "The view format (%s) is not compatible with %s of %s (%s).", viewFormat.format,
                 aspect, format.format, aspectFormat);
         }
@@ -78,7 +78,7 @@ MaybeError ValidateCanViewTextureAs(const DeviceBase* device,
         // The view format isn't compatible with the format at all. Return an error
         // that indicates this, in addition to reporting that it's missing from the
         // list.
-        return DAWN_FORMAT_VALIDATION_ERROR(
+        return DAWN_VALIDATION_ERROR(
             "The texture view format (%s) is not compatible with the "
             "texture format (%s)."
             "The formats must be compatible, and the view format "
@@ -86,7 +86,7 @@ MaybeError ValidateCanViewTextureAs(const DeviceBase* device,
             viewFormat.format, format.format);
     } else {
         // The view format is compatible, but not in the list.
-        return DAWN_FORMAT_VALIDATION_ERROR(
+        return DAWN_VALIDATION_ERROR(
             "%s was not created with the texture view format (%s) "
             "in the list of compatible view formats.",
             texture, viewFormat.format);
@@ -339,7 +339,7 @@ MaybeError ValidateTextureDescriptor(const DeviceBase* device,
     FindInChain(descriptor->nextInChain, &internalUsageDesc);
 
     DAWN_INVALID_IF(
-        internalUsageDesc != nullptr && !device->IsFeatureEnabled(Feature::DawnInternalUsages),
+        internalUsageDesc != nullptr && !device->HasFeature(Feature::DawnInternalUsages),
         "The internalUsageDesc is not empty while the dawn-internal-usages feature is not enabled");
 
     const Format* format;
@@ -552,7 +552,17 @@ TextureBase::TextureBase(DeviceBase* device,
     if (internalUsageDesc != nullptr) {
         mInternalUsage |= internalUsageDesc->internalUsage;
     }
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
+
+    // dawn:1569: If a texture with multiple array layers or mip levels is specified as a texture
+    // attachment when this toggle is active, it needs to be given CopyDst usage internally.
+    bool applyAlwaysResolveIntoZeroLevelAndLayerToggle =
+        device->IsToggleEnabled(Toggle::AlwaysResolveIntoZeroLevelAndLayer) &&
+        (GetArrayLayers() > 1 || GetNumMipLevels() > 1) &&
+        (GetInternalUsage() & wgpu::TextureUsage::RenderAttachment);
+    if (applyAlwaysResolveIntoZeroLevelAndLayerToggle) {
+        AddInternalUsage(wgpu::TextureUsage::CopyDst);
+    }
 }
 
 TextureBase::~TextureBase() = default;
@@ -561,7 +571,7 @@ static constexpr Format kUnusedFormat;
 
 TextureBase::TextureBase(DeviceBase* device, TextureState state)
     : ApiObjectBase(device, kLabelNotImplemented), mFormat(kUnusedFormat), mState(state) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 TextureBase::TextureBase(DeviceBase* device,
@@ -578,6 +588,9 @@ TextureBase::TextureBase(DeviceBase* device,
 
 void TextureBase::DestroyImpl() {
     mState = TextureState::Destroyed;
+
+    // Destroy all of the views associated with the texture as well.
+    mTextureViews.Destroy();
 }
 
 // static
@@ -766,6 +779,10 @@ ResultOrError<Ref<TextureViewBase>> TextureBase::CreateView(
     return GetDevice()->CreateTextureView(this, descriptor);
 }
 
+ApiObjectList* TextureBase::GetViewTrackingList() {
+    return &mTextureViews;
+}
+
 TextureViewBase* TextureBase::APICreateView(const TextureViewDescriptor* descriptor) {
     DeviceBase* device = GetDevice();
 
@@ -831,14 +848,14 @@ TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDescript
       mRange({ConvertViewAspect(mFormat, descriptor->aspect),
               {descriptor->baseArrayLayer, descriptor->arrayLayerCount},
               {descriptor->baseMipLevel, descriptor->mipLevelCount}}) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 TextureViewBase::TextureViewBase(TextureBase* texture)
     : ApiObjectBase(texture->GetDevice(), kLabelNotImplemented),
       mTexture(texture),
       mFormat(kUnusedFormat) {
-    TrackInDevice();
+    GetObjectTrackingList()->Track(this);
 }
 
 TextureViewBase::TextureViewBase(DeviceBase* device, ObjectBase::ErrorTag tag)
@@ -905,6 +922,11 @@ uint32_t TextureViewBase::GetLayerCount() const {
 const SubresourceRange& TextureViewBase::GetSubresourceRange() const {
     ASSERT(!IsError());
     return mRange;
+}
+
+ApiObjectList* TextureViewBase::GetObjectTrackingList() {
+    ASSERT(!IsError());
+    return mTexture->GetViewTrackingList();
 }
 
 }  // namespace dawn::native

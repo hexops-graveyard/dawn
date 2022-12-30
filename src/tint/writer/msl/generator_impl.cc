@@ -25,65 +25,68 @@
 #include "src/tint/ast/bool_literal_expression.h"
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/ast/disable_validation_attribute.h"
-#include "src/tint/ast/fallthrough_statement.h"
 #include "src/tint/ast/float_literal_expression.h"
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/interpolate_attribute.h"
 #include "src/tint/ast/module.h"
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/ast/void.h"
-#include "src/tint/sem/array.h"
-#include "src/tint/sem/atomic.h"
-#include "src/tint/sem/bool.h"
+#include "src/tint/constant/value.h"
 #include "src/tint/sem/call.h"
-#include "src/tint/sem/constant.h"
-#include "src/tint/sem/depth_multisampled_texture.h"
-#include "src/tint/sem/depth_texture.h"
-#include "src/tint/sem/f16.h"
-#include "src/tint/sem/f32.h"
 #include "src/tint/sem/function.h"
-#include "src/tint/sem/i32.h"
-#include "src/tint/sem/matrix.h"
 #include "src/tint/sem/member_accessor_expression.h"
 #include "src/tint/sem/module.h"
-#include "src/tint/sem/multisampled_texture.h"
-#include "src/tint/sem/pointer.h"
-#include "src/tint/sem/reference.h"
-#include "src/tint/sem/sampled_texture.h"
-#include "src/tint/sem/storage_texture.h"
 #include "src/tint/sem/struct.h"
-#include "src/tint/sem/type_constructor.h"
+#include "src/tint/sem/switch_statement.h"
 #include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/u32.h"
+#include "src/tint/sem/type_initializer.h"
 #include "src/tint/sem/variable.h"
-#include "src/tint/sem/vector.h"
-#include "src/tint/sem/void.h"
 #include "src/tint/transform/array_length_from_uniform.h"
 #include "src/tint/transform/builtin_polyfill.h"
 #include "src/tint/transform/canonicalize_entry_point_io.h"
+#include "src/tint/transform/demote_to_helper.h"
 #include "src/tint/transform/disable_uniformity_analysis.h"
 #include "src/tint/transform/expand_compound_assignment.h"
 #include "src/tint/transform/manager.h"
 #include "src/tint/transform/module_scope_var_to_entry_point_param.h"
+#include "src/tint/transform/packed_vec3.h"
+#include "src/tint/transform/preserve_padding.h"
 #include "src/tint/transform/promote_initializers_to_let.h"
 #include "src/tint/transform/promote_side_effects_to_decl.h"
 #include "src/tint/transform/remove_phonies.h"
 #include "src/tint/transform/simplify_pointers.h"
 #include "src/tint/transform/unshadow.h"
-#include "src/tint/transform/unwind_discard_functions.h"
-#include "src/tint/transform/vectorize_scalar_matrix_constructors.h"
+#include "src/tint/transform/vectorize_scalar_matrix_initializers.h"
 #include "src/tint/transform/zero_init_workgroup_memory.h"
+#include "src/tint/type/array.h"
+#include "src/tint/type/atomic.h"
+#include "src/tint/type/bool.h"
+#include "src/tint/type/depth_multisampled_texture.h"
+#include "src/tint/type/depth_texture.h"
+#include "src/tint/type/f16.h"
+#include "src/tint/type/f32.h"
+#include "src/tint/type/i32.h"
+#include "src/tint/type/matrix.h"
+#include "src/tint/type/multisampled_texture.h"
+#include "src/tint/type/pointer.h"
+#include "src/tint/type/reference.h"
+#include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/storage_texture.h"
+#include "src/tint/type/u32.h"
+#include "src/tint/type/vector.h"
+#include "src/tint/type/void.h"
 #include "src/tint/utils/defer.h"
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/scoped_assignment.h"
+#include "src/tint/writer/check_supported_extensions.h"
 #include "src/tint/writer/float_to_string.h"
 #include "src/tint/writer/generate_external_texture_bindings.h"
 
 namespace tint::writer::msl {
 namespace {
 
-bool last_is_break_or_fallthrough(const ast::BlockStatement* stmts) {
-    return IsAnyOf<ast::BreakStatement, ast::FallthroughStatement>(stmts->Last());
+bool last_is_break(const ast::BlockStatement* stmts) {
+    return IsAnyOf<ast::BreakStatement>(stmts->Last());
 }
 
 void PrintF32(std::ostream& out, float value) {
@@ -129,10 +132,10 @@ class ScopedBitCast {
   public:
     ScopedBitCast(GeneratorImpl* generator,
                   std::ostream& stream,
-                  const sem::Type* curr_type,
-                  const sem::Type* target_type)
+                  const type::Type* curr_type,
+                  const type::Type* target_type)
         : s(stream) {
-        auto* target_vec_type = target_type->As<sem::Vector>();
+        auto* target_vec_type = target_type->As<type::Vector>();
 
         // If we need to promote from scalar to vector, bitcast the scalar to the
         // vector element type.
@@ -164,14 +167,22 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
 
     manager.Add<transform::DisableUniformityAnalysis>();
 
+    // ExpandCompoundAssignment must come before BuiltinPolyfill
+    manager.Add<transform::ExpandCompoundAssignment>();
+
     {  // Builtin polyfills
         transform::BuiltinPolyfill::Builtins polyfills;
         polyfills.acosh = transform::BuiltinPolyfill::Level::kRangeCheck;
         polyfills.atanh = transform::BuiltinPolyfill::Level::kRangeCheck;
+        polyfills.bitshift_modulo = true;  // crbug.com/tint/1543
+        polyfills.clamp_int = true;
         polyfills.extract_bits = transform::BuiltinPolyfill::Level::kClampParameters;
         polyfills.first_leading_bit = true;
         polyfills.first_trailing_bit = true;
         polyfills.insert_bits = transform::BuiltinPolyfill::Level::kClampParameters;
+        polyfills.int_div_mod = true;
+        polyfills.sign_int = true;
+        polyfills.texture_sample_base_clamp_to_edge_2d_f32 = true;
         data.Add<transform::BuiltinPolyfill::Config>(polyfills);
         manager.Add<transform::BuiltinPolyfill>();
     }
@@ -192,7 +203,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         // Use the SSBO binding numbers as the indices for the buffer size lookups.
         for (auto* var : in->AST().GlobalVariables()) {
             auto* global = in->Sem().Get<sem::GlobalVariable>(var);
-            if (global && global->StorageClass() == ast::StorageClass::kStorage) {
+            if (global && global->AddressSpace() == ast::AddressSpace::kStorage) {
                 array_length_from_uniform_cfg.bindpoint_to_size_index.emplace(
                     global->BindingPoint(), global->BindingPoint().binding);
             }
@@ -210,6 +221,8 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     }
     manager.Add<transform::MultiplanarExternalTexture>();
 
+    manager.Add<transform::PreservePadding>();
+
     manager.Add<transform::Unshadow>();
 
     if (!options.disable_workgroup_init) {
@@ -218,18 +231,21 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         manager.Add<transform::ZeroInitWorkgroupMemory>();
     }
     manager.Add<transform::CanonicalizeEntryPointIO>();
-    manager.Add<transform::ExpandCompoundAssignment>();
     manager.Add<transform::PromoteSideEffectsToDecl>();
-    manager.Add<transform::UnwindDiscardFunctions>();
     manager.Add<transform::PromoteInitializersToLet>();
 
-    manager.Add<transform::VectorizeScalarMatrixConstructors>();
+    // DemoteToHelper must come after PromoteSideEffectsToDecl and ExpandCompoundAssignment.
+    // TODO(crbug.com/tint/1752): This is only necessary for Metal versions older than 2.3.
+    manager.Add<transform::DemoteToHelper>();
+
+    manager.Add<transform::VectorizeScalarMatrixInitializers>();
     manager.Add<transform::RemovePhonies>();
     manager.Add<transform::SimplifyPointers>();
     // ArrayLengthFromUniform must come after SimplifyPointers, as
     // it assumes that the form of the array length argument is &var.array.
     manager.Add<transform::ArrayLengthFromUniform>();
     manager.Add<transform::ModuleScopeVarToEntryPointParam>();
+    manager.Add<transform::PackedVec3>();
     data.Add<transform::ArrayLengthFromUniform::Config>(std::move(array_length_from_uniform_cfg));
     data.Add<transform::CanonicalizeEntryPointIO::Config>(std::move(entry_point_io_cfg));
     auto out = manager.Run(in, data);
@@ -251,6 +267,16 @@ GeneratorImpl::GeneratorImpl(const Program* program) : TextGenerator(program) {}
 GeneratorImpl::~GeneratorImpl() = default;
 
 bool GeneratorImpl::Generate() {
+    if (!CheckSupportedExtensions("MSL", program_->AST(), diagnostics_,
+                                  utils::Vector{
+                                      ast::Extension::kChromiumDisableUniformityAnalysis,
+                                      ast::Extension::kChromiumExperimentalFullPtrParameters,
+                                      ast::Extension::kChromiumExperimentalPushConstant,
+                                      ast::Extension::kF16,
+                                  })) {
+        return false;
+    }
+
     line() << "#include <metal_stdlib>";
     line();
     line() << "using namespace metal;";
@@ -271,9 +297,12 @@ bool GeneratorImpl::Generate() {
             [&](const ast::Const*) {
                 return true;  // Constants are embedded at their use
             },
-            [&](const ast::Override* override) {
-                TINT_DEFER(line());
-                return EmitOverride(override);
+            [&](const ast::Override*) {
+                // Override is removed with SubstituteOverride
+                diagnostics_.add_error(diag::System::Writer,
+                                       "override-expressions should have been removed with the "
+                                       "SubstituteOverride transform.");
+                return false;
             },
             [&](const ast::Function* func) {
                 TINT_DEFER(line());
@@ -319,7 +348,7 @@ bool GeneratorImpl::Generate() {
     return true;
 }
 
-bool GeneratorImpl::EmitTypeDecl(const sem::Type* ty) {
+bool GeneratorImpl::EmitTypeDecl(const type::Type* ty) {
     if (auto* str = ty->As<sem::Struct>()) {
         if (!EmitStructType(current_buffer_, str)) {
             return false;
@@ -463,20 +492,20 @@ bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* e
         return true;
     };
 
-    auto signed_type_of = [&](const sem::Type* ty) -> const sem::Type* {
+    auto signed_type_of = [&](const type::Type* ty) -> const type::Type* {
         if (ty->is_integer_scalar()) {
-            return builder_.create<sem::I32>();
-        } else if (auto* v = ty->As<sem::Vector>()) {
-            return builder_.create<sem::Vector>(builder_.create<sem::I32>(), v->Width());
+            return builder_.create<type::I32>();
+        } else if (auto* v = ty->As<type::Vector>()) {
+            return builder_.create<type::Vector>(builder_.create<type::I32>(), v->Width());
         }
         return {};
     };
 
-    auto unsigned_type_of = [&](const sem::Type* ty) -> const sem::Type* {
+    auto unsigned_type_of = [&](const type::Type* ty) -> const type::Type* {
         if (ty->is_integer_scalar()) {
-            return builder_.create<sem::U32>();
-        } else if (auto* v = ty->As<sem::Vector>()) {
-            return builder_.create<sem::Vector>(builder_.create<sem::U32>(), v->Width());
+            return builder_.create<type::U32>();
+        } else if (auto* v = ty->As<type::Vector>()) {
+            return builder_.create<type::Vector>(builder_.create<type::U32>(), v->Width());
         }
         return {};
     };
@@ -500,12 +529,13 @@ bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* e
 
     // Handle +/-/* of signed values
     if ((expr->IsAdd() || expr->IsSubtract() || expr->IsMultiply()) &&
-        lhs_type->is_signed_scalar_or_vector() && rhs_type->is_signed_scalar_or_vector()) {
+        lhs_type->is_signed_integer_scalar_or_vector() &&
+        rhs_type->is_signed_integer_scalar_or_vector()) {
         // If lhs or rhs is a vector, use that type (support implicit scalar to
         // vector promotion)
-        auto* target_type = lhs_type->Is<sem::Vector>()
+        auto* target_type = lhs_type->Is<type::Vector>()
                                 ? lhs_type
-                                : (rhs_type->Is<sem::Vector>() ? rhs_type : lhs_type);
+                                : (rhs_type->Is<type::Vector>() ? rhs_type : lhs_type);
 
         // WGSL defines behaviour for signed overflow, MSL does not. For these
         // cases, bitcast operands to unsigned, then cast result to signed.
@@ -533,7 +563,7 @@ bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* e
     // TODO(crbug.com/tint/1077): This may not be necessary. The MSL spec
     // seems to imply that left shifting a signed value is treated the same as
     // left shifting an unsigned value, but we need to make sure.
-    if (expr->IsShiftLeft() && lhs_type->is_signed_scalar_or_vector()) {
+    if (expr->IsShiftLeft() && lhs_type->is_signed_integer_scalar_or_vector()) {
         // Shift left: discards top bits, so convert first operand to unsigned
         // first, then convert result back to signed
         ScopedBitCast outer_int_cast(this, out, lhs_type, signed_type_of(lhs_type));
@@ -554,7 +584,7 @@ bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* e
     }
 
     // Handle '&' and '|' of booleans.
-    if ((expr->IsAnd() || expr->IsOr()) && lhs_type->Is<sem::Bool>()) {
+    if ((expr->IsAnd() || expr->IsOr()) && lhs_type->Is<type::Bool>()) {
         out << "bool";
         ScopedParen sp(out);
         if (!EmitExpression(out, expr->lhs)) {
@@ -589,6 +619,16 @@ bool GeneratorImpl::EmitBreak(const ast::BreakStatement*) {
     return true;
 }
 
+bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
+    auto out = line();
+    out << "if (";
+    if (!EmitExpression(out, b->condition)) {
+        return false;
+    }
+    out << ") { break; }";
+    return true;
+}
+
 bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr) {
     auto* call = program_->Sem().Get<sem::Call>(expr);
     auto* target = call->Target();
@@ -596,7 +636,7 @@ bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr)
         target, [&](const sem::Function* func) { return EmitFunctionCall(out, call, func); },
         [&](const sem::Builtin* builtin) { return EmitBuiltinCall(out, call, builtin); },
         [&](const sem::TypeConversion* conv) { return EmitTypeConversion(out, call, conv); },
-        [&](const sem::TypeConstructor* ctor) { return EmitTypeConstructor(out, call, ctor); },
+        [&](const sem::TypeInitializer* ctor) { return EmitTypeInitializer(out, call, ctor); },
         [&](Default) {
             TINT_ICE(Writer, diagnostics_) << "unhandled call target: " << target->TypeInfo().name;
             return false;
@@ -650,13 +690,25 @@ bool GeneratorImpl::EmitBuiltinCall(std::ostream& out,
         case sem::BuiltinType::kRadians:
             return EmitRadiansCall(out, expr, builtin);
 
-        case sem::BuiltinType::kPack2x16float:
-        case sem::BuiltinType::kUnpack2x16float: {
-            if (builtin->Type() == sem::BuiltinType::kPack2x16float) {
+        case sem::BuiltinType::kPack2X16Float:
+        case sem::BuiltinType::kUnpack2X16Float: {
+            if (builtin->Type() == sem::BuiltinType::kPack2X16Float) {
                 out << "as_type<uint>(half2(";
             } else {
                 out << "float2(as_type<half2>(";
             }
+            if (!EmitExpression(out, expr->args[0])) {
+                return false;
+            }
+            out << "))";
+            return true;
+        }
+        case sem::BuiltinType::kQuantizeToF16: {
+            std::string width = "";
+            if (auto* vec = builtin->ReturnType()->As<type::Vector>()) {
+                width = std::to_string(vec->Width());
+            }
+            out << "float" << width << "(half" << width << "(";
             if (!EmitExpression(out, expr->args[0])) {
                 return false;
             }
@@ -743,9 +795,9 @@ bool GeneratorImpl::EmitTypeConversion(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeConstructor(std::ostream& out,
+bool GeneratorImpl::EmitTypeInitializer(std::ostream& out,
                                         const sem::Call* call,
-                                        const sem::TypeConstructor* ctor) {
+                                        const sem::TypeInitializer* ctor) {
     auto* type = ctor->ReturnType();
 
     const char* terminator = ")";
@@ -753,7 +805,7 @@ bool GeneratorImpl::EmitTypeConstructor(std::ostream& out,
 
     bool ok = Switch(
         type,
-        [&](const sem::Array*) {
+        [&](const type::Array*) {
             if (!EmitType(out, type, "")) {
                 return false;
             }
@@ -855,15 +907,13 @@ bool GeneratorImpl::EmitAtomicCall(std::ostream& out,
             return call("atomic_exchange_explicit", true);
 
         case sem::BuiltinType::kAtomicCompareExchangeWeak: {
-            auto* ptr_ty = TypeOf(expr->args[0])->UnwrapRef()->As<sem::Pointer>();
-            auto sc = ptr_ty->StorageClass();
+            auto* ptr_ty = TypeOf(expr->args[0])->UnwrapRef()->As<type::Pointer>();
+            auto sc = ptr_ty->AddressSpace();
             auto* str = builtin->ReturnType()->As<sem::Struct>();
 
             auto func = utils::GetOrCreate(
                 atomicCompareExchangeWeak_, ACEWKeyType{{sc, str}}, [&]() -> std::string {
-                    // Emit the builtin return type unique to this overload. This does not
-                    // exist in the AST, so it will not be generated in Generate().
-                    if (!EmitStructTypeOnce(&helpers_, builtin->ReturnType()->As<sem::Struct>())) {
+                    if (!EmitStructType(&helpers_, builtin->ReturnType()->As<sem::Struct>())) {
                         return "";
                     }
 
@@ -947,7 +997,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
         return false;
     }
 
-    auto* texture_type = TypeOf(texture)->UnwrapRef()->As<sem::Texture>();
+    auto* texture_type = TypeOf(texture)->UnwrapRef()->As<type::Texture>();
 
     // Helper to emit the texture expression, wrapped in parentheses if the
     // expression includes an operator with lower precedence than the member
@@ -1011,9 +1061,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
             };
 
             if (dims.size() == 1) {
-                out << "int(";
                 get_dim(dims[0]);
-                out << ")";
             } else {
                 EmitType(out, TypeOf(expr)->UnwrapRef(), "");
                 out << "(";
@@ -1028,27 +1076,24 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
             return true;
         }
         case sem::BuiltinType::kTextureNumLayers: {
-            out << "int(";
             if (!texture_expr()) {
                 return false;
             }
-            out << ".get_array_size())";
+            out << ".get_array_size()";
             return true;
         }
         case sem::BuiltinType::kTextureNumLevels: {
-            out << "int(";
             if (!texture_expr()) {
                 return false;
             }
-            out << ".get_num_mip_levels())";
+            out << ".get_num_mip_levels()";
             return true;
         }
         case sem::BuiltinType::kTextureNumSamples: {
-            out << "int(";
             if (!texture_expr()) {
                 return false;
             }
-            out << ".get_num_samples())";
+            out << ".get_num_samples()";
             return true;
         }
         default:
@@ -1219,7 +1264,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
                     break;  // Other texture dimensions don't have an offset
             }
         }
-        auto c = component->ConstantValue()->As<AInt>();
+        auto c = component->ConstantValue()->ValueAs<AInt>();
         switch (c.value) {
             case 0:
                 out << "component::x";
@@ -1247,7 +1292,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
 bool GeneratorImpl::EmitDotCall(std::ostream& out,
                                 const ast::CallExpression* expr,
                                 const sem::Builtin* builtin) {
-    auto* vec_ty = builtin->Parameters()[0]->Type()->As<sem::Vector>();
+    auto* vec_ty = builtin->Parameters()[0]->Type()->As<type::Vector>();
     std::string fn = "dot";
     if (vec_ty->type()->is_integer_scalar()) {
         // MSL does not have a builtin for dot() with integer vector types.
@@ -1298,7 +1343,7 @@ bool GeneratorImpl::EmitModfCall(std::ostream& out,
             auto in = params[0];
 
             std::string width;
-            if (auto* vec = ty->As<sem::Vector>()) {
+            if (auto* vec = ty->As<type::Vector>()) {
                 width = std::to_string(vec->Width());
             }
 
@@ -1324,7 +1369,7 @@ bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
             auto in = params[0];
 
             std::string width;
-            if (auto* vec = ty->As<sem::Vector>()) {
+            if (auto* vec = ty->As<type::Vector>()) {
                 width = std::to_string(vec->Width());
             }
 
@@ -1335,7 +1380,7 @@ bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
             }
 
             line(b) << StructName(builtin->ReturnType()->As<sem::Struct>()) << " result;";
-            line(b) << "result.sig = frexp(" << in << ", result.exp);";
+            line(b) << "result.fract = frexp(" << in << ", result.exp);";
             line(b) << "return result;";
             return true;
         });
@@ -1398,6 +1443,7 @@ std::string GeneratorImpl::generate_builtin_name(const sem::Builtin* builtin) {
         case sem::BuiltinType::kPow:
         case sem::BuiltinType::kReflect:
         case sem::BuiltinType::kRefract:
+        case sem::BuiltinType::kSaturate:
         case sem::BuiltinType::kSelect:
         case sem::BuiltinType::kSin:
         case sem::BuiltinType::kSinh:
@@ -1465,16 +1511,16 @@ std::string GeneratorImpl::generate_builtin_name(const sem::Builtin* builtin) {
         case sem::BuiltinType::kFaceForward:
             out += "faceforward";
             break;
-        case sem::BuiltinType::kPack4x8snorm:
+        case sem::BuiltinType::kPack4X8Snorm:
             out += "pack_float_to_snorm4x8";
             break;
-        case sem::BuiltinType::kPack4x8unorm:
+        case sem::BuiltinType::kPack4X8Unorm:
             out += "pack_float_to_unorm4x8";
             break;
-        case sem::BuiltinType::kPack2x16snorm:
+        case sem::BuiltinType::kPack2X16Snorm:
             out += "pack_float_to_snorm2x16";
             break;
-        case sem::BuiltinType::kPack2x16unorm:
+        case sem::BuiltinType::kPack2X16Unorm:
             out += "pack_float_to_unorm2x16";
             break;
         case sem::BuiltinType::kReverseBits:
@@ -1489,16 +1535,16 @@ std::string GeneratorImpl::generate_builtin_name(const sem::Builtin* builtin) {
         case sem::BuiltinType::kInverseSqrt:
             out += "rsqrt";
             break;
-        case sem::BuiltinType::kUnpack4x8snorm:
+        case sem::BuiltinType::kUnpack4X8Snorm:
             out += "unpack_snorm4x8_to_float";
             break;
-        case sem::BuiltinType::kUnpack4x8unorm:
+        case sem::BuiltinType::kUnpack4X8Unorm:
             out += "unpack_unorm4x8_to_float";
             break;
-        case sem::BuiltinType::kUnpack2x16snorm:
+        case sem::BuiltinType::kUnpack2X16Snorm:
             out += "unpack_snorm2x16_to_float";
             break;
-        case sem::BuiltinType::kUnpack2x16unorm:
+        case sem::BuiltinType::kUnpack2X16Unorm:
             out += "unpack_unorm2x16_to_float";
             break;
         case sem::BuiltinType::kArrayLength:
@@ -1517,19 +1563,21 @@ std::string GeneratorImpl::generate_builtin_name(const sem::Builtin* builtin) {
 }
 
 bool GeneratorImpl::EmitCase(const ast::CaseStatement* stmt) {
-    if (stmt->IsDefault()) {
-        line() << "default: {";
-    } else {
-        for (auto* selector : stmt->selectors) {
-            auto out = line();
+    auto* sem = builder_.Sem().Get<sem::CaseStatement>(stmt);
+    for (auto* selector : sem->Selectors()) {
+        auto out = line();
+
+        if (selector->IsDefault()) {
+            out << "default";
+        } else {
             out << "case ";
-            if (!EmitLiteral(out, selector)) {
+            if (!EmitConstant(out, selector->Value())) {
                 return false;
             }
-            out << ":";
-            if (selector == stmt->selectors.Back()) {
-                out << " {";
-            }
+        }
+        out << ":";
+        if (selector == sem->Selectors().back()) {
+            out << " {";
         }
     }
 
@@ -1542,7 +1590,7 @@ bool GeneratorImpl::EmitCase(const ast::CaseStatement* stmt) {
             }
         }
 
-        if (!last_is_break_or_fallthrough(stmt->body)) {
+        if (!last_is_break(stmt->body)) {
             line() << "break;";
         }
     }
@@ -1561,40 +1609,40 @@ bool GeneratorImpl::EmitContinue(const ast::ContinueStatement*) {
     return true;
 }
 
-bool GeneratorImpl::EmitZeroValue(std::ostream& out, const sem::Type* type) {
+bool GeneratorImpl::EmitZeroValue(std::ostream& out, const type::Type* type) {
     return Switch(
         type,
-        [&](const sem::Bool*) {
+        [&](const type::Bool*) {
             out << "false";
             return true;
         },
-        [&](const sem::F16*) {
+        [&](const type::F16*) {
             out << "0.0h";
             return true;
         },
-        [&](const sem::F32*) {
+        [&](const type::F32*) {
             out << "0.0f";
             return true;
         },
-        [&](const sem::I32*) {
+        [&](const type::I32*) {
             out << "0";
             return true;
         },
-        [&](const sem::U32*) {
+        [&](const type::U32*) {
             out << "0u";
             return true;
         },
-        [&](const sem::Vector* vec) {  //
+        [&](const type::Vector* vec) {  //
             return EmitZeroValue(out, vec->type());
         },
-        [&](const sem::Matrix* mat) {
+        [&](const type::Matrix* mat) {
             if (!EmitType(out, mat, "")) {
                 return false;
             }
             ScopedParen sp(out);
             return EmitZeroValue(out, mat->type());
         },
-        [&](const sem::Array*) {
+        [&](const type::Array*) {
             out << "{}";
             return true;
         },
@@ -1610,30 +1658,30 @@ bool GeneratorImpl::EmitZeroValue(std::ostream& out, const sem::Type* type) {
         });
 }
 
-bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constant) {
+bool GeneratorImpl::EmitConstant(std::ostream& out, const constant::Value* constant) {
     return Switch(
         constant->Type(),  //
-        [&](const sem::Bool*) {
-            out << (constant->As<AInt>() ? "true" : "false");
+        [&](const type::Bool*) {
+            out << (constant->ValueAs<AInt>() ? "true" : "false");
             return true;
         },
-        [&](const sem::F32*) {
-            PrintF32(out, constant->As<float>());
+        [&](const type::F32*) {
+            PrintF32(out, constant->ValueAs<f32>());
             return true;
         },
-        [&](const sem::F16*) {
-            PrintF16(out, constant->As<float>());
+        [&](const type::F16*) {
+            PrintF16(out, constant->ValueAs<f16>());
             return true;
         },
-        [&](const sem::I32*) {
-            PrintI32(out, constant->As<int32_t>());
+        [&](const type::I32*) {
+            PrintI32(out, constant->ValueAs<i32>());
             return true;
         },
-        [&](const sem::U32*) {
-            out << constant->As<AInt>() << "u";
+        [&](const type::U32*) {
+            out << constant->ValueAs<AInt>() << "u";
             return true;
         },
-        [&](const sem::Vector* v) {
+        [&](const type::Vector* v) {
             if (!EmitType(out, v, "")) {
                 return false;
             }
@@ -1657,7 +1705,7 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
             }
             return true;
         },
-        [&](const sem::Matrix* m) {
+        [&](const type::Matrix* m) {
             if (!EmitType(out, m, "")) {
                 return false;
             }
@@ -1674,7 +1722,7 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
             }
             return true;
         },
-        [&](const sem::Array* a) {
+        [&](const type::Array* a) {
             if (!EmitType(out, a, "")) {
                 return false;
             }
@@ -1686,7 +1734,14 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
                 return true;
             }
 
-            for (size_t i = 0; i < a->Count(); i++) {
+            auto count = a->ConstantCount();
+            if (!count) {
+                diagnostics_.add_error(diag::System::Writer,
+                                       type::Array::kErrExpectedConstantCount);
+                return false;
+            }
+
+            for (size_t i = 0; i < count; i++) {
                 if (i > 0) {
                     out << ", ";
                 }
@@ -1698,15 +1753,19 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const sem::Constant* constan
             return true;
         },
         [&](const sem::Struct* s) {
-            out << "{";
+            if (!EmitStructType(&helpers_, s)) {
+                return false;
+            }
+
+            out << StructName(s) << "{";
             TINT_DEFER(out << "}");
 
             if (constant->AllZero()) {
                 return true;
             }
 
-            auto& members = s->Members();
-            for (size_t i = 0; i < members.size(); i++) {
+            auto members = s->Members();
+            for (size_t i = 0; i < members.Length(); i++) {
                 if (i > 0) {
                     out << ", ";
                 }
@@ -1764,42 +1823,20 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
 
 bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* expr) {
     if (auto* sem = builder_.Sem().Get(expr)) {
-        if (auto* user = sem->As<sem::VariableUser>();
-            !user || !user->Variable()->Declaration()->Is<ast::Let>()) {
-            // Disable constant inlining if the constant expression is from a 'let' declaration.
-            // TODO(crbug.com/tint/1580): Once 'const' is implemented, 'let' will no longer resolve
-            // to a shader-creation time constant value, and this can be removed.
-            if (auto constant = sem->ConstantValue()) {
-                return EmitConstant(out, constant);
-            }
+        if (auto* constant = sem->ConstantValue()) {
+            return EmitConstant(out, constant);
         }
     }
     return Switch(
-        expr,
-        [&](const ast::IndexAccessorExpression* a) {  //
-            return EmitIndexAccessor(out, a);
-        },
-        [&](const ast::BinaryExpression* b) {  //
-            return EmitBinary(out, b);
-        },
-        [&](const ast::BitcastExpression* b) {  //
-            return EmitBitcast(out, b);
-        },
-        [&](const ast::CallExpression* c) {  //
-            return EmitCall(out, c);
-        },
-        [&](const ast::IdentifierExpression* i) {  //
-            return EmitIdentifier(out, i);
-        },
-        [&](const ast::LiteralExpression* l) {  //
-            return EmitLiteral(out, l);
-        },
-        [&](const ast::MemberAccessorExpression* m) {  //
-            return EmitMemberAccessor(out, m);
-        },
-        [&](const ast::UnaryOpExpression* u) {  //
-            return EmitUnaryOp(out, u);
-        },
+        expr,  //
+        [&](const ast::IndexAccessorExpression* a) { return EmitIndexAccessor(out, a); },
+        [&](const ast::BinaryExpression* b) { return EmitBinary(out, b); },
+        [&](const ast::BitcastExpression* b) { return EmitBitcast(out, b); },
+        [&](const ast::CallExpression* c) { return EmitCall(out, c); },
+        [&](const ast::IdentifierExpression* i) { return EmitIdentifier(out, i); },
+        [&](const ast::LiteralExpression* l) { return EmitLiteral(out, l); },
+        [&](const ast::MemberAccessorExpression* m) { return EmitMemberAccessor(out, m); },
+        [&](const ast::UnaryOpExpression* u) { return EmitUnaryOp(out, u); },
         [&](Default) {  //
             diagnostics_.add_error(diag::System::Writer, "unknown expression type: " +
                                                              std::string(expr->TypeInfo().name));
@@ -1848,7 +1885,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
                 return false;
             }
             // Parameter name is output as part of the type for pointers.
-            if (!type->Is<sem::Pointer>()) {
+            if (!type->Is<type::Pointer>()) {
                 out << " " << program_->Symbols().NameFor(v->symbol);
             }
         }
@@ -1912,7 +1949,7 @@ std::string GeneratorImpl::interpolation_to_attribute(ast::InterpolationType typ
         case ast::InterpolationSampling::kSample:
             attr = "sample_";
             break;
-        case ast::InterpolationSampling::kNone:
+        case ast::InterpolationSampling::kUndefined:
             break;
     }
     switch (type) {
@@ -1925,6 +1962,8 @@ std::string GeneratorImpl::interpolation_to_attribute(ast::InterpolationType typ
         case ast::InterpolationType::kFlat:
             attr += "flat";
             break;
+        case ast::InterpolationType::kUndefined:
+            break;
     }
     return attr;
 }
@@ -1936,18 +1975,19 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
     // attribute have a value of zero.
     const uint32_t kInvalidBindingIndex = std::numeric_limits<uint32_t>::max();
     auto get_binding_index = [&](const ast::Parameter* param) -> uint32_t {
-        auto bp = param->BindingPoint();
-        if (bp.group == nullptr || bp.binding == nullptr) {
+        if (!param->HasBindingPoint()) {
             TINT_ICE(Writer, diagnostics_)
                 << "missing binding attributes for entry point parameter";
             return kInvalidBindingIndex;
         }
-        if (bp.group->value != 0) {
+        auto* param_sem = program_->Sem().Get<sem::Parameter>(param);
+        auto bp = param_sem->BindingPoint();
+        if (bp.group != 0) {
             TINT_ICE(Writer, diagnostics_) << "encountered non-zero resource group index (use "
                                               "BindingRemapper to fix)";
             return kInvalidBindingIndex;
         }
-        return bp.binding->value;
+        return bp.binding;
     };
 
     {
@@ -1972,7 +2012,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                 return false;
             }
             // Parameter name is output as part of the type for pointers.
-            if (!type->Is<sem::Pointer>()) {
+            if (!type->Is<type::Pointer>()) {
                 out << " " << param_name;
             }
 
@@ -1992,12 +2032,12 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                     return false;
                 }
             } else if (auto* ptr = param->type->As<ast::Pointer>()) {
-                auto sc = ptr->storage_class;
-                if (sc == ast::StorageClass::kWorkgroup) {
+                auto sc = ptr->address_space;
+                if (sc == ast::AddressSpace::kWorkgroup) {
                     auto& allocations = workgroup_allocations_[func_name];
                     out << " [[threadgroup(" << allocations.size() << ")]]";
                     allocations.push_back(program_->Sem().Get(ptr->type)->Size());
-                } else if (sc == ast::StorageClass::kStorage || sc == ast::StorageClass::kUniform) {
+                } else if (sc == ast::AddressSpace::kStorage || sc == ast::AddressSpace::kUniform) {
                     uint32_t binding = get_binding_index(param);
                     if (binding == kInvalidBindingIndex) {
                         return false;
@@ -2005,7 +2045,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                     out << " [[buffer(" << binding << ")]]";
                 } else {
                     TINT_ICE(Writer, diagnostics_)
-                        << "invalid pointer storage class for entry point parameter";
+                        << "invalid pointer address space for entry point parameter";
                     return false;
                 }
             } else {
@@ -2299,40 +2339,45 @@ bool GeneratorImpl::EmitMemberAccessor(std::ostream& out,
         return true;
     };
 
-    auto& sem = program_->Sem();
+    auto* sem = builder_.Sem().Get(expr)->UnwrapLoad();
 
-    if (auto* swizzle = sem.Get(expr)->As<sem::Swizzle>()) {
-        // Metal 1.x does not support swizzling of packed vector types.
-        // For single element swizzles, we can use the index operator.
-        // For multi-element swizzles, we need to cast to a regular vector type
-        // first. Note that we do not currently allow assignments to swizzles, so
-        // the casting which will convert the l-value to r-value is fine.
-        if (swizzle->Indices().Length() == 1) {
+    return Switch(
+        sem,
+        [&](const sem::Swizzle* swizzle) {
+            // Metal 1.x does not support swizzling of packed vector types.
+            // For single element swizzles, we can use the index operator.
+            // For multi-element swizzles, we need to cast to a regular vector type
+            // first. Note that we do not currently allow assignments to swizzles, so
+            // the casting which will convert the l-value to r-value is fine.
+            if (swizzle->Indices().Length() == 1) {
+                if (!write_lhs()) {
+                    return false;
+                }
+                out << "[" << swizzle->Indices()[0] << "]";
+            } else {
+                if (!EmitType(out, swizzle->Object()->Type()->UnwrapRef(), "")) {
+                    return false;
+                }
+                out << "(";
+                if (!write_lhs()) {
+                    return false;
+                }
+                out << ")." << program_->Symbols().NameFor(expr->member->symbol);
+            }
+            return true;
+        },
+        [&](const sem::StructMemberAccess* member_access) {
             if (!write_lhs()) {
                 return false;
             }
-            out << "[" << swizzle->Indices()[0] << "]";
-        } else {
-            if (!EmitType(out, sem.Get(expr->structure)->Type()->UnwrapRef(), "")) {
-                return false;
-            }
-            out << "(";
-            if (!write_lhs()) {
-                return false;
-            }
-            out << ")." << program_->Symbols().NameFor(expr->member->symbol);
-        }
-    } else {
-        if (!write_lhs()) {
+            out << "." << program_->Symbols().NameFor(member_access->Member()->Name());
+            return true;
+        },
+        [&](Default) {
+            TINT_ICE(Writer, diagnostics_)
+                << "unknown member access type: " << sem->TypeInfo().name;
             return false;
-        }
-        out << ".";
-        if (!EmitExpression(out, expr->member)) {
-            return false;
-        }
-    }
-
-    return true;
+        });
 }
 
 bool GeneratorImpl::EmitReturn(const ast::ReturnStatement* stmt) {
@@ -2372,6 +2417,9 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
         [&](const ast::BreakStatement* b) {  //
             return EmitBreak(b);
         },
+        [&](const ast::BreakIfStatement* b) {  //
+            return EmitBreakIf(b);
+        },
         [&](const ast::CallStatement* c) {  //
             auto out = line();
             if (!EmitCall(out, c->expr)) {  //
@@ -2385,10 +2433,6 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
         },
         [&](const ast::DiscardStatement* d) {  //
             return EmitDiscard(d);
-        },
-        [&](const ast::FallthroughStatement*) {  //
-            line() << "/* fallthrough */";
-            return true;
         },
         [&](const ast::IfStatement* i) {  //
             return EmitIf(i);
@@ -2471,7 +2515,7 @@ bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
 }
 
 bool GeneratorImpl::EmitType(std::ostream& out,
-                             const sem::Type* type,
+                             const type::Type* type,
                              const std::string& name,
                              bool* name_printed /* = nullptr */) {
     if (name_printed) {
@@ -2480,12 +2524,12 @@ bool GeneratorImpl::EmitType(std::ostream& out,
 
     return Switch(
         type,
-        [&](const sem::Atomic* atomic) {
-            if (atomic->Type()->Is<sem::I32>()) {
+        [&](const type::Atomic* atomic) {
+            if (atomic->Type()->Is<type::I32>()) {
                 out << "atomic_int";
                 return true;
             }
-            if (atomic->Type()->Is<sem::U32>()) {
+            if (atomic->Type()->Is<type::U32>()) {
                 out << "atomic_uint";
                 return true;
             }
@@ -2493,42 +2537,55 @@ bool GeneratorImpl::EmitType(std::ostream& out,
                 << "unhandled atomic type " << atomic->Type()->FriendlyName(builder_.Symbols());
             return false;
         },
-        [&](const sem::Array* arr) {
+        [&](const type::Array* arr) {
             out << ArrayType() << "<";
             if (!EmitType(out, arr->ElemType(), "")) {
                 return false;
             }
-            out << ", " << (arr->IsRuntimeSized() ? 1u : arr->Count()) << ">";
+            out << ", ";
+            if (arr->Count()->Is<type::RuntimeArrayCount>()) {
+                out << "1";
+            } else {
+                auto count = arr->ConstantCount();
+                if (!count) {
+                    diagnostics_.add_error(diag::System::Writer,
+                                           type::Array::kErrExpectedConstantCount);
+                    return false;
+                }
+
+                out << count.value();
+            }
+            out << ">";
             return true;
         },
-        [&](const sem::Bool*) {
+        [&](const type::Bool*) {
             out << "bool";
             return true;
         },
-        [&](const sem::F16*) {
+        [&](const type::F16*) {
             out << "half";
             return true;
         },
-        [&](const sem::F32*) {
+        [&](const type::F32*) {
             out << "float";
             return true;
         },
-        [&](const sem::I32*) {
+        [&](const type::I32*) {
             out << "int";
             return true;
         },
-        [&](const sem::Matrix* mat) {
+        [&](const type::Matrix* mat) {
             if (!EmitType(out, mat->type(), "")) {
                 return false;
             }
             out << mat->columns() << "x" << mat->rows();
             return true;
         },
-        [&](const sem::Pointer* ptr) {
+        [&](const type::Pointer* ptr) {
             if (ptr->Access() == ast::Access::kRead) {
                 out << "const ";
             }
-            if (!EmitStorageClass(out, ptr->StorageClass())) {
+            if (!EmitAddressSpace(out, ptr->AddressSpace())) {
                 return false;
             }
             out << " ";
@@ -2541,7 +2598,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
             }
             return true;
         },
-        [&](const sem::Sampler*) {
+        [&](const type::Sampler*) {
             out << "sampler";
             return true;
         },
@@ -2551,14 +2608,14 @@ bool GeneratorImpl::EmitType(std::ostream& out,
             out << StructName(str);
             return true;
         },
-        [&](const sem::Texture* tex) {
-            if (tex->Is<sem::ExternalTexture>()) {
+        [&](const type::Texture* tex) {
+            if (tex->Is<type::ExternalTexture>()) {
                 TINT_ICE(Writer, diagnostics_)
                     << "Multiplanar external texture transform was not run.";
                 return false;
             }
 
-            if (tex->IsAnyOf<sem::DepthTexture, sem::DepthMultisampledTexture>()) {
+            if (tex->IsAnyOf<type::DepthTexture, type::DepthMultisampledTexture>()) {
                 out << "depth";
             } else {
                 out << "texture";
@@ -2587,7 +2644,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
                     diagnostics_.add_error(diag::System::Writer, "Invalid texture dimensions");
                     return false;
             }
-            if (tex->IsAnyOf<sem::MultisampledTexture, sem::DepthMultisampledTexture>()) {
+            if (tex->IsAnyOf<type::MultisampledTexture, type::DepthMultisampledTexture>()) {
                 out << "_ms";
             }
             out << "<";
@@ -2595,15 +2652,15 @@ bool GeneratorImpl::EmitType(std::ostream& out,
 
             return Switch(
                 tex,
-                [&](const sem::DepthTexture*) {
+                [&](const type::DepthTexture*) {
                     out << "float, access::sample";
                     return true;
                 },
-                [&](const sem::DepthMultisampledTexture*) {
+                [&](const type::DepthMultisampledTexture*) {
                     out << "float, access::read";
                     return true;
                 },
-                [&](const sem::StorageTexture* storage) {
+                [&](const type::StorageTexture* storage) {
                     if (!EmitType(out, storage->type(), "")) {
                         return false;
                     }
@@ -2620,14 +2677,14 @@ bool GeneratorImpl::EmitType(std::ostream& out,
                     }
                     return true;
                 },
-                [&](const sem::MultisampledTexture* ms) {
+                [&](const type::MultisampledTexture* ms) {
                     if (!EmitType(out, ms->type(), "")) {
                         return false;
                     }
                     out << ", access::read";
                     return true;
                 },
-                [&](const sem::SampledTexture* sampled) {
+                [&](const type::SampledTexture* sampled) {
                     if (!EmitType(out, sampled->type(), "")) {
                         return false;
                     }
@@ -2639,18 +2696,18 @@ bool GeneratorImpl::EmitType(std::ostream& out,
                     return false;
                 });
         },
-        [&](const sem::U32*) {
+        [&](const type::U32*) {
             out << "uint";
             return true;
         },
-        [&](const sem::Vector* vec) {
+        [&](const type::Vector* vec) {
             if (!EmitType(out, vec->type(), "")) {
                 return false;
             }
             out << vec->Width();
             return true;
         },
-        [&](const sem::Void*) {
+        [&](const type::Void*) {
             out << "void";
             return true;
         },
@@ -2663,7 +2720,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
 }
 
 bool GeneratorImpl::EmitTypeAndName(std::ostream& out,
-                                    const sem::Type* type,
+                                    const type::Type* type,
                                     const std::string& name) {
     bool name_printed = false;
     if (!EmitType(out, type, name, &name_printed)) {
@@ -2675,65 +2732,35 @@ bool GeneratorImpl::EmitTypeAndName(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitStorageClass(std::ostream& out, ast::StorageClass sc) {
+bool GeneratorImpl::EmitAddressSpace(std::ostream& out, ast::AddressSpace sc) {
     switch (sc) {
-        case ast::StorageClass::kFunction:
-        case ast::StorageClass::kPrivate:
-        case ast::StorageClass::kHandle:
+        case ast::AddressSpace::kFunction:
+        case ast::AddressSpace::kPrivate:
+        case ast::AddressSpace::kHandle:
             out << "thread";
             return true;
-        case ast::StorageClass::kWorkgroup:
+        case ast::AddressSpace::kWorkgroup:
             out << "threadgroup";
             return true;
-        case ast::StorageClass::kStorage:
+        case ast::AddressSpace::kStorage:
             out << "device";
             return true;
-        case ast::StorageClass::kUniform:
+        case ast::AddressSpace::kUniform:
             out << "constant";
             return true;
         default:
             break;
     }
-    TINT_ICE(Writer, diagnostics_) << "unhandled storage class: " << sc;
+    TINT_ICE(Writer, diagnostics_) << "unhandled address space: " << sc;
     return false;
 }
 
-bool GeneratorImpl::EmitPackedType(std::ostream& out,
-                                   const sem::Type* type,
-                                   const std::string& name) {
-    auto* vec = type->As<sem::Vector>();
-    if (vec && vec->Width() == 3) {
-        out << "packed_";
-        if (!EmitType(out, vec, "")) {
-            return false;
-        }
-
-        if (vec->is_float_vector() && !matrix_packed_vector_overloads_) {
-            // Overload operators for matrix-vector arithmetic where the vector
-            // operand is packed, as these overloads to not exist in the metal
-            // namespace.
-            TextBuffer b;
-            TINT_DEFER(helpers_.Append(b));
-            line(&b) << R"(template<typename T, int N, int M>
-inline vec<T, M> operator*(matrix<T, N, M> lhs, packed_vec<T, N> rhs) {
-  return lhs * vec<T, N>(rhs);
-}
-
-template<typename T, int N, int M>
-inline vec<T, N> operator*(packed_vec<T, M> lhs, matrix<T, N, M> rhs) {
-  return vec<T, M>(lhs) * rhs;
-}
-)";
-            matrix_packed_vector_overloads_ = true;
-        }
-
+bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
+    auto it = emitted_structs_.emplace(str);
+    if (!it.second) {
         return true;
     }
 
-    return EmitType(out, type, name);
-}
-
-bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
     line(b) << "struct " << StructName(str) << " {";
 
     bool is_host_shareable = str->IsHostShareable();
@@ -2779,14 +2806,15 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
             }
 
             add_byte_offset_comment(out, msl_offset);
+        }
 
-            if (!EmitPackedType(out, mem->Type(), mem_name)) {
-                return false;
+        if (auto* decl = mem->Declaration()) {
+            if (ast::HasAttribute<transform::PackedVec3::Attribute>(decl->attributes)) {
+                out << "packed_";
             }
-        } else {
-            if (!EmitType(out, mem->Type(), mem_name)) {
-                return false;
-            }
+        }
+        if (!EmitType(out, mem->Type(), mem_name)) {
+            return false;
         }
 
         auto* ty = mem->Type();
@@ -2806,24 +2834,25 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
                         out << " [[" << name << "]]";
                         return true;
                     },
-                    [&](const ast::LocationAttribute* loc) {
+                    [&](const ast::LocationAttribute*) {
                         auto& pipeline_stage_uses = str->PipelineStageUses();
                         if (pipeline_stage_uses.size() != 1) {
                             TINT_ICE(Writer, diagnostics_) << "invalid entry point IO struct uses";
                             return false;
                         }
 
-                        if (pipeline_stage_uses.count(sem::PipelineStageUsage::kVertexInput)) {
-                            out << " [[attribute(" + std::to_string(loc->value) + ")]]";
+                        uint32_t loc = mem->Location().value();
+                        if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexInput)) {
+                            out << " [[attribute(" + std::to_string(loc) + ")]]";
                         } else if (pipeline_stage_uses.count(
-                                       sem::PipelineStageUsage::kVertexOutput)) {
-                            out << " [[user(locn" + std::to_string(loc->value) + ")]]";
+                                       type::PipelineStageUsage::kVertexOutput)) {
+                            out << " [[user(locn" + std::to_string(loc) + ")]]";
                         } else if (pipeline_stage_uses.count(
-                                       sem::PipelineStageUsage::kFragmentInput)) {
-                            out << " [[user(locn" + std::to_string(loc->value) + ")]]";
+                                       type::PipelineStageUsage::kFragmentInput)) {
+                            out << " [[user(locn" + std::to_string(loc) + ")]]";
                         } else if (pipeline_stage_uses.count(
-                                       sem::PipelineStageUsage::kFragmentOutput)) {
-                            out << " [[color(" + std::to_string(loc->value) + ")]]";
+                                       type::PipelineStageUsage::kFragmentOutput)) {
+                            out << " [[color(" + std::to_string(loc) + ")]]";
                         } else {
                             TINT_ICE(Writer, diagnostics_) << "invalid use of location decoration";
                             return false;
@@ -2851,6 +2880,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
                     [&](const ast::StructMemberOffsetAttribute*) { return true; },
                     [&](const ast::StructMemberAlignAttribute*) { return true; },
                     [&](const ast::StructMemberSizeAttribute*) { return true; },
+                    [&](const transform::PackedVec3::Attribute*) { return true; },
                     [&](Default) {
                         TINT_ICE(Writer, diagnostics_)
                             << "unhandled struct member attribute: " << attr->Name();
@@ -2887,19 +2917,11 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
     return true;
 }
 
-bool GeneratorImpl::EmitStructTypeOnce(TextBuffer* buffer, const sem::Struct* str) {
-    auto it = emitted_structs_.emplace(str);
-    if (!it.second) {
-        return true;
-    }
-    return EmitStructType(buffer, str);
-}
-
 bool GeneratorImpl::EmitUnaryOp(std::ostream& out, const ast::UnaryOpExpression* expr) {
     // Handle `-e` when `e` is signed, so that we ensure that if `e` is the
     // largest negative value, it returns `e`.
     auto* expr_type = TypeOf(expr->expr)->UnwrapRef();
-    if (expr->op == ast::UnaryOp::kNegation && expr_type->is_signed_scalar_or_vector()) {
+    if (expr->op == ast::UnaryOp::kNegation && expr_type->is_signed_integer_scalar_or_vector()) {
         auto fn = utils::GetOrCreate(unary_minus_funcs_, expr_type, [&]() -> std::string {
             // e.g.:
             // int tint_unary_minus(const int v) {
@@ -2974,19 +2996,19 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
 
     auto out = line();
 
-    switch (sem->StorageClass()) {
-        case ast::StorageClass::kFunction:
-        case ast::StorageClass::kHandle:
-        case ast::StorageClass::kNone:
+    switch (sem->AddressSpace()) {
+        case ast::AddressSpace::kFunction:
+        case ast::AddressSpace::kHandle:
+        case ast::AddressSpace::kNone:
             break;
-        case ast::StorageClass::kPrivate:
+        case ast::AddressSpace::kPrivate:
             out << "thread ";
             break;
-        case ast::StorageClass::kWorkgroup:
+        case ast::AddressSpace::kWorkgroup:
             out << "threadgroup ";
             break;
         default:
-            TINT_ICE(Writer, diagnostics_) << "unhandled variable storage class";
+            TINT_ICE(Writer, diagnostics_) << "unhandled variable address space";
             return false;
     }
 
@@ -2995,18 +3017,18 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
         return false;
     }
     // Variable name is output as part of the type for pointers.
-    if (!type->Is<sem::Pointer>()) {
+    if (!type->Is<type::Pointer>()) {
         out << " " << name;
     }
 
-    if (var->constructor != nullptr) {
+    if (var->initializer != nullptr) {
         out << " = ";
-        if (!EmitExpression(out, var->constructor)) {
+        if (!EmitExpression(out, var->initializer)) {
             return false;
         }
-    } else if (sem->StorageClass() == ast::StorageClass::kPrivate ||
-               sem->StorageClass() == ast::StorageClass::kFunction ||
-               sem->StorageClass() == ast::StorageClass::kNone) {
+    } else if (sem->AddressSpace() == ast::AddressSpace::kPrivate ||
+               sem->AddressSpace() == ast::AddressSpace::kFunction ||
+               sem->AddressSpace() == ast::AddressSpace::kNone) {
         out << " = ";
         if (!EmitZeroValue(out, type)) {
             return false;
@@ -3023,19 +3045,19 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
 
     auto out = line();
 
-    switch (sem->StorageClass()) {
-        case ast::StorageClass::kFunction:
-        case ast::StorageClass::kHandle:
-        case ast::StorageClass::kNone:
+    switch (sem->AddressSpace()) {
+        case ast::AddressSpace::kFunction:
+        case ast::AddressSpace::kHandle:
+        case ast::AddressSpace::kNone:
             break;
-        case ast::StorageClass::kPrivate:
+        case ast::AddressSpace::kPrivate:
             out << "thread ";
             break;
-        case ast::StorageClass::kWorkgroup:
+        case ast::AddressSpace::kWorkgroup:
             out << "threadgroup ";
             break;
         default:
-            TINT_ICE(Writer, diagnostics_) << "unhandled variable storage class";
+            TINT_ICE(Writer, diagnostics_) << "unhandled variable address space";
             return false;
     }
 
@@ -3045,12 +3067,12 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     }
 
     // Variable name is output as part of the type for pointers.
-    if (!type->Is<sem::Pointer>()) {
+    if (!type->Is<type::Pointer>()) {
         out << " " << name;
     }
 
     out << " = ";
-    if (!EmitExpression(out, let->constructor)) {
+    if (!EmitExpression(out, let->initializer)) {
         return false;
     }
     out << ";";
@@ -3058,46 +3080,30 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     return true;
 }
 
-bool GeneratorImpl::EmitOverride(const ast::Override* override) {
-    auto* global = program_->Sem().Get<sem::GlobalVariable>(override);
-    auto* type = global->Type();
-
-    auto out = line();
-    out << "constant ";
-    if (!EmitType(out, type, program_->Symbols().NameFor(override->symbol))) {
-        return false;
-    }
-    out << " " << program_->Symbols().NameFor(override->symbol);
-
-    out << " [[function_constant(" << global->OverrideId().value << ")]];";
-
-    return true;
-}
-
-GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const sem::Type* ty) {
+GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const type::Type* ty) {
     return Switch(
         ty,
 
         // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
         // 2.1 Scalar Data Types
-        [&](const sem::U32*) {
+        [&](const type::U32*) {
             return SizeAndAlign{4, 4};
         },
-        [&](const sem::I32*) {
+        [&](const type::I32*) {
             return SizeAndAlign{4, 4};
         },
-        [&](const sem::F32*) {
+        [&](const type::F32*) {
             return SizeAndAlign{4, 4};
         },
-        [&](const sem::F16*) {
+        [&](const type::F16*) {
             return SizeAndAlign{2, 2};
         },
 
-        [&](const sem::Vector* vec) {
+        [&](const type::Vector* vec) {
             auto num_els = vec->Width();
             auto* el_ty = vec->type();
             SizeAndAlign el_size_align = MslPackedTypeSizeAndAlign(el_ty);
-            if (el_ty->IsAnyOf<sem::U32, sem::I32, sem::F32, sem::F16>()) {
+            if (el_ty->IsAnyOf<type::U32, type::I32, type::F32, type::F16>()) {
                 // Use a packed_vec type for 3-element vectors only.
                 if (num_els == 3) {
                     // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
@@ -3115,14 +3121,14 @@ GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const sem::
             return SizeAndAlign{};
         },
 
-        [&](const sem::Matrix* mat) {
+        [&](const type::Matrix* mat) {
             // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
             // 2.3 Matrix Data Types
             auto cols = mat->columns();
             auto rows = mat->rows();
             auto* el_ty = mat->type();
             // Metal only support half and float matrix.
-            if (el_ty->IsAnyOf<sem::F32, sem::F16>()) {
+            if (el_ty->IsAnyOf<type::F32, type::F16>()) {
                 static constexpr SizeAndAlign table_f32[] = {
                     /* float2x2 */ {16, 8},
                     /* float2x3 */ {32, 16},
@@ -3146,7 +3152,7 @@ GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const sem::
                     /* half4x4 */ {32, 8},
                 };
                 if (cols >= 2 && cols <= 4 && rows >= 2 && rows <= 4) {
-                    if (el_ty->Is<sem::F32>()) {
+                    if (el_ty->Is<type::F32>()) {
                         return table_f32[(3 * (cols - 2)) + (rows - 2)];
                     } else {
                         return table_f16[(3 * (cols - 2)) + (rows - 2)];
@@ -3159,14 +3165,20 @@ GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const sem::
             return SizeAndAlign{};
         },
 
-        [&](const sem::Array* arr) {
+        [&](const type::Array* arr) {
             if (!arr->IsStrideImplicit()) {
                 TINT_ICE(Writer, diagnostics_)
                     << "arrays with explicit strides should not exist past the SPIR-V reader";
                 return SizeAndAlign{};
             }
-            auto num_els = std::max<uint32_t>(arr->Count(), 1);
-            return SizeAndAlign{arr->Stride() * num_els, arr->Align()};
+            if (arr->Count()->Is<type::RuntimeArrayCount>()) {
+                return SizeAndAlign{arr->Stride(), arr->Align()};
+            }
+            if (auto count = arr->ConstantCount()) {
+                return SizeAndAlign{arr->Stride() * count.value(), arr->Align()};
+            }
+            diagnostics_.add_error(diag::System::Writer, type::Array::kErrExpectedConstantCount);
+            return SizeAndAlign{};
         },
 
         [&](const sem::Struct* str) {
@@ -3176,7 +3188,7 @@ GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const sem::
             return SizeAndAlign{str->Size(), str->Align()};
         },
 
-        [&](const sem::Atomic* atomic) { return MslPackedTypeSizeAndAlign(atomic->Type()); },
+        [&](const type::Atomic* atomic) { return MslPackedTypeSizeAndAlign(atomic->Type()); },
 
         [&](Default) {
             TINT_UNREACHABLE(Writer, diagnostics_) << "Unhandled type " << ty->TypeInfo().name;

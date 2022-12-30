@@ -55,6 +55,24 @@ class DeviceLostTest : public DawnTest {
         EXPECT_EQ(WGPUBufferMapAsyncStatus_DeviceLost, status);
         EXPECT_EQ(&fakeUserData, userdata);
     }
+
+    void MapAsyncAndWait(const wgpu::Buffer& buffer,
+                         wgpu::MapMode mode,
+                         size_t offset,
+                         size_t size) {
+        bool done = false;
+        buffer.MapAsync(
+            mode, offset, size,
+            [](WGPUBufferMapAsyncStatus status, void* userdata) {
+                ASSERT_EQ(WGPUBufferMapAsyncStatus_Success, status);
+                *static_cast<bool*>(userdata) = true;
+            },
+            &done);
+
+        while (!done) {
+            WaitABit();
+        }
+    }
 };
 
 // Test that DeviceLostCallback is invoked when LostForTestimg is called
@@ -338,7 +356,7 @@ TEST_P(DeviceLostTest, GetMappedRange_MapAsyncReading) {
     desc.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
     wgpu::Buffer buffer = device.CreateBuffer(&desc);
 
-    buffer.MapAsync(wgpu::MapMode::Read, 0, 4, nullptr, nullptr);
+    MapAsyncAndWait(buffer, wgpu::MapMode::Read, 0, 4);
     queue.Submit(0, nullptr);
 
     const void* rangeBeforeLoss = buffer.GetConstMappedRange();
@@ -355,7 +373,7 @@ TEST_P(DeviceLostTest, GetMappedRange_MapAsyncWriting) {
     desc.usage = wgpu::BufferUsage::MapWrite | wgpu::BufferUsage::CopySrc;
     wgpu::Buffer buffer = device.CreateBuffer(&desc);
 
-    buffer.MapAsync(wgpu::MapMode::Write, 0, 4, nullptr, nullptr);
+    MapAsyncAndWait(buffer, wgpu::MapMode::Write, 0, 4);
     queue.Submit(0, nullptr);
 
     const void* rangeBeforeLoss = buffer.GetConstMappedRange();
@@ -408,7 +426,7 @@ TEST_P(DeviceLostTest, LoseDeviceForTestingOnce) {
                                  mDeviceLostCallback.MakeUserdata(device.Get()));
     EXPECT_CALL(mDeviceLostCallback, Call(WGPUDeviceLostReason_Undefined, testing::_, device.Get()))
         .Times(0);
-    device.LoseForTesting();
+    device.ForceLoss(wgpu::DeviceLostReason::Undefined, "Device lost for testing");
     FlushWire();
     testing::Mock::VerifyAndClearExpectations(&mDeviceLostCallback);
 }
@@ -473,6 +491,37 @@ TEST_P(DeviceLostTest, FreeBindGroupAfterDeviceLossWithPendingCommands) {
     // Device shut down, we ASSERT that the BGL cache is empty.
     bgl = nullptr;
     bg = nullptr;
+}
+
+// This is a regression test for crbug.com/1365011 where ending a render pass with an indirect draw
+// in it after the device is lost would cause render commands to be leaked.
+TEST_P(DeviceLostTest, DeviceLostInRenderPassWithDrawIndirect) {
+    utils::BasicRenderPass renderPass = utils::CreateBasicRenderPass(device, 4u, 4u);
+    utils::ComboRenderPipelineDescriptor desc;
+    desc.vertex.module = utils::CreateShaderModule(device, R"(
+        @vertex fn main(@builtin(vertex_index) i : u32) -> @builtin(position) vec4<f32> {
+            var pos = array<vec2<f32>, 3>(
+                vec2<f32>(-1.0, -1.0),
+                vec2<f32>(3.0, -1.0),
+                vec2<f32>(-1.0, 3.0));
+            return vec4<f32>(pos[i], 0.0, 1.0);
+        }
+    )");
+    desc.cFragment.module = utils::CreateShaderModule(device, R"(
+        @fragment fn main() -> @location(0) vec4<f32> {
+            return vec4<f32>(0.0, 1.0, 0.0, 1.0);
+        }
+    )");
+    desc.cTargets[0].format = renderPass.colorFormat;
+    wgpu::Buffer indirectBuffer =
+        utils::CreateBufferFromData<uint32_t>(device, wgpu::BufferUsage::Indirect, {3, 1, 0, 0});
+    wgpu::RenderPipeline pipeline = device.CreateRenderPipeline(&desc);
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPass.renderPassInfo);
+    pass.SetPipeline(pipeline);
+    pass.DrawIndirect(indirectBuffer, 0);
+    LoseDeviceForTesting();
+    pass.End();
 }
 
 // Attempting to set an object label after device loss should not cause an error.

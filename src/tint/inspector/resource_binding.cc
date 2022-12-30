@@ -14,13 +14,13 @@
 
 #include "src/tint/inspector/resource_binding.h"
 
-#include "src/tint/sem/array.h"
-#include "src/tint/sem/f32.h"
-#include "src/tint/sem/i32.h"
-#include "src/tint/sem/matrix.h"
-#include "src/tint/sem/type.h"
-#include "src/tint/sem/u32.h"
-#include "src/tint/sem/vector.h"
+#include "src/tint/type/array.h"
+#include "src/tint/type/f32.h"
+#include "src/tint/type/i32.h"
+#include "src/tint/type/matrix.h"
+#include "src/tint/type/type.h"
+#include "src/tint/type/u32.h"
+#include "src/tint/type/vector.h"
 
 namespace tint::inspector {
 
@@ -45,24 +45,24 @@ ResourceBinding::TextureDimension TypeTextureDimensionToResourceBindingTextureDi
     return ResourceBinding::TextureDimension::kNone;
 }
 
-ResourceBinding::SampledKind BaseTypeToSampledKind(const sem::Type* base_type) {
+ResourceBinding::SampledKind BaseTypeToSampledKind(const type::Type* base_type) {
     if (!base_type) {
         return ResourceBinding::SampledKind::kUnknown;
     }
 
-    if (auto* at = base_type->As<sem::Array>()) {
+    if (auto* at = base_type->As<type::Array>()) {
         base_type = at->ElemType();
-    } else if (auto* mt = base_type->As<sem::Matrix>()) {
+    } else if (auto* mt = base_type->As<type::Matrix>()) {
         base_type = mt->type();
-    } else if (auto* vt = base_type->As<sem::Vector>()) {
+    } else if (auto* vt = base_type->As<type::Vector>()) {
         base_type = vt->type();
     }
 
-    if (base_type->Is<sem::F32>()) {
+    if (base_type->Is<type::F32>()) {
         return ResourceBinding::SampledKind::kFloat;
-    } else if (base_type->Is<sem::U32>()) {
+    } else if (base_type->Is<type::U32>()) {
         return ResourceBinding::SampledKind::kUInt;
-    } else if (base_type->Is<sem::I32>()) {
+    } else if (base_type->Is<type::I32>()) {
         return ResourceBinding::SampledKind::kSInt;
     } else {
         return ResourceBinding::SampledKind::kUnknown;
@@ -104,7 +104,7 @@ ResourceBinding::TexelFormat TypeTexelFormatToResourceBindingTexelFormat(
             return ResourceBinding::TexelFormat::kRgba32Sint;
         case ast::TexelFormat::kRgba32Float:
             return ResourceBinding::TexelFormat::kRgba32Float;
-        case ast::TexelFormat::kInvalid:
+        case ast::TexelFormat::kUndefined:
             return ResourceBinding::TexelFormat::kNone;
     }
     return ResourceBinding::TexelFormat::kNone;

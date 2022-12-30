@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 
 // fn textureStore(texture: texture_storage_2d<rgba16sint, write>, coords: vec2<i32>, value: vec4<i32>)
 fn textureStore_9e3ec5() {
-  textureStore(arg_0, vec2<i32>(), vec4<i32>());
+  textureStore(arg_0, vec2<i32>(1i), vec4<i32>(1i));
 }
 
 @vertex

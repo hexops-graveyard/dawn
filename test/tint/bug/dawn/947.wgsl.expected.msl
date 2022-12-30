@@ -1,15 +1,3 @@
-bug/dawn/947.wgsl:59:20 warning: 'textureSample' must only be called from uniform control flow
-    var srcColor = textureSample(myTexture, mySampler, texcoord);
-                   ^^^^^^^^^^^^^
-
-bug/dawn/947.wgsl:55:5 note: control flow depends on non-uniform value
-    if (!all(clampedTexcoord == texcoord)) {
-    ^^
-
-bug/dawn/947.wgsl:55:33 note: reading from user-defined input 'texcoord' may result in a non-uniform value
-    if (!all(clampedTexcoord == texcoord)) {
-                                ^^^^^^^^
-
 #include <metal_stdlib>
 
 using namespace metal;
@@ -41,21 +29,21 @@ struct tint_symbol {
   float4 position [[position]];
 };
 
-VertexOutputs vs_main_inner(uint VertexIndex, const constant Uniforms* const tint_symbol_5) {
+VertexOutputs vs_main_inner(uint VertexIndex, const constant Uniforms* const tint_symbol_4) {
   tint_array<float2, 3> texcoord = tint_array<float2, 3>{float2(-0.5f, 0.0f), float2(1.5f, 0.0f), float2(0.5f, 2.0f)};
   VertexOutputs output = {};
   output.position = float4(((texcoord[VertexIndex] * 2.0f) - float2(1.0f)), 0.0f, 1.0f);
-  bool flipY = ((*(tint_symbol_5)).u_scale[1] < 0.0f);
+  bool flipY = ((*(tint_symbol_4)).u_scale[1] < 0.0f);
   if (flipY) {
-    output.texcoords = ((((texcoord[VertexIndex] * (*(tint_symbol_5)).u_scale) + (*(tint_symbol_5)).u_offset) * float2(1.0f, -1.0f)) + float2(0.0f, 1.0f));
+    output.texcoords = ((((texcoord[VertexIndex] * (*(tint_symbol_4)).u_scale) + (*(tint_symbol_4)).u_offset) * float2(1.0f, -1.0f)) + float2(0.0f, 1.0f));
   } else {
-    output.texcoords = ((((texcoord[VertexIndex] * float2(1.0f, -1.0f)) + float2(0.0f, 1.0f)) * (*(tint_symbol_5)).u_scale) + (*(tint_symbol_5)).u_offset);
+    output.texcoords = ((((texcoord[VertexIndex] * float2(1.0f, -1.0f)) + float2(0.0f, 1.0f)) * (*(tint_symbol_4)).u_scale) + (*(tint_symbol_4)).u_offset);
   }
   return output;
 }
 
-vertex tint_symbol vs_main(const constant Uniforms* tint_symbol_6 [[buffer(0)]], uint VertexIndex [[vertex_id]]) {
-  VertexOutputs const inner_result = vs_main_inner(VertexIndex, tint_symbol_6);
+vertex tint_symbol vs_main(const constant Uniforms* tint_symbol_5 [[buffer(0)]], uint VertexIndex [[vertex_id]]) {
+  VertexOutputs const inner_result = vs_main_inner(VertexIndex, tint_symbol_5);
   tint_symbol wrapper_result = {};
   wrapper_result.texcoords = inner_result.texcoords;
   wrapper_result.position = inner_result.position;
@@ -70,30 +58,23 @@ struct tint_symbol_3 {
   float4 value [[color(0)]];
 };
 
-float4 fs_main_inner(float2 texcoord, thread bool* const tint_symbol_7, texture2d<float, access::sample> tint_symbol_8, sampler tint_symbol_9) {
+float4 fs_main_inner(float2 texcoord, thread bool* const tint_symbol_6) {
   float2 clampedTexcoord = clamp(texcoord, float2(0.0f), float2(1.0f));
   if (!(all((clampedTexcoord == texcoord)))) {
-    *(tint_symbol_7) = true;
-    return float4(0.0f);
+    *(tint_symbol_6) = true;
   }
-  float4 srcColor = tint_symbol_8.sample(tint_symbol_9, texcoord);
+  float4 srcColor = float4(0.0f);
   return srcColor;
 }
 
-void tint_discard_func() {
-  discard_fragment();
-}
-
-fragment tint_symbol_3 fs_main(texture2d<float, access::sample> tint_symbol_11 [[texture(0)]], sampler tint_symbol_12 [[sampler(0)]], tint_symbol_2 tint_symbol_1 [[stage_in]]) {
-  thread bool tint_symbol_10 = false;
-  float4 const inner_result_1 = fs_main_inner(tint_symbol_1.texcoord, &(tint_symbol_10), tint_symbol_11, tint_symbol_12);
-  if (tint_symbol_10) {
-    tint_discard_func();
-    tint_symbol_3 const tint_symbol_4 = {};
-    return tint_symbol_4;
-  }
+fragment tint_symbol_3 fs_main(tint_symbol_2 tint_symbol_1 [[stage_in]]) {
+  thread bool tint_symbol_7 = false;
+  float4 const inner_result_1 = fs_main_inner(tint_symbol_1.texcoord, &(tint_symbol_7));
   tint_symbol_3 wrapper_result_1 = {};
   wrapper_result_1.value = inner_result_1;
+  if (tint_symbol_7) {
+    discard_fragment();
+  }
   return wrapper_result_1;
 }
 

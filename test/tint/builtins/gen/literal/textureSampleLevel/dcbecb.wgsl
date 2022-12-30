@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@
 
 // fn textureSampleLevel(texture: texture_3d<f32>, sampler: sampler, coords: vec3<f32>, level: f32, @const offset: vec3<i32>) -> vec4<f32>
 fn textureSampleLevel_dcbecb() {
-  var res: vec4<f32> = textureSampleLevel(arg_0, arg_1, vec3<f32>(), 1.f, vec3<i32>());
+  var res: vec4<f32> = textureSampleLevel(arg_0, arg_1, vec3<f32>(1.f), 1.f, vec3<i32>(1i));
 }
 
 @vertex

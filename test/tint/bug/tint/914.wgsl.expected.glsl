@@ -4,60 +4,66 @@ struct Uniforms {
   uint dimAOuter;
   uint dimInner;
   uint dimBOuter;
+  uint pad;
 };
 
-layout(binding = 0, std430) buffer Matrix_1 {
+layout(binding = 0, std430) buffer Matrix_ssbo {
   float numbers[];
 } firstMatrix;
-layout(binding = 1, std430) buffer Matrix_2 {
+
+layout(binding = 1, std430) buffer Matrix_ssbo_1 {
   float numbers[];
 } secondMatrix;
-layout(binding = 2, std430) buffer Matrix_3 {
+
+layout(binding = 2, std430) buffer Matrix_ssbo_2 {
   float numbers[];
 } resultMatrix;
-layout(binding = 3) uniform Uniforms_1 {
-  uint dimAOuter;
-  uint dimInner;
-  uint dimBOuter;
+
+layout(binding = 3, std140) uniform uniforms_block_ubo {
+  Uniforms inner;
 } uniforms;
 
 float mm_readA(uint row, uint col) {
-  bool tint_tmp = (row < uniforms.dimAOuter);
+  bool tint_tmp = (row < uniforms.inner.dimAOuter);
   if (tint_tmp) {
-    tint_tmp = (col < uniforms.dimInner);
+    tint_tmp = (col < uniforms.inner.dimInner);
   }
   if ((tint_tmp)) {
-    float result = firstMatrix.numbers[((row * uniforms.dimInner) + col)];
+    float result = firstMatrix.numbers[((row * uniforms.inner.dimInner) + col)];
     return result;
   }
   return 0.0f;
 }
 
 float mm_readB(uint row, uint col) {
-  bool tint_tmp_1 = (row < uniforms.dimInner);
+  bool tint_tmp_1 = (row < uniforms.inner.dimInner);
   if (tint_tmp_1) {
-    tint_tmp_1 = (col < uniforms.dimBOuter);
+    tint_tmp_1 = (col < uniforms.inner.dimBOuter);
   }
   if ((tint_tmp_1)) {
-    float result = secondMatrix.numbers[((row * uniforms.dimBOuter) + col)];
+    float result = secondMatrix.numbers[((row * uniforms.inner.dimBOuter) + col)];
     return result;
   }
   return 0.0f;
 }
 
 void mm_write(uint row, uint col, float value) {
-  bool tint_tmp_2 = (row < uniforms.dimAOuter);
+  bool tint_tmp_2 = (row < uniforms.inner.dimAOuter);
   if (tint_tmp_2) {
-    tint_tmp_2 = (col < uniforms.dimBOuter);
+    tint_tmp_2 = (col < uniforms.inner.dimBOuter);
   }
   if ((tint_tmp_2)) {
-    uint index = (col + (row * uniforms.dimBOuter));
+    uint index = (col + (row * uniforms.inner.dimBOuter));
     resultMatrix.numbers[index] = value;
   }
 }
 
 shared float mm_Asub[64][64];
 shared float mm_Bsub[64][64];
+uint tint_div(uint lhs, uint rhs) {
+  return (lhs / ((rhs == 0u) ? 1u : rhs));
+}
+
 void tint_symbol(uvec3 local_id, uvec3 global_id, uint local_invocation_index) {
   {
     for(uint idx = local_invocation_index; (idx < 4096u); idx = (idx + 256u)) {
@@ -72,18 +78,19 @@ void tint_symbol(uvec3 local_id, uvec3 global_id, uint local_invocation_index) {
   uint tileCol = (local_id.x * 4u);
   uint globalRow = (global_id.y * 4u);
   uint globalCol = (global_id.x * 4u);
-  uint numTiles = (((uniforms.dimInner - 1u) / 64u) + 1u);
+  uint tint_symbol_1 = tint_div((uniforms.inner.dimInner - 1u), 64u);
+  uint numTiles = (tint_symbol_1 + 1u);
   float acc[16] = float[16](0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
   float ACached = 0.0f;
   float BCached[4] = float[4](0.0f, 0.0f, 0.0f, 0.0f);
   {
-    for(uint index = 0u; (index < (4u * 4u)); index = (index + 1u)) {
+    for(uint index = 0u; (index < 16u); index = (index + 1u)) {
       acc[index] = 0.0f;
     }
   }
-  uint ColPerThreadA = (64u / 16u);
+  uint ColPerThreadA = 4u;
   uint tileColA = (local_id.x * ColPerThreadA);
-  uint RowPerThreadB = (64u / 16u);
+  uint RowPerThreadB = 4u;
   uint tileRowB = (local_id.y * RowPerThreadB);
   {
     for(uint t = 0u; (t < numTiles); t = (t + 1u)) {
@@ -93,8 +100,8 @@ void tint_symbol(uvec3 local_id, uvec3 global_id, uint local_invocation_index) {
             for(uint innerCol = 0u; (innerCol < ColPerThreadA); innerCol = (innerCol + 1u)) {
               uint inputRow = (tileRow + innerRow);
               uint inputCol = (tileColA + innerCol);
-              float tint_symbol_1 = mm_readA((globalRow + innerRow), ((t * 64u) + inputCol));
-              mm_Asub[inputRow][inputCol] = tint_symbol_1;
+              float tint_symbol_2 = mm_readA((globalRow + innerRow), ((t * 64u) + inputCol));
+              mm_Asub[inputRow][inputCol] = tint_symbol_2;
             }
           }
         }
@@ -105,8 +112,8 @@ void tint_symbol(uvec3 local_id, uvec3 global_id, uint local_invocation_index) {
             for(uint innerCol = 0u; (innerCol < 4u); innerCol = (innerCol + 1u)) {
               uint inputRow = (tileRowB + innerRow);
               uint inputCol = (tileCol + innerCol);
-              float tint_symbol_2 = mm_readB(((t * 64u) + inputRow), (globalCol + innerCol));
-              mm_Bsub[innerCol][inputCol] = tint_symbol_2;
+              float tint_symbol_3 = mm_readB(((t * 64u) + inputRow), (globalCol + innerCol));
+              mm_Bsub[innerCol][inputCol] = tint_symbol_3;
             }
           }
         }
