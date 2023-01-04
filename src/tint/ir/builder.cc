@@ -97,80 +97,84 @@ Temp::Id Builder::AllocateTempId() {
     return next_temp_id++;
 }
 
-const Binary* Builder::CreateBinary(Binary::Kind kind, const Value* lhs, const Value* rhs) {
-    return ir.instructions.Create<ir::Binary>(kind, Temp(), lhs, rhs);
+Binary* Builder::CreateBinary(Binary::Kind kind, const type::Type* type, Value* lhs, Value* rhs) {
+    return ir.instructions.Create<ir::Binary>(kind, Temp(type), lhs, rhs);
 }
 
-const Binary* Builder::And(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kAnd, lhs, rhs);
+Binary* Builder::And(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kAnd, type, lhs, rhs);
 }
 
-const Binary* Builder::Or(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kOr, lhs, rhs);
+Binary* Builder::Or(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kOr, type, lhs, rhs);
 }
 
-const Binary* Builder::Xor(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kXor, lhs, rhs);
+Binary* Builder::Xor(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kXor, type, lhs, rhs);
 }
 
-const Binary* Builder::LogicalAnd(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kLogicalAnd, lhs, rhs);
+Binary* Builder::LogicalAnd(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kLogicalAnd, type, lhs, rhs);
 }
 
-const Binary* Builder::LogicalOr(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kLogicalOr, lhs, rhs);
+Binary* Builder::LogicalOr(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kLogicalOr, type, lhs, rhs);
 }
 
-const Binary* Builder::Equal(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kEqual, lhs, rhs);
+Binary* Builder::Equal(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kEqual, type, lhs, rhs);
 }
 
-const Binary* Builder::NotEqual(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kNotEqual, lhs, rhs);
+Binary* Builder::NotEqual(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kNotEqual, type, lhs, rhs);
 }
 
-const Binary* Builder::LessThan(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kLessThan, lhs, rhs);
+Binary* Builder::LessThan(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kLessThan, type, lhs, rhs);
 }
 
-const Binary* Builder::GreaterThan(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kGreaterThan, lhs, rhs);
+Binary* Builder::GreaterThan(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kGreaterThan, type, lhs, rhs);
 }
 
-const Binary* Builder::LessThanEqual(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kLessThanEqual, lhs, rhs);
+Binary* Builder::LessThanEqual(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kLessThanEqual, type, lhs, rhs);
 }
 
-const Binary* Builder::GreaterThanEqual(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kGreaterThanEqual, lhs, rhs);
+Binary* Builder::GreaterThanEqual(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kGreaterThanEqual, type, lhs, rhs);
 }
 
-const Binary* Builder::ShiftLeft(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kShiftLeft, lhs, rhs);
+Binary* Builder::ShiftLeft(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kShiftLeft, type, lhs, rhs);
 }
 
-const Binary* Builder::ShiftRight(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kShiftRight, lhs, rhs);
+Binary* Builder::ShiftRight(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kShiftRight, type, lhs, rhs);
 }
 
-const Binary* Builder::Add(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kAdd, lhs, rhs);
+Binary* Builder::Add(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kAdd, type, lhs, rhs);
 }
 
-const Binary* Builder::Subtract(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kSubtract, lhs, rhs);
+Binary* Builder::Subtract(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kSubtract, type, lhs, rhs);
 }
 
-const Binary* Builder::Multiply(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kMultiply, lhs, rhs);
+Binary* Builder::Multiply(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kMultiply, type, lhs, rhs);
 }
 
-const Binary* Builder::Divide(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kDivide, lhs, rhs);
+Binary* Builder::Divide(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kDivide, type, lhs, rhs);
 }
 
-const Binary* Builder::Modulo(const Value* lhs, const Value* rhs) {
-    return CreateBinary(Binary::Kind::kModulo, lhs, rhs);
+Binary* Builder::Modulo(const type::Type* type, Value* lhs, Value* rhs) {
+    return CreateBinary(Binary::Kind::kModulo, type, lhs, rhs);
+}
+
+ir::Bitcast* Builder::Bitcast(const type::Type* type, Value* val) {
+    return ir.instructions.Create<ir::Bitcast>(Temp(type), val);
 }
 
 }  // namespace tint::ir

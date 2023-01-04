@@ -28,11 +28,13 @@ TEST_F(IR_InstructionTest, CreateAnd) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.And(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.And(b.builder.ir.types.Get<type::I32>(), b.builder.Constant(4_i),
+                                      b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kAnd);
 
     ASSERT_TRUE(instr->Result()->Is<Temp>());
+    ASSERT_NE(instr->Result()->Type(), nullptr);
     EXPECT_EQ(Temp::Id(42), instr->Result()->As<Temp>()->AsId());
 
     ASSERT_TRUE(instr->LHS()->Is<Constant>());
@@ -47,14 +49,15 @@ TEST_F(IR_InstructionTest, CreateAnd) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 & 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 & 2");
 }
 
 TEST_F(IR_InstructionTest, CreateOr) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Or(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Or(b.builder.ir.types.Get<type::I32>(), b.builder.Constant(4_i),
+                                     b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kOr);
 
@@ -73,14 +76,15 @@ TEST_F(IR_InstructionTest, CreateOr) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 | 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 | 2");
 }
 
 TEST_F(IR_InstructionTest, CreateXor) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Xor(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Xor(b.builder.ir.types.Get<type::I32>(), b.builder.Constant(4_i),
+                                      b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kXor);
 
@@ -99,14 +103,15 @@ TEST_F(IR_InstructionTest, CreateXor) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 ^ 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 ^ 2");
 }
 
 TEST_F(IR_InstructionTest, CreateLogicalAnd) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.LogicalAnd(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.LogicalAnd(b.builder.ir.types.Get<type::Bool>(),
+                                             b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kLogicalAnd);
 
@@ -125,14 +130,15 @@ TEST_F(IR_InstructionTest, CreateLogicalAnd) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 && 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 && 2");
 }
 
 TEST_F(IR_InstructionTest, CreateLogicalOr) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.LogicalOr(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.LogicalOr(b.builder.ir.types.Get<type::Bool>(),
+                                            b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kLogicalOr);
 
@@ -151,14 +157,15 @@ TEST_F(IR_InstructionTest, CreateLogicalOr) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 || 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 || 2");
 }
 
 TEST_F(IR_InstructionTest, CreateEqual) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Equal(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Equal(b.builder.ir.types.Get<type::Bool>(),
+                                        b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kEqual);
 
@@ -177,14 +184,15 @@ TEST_F(IR_InstructionTest, CreateEqual) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 == 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 == 2");
 }
 
 TEST_F(IR_InstructionTest, CreateNotEqual) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.NotEqual(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.NotEqual(b.builder.ir.types.Get<type::Bool>(),
+                                           b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kNotEqual);
 
@@ -203,14 +211,15 @@ TEST_F(IR_InstructionTest, CreateNotEqual) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 != 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 != 2");
 }
 
 TEST_F(IR_InstructionTest, CreateLessThan) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.LessThan(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.LessThan(b.builder.ir.types.Get<type::Bool>(),
+                                           b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kLessThan);
 
@@ -229,14 +238,15 @@ TEST_F(IR_InstructionTest, CreateLessThan) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 < 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 < 2");
 }
 
 TEST_F(IR_InstructionTest, CreateGreaterThan) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.GreaterThan(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.GreaterThan(b.builder.ir.types.Get<type::Bool>(),
+                                              b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kGreaterThan);
 
@@ -255,14 +265,15 @@ TEST_F(IR_InstructionTest, CreateGreaterThan) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 > 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 > 2");
 }
 
 TEST_F(IR_InstructionTest, CreateLessThanEqual) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.LessThanEqual(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.LessThanEqual(b.builder.ir.types.Get<type::Bool>(),
+                                                b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kLessThanEqual);
 
@@ -281,15 +292,15 @@ TEST_F(IR_InstructionTest, CreateLessThanEqual) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 <= 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 <= 2");
 }
 
 TEST_F(IR_InstructionTest, CreateGreaterThanEqual) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr =
-        b.builder.GreaterThanEqual(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.GreaterThanEqual(
+        b.builder.ir.types.Get<type::Bool>(), b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kGreaterThanEqual);
 
@@ -308,14 +319,15 @@ TEST_F(IR_InstructionTest, CreateGreaterThanEqual) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 >= 2");
+    EXPECT_EQ(str.str(), "%42 (bool) = 4 >= 2");
 }
 
 TEST_F(IR_InstructionTest, CreateShiftLeft) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.ShiftLeft(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.ShiftLeft(b.builder.ir.types.Get<type::I32>(),
+                                            b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kShiftLeft);
 
@@ -334,14 +346,15 @@ TEST_F(IR_InstructionTest, CreateShiftLeft) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 << 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 << 2");
 }
 
 TEST_F(IR_InstructionTest, CreateShiftRight) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.ShiftRight(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.ShiftRight(b.builder.ir.types.Get<type::I32>(),
+                                             b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kShiftRight);
 
@@ -360,14 +373,15 @@ TEST_F(IR_InstructionTest, CreateShiftRight) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 >> 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 >> 2");
 }
 
 TEST_F(IR_InstructionTest, CreateAdd) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Add(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Add(b.builder.ir.types.Get<type::I32>(), b.builder.Constant(4_i),
+                                      b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kAdd);
 
@@ -386,14 +400,15 @@ TEST_F(IR_InstructionTest, CreateAdd) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 + 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 + 2");
 }
 
 TEST_F(IR_InstructionTest, CreateSubtract) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Subtract(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Subtract(b.builder.ir.types.Get<type::I32>(),
+                                           b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kSubtract);
 
@@ -412,14 +427,15 @@ TEST_F(IR_InstructionTest, CreateSubtract) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 - 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 - 2");
 }
 
 TEST_F(IR_InstructionTest, CreateMultiply) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Multiply(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Multiply(b.builder.ir.types.Get<type::I32>(),
+                                           b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kMultiply);
 
@@ -438,14 +454,15 @@ TEST_F(IR_InstructionTest, CreateMultiply) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 * 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 * 2");
 }
 
 TEST_F(IR_InstructionTest, CreateDivide) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Divide(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Divide(b.builder.ir.types.Get<type::I32>(),
+                                         b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kDivide);
 
@@ -464,14 +481,15 @@ TEST_F(IR_InstructionTest, CreateDivide) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 / 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 / 2");
 }
 
 TEST_F(IR_InstructionTest, CreateModulo) {
     auto& b = CreateEmptyBuilder();
 
     b.builder.next_temp_id = Temp::Id(42);
-    const auto* instr = b.builder.Modulo(b.builder.Constant(4_i), b.builder.Constant(2_i));
+    const auto* instr = b.builder.Modulo(b.builder.ir.types.Get<type::I32>(),
+                                         b.builder.Constant(4_i), b.builder.Constant(2_i));
 
     EXPECT_EQ(instr->GetKind(), Binary::Kind::kModulo);
 
@@ -490,7 +508,50 @@ TEST_F(IR_InstructionTest, CreateModulo) {
 
     std::stringstream str;
     instr->ToString(str, program->Symbols());
-    EXPECT_EQ(str.str(), "%42 = 4 % 2");
+    EXPECT_EQ(str.str(), "%42 (i32) = 4 % 2");
+}
+
+TEST_F(IR_InstructionTest, Binary_Usage) {
+    auto& b = CreateEmptyBuilder();
+
+    b.builder.next_temp_id = Temp::Id(42);
+    const auto* instr = b.builder.And(b.builder.ir.types.Get<type::I32>(), b.builder.Constant(4_i),
+                                      b.builder.Constant(2_i));
+
+    EXPECT_EQ(instr->GetKind(), Binary::Kind::kAnd);
+
+    ASSERT_NE(instr->Result(), nullptr);
+    ASSERT_EQ(instr->Result()->Usage().Length(), 1);
+    EXPECT_EQ(instr->Result()->Usage()[0], instr);
+
+    ASSERT_NE(instr->LHS(), nullptr);
+    ASSERT_EQ(instr->LHS()->Usage().Length(), 1);
+    EXPECT_EQ(instr->LHS()->Usage()[0], instr);
+
+    ASSERT_NE(instr->RHS(), nullptr);
+    ASSERT_EQ(instr->RHS()->Usage().Length(), 1);
+    EXPECT_EQ(instr->RHS()->Usage()[0], instr);
+}
+
+TEST_F(IR_InstructionTest, Binary_Usage_DuplicateValue) {
+    auto& b = CreateEmptyBuilder();
+
+    auto val = b.builder.Constant(4_i);
+
+    b.builder.next_temp_id = Temp::Id(42);
+    const auto* instr = b.builder.And(b.builder.ir.types.Get<type::I32>(), val, val);
+
+    EXPECT_EQ(instr->GetKind(), Binary::Kind::kAnd);
+
+    ASSERT_NE(instr->Result(), nullptr);
+    ASSERT_EQ(instr->Result()->Usage().Length(), 1);
+    EXPECT_EQ(instr->Result()->Usage()[0], instr);
+
+    ASSERT_EQ(instr->LHS(), instr->RHS());
+
+    ASSERT_NE(instr->LHS(), nullptr);
+    ASSERT_EQ(instr->LHS()->Usage().Length(), 1);
+    EXPECT_EQ(instr->LHS()->Usage()[0], instr);
 }
 
 }  // namespace

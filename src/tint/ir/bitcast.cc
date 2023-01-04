@@ -1,4 +1,4 @@
-// Copyright 2022 The Tint Authors.
+// Copyright 2023 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/ir/instruction.h"
+#include "src/tint/ir/bitcast.h"
+#include "src/tint/debug.h"
 
-TINT_INSTANTIATE_TYPEINFO(tint::ir::Instruction);
+TINT_INSTANTIATE_TYPEINFO(tint::ir::Bitcast);
 
 namespace tint::ir {
 
-Instruction::Instruction(Value* result) : result_(result) {
-    TINT_ASSERT(IR, result_);
-    result_->AddUsage(this);
+Bitcast::Bitcast(Value* result, Value* val) : Base(result), val_(val) {
+    TINT_ASSERT(IR, val_);
+    val_->AddUsage(this);
 }
 
-Instruction::~Instruction() = default;
+Bitcast::~Bitcast() = default;
+
+std::ostream& Bitcast::ToString(std::ostream& out, const SymbolTable& st) const {
+    Result()->ToString(out, st);
+    out << " = bitcast(";
+    val_->ToString(out, st);
+    out << ")";
+    return out;
+}
 
 }  // namespace tint::ir

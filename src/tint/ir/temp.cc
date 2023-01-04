@@ -20,12 +20,12 @@ TINT_INSTANTIATE_TYPEINFO(tint::ir::Temp);
 
 namespace tint::ir {
 
-Temp::Temp(Id id) : id_(id) {}
+Temp::Temp(const type::Type* type, Id id) : type_(type), id_(id) {}
 
 Temp::~Temp() = default;
 
-std::ostream& Temp::ToString(std::ostream& out, const SymbolTable&) const {
-    out << "%" << std::to_string(AsId());
+std::ostream& Temp::ToString(std::ostream& out, const SymbolTable& st) const {
+    out << "%" << std::to_string(AsId()) << " (" << type_->FriendlyName(st) << ")";
     return out;
 }
 
