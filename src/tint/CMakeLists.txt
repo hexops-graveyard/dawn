@@ -254,6 +254,7 @@ list(APPEND TINT_LIB_SRCS
   castable.h
   clone_context.cc
   clone_context.h
+  constant/clone_context.h
   constant/composite.cc
   constant/composite.h
   constant/scalar.cc
@@ -476,6 +477,7 @@ list(APPEND TINT_LIB_SRCS
   type/atomic.h
   type/bool.cc
   type/bool.h
+  type/clone_context.h
   type/depth_multisampled_texture.cc
   type/depth_multisampled_texture.h
   type/depth_texture.cc
@@ -872,6 +874,9 @@ if(TINT_BUILD_TESTS)
     ast/workgroup_attribute_test.cc
     castable_test.cc
     clone_context_test.cc
+    constant/composite_test.cc
+    constant/scalar_test.cc
+    constant/splat_test.cc
     debug_test.cc
     demangler_test.cc
     diagnostic/diagnostic_test.cc
@@ -951,7 +956,7 @@ if(TINT_BUILD_TESTS)
     traits_test.cc
     transform/transform_test.cc
     type/array_test.cc
-    type/atomic.cc
+    type/atomic_test.cc
     type/bool_test.cc
     type/depth_multisampled_texture_test.cc
     type/depth_texture_test.cc
