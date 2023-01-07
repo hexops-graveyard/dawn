@@ -44,6 +44,7 @@
 #include "src/tint/program.h"
 #include "src/tint/sem/expression.h"
 #include "src/tint/sem/module.h"
+#include "src/tint/sem/switch_statement.h"
 
 namespace tint::ir {
 namespace {
@@ -84,7 +85,7 @@ bool IsConnected(const FlowNode* b) {
 }  // namespace
 
 BuilderImpl::BuilderImpl(const Program* program)
-    : builder(program),
+    : program_(program),
       clone_ctx_{
           type::CloneContext{{&program->Symbols()}, {&builder.ir.symbols, &builder.ir.types}},
           {&builder.ir.constants}} {}
@@ -121,8 +122,12 @@ FlowNode* BuilderImpl::FindEnclosingControl(ControlFlags flags) {
     return nullptr;
 }
 
+Symbol BuilderImpl::CloneSymbol(Symbol sym) const {
+    return clone_ctx_.type_ctx.dst.st->Register(clone_ctx_.type_ctx.src.st->NameFor(sym));
+}
+
 ResultType BuilderImpl::Build() {
-    auto* sem = builder.ir.program->Sem().Module();
+    auto* sem = program_->Sem().Module();
 
     for (auto* decl : sem->DependencyOrderedDeclarations()) {
         bool ok = tint::Switch(
@@ -154,10 +159,11 @@ ResultType BuilderImpl::Build() {
 }
 
 bool BuilderImpl::EmitFunction(const ast::Function* ast_func) {
-    // The flow stack should have been emptied when the previous function finshed building.
+    // The flow stack should have been emptied when the previous function finished building.
     TINT_ASSERT(IR, flow_stack.IsEmpty());
 
-    auto* ir_func = builder.CreateFunction(ast_func);
+    auto* ir_func = builder.CreateFunction();
+    ir_func->name = CloneSymbol(ast_func->symbol);
     current_function_ = ir_func;
     builder.ir.functions.Push(ir_func);
 
@@ -174,6 +180,10 @@ bool BuilderImpl::EmitFunction(const ast::Function* ast_func) {
         if (!EmitStatements(ast_func->body->statements)) {
             return false;
         }
+
+        // TODO(dsinclair): Store return type and attributes
+        // TODO(dsinclair): Store parameters
+        // TODO(dsinclair): Store attributes
 
         // If the branch target has already been set then a `return` was called. Only set in the
         // case where `return` wasn't called.
@@ -239,9 +249,9 @@ bool BuilderImpl::EmitBlock(const ast::BlockStatement* block) {
 }
 
 bool BuilderImpl::EmitIf(const ast::IfStatement* stmt) {
-    auto* if_node = builder.CreateIf(stmt);
+    auto* if_node = builder.CreateIf();
 
-    // Emit the if condition into the end of the preceeding block
+    // Emit the if condition into the end of the preceding block
     auto reg = EmitExpression(stmt->condition);
     if (!reg) {
         return false;
@@ -282,7 +292,7 @@ bool BuilderImpl::EmitIf(const ast::IfStatement* stmt) {
 }
 
 bool BuilderImpl::EmitLoop(const ast::LoopStatement* stmt) {
-    auto* loop_node = builder.CreateLoop(stmt);
+    auto* loop_node = builder.CreateLoop();
 
     BranchTo(loop_node);
 
@@ -320,7 +330,7 @@ bool BuilderImpl::EmitLoop(const ast::LoopStatement* stmt) {
 }
 
 bool BuilderImpl::EmitWhile(const ast::WhileStatement* stmt) {
-    auto* loop_node = builder.CreateLoop(stmt);
+    auto* loop_node = builder.CreateLoop();
     // Continue is always empty, just go back to the start
     builder.Branch(loop_node->continuing_target, loop_node->start_target);
 
@@ -339,8 +349,8 @@ bool BuilderImpl::EmitWhile(const ast::WhileStatement* stmt) {
             return false;
         }
 
-        // Create an if (cond) {} else {break;} control flow
-        auto* if_node = builder.CreateIf(nullptr);
+        // Create an `if (cond) {} else {break;}` control flow
+        auto* if_node = builder.CreateIf();
         builder.Branch(if_node->true_target, if_node->merge_target);
         builder.Branch(if_node->false_target, loop_node->merge_target);
         if_node->condition = reg.Get();
@@ -361,7 +371,7 @@ bool BuilderImpl::EmitWhile(const ast::WhileStatement* stmt) {
 }
 
 bool BuilderImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
-    auto* loop_node = builder.CreateLoop(stmt);
+    auto* loop_node = builder.CreateLoop();
     builder.Branch(loop_node->continuing_target, loop_node->start_target);
 
     if (stmt->initializer) {
@@ -387,8 +397,8 @@ bool BuilderImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
                 return false;
             }
 
-            // Create an if (cond) {} else {break;} control flow
-            auto* if_node = builder.CreateIf(nullptr);
+            // Create an `if (cond) {} else {break;}` control flow
+            auto* if_node = builder.CreateIf();
             builder.Branch(if_node->true_target, if_node->merge_target);
             builder.Branch(if_node->false_target, loop_node->merge_target);
             if_node->condition = reg.Get();
@@ -417,9 +427,9 @@ bool BuilderImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
 }
 
 bool BuilderImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
-    auto* switch_node = builder.CreateSwitch(stmt);
+    auto* switch_node = builder.CreateSwitch();
 
-    // Emit the condition into the preceeding block
+    // Emit the condition into the preceding block
     auto reg = EmitExpression(stmt->condition);
     if (!reg) {
         return false;
@@ -433,9 +443,19 @@ bool BuilderImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
     {
         FlowStackScope scope(this, switch_node);
 
-        for (const auto* c : stmt->body) {
-            current_flow_block = builder.CreateCase(switch_node, c->selectors);
-            if (!EmitStatement(c->body)) {
+        const auto* sem = program_->Sem().Get(stmt);
+        for (const auto* c : sem->Cases()) {
+            utils::Vector<Switch::CaseSelector, 4> selectors;
+            for (const auto* selector : c->Selectors()) {
+                if (selector->IsDefault()) {
+                    selectors.Push({nullptr});
+                } else {
+                    selectors.Push({selector->Value()->Clone(clone_ctx_)});
+                }
+            }
+
+            current_flow_block = builder.CreateCase(switch_node, selectors);
+            if (!EmitStatement(c->Body()->Declaration())) {
                 return false;
             }
             BranchToIfNeeded(switch_node->merge_target);
@@ -451,7 +471,9 @@ bool BuilderImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
 }
 
 bool BuilderImpl::EmitReturn(const ast::ReturnStatement*) {
-    // TODO(dsinclair): Emit the return value ....
+    // TODO(dsinclair): Emit the return value. Need to determine how we want to
+    // emit this. Emit a `return_value %yy` instruction? There is no `return`
+    // instruction as we just branch.
 
     BranchTo(current_function_->end_target);
     return true;
@@ -487,9 +509,9 @@ bool BuilderImpl::EmitContinue(const ast::ContinueStatement*) {
 }
 
 bool BuilderImpl::EmitBreakIf(const ast::BreakIfStatement* stmt) {
-    auto* if_node = builder.CreateIf(stmt);
+    auto* if_node = builder.CreateIf();
 
-    // Emit the break-if condition into the end of the preceeding block
+    // Emit the break-if condition into the end of the preceding block
     auto reg = EmitExpression(stmt->condition);
     if (!reg) {
         return false;
@@ -516,7 +538,6 @@ bool BuilderImpl::EmitBreakIf(const ast::BreakIfStatement* stmt) {
 
     // The `break-if` has to be the last item in the continuing block. The false branch of the
     // `break-if` will always take us back to the start of the loop.
-    // break then we go back to the start of the loop.
     BranchTo(loop->start_target);
 
     return true;
@@ -568,7 +589,7 @@ utils::Result<Value*> BuilderImpl::EmitBinary(const ast::BinaryExpression* expr)
         return utils::Failure;
     }
 
-    auto* sem = builder.ir.program->Sem().Get(expr);
+    auto* sem = program_->Sem().Get(expr);
     auto* ty = sem->Type()->Clone(clone_ctx_.type_ctx);
 
     Binary* instr = nullptr;
@@ -642,7 +663,7 @@ utils::Result<Value*> BuilderImpl::EmitBitcast(const ast::BitcastExpression* exp
         return utils::Failure;
     }
 
-    auto* sem = builder.ir.program->Sem().Get(expr);
+    auto* sem = program_->Sem().Get(expr);
     auto* ty = sem->Type()->Clone(clone_ctx_.type_ctx);
     auto* instr = builder.Bitcast(ty, val.Get());
 
@@ -651,7 +672,7 @@ utils::Result<Value*> BuilderImpl::EmitBitcast(const ast::BitcastExpression* exp
 }
 
 utils::Result<Value*> BuilderImpl::EmitLiteral(const ast::LiteralExpression* lit) {
-    auto* sem = builder.ir.program->Sem().Get(lit);
+    auto* sem = program_->Sem().Get(lit);
     if (!sem) {
         diagnostics_.add_error(
             tint::diag::System::IR,
@@ -669,45 +690,6 @@ utils::Result<Value*> BuilderImpl::EmitLiteral(const ast::LiteralExpression* lit
         return utils::Failure;
     }
     return builder.Constant(cv);
-}
-
-bool BuilderImpl::EmitType(const ast::Type* ty) {
-    return tint::Switch(
-        ty,
-        // [&](const ast::Array* ary) { },
-        // [&](const ast::Bool* b) { },
-        // [&](const ast::F32* f) { },
-        // [&](const ast::F16* f) { },
-        // [&](const ast::I32* i) { },
-        // [&](const ast::U32* u) { },
-        // [&](const ast::Vector* v) { },
-        // [&](const ast::Matrix* mat) { },
-        // [&](const ast::Pointer* ptr) { },'
-        // [&](const ast::Atomic* a) { },
-        // [&](const ast::Sampler* s) { },
-        // [&](const ast::ExternalTexture* t) { },
-        // [&](const ast::Texture* t) {
-        //      return tint::Switch(
-        //          t,
-        //          [&](const ast::DepthTexture*) { },
-        //          [&](const ast::DepthMultisampledTexture*) { },
-        //          [&](const ast::SampledTexture*) { },
-        //          [&](const ast::MultisampledTexture*) { },
-        //          [&](const ast::StorageTexture*) {  },
-        //          [&](Default) {
-        //              diagnostics_.add_warning(tint::diag::System::IR,
-        //                  "unknown texture: " + std::string(t->TypeInfo().name), t->source);
-        //              return false;
-        //          });
-        // },
-        // [&](const ast::Void* v) { },
-        // [&](const ast::TypeName* tn) { },
-        [&](Default) {
-            diagnostics_.add_warning(tint::diag::System::IR,
-                                     "unknown type: " + std::string(ty->TypeInfo().name),
-                                     ty->source);
-            return false;
-        });
 }
 
 bool BuilderImpl::EmitAttributes(utils::VectorRef<const ast::Attribute*> attrs) {

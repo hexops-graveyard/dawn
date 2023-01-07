@@ -35,22 +35,13 @@
 #include "src/tint/type/i32.h"
 #include "src/tint/type/u32.h"
 
-// Forward Declarations
-namespace tint {
-class Program;
-}  // namespace tint
-namespace tint::ast {
-class CaseSelector;
-}  // namespace tint::ast
-
 namespace tint::ir {
 
-/// Builds an ir::Module from a given Program
+/// Builds an ir::Module
 class Builder {
   public:
     /// Constructor
-    /// @param prog the program this ir is associated with
-    explicit Builder(const Program* prog);
+    Builder();
     /// Constructor
     /// @param mod the ir::Module to wrap with this builder
     explicit Builder(Module&& mod);
@@ -63,31 +54,27 @@ class Builder {
     /// @returns a new terminator flow node
     Terminator* CreateTerminator();
 
-    /// Creates a function flow node for the given ast::Function
-    /// @param func the ast::Function
+    /// Creates a function flow node
     /// @returns the flow node
-    Function* CreateFunction(const ast::Function* func);
+    Function* CreateFunction();
 
-    /// Creates an if flow node for the given ast::IfStatement or ast::BreakIfStatement
-    /// @param stmt the ast::IfStatement or ast::BreakIfStatement
+    /// Creates an if flow node
     /// @returns the flow node
-    If* CreateIf(const ast::Statement* stmt);
+    If* CreateIf();
 
-    /// Creates a loop flow node for the given ast loop, while or for statement
-    /// @param stmt the ast loop, while or for statement
+    /// Creates a loop flow node
     /// @returns the flow node
-    Loop* CreateLoop(const ast::Statement* stmt);
+    Loop* CreateLoop();
 
-    /// Creates a switch flow node for the given ast::SwitchStatement
-    /// @param stmt the ast::SwitchStatment
+    /// Creates a switch flow node
     /// @returns the flow node
-    Switch* CreateSwitch(const ast::SwitchStatement* stmt);
+    Switch* CreateSwitch();
 
     /// Creates a case flow node for the given case branch.
     /// @param s the switch to create the case into
     /// @param selectors the case selectors for the case statement
     /// @returns the start block for the case flow node
-    Block* CreateCase(Switch* s, utils::VectorRef<const ast::CaseSelector*> selectors);
+    Block* CreateCase(Switch* s, utils::VectorRef<Switch::CaseSelector> selectors);
 
     /// Branches the given block to the given flow node.
     /// @param from the block to branch from

@@ -32,20 +32,26 @@ namespace tint {
 class Program;
 }  // namespace tint
 namespace tint::ast {
+class Attribute;
 class BinaryExpression;
 class BitcastExpression;
 class BlockStatement;
 class BreakIfStatement;
 class BreakStatement;
 class ContinueStatement;
+class Expression;
 class ForLoopStatement;
 class Function;
 class IfStatement;
 class LoopStatement;
 class LiteralExpression;
+class Node;
 class ReturnStatement;
 class Statement;
+class SwitchStatement;
+class Type;
 class WhileStatement;
+class Variable;
 }  // namespace tint::ast
 namespace tint::ir {
 class Block;
@@ -164,11 +170,6 @@ class BuilderImpl {
     /// @returns true if successful, false otherwise
     utils::Result<Value*> EmitLiteral(const ast::LiteralExpression* lit);
 
-    /// Emits a type
-    /// @param ty the type to emit
-    /// @returns true if successful, false otherwise
-    bool EmitType(const ast::Type* ty);
-
     /// Emits a set of attributes
     /// @param attrs the attributes to emit
     /// @returns true if successful, false otherwise
@@ -205,6 +206,10 @@ class BuilderImpl {
     void BranchToIfNeeded(ir::FlowNode* node);
 
     FlowNode* FindEnclosingControl(ControlFlags flags);
+
+    const Program* program_ = nullptr;
+
+    Symbol CloneSymbol(Symbol sym) const;
 
     diag::List diagnostics_;
 
