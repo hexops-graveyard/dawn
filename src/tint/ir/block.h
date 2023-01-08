@@ -15,6 +15,7 @@
 #ifndef SRC_TINT_IR_BLOCK_H_
 #define SRC_TINT_IR_BLOCK_H_
 
+#include "src/tint/ir/branch.h"
 #include "src/tint/ir/flow_node.h"
 #include "src/tint/ir/instruction.h"
 #include "src/tint/utils/vector.h"
@@ -30,8 +31,12 @@ class Block : public Castable<Block, FlowNode> {
     Block();
     ~Block() override;
 
+    /// @returns true if this is a dead block. This can happen in the case like a loop merge block
+    /// which is never reached.
+    bool IsDead() const { return branch.target == nullptr; }
+
     /// The node this block branches too.
-    const FlowNode* branch_target = nullptr;
+    Branch branch = {};
 
     /// The instructions in the block
     utils::Vector<const Instruction*, 16> instructions;
