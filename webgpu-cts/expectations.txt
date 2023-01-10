@@ -99,6 +99,13 @@ crbug.com/dawn/1107 [ intel mac ] webgpu:api,operation,command_buffer,copyTextur
 crbug.com/dawn/1107 [ intel mac ] webgpu:api,operation,command_buffer,copyTextureToTexture:color_textures,non_compressed,non_array:srcFormat="rgba32float";dstFormat="rgba32float";dimension="2d" [ Failure ]
 
 ################################################################################
+# Large and slow tests on intel-gen-9 win10
+# KEEP
+################################################################################
+crbug.com/1406064 [ intel-gen-9 win10 ] webgpu:api,validation,error_scope:current_scope:errorFilter="out-of-memory";stackDepth=100000 [ Slow ]
+crbug.com/1406064 [ intel-gen-9 win10 ] webgpu:api,validation,error_scope:current_scope:errorFilter="validation";stackDepth=100000 [ Slow ]
+
+################################################################################
 # entry_point_name_must_match failures
 ################################################################################
 crbug.com/dawn/1345 webgpu:api,validation,shader_module,entry_point:fragment:isAsync=false;shaderModuleEntryPoint="main";stageEntryPoint="main%5Cu0000" [ Failure ]
@@ -168,68 +175,66 @@ crbug.com/dawn/1357 webgpu:api,operation,shader_module,compilation_info:offset_a
 
 ################################################################################
 # atan2 shader execution failures
-# Very slow, many failing. Skip for now.
-# KEEP
 ################################################################################
-crbug.com/tint/1524 webgpu:shader,execution,expression,call,builtin,atan2:f32:* [ Skip ]
+crbug.com/tint/1524 webgpu:shader,execution,expression,call,builtin,atan2:f32:* [ Failure ]
 
 ################################################################################
 # shader execution failures
 ################################################################################
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_r";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="storage_rw";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:i32:inputSource="uniform";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_r";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="storage_rw";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,countTrailingZeros:u32:inputSource="uniform";vectorize=4 [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec3:inputSource="storage_r" [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec3:inputSource="storage_rw" [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec3:inputSource="uniform" [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec4:inputSource="storage_r" [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec4:inputSource="storage_rw" [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:shader,execution,expression,call,builtin,dot:f32_vec4:inputSource="uniform" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_r";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="storage_rw";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:i32:inputSource="uniform";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_r";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="storage_rw";vectorize=4 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize="_undef_" [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=2 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=3 [ Failure ]
+crbug.com/tint/1794 [ intel-gen-9 ubuntu ] webgpu:shader,execution,expression,call,builtin,firstTrailingBit:u32:inputSource="uniform";vectorize=4 [ Failure ]
 crbug.com/dawn/0000 [ win10 ] webgpu:shader,execution,expression,call,builtin,sign:f32:inputSource="storage_r";vectorize="_undef_" [ Failure ]
 crbug.com/dawn/0000 [ win10 ] webgpu:shader,execution,expression,call,builtin,sign:f32:inputSource="storage_r";vectorize=2 [ Failure ]
 crbug.com/dawn/0000 [ win10 ] webgpu:shader,execution,expression,call,builtin,sign:f32:inputSource="storage_r";vectorize=3 [ Failure ]
@@ -244,17 +249,6 @@ crbug.com/dawn/0000 [ win10 ] webgpu:shader,execution,expression,call,builtin,si
 crbug.com/dawn/0000 [ win10 ] webgpu:shader,execution,expression,call,builtin,sign:f32:inputSource="uniform";vectorize=4 [ Failure ]
 
 ################################################################################
-# Built-in constant evaluation is not completed yet
-################################################################################
-crbug.com/tint/1613 [ dawn-backend-validation monterey ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:inputSource="const";vectorize=3 [ Slow ]
-crbug.com/tint/1613 [ dawn-no-backend-validation monterey ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:inputSource="const";vectorize=3 [ Failure ]
-crbug.com/tint/1613 [ dawn-backend-validation monterey ] webgpu:shader,execution,expression,call,builtin,max:f32:inputSource="const";vectorize=3 [ Slow ]
-crbug.com/tint/1613 [ dawn-no-backend-validation monterey ] webgpu:shader,execution,expression,call,builtin,max:f32:inputSource="const";vectorize=3 [ Failure ]
-crbug.com/tint/1613 [ dawn-backend-validation monterey ] webgpu:shader,execution,expression,call,builtin,min:f32:inputSource="const";vectorize=3 [ Slow ]
-crbug.com/tint/1613 [ dawn-no-backend-validation monterey ] webgpu:shader,execution,expression,call,builtin,min:f32:inputSource="const";vectorize=3 [ Failure ]
-crbug.com/tint/1613 [ dawn-backend-validation monterey ] webgpu:shader,execution,expression,call,builtin,mix:matching_f32:inputSource="const";vectorize=3 [ Slow ]
-
-################################################################################
 # webgpu:shader,execution,memory_model
 # Flakes / slow tests
 # KEEP
@@ -266,7 +260,7 @@ crbug.com/dawn/0000 [ win ] webgpu:shader,execution,memory_model,* [ Failure ]
 ################################################################################
 crbug.com/tint/0000 webgpu:shader,validation,parse,blankspace:null_characters:contains_null=true;placement="comment" [ Failure ]
 crbug.com/tint/0000 webgpu:shader,validation,parse,blankspace:null_characters:contains_null=true;placement="eol" [ Failure ]
-crbug.com/tint/0000 webgpu:shader,validation,parse,identifiers:identifiers:* [ Failure ]
+crbug.com/tint/1791 webgpu:shader,validation,parse,identifiers:identifiers:* [ Failure ]
 crbug.com/tint/1771 [ ubuntu ] webgpu:api,validation,compute_pipeline:overrides,workgroup_size,limits,* [ Failure ]
 crbug.com/tint/1771 [ win10 ] webgpu:api,validation,compute_pipeline:overrides,workgroup_size,limits,* [ Failure ]
 
