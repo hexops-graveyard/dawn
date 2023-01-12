@@ -77,12 +77,12 @@ const char* str(WGPUErrorType ty) {
 }
 
 // There's something broken with Node when attempting to write more than 65536 bytes to cout.
-// Split the string up into writes of 4k chunks .
+// Split the string up into writes of 4k chunks.
 // Likely related: https://github.com/nodejs/node/issues/12921
 void chunkedWrite(const char* msg) {
     while (true) {
         auto n = printf("%.4096s", msg);
-        if (n == 0) {
+        if (n <= 0) {
             break;
         }
         msg += n;
@@ -174,14 +174,18 @@ GPUDevice::~GPUDevice() {
     // lost_promise_ is left hanging. We'll also not clean up any GPU objects before terminating the
     // process, which is not a good idea.
     if (!destroyed_) {
-        destroy(env_);
+        lost_promise_.Discard();
+        device_.Destroy();
+        destroyed_ = true;
     }
 }
 
 interop::Interface<interop::GPUSupportedFeatures> GPUDevice::getFeatures(Napi::Env env) {
     size_t count = device_.EnumerateFeatures(nullptr);
     std::vector<wgpu::FeatureName> features(count);
-    device_.EnumerateFeatures(&features[0]);
+    if (count > 0) {
+        device_.EnumerateFeatures(features.data());
+    }
     return interop::GPUSupportedFeatures::Create<GPUSupportedFeatures>(env, env,
                                                                        std::move(features));
 }
