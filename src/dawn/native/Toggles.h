@@ -82,6 +82,8 @@ enum class Toggle {
     MetalUseMockBlitEncoderForWriteTimestamp,
     VulkanSplitCommandBufferOnDepthStencilComputeSampleAfterRenderPass,
     D3D12Allocate2DTexturewithCopyDstAsCommittedResource,
+    MetalUseCombinedDepthStencilFormatForStencil8,
+    UseTempTextureInStencilTextureToBufferCopy,
     DisallowDeprecatedAPIs,
 
     // Unresolved issues.

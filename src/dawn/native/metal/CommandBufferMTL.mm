@@ -28,7 +28,6 @@
 #include "dawn/native/metal/QuerySetMTL.h"
 #include "dawn/native/metal/RenderPipelineMTL.h"
 #include "dawn/native/metal/SamplerMTL.h"
-#include "dawn/native/metal/StagingBufferMTL.h"
 #include "dawn/native/metal/TextureMTL.h"
 #include "dawn/native/metal/UtilsMetal.h"
 
@@ -658,7 +657,7 @@ void RecordCopyBufferToTexture(CommandRecordingContext* commandContext,
     TextureBufferCopySplit splitCopies = ComputeTextureBufferCopySplit(
         texture, mipLevel, origin, copySize, bufferSize, offset, bytesPerRow, rowsPerImage, aspect);
 
-    MTLBlitOption blitOption = ComputeMTLBlitOption(texture->GetFormat(), aspect);
+    MTLBlitOption blitOption = texture->ComputeMTLBlitOption(aspect);
 
     for (const auto& copyInfo : splitCopies) {
         uint64_t bufferOffset = copyInfo.bufferOffset;
@@ -881,8 +880,7 @@ MaybeError CommandBuffer::FillCommands(CommandRecordingContext* commandContext) 
                     dst.bytesPerRow, dst.rowsPerImage, src.aspect);
 
                 for (const auto& copyInfo : splitCopies) {
-                    MTLBlitOption blitOption =
-                        ComputeMTLBlitOption(texture->GetFormat(), src.aspect);
+                    MTLBlitOption blitOption = texture->ComputeMTLBlitOption(src.aspect);
                     uint64_t bufferOffset = copyInfo.bufferOffset;
 
                     switch (texture->GetDimension()) {
@@ -1145,7 +1143,7 @@ MaybeError CommandBuffer::FillCommands(CommandRecordingContext* commandContext) 
                 dstBuffer->EnsureDataInitializedAsDestination(commandContext, offset, size);
 
                 [commandContext->EnsureBlit()
-                       copyFromBuffer:ToBackend(uploadHandle.stagingBuffer)->GetBufferHandle()
+                       copyFromBuffer:ToBackend(uploadHandle.stagingBuffer)->GetMTLBuffer()
                          sourceOffset:uploadHandle.startOffset
                              toBuffer:dstBuffer->GetMTLBuffer()
                     destinationOffset:offset

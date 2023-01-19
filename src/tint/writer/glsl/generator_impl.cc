@@ -110,46 +110,6 @@ bool last_is_break(const ast::BlockStatement* stmts) {
     return IsAnyOf<ast::BreakStatement>(stmts->Last());
 }
 
-const char* convert_texel_format_to_glsl(const ast::TexelFormat format) {
-    switch (format) {
-        case ast::TexelFormat::kR32Uint:
-            return "r32ui";
-        case ast::TexelFormat::kR32Sint:
-            return "r32i";
-        case ast::TexelFormat::kR32Float:
-            return "r32f";
-        case ast::TexelFormat::kRgba8Unorm:
-            return "rgba8";
-        case ast::TexelFormat::kRgba8Snorm:
-            return "rgba8_snorm";
-        case ast::TexelFormat::kRgba8Uint:
-            return "rgba8ui";
-        case ast::TexelFormat::kRgba8Sint:
-            return "rgba8i";
-        case ast::TexelFormat::kRg32Uint:
-            return "rg32ui";
-        case ast::TexelFormat::kRg32Sint:
-            return "rg32i";
-        case ast::TexelFormat::kRg32Float:
-            return "rg32f";
-        case ast::TexelFormat::kRgba16Uint:
-            return "rgba16ui";
-        case ast::TexelFormat::kRgba16Sint:
-            return "rgba16i";
-        case ast::TexelFormat::kRgba16Float:
-            return "rgba16f";
-        case ast::TexelFormat::kRgba32Uint:
-            return "rgba32ui";
-        case ast::TexelFormat::kRgba32Sint:
-            return "rgba32i";
-        case ast::TexelFormat::kRgba32Float:
-            return "rgba32f";
-        case ast::TexelFormat::kUndefined:
-            return "unknown";
-    }
-    return "unknown";
-}
-
 void PrintF32(std::ostream& out, float value) {
     if (std::isinf(value)) {
         out << "0.0f " << (value >= 0 ? "/* inf */" : "/* -inf */");
@@ -191,6 +151,7 @@ SanitizedResult Sanitize(const Program* in,
         transform::BuiltinPolyfill::Builtins polyfills;
         polyfills.acosh = transform::BuiltinPolyfill::Level::kRangeCheck;
         polyfills.atanh = transform::BuiltinPolyfill::Level::kRangeCheck;
+        polyfills.bgra8unorm = true;
         polyfills.bitshift_modulo = true;
         polyfills.count_leading_zeros = true;
         polyfills.count_trailing_zeros = true;
@@ -292,41 +253,41 @@ bool GeneratorImpl::Generate() {
             continue;  // These are not emitted.
         }
 
-        if (auto* global = decl->As<ast::Variable>()) {
-            if (!EmitGlobalVariable(global)) {
+        bool ok = Switch(
+            decl,  //
+            [&](const ast::Variable* global) { return EmitGlobalVariable(global); },
+            [&](const ast::Struct* str) {
+                auto* sem = builder_.Sem().Get(str);
+                bool has_rt_arr = false;
+                if (auto* arr = sem->Members().Back()->Type()->As<type::Array>()) {
+                    has_rt_arr = arr->Count()->Is<type::RuntimeArrayCount>();
+                }
+                bool is_block = ast::HasAttribute<transform::AddBlockAttribute::BlockAttribute>(
+                    str->attributes);
+                if (!has_rt_arr && !is_block) {
+                    if (!EmitStructType(current_buffer_, sem)) {
+                        return false;
+                    }
+                }
+                return true;
+            },
+            [&](const ast::Function* func) {
+                if (func->IsEntryPoint()) {
+                    return EmitEntryPointFunction(func);
+                }
+                return EmitFunction(func);
+            },
+            [&](const ast::Enable* enable) {
+                // Record the required extension for generating extension directive later
+                return RecordExtension(enable);
+            },
+            [&](Default) {
+                TINT_ICE(Writer, diagnostics_)
+                    << "unhandled module-scope declaration: " << decl->TypeInfo().name;
                 return false;
-            }
-        } else if (auto* str = decl->As<ast::Struct>()) {
-            auto* sem = builder_.Sem().Get(str);
-            bool has_rt_arr = false;
-            if (auto* arr = sem->Members().Back()->Type()->As<type::Array>()) {
-                has_rt_arr = arr->Count()->Is<type::RuntimeArrayCount>();
-            }
-            bool is_block =
-                ast::HasAttribute<transform::AddBlockAttribute::BlockAttribute>(str->attributes);
-            if (!has_rt_arr && !is_block) {
-                if (!EmitStructType(current_buffer_, sem)) {
-                    return false;
-                }
-            }
-        } else if (auto* func = decl->As<ast::Function>()) {
-            if (func->IsEntryPoint()) {
-                if (!EmitEntryPointFunction(func)) {
-                    return false;
-                }
-            } else {
-                if (!EmitFunction(func)) {
-                    return false;
-                }
-            }
-        } else if (auto* ext = decl->As<ast::Enable>()) {
-            // Record the required extension for generating extension directive later
-            if (!RecordExtension(ext)) {
-                return false;
-            }
-        } else {
-            TINT_ICE(Writer, diagnostics_)
-                << "unhandled module-scope declaration: " << decl->TypeInfo().name;
+            });
+
+        if (TINT_UNLIKELY(!ok)) {
             return false;
         }
     }
@@ -493,7 +454,7 @@ bool GeneratorImpl::EmitBitwiseBoolOp(std::ostream& out, const ast::BinaryExpres
     // Emit operator.
     if (expr->op == ast::BinaryOp::kAnd) {
         out << " & ";
-    } else if (expr->op == ast::BinaryOp::kOr) {
+    } else if (TINT_LIKELY(expr->op == ast::BinaryOp::kOr)) {
         out << " | ";
     } else {
         TINT_ICE(Writer, diagnostics_) << "unexpected binary op: " << FriendlyName(expr->op);
@@ -742,22 +703,17 @@ bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
 
 bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr) {
     auto* call = builder_.Sem().Get<sem::Call>(expr);
-    auto* target = call->Target();
-
-    if (target->Is<sem::Function>()) {
-        return EmitFunctionCall(out, call);
-    }
-    if (auto* builtin = target->As<sem::Builtin>()) {
-        return EmitBuiltinCall(out, call, builtin);
-    }
-    if (auto* cast = target->As<sem::TypeConversion>()) {
-        return EmitTypeConversion(out, call, cast);
-    }
-    if (auto* ctor = target->As<sem::TypeInitializer>()) {
-        return EmitTypeInitializer(out, call, ctor);
-    }
-    TINT_ICE(Writer, diagnostics_) << "unhandled call target: " << target->TypeInfo().name;
-    return false;
+    return Switch(
+        call->Target(),  //
+        [&](const sem::Function*) { return EmitFunctionCall(out, call); },
+        [&](const sem::Builtin* builtin) { return EmitBuiltinCall(out, call, builtin); },
+        [&](const sem::TypeConversion* conv) { return EmitTypeConversion(out, call, conv); },
+        [&](const sem::TypeInitializer* init) { return EmitTypeInitializer(out, call, init); },
+        [&](Default) {
+            TINT_ICE(Writer, diagnostics_)
+                << "unhandled call target: " << call->Target()->TypeInfo().name;
+            return false;
+        });
 }
 
 bool GeneratorImpl::EmitFunctionCall(std::ostream& out, const sem::Call* call) {
@@ -1379,7 +1335,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
     };
 
     auto* texture = arg(Usage::kTexture);
-    if (!texture) {
+    if (TINT_UNLIKELY(!texture)) {
         TINT_ICE(Writer, diagnostics_) << "missing texture argument";
         return false;
     }
@@ -1579,7 +1535,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
     out << ", ";
 
     auto* param_coords = arg(Usage::kCoords);
-    if (!param_coords) {
+    if (TINT_UNLIKELY(!param_coords)) {
         TINT_ICE(Writer, diagnostics_) << "missing coords argument";
         return false;
     }
@@ -1678,7 +1634,7 @@ bool GeneratorImpl::EmitTextureCall(std::ostream& out,
             out << "xyz"[i];
         }
     }
-    if (wgsl_ret_width > glsl_ret_width) {
+    if (TINT_UNLIKELY(wgsl_ret_width > glsl_ret_width)) {
         TINT_ICE(Writer, diagnostics_)
             << "WGSL return width (" << wgsl_ret_width << ") is wider than GLSL return width ("
             << glsl_ret_width << ") for " << builtin->Type();
@@ -2028,7 +1984,7 @@ bool GeneratorImpl::EmitGlobalVariable(const ast::Variable* global) {
 bool GeneratorImpl::EmitUniformVariable(const ast::Var* var, const sem::Variable* sem) {
     auto* type = sem->Type()->UnwrapRef();
     auto* str = type->As<sem::Struct>();
-    if (!str) {
+    if (TINT_UNLIKELY(!str)) {
         TINT_ICE(Writer, builder_.Diagnostics()) << "storage variable must be of struct type";
         return false;
     }
@@ -2049,7 +2005,7 @@ bool GeneratorImpl::EmitUniformVariable(const ast::Var* var, const sem::Variable
 bool GeneratorImpl::EmitStorageVariable(const ast::Var* var, const sem::Variable* sem) {
     auto* type = sem->Type()->UnwrapRef();
     auto* str = type->As<sem::Struct>();
-    if (!str) {
+    if (TINT_UNLIKELY(!str)) {
         TINT_ICE(Writer, builder_.Diagnostics()) << "storage variable must be of struct type";
         return false;
     }
@@ -2074,7 +2030,65 @@ bool GeneratorImpl::EmitHandleVariable(const ast::Var* var, const sem::Variable*
         return true;
     }
     if (auto* storage = type->As<type::StorageTexture>()) {
-        out << "layout(" << convert_texel_format_to_glsl(storage->texel_format()) << ") ";
+        out << "layout(";
+        switch (storage->texel_format()) {
+            case ast::TexelFormat::kBgra8Unorm:
+                TINT_ICE(Writer, diagnostics_)
+                    << "bgra8unorm should have been polyfilled to rgba8unorm";
+                break;
+            case ast::TexelFormat::kR32Uint:
+                out << "r32ui";
+                break;
+            case ast::TexelFormat::kR32Sint:
+                out << "r32i";
+                break;
+            case ast::TexelFormat::kR32Float:
+                out << "r32f";
+                break;
+            case ast::TexelFormat::kRgba8Unorm:
+                out << "rgba8";
+                break;
+            case ast::TexelFormat::kRgba8Snorm:
+                out << "rgba8_snorm";
+                break;
+            case ast::TexelFormat::kRgba8Uint:
+                out << "rgba8ui";
+                break;
+            case ast::TexelFormat::kRgba8Sint:
+                out << "rgba8i";
+                break;
+            case ast::TexelFormat::kRg32Uint:
+                out << "rg32ui";
+                break;
+            case ast::TexelFormat::kRg32Sint:
+                out << "rg32i";
+                break;
+            case ast::TexelFormat::kRg32Float:
+                out << "rg32f";
+                break;
+            case ast::TexelFormat::kRgba16Uint:
+                out << "rgba16ui";
+                break;
+            case ast::TexelFormat::kRgba16Sint:
+                out << "rgba16i";
+                break;
+            case ast::TexelFormat::kRgba16Float:
+                out << "rgba16f";
+                break;
+            case ast::TexelFormat::kRgba32Uint:
+                out << "rgba32ui";
+                break;
+            case ast::TexelFormat::kRgba32Sint:
+                out << "rgba32i";
+                break;
+            case ast::TexelFormat::kRgba32Float:
+                out << "rgba32f";
+                break;
+            case ast::TexelFormat::kUndefined:
+                TINT_ICE(Writer, diagnostics_) << "invalid texel format";
+                return false;
+        }
+        out << ") ";
     }
     if (!EmitTypeAndName(out, type, sem->AddressSpace(), sem->Access(), name)) {
         return false;
@@ -2254,7 +2268,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
         for (auto* var : func->params) {
             auto* sem = builder_.Sem().Get(var);
             auto* type = sem->Type();
-            if (!type->Is<sem::Struct>()) {
+            if (TINT_UNLIKELY(!type->Is<sem::Struct>())) {
                 // ICE likely indicates that the CanonicalizeEntryPointIO transform was
                 // not run, or a builtin parameter was added after it was run.
                 TINT_ICE(Writer, diagnostics_) << "Unsupported non-struct entry point parameter";
@@ -2893,7 +2907,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
         if (mat->rows() != mat->columns()) {
             out << "x" << mat->rows();
         }
-    } else if (type->Is<type::Pointer>()) {
+    } else if (TINT_UNLIKELY(type->Is<type::Pointer>())) {
         TINT_ICE(Writer, diagnostics_)
             << "Attempting to emit pointer type. These should have been removed "
                "with the InlinePointerLets transform";
@@ -2903,7 +2917,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
     } else if (auto* str = type->As<sem::Struct>()) {
         out << StructName(str);
     } else if (auto* tex = type->As<type::Texture>()) {
-        if (tex->Is<type::ExternalTexture>()) {
+        if (TINT_UNLIKELY(tex->Is<type::ExternalTexture>())) {
             TINT_ICE(Writer, diagnostics_) << "Multiplanar external texture transform was not run.";
             return false;
         }
@@ -2925,7 +2939,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
         if (!subtype || subtype->Is<type::F32>()) {
         } else if (subtype->Is<type::I32>()) {
             out << "i";
-        } else if (subtype->Is<type::U32>()) {
+        } else if (TINT_LIKELY(subtype->Is<type::U32>())) {
             out << "u";
         } else {
             TINT_ICE(Writer, diagnostics_) << "Unsupported texture type";
