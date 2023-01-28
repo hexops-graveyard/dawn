@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
 #include "src/tint/ast/test_helper.h"
 #include "src/tint/clone_context.h"
@@ -72,7 +73,7 @@ TEST_F(ModuleTest, Assert_DifferentProgramID_GlobalVariable) {
         {
             ProgramBuilder b1;
             ProgramBuilder b2;
-            b1.AST().AddGlobalVariable(b2.Var("var", b2.ty.i32(), ast::AddressSpace::kPrivate));
+            b1.AST().AddGlobalVariable(b2.Var("var", b2.ty.i32(), type::AddressSpace::kPrivate));
         },
         "internal compiler error");
 }
@@ -92,7 +93,7 @@ TEST_F(ModuleTest, CloneOrder) {
         ProgramBuilder b;
         b.Func("F", {}, b.ty.void_(), {});
         b.Alias("A", b.ty.u32());
-        b.GlobalVar("V", b.ty.i32(), ast::AddressSpace::kPrivate);
+        b.GlobalVar("V", b.ty.i32(), type::AddressSpace::kPrivate);
         return Program(std::move(b));
     }();
 
@@ -128,6 +129,30 @@ TEST_F(ModuleTest, CloneOrder) {
     ASSERT_EQ(cloned.Symbols().NameFor(decls[0]->As<ast::Alias>()->name), "inserted_before_F");
     ASSERT_EQ(cloned.Symbols().NameFor(decls[2]->As<ast::Alias>()->name), "inserted_before_A");
     ASSERT_EQ(cloned.Symbols().NameFor(decls[4]->As<ast::Alias>()->name), "inserted_before_V");
+}
+
+TEST_F(ModuleTest, Directives) {
+    auto* enable_1 = Enable(ast::Extension::kF16);
+    auto* diagnostic_1 = DiagnosticDirective(DiagnosticSeverity::kWarning, Expr("foo"));
+    auto* enable_2 = Enable(ast::Extension::kChromiumExperimentalFullPtrParameters);
+    auto* diagnostic_2 = DiagnosticDirective(DiagnosticSeverity::kOff, Expr("bar"));
+
+    this->SetResolveOnBuild(false);
+    Program program(std::move(*this));
+    EXPECT_THAT(program.AST().GlobalDeclarations(), ::testing::ContainerEq(utils::Vector{
+                                                        enable_1,
+                                                        diagnostic_1,
+                                                        enable_2,
+                                                        diagnostic_2,
+                                                    }));
+    EXPECT_THAT(program.AST().Enables(), ::testing::ContainerEq(utils::Vector{
+                                             enable_1,
+                                             enable_2,
+                                         }));
+    EXPECT_THAT(program.AST().DiagnosticControls(), ::testing::ContainerEq(utils::Vector{
+                                                        diagnostic_1,
+                                                        diagnostic_2,
+                                                    }));
 }
 
 }  // namespace

@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "gmock/gmock.h"
 #include "src/tint/resolver/resolver.h"
 #include "src/tint/resolver/resolver_test_helper.h"
-
-#include "gmock/gmock.h"
+#include "src/tint/type/texture_dimension.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -61,8 +61,8 @@ TEST_F(ResolverVariableValidationTest, GlobalVarInitializerNoReturnValueBuiltin)
 TEST_F(ResolverVariableValidationTest, GlobalVarUsedAtModuleScope) {
     // var<private> a : i32;
     // var<private> b : i32 = a;
-    GlobalVar(Source{{12, 34}}, "a", ty.i32(), ast::AddressSpace::kPrivate);
-    GlobalVar("b", ty.i32(), ast::AddressSpace::kPrivate, Expr(Source{{56, 78}}, "a"));
+    GlobalVar(Source{{12, 34}}, "a", ty.i32(), type::AddressSpace::kPrivate);
+    GlobalVar("b", ty.i32(), type::AddressSpace::kPrivate, Expr(Source{{56, 78}}, "a"));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), R"(56:78 error: var 'a' cannot be referenced at module-scope
@@ -112,8 +112,8 @@ TEST_F(ResolverVariableValidationTest, VarTypeNotConstructible) {
     // var i : i32;
     // var p : pointer<function, i32> = &v;
     auto* i = Var("i", ty.i32());
-    auto* p = Var("a", ty.pointer<i32>(Source{{56, 78}}, ast::AddressSpace::kFunction),
-                  ast::AddressSpace::kNone, AddressOf(Source{{12, 34}}, "i"));
+    auto* p = Var("a", ty.pointer<i32>(Source{{56, 78}}, type::AddressSpace::kFunction),
+                  type::AddressSpace::kNone, AddressOf(Source{{12, 34}}, "i"));
     WrapInFunction(i, p);
 
     EXPECT_FALSE(r()->Resolve());
@@ -123,8 +123,8 @@ TEST_F(ResolverVariableValidationTest, VarTypeNotConstructible) {
 TEST_F(ResolverVariableValidationTest, LetTypeNotConstructible) {
     // @group(0) @binding(0) var t1 : texture_2d<f32>;
     // let t2 : t1;
-    auto* t1 = GlobalVar("t1", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Group(0_a),
-                         Binding(0_a));
+    auto* t1 = GlobalVar("t1", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
+                         Group(0_a), Binding(0_a));
     auto* t2 = Let(Source{{56, 78}}, "t2", Expr(t1));
     WrapInFunction(t2);
 
@@ -205,7 +205,7 @@ TEST_F(ResolverVariableValidationTest, VarInitializerWrongTypeViaAlias) {
 TEST_F(ResolverVariableValidationTest, LetOfPtrConstructedWithRef) {
     // var a : f32;
     // let b : ptr<function,f32> = a;
-    const auto priv = ast::AddressSpace::kFunction;
+    const auto priv = type::AddressSpace::kFunction;
     auto* var_a = Var("a", ty.f32(), priv);
     auto* var_b = Let(Source{{12, 34}}, "b", ty.pointer<f32>(priv), Expr("a"));
     WrapInFunction(var_a, var_b);
@@ -236,7 +236,7 @@ TEST_F(ResolverVariableValidationTest, GlobalVarRedeclaredAsLocal) {
     //   return 0;
     // }
 
-    GlobalVar("v", ty.f32(), ast::AddressSpace::kPrivate, Expr(2.1_f));
+    GlobalVar("v", ty.f32(), type::AddressSpace::kPrivate, Expr(2.1_f));
 
     WrapInFunction(Var(Source{{12, 34}}, "v", ty.f32(), Expr(2_f)));
 
@@ -295,12 +295,12 @@ TEST_F(ResolverVariableValidationTest, InferredPtrStorageAccessMismatch) {
                                    Member("inner", ty.Of(inner)),
                                });
     auto* storage =
-        GlobalVar("s", ty.Of(buf), ast::AddressSpace::kStorage, Binding(0_a), Group(0_a));
+        GlobalVar("s", ty.Of(buf), type::AddressSpace::kStorage, Binding(0_a), Group(0_a));
 
     auto* expr = IndexAccessor(MemberAccessor(MemberAccessor(storage, "inner"), "arr"), 2_i);
-    auto* ptr =
-        Let(Source{{12, 34}}, "p",
-            ty.pointer<i32>(ast::AddressSpace::kStorage, ast::Access::kReadWrite), AddressOf(expr));
+    auto* ptr = Let(Source{{12, 34}}, "p",
+                    ty.pointer<i32>(type::AddressSpace::kStorage, type::Access::kReadWrite),
+                    AddressOf(expr));
 
     WrapInFunction(ptr);
 
@@ -349,7 +349,7 @@ TEST_F(ResolverVariableValidationTest, NonConstructibleType_InferredType) {
     // fn foo() {
     //   var v = s;
     // }
-    GlobalVar("s", ty.sampler(ast::SamplerKind::kSampler), Group(0_a), Binding(0_a));
+    GlobalVar("s", ty.sampler(type::SamplerKind::kSampler), Group(0_a), Binding(0_a));
     auto* v = Var(Source{{12, 34}}, "v", Expr("s"));
     WrapInFunction(v);
 
@@ -359,7 +359,7 @@ TEST_F(ResolverVariableValidationTest, NonConstructibleType_InferredType) {
 
 TEST_F(ResolverVariableValidationTest, InvalidAddressSpaceForInitializer) {
     // var<workgroup> v : f32 = 1.23;
-    GlobalVar(Source{{12, 34}}, "v", ty.f32(), ast::AddressSpace::kWorkgroup, Expr(1.23_f));
+    GlobalVar(Source{{12, 34}}, "v", ty.f32(), type::AddressSpace::kWorkgroup, Expr(1.23_f));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -490,7 +490,7 @@ TEST_F(ResolverVariableValidationTest, GlobalVariable_PushConstantWithInitialize
     // enable chromium_experimental_push_constant;
     // var<push_constant> a : u32 = 0u;
     Enable(ast::Extension::kChromiumExperimentalPushConstant);
-    GlobalVar(Source{{1u, 2u}}, "a", ty.u32(), ast::AddressSpace::kPushConstant,
+    GlobalVar(Source{{1u, 2u}}, "a", ty.u32(), type::AddressSpace::kPushConstant,
               Expr(Source{{3u, 4u}}, u32(0)));
 
     ASSERT_FALSE(r()->Resolve());

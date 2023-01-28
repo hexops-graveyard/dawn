@@ -136,9 +136,20 @@ bool Resolver::Resolve() {
         return false;
     }
 
-    // Create the semantic module
-    builder_->Sem().SetModule(builder_->create<sem::Module>(
-        std::move(dependencies_.ordered_globals), std::move(enabled_extensions_)));
+    // Create the semantic module.
+    auto* mod = builder_->create<sem::Module>(std::move(dependencies_.ordered_globals),
+                                              std::move(enabled_extensions_));
+    ApplyDiagnosticSeverities(mod);
+    builder_->Sem().SetModule(mod);
+
+    if (result) {
+        // Run the uniformity analysis, which requires a complete semantic module.
+        if (!enabled_extensions_.Contains(ast::Extension::kChromiumDisableUniformityAnalysis)) {
+            if (!AnalyzeUniformity(builder_, dependencies_)) {
+                return false;
+            }
+        }
+    }
 
     return result;
 }
@@ -151,11 +162,12 @@ bool Resolver::ResolveInternal() {
         Mark(decl);
         if (!Switch<bool>(
                 decl,  //
+                [&](const ast::DiagnosticControl* dc) { return DiagnosticControl(dc); },
                 [&](const ast::Enable* e) { return Enable(e); },
                 [&](const ast::TypeDecl* td) { return TypeDecl(td); },
                 [&](const ast::Function* func) { return Function(func); },
                 [&](const ast::Variable* var) { return GlobalVariable(var); },
-                [&](const ast::StaticAssert* sa) { return StaticAssert(sa); },
+                [&](const ast::ConstAssert* ca) { return ConstAssert(ca); },
                 [&](Default) {
                     TINT_UNREACHABLE(Resolver, diagnostics_)
                         << "unhandled global declaration: " << decl->TypeInfo().name;
@@ -171,20 +183,16 @@ bool Resolver::ResolveInternal() {
 
     SetShadows();
 
+    if (!validator_.DiagnosticControls(builder_->AST().DiagnosticControls(), "directive")) {
+        return false;
+    }
+
     if (!validator_.PipelineStages(entry_points_)) {
         return false;
     }
 
     if (!validator_.PushConstants(entry_points_)) {
         return false;
-    }
-
-    if (!enabled_extensions_.Contains(ast::Extension::kChromiumDisableUniformityAnalysis)) {
-        if (!AnalyzeUniformity(builder_, dependencies_)) {
-            if (kUniformityFailuresAsError) {
-                return false;
-            }
-        }
     }
 
     bool result = true;
@@ -257,7 +265,7 @@ type::Type* Resolver::Type(const ast::Type* ty) {
         [&](const ast::Pointer* t) -> type::Pointer* {
             if (auto* el = Type(t->type)) {
                 auto access = t->access;
-                if (access == ast::Access::kUndefined) {
+                if (access == type::Access::kUndefined) {
                     access = DefaultAccessForAddressSpace(t->address_space);
                 }
                 auto ptr = builder_->create<type::Pointer>(el, t->address_space, access);
@@ -391,11 +399,11 @@ sem::Variable* Resolver::Let(const ast::Let* v, bool is_global) {
         ty = rhs->Type()->UnwrapRef();  // Implicit load of RHS
     }
 
-    if (rhs && !validator_.VariableInitializer(v, ast::AddressSpace::kNone, ty, rhs)) {
+    if (rhs && !validator_.VariableInitializer(v, type::AddressSpace::kNone, ty, rhs)) {
         return nullptr;
     }
 
-    if (!ApplyAddressSpaceUsageToType(ast::AddressSpace::kNone, const_cast<type::Type*>(ty),
+    if (!ApplyAddressSpaceUsageToType(type::AddressSpace::kNone, const_cast<type::Type*>(ty),
                                       v->source)) {
         AddNote("while instantiating 'let' " + builder_->Symbols().NameFor(v->symbol), v->source);
         return nullptr;
@@ -404,13 +412,13 @@ sem::Variable* Resolver::Let(const ast::Let* v, bool is_global) {
     sem::Variable* sem = nullptr;
     if (is_global) {
         sem = builder_->create<sem::GlobalVariable>(
-            v, ty, sem::EvaluationStage::kRuntime, ast::AddressSpace::kNone,
-            ast::Access::kUndefined,
+            v, ty, sem::EvaluationStage::kRuntime, type::AddressSpace::kNone,
+            type::Access::kUndefined,
             /* constant_value */ nullptr, sem::BindingPoint{}, std::nullopt);
     } else {
         sem = builder_->create<sem::LocalVariable>(v, ty, sem::EvaluationStage::kRuntime,
-                                                   ast::AddressSpace::kNone,
-                                                   ast::Access::kUndefined, current_statement_,
+                                                   type::AddressSpace::kNone,
+                                                   type::Access::kUndefined, current_statement_,
                                                    /* constant_value */ nullptr);
     }
 
@@ -453,11 +461,11 @@ sem::Variable* Resolver::Override(const ast::Override* v) {
         return nullptr;
     }
 
-    if (rhs && !validator_.VariableInitializer(v, ast::AddressSpace::kNone, ty, rhs)) {
+    if (rhs && !validator_.VariableInitializer(v, type::AddressSpace::kNone, ty, rhs)) {
         return nullptr;
     }
 
-    if (!ApplyAddressSpaceUsageToType(ast::AddressSpace::kNone, const_cast<type::Type*>(ty),
+    if (!ApplyAddressSpaceUsageToType(type::AddressSpace::kNone, const_cast<type::Type*>(ty),
                                       v->source)) {
         AddNote("while instantiating 'override' " + builder_->Symbols().NameFor(v->symbol),
                 v->source);
@@ -465,7 +473,7 @@ sem::Variable* Resolver::Override(const ast::Override* v) {
     }
 
     auto* sem = builder_->create<sem::GlobalVariable>(
-        v, ty, sem::EvaluationStage::kOverride, ast::AddressSpace::kNone, ast::Access::kUndefined,
+        v, ty, sem::EvaluationStage::kOverride, type::AddressSpace::kNone, type::Access::kUndefined,
         /* constant_value */ nullptr, sem::BindingPoint{}, std::nullopt);
     sem->SetInitializer(rhs);
 
@@ -546,11 +554,11 @@ sem::Variable* Resolver::Const(const ast::Const* c, bool is_global) {
         ty = rhs->Type();
     }
 
-    if (!validator_.VariableInitializer(c, ast::AddressSpace::kNone, ty, rhs)) {
+    if (!validator_.VariableInitializer(c, type::AddressSpace::kNone, ty, rhs)) {
         return nullptr;
     }
 
-    if (!ApplyAddressSpaceUsageToType(ast::AddressSpace::kNone, const_cast<type::Type*>(ty),
+    if (!ApplyAddressSpaceUsageToType(type::AddressSpace::kNone, const_cast<type::Type*>(ty),
                                       c->source)) {
         AddNote("while instantiating 'const' " + builder_->Symbols().NameFor(c->symbol), c->source);
         return nullptr;
@@ -558,11 +566,11 @@ sem::Variable* Resolver::Const(const ast::Const* c, bool is_global) {
 
     const auto value = rhs->ConstantValue();
     auto* sem = is_global ? static_cast<sem::Variable*>(builder_->create<sem::GlobalVariable>(
-                                c, ty, sem::EvaluationStage::kConstant, ast::AddressSpace::kNone,
-                                ast::Access::kUndefined, value, sem::BindingPoint{}, std::nullopt))
+                                c, ty, sem::EvaluationStage::kConstant, type::AddressSpace::kNone,
+                                type::Access::kUndefined, value, sem::BindingPoint{}, std::nullopt))
                           : static_cast<sem::Variable*>(builder_->create<sem::LocalVariable>(
-                                c, ty, sem::EvaluationStage::kConstant, ast::AddressSpace::kNone,
-                                ast::Access::kUndefined, current_statement_, value));
+                                c, ty, sem::EvaluationStage::kConstant, type::AddressSpace::kNone,
+                                type::Access::kUndefined, current_statement_, value));
 
     sem->SetInitializer(rhs);
     builder_->Sem().Add(c, sem);
@@ -606,20 +614,20 @@ sem::Variable* Resolver::Var(const ast::Var* var, bool is_global) {
     }
 
     auto address_space = var->declared_address_space;
-    if (address_space == ast::AddressSpace::kNone) {
+    if (address_space == type::AddressSpace::kNone) {
         // No declared address space. Infer from usage / type.
         if (!is_global) {
-            address_space = ast::AddressSpace::kFunction;
+            address_space = type::AddressSpace::kFunction;
         } else if (storage_ty->UnwrapRef()->is_handle()) {
             // https://gpuweb.github.io/gpuweb/wgsl/#module-scope-variables
             // If the store type is a texture type or a sampler type, then the
             // variable declaration must not have a address space attribute. The
             // address space will always be handle.
-            address_space = ast::AddressSpace::kHandle;
+            address_space = type::AddressSpace::kHandle;
         }
     }
 
-    if (!is_global && address_space != ast::AddressSpace::kFunction &&
+    if (!is_global && address_space != type::AddressSpace::kFunction &&
         validator_.IsValidationEnabled(var->attributes,
                                        ast::DisabledValidation::kIgnoreAddressSpace)) {
         AddError("function-scope 'var' declaration must use 'function' address space", var->source);
@@ -627,7 +635,7 @@ sem::Variable* Resolver::Var(const ast::Var* var, bool is_global) {
     }
 
     auto access = var->declared_access;
-    if (access == ast::Access::kUndefined) {
+    if (access == type::Access::kUndefined) {
         access = DefaultAccessForAddressSpace(address_space);
     }
 
@@ -740,7 +748,7 @@ sem::Parameter* Resolver::Parameter(const ast::Parameter* param, uint32_t index)
         return nullptr;
     }
 
-    if (!ApplyAddressSpaceUsageToType(ast::AddressSpace::kNone, ty, param->type->source)) {
+    if (!ApplyAddressSpaceUsageToType(type::AddressSpace::kNone, ty, param->type->source)) {
         add_note();
         return nullptr;
     }
@@ -791,7 +799,7 @@ sem::Parameter* Resolver::Parameter(const ast::Parameter* param, uint32_t index)
     }
 
     auto* sem = builder_->create<sem::Parameter>(
-        param, index, ty, ast::AddressSpace::kNone, ast::Access::kUndefined,
+        param, index, ty, type::AddressSpace::kNone, type::Access::kUndefined,
         sem::ParameterUsage::kNone, binding_point, location);
     builder_->Sem().Add(param, sem);
     return sem;
@@ -821,17 +829,17 @@ utils::Result<uint32_t> Resolver::LocationAttribute(const ast::LocationAttribute
     return static_cast<uint32_t>(value);
 }
 
-ast::Access Resolver::DefaultAccessForAddressSpace(ast::AddressSpace address_space) {
+type::Access Resolver::DefaultAccessForAddressSpace(type::AddressSpace address_space) {
     // https://gpuweb.github.io/gpuweb/wgsl/#storage-class
     switch (address_space) {
-        case ast::AddressSpace::kStorage:
-        case ast::AddressSpace::kUniform:
-        case ast::AddressSpace::kHandle:
-            return ast::Access::kRead;
+        case type::AddressSpace::kStorage:
+        case type::AddressSpace::kUniform:
+        case type::AddressSpace::kHandle:
+            return type::Access::kRead;
         default:
             break;
     }
-    return ast::Access::kReadWrite;
+    return type::Access::kReadWrite;
 }
 
 bool Resolver::AllocateOverridableConstantIds() {
@@ -936,8 +944,8 @@ sem::GlobalVariable* Resolver::GlobalVariable(const ast::Variable* v) {
     return sem;
 }
 
-sem::Statement* Resolver::StaticAssert(const ast::StaticAssert* assertion) {
-    ExprEvalStageConstraint constraint{sem::EvaluationStage::kConstant, "static assertion"};
+sem::Statement* Resolver::ConstAssert(const ast::ConstAssert* assertion) {
+    ExprEvalStageConstraint constraint{sem::EvaluationStage::kConstant, "const assertion"};
     TINT_SCOPED_ASSIGNMENT(expr_eval_stage_constraint_, constraint);
     auto* expr = Expression(assertion->condition);
     if (!expr) {
@@ -946,12 +954,12 @@ sem::Statement* Resolver::StaticAssert(const ast::StaticAssert* assertion) {
     auto* cond = expr->ConstantValue();
     if (auto* ty = cond->Type(); !ty->Is<type::Bool>()) {
         AddError(
-            "static assertion condition must be a bool, got '" + builder_->FriendlyName(ty) + "'",
+            "const assertion condition must be a bool, got '" + builder_->FriendlyName(ty) + "'",
             assertion->condition->source);
         return nullptr;
     }
     if (!cond->ValueAs<bool>()) {
-        AddError("static assertion failed", assertion->source);
+        AddError("const assertion failed", assertion->source);
         return nullptr;
     }
     auto* sem =
@@ -964,6 +972,21 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
     uint32_t parameter_index = 0;
     utils::Hashmap<Symbol, Source, 8> parameter_names;
     utils::Vector<sem::Parameter*, 8> parameters;
+
+    validator_.DiagnosticFilters().Push();
+    TINT_DEFER(validator_.DiagnosticFilters().Pop());
+    for (auto* attr : decl->attributes) {
+        Mark(attr);
+        if (auto* dc = attr->As<ast::DiagnosticAttribute>()) {
+            Mark(dc->control);
+            if (!DiagnosticControl(dc->control)) {
+                return nullptr;
+            }
+        }
+    }
+    if (!validator_.NoDuplicateAttributes(decl->attributes)) {
+        return nullptr;
+    }
 
     // Resolve all the parameters
     for (auto* param : decl->params) {
@@ -1031,12 +1054,9 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
             return_location = value.Get();
         }
     }
-    if (!validator_.NoDuplicateAttributes(decl->attributes)) {
-        return nullptr;
-    }
 
     if (auto* str = return_type->As<sem::Struct>()) {
-        if (!ApplyAddressSpaceUsageToType(ast::AddressSpace::kNone, str, decl->source)) {
+        if (!ApplyAddressSpaceUsageToType(type::AddressSpace::kNone, str, decl->source)) {
             AddNote(
                 "while instantiating return type for " + builder_->Symbols().NameFor(decl->symbol),
                 decl->source);
@@ -1060,6 +1080,7 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
 
     auto* func =
         builder_->create<sem::Function>(decl, return_type, return_location, std::move(parameters));
+    ApplyDiagnosticSeverities(func);
     builder_->Sem().Add(decl, func);
 
     TINT_SCOPED_ASSIGNMENT(current_function_, func);
@@ -1093,10 +1114,6 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
             func->Behaviors().Remove(sem::Behavior::kReturn);
             func->Behaviors().Add(sem::Behavior::kNext);
         }
-    }
-
-    for (auto* attr : decl->attributes) {
-        Mark(attr);
     }
 
     if (!validator_.NoDuplicateAttributes(decl->return_type_attributes)) {
@@ -1258,7 +1275,7 @@ sem::Statement* Resolver::Statement(const ast::Statement* stmt) {
         [&](const ast::IncrementDecrementStatement* i) { return IncrementDecrementStatement(i); },
         [&](const ast::ReturnStatement* r) { return ReturnStatement(r); },
         [&](const ast::VariableDeclStatement* v) { return VariableDeclStatement(v); },
-        [&](const ast::StaticAssert* sa) { return StaticAssert(sa); },
+        [&](const ast::ConstAssert* sa) { return ConstAssert(sa); },
 
         // Error cases
         [&](const ast::CaseStatement*) {
@@ -2099,11 +2116,11 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
                     [&]() -> sem::TypeInitializer* {
                         auto params = utils::Transform(args, [&](auto, size_t i) {
                             return builder_->create<sem::Parameter>(
-                                nullptr,                   // declaration
-                                static_cast<uint32_t>(i),  // index
-                                arr->ElemType(),           // type
-                                ast::AddressSpace::kNone,  // address_space
-                                ast::Access::kUndefined);
+                                nullptr,                    // declaration
+                                static_cast<uint32_t>(i),   // index
+                                arr->ElemType(),            // type
+                                type::AddressSpace::kNone,  // address_space
+                                type::Access::kUndefined);
                         });
                         return builder_->create<sem::TypeInitializer>(arr, std::move(params),
                                                                       args_stage);
@@ -2131,8 +2148,8 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
                                 nullptr,                    // declaration
                                 static_cast<uint32_t>(i),   // index
                                 str->Members()[i]->Type(),  // type
-                                ast::AddressSpace::kNone,   // address_space
-                                ast::Access::kUndefined);   // access
+                                type::AddressSpace::kNone,  // address_space
+                                type::Access::kUndefined);  // access
                         }
                         return builder_->create<sem::TypeInitializer>(str, std::move(params),
                                                                       args_stage);
@@ -3050,6 +3067,21 @@ sem::Expression* Resolver::UnaryOp(const ast::UnaryOpExpression* unary) {
     return sem;
 }
 
+bool Resolver::DiagnosticControl(const ast::DiagnosticControl* control) {
+    Mark(control->rule_name);
+    auto rule_name = builder_->Symbols().NameFor(control->rule_name->symbol);
+    auto rule = ast::ParseDiagnosticRule(rule_name);
+    if (rule != ast::DiagnosticRule::kUndefined) {
+        validator_.DiagnosticFilters().Set(rule, control->severity);
+    } else {
+        std::ostringstream ss;
+        ss << "unrecognized diagnostic rule '" << rule_name << "'\n";
+        utils::SuggestAlternatives(rule_name, ast::kDiagnosticRuleStrings, ss);
+        AddWarning(ss.str(), control->rule_name->source);
+    }
+    return true;
+}
+
 bool Resolver::Enable(const ast::Enable* enable) {
     enabled_extensions_.Add(enable->extension);
     return true;
@@ -3759,7 +3791,7 @@ sem::Statement* Resolver::IncrementDecrementStatement(
     });
 }
 
-bool Resolver::ApplyAddressSpaceUsageToType(ast::AddressSpace address_space,
+bool Resolver::ApplyAddressSpaceUsageToType(type::AddressSpace address_space,
                                             type::Type* ty,
                                             const Source& usage) {
     ty = const_cast<type::Type*>(ty->UnwrapRef());
@@ -3787,7 +3819,7 @@ bool Resolver::ApplyAddressSpaceUsageToType(ast::AddressSpace address_space,
     }
 
     if (auto* arr = ty->As<type::Array>()) {
-        if (address_space != ast::AddressSpace::kStorage) {
+        if (address_space != type::AddressSpace::kStorage) {
             if (arr->Count()->Is<type::RuntimeArrayCount>()) {
                 AddError("runtime-sized arrays can only be used in the <storage> address space",
                          usage);
@@ -3806,7 +3838,7 @@ bool Resolver::ApplyAddressSpaceUsageToType(ast::AddressSpace address_space,
                                             usage);
     }
 
-    if (ast::IsHostShareable(address_space) && !validator_.IsHostShareable(ty)) {
+    if (type::IsHostShareable(address_space) && !validator_.IsHostShareable(ty)) {
         std::stringstream err;
         err << "Type '" << sem_.TypeNameOf(ty) << "' cannot be used in address space '"
             << address_space << "' as it is non-host-shareable";
@@ -3857,6 +3889,13 @@ bool Resolver::Mark(const ast::Node* node) {
                                      << "At: " << node->source << "\n"
                                      << "Pointer: " << node;
     return false;
+}
+
+template <typename NODE>
+void Resolver::ApplyDiagnosticSeverities(NODE* node) {
+    for (auto itr : validator_.DiagnosticFilters().Top()) {
+        node->SetDiagnosticSeverity(itr.key, itr.value);
+    }
 }
 
 void Resolver::AddError(const std::string& msg, const Source& source) const {

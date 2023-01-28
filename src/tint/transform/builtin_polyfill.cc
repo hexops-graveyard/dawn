@@ -22,6 +22,7 @@
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/builtin.h"
 #include "src/tint/sem/call.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/map.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -638,8 +639,8 @@ struct BuiltinPolyfill::State {
         };
         b.Func(name,
                utils::Vector{
-                   b.Param("t", b.ty.sampled_texture(ast::TextureDimension::k2d, b.ty.f32())),
-                   b.Param("s", b.ty.sampler(ast::SamplerKind::kSampler)),
+                   b.Param("t", b.ty.sampled_texture(type::TextureDimension::k2d, b.ty.f32())),
+                   b.Param("s", b.ty.sampler(type::SamplerKind::kSampler)),
                    b.Param("coord", b.ty.vec2<f32>()),
                },
                b.ty.vec4<f32>(), body);
@@ -678,7 +679,7 @@ struct BuiltinPolyfill::State {
         auto name = b.Symbols().New("tint_workgroupUniformLoad");
         b.Func(name,
                utils::Vector{
-                   b.Param("p", b.ty.pointer(T(type), ast::AddressSpace::kWorkgroup)),
+                   b.Param("p", b.ty.pointer(T(type), type::AddressSpace::kWorkgroup)),
                },
                T(type),
                utils::Vector{
@@ -945,7 +946,7 @@ Transform::ApplyResult BuiltinPolyfill::Apply(const Program* src,
                             auto& sig = builtin->Signature();
                             auto* tex = sig.Parameter(sem::ParameterUsage::kTexture);
                             if (auto* stex = tex->Type()->As<type::StorageTexture>()) {
-                                if (stex->texel_format() == ast::TexelFormat::kBgra8Unorm) {
+                                if (stex->texel_format() == type::TexelFormat::kBgra8Unorm) {
                                     size_t value_idx = static_cast<size_t>(
                                         sig.IndexOf(sem::ParameterUsage::kValue));
                                     ctx.Replace(expr, [&ctx, expr, value_idx] {
@@ -1025,9 +1026,9 @@ Transform::ApplyResult BuiltinPolyfill::Apply(const Program* src,
                 }
             },
             [&](const ast::StorageTexture* tex) {
-                if (polyfill.bgra8unorm && tex->format == ast::TexelFormat::kBgra8Unorm) {
+                if (polyfill.bgra8unorm && tex->format == type::TexelFormat::kBgra8Unorm) {
                     ctx.Replace(tex, [&ctx, tex] {
-                        return ctx.dst->ty.storage_texture(tex->dim, ast::TexelFormat::kRgba8Unorm,
+                        return ctx.dst->ty.storage_texture(tex->dim, type::TexelFormat::kRgba8Unorm,
                                                            tex->access);
                     });
                     made_changes = true;

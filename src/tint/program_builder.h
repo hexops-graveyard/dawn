@@ -37,9 +37,12 @@
 #include "src/tint/ast/case_statement.h"
 #include "src/tint/ast/compound_assignment_statement.h"
 #include "src/tint/ast/const.h"
+#include "src/tint/ast/const_assert.h"
 #include "src/tint/ast/continue_statement.h"
 #include "src/tint/ast/depth_multisampled_texture.h"
 #include "src/tint/ast/depth_texture.h"
+#include "src/tint/ast/diagnostic_attribute.h"
+#include "src/tint/ast/diagnostic_control.h"
 #include "src/tint/ast/disable_validation_attribute.h"
 #include "src/tint/ast/discard_statement.h"
 #include "src/tint/ast/enable.h"
@@ -71,7 +74,6 @@
 #include "src/tint/ast/sampled_texture.h"
 #include "src/tint/ast/sampler.h"
 #include "src/tint/ast/stage_attribute.h"
-#include "src/tint/ast/static_assert.h"
 #include "src/tint/ast/storage_texture.h"
 #include "src/tint/ast/stride_attribute.h"
 #include "src/tint/ast/struct_member_align_attribute.h"
@@ -107,6 +109,7 @@
 #include "src/tint/type/pointer.h"
 #include "src/tint/type/sampled_texture.h"
 #include "src/tint/type/storage_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/type/u32.h"
 #include "src/tint/type/vector.h"
 #include "src/tint/type/void.h"
@@ -180,15 +183,15 @@ class ProgramBuilder {
         ~VarOptions();
 
         const ast::Type* type = nullptr;
-        ast::AddressSpace address_space = ast::AddressSpace::kNone;
-        ast::Access access = ast::Access::kUndefined;
+        type::AddressSpace address_space = type::AddressSpace::kNone;
+        type::Access access = type::Access::kUndefined;
         const ast::Expression* initializer = nullptr;
         utils::Vector<const ast::Attribute*, 4> attributes;
 
       private:
         void Set(const ast::Type* t) { type = t; }
-        void Set(ast::AddressSpace addr_space) { address_space = addr_space; }
-        void Set(ast::Access ac) { access = ac; }
+        void Set(type::AddressSpace addr_space) { address_space = addr_space; }
+        void Set(type::Access ac) { access = ac; }
         void Set(const ast::Expression* c) { initializer = c; }
         void Set(utils::VectorRef<const ast::Attribute*> l) { attributes = std::move(l); }
         void Set(const ast::Attribute* a) { attributes.Push(a); }
@@ -939,10 +942,10 @@ class ProgramBuilder {
         /// @param type the type of the pointer
         /// @param address_space the address space of the pointer
         /// @param access the optional access control of the pointer
-        /// @return the pointer to `type` with the given ast::AddressSpace
+        /// @return the pointer to `type` with the given type::AddressSpace
         const ast::Pointer* pointer(const ast::Type* type,
-                                    ast::AddressSpace address_space,
-                                    ast::Access access = ast::Access::kUndefined) const {
+                                    type::AddressSpace address_space,
+                                    type::Access access = type::Access::kUndefined) const {
             return builder->create<ast::Pointer>(type, address_space, access);
         }
 
@@ -950,31 +953,31 @@ class ProgramBuilder {
         /// @param type the type of the pointer
         /// @param address_space the address space of the pointer
         /// @param access the optional access control of the pointer
-        /// @return the pointer to `type` with the given ast::AddressSpace
+        /// @return the pointer to `type` with the given type::AddressSpace
         const ast::Pointer* pointer(const Source& source,
                                     const ast::Type* type,
-                                    ast::AddressSpace address_space,
-                                    ast::Access access = ast::Access::kUndefined) const {
+                                    type::AddressSpace address_space,
+                                    type::Access access = type::Access::kUndefined) const {
             return builder->create<ast::Pointer>(source, type, address_space, access);
         }
 
         /// @param address_space the address space of the pointer
         /// @param access the optional access control of the pointer
-        /// @return the pointer to type `T` with the given ast::AddressSpace.
+        /// @return the pointer to type `T` with the given type::AddressSpace.
         template <typename T>
-        const ast::Pointer* pointer(ast::AddressSpace address_space,
-                                    ast::Access access = ast::Access::kUndefined) const {
+        const ast::Pointer* pointer(type::AddressSpace address_space,
+                                    type::Access access = type::Access::kUndefined) const {
             return pointer(Of<T>(), address_space, access);
         }
 
         /// @param source the Source of the node
         /// @param address_space the address space of the pointer
         /// @param access the optional access control of the pointer
-        /// @return the pointer to type `T` with the given ast::AddressSpace.
+        /// @return the pointer to type `T` with the given type::AddressSpace.
         template <typename T>
         const ast::Pointer* pointer(const Source& source,
-                                    ast::AddressSpace address_space,
-                                    ast::Access access = ast::Access::kUndefined) const {
+                                    type::AddressSpace address_space,
+                                    type::Access access = type::Access::kUndefined) const {
             return pointer(source, Of<T>(), address_space, access);
         }
 
@@ -999,20 +1002,20 @@ class ProgramBuilder {
 
         /// @param kind the kind of sampler
         /// @returns the sampler
-        const ast::Sampler* sampler(ast::SamplerKind kind) const {
+        const ast::Sampler* sampler(type::SamplerKind kind) const {
             return builder->create<ast::Sampler>(kind);
         }
 
         /// @param source the Source of the node
         /// @param kind the kind of sampler
         /// @returns the sampler
-        const ast::Sampler* sampler(const Source& source, ast::SamplerKind kind) const {
+        const ast::Sampler* sampler(const Source& source, type::SamplerKind kind) const {
             return builder->create<ast::Sampler>(source, kind);
         }
 
         /// @param dims the dimensionality of the texture
         /// @returns the depth texture
-        const ast::DepthTexture* depth_texture(ast::TextureDimension dims) const {
+        const ast::DepthTexture* depth_texture(type::TextureDimension dims) const {
             return builder->create<ast::DepthTexture>(dims);
         }
 
@@ -1020,14 +1023,14 @@ class ProgramBuilder {
         /// @param dims the dimensionality of the texture
         /// @returns the depth texture
         const ast::DepthTexture* depth_texture(const Source& source,
-                                               ast::TextureDimension dims) const {
+                                               type::TextureDimension dims) const {
             return builder->create<ast::DepthTexture>(source, dims);
         }
 
         /// @param dims the dimensionality of the texture
         /// @returns the multisampled depth texture
         const ast::DepthMultisampledTexture* depth_multisampled_texture(
-            ast::TextureDimension dims) const {
+            type::TextureDimension dims) const {
             return builder->create<ast::DepthMultisampledTexture>(dims);
         }
 
@@ -1036,14 +1039,14 @@ class ProgramBuilder {
         /// @returns the multisampled depth texture
         const ast::DepthMultisampledTexture* depth_multisampled_texture(
             const Source& source,
-            ast::TextureDimension dims) const {
+            type::TextureDimension dims) const {
             return builder->create<ast::DepthMultisampledTexture>(source, dims);
         }
 
         /// @param dims the dimensionality of the texture
         /// @param subtype the texture subtype.
         /// @returns the sampled texture
-        const ast::SampledTexture* sampled_texture(ast::TextureDimension dims,
+        const ast::SampledTexture* sampled_texture(type::TextureDimension dims,
                                                    const ast::Type* subtype) const {
             return builder->create<ast::SampledTexture>(dims, subtype);
         }
@@ -1053,7 +1056,7 @@ class ProgramBuilder {
         /// @param subtype the texture subtype.
         /// @returns the sampled texture
         const ast::SampledTexture* sampled_texture(const Source& source,
-                                                   ast::TextureDimension dims,
+                                                   type::TextureDimension dims,
                                                    const ast::Type* subtype) const {
             return builder->create<ast::SampledTexture>(source, dims, subtype);
         }
@@ -1061,7 +1064,7 @@ class ProgramBuilder {
         /// @param dims the dimensionality of the texture
         /// @param subtype the texture subtype.
         /// @returns the multisampled texture
-        const ast::MultisampledTexture* multisampled_texture(ast::TextureDimension dims,
+        const ast::MultisampledTexture* multisampled_texture(type::TextureDimension dims,
                                                              const ast::Type* subtype) const {
             return builder->create<ast::MultisampledTexture>(dims, subtype);
         }
@@ -1071,7 +1074,7 @@ class ProgramBuilder {
         /// @param subtype the texture subtype.
         /// @returns the multisampled texture
         const ast::MultisampledTexture* multisampled_texture(const Source& source,
-                                                             ast::TextureDimension dims,
+                                                             type::TextureDimension dims,
                                                              const ast::Type* subtype) const {
             return builder->create<ast::MultisampledTexture>(source, dims, subtype);
         }
@@ -1080,9 +1083,9 @@ class ProgramBuilder {
         /// @param format the texel format of the texture
         /// @param access the access control of the texture
         /// @returns the storage texture
-        const ast::StorageTexture* storage_texture(ast::TextureDimension dims,
-                                                   ast::TexelFormat format,
-                                                   ast::Access access) const {
+        const ast::StorageTexture* storage_texture(type::TextureDimension dims,
+                                                   type::TexelFormat format,
+                                                   type::Access access) const {
             auto* subtype = ast::StorageTexture::SubtypeFor(format, *builder);
             return builder->create<ast::StorageTexture>(dims, format, subtype, access);
         }
@@ -1093,9 +1096,9 @@ class ProgramBuilder {
         /// @param access the access control of the texture
         /// @returns the storage texture
         const ast::StorageTexture* storage_texture(const Source& source,
-                                                   ast::TextureDimension dims,
-                                                   ast::TexelFormat format,
-                                                   ast::Access access) const {
+                                                   type::TextureDimension dims,
+                                                   type::TexelFormat format,
+                                                   type::Access access) const {
             auto* subtype = ast::StorageTexture::SubtypeFor(format, *builder);
             return builder->create<ast::StorageTexture>(source, dims, format, subtype, access);
         }
@@ -1696,8 +1699,8 @@ class ProgramBuilder {
     /// @param options the extra options passed to the ast::Var initializer
     /// Can be any of the following, in any order:
     ///   * ast::Type*          - specifies the variable type
-    ///   * ast::AddressSpace   - specifies the variable address space
-    ///   * ast::Access         - specifies the variable's access control
+    ///   * type::AddressSpace   - specifies the variable address space
+    ///   * type::Access         - specifies the variable's access control
     ///   * ast::Expression*    - specifies the variable's initializer expression
     ///   * ast::Attribute*     - specifies the variable's attributes (repeatable, or vector)
     /// Note that non-repeatable arguments of the same type will use the last argument's value.
@@ -1715,8 +1718,8 @@ class ProgramBuilder {
     /// @param options the extra options passed to the ast::Var initializer
     /// Can be any of the following, in any order:
     ///   * ast::Type*          - specifies the variable type
-    ///   * ast::AddressSpace   - specifies the variable address space
-    ///   * ast::Access         - specifies the variable's access control
+    ///   * type::AddressSpace   - specifies the variable address space
+    ///   * type::Access         - specifies the variable's access control
     ///   * ast::Expression*    - specifies the variable's initializer expression
     ///   * ast::Attribute*     - specifies the variable's attributes (repeatable, or vector)
     /// Note that non-repeatable arguments of the same type will use the last argument's value.
@@ -1819,8 +1822,8 @@ class ProgramBuilder {
     /// @param options the extra options passed to the ast::Var initializer
     /// Can be any of the following, in any order:
     ///   * ast::Type*          - specifies the variable type
-    ///   * ast::AddressSpace   - specifies the variable address space
-    ///   * ast::Access         - specifies the variable's access control
+    ///   * type::AddressSpace   - specifies the variable address space
+    ///   * type::Access         - specifies the variable's access control
     ///   * ast::Expression*    - specifies the variable's initializer expression
     ///   * ast::Attribute*     - specifies the variable's attributes (repeatable, or vector)
     /// Note that non-repeatable arguments of the same type will use the last argument's value.
@@ -1838,8 +1841,8 @@ class ProgramBuilder {
     /// @param options the extra options passed to the ast::Var initializer
     /// Can be any of the following, in any order:
     ///   * ast::Type*          - specifies the variable type
-    ///   * ast::AddressSpace   - specifies the variable address space
-    ///   * ast::Access         - specifies the variable's access control
+    ///   * type::AddressSpace   - specifies the variable address space
+    ///   * type::Access         - specifies the variable's access control
     ///   * ast::Expression*    - specifies the variable's initializer expression
     ///   * ast::Attribute*    - specifies the variable's attributes (repeatable, or vector)
     /// Note that non-repeatable arguments of the same type will use the last argument's value.
@@ -1924,38 +1927,38 @@ class ProgramBuilder {
 
     /// @param source the source information
     /// @param condition the assertion condition
-    /// @returns a new `ast::StaticAssert`, which is automatically registered as a global statement
+    /// @returns a new `ast::ConstAssert`, which is automatically registered as a global statement
     /// with the ast::Module.
     template <typename EXPR>
-    const ast::StaticAssert* GlobalStaticAssert(const Source& source, EXPR&& condition) {
-        auto* sa = StaticAssert(source, std::forward<EXPR>(condition));
-        AST().AddStaticAssert(sa);
+    const ast::ConstAssert* GlobalConstAssert(const Source& source, EXPR&& condition) {
+        auto* sa = ConstAssert(source, std::forward<EXPR>(condition));
+        AST().AddConstAssert(sa);
         return sa;
     }
 
     /// @param condition the assertion condition
-    /// @returns a new `ast::StaticAssert`, which is automatically registered as a global statement
+    /// @returns a new `ast::ConstAssert`, which is automatically registered as a global statement
     /// with the ast::Module.
     template <typename EXPR, typename = DisableIfSource<EXPR>>
-    const ast::StaticAssert* GlobalStaticAssert(EXPR&& condition) {
-        auto* sa = StaticAssert(std::forward<EXPR>(condition));
-        AST().AddStaticAssert(sa);
+    const ast::ConstAssert* GlobalConstAssert(EXPR&& condition) {
+        auto* sa = ConstAssert(std::forward<EXPR>(condition));
+        AST().AddConstAssert(sa);
         return sa;
     }
 
     /// @param source the source information
     /// @param condition the assertion condition
-    /// @returns a new `ast::StaticAssert` with the given assertion condition
+    /// @returns a new `ast::ConstAssert` with the given assertion condition
     template <typename EXPR>
-    const ast::StaticAssert* StaticAssert(const Source& source, EXPR&& condition) {
-        return create<ast::StaticAssert>(source, Expr(std::forward<EXPR>(condition)));
+    const ast::ConstAssert* ConstAssert(const Source& source, EXPR&& condition) {
+        return create<ast::ConstAssert>(source, Expr(std::forward<EXPR>(condition)));
     }
 
     /// @param condition the assertion condition
-    /// @returns a new `ast::StaticAssert` with the given assertion condition
+    /// @returns a new `ast::ConstAssert` with the given assertion condition
     template <typename EXPR, typename = DisableIfSource<EXPR>>
-    const ast::StaticAssert* StaticAssert(EXPR&& condition) {
-        return create<ast::StaticAssert>(Expr(std::forward<EXPR>(condition)));
+    const ast::ConstAssert* ConstAssert(EXPR&& condition) {
+        return create<ast::ConstAssert>(Expr(std::forward<EXPR>(condition)));
     }
 
     /// @param source the source information
@@ -3217,6 +3220,74 @@ class ProgramBuilder {
     const ast::DisableValidationAttribute* Disable(ast::DisabledValidation validation) {
         return ASTNodes().Create<ast::DisableValidationAttribute>(ID(), AllocateNodeID(),
                                                                   validation);
+    }
+
+    /// Creates an ast::DiagnosticAttribute
+    /// @param source the source information
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic attribute pointer
+    const ast::DiagnosticAttribute* DiagnosticAttribute(
+        const Source& source,
+        ast::DiagnosticSeverity severity,
+        const ast::IdentifierExpression* rule_name) {
+        return create<ast::DiagnosticAttribute>(source,
+                                                DiagnosticControl(source, severity, rule_name));
+    }
+
+    /// Creates an ast::DiagnosticAttribute
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic attribute pointer
+    const ast::DiagnosticAttribute* DiagnosticAttribute(
+        ast::DiagnosticSeverity severity,
+        const ast::IdentifierExpression* rule_name) {
+        return create<ast::DiagnosticAttribute>(source_,
+                                                DiagnosticControl(source_, severity, rule_name));
+    }
+
+    /// Creates an ast::DiagnosticControl
+    /// @param source the source information
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic control pointer
+    const ast::DiagnosticControl* DiagnosticControl(const Source& source,
+                                                    ast::DiagnosticSeverity severity,
+                                                    const ast::IdentifierExpression* rule_name) {
+        return create<ast::DiagnosticControl>(source, severity, rule_name);
+    }
+
+    /// Creates an ast::DiagnosticControl
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic control pointer
+    const ast::DiagnosticControl* DiagnosticControl(ast::DiagnosticSeverity severity,
+                                                    const ast::IdentifierExpression* rule_name) {
+        return create<ast::DiagnosticControl>(source_, severity, rule_name);
+    }
+
+    /// Add a global diagnostic control to the module.
+    /// @param source the source information
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic control pointer
+    const ast::DiagnosticControl* DiagnosticDirective(const Source& source,
+                                                      ast::DiagnosticSeverity severity,
+                                                      const ast::IdentifierExpression* rule_name) {
+        auto* control = DiagnosticControl(source, severity, rule_name);
+        AST().AddDiagnosticControl(control);
+        return control;
+    }
+
+    /// Add a global diagnostic control to the module.
+    /// @param severity the diagnostic severity control
+    /// @param rule_name the diagnostic rule name
+    /// @returns the diagnostic control pointer
+    const ast::DiagnosticControl* DiagnosticDirective(ast::DiagnosticSeverity severity,
+                                                      const ast::IdentifierExpression* rule_name) {
+        auto* control = DiagnosticControl(source_, severity, rule_name);
+        AST().AddDiagnosticControl(control);
+        return control;
     }
 
     /// Sets the current builder source to `src`

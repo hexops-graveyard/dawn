@@ -31,6 +31,7 @@
 #include "src/tint/ast/continue_statement.h"
 #include "src/tint/ast/depth_multisampled_texture.h"
 #include "src/tint/ast/depth_texture.h"
+#include "src/tint/ast/diagnostic_attribute.h"
 #include "src/tint/ast/discard_statement.h"
 #include "src/tint/ast/external_texture.h"
 #include "src/tint/ast/f16.h"
@@ -50,6 +51,7 @@
 #include "src/tint/ast/pointer.h"
 #include "src/tint/ast/return_statement.h"
 #include "src/tint/ast/sampled_texture.h"
+#include "src/tint/ast/sampler.h"
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/storage_texture.h"
 #include "src/tint/ast/stride_attribute.h"
@@ -203,10 +205,13 @@ class DependencyScanner {
                     TraverseExpression(var->initializer);
                 }
             },
-            [&](const ast::Enable*) {
-                // Enable directives do not effect the dependency graph.
+            [&](const ast::DiagnosticControl*) {
+                // Diagnostic control directives do not affect the dependency graph.
             },
-            [&](const ast::StaticAssert* assertion) { TraverseExpression(assertion->condition); },
+            [&](const ast::Enable*) {
+                // Enable directives do not affect the dependency graph.
+            },
+            [&](const ast::ConstAssert* assertion) { TraverseExpression(assertion->condition); },
             [&](Default) { UnhandledNode(diagnostics_, global->node); });
     }
 
@@ -318,7 +323,7 @@ class DependencyScanner {
                 TraverseExpression(w->condition);
                 TraverseStatement(w->body);
             },
-            [&](const ast::StaticAssert* assertion) { TraverseExpression(assertion->condition); },
+            [&](const ast::ConstAssert* assertion) { TraverseExpression(assertion->condition); },
             [&](Default) {
                 if (TINT_UNLIKELY((!stmt->IsAnyOf<ast::BreakStatement, ast::ContinueStatement,
                                                   ast::DiscardStatement>()))) {
@@ -453,9 +458,9 @@ class DependencyScanner {
             return;
         }
 
-        if (attr->IsAnyOf<ast::BuiltinAttribute, ast::InternalAttribute, ast::InterpolateAttribute,
-                          ast::InvariantAttribute, ast::StageAttribute, ast::StrideAttribute,
-                          ast::StructMemberOffsetAttribute>()) {
+        if (attr->IsAnyOf<ast::BuiltinAttribute, ast::DiagnosticAttribute, ast::InternalAttribute,
+                          ast::InterpolateAttribute, ast::InvariantAttribute, ast::StageAttribute,
+                          ast::StrideAttribute, ast::StructMemberOffsetAttribute>()) {
             return;
         }
 
@@ -554,8 +559,9 @@ struct DependencyAnalysis {
             [&](const ast::TypeDecl* td) { return td->name; },
             [&](const ast::Function* func) { return func->symbol; },
             [&](const ast::Variable* var) { return var->symbol; },
+            [&](const ast::DiagnosticControl*) { return Symbol(); },
             [&](const ast::Enable*) { return Symbol(); },
-            [&](const ast::StaticAssert*) { return Symbol(); },
+            [&](const ast::ConstAssert*) { return Symbol(); },
             [&](Default) {
                 UnhandledNode(diagnostics_, node);
                 return Symbol{};
@@ -574,12 +580,12 @@ struct DependencyAnalysis {
     /// declaration
     std::string KindOf(const ast::Node* node) {
         return Switch(
-            node,                                                       //
-            [&](const ast::Struct*) { return "struct"; },               //
-            [&](const ast::Alias*) { return "alias"; },                 //
-            [&](const ast::Function*) { return "function"; },           //
-            [&](const ast::Variable* v) { return v->Kind(); },          //
-            [&](const ast::StaticAssert*) { return "static_assert"; },  //
+            node,                                                     //
+            [&](const ast::Struct*) { return "struct"; },             //
+            [&](const ast::Alias*) { return "alias"; },               //
+            [&](const ast::Function*) { return "function"; },         //
+            [&](const ast::Variable* v) { return v->Kind(); },        //
+            [&](const ast::ConstAssert*) { return "const_assert"; },  //
             [&](Default) {
                 UnhandledNode(diagnostics_, node);
                 return "<error>";
@@ -662,16 +668,16 @@ struct DependencyAnalysis {
             return;  // This code assumes there are no undeclared identifiers.
         }
 
-        // Make sure all 'enable' directives go before any other global declarations.
+        // Make sure all directives go before any other global declarations.
         for (auto* global : declaration_order_) {
-            if (auto* enable = global->node->As<ast::Enable>()) {
-                sorted_.Add(enable);
+            if (global->node->IsAnyOf<ast::DiagnosticControl, ast::Enable>()) {
+                sorted_.Add(global->node);
             }
         }
 
         for (auto* global : declaration_order_) {
-            if (global->node->Is<ast::Enable>()) {
-                // Skip 'enable' directives here, as they are already added.
+            if (global->node->IsAnyOf<ast::DiagnosticControl, ast::Enable>()) {
+                // Skip directives here, as they are already added.
                 continue;
             }
             utils::UniqueVector<const Global*, 8> stack;

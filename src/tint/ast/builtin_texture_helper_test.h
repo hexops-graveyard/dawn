@@ -17,9 +17,10 @@
 
 #include <vector>
 
-#include "src/tint/ast/access.h"
 #include "src/tint/program_builder.h"
+#include "src/tint/type/access.h"
 #include "src/tint/type/storage_texture.h"
+#include "src/tint/type/texture_dimension.h"
 
 namespace tint::ast::builtin::test {
 
@@ -184,8 +185,8 @@ struct TextureOverloadCase {
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
                         TextureKind,
-                        ast::SamplerKind,
-                        ast::TextureDimension,
+                        type::SamplerKind,
+                        type::TextureDimension,
                         TextureDataType,
                         const char*,
                         std::function<Args(ProgramBuilder*)>);
@@ -193,16 +194,16 @@ struct TextureOverloadCase {
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
                         TextureKind,
-                        ast::TextureDimension,
+                        type::TextureDimension,
                         TextureDataType,
                         const char*,
                         std::function<Args(ProgramBuilder*)>);
     /// Constructor for textureLoad() with storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
-                        Access,
-                        ast::TexelFormat,
-                        ast::TextureDimension,
+                        type::Access,
+                        type::TexelFormat,
+                        type::TextureDimension,
                         TextureDataType,
                         const char*,
                         std::function<Args(ProgramBuilder*)>);
@@ -235,15 +236,15 @@ struct TextureOverloadCase {
     const TextureKind texture_kind;
     /// The sampler kind for the sampler parameter
     /// Used only when texture_kind is not kStorage
-    ast::SamplerKind const sampler_kind = ast::SamplerKind::kSampler;
+    type::SamplerKind const sampler_kind = type::SamplerKind::kSampler;
     /// The access control for the storage texture
     /// Used only when texture_kind is kStorage
-    Access const access = Access::kReadWrite;
+    type::Access const access = type::Access::kReadWrite;
     /// The image format for the storage texture
     /// Used only when texture_kind is kStorage
-    ast::TexelFormat const texel_format = ast::TexelFormat::kUndefined;
+    type::TexelFormat const texel_format = type::TexelFormat::kUndefined;
     /// The dimensions of the texture parameter
-    ast::TextureDimension const texture_dimension;
+    type::TextureDimension const texture_dimension;
     /// The data type of the texture parameter
     const TextureDataType texture_data_type;
     /// Name of the function. e.g. `textureSample`, `textureSampleGrad`, etc

@@ -38,11 +38,13 @@
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/ast/vector.h"
 #include "src/tint/ast/workgroup_attribute.h"
+#include "src/tint/reader/wgsl/classify_template_args.h"
 #include "src/tint/reader/wgsl/lexer.h"
 #include "src/tint/type/depth_texture.h"
 #include "src/tint/type/external_texture.h"
 #include "src/tint/type/multisampled_texture.h"
 #include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/reverse.h"
 #include "src/tint/utils/string.h"
 
@@ -212,8 +214,8 @@ ParserImpl::VarDeclInfo::VarDeclInfo(const VarDeclInfo&) = default;
 
 ParserImpl::VarDeclInfo::VarDeclInfo(Source source_in,
                                      std::string name_in,
-                                     ast::AddressSpace address_space_in,
-                                     ast::Access access_in,
+                                     type::AddressSpace address_space_in,
+                                     type::Access access_in,
                                      const ast::Type* type_in)
     : source(std::move(source_in)),
       name(std::move(name_in)),
@@ -318,6 +320,7 @@ Source ParserImpl::last_source() const {
 void ParserImpl::InitializeLex() {
     Lexer l{file_};
     tokens_ = l.Lex();
+    ClassifyTemplateArguments(tokens_);
 }
 
 bool ParserImpl::Parse() {
@@ -357,14 +360,47 @@ void ParserImpl::translation_unit() {
 }
 
 // global_directive
-//  : enable_directive
+//  : diagnostic_directive
+//  | enable_directive
 Maybe<Void> ParserImpl::global_directive(bool have_parsed_decl) {
     auto& p = peek();
-    auto ed = enable_directive();
-    if (ed.matched && have_parsed_decl) {
-        return add_error(p, "enable directives must come before all global declarations");
+    Maybe<Void> result = diagnostic_directive();
+    if (!result.errored && !result.matched) {
+        result = enable_directive();
     }
-    return ed;
+
+    if (result.matched && have_parsed_decl) {
+        return add_error(p, "directives must come before all global declarations");
+    }
+    return result;
+}
+
+// diagnostic_directive
+//  : diagnostic diagnostic_control SEMICOLON
+Maybe<Void> ParserImpl::diagnostic_directive() {
+    auto decl = sync(Token::Type::kSemicolon, [&]() -> Maybe<Void> {
+        if (!match(Token::Type::kDiagnostic)) {
+            return Failure::kNoMatch;
+        }
+
+        auto control = expect_diagnostic_control();
+        if (control.errored) {
+            return Failure::kErrored;
+        }
+
+        if (!expect("diagnostic directive", Token::Type::kSemicolon)) {
+            return Failure::kErrored;
+        }
+
+        builder_.AST().AddDiagnosticControl(std::move(control.value));
+
+        return kSuccess;
+    });
+
+    if (decl.errored) {
+        return Failure::kErrored;
+    }
+    return decl;
 }
 
 // enable_directive
@@ -426,7 +462,7 @@ Maybe<Void> ParserImpl::enable_directive() {
 //  | type_alias_decl SEMICOLON
 //  | struct_decl
 //  | function_decl
-//  | static_assert_statement SEMICOLON
+//  | const_assert_statement SEMICOLON
 Maybe<Void> ParserImpl::global_decl() {
     if (match(Token::Type::kSemicolon) || match(Token::Type::kEOF)) {
         return kSuccess;
@@ -485,13 +521,13 @@ Maybe<Void> ParserImpl::global_decl() {
             return kSuccess;
         }
 
-        auto assertion = static_assert_statement();
+        auto assertion = const_assert_statement();
         if (assertion.errored) {
             return Failure::kErrored;
         }
         if (assertion.matched) {
-            builder_.AST().AddStaticAssert(assertion.value);
-            if (!expect("static assertion declaration", Token::Type::kSemicolon)) {
+            builder_.AST().AddConstAssert(assertion.value);
+            if (!expect("const assertion declaration", Token::Type::kSemicolon)) {
                 return Failure::kErrored;
             }
             return kSuccess;
@@ -730,7 +766,7 @@ Maybe<const ast::Type*> ParserImpl::texture_and_sampler_types() {
     if (dim.matched) {
         const char* use = "sampled texture type";
 
-        auto subtype = expect_lt_gt_block(use, [&] { return expect_type(use); });
+        auto subtype = expect_template_arg_block(use, [&] { return expect_type(use); });
         if (subtype.errored) {
             return Failure::kErrored;
         }
@@ -742,7 +778,7 @@ Maybe<const ast::Type*> ParserImpl::texture_and_sampler_types() {
     if (ms_dim.matched) {
         const char* use = "multisampled texture type";
 
-        auto subtype = expect_lt_gt_block(use, [&] { return expect_type(use); });
+        auto subtype = expect_template_arg_block(use, [&] { return expect_type(use); });
         if (subtype.errored) {
             return Failure::kErrored;
         }
@@ -753,8 +789,8 @@ Maybe<const ast::Type*> ParserImpl::texture_and_sampler_types() {
     auto storage = storage_texture_type();
     if (storage.matched) {
         const char* use = "storage texture type";
-        using StorageTextureInfo = std::pair<tint::ast::TexelFormat, tint::ast::Access>;
-        auto params = expect_lt_gt_block(use, [&]() -> Expect<StorageTextureInfo> {
+        using StorageTextureInfo = std::pair<tint::type::TexelFormat, tint::type::Access>;
+        auto params = expect_template_arg_block(use, [&]() -> Expect<StorageTextureInfo> {
             auto format = expect_texel_format(use);
             if (format.errored) {
                 return Failure::kErrored;
@@ -789,11 +825,11 @@ Maybe<const ast::Type*> ParserImpl::texture_and_sampler_types() {
 Maybe<const ast::Type*> ParserImpl::sampler_type() {
     Source source;
     if (match(Token::Type::kSampler, &source)) {
-        return builder_.ty.sampler(source, ast::SamplerKind::kSampler);
+        return builder_.ty.sampler(source, type::SamplerKind::kSampler);
     }
 
     if (match(Token::Type::kComparisonSampler, &source)) {
-        return builder_.ty.sampler(source, ast::SamplerKind::kComparisonSampler);
+        return builder_.ty.sampler(source, type::SamplerKind::kComparisonSampler);
     }
 
     return Failure::kNoMatch;
@@ -806,29 +842,29 @@ Maybe<const ast::Type*> ParserImpl::sampler_type() {
 //  | TEXTURE_SAMPLED_3D
 //  | TEXTURE_SAMPLED_CUBE
 //  | TEXTURE_SAMPLED_CUBE_ARRAY
-Maybe<const ast::TextureDimension> ParserImpl::sampled_texture_type() {
+Maybe<const type::TextureDimension> ParserImpl::sampled_texture_type() {
     if (match(Token::Type::kTextureSampled1d)) {
-        return ast::TextureDimension::k1d;
+        return type::TextureDimension::k1d;
     }
 
     if (match(Token::Type::kTextureSampled2d)) {
-        return ast::TextureDimension::k2d;
+        return type::TextureDimension::k2d;
     }
 
     if (match(Token::Type::kTextureSampled2dArray)) {
-        return ast::TextureDimension::k2dArray;
+        return type::TextureDimension::k2dArray;
     }
 
     if (match(Token::Type::kTextureSampled3d)) {
-        return ast::TextureDimension::k3d;
+        return type::TextureDimension::k3d;
     }
 
     if (match(Token::Type::kTextureSampledCube)) {
-        return ast::TextureDimension::kCube;
+        return type::TextureDimension::kCube;
     }
 
     if (match(Token::Type::kTextureSampledCubeArray)) {
-        return ast::TextureDimension::kCubeArray;
+        return type::TextureDimension::kCubeArray;
     }
 
     return Failure::kNoMatch;
@@ -847,9 +883,9 @@ Maybe<const ast::Type*> ParserImpl::external_texture() {
 
 // multisampled_texture_type
 //  : TEXTURE_MULTISAMPLED_2D
-Maybe<const ast::TextureDimension> ParserImpl::multisampled_texture_type() {
+Maybe<const type::TextureDimension> ParserImpl::multisampled_texture_type() {
     if (match(Token::Type::kTextureMultisampled2d)) {
-        return ast::TextureDimension::k2d;
+        return type::TextureDimension::k2d;
     }
 
     return Failure::kNoMatch;
@@ -860,18 +896,18 @@ Maybe<const ast::TextureDimension> ParserImpl::multisampled_texture_type() {
 //  | TEXTURE_STORAGE_2D
 //  | TEXTURE_STORAGE_2D_ARRAY
 //  | TEXTURE_STORAGE_3D
-Maybe<const ast::TextureDimension> ParserImpl::storage_texture_type() {
+Maybe<const type::TextureDimension> ParserImpl::storage_texture_type() {
     if (match(Token::Type::kTextureStorage1d)) {
-        return ast::TextureDimension::k1d;
+        return type::TextureDimension::k1d;
     }
     if (match(Token::Type::kTextureStorage2d)) {
-        return ast::TextureDimension::k2d;
+        return type::TextureDimension::k2d;
     }
     if (match(Token::Type::kTextureStorage2dArray)) {
-        return ast::TextureDimension::k2dArray;
+        return type::TextureDimension::k2dArray;
     }
     if (match(Token::Type::kTextureStorage3d)) {
-        return ast::TextureDimension::k3d;
+        return type::TextureDimension::k3d;
     }
 
     return Failure::kNoMatch;
@@ -886,19 +922,19 @@ Maybe<const ast::TextureDimension> ParserImpl::storage_texture_type() {
 Maybe<const ast::Type*> ParserImpl::depth_texture_type() {
     Source source;
     if (match(Token::Type::kTextureDepth2d, &source)) {
-        return builder_.ty.depth_texture(source, ast::TextureDimension::k2d);
+        return builder_.ty.depth_texture(source, type::TextureDimension::k2d);
     }
     if (match(Token::Type::kTextureDepth2dArray, &source)) {
-        return builder_.ty.depth_texture(source, ast::TextureDimension::k2dArray);
+        return builder_.ty.depth_texture(source, type::TextureDimension::k2dArray);
     }
     if (match(Token::Type::kTextureDepthCube, &source)) {
-        return builder_.ty.depth_texture(source, ast::TextureDimension::kCube);
+        return builder_.ty.depth_texture(source, type::TextureDimension::kCube);
     }
     if (match(Token::Type::kTextureDepthCubeArray, &source)) {
-        return builder_.ty.depth_texture(source, ast::TextureDimension::kCubeArray);
+        return builder_.ty.depth_texture(source, type::TextureDimension::kCubeArray);
     }
     if (match(Token::Type::kTextureDepthMultisampled2d, &source)) {
-        return builder_.ty.depth_multisampled_texture(source, ast::TextureDimension::k2d);
+        return builder_.ty.depth_multisampled_texture(source, type::TextureDimension::k2d);
     }
     return Failure::kNoMatch;
 }
@@ -920,8 +956,8 @@ Maybe<const ast::Type*> ParserImpl::depth_texture_type() {
 //  | 'rgba32uint'
 //  | 'rgba32sint'
 //  | 'rgba32float'
-Expect<ast::TexelFormat> ParserImpl::expect_texel_format(std::string_view use) {
-    return expect_enum("texel format", ast::ParseTexelFormat, ast::kTexelFormatStrings, use);
+Expect<type::TexelFormat> ParserImpl::expect_texel_format(std::string_view use) {
+    return expect_enum("texel format", type::ParseTexelFormat, type::kTexelFormatStrings, use);
 }
 
 Expect<ParserImpl::TypedIdentifier> ParserImpl::expect_ident_with_optional_type_specifier(
@@ -970,8 +1006,8 @@ Expect<ParserImpl::TypedIdentifier> ParserImpl::expect_ident_with_type_specifier
 //   : 'read'
 //   | 'write'
 //   | 'read_write'
-Expect<ast::Access> ParserImpl::expect_access_mode(std::string_view use) {
-    return expect_enum("access control", ast::ParseAccess, ast::kAccessStrings, use);
+Expect<type::Access> ParserImpl::expect_access_mode(std::string_view use) {
+    return expect_enum("access control", type::ParseAccess, type::kAccessStrings, use);
 }
 
 // variable_qualifier
@@ -995,7 +1031,7 @@ Maybe<ParserImpl::VariableQualifier> ParserImpl::variable_qualifier() {
             }
             return VariableQualifier{sc.value, ac.value};
         }
-        return Expect<VariableQualifier>{VariableQualifier{sc.value, ast::Access::kUndefined},
+        return Expect<VariableQualifier>{VariableQualifier{sc.value, type::Access::kUndefined},
                                          source};
     });
 
@@ -1007,13 +1043,18 @@ Maybe<ParserImpl::VariableQualifier> ParserImpl::variable_qualifier() {
 }
 
 // type_alias_decl
-//   : TYPE IDENT EQUAL type_specifier
+//   : ALIAS IDENT EQUAL type_specifier
 Maybe<const ast::Alias*> ParserImpl::type_alias_decl() {
-    if (!peek_is(Token::Type::kType)) {
+    Source source;
+    if (match(Token::Type::kAlias, &source)) {
+        // matched.
+    } else if (match(Token::Type::kType, &source)) {
+        // TODO(crbug.com/tint/1812): DEPRECATED
+        deprecated(source, "'type' has been renamed to 'alias'");
+    } else {
         return Failure::kNoMatch;
     }
 
-    auto& t = next();
     const char* use = "type alias";
 
     auto name = expect_ident(use);
@@ -1033,7 +1074,7 @@ Maybe<const ast::Alias*> ParserImpl::type_alias_decl() {
         return add_error(peek(), "invalid type alias");
     }
 
-    return builder_.ty.alias(make_source_range_from(t.source()), name.value, type.value);
+    return builder_.ty.alias(make_source_range_from(source), name.value, type.value);
 }
 
 // vec_prefix
@@ -1123,7 +1164,8 @@ Maybe<const ast::Type*> ParserImpl::type_specifier_without_ident() {
         return builder_.ty.u32(t.source());
     }
 
-    if (t.Is(Token::Type::kArray) && peek_is(Token::Type::kLessThan, 1)) {
+    if (t.Is(Token::Type::kArray) &&
+        (peek_is(Token::Type::kTemplateArgsLeft, 1) || peek_is(Token::Type::kLessThan, 1))) {
         if (match(Token::Type::kArray)) {
             return expect_type_specifier_array(t.source());
         }
@@ -1137,14 +1179,16 @@ Maybe<const ast::Type*> ParserImpl::type_specifier_without_ident() {
         return expect_type_specifier_pointer(t.source());
     }
 
-    if (t.IsMatrix() && peek_is(Token::Type::kLessThan, 1)) {
+    if (t.IsMatrix() &&
+        (peek_is(Token::Type::kTemplateArgsLeft, 1) || peek_is(Token::Type::kLessThan, 1))) {
         auto mat = mat_prefix();
         if (mat.matched) {
             return expect_type_specifier_matrix(t.source(), mat.value);
         }
     }
 
-    if (t.IsVector() && peek_is(Token::Type::kLessThan, 1)) {
+    if (t.IsVector() &&
+        (peek_is(Token::Type::kTemplateArgsLeft, 1) || peek_is(Token::Type::kLessThan, 1))) {
         auto vec = vec_prefix();
         if (vec.matched) {
             return expect_type_specifier_vector(t.source(), vec.value);
@@ -1196,40 +1240,15 @@ Expect<ENUM> ParserImpl::expect_enum(std::string_view name,
     }
 
     /// Create a sensible error message
-    std::stringstream err;
+    std::ostringstream err;
     err << "expected " << name;
 
     if (!use.empty()) {
         err << " for " << use;
     }
+    err << "\n";
 
-    // If the string typed was within kSuggestionDistance of one of the possible enum values,
-    // suggest that. Don't bother with suggestions if the string was extremely long.
-    constexpr size_t kSuggestionDistance = 5;
-    constexpr size_t kSuggestionMaxLength = 64;
-    if (auto got = t.to_str(); !got.empty() && got.size() < kSuggestionMaxLength) {
-        size_t candidate_dist = kSuggestionDistance;
-        const char* candidate = nullptr;
-        for (auto* str : strings) {
-            auto dist = utils::Distance(str, got);
-            if (dist < candidate_dist) {
-                candidate = str;
-                candidate_dist = dist;
-            }
-        }
-        if (candidate) {
-            err << ". Did you mean '" << candidate << "'?";
-        }
-    }
-
-    // List all the possible enumerator values
-    err << "\nPossible values: ";
-    for (auto* str : strings) {
-        if (str != strings[0]) {
-            err << ", ";
-        }
-        err << "'" << str << "'";
-    }
+    utils::SuggestAlternatives(t.to_str(), strings, err);
 
     synchronized_ = false;
     return add_error(t.source(), err.str());
@@ -1250,10 +1269,10 @@ Expect<const ast::Type*> ParserImpl::expect_type(std::string_view use) {
 Expect<const ast::Type*> ParserImpl::expect_type_specifier_pointer(const Source& s) {
     const char* use = "ptr declaration";
 
-    auto address_space = ast::AddressSpace::kNone;
-    auto access = ast::Access::kUndefined;
+    auto address_space = type::AddressSpace::kNone;
+    auto access = type::Access::kUndefined;
 
-    auto subtype = expect_lt_gt_block(use, [&]() -> Expect<const ast::Type*> {
+    auto subtype = expect_template_arg_block(use, [&]() -> Expect<const ast::Type*> {
         auto sc = expect_address_space(use);
         if (sc.errored) {
             return Failure::kErrored;
@@ -1291,7 +1310,7 @@ Expect<const ast::Type*> ParserImpl::expect_type_specifier_pointer(const Source&
 Expect<const ast::Type*> ParserImpl::expect_type_specifier_atomic(const Source& s) {
     const char* use = "atomic declaration";
 
-    auto subtype = expect_lt_gt_block(use, [&] { return expect_type(use); });
+    auto subtype = expect_template_arg_block(use, [&] { return expect_type(use); });
     if (subtype.errored) {
         return Failure::kErrored;
     }
@@ -1302,7 +1321,7 @@ Expect<const ast::Type*> ParserImpl::expect_type_specifier_atomic(const Source& 
 // LESS_THAN type_specifier GREATER_THAN
 Expect<const ast::Type*> ParserImpl::expect_type_specifier_vector(const Source& s, uint32_t count) {
     const char* use = "vector";
-    auto ty = expect_lt_gt_block(use, [&] { return expect_type(use); });
+    auto ty = expect_template_arg_block(use, [&] { return expect_type(use); });
     if (ty.errored) {
         return Failure::kErrored;
     }
@@ -1319,11 +1338,7 @@ Expect<const ast::Type*> ParserImpl::expect_type_specifier_array(const Source& s
         const ast::Expression* size = nullptr;
     };
 
-    if (!peek_is(Token::Type::kLessThan)) {
-        return add_error(peek(), "expected < for array");
-    }
-
-    auto type_size = expect_lt_gt_block(use, [&]() -> Expect<TypeAndSize> {
+    auto type_size = expect_template_arg_block(use, [&]() -> Expect<TypeAndSize> {
         auto type = expect_type(use);
         if (type.errored) {
             return Failure::kErrored;
@@ -1355,7 +1370,7 @@ Expect<const ast::Type*> ParserImpl::expect_type_specifier_array(const Source& s
 Expect<const ast::Type*> ParserImpl::expect_type_specifier_matrix(const Source& s,
                                                                   const MatrixDimensions& dims) {
     const char* use = "matrix";
-    auto ty = expect_lt_gt_block(use, [&] { return expect_type(use); });
+    auto ty = expect_template_arg_block(use, [&] { return expect_type(use); });
     if (ty.errored) {
         return Failure::kErrored;
     }
@@ -1371,8 +1386,8 @@ Expect<const ast::Type*> ParserImpl::expect_type_specifier_matrix(const Source& 
 //   | 'storage'
 //
 // Note, we also parse `push_constant` from the experimental extension
-Expect<ast::AddressSpace> ParserImpl::expect_address_space(std::string_view use) {
-    return expect_enum("address space", ast::ParseAddressSpace, ast::kAddressSpaceStrings, use);
+Expect<type::AddressSpace> ParserImpl::expect_address_space(std::string_view use) {
+    return expect_enum("address space", type::ParseAddressSpace, type::kAddressSpaceStrings, use);
 }
 
 // struct_decl
@@ -1449,11 +1464,15 @@ Expect<ast::StructMember*> ParserImpl::expect_struct_member() {
                                      decl->type, std::move(attrs.value));
 }
 
-// static_assert_statement
+// const_assert_statement
 //   : STATIC_ASSERT expression
-Maybe<const ast::StaticAssert*> ParserImpl::static_assert_statement() {
+Maybe<const ast::ConstAssert*> ParserImpl::const_assert_statement() {
     Source start;
-    if (!match(Token::Type::kStaticAssert, &start)) {
+    if (match(Token::Type::kConstAssert, &start)) {
+        // matched
+    } else if (match(Token::Type::kStaticAssert, &start)) {
+        deprecated(start, "'static_assert' has been renamed to 'const_assert'");
+    } else {
         return Failure::kNoMatch;
     }
 
@@ -1466,7 +1485,7 @@ Maybe<const ast::StaticAssert*> ParserImpl::static_assert_statement() {
     }
 
     Source source = make_source_range_from(start);
-    return create<ast::StaticAssert>(source, condition.value);
+    return create<ast::ConstAssert>(source, condition.value);
 }
 
 // function_decl
@@ -1780,7 +1799,7 @@ Maybe<const ast::Statement*> ParserImpl::statement() {
 //   | continue_statement SEMICOLON
 //   | DISCARD SEMICOLON
 //   | variable_updating_statement SEMICOLON
-//   | static_assert_statement SEMICOLON
+//   | const_assert_statement SEMICOLON
 Maybe<const ast::Statement*> ParserImpl::non_block_statement() {
     auto stmt = [&]() -> Maybe<const ast::Statement*> {
         auto ret_stmt = return_statement();
@@ -1837,7 +1856,7 @@ Maybe<const ast::Statement*> ParserImpl::non_block_statement() {
             return assign.value;
         }
 
-        auto stmt_static_assert = static_assert_statement();
+        auto stmt_static_assert = const_assert_statement();
         if (stmt_static_assert.errored) {
             return Failure::kErrored;
         }
@@ -2545,7 +2564,7 @@ Maybe<const ast::Expression*> ParserImpl::primary_expression() {
     if (match(Token::Type::kBitcast)) {
         const char* use = "bitcast expression";
 
-        auto type = expect_lt_gt_block(use, [&] { return expect_type(use); });
+        auto type = expect_template_arg_block(use, [&] { return expect_type(use); });
         if (type.errored) {
             return Failure::kErrored;
         }
@@ -2581,6 +2600,14 @@ Maybe<const ast::Expression*> ParserImpl::primary_expression() {
 
     if (t.IsIdentifier()) {
         next();
+
+        if (Source source; match(Token::Type::kTemplateArgsLeft, &source)) {
+            return add_error(
+                source,
+                "'<' treated as the start of a template argument list, which is not supported for "
+                "user-declared types or functions. If you intended less-than, wrap the expression "
+                "in parentheses");
+        }
 
         auto* ident =
             create<ast::IdentifierExpression>(t.source(), builder_.Symbols().Register(t.to_str()));
@@ -3451,6 +3478,7 @@ Expect<const ast::Attribute*> ParserImpl::expect_attribute() {
 //   | ATTR 'binding' PAREN_LEFT expression COMMA? PAREN_RIGHT
 //   | ATTR 'builtin' PAREN_LEFT builtin_value_name COMMA? PAREN_RIGHT
 //   | ATTR 'const'
+//   | ATTR 'diagnostic' diagnostic_control
 //   | ATTR 'group' PAREN_LEFT expression COMMA? PAREN_RIGHT
 //   | ATTR 'id' PAREN_LEFT expression COMMA? PAREN_RIGHT
 //   | ATTR 'interpolate' PAREN_LEFT interpolation_type_name COMMA? PAREN_RIGHT
@@ -3470,7 +3498,7 @@ Maybe<const ast::Attribute*> ParserImpl::attribute() {
     using Result = Maybe<const ast::Attribute*>;
     auto& t = next();
 
-    if (!t.IsIdentifier()) {
+    if (!t.IsIdentifier() && !(t.Is(Token::Type::kDiagnostic))) {
         return Failure::kNoMatch;
     }
 
@@ -3523,6 +3551,14 @@ Maybe<const ast::Attribute*> ParserImpl::attribute() {
     }
 
     // Note, `const` is not valid in a WGSL source file, it's internal only
+
+    if (t.Is(Token::Type::kDiagnostic)) {
+        auto control = expect_diagnostic_control();
+        if (control.errored) {
+            return Failure::kErrored;
+        }
+        return create<ast::DiagnosticAttribute>(t.source(), control.value);
+    }
 
     if (t == "fragment") {
         return create<ast::StageAttribute>(t.source(), ast::PipelineStage::kFragment);
@@ -3678,6 +3714,43 @@ bool ParserImpl::expect_attributes_consumed(utils::VectorRef<const ast::Attribut
     return false;
 }
 
+// severity_control_name
+//   : 'error'
+//   | 'warning'
+//   | 'info'
+//   | 'off'
+Expect<ast::DiagnosticSeverity> ParserImpl::expect_severity_control_name() {
+    return expect_enum("severity control", ast::ParseDiagnosticSeverity,
+                       ast::kDiagnosticSeverityStrings);
+}
+
+// diagnostic_control
+// : PAREN_LEFT severity_control_name COMMA ident_pattern_token COMMA ? PAREN_RIGHT
+Expect<const ast::DiagnosticControl*> ParserImpl::expect_diagnostic_control() {
+    auto source = last_source();
+    return expect_paren_block("diagnostic control", [&]() -> Expect<const ast::DiagnosticControl*> {
+        auto severity_control = expect_severity_control_name();
+        if (severity_control.errored) {
+            return Failure::kErrored;
+        }
+
+        if (!expect("diagnostic control", Token::Type::kComma)) {
+            return Failure::kErrored;
+        }
+
+        auto rule_name = expect_ident("diagnostic control");
+        if (rule_name.errored) {
+            return Failure::kErrored;
+        }
+        match(Token::Type::kComma);
+
+        return create<ast::DiagnosticControl>(
+            source, severity_control.value,
+            create<ast::IdentifierExpression>(rule_name.source,
+                                              builder_.Symbols().Register(rule_name.value)));
+    });
+}
+
 bool ParserImpl::match(Token::Type tok, Source* source /*= nullptr*/) {
     auto& t = peek();
 
@@ -3723,7 +3796,11 @@ bool ParserImpl::expect(std::string_view use, Token::Type tok) {
     }
 
     std::stringstream err;
-    err << "expected '" << Token::TypeToName(tok) << "'";
+    if (tok == Token::Type::kTemplateArgsLeft && t.type() == Token::Type::kLessThan) {
+        err << "missing closing '>'";
+    } else {
+        err << "expected '" << Token::TypeToName(tok) << "'";
+    }
     if (!use.empty()) {
         err << " for " << use;
     }
@@ -3829,6 +3906,12 @@ T ParserImpl::expect_brace_block(std::string_view use, F&& body) {
 template <typename F, typename T>
 T ParserImpl::expect_lt_gt_block(std::string_view use, F&& body) {
     return expect_block(Token::Type::kLessThan, Token::Type::kGreaterThan, use,
+                        std::forward<F>(body));
+}
+
+template <typename F, typename T>
+T ParserImpl::expect_template_arg_block(std::string_view use, F&& body) {
+    return expect_block(Token::Type::kTemplateArgsLeft, Token::Type::kTemplateArgsRight, use,
                         std::forward<F>(body));
 }
 

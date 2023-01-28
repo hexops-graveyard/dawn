@@ -16,6 +16,7 @@
 #include "src/tint/resolver/resolver.h"
 #include "src/tint/resolver/resolver_test_helper.h"
 #include "src/tint/transform/add_block_attribute.h"
+#include "src/tint/type/texture_dimension.h"
 
 #include "gmock/gmock.h"
 
@@ -53,6 +54,7 @@ enum class AttributeKind {
     kAlign,
     kBinding,
     kBuiltin,
+    kDiagnostic,
     kGroup,
     kId,
     kInterpolate,
@@ -94,6 +96,9 @@ static utils::Vector<const ast::Attribute*, 2> createAttributes(const Source& so
             return {builder.Binding(source, 1_a)};
         case AttributeKind::kBuiltin:
             return {builder.Builtin(source, ast::BuiltinValue::kPosition)};
+        case AttributeKind::kDiagnostic:
+            return {builder.DiagnosticAttribute(source, ast::DiagnosticSeverity::kInfo,
+                                                builder.Expr("chromium_unreachable_code"))};
         case AttributeKind::kGroup:
             return {builder.Group(source, 1_a)};
         case AttributeKind::kId:
@@ -146,6 +151,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -182,6 +188,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -232,6 +239,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -269,6 +277,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, true},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          // kInterpolate tested separately (requires @location)
@@ -322,6 +331,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, true},
@@ -372,6 +382,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -424,6 +435,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, true},
@@ -473,6 +485,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, true},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          // kInterpolate tested separately (requires @location)
@@ -506,7 +519,7 @@ TEST_F(EntryPointParameterAttributeTest, DuplicateAttribute) {
 }
 
 TEST_F(EntryPointParameterAttributeTest, DuplicateInternalAttribute) {
-    auto* s = Param("s", ty.sampler(ast::SamplerKind::kSampler),
+    auto* s = Param("s", ty.sampler(type::SamplerKind::kSampler),
                     utils::Vector{
                         Binding(0_a),
                         Group(0_a),
@@ -577,6 +590,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -612,6 +626,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, true},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, true},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          // kInterpolate tested separately (requires @location)
@@ -721,8 +736,8 @@ TEST_F(StructMemberAttributeTest, Align_Attribute_ConstAFloat) {
 }
 
 TEST_F(StructMemberAttributeTest, Align_Attribute_Var) {
-    GlobalVar(Source{{1, 2}}, "val", ty.f32(), ast::AddressSpace::kPrivate, ast::Access::kUndefined,
-              Expr(1.23_f));
+    GlobalVar(Source{{1, 2}}, "val", ty.f32(), type::AddressSpace::kPrivate,
+              type::Access::kUndefined, Expr(1.23_f));
 
     Structure(Source{{6, 4}}, "mystruct",
               utils::Vector{Member(Source{{12, 5}}, "a", ty.f32(),
@@ -795,8 +810,8 @@ TEST_F(StructMemberAttributeTest, Size_Attribute_ConstAFloat) {
 }
 
 TEST_F(StructMemberAttributeTest, Size_Attribute_Var) {
-    GlobalVar(Source{{1, 2}}, "val", ty.f32(), ast::AddressSpace::kPrivate, ast::Access::kUndefined,
-              Expr(1.23_f));
+    GlobalVar(Source{{1, 2}}, "val", ty.f32(), type::AddressSpace::kPrivate,
+              type::Access::kUndefined, Expr(1.23_f));
 
     Structure(Source{{6, 4}}, "mystruct",
               utils::Vector{Member(Source{{12, 5}}, "a", ty.f32(),
@@ -853,6 +868,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -872,9 +888,9 @@ TEST_P(VariableAttributeTest, IsValid) {
     auto attrs = createAttributes(Source{{12, 34}}, *this, params.kind);
     auto* attr = attrs[0];
     if (IsBindingAttribute(params.kind)) {
-        GlobalVar("a", ty.sampler(ast::SamplerKind::kSampler), attrs);
+        GlobalVar("a", ty.sampler(type::SamplerKind::kSampler), attrs);
     } else {
-        GlobalVar("a", ty.f32(), ast::AddressSpace::kPrivate, attrs);
+        GlobalVar("a", ty.f32(), type::AddressSpace::kPrivate, attrs);
     }
 
     if (params.should_pass) {
@@ -892,6 +908,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -905,7 +922,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                                          TestParams{AttributeKind::kBindingAndGroup, true}));
 
 TEST_F(VariableAttributeTest, DuplicateAttribute) {
-    GlobalVar("a", ty.sampler(ast::SamplerKind::kSampler), Binding(Source{{12, 34}}, 2_a),
+    GlobalVar("a", ty.sampler(type::SamplerKind::kSampler), Binding(Source{{12, 34}}, 2_a),
               Group(2_a), Binding(Source{{56, 78}}, 3_a));
 
     EXPECT_FALSE(r()->Resolve());
@@ -943,6 +960,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, false},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -986,6 +1004,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                          testing::Values(TestParams{AttributeKind::kAlign, false},
                                          TestParams{AttributeKind::kBinding, false},
                                          TestParams{AttributeKind::kBuiltin, false},
+                                         TestParams{AttributeKind::kDiagnostic, false},
                                          TestParams{AttributeKind::kGroup, false},
                                          TestParams{AttributeKind::kId, true},
                                          TestParams{AttributeKind::kInterpolate, false},
@@ -1045,7 +1064,7 @@ TEST_P(ArrayStrideTest, All) {
                              create<ast::StrideAttribute>(Source{{12, 34}}, params.stride),
                          });
 
-    GlobalVar("myarray", arr, ast::AddressSpace::kPrivate);
+    GlobalVar("myarray", arr, type::AddressSpace::kPrivate);
 
     if (params.should_pass) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -1128,7 +1147,7 @@ TEST_F(ArrayStrideTest, DuplicateAttribute) {
                              create<ast::StrideAttribute>(Source{{56, 78}}, 4u),
                          });
 
-    GlobalVar("myarray", arr, ast::AddressSpace::kPrivate);
+    GlobalVar("myarray", arr, type::AddressSpace::kPrivate);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1147,7 +1166,7 @@ TEST_F(ResourceAttributeTest, UniformBufferMissingBinding) {
     auto* s = Structure("S", utils::Vector{
                                  Member("x", ty.i32()),
                              });
-    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), ast::AddressSpace::kUniform);
+    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), type::AddressSpace::kUniform);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1158,7 +1177,7 @@ TEST_F(ResourceAttributeTest, StorageBufferMissingBinding) {
     auto* s = Structure("S", utils::Vector{
                                  Member("x", ty.i32()),
                              });
-    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead);
+    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1166,7 +1185,7 @@ TEST_F(ResourceAttributeTest, StorageBufferMissingBinding) {
 }
 
 TEST_F(ResourceAttributeTest, TextureMissingBinding) {
-    GlobalVar(Source{{12, 34}}, "G", ty.depth_texture(ast::TextureDimension::k2d));
+    GlobalVar(Source{{12, 34}}, "G", ty.depth_texture(type::TextureDimension::k2d));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1174,7 +1193,7 @@ TEST_F(ResourceAttributeTest, TextureMissingBinding) {
 }
 
 TEST_F(ResourceAttributeTest, SamplerMissingBinding) {
-    GlobalVar(Source{{12, 34}}, "G", ty.sampler(ast::SamplerKind::kSampler));
+    GlobalVar(Source{{12, 34}}, "G", ty.sampler(type::SamplerKind::kSampler));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1182,7 +1201,7 @@ TEST_F(ResourceAttributeTest, SamplerMissingBinding) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPairMissingBinding) {
-    GlobalVar(Source{{12, 34}}, "G", ty.sampler(ast::SamplerKind::kSampler), Group(1_a));
+    GlobalVar(Source{{12, 34}}, "G", ty.sampler(type::SamplerKind::kSampler), Group(1_a));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1190,7 +1209,7 @@ TEST_F(ResourceAttributeTest, BindingPairMissingBinding) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPairMissingGroup) {
-    GlobalVar(Source{{12, 34}}, "G", ty.sampler(ast::SamplerKind::kSampler), Binding(1_a));
+    GlobalVar(Source{{12, 34}}, "G", ty.sampler(type::SamplerKind::kSampler), Binding(1_a));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1198,9 +1217,9 @@ TEST_F(ResourceAttributeTest, BindingPairMissingGroup) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByEntryPoint) {
-    GlobalVar(Source{{12, 34}}, "A", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar(Source{{12, 34}}, "A", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(1_a), Group(2_a));
-    GlobalVar(Source{{56, 78}}, "B", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar(Source{{56, 78}}, "B", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(1_a), Group(2_a));
 
     Func("F", utils::Empty, ty.void_(),
@@ -1220,9 +1239,9 @@ TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByEntryPoint) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByDifferentEntryPoints) {
-    GlobalVar(Source{{12, 34}}, "A", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar(Source{{12, 34}}, "A", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(1_a), Group(2_a));
-    GlobalVar(Source{{56, 78}}, "B", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar(Source{{56, 78}}, "B", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(1_a), Group(2_a));
 
     Func("F_A", utils::Empty, ty.void_(),
@@ -1244,7 +1263,7 @@ TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByDifferentEntryPoints) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPointOnNonResource) {
-    GlobalVar(Source{{12, 34}}, "G", ty.f32(), ast::AddressSpace::kPrivate, Binding(1_a),
+    GlobalVar(Source{{12, 34}}, "G", ty.f32(), type::AddressSpace::kPrivate, Binding(1_a),
               Group(2_a));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1582,7 +1601,7 @@ using GroupAndBindingTest = ResolverTest;
 TEST_F(GroupAndBindingTest, Const_I32) {
     GlobalConst("b", Expr(4_i));
     GlobalConst("g", Expr(2_i));
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding("b"),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding("b"),
               Group("g"));
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -1591,7 +1610,7 @@ TEST_F(GroupAndBindingTest, Const_I32) {
 TEST_F(GroupAndBindingTest, Const_U32) {
     GlobalConst("b", Expr(4_u));
     GlobalConst("g", Expr(2_u));
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding("b"),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding("b"),
               Group("g"));
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -1600,14 +1619,14 @@ TEST_F(GroupAndBindingTest, Const_U32) {
 TEST_F(GroupAndBindingTest, Const_AInt) {
     GlobalConst("b", Expr(4_a));
     GlobalConst("g", Expr(2_a));
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding("b"),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding("b"),
               Group("g"));
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
 }
 
 TEST_F(GroupAndBindingTest, Binding_NonConstant) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(Construct(ty.u32(), Call(Source{{12, 34}}, "dpdx", 1_a))), Group(1_i));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1617,7 +1636,7 @@ TEST_F(GroupAndBindingTest, Binding_NonConstant) {
 }
 
 TEST_F(GroupAndBindingTest, Binding_Negative) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(Source{{12, 34}}, -2_i), Group(1_i));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1625,7 +1644,7 @@ TEST_F(GroupAndBindingTest, Binding_Negative) {
 }
 
 TEST_F(GroupAndBindingTest, Binding_F32) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(Source{{12, 34}}, 2.0_f), Group(1_u));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1633,7 +1652,7 @@ TEST_F(GroupAndBindingTest, Binding_F32) {
 }
 
 TEST_F(GroupAndBindingTest, Binding_AFloat) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()),
               Binding(Source{{12, 34}}, 2.0_a), Group(1_u));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1641,7 +1660,7 @@ TEST_F(GroupAndBindingTest, Binding_AFloat) {
 }
 
 TEST_F(GroupAndBindingTest, Group_NonConstant) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding(2_u),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding(2_u),
               Group(Construct(ty.u32(), Call(Source{{12, 34}}, "dpdx", 1_a))));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1651,7 +1670,7 @@ TEST_F(GroupAndBindingTest, Group_NonConstant) {
 }
 
 TEST_F(GroupAndBindingTest, Group_Negative) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding(2_u),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding(2_u),
               Group(Source{{12, 34}}, -1_i));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1659,7 +1678,7 @@ TEST_F(GroupAndBindingTest, Group_Negative) {
 }
 
 TEST_F(GroupAndBindingTest, Group_F32) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding(2_u),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding(2_u),
               Group(Source{{12, 34}}, 1.0_f));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1667,7 +1686,7 @@ TEST_F(GroupAndBindingTest, Group_F32) {
 }
 
 TEST_F(GroupAndBindingTest, Group_AFloat) {
-    GlobalVar("val", ty.sampled_texture(ast::TextureDimension::k2d, ty.f32()), Binding(2_u),
+    GlobalVar("val", ty.sampled_texture(type::TextureDimension::k2d, ty.f32()), Binding(2_u),
               Group(Source{{12, 34}}, 1.0_a));
 
     EXPECT_FALSE(r()->Resolve());

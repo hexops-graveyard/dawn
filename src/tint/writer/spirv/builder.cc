@@ -44,6 +44,7 @@
 #include "src/tint/type/multisampled_texture.h"
 #include "src/tint/type/reference.h"
 #include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/type/vector.h"
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/defer.h"
@@ -505,8 +506,8 @@ bool Builder::GenerateEntryPoint(const ast::Function* func, uint32_t id) {
     for (const auto* var : func_sem->TransitivelyReferencedGlobals()) {
         // For SPIR-V 1.3 we only output Input/output variables. If we update to
         // SPIR-V 1.4 or later this should be all variables.
-        if (var->AddressSpace() != ast::AddressSpace::kIn &&
-            var->AddressSpace() != ast::AddressSpace::kOut) {
+        if (var->AddressSpace() != type::AddressSpace::kIn &&
+            var->AddressSpace() != type::AddressSpace::kOut) {
             continue;
         }
 
@@ -716,7 +717,7 @@ bool Builder::GenerateFunctionVariable(const ast::Variable* v) {
 
     auto result = result_op();
     auto var_id = std::get<uint32_t>(result);
-    auto sc = ast::AddressSpace::kFunction;
+    auto sc = type::AddressSpace::kFunction;
     auto* type = sem->Type();
     auto type_id = GenerateTypeIfNeeded(type);
     if (type_id == 0) {
@@ -775,8 +776,8 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
     auto result = result_op();
     auto var_id = std::get<uint32_t>(result);
 
-    auto sc = sem->AddressSpace() == ast::AddressSpace::kNone ? ast::AddressSpace::kPrivate
-                                                              : sem->AddressSpace();
+    auto sc = sem->AddressSpace() == type::AddressSpace::kNone ? type::AddressSpace::kPrivate
+                                                               : sem->AddressSpace();
 
     auto type_id = GenerateTypeIfNeeded(sem->Type());
     if (type_id == 0) {
@@ -795,16 +796,16 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
             // type is a sem::Struct or a type::StorageTexture
             auto access = st ? st->access() : sem->Access();
             switch (access) {
-                case ast::Access::kWrite:
+                case type::Access::kWrite:
                     push_annot(spv::Op::OpDecorate,
                                {Operand(var_id), U32Operand(SpvDecorationNonReadable)});
                     break;
-                case ast::Access::kRead:
+                case type::Access::kRead:
                     push_annot(spv::Op::OpDecorate,
                                {Operand(var_id), U32Operand(SpvDecorationNonWritable)});
                     break;
-                case ast::Access::kUndefined:
-                case ast::Access::kReadWrite:
+                case type::Access::kUndefined:
+                case type::Access::kReadWrite:
                     break;
             }
         }
@@ -814,10 +815,10 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
             // If we're a Workgroup variable, and the
             // VK_KHR_zero_initialize_workgroup_memory extension is enabled, we should
             // also zero-initialize.
-            if (sem->AddressSpace() == ast::AddressSpace::kPrivate ||
-                sem->AddressSpace() == ast::AddressSpace::kOut ||
+            if (sem->AddressSpace() == type::AddressSpace::kPrivate ||
+                sem->AddressSpace() == type::AddressSpace::kOut ||
                 (zero_initialize_workgroup_memory_ &&
-                 sem->AddressSpace() == ast::AddressSpace::kWorkgroup)) {
+                 sem->AddressSpace() == type::AddressSpace::kWorkgroup)) {
                 init_id = GenerateConstantNullIfNeeded(type);
                 if (init_id == 0) {
                     return 0;
@@ -1902,10 +1903,10 @@ uint32_t Builder::GenerateShortCircuitBinaryExpression(const ast::BinaryExpressi
 uint32_t Builder::GenerateSplat(uint32_t scalar_id, const type::Type* vec_type) {
     // Create a new vector to splat scalar into
     auto splat_vector = result_op();
-    auto* splat_vector_type = builder_.create<type::Pointer>(vec_type, ast::AddressSpace::kFunction,
-                                                             ast::Access::kReadWrite);
+    auto* splat_vector_type = builder_.create<type::Pointer>(
+        vec_type, type::AddressSpace::kFunction, type::Access::kReadWrite);
     push_function_var({Operand(GenerateTypeIfNeeded(splat_vector_type)), splat_vector,
-                       U32Operand(ConvertAddressSpace(ast::AddressSpace::kFunction)),
+                       U32Operand(ConvertAddressSpace(type::AddressSpace::kFunction)),
                        Operand(GenerateConstantNullIfNeeded(vec_type))});
 
     // Splat scalar into vector
@@ -2785,16 +2786,16 @@ bool Builder::GenerateTextureBuiltin(const sem::Call* call,
             std::vector<uint32_t> swizzle;
             uint32_t spirv_dims = 0;
             switch (texture_type->dim()) {
-                case ast::TextureDimension::kNone:
+                case type::TextureDimension::kNone:
                     error_ = "texture dimension is kNone";
                     return false;
-                case ast::TextureDimension::k1d:
-                case ast::TextureDimension::k2d:
-                case ast::TextureDimension::k3d:
-                case ast::TextureDimension::kCube:
+                case type::TextureDimension::k1d:
+                case type::TextureDimension::k2d:
+                case type::TextureDimension::k3d:
+                case type::TextureDimension::kCube:
                     break;  // No swizzle needed
-                case ast::TextureDimension::kCubeArray:
-                case ast::TextureDimension::k2dArray:
+                case type::TextureDimension::kCubeArray:
+                case type::TextureDimension::k2dArray:
                     swizzle = {0, 1};  // Strip array index
                     spirv_dims = 3;    // [width, height, array_count]
                     break;
@@ -2825,8 +2826,8 @@ bool Builder::GenerateTextureBuiltin(const sem::Call* call,
                 default:
                     error_ = "texture is not arrayed";
                     return false;
-                case ast::TextureDimension::k2dArray:
-                case ast::TextureDimension::kCubeArray:
+                case type::TextureDimension::k2dArray:
+                case type::TextureDimension::kCubeArray:
                     spirv_dims = 3;
                     break;
             }
@@ -3072,11 +3073,11 @@ bool Builder::GenerateAtomicBuiltin(const sem::Call* call,
 
     uint32_t memory_id = 0;
     switch (builtin->Parameters()[0]->Type()->As<type::Pointer>()->AddressSpace()) {
-        case ast::AddressSpace::kWorkgroup:
+        case type::AddressSpace::kWorkgroup:
             memory_id = GenerateConstantIfNeeded(
                 ScalarConstant::U32(static_cast<uint32_t>(spv::Scope::Workgroup)));
             break;
-        case ast::AddressSpace::kStorage:
+        case type::AddressSpace::kStorage:
             memory_id = GenerateConstantIfNeeded(
                 ScalarConstant::U32(static_cast<uint32_t>(spv::Scope::Device)));
             break;
@@ -3613,7 +3614,7 @@ bool Builder::GenerateStatement(const ast::Statement* stmt) {
         [&](const ast::ReturnStatement* r) { return GenerateReturnStatement(r); },
         [&](const ast::SwitchStatement* s) { return GenerateSwitchStatement(s); },
         [&](const ast::VariableDeclStatement* v) { return GenerateVariableDeclStatement(v); },
-        [&](const ast::StaticAssert*) {
+        [&](const ast::ConstAssert*) {
             return true;  // Not emitted
         },
         [&](Default) {
@@ -3659,10 +3660,10 @@ uint32_t Builder::GenerateTypeIfNeeded(const type::Type* type) {
     // fine.
     if (auto* ptr = type->As<type::Pointer>()) {
         type = builder_.create<type::Pointer>(ptr->StoreType(), ptr->AddressSpace(),
-                                              ast::Access::kReadWrite);
+                                              type::Access::kReadWrite);
     } else if (auto* ref = type->As<type::Reference>()) {
         type = builder_.create<type::Pointer>(ref->StoreType(), ref->AddressSpace(),
-                                              ast::Access::kReadWrite);
+                                              type::Access::kReadWrite);
     }
 
     return utils::GetOrCreate(type_to_id_, type, [&]() -> uint32_t {
@@ -3721,11 +3722,11 @@ uint32_t Builder::GenerateTypeIfNeeded(const type::Type* type) {
                 // SPIR-V, we must output a single type, while the variable is
                 // annotated with the access type. Doing this ensures we de-dupe.
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), ast::Access::kRead, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), type::Access::kRead, tex->type())] = id;
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), ast::Access::kWrite, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), type::Access::kWrite, tex->type())] = id;
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), ast::Access::kReadWrite, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), type::Access::kReadWrite, tex->type())] = id;
                 return true;
             },
             [&](const type::Texture* tex) { return GenerateTextureType(tex, result); },
@@ -3734,11 +3735,11 @@ uint32_t Builder::GenerateTypeIfNeeded(const type::Type* type) {
 
                 // Register both of the sampler type names. In SPIR-V they're the same
                 // sampler type, so we need to match that when we do the dedup check.
-                if (s->kind() == ast::SamplerKind::kSampler) {
+                if (s->kind() == type::SamplerKind::kSampler) {
                     type_to_id_[builder_.create<type::Sampler>(
-                        ast::SamplerKind::kComparisonSampler)] = id;
+                        type::SamplerKind::kComparisonSampler)] = id;
                 } else {
-                    type_to_id_[builder_.create<type::Sampler>(ast::SamplerKind::kSampler)] = id;
+                    type_to_id_[builder_.create<type::Sampler>(type::SamplerKind::kSampler)] = id;
                 }
                 return true;
             },
@@ -3764,12 +3765,12 @@ bool Builder::GenerateTextureType(const type::Texture* texture, const Operand& r
 
     uint32_t array_literal = 0u;
     const auto dim = texture->dim();
-    if (dim == ast::TextureDimension::k2dArray || dim == ast::TextureDimension::kCubeArray) {
+    if (dim == type::TextureDimension::k2dArray || dim == type::TextureDimension::kCubeArray) {
         array_literal = 1u;
     }
 
     uint32_t dim_literal = SpvDim2D;
-    if (dim == ast::TextureDimension::k1d) {
+    if (dim == type::TextureDimension::k1d) {
         dim_literal = SpvDim1D;
         if (texture->Is<type::SampledTexture>()) {
             push_capability(SpvCapabilitySampled1D);
@@ -3777,10 +3778,10 @@ bool Builder::GenerateTextureType(const type::Texture* texture, const Operand& r
             push_capability(SpvCapabilityImage1D);
         }
     }
-    if (dim == ast::TextureDimension::k3d) {
+    if (dim == type::TextureDimension::k3d) {
         dim_literal = SpvDim3D;
     }
-    if (dim == ast::TextureDimension::kCube || dim == ast::TextureDimension::kCubeArray) {
+    if (dim == type::TextureDimension::kCube || dim == type::TextureDimension::kCubeArray) {
         dim_literal = SpvDimCube;
     }
 
@@ -3800,7 +3801,7 @@ bool Builder::GenerateTextureType(const type::Texture* texture, const Operand& r
         sampled_literal = 1u;
     }
 
-    if (dim == ast::TextureDimension::kCubeArray) {
+    if (dim == type::TextureDimension::kCubeArray) {
         if (texture->IsAnyOf<type::SampledTexture, type::DepthTexture>()) {
             push_capability(SpvCapabilitySampledCubeArray);
         }
@@ -3979,40 +3980,40 @@ bool Builder::GenerateVectorType(const type::Vector* vec, const Operand& result)
     return true;
 }
 
-SpvStorageClass Builder::ConvertAddressSpace(ast::AddressSpace klass) const {
+SpvStorageClass Builder::ConvertAddressSpace(type::AddressSpace klass) const {
     switch (klass) {
-        case ast::AddressSpace::kUndefined:
+        case type::AddressSpace::kUndefined:
             return SpvStorageClassMax;
-        case ast::AddressSpace::kIn:
+        case type::AddressSpace::kIn:
             return SpvStorageClassInput;
-        case ast::AddressSpace::kOut:
+        case type::AddressSpace::kOut:
             return SpvStorageClassOutput;
-        case ast::AddressSpace::kUniform:
+        case type::AddressSpace::kUniform:
             return SpvStorageClassUniform;
-        case ast::AddressSpace::kWorkgroup:
+        case type::AddressSpace::kWorkgroup:
             return SpvStorageClassWorkgroup;
-        case ast::AddressSpace::kPushConstant:
+        case type::AddressSpace::kPushConstant:
             return SpvStorageClassPushConstant;
-        case ast::AddressSpace::kHandle:
+        case type::AddressSpace::kHandle:
             return SpvStorageClassUniformConstant;
-        case ast::AddressSpace::kStorage:
+        case type::AddressSpace::kStorage:
             return SpvStorageClassStorageBuffer;
-        case ast::AddressSpace::kPrivate:
+        case type::AddressSpace::kPrivate:
             return SpvStorageClassPrivate;
-        case ast::AddressSpace::kFunction:
+        case type::AddressSpace::kFunction:
             return SpvStorageClassFunction;
-        case ast::AddressSpace::kNone:
+        case type::AddressSpace::kNone:
             break;
     }
     return SpvStorageClassMax;
 }
 
-SpvBuiltIn Builder::ConvertBuiltin(ast::BuiltinValue builtin, ast::AddressSpace storage) {
+SpvBuiltIn Builder::ConvertBuiltin(ast::BuiltinValue builtin, type::AddressSpace storage) {
     switch (builtin) {
         case ast::BuiltinValue::kPosition:
-            if (storage == ast::AddressSpace::kIn) {
+            if (storage == type::AddressSpace::kIn) {
                 return SpvBuiltInFragCoord;
-            } else if (TINT_LIKELY(storage == ast::AddressSpace::kOut)) {
+            } else if (TINT_LIKELY(storage == type::AddressSpace::kOut)) {
                 return SpvBuiltInPosition;
             } else {
                 TINT_ICE(Writer, builder_.Diagnostics()) << "invalid address space for builtin";
@@ -4077,48 +4078,48 @@ void Builder::AddInterpolationDecorations(uint32_t id,
     }
 }
 
-SpvImageFormat Builder::convert_texel_format_to_spv(const ast::TexelFormat format) {
+SpvImageFormat Builder::convert_texel_format_to_spv(const type::TexelFormat format) {
     switch (format) {
-        case ast::TexelFormat::kBgra8Unorm:
+        case type::TexelFormat::kBgra8Unorm:
             TINT_ICE(Writer, builder_.Diagnostics())
                 << "bgra8unorm should have been polyfilled to rgba8unorm";
             return SpvImageFormatUnknown;
-        case ast::TexelFormat::kR32Uint:
+        case type::TexelFormat::kR32Uint:
             return SpvImageFormatR32ui;
-        case ast::TexelFormat::kR32Sint:
+        case type::TexelFormat::kR32Sint:
             return SpvImageFormatR32i;
-        case ast::TexelFormat::kR32Float:
+        case type::TexelFormat::kR32Float:
             return SpvImageFormatR32f;
-        case ast::TexelFormat::kRgba8Unorm:
+        case type::TexelFormat::kRgba8Unorm:
             return SpvImageFormatRgba8;
-        case ast::TexelFormat::kRgba8Snorm:
+        case type::TexelFormat::kRgba8Snorm:
             return SpvImageFormatRgba8Snorm;
-        case ast::TexelFormat::kRgba8Uint:
+        case type::TexelFormat::kRgba8Uint:
             return SpvImageFormatRgba8ui;
-        case ast::TexelFormat::kRgba8Sint:
+        case type::TexelFormat::kRgba8Sint:
             return SpvImageFormatRgba8i;
-        case ast::TexelFormat::kRg32Uint:
+        case type::TexelFormat::kRg32Uint:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32ui;
-        case ast::TexelFormat::kRg32Sint:
+        case type::TexelFormat::kRg32Sint:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32i;
-        case ast::TexelFormat::kRg32Float:
+        case type::TexelFormat::kRg32Float:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32f;
-        case ast::TexelFormat::kRgba16Uint:
+        case type::TexelFormat::kRgba16Uint:
             return SpvImageFormatRgba16ui;
-        case ast::TexelFormat::kRgba16Sint:
+        case type::TexelFormat::kRgba16Sint:
             return SpvImageFormatRgba16i;
-        case ast::TexelFormat::kRgba16Float:
+        case type::TexelFormat::kRgba16Float:
             return SpvImageFormatRgba16f;
-        case ast::TexelFormat::kRgba32Uint:
+        case type::TexelFormat::kRgba32Uint:
             return SpvImageFormatRgba32ui;
-        case ast::TexelFormat::kRgba32Sint:
+        case type::TexelFormat::kRgba32Sint:
             return SpvImageFormatRgba32i;
-        case ast::TexelFormat::kRgba32Float:
+        case type::TexelFormat::kRgba32Float:
             return SpvImageFormatRgba32f;
-        case ast::TexelFormat::kUndefined:
+        case type::TexelFormat::kUndefined:
             return SpvImageFormatUnknown;
     }
     return SpvImageFormatUnknown;

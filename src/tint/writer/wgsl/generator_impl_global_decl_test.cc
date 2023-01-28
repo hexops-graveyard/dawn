@@ -15,6 +15,7 @@
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -28,7 +29,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalDeclAfterFunction) {
     auto* func_var = Var("a", ty.f32());
     WrapInFunction(func_var);
 
-    GlobalVar("a", ty.f32(), ast::AddressSpace::kPrivate);
+    GlobalVar("a", ty.f32(), type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -45,7 +46,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalDeclAfterFunction) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
-    GlobalVar("a0", ty.f32(), ast::AddressSpace::kPrivate);
+    GlobalVar("a0", ty.f32(), type::AddressSpace::kPrivate);
 
     auto* s0 = Structure("S0", utils::Vector{
                                    Member("a", ty.i32()),
@@ -57,7 +58,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
          },
          utils::Empty);
 
-    GlobalVar("a1", ty.f32(), ast::AddressSpace::kPrivate);
+    GlobalVar("a1", ty.f32(), type::AddressSpace::kPrivate);
 
     auto* s1 = Structure("S1", utils::Vector{
                                    Member("a", ty.i32()),
@@ -105,7 +106,7 @@ TEST_F(WgslGeneratorImplTest, Emit_GlobalsInterleaved) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_Global_Sampler) {
-    GlobalVar("s", ty.sampler(ast::SamplerKind::kSampler), Group(0_a), Binding(0_a));
+    GlobalVar("s", ty.sampler(type::SamplerKind::kSampler), Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build();
 
@@ -116,7 +117,7 @@ TEST_F(WgslGeneratorImplTest, Emit_Global_Sampler) {
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_Global_Texture) {
-    auto* st = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* st = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     GlobalVar("t", st, Group(0_a), Binding(0_a));
 
     GeneratorImpl& gen = Build();

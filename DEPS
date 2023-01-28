@@ -19,7 +19,7 @@ vars = {
   'dawn_gn_version': 'git_revision:bd99dbf98cbdefe18a4128189665c5761263bcfb',
   # ninja CIPD package version.
   # https://chrome-infra-packages.appspot.com/p/infra/3pp/tools/ninja
-  'dawn_ninja_version': 'version:2@1.8.2.chromium.3',
+  'dawn_ninja_version': 'version:2@1.11.1.chromium.6',
   'dawn_go_version': 'version:2@1.18.4',
 
   'node_darwin_arm64_sha': '31859fc1fa0994a95f44f09c367d6ff63607cfde',
@@ -132,7 +132,7 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@d4535966a35ff96cad9157aee3ac85bd7fc75878',
+    'url': '{chromium_git}/angle/angle@0cde45b7cbcc4fb271d3b0c0b8bf5848efc23b17',
     'condition': 'dawn_standalone',
   },
 
@@ -142,7 +142,7 @@ deps = {
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@f709feae795b2c20ecec2901c4e7deb41e7762c0',
+    'url': '{chromium_git}/vulkan-deps@9988b37a33510f8ed6975544a3fb4228f1ca879b',
     'condition': 'dawn_standalone',
   },
 
@@ -158,7 +158,7 @@ deps = {
 
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
   'third_party/webgpu-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@9fbed0099e425cb735e6745bd2ce30a880e5075c',
+    'url': '{chromium_git}/external/github.com/gpuweb/cts@ad8abf400d8d23fb04bdcf1f654bccb6625db7b4',
     'condition': 'build_with_chromium',
   },
 

@@ -36,6 +36,7 @@
 #include "src/tint/transform/spirv_atomic.h"
 #include "src/tint/type/depth_texture.h"
 #include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/hashmap.h"
 #include "src/tint/utils/hashset.h"
 
@@ -2535,11 +2536,11 @@ bool FunctionEmitter::EmitFunctionVariables() {
                 return false;
             }
         }
-        auto* var = parser_impl_.MakeVar(inst.result_id(), ast::AddressSpace::kNone, var_store_type,
-                                         initializer, AttributeList{});
+        auto* var = parser_impl_.MakeVar(inst.result_id(), type::AddressSpace::kNone,
+                                         var_store_type, initializer, AttributeList{});
         auto* var_decl_stmt = create<ast::VariableDeclStatement>(Source{}, var);
         AddStatement(var_decl_stmt);
-        auto* var_type = ty_.Reference(var_store_type, ast::AddressSpace::kNone);
+        auto* var_type = ty_.Reference(var_store_type, type::AddressSpace::kNone);
         identifier_types_.emplace(inst.result_id(), var_type);
     }
     return success();
@@ -3389,9 +3390,9 @@ bool FunctionEmitter::EmitStatementsInBasicBlock(const BlockInfo& block_info,
         // no need to remap pointer properties.
         auto* store_type = parser_impl_.ConvertType(def_inst->type_id());
         AddStatement(create<ast::VariableDeclStatement>(
-            Source{}, parser_impl_.MakeVar(id, ast::AddressSpace::kNone, store_type, nullptr,
+            Source{}, parser_impl_.MakeVar(id, type::AddressSpace::kNone, store_type, nullptr,
                                            AttributeList{})));
-        auto* type = ty_.Reference(store_type, ast::AddressSpace::kNone);
+        auto* type = ty_.Reference(store_type, type::AddressSpace::kNone);
         identifier_types_.emplace(id, type);
     }
 
@@ -4881,7 +4882,7 @@ DefInfo::Pointer FunctionEmitter::GetPointerInfo(uint32_t id) {
                 }
                 // Local variables are always Function storage class, with default
                 // access mode.
-                return DefInfo::Pointer{ast::AddressSpace::kFunction, ast::Access::kUndefined};
+                return DefInfo::Pointer{type::AddressSpace::kFunction, type::Access::kUndefined};
             }
             case spv::Op::OpFunctionParameter: {
                 const auto* type = As<Pointer>(parser_impl_.ConvertType(inst.type_id()));
@@ -4894,7 +4895,7 @@ DefInfo::Pointer FunctionEmitter::GetPointerInfo(uint32_t id) {
                 // parameters.  In that case we need to do a global analysis to
                 // determine what the formal argument parameter type should be,
                 // whether it has read_only or read_write access mode.
-                return DefInfo::Pointer{type->address_space, ast::Access::kUndefined};
+                return DefInfo::Pointer{type->address_space, type::Access::kUndefined};
             }
             default:
                 break;
@@ -5116,7 +5117,7 @@ void FunctionEmitter::FindValuesNeedingNamedOrHoistedDefinition() {
             // Avoid moving combinatorial values across constructs.  This is a
             // simple heuristic to avoid changing the cost of an operation
             // by moving it into or out of a loop, for example.
-            if ((def_info->pointer.address_space == ast::AddressSpace::kUndefined) &&
+            if ((def_info->pointer.address_space == type::AddressSpace::kUndefined) &&
                 local_def.used_in_another_construct) {
                 should_hoist_to_let = true;
             }
@@ -5619,9 +5620,9 @@ bool FunctionEmitter::EmitImageAccess(const spvtools::opt::Instruction& inst) {
                           << inst.PrettyPrint();
         }
         switch (texture_type->dims) {
-            case ast::TextureDimension::k2d:
-            case ast::TextureDimension::k2dArray:
-            case ast::TextureDimension::k3d:
+            case type::TextureDimension::k2d:
+            case type::TextureDimension::k2dArray:
+            case type::TextureDimension::k3d:
                 break;
             default:
                 return Fail() << "ConstOffset is only permitted for 2D, 2D Arrayed, "
@@ -5749,8 +5750,8 @@ bool FunctionEmitter::EmitImageQuery(const spvtools::opt::Instruction& inst) {
             const ast::Expression* dims_call =
                 create<ast::CallExpression>(Source{}, dims_ident, dims_args);
             auto dims = texture_type->dims;
-            if ((dims == ast::TextureDimension::kCube) ||
-                (dims == ast::TextureDimension::kCubeArray)) {
+            if ((dims == type::TextureDimension::kCube) ||
+                (dims == type::TextureDimension::kCubeArray)) {
                 // textureDimension returns a 3-element vector but SPIR-V expects 2.
                 dims_call =
                     create<ast::MemberAccessorExpression>(Source{}, dims_call, PrefixSwizzle(2));
@@ -5952,7 +5953,7 @@ FunctionEmitter::ExpressionList FunctionEmitter::MakeCoordinateOperandsForImageA
     if (!texture_type) {
         return {};
     }
-    ast::TextureDimension dim = texture_type->dims;
+    type::TextureDimension dim = texture_type->dims;
     // Number of regular coordinates.
     uint32_t num_axes = static_cast<uint32_t>(ast::NumCoordinateAxes(dim));
     bool is_arrayed = ast::IsTextureArray(dim);
@@ -6253,7 +6254,7 @@ bool FunctionEmitter::MakeVectorInsertDynamic(const spvtools::opt::Instruction& 
         // API in parser_impl_.
         var_name = namer_.MakeDerivedName(original_value_name);
 
-        auto* temp_var = builder_.Var(var_name, type->Build(builder_), ast::AddressSpace::kNone,
+        auto* temp_var = builder_.Var(var_name, type->Build(builder_), type::AddressSpace::kNone,
                                       src_vector.expr);
 
         AddStatement(builder_.Decl({}, temp_var));
@@ -6323,7 +6324,7 @@ bool FunctionEmitter::MakeCompositeInsert(const spvtools::opt::Instruction& inst
         // It doesn't correspond to a SPIR-V ID, so we don't use the ordinary
         // API in parser_impl_.
         var_name = namer_.MakeDerivedName(original_value_name);
-        auto* temp_var = builder_.Var(var_name, type->Build(builder_), ast::AddressSpace::kNone,
+        auto* temp_var = builder_.Var(var_name, type->Build(builder_), type::AddressSpace::kNone,
                                       src_composite.expr);
         AddStatement(builder_.Decl({}, temp_var));
     }

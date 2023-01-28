@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "gmock/gmock.h"
 #include "src/tint/ast/bitcast_expression.h"
 #include "src/tint/resolver/resolver.h"
 #include "src/tint/resolver/resolver_test_helper.h"
 #include "src/tint/type/reference.h"
-
-#include "gmock/gmock.h"
+#include "src/tint/type/texture_dimension.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -54,7 +54,7 @@ TEST_F(ResolverPtrRefValidationTest, AddressOfLet) {
 TEST_F(ResolverPtrRefValidationTest, AddressOfHandle) {
     // @group(0) @binding(0) var t: texture_3d<f32>;
     // &t
-    GlobalVar("t", ty.sampled_texture(ast::TextureDimension::k3d, ty.f32()), Group(0_a),
+    GlobalVar("t", ty.sampled_texture(type::TextureDimension::k3d, ty.f32()), Group(0_a),
               Binding(0_a));
     auto* expr = AddressOf(Expr(Source{{12, 34}}, "t"));
     WrapInFunction(expr);
@@ -94,7 +94,7 @@ TEST_F(ResolverPtrRefValidationTest, AddressOfVectorComponent_IndexAccessor) {
 TEST_F(ResolverPtrRefValidationTest, IndirectOfAddressOfHandle) {
     // @group(0) @binding(0) var t: texture_3d<f32>;
     // *&t
-    GlobalVar("t", ty.sampled_texture(ast::TextureDimension::k3d, ty.f32()), Group(0_a),
+    GlobalVar("t", ty.sampled_texture(type::TextureDimension::k3d, ty.f32()), Group(0_a),
               Binding(0_a));
     auto* expr = Deref(AddressOf(Expr(Source{{12, 34}}, "t")));
     WrapInFunction(expr);
@@ -143,12 +143,12 @@ TEST_F(ResolverPtrRefValidationTest, InferredPtrAccessMismatch) {
     // }
     auto* inner = Structure("Inner", utils::Vector{Member("arr", ty.array<i32, 4>())});
     auto* buf = Structure("S", utils::Vector{Member("inner", ty.Of(inner))});
-    auto* storage = GlobalVar("s", ty.Of(buf), ast::AddressSpace::kStorage, ast::Access::kReadWrite,
-                              Binding(0_a), Group(0_a));
+    auto* storage = GlobalVar("s", ty.Of(buf), type::AddressSpace::kStorage,
+                              type::Access::kReadWrite, Binding(0_a), Group(0_a));
 
     auto* expr = IndexAccessor(MemberAccessor(MemberAccessor(storage, "inner"), "arr"), 2_i);
     auto* ptr =
-        Let(Source{{12, 34}}, "p", ty.pointer<i32>(ast::AddressSpace::kStorage), AddressOf(expr));
+        Let(Source{{12, 34}}, "p", ty.pointer<i32>(type::AddressSpace::kStorage), AddressOf(expr));
 
     WrapInFunction(ptr);
 

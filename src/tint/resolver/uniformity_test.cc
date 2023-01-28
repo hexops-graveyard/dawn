@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -42,11 +43,7 @@ class UniformityAnalysisTestBase {
         bool valid = program.IsValid();
         if (should_pass) {
             EXPECT_TRUE(valid) << error_;
-            if (program.Diagnostics().count() == 1u) {
-                EXPECT_THAT(program.Diagnostics().str(), ::testing::HasSubstr("unreachable"));
-            } else {
-                EXPECT_EQ(program.Diagnostics().count(), 0u) << error_;
-            }
+            EXPECT_FALSE(program.Diagnostics().contains_errors());
         } else {
             if (kUniformityFailuresAsError) {
                 EXPECT_FALSE(valid);
@@ -407,7 +404,7 @@ fn bar() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -468,7 +465,7 @@ fn bar() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -511,7 +508,7 @@ fn main(@builtin()" + GetParam().name +
     if (!should_pass) {
         EXPECT_EQ(
             error_,
-            R"(test:5:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+            R"(test:5:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -546,7 +543,7 @@ fn main(s : S) {
     if (!should_pass) {
         EXPECT_EQ(
             error_,
-            R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+            R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -591,7 +588,7 @@ fn main(s : S) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -622,7 +619,7 @@ fn main(@builtin()" + GetParam().name +
     RunTest(src, should_pass);
     if (!should_pass) {
         EXPECT_EQ(error_,
-                  R"(test:5:5 warning: 'dpdx' must only be called from uniform control flow
+                  R"(test:5:5 error: 'dpdx' must only be called from uniform control flow
     dpdx(0.5);
     ^^^^
 
@@ -656,7 +653,7 @@ fn main(s : S) {
     RunTest(src, should_pass);
     if (!should_pass) {
         EXPECT_EQ(error_,
-                  R"(test:9:5 warning: 'dpdx' must only be called from uniform control flow
+                  R"(test:9:5 error: 'dpdx' must only be called from uniform control flow
     dpdx(0.5);
     ^^^^
 
@@ -693,7 +690,7 @@ fn main(@location(0) l : f32) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:5:5 warning: 'dpdx' must only be called from uniform control flow
+              R"(test:5:5 error: 'dpdx' must only be called from uniform control flow
     dpdx(0.5);
     ^^^^
 
@@ -723,7 +720,7 @@ fn main(s : S) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'dpdx' must only be called from uniform control flow
+              R"(test:9:5 error: 'dpdx' must only be called from uniform control flow
     dpdx(0.5);
     ^^^^
 
@@ -836,7 +833,7 @@ fn foo() {
         EXPECT_THAT(
             error_,
             ::testing::StartsWith(
-                R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+                R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();)"));
         EXPECT_THAT(error_,
                     ::testing::HasSubstr("test:14:9 note: reading from read_write storage buffer "
@@ -876,7 +873,7 @@ fn foo() {
         EXPECT_THAT(
             error_,
             ::testing::StartsWith(
-                R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+                R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();)"));
         EXPECT_THAT(error_,
                     ::testing::HasSubstr("test:13:9 note: reading from read_write storage buffer "
@@ -917,7 +914,7 @@ fn foo() {
         EXPECT_THAT(
             error_,
             ::testing::StartsWith(
-                R"(test:15:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+                R"(test:15:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();)"));
         EXPECT_THAT(error_,
                     ::testing::HasSubstr("test:13:9 note: reading from read_write storage buffer "
@@ -964,7 +961,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1015,7 +1012,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1083,7 +1080,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1167,7 +1164,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1205,7 +1202,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:15:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:15:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1248,7 +1245,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:20:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:20:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1322,7 +1319,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:20:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:20:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1363,7 +1360,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1407,7 +1404,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:9 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:9 error: 'workgroupBarrier' must only be called from uniform control flow
         workgroupBarrier();
         ^^^^^^^^^^^^^^^^
 
@@ -1448,7 +1445,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1489,7 +1486,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1607,7 +1604,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:9 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:9 error: 'workgroupBarrier' must only be called from uniform control flow
         workgroupBarrier();
         ^^^^^^^^^^^^^^^^
 
@@ -1669,7 +1666,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1702,7 +1699,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1757,7 +1754,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1812,7 +1809,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -1873,7 +1870,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:15:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:15:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1918,7 +1915,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:21:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:21:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -1960,7 +1957,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2001,7 +1998,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2038,7 +2035,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2134,7 +2131,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2171,7 +2168,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2236,7 +2233,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:17:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:17:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2283,7 +2280,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:23:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:23:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2326,7 +2323,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2369,7 +2366,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -2464,7 +2461,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2492,7 +2489,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2521,7 +2518,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2550,7 +2547,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2579,7 +2576,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2608,7 +2605,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2636,7 +2633,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2667,7 +2664,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2744,7 +2741,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:15:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:15:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2827,7 +2824,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -2864,7 +2861,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3021,7 +3018,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:3 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:3 error: 'workgroupBarrier' must only be called from uniform control flow
   workgroupBarrier();
   ^^^^^^^^^^^^^^^^
 
@@ -3058,7 +3055,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -3088,7 +3085,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -3123,7 +3120,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:11:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:11:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -3212,7 +3209,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:9 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:9 error: 'workgroupBarrier' must only be called from uniform control flow
         workgroupBarrier();
         ^^^^^^^^^^^^^^^^
 
@@ -3252,7 +3249,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:19:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:19:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3318,7 +3315,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:18:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:18:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3387,7 +3384,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:21:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:21:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3429,7 +3426,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -3534,7 +3531,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3564,7 +3561,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3629,7 +3626,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:11:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:11:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3657,7 +3654,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3686,7 +3683,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3718,7 +3715,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3754,7 +3751,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3787,7 +3784,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3828,7 +3825,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3861,7 +3858,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3902,7 +3899,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -3985,7 +3982,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4023,7 +4020,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4064,7 +4061,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4112,7 +4109,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:11:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:11:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4154,7 +4151,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4200,7 +4197,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4248,7 +4245,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4278,7 +4275,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4310,7 +4307,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:11:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:11:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4361,7 +4358,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:11:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:11:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4411,7 +4408,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4464,7 +4461,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4498,7 +4495,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4581,7 +4578,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:21:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:21:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4675,7 +4672,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:18:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:18:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4712,7 +4709,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4749,7 +4746,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4794,7 +4791,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:24:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:24:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4833,7 +4830,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:18:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:18:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4869,7 +4866,7 @@ fn foo(p : ptr<function, i32>) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:7:7 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:7:7 error: 'workgroupBarrier' must only be called from uniform control flow
       workgroupBarrier();
       ^^^^^^^^^^^^^^^^
 
@@ -4905,7 +4902,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:15:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:15:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4942,7 +4939,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -4979,7 +4976,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5020,7 +5017,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:20:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:20:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5079,7 +5076,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5136,7 +5133,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5191,7 +5188,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5229,7 +5226,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5269,7 +5266,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5305,7 +5302,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
     foo_body.Push(b.Decl(b.Let("rhs", rhs_init)));
     for (int i = 0; i < 255; i++) {
         params.Push(
-            b.Param("p" + std::to_string(i), ty.pointer(ty.i32(), ast::AddressSpace::kFunction)));
+            b.Param("p" + std::to_string(i), ty.pointer(ty.i32(), type::AddressSpace::kFunction)));
         if (i > 0) {
             foo_body.Push(b.Assign(b.Deref("p" + std::to_string(i)), "rhs"));
         }
@@ -5324,7 +5321,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
     //     workgroupBarrier();
     //   }
     // }
-    b.GlobalVar("non_uniform_global", ty.i32(), ast::AddressSpace::kPrivate);
+    b.GlobalVar("non_uniform_global", ty.i32(), type::AddressSpace::kPrivate);
     utils::Vector<const ast::Statement*, 8> main_body;
     utils::Vector<const ast::Expression*, 8> args;
     for (int i = 0; i < 255; i++) {
@@ -5339,7 +5336,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
 
     RunTest(std::move(b), false);
     EXPECT_EQ(error_,
-              R"(warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(error: 'workgroupBarrier' must only be called from uniform control flow
 note: control flow depends on possibly non-uniform value
 note: reading from module-scope private variable 'non_uniform_global' may result in a non-uniform value)");
 }
@@ -5375,7 +5372,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5404,7 +5401,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5449,7 +5446,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5482,7 +5479,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5600,7 +5597,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5630,7 +5627,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5663,7 +5660,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5692,7 +5689,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5725,7 +5722,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5829,7 +5826,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5862,7 +5859,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5895,7 +5892,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5929,7 +5926,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5964,7 +5961,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -5998,7 +5995,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6028,7 +6025,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6059,7 +6056,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6091,7 +6088,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6123,7 +6120,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6153,7 +6150,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6202,7 +6199,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6235,7 +6232,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6288,7 +6285,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:12:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:12:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6325,7 +6322,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6363,7 +6360,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6401,7 +6398,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6456,7 +6453,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6557,7 +6554,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6593,7 +6590,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6629,7 +6626,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:14:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6666,7 +6663,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:13:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6707,7 +6704,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6736,7 +6733,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6781,7 +6778,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6812,7 +6809,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6845,7 +6842,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6892,7 +6889,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6925,7 +6922,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6958,7 +6955,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -6991,7 +6988,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:9:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7025,7 +7022,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7060,7 +7057,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7094,7 +7091,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:10:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:10:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7240,7 +7237,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7267,7 +7264,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7294,7 +7291,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7324,7 +7321,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7354,7 +7351,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:8:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7391,7 +7388,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:5:41 warning: 'dpdx' must only be called from uniform control flow
+              R"(test:5:41 error: 'dpdx' must only be called from uniform control flow
   let b = (non_uniform_global == 0) && (dpdx(1.0) == 0.0);
                                         ^^^^
 
@@ -7538,7 +7535,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:16:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:16:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7600,7 +7597,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:17:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:17:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7644,7 +7641,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:21:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:21:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7714,7 +7711,7 @@ fn main(@builtin(local_invocation_index) idx : u32) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:28 warning: possibly non-uniform value passed here
+              R"(test:8:28 error: possibly non-uniform value passed here
   if (workgroupUniformLoad(&data[idx]) > 0) {
                            ^
 
@@ -7746,7 +7743,7 @@ fn main(@builtin(local_invocation_index) idx : u32) {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:31 warning: possibly non-uniform value passed here
+              R"(test:8:31 error: possibly non-uniform value passed here
   return workgroupUniformLoad(p);
                               ^
 
@@ -7777,7 +7774,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -7804,7 +7801,7 @@ fn foo() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'storageBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'storageBarrier' must only be called from uniform control flow
     storageBarrier();
     ^^^^^^^^^^^^^^
 
@@ -7850,7 +7847,7 @@ TEST_F(UniformityAnalysisTest, StressGraphTraversalDepth) {
     //     workgroupBarrier();
     //   }
     // }
-    b.GlobalVar("v0", ty.i32(), ast::AddressSpace::kPrivate, b.Expr(0_i));
+    b.GlobalVar("v0", ty.i32(), type::AddressSpace::kPrivate, b.Expr(0_i));
     utils::Vector<const ast::Statement*, 8> foo_body;
     std::string v_last = "v0";
     for (int i = 1; i < 100000; i++) {
@@ -7863,9 +7860,287 @@ TEST_F(UniformityAnalysisTest, StressGraphTraversalDepth) {
 
     RunTest(std::move(b), false);
     EXPECT_EQ(error_,
-              R"(warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(error: 'workgroupBarrier' must only be called from uniform control flow
 note: control flow depends on possibly non-uniform value
 note: reading from module-scope private variable 'v0' may result in a non-uniform value)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Tests for the derivative_uniformity diagnostic filter.
+////////////////////////////////////////////////////////////////////////////////
+
+class UniformityAnalysisDiagnosticFilterTest
+    : public UniformityAnalysisTestBase,
+      public ::testing::TestWithParam<ast::DiagnosticSeverity> {
+  protected:
+    // TODO(jrprice): Remove this in favour of utils::ToString() when we change "note" to "info".
+    const char* ToStr(ast::DiagnosticSeverity severity) {
+        switch (severity) {
+            case ast::DiagnosticSeverity::kError:
+                return "error";
+            case ast::DiagnosticSeverity::kWarning:
+                return "warning";
+            case ast::DiagnosticSeverity::kInfo:
+                return "note";
+            default:
+                return "<undefined>";
+        }
+    }
+};
+
+TEST_P(UniformityAnalysisDiagnosticFilterTest, Directive) {
+    auto& param = GetParam();
+    std::ostringstream ss;
+    ss << "diagnostic(" << param << ", derivative_uniformity);"
+       << R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+@group(0) @binding(1) var t : texture_2d<f32>;
+@group(0) @binding(2) var s : sampler;
+
+fn foo() {
+  if (non_uniform == 42) {
+    let color = textureSample(t, s, vec2(0, 0));
+  }
+}
+)";
+
+    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
+
+    if (param == ast::DiagnosticSeverity::kOff) {
+        EXPECT_TRUE(error_.empty());
+    } else {
+        std::ostringstream err;
+        err << ToStr(param) << ": 'textureSample' must only be called";
+        EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
+    }
+}
+
+TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
+    auto& param = GetParam();
+    std::ostringstream ss;
+    ss << R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+@group(0) @binding(1) var t : texture_2d<f32>;
+@group(0) @binding(2) var s : sampler;
+)"
+       << "@diagnostic(" << param << ", derivative_uniformity)"
+       <<
+        R"(fn foo() {
+  if (non_uniform == 42) {
+    let color = textureSample(t, s, vec2(0, 0));
+  }
+}
+)";
+
+    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
+    if (param == ast::DiagnosticSeverity::kOff) {
+        EXPECT_TRUE(error_.empty());
+    } else {
+        std::ostringstream err;
+        err << ToStr(param) << ": 'textureSample' must only be called";
+        EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(UniformityAnalysisTest,
+                         UniformityAnalysisDiagnosticFilterTest,
+                         ::testing::Values(ast::DiagnosticSeverity::kError,
+                                           ast::DiagnosticSeverity::kWarning,
+                                           ast::DiagnosticSeverity::kInfo,
+                                           ast::DiagnosticSeverity::kOff));
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_CalledByAnotherFunction) {
+    std::string src = R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+
+@diagnostic(info, derivative_uniformity)
+fn bar() {
+  dpdx(1.0);
+}
+
+fn foo() {
+  if (non_uniform == 42) {
+    bar();
+  }
+}
+)";
+
+    RunTest(src, true);
+    EXPECT_THAT(error_, ::testing::HasSubstr("note: 'dpdx' must only be called"));
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_RequirementOnParameter) {
+    std::string src = R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+
+@diagnostic(info, derivative_uniformity)
+fn bar(x : i32) {
+  if (x == 0) {
+    dpdx(1.0);
+  }
+}
+
+fn foo() {
+  bar(non_uniform);
+}
+)";
+
+    RunTest(src, true);
+    EXPECT_THAT(error_, ::testing::HasSubstr("note: 'dpdx' must only be called"));
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_BuiltinInChildCall) {
+    // Make sure that the diagnostic filter does not descend into functions called by the function
+    // with the attribute.
+    std::string src = R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+
+fn bar() {
+  dpdx(1.0);
+}
+
+@diagnostic(off, derivative_uniformity)
+fn foo() {
+  if (non_uniform == 42) {
+    bar();
+  }
+}
+)";
+
+    RunTest(src, false);
+    EXPECT_THAT(error_, ::testing::HasSubstr(": 'dpdx' must only be called"));
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, MixOfGlobalAndLocalFilters) {
+    // Test that a global filter is overridden by a local attribute, and that we find multiple
+    // violations until an error is found.
+    std::string src = R"(
+diagnostic(info, derivative_uniformity);
+
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+
+fn a() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+
+@diagnostic(off, derivative_uniformity)
+fn b() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+
+@diagnostic(info, derivative_uniformity)
+fn c() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+
+@diagnostic(warning, derivative_uniformity)
+fn d() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+
+@diagnostic(error, derivative_uniformity)
+fn e() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+)";
+
+    RunTest(src, false);
+    EXPECT_EQ(error_,
+              R"(test:8:5 note: 'dpdx' must only be called from uniform control flow
+    dpdx(1.0);
+    ^^^^
+
+test:7:3 note: control flow depends on possibly non-uniform value
+  if (non_uniform == 42) {
+  ^^
+
+test:7:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
+  if (non_uniform == 42) {
+      ^^^^^^^^^^^
+
+test:22:5 note: 'dpdx' must only be called from uniform control flow
+    dpdx(1.0);
+    ^^^^
+
+test:21:3 note: control flow depends on possibly non-uniform value
+  if (non_uniform == 42) {
+  ^^
+
+test:21:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
+  if (non_uniform == 42) {
+      ^^^^^^^^^^^
+
+test:29:5 warning: 'dpdx' must only be called from uniform control flow
+    dpdx(1.0);
+    ^^^^
+
+test:28:3 note: control flow depends on possibly non-uniform value
+  if (non_uniform == 42) {
+  ^^
+
+test:28:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
+  if (non_uniform == 42) {
+      ^^^^^^^^^^^
+
+test:36:5 error: 'dpdx' must only be called from uniform control flow
+    dpdx(1.0);
+    ^^^^
+
+test:35:3 note: control flow depends on possibly non-uniform value
+  if (non_uniform == 42) {
+  ^^
+
+test:35:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
+  if (non_uniform == 42) {
+      ^^^^^^^^^^^
+)");
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, BarriersNotAffected) {
+    // Make sure that the diagnostic filter does not affect barriers.
+    std::string src = R"(
+diagnostic(off, derivative_uniformity);
+
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+
+fn foo() {
+  if (non_uniform == 42) {
+    dpdx(1.0);
+  }
+}
+
+fn bar() {
+  if (non_uniform == 42) {
+    workgroupBarrier();
+  }
+}
+
+)";
+
+    RunTest(src, false);
+    EXPECT_EQ(error_,
+              R"(test:14:5 error: 'workgroupBarrier' must only be called from uniform control flow
+    workgroupBarrier();
+    ^^^^^^^^^^^^^^^^
+
+test:13:3 note: control flow depends on possibly non-uniform value
+  if (non_uniform == 42) {
+  ^^
+
+test:13:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
+  if (non_uniform == 42) {
+      ^^^^^^^^^^^
+)");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7889,7 +8164,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:5:3 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:5:3 error: 'workgroupBarrier' must only be called from uniform control flow
   workgroupBarrier();
   ^^^^^^^^^^^^^^^^
 
@@ -7932,7 +8207,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:5:3 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:5:3 error: 'workgroupBarrier' must only be called from uniform control flow
   workgroupBarrier();
   ^^^^^^^^^^^^^^^^
 
@@ -7975,7 +8250,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -8038,7 +8313,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:18:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:18:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 
@@ -8073,7 +8348,7 @@ fn main() {
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:6:5 warning: 'workgroupBarrier' must only be called from uniform control flow
+              R"(test:6:5 error: 'workgroupBarrier' must only be called from uniform control flow
     workgroupBarrier();
     ^^^^^^^^^^^^^^^^
 

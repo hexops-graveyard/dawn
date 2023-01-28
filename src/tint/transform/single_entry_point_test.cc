@@ -389,7 +389,7 @@ TEST_F(SingleEntryPointTest, OverridableConstants_TransitiveUses) {
 
 @id(5) override c5 : u32 = (2 * c4);
 
-type arr_ty = array<i32, (2 * c5)>;
+alias arr_ty = array<i32, (2 * c5)>;
 
 var<workgroup> arr : arr_ty;
 
@@ -593,7 +593,7 @@ TEST_F(SingleEntryPointTest, GlobalConstUsedAsArraySize) {
     auto* src = R"(
 const MY_SIZE = 5u;
 
-type Arr = array<i32, MY_SIZE>;
+alias Arr = array<i32, MY_SIZE>;
 
 @fragment
 fn main() {
@@ -609,6 +609,26 @@ fn main() {
     auto got = Run<SingleEntryPoint>(src, data);
 
     EXPECT_EQ(expect, str(got));
+}
+
+TEST_F(SingleEntryPointTest, Directives) {
+    // Make sure that directives are preserved.
+    auto* src = R"(
+enable f16;
+diagnostic(off, derivative_uniformity);
+
+@compute @workgroup_size(1)
+fn main() {
+}
+)";
+
+    SingleEntryPoint::Config cfg("main");
+
+    DataMap data;
+    data.Add<SingleEntryPoint::Config>(cfg);
+    auto got = Run<SingleEntryPoint>(src, data);
+
+    EXPECT_EQ(src, str(got));
 }
 
 }  // namespace

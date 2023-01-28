@@ -22,6 +22,7 @@
 #include "src/tint/type/sampled_texture.h"
 #include "src/tint/type/sampler.h"
 #include "src/tint/type/storage_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/writer/msl/test_helper.h"
 
 using ::testing::HasSubstr;
@@ -89,7 +90,7 @@ using MslGeneratorImplTest = TestHelper;
 
 TEST_F(MslGeneratorImplTest, EmitType_Array) {
     auto* arr = ty.array<bool, 4>();
-    GlobalVar("G", arr, ast::AddressSpace::kPrivate);
+    GlobalVar("G", arr, type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -101,7 +102,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Array) {
 TEST_F(MslGeneratorImplTest, EmitType_ArrayOfArray) {
     auto* a = ty.array<bool, 4>();
     auto* b = ty.array(a, 5_u);
-    GlobalVar("G", b, ast::AddressSpace::kPrivate);
+    GlobalVar("G", b, type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -114,7 +115,7 @@ TEST_F(MslGeneratorImplTest, EmitType_ArrayOfArrayOfArray) {
     auto* a = ty.array<bool, 4>();
     auto* b = ty.array(a, 5_u);
     auto* c = ty.array(b, 6_u);
-    GlobalVar("G", c, ast::AddressSpace::kPrivate);
+    GlobalVar("G", c, type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -125,7 +126,7 @@ TEST_F(MslGeneratorImplTest, EmitType_ArrayOfArrayOfArray) {
 
 TEST_F(MslGeneratorImplTest, EmitType_Array_WithoutName) {
     auto* arr = ty.array<bool, 4>();
-    GlobalVar("G", arr, ast::AddressSpace::kPrivate);
+    GlobalVar("G", arr, type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -136,7 +137,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Array_WithoutName) {
 
 TEST_F(MslGeneratorImplTest, EmitType_RuntimeArray) {
     auto* arr = ty.array<bool, 1>();
-    GlobalVar("G", arr, ast::AddressSpace::kPrivate);
+    GlobalVar("G", arr, type::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -211,7 +212,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Matrix_F16) {
 
 TEST_F(MslGeneratorImplTest, EmitType_Pointer) {
     auto* f32 = create<type::F32>();
-    auto* p = create<type::Pointer>(f32, ast::AddressSpace::kWorkgroup, ast::Access::kReadWrite);
+    auto* p = create<type::Pointer>(f32, type::AddressSpace::kWorkgroup, type::Access::kReadWrite);
 
     GeneratorImpl& gen = Build();
 
@@ -282,7 +283,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Struct_Layout_NonComposites) {
                  Member("z", ty.f32()),
              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -390,7 +391,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Struct_Layout_Structures) {
                                  Member("e", ty.f32()),
                              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -481,7 +482,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Struct_Layout_ArrayDefaultStride) {
                                  Member("f", array_z),
                              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -564,7 +565,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Struct_Layout_ArrayVec3DefaultStride) {
                                  Member("c", ty.i32()),
                              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -625,7 +626,7 @@ TEST_F(MslGeneratorImplTest, AttemptTintPadSymbolCollision) {
                                  Member("tint_pad_21", ty.f32()),
                              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -683,7 +684,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Struct_WithAttribute) {
                                  Member("b", ty.f32()),
                              });
 
-    GlobalVar("G", ty.Of(s), ast::AddressSpace::kStorage, ast::Access::kRead, Binding(0_a),
+    GlobalVar("G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(0_a),
               Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -730,7 +731,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Void) {
 }
 
 TEST_F(MslGeneratorImplTest, EmitType_Sampler) {
-    auto* sampler = create<type::Sampler>(ast::SamplerKind::kSampler);
+    auto* sampler = create<type::Sampler>(type::SamplerKind::kSampler);
 
     GeneratorImpl& gen = Build();
 
@@ -740,7 +741,7 @@ TEST_F(MslGeneratorImplTest, EmitType_Sampler) {
 }
 
 TEST_F(MslGeneratorImplTest, EmitType_SamplerComparison) {
-    auto* sampler = create<type::Sampler>(ast::SamplerKind::kComparisonSampler);
+    auto* sampler = create<type::Sampler>(type::SamplerKind::kComparisonSampler);
 
     GeneratorImpl& gen = Build();
 
@@ -750,7 +751,7 @@ TEST_F(MslGeneratorImplTest, EmitType_SamplerComparison) {
 }
 
 struct MslDepthTextureData {
-    ast::TextureDimension dim;
+    type::TextureDimension dim;
     std::string result;
 };
 inline std::ostream& operator<<(std::ostream& out, MslDepthTextureData data) {
@@ -773,16 +774,16 @@ INSTANTIATE_TEST_SUITE_P(
     MslGeneratorImplTest,
     MslDepthTexturesTest,
     testing::Values(
-        MslDepthTextureData{ast::TextureDimension::k2d, "depth2d<float, access::sample>"},
-        MslDepthTextureData{ast::TextureDimension::k2dArray,
+        MslDepthTextureData{type::TextureDimension::k2d, "depth2d<float, access::sample>"},
+        MslDepthTextureData{type::TextureDimension::k2dArray,
                             "depth2d_array<float, access::sample>"},
-        MslDepthTextureData{ast::TextureDimension::kCube, "depthcube<float, access::sample>"},
-        MslDepthTextureData{ast::TextureDimension::kCubeArray,
+        MslDepthTextureData{type::TextureDimension::kCube, "depthcube<float, access::sample>"},
+        MslDepthTextureData{type::TextureDimension::kCubeArray,
                             "depthcube_array<float, access::sample>"}));
 
 using MslDepthMultisampledTexturesTest = TestHelper;
 TEST_F(MslDepthMultisampledTexturesTest, Emit) {
-    type::DepthMultisampledTexture s(ast::TextureDimension::k2d);
+    type::DepthMultisampledTexture s(type::TextureDimension::k2d);
 
     GeneratorImpl& gen = Build();
 
@@ -792,7 +793,7 @@ TEST_F(MslDepthMultisampledTexturesTest, Emit) {
 }
 
 struct MslTextureData {
-    ast::TextureDimension dim;
+    type::TextureDimension dim;
     std::string result;
 };
 inline std::ostream& operator<<(std::ostream& out, MslTextureData data) {
@@ -816,17 +817,17 @@ INSTANTIATE_TEST_SUITE_P(
     MslGeneratorImplTest,
     MslSampledtexturesTest,
     testing::Values(
-        MslTextureData{ast::TextureDimension::k1d, "texture1d<float, access::sample>"},
-        MslTextureData{ast::TextureDimension::k2d, "texture2d<float, access::sample>"},
-        MslTextureData{ast::TextureDimension::k2dArray, "texture2d_array<float, access::sample>"},
-        MslTextureData{ast::TextureDimension::k3d, "texture3d<float, access::sample>"},
-        MslTextureData{ast::TextureDimension::kCube, "texturecube<float, access::sample>"},
-        MslTextureData{ast::TextureDimension::kCubeArray,
+        MslTextureData{type::TextureDimension::k1d, "texture1d<float, access::sample>"},
+        MslTextureData{type::TextureDimension::k2d, "texture2d<float, access::sample>"},
+        MslTextureData{type::TextureDimension::k2dArray, "texture2d_array<float, access::sample>"},
+        MslTextureData{type::TextureDimension::k3d, "texture3d<float, access::sample>"},
+        MslTextureData{type::TextureDimension::kCube, "texturecube<float, access::sample>"},
+        MslTextureData{type::TextureDimension::kCubeArray,
                        "texturecube_array<float, access::sample>"}));
 
 TEST_F(MslGeneratorImplTest, Emit_TypeMultisampledTexture) {
     auto* u32 = create<type::U32>();
-    auto* ms = create<type::MultisampledTexture>(ast::TextureDimension::k2d, u32);
+    auto* ms = create<type::MultisampledTexture>(type::TextureDimension::k2d, u32);
 
     GeneratorImpl& gen = Build();
 
@@ -836,7 +837,7 @@ TEST_F(MslGeneratorImplTest, Emit_TypeMultisampledTexture) {
 }
 
 struct MslStorageTextureData {
-    ast::TextureDimension dim;
+    type::TextureDimension dim;
     std::string result;
 };
 inline std::ostream& operator<<(std::ostream& out, MslStorageTextureData data) {
@@ -846,7 +847,7 @@ using MslStorageTexturesTest = TestParamHelper<MslStorageTextureData>;
 TEST_P(MslStorageTexturesTest, Emit) {
     auto params = GetParam();
 
-    auto* s = ty.storage_texture(params.dim, ast::TexelFormat::kR32Float, ast::Access::kWrite);
+    auto* s = ty.storage_texture(params.dim, type::TexelFormat::kR32Float, type::Access::kWrite);
     GlobalVar("test_var", s, Binding(0_a), Group(0_a));
 
     GeneratorImpl& gen = Build();
@@ -859,11 +860,11 @@ INSTANTIATE_TEST_SUITE_P(
     MslGeneratorImplTest,
     MslStorageTexturesTest,
     testing::Values(
-        MslStorageTextureData{ast::TextureDimension::k1d, "texture1d<float, access::write>"},
-        MslStorageTextureData{ast::TextureDimension::k2d, "texture2d<float, access::write>"},
-        MslStorageTextureData{ast::TextureDimension::k2dArray,
+        MslStorageTextureData{type::TextureDimension::k1d, "texture1d<float, access::write>"},
+        MslStorageTextureData{type::TextureDimension::k2d, "texture2d<float, access::write>"},
+        MslStorageTextureData{type::TextureDimension::k2dArray,
                               "texture2d_array<float, access::write>"},
-        MslStorageTextureData{ast::TextureDimension::k3d, "texture3d<float, access::write>"}));
+        MslStorageTextureData{type::TextureDimension::k3d, "texture3d<float, access::write>"}));
 
 }  // namespace
 }  // namespace tint::writer::msl

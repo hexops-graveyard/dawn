@@ -22,11 +22,12 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/ast/access.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/reader/wgsl/parser_impl_detail.h"
 #include "src/tint/reader/wgsl/token.h"
+#include "src/tint/type/access.h"
 #include "src/tint/type/storage_texture.h"
+#include "src/tint/type/texture_dimension.h"
 
 namespace tint::ast {
 class BreakStatement;
@@ -283,8 +284,8 @@ class ParserImpl {
         /// @param type_in variable type
         VarDeclInfo(Source source_in,
                     std::string name_in,
-                    ast::AddressSpace address_space_in,
-                    ast::Access access_in,
+                    type::AddressSpace address_space_in,
+                    type::Access access_in,
                     const ast::Type* type_in);
         /// Destructor
         ~VarDeclInfo();
@@ -294,9 +295,9 @@ class ParserImpl {
         /// Variable name
         std::string name;
         /// Variable address space
-        ast::AddressSpace address_space = ast::AddressSpace::kNone;
+        type::AddressSpace address_space = type::AddressSpace::kNone;
         /// Variable access control
-        ast::Access access = ast::Access::kUndefined;
+        type::Access access = type::Access::kUndefined;
         /// Variable type
         const ast::Type* type = nullptr;
     };
@@ -304,9 +305,9 @@ class ParserImpl {
     /// VariableQualifier contains the parsed information for a variable qualifier
     struct VariableQualifier {
         /// The variable's address space
-        ast::AddressSpace address_space = ast::AddressSpace::kNone;
+        type::AddressSpace address_space = type::AddressSpace::kNone;
         /// The variable's access control
-        ast::Access access = ast::Access::kUndefined;
+        type::Access access = type::Access::kUndefined;
     };
 
     /// MatrixDimensions contains the column and row information for a matrix
@@ -401,6 +402,9 @@ class ParserImpl {
     /// @param has_parsed_decl flag indicating if the parser has consumed a global declaration.
     /// @return true on parse success, otherwise an error or no-match.
     Maybe<Void> global_directive(bool has_parsed_decl);
+    /// Parses the `diagnostic_directive` grammar element, erroring on parse failure.
+    /// @return true on parse success, otherwise an error or no-match.
+    Maybe<Void> diagnostic_directive();
     /// Parses the `enable_directive` grammar element, erroring on parse failure.
     /// @return true on parse success, otherwise an error or no-match.
     Maybe<Void> enable_directive();
@@ -460,8 +464,8 @@ class ParserImpl {
     Maybe<const ast::Type*> type_specifier();
     /// Parses an `address_space` grammar element, erroring on parse failure.
     /// @param use a description of what was being parsed if an error was raised.
-    /// @returns the address space or ast::AddressSpace::kNone if none matched
-    Expect<ast::AddressSpace> expect_address_space(std::string_view use);
+    /// @returns the address space or type::AddressSpace::kNone if none matched
+    Expect<type::AddressSpace> expect_address_space(std::string_view use);
     /// Parses a `struct_decl` grammar element.
     /// @returns the struct type or nullptr on error
     Maybe<const ast::Struct*> struct_decl();
@@ -486,14 +490,14 @@ class ParserImpl {
     /// Parses a `multisampled_texture_type` grammar element
     /// @returns returns the multisample texture dimension or kNone if none
     /// matched.
-    Maybe<const ast::TextureDimension> multisampled_texture_type();
+    Maybe<const type::TextureDimension> multisampled_texture_type();
     /// Parses a `sampled_texture_type` grammar element
     /// @returns returns the sample texture dimension or kNone if none matched.
-    Maybe<const ast::TextureDimension> sampled_texture_type();
+    Maybe<const type::TextureDimension> sampled_texture_type();
     /// Parses a `storage_texture_type` grammar element
     /// @returns returns the storage texture dimension.
     /// Returns kNone if none matched.
-    Maybe<const ast::TextureDimension> storage_texture_type();
+    Maybe<const type::TextureDimension> storage_texture_type();
     /// Parses a `depth_texture_type` grammar element
     /// @returns the parsed Type or nullptr if none matched.
     Maybe<const ast::Type*> depth_texture_type();
@@ -503,10 +507,10 @@ class ParserImpl {
     /// Parses a `texel_format` grammar element
     /// @param use a description of what was being parsed if an error was raised
     /// @returns returns the texel format or kNone if none matched.
-    Expect<ast::TexelFormat> expect_texel_format(std::string_view use);
-    /// Parses a `static_assert_statement` grammar element
-    /// @returns returns the static assert, if it matched.
-    Maybe<const ast::StaticAssert*> static_assert_statement();
+    Expect<type::TexelFormat> expect_texel_format(std::string_view use);
+    /// Parses a `const_assert_statement` grammar element
+    /// @returns returns the const assert, if it matched.
+    Maybe<const ast::ConstAssert*> const_assert_statement();
     /// Parses a `function_header` grammar element
     /// @returns the parsed function header
     Maybe<FunctionHeader> function_header();
@@ -524,7 +528,7 @@ class ParserImpl {
     /// match a valid access control.
     /// @param use a description of what was being parsed if an error was raised
     /// @returns the parsed access control.
-    Expect<ast::Access> expect_access_mode(std::string_view use);
+    Expect<type::Access> expect_access_mode(std::string_view use);
     /// Parses an interpolation sample name identifier, erroring if the next token does not match a
     /// valid sample name.
     /// @returns the parsed sample name.
@@ -701,6 +705,12 @@ class ParserImpl {
     /// @see #attribute for the full list of attributes this method parses.
     /// @return the parsed attribute, or nullptr on error.
     Expect<const ast::Attribute*> expect_attribute();
+    /// Parses a severity_control_name grammar element.
+    /// @return the parsed severity control name, or nullptr on error.
+    Expect<ast::DiagnosticSeverity> expect_severity_control_name();
+    /// Parses a diagnostic_control grammar element.
+    /// @return the parsed diagnostic control, or nullptr on error.
+    Expect<const ast::DiagnosticControl*> expect_diagnostic_control();
 
     /// Splits a peekable token into to parts filling in the peekable fields.
     /// @param lhs the token to set in the current position
@@ -798,6 +808,16 @@ class ParserImpl {
     /// an Expect with error state.
     template <typename F, typename T = ReturnType<F>>
     T expect_lt_gt_block(std::string_view use, F&& body);
+    /// A convenience function that calls `expect_block` passing
+    /// `Token::Type::kTemplateArgsLeft` and `Token::Type::kTemplateArgsRight` for the `start` and
+    /// `end` arguments, respectively.
+    /// @param use a description of what was being parsed if an error was raised
+    /// @param body a function or lambda that is called to parse the lexical block body, with the
+    /// signature: `Expect<Result>()` or `Maybe<Result>()`.
+    /// @return the value returned by `body` if no errors are raised, otherwise an Expect with error
+    /// state.
+    template <typename F, typename T = ReturnType<F>>
+    T expect_template_arg_block(std::string_view use, F&& body);
 
     /// sync() calls the function `func`, and attempts to resynchronize the
     /// parser to the next found resynchronization token if `func` fails. If the

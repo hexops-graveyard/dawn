@@ -19,8 +19,8 @@ namespace {
 
 struct VariableStorageData {
     const char* input;
-    ast::AddressSpace address_space;
-    ast::Access access;
+    type::AddressSpace address_space;
+    type::Access access;
 };
 inline std::ostream& operator<<(std::ostream& out, VariableStorageData data) {
     out << std::string(data.input);
@@ -47,15 +47,15 @@ INSTANTIATE_TEST_SUITE_P(
     ParserImplTest,
     VariableQualifierTest,
     testing::Values(
-        VariableStorageData{"uniform", ast::AddressSpace::kUniform, ast::Access::kUndefined},
-        VariableStorageData{"workgroup", ast::AddressSpace::kWorkgroup, ast::Access::kUndefined},
-        VariableStorageData{"storage", ast::AddressSpace::kStorage, ast::Access::kUndefined},
-        VariableStorageData{"private", ast::AddressSpace::kPrivate, ast::Access::kUndefined},
-        VariableStorageData{"function", ast::AddressSpace::kFunction, ast::Access::kUndefined},
-        VariableStorageData{"storage, read", ast::AddressSpace::kStorage, ast::Access::kRead},
-        VariableStorageData{"storage, write", ast::AddressSpace::kStorage, ast::Access::kWrite},
-        VariableStorageData{"storage, read_write", ast::AddressSpace::kStorage,
-                            ast::Access::kReadWrite}));
+        VariableStorageData{"uniform", type::AddressSpace::kUniform, type::Access::kUndefined},
+        VariableStorageData{"workgroup", type::AddressSpace::kWorkgroup, type::Access::kUndefined},
+        VariableStorageData{"storage", type::AddressSpace::kStorage, type::Access::kUndefined},
+        VariableStorageData{"private", type::AddressSpace::kPrivate, type::Access::kUndefined},
+        VariableStorageData{"function", type::AddressSpace::kFunction, type::Access::kUndefined},
+        VariableStorageData{"storage, read", type::AddressSpace::kStorage, type::Access::kRead},
+        VariableStorageData{"storage, write", type::AddressSpace::kStorage, type::Access::kWrite},
+        VariableStorageData{"storage, read_write", type::AddressSpace::kStorage,
+                            type::Access::kReadWrite}));
 
 TEST_F(ParserImplTest, VariableQualifier_NoMatch) {
     auto p = parser("<not-a-storage-class>");

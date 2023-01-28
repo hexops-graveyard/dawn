@@ -126,19 +126,19 @@ void InspectorBuilder::AddUniformBuffer(const std::string& name,
                                         const ast::Type* type,
                                         uint32_t group,
                                         uint32_t binding) {
-    GlobalVar(name, type, ast::AddressSpace::kUniform, Binding(AInt(binding)), Group(AInt(group)));
+    GlobalVar(name, type, type::AddressSpace::kUniform, Binding(AInt(binding)), Group(AInt(group)));
 }
 
 void InspectorBuilder::AddWorkgroupStorage(const std::string& name, const ast::Type* type) {
-    GlobalVar(name, type, ast::AddressSpace::kWorkgroup);
+    GlobalVar(name, type, type::AddressSpace::kWorkgroup);
 }
 
 void InspectorBuilder::AddStorageBuffer(const std::string& name,
                                         const ast::Type* type,
-                                        ast::Access access,
+                                        type::Access access,
                                         uint32_t group,
                                         uint32_t binding) {
-    GlobalVar(name, type, ast::AddressSpace::kStorage, access, Binding(AInt(binding)),
+    GlobalVar(name, type, type::AddressSpace::kStorage, access, Binding(AInt(binding)),
               Group(AInt(group)));
 }
 
@@ -188,7 +188,7 @@ void InspectorBuilder::AddResource(const std::string& name,
 }
 
 void InspectorBuilder::AddGlobalVariable(const std::string& name, const ast::Type* type) {
-    GlobalVar(name, type, ast::AddressSpace::kPrivate);
+    GlobalVar(name, type, type::AddressSpace::kPrivate);
 }
 
 const ast::Function* InspectorBuilder::MakeSamplerReferenceBodyFunction(
@@ -259,17 +259,17 @@ const ast::Type* InspectorBuilder::GetBaseType(ResourceBinding::SampledKind samp
     }
 }
 
-const ast::Type* InspectorBuilder::GetCoordsType(ast::TextureDimension dim,
+const ast::Type* InspectorBuilder::GetCoordsType(type::TextureDimension dim,
                                                  const ast::Type* scalar) {
     switch (dim) {
-        case ast::TextureDimension::k1d:
+        case type::TextureDimension::k1d:
             return scalar;
-        case ast::TextureDimension::k2d:
-        case ast::TextureDimension::k2dArray:
+        case type::TextureDimension::k2d:
+        case type::TextureDimension::k2dArray:
             return create<ast::Vector>(scalar, 2u);
-        case ast::TextureDimension::k3d:
-        case ast::TextureDimension::kCube:
-        case ast::TextureDimension::kCubeArray:
+        case type::TextureDimension::k3d:
+        case type::TextureDimension::kCube:
+        case type::TextureDimension::kCubeArray:
             return create<ast::Vector>(scalar, 3u);
         default:
             [=]() { FAIL() << "Unsupported texture dimension: " << dim; }();
@@ -277,9 +277,9 @@ const ast::Type* InspectorBuilder::GetCoordsType(ast::TextureDimension dim,
     return nullptr;
 }
 
-const ast::Type* InspectorBuilder::MakeStorageTextureTypes(ast::TextureDimension dim,
-                                                           ast::TexelFormat format) {
-    return ty.storage_texture(dim, format, ast::Access::kWrite);
+const ast::Type* InspectorBuilder::MakeStorageTextureTypes(type::TextureDimension dim,
+                                                           type::TexelFormat format) {
+    return ty.storage_texture(dim, format, type::Access::kWrite);
 }
 
 void InspectorBuilder::AddStorageTexture(const std::string& name,

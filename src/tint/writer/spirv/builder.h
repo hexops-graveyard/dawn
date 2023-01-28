@@ -208,12 +208,12 @@ class Builder {
     /// Converts a address space to a SPIR-V address space.
     /// @param klass the address space to convert
     /// @returns the SPIR-V address space or SpvStorageClassMax on error.
-    SpvStorageClass ConvertAddressSpace(ast::AddressSpace klass) const;
+    SpvStorageClass ConvertAddressSpace(type::AddressSpace klass) const;
     /// Converts a builtin to a SPIR-V builtin and pushes a capability if needed.
     /// @param builtin the builtin to convert
     /// @param storage the address space that this builtin is being used with
     /// @returns the SPIR-V builtin or SpvBuiltInMax on error.
-    SpvBuiltIn ConvertBuiltin(ast::BuiltinValue builtin, ast::AddressSpace storage);
+    SpvBuiltIn ConvertBuiltin(ast::BuiltinValue builtin, type::AddressSpace storage);
 
     /// Converts an interpolate attribute to SPIR-V decorations and pushes a
     /// capability if needed.
@@ -535,7 +535,7 @@ class Builder {
     /// Converts TexelFormat to SPIR-V and pushes an appropriate capability.
     /// @param format AST image format type
     /// @returns SPIR-V image format type
-    SpvImageFormat convert_texel_format_to_spv(const ast::TexelFormat format);
+    SpvImageFormat convert_texel_format_to_spv(const type::TexelFormat format);
 
     /// Determines if the given type initializer is created from constant values
     /// @param expr the expression to check

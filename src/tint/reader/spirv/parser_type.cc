@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "src/tint/program_builder.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/string.h"
@@ -174,7 +175,7 @@ Type::~Type() = default;
 
 Texture::~Texture() = default;
 
-Pointer::Pointer(const Type* t, ast::AddressSpace s, ast::Access a)
+Pointer::Pointer(const Type* t, type::AddressSpace s, type::Access a)
     : type(t), address_space(s), access(a) {}
 Pointer::Pointer(const Pointer&) = default;
 
@@ -182,7 +183,7 @@ const ast::Type* Pointer::Build(ProgramBuilder& b) const {
     return b.ty.pointer(type->Build(b), address_space, access);
 }
 
-Reference::Reference(const Type* t, ast::AddressSpace s, ast::Access a)
+Reference::Reference(const Type* t, type::AddressSpace s, type::Access a)
     : type(t), address_space(s), access(a) {}
 Reference::Reference(const Reference&) = default;
 
@@ -215,31 +216,31 @@ const ast::Type* Array::Build(ProgramBuilder& b) const {
     }
 }
 
-Sampler::Sampler(ast::SamplerKind k) : kind(k) {}
+Sampler::Sampler(type::SamplerKind k) : kind(k) {}
 Sampler::Sampler(const Sampler&) = default;
 
 const ast::Type* Sampler::Build(ProgramBuilder& b) const {
     return b.ty.sampler(kind);
 }
 
-Texture::Texture(ast::TextureDimension d) : dims(d) {}
+Texture::Texture(type::TextureDimension d) : dims(d) {}
 Texture::Texture(const Texture&) = default;
 
-DepthTexture::DepthTexture(ast::TextureDimension d) : Base(d) {}
+DepthTexture::DepthTexture(type::TextureDimension d) : Base(d) {}
 DepthTexture::DepthTexture(const DepthTexture&) = default;
 
 const ast::Type* DepthTexture::Build(ProgramBuilder& b) const {
     return b.ty.depth_texture(dims);
 }
 
-DepthMultisampledTexture::DepthMultisampledTexture(ast::TextureDimension d) : Base(d) {}
+DepthMultisampledTexture::DepthMultisampledTexture(type::TextureDimension d) : Base(d) {}
 DepthMultisampledTexture::DepthMultisampledTexture(const DepthMultisampledTexture&) = default;
 
 const ast::Type* DepthMultisampledTexture::Build(ProgramBuilder& b) const {
     return b.ty.depth_multisampled_texture(dims);
 }
 
-MultisampledTexture::MultisampledTexture(ast::TextureDimension d, const Type* t)
+MultisampledTexture::MultisampledTexture(type::TextureDimension d, const Type* t)
     : Base(d), type(t) {}
 MultisampledTexture::MultisampledTexture(const MultisampledTexture&) = default;
 
@@ -247,14 +248,14 @@ const ast::Type* MultisampledTexture::Build(ProgramBuilder& b) const {
     return b.ty.multisampled_texture(dims, type->Build(b));
 }
 
-SampledTexture::SampledTexture(ast::TextureDimension d, const Type* t) : Base(d), type(t) {}
+SampledTexture::SampledTexture(type::TextureDimension d, const Type* t) : Base(d), type(t) {}
 SampledTexture::SampledTexture(const SampledTexture&) = default;
 
 const ast::Type* SampledTexture::Build(ProgramBuilder& b) const {
     return b.ty.sampled_texture(dims, type->Build(b));
 }
 
-StorageTexture::StorageTexture(ast::TextureDimension d, ast::TexelFormat f, ast::Access a)
+StorageTexture::StorageTexture(type::TextureDimension d, type::TexelFormat f, type::Access a)
     : Base(d), format(f), access(a) {}
 StorageTexture::StorageTexture(const StorageTexture&) = default;
 
@@ -459,14 +460,14 @@ const Type* TypeManager::AsUnsigned(const Type* ty) {
 }
 
 const spirv::Pointer* TypeManager::Pointer(const Type* el,
-                                           ast::AddressSpace address_space,
-                                           ast::Access access) {
+                                           type::AddressSpace address_space,
+                                           type::Access access) {
     return state->pointers_.Get(el, address_space, access);
 }
 
 const spirv::Reference* TypeManager::Reference(const Type* el,
-                                               ast::AddressSpace address_space,
-                                               ast::Access access) {
+                                               type::AddressSpace address_space,
+                                               type::Access access) {
     return state->references_.Get(el, address_space, access);
 }
 
@@ -490,32 +491,32 @@ const spirv::Struct* TypeManager::Struct(Symbol name, TypeList members) {
     return state->structs_.Get(name, std::move(members));
 }
 
-const spirv::Sampler* TypeManager::Sampler(ast::SamplerKind kind) {
+const spirv::Sampler* TypeManager::Sampler(type::SamplerKind kind) {
     return state->samplers_.Get(kind);
 }
 
-const spirv::DepthTexture* TypeManager::DepthTexture(ast::TextureDimension dims) {
+const spirv::DepthTexture* TypeManager::DepthTexture(type::TextureDimension dims) {
     return state->depth_textures_.Get(dims);
 }
 
 const spirv::DepthMultisampledTexture* TypeManager::DepthMultisampledTexture(
-    ast::TextureDimension dims) {
+    type::TextureDimension dims) {
     return state->depth_multisampled_textures_.Get(dims);
 }
 
-const spirv::MultisampledTexture* TypeManager::MultisampledTexture(ast::TextureDimension dims,
+const spirv::MultisampledTexture* TypeManager::MultisampledTexture(type::TextureDimension dims,
                                                                    const Type* ty) {
     return state->multisampled_textures_.Get(dims, ty);
 }
 
-const spirv::SampledTexture* TypeManager::SampledTexture(ast::TextureDimension dims,
+const spirv::SampledTexture* TypeManager::SampledTexture(type::TextureDimension dims,
                                                          const Type* ty) {
     return state->sampled_textures_.Get(dims, ty);
 }
 
-const spirv::StorageTexture* TypeManager::StorageTexture(ast::TextureDimension dims,
-                                                         ast::TexelFormat fmt,
-                                                         ast::Access access) {
+const spirv::StorageTexture* TypeManager::StorageTexture(type::TextureDimension dims,
+                                                         type::TexelFormat fmt,
+                                                         type::Access access) {
     return state->storage_textures_.Get(dims, fmt, access);
 }
 
@@ -573,9 +574,9 @@ std::string Array::String() const {
 
 std::string Sampler::String() const {
     switch (kind) {
-        case ast::SamplerKind::kSampler:
+        case type::SamplerKind::kSampler:
             return "sampler";
-        case ast::SamplerKind::kComparisonSampler:
+        case type::SamplerKind::kComparisonSampler:
             return "sampler_comparison";
     }
     return "<unknown sampler>";

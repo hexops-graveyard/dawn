@@ -32,7 +32,7 @@ class Token {
         kError = -2,
         /// Uninitialized token
         kUninitialized = 0,
-        /// Placeholder token which maybe fillled in later
+        /// Placeholder token which maybe filled in later
         kPlaceholder = 1,
         /// End of input string reached
         kEOF,
@@ -80,12 +80,16 @@ class Token {
         kEqual,
         /// A '=='
         kEqualEqual,
+        /// A '>' (post template-args classification)
+        kTemplateArgsRight,
         /// A '>'
         kGreaterThan,
         /// A '>='
         kGreaterThanEqual,
         /// A '>>'
         kShiftRight,
+        /// A '<' (post template-args classification)
+        kTemplateArgsLeft,
         /// A '<'
         kLessThan,
         /// A '<='
@@ -145,6 +149,8 @@ class Token {
         /// A '<<='
         kShiftLeftEqual,
 
+        /// A 'alias'
+        kAlias,
         /// A 'array'
         kArray,
         /// A 'atomic'
@@ -159,10 +165,14 @@ class Token {
         kCase,
         /// A 'const'
         kConst,
+        /// A 'const_assert'
+        kConstAssert,
         /// A 'continue'
         kContinue,
         /// A 'continuing'
         kContinuing,
+        /// A 'diagnostic'
+        kDiagnostic,
         /// A 'discard'
         kDiscard,
         /// A 'default'
@@ -377,10 +387,20 @@ class Token {
         return type_ == Type::kVec2 || type_ == Type::kVec3 || type_ == Type::kVec4;
     }
 
-    /// @returns true if the token can be split during parse into component tokens
-    bool IsSplittable() const {
-        return Is(Type::kShiftRight) || Is(Type::kGreaterThanEqual) || Is(Type::kAndAnd) ||
-               Is(Type::kMinusMinus);
+    /// @returns the number of placeholder tokens required to follow the token, in order to provide
+    /// space for token splitting.
+    size_t NumPlaceholders() const {
+        switch (type_) {
+            case Type::kShiftRightEqual:
+                return 2;
+            case Type::kShiftRight:
+            case Type::kGreaterThanEqual:
+            case Type::kAndAnd:
+            case Type::kMinusMinus:
+                return 1;
+            default:
+                return 0;
+        }
     }
 
     /// @returns true if the token is a binary operator
@@ -440,12 +460,10 @@ class Token {
     std::variant<int64_t, double, std::string, std::string_view> value_;
 };
 
-#ifndef NDEBUG
 inline std::ostream& operator<<(std::ostream& out, Token::Type type) {
     out << Token::TypeToName(type);
     return out;
 }
-#endif  // NDEBUG
 
 }  // namespace tint::reader::wgsl
 

@@ -27,6 +27,7 @@
 #include "src/tint/type/external_texture.h"
 #include "src/tint/type/multisampled_texture.h"
 #include "src/tint/type/sampled_texture.h"
+#include "src/tint/type/texture_dimension.h"
 #include "tint/tint.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -76,7 +77,7 @@ class InspectorGetSampledTextureResourceBindingsTest : public InspectorBuilder,
 class InspectorGetSampledArrayTextureResourceBindingsTest : public InspectorBuilder,
                                                             public testing::Test {};
 struct GetSampledTextureTestParams {
-    ast::TextureDimension type_dim;
+    type::TextureDimension type_dim;
     inspector::ResourceBinding::TextureDimension inspector_dim;
     inspector::ResourceBinding::SampledKind sampled_kind;
 };
@@ -100,7 +101,7 @@ class InspectorGetMultisampledTextureResourceBindingsTestWithParam
 class InspectorGetStorageTextureResourceBindingsTest : public InspectorBuilder,
                                                        public testing::Test {};
 struct GetDepthTextureTestParams {
-    ast::TextureDimension type_dim;
+    type::TextureDimension type_dim;
     inspector::ResourceBinding::TextureDimension inspector_dim;
 };
 class InspectorGetDepthTextureResourceBindingsTestWithParam
@@ -110,8 +111,8 @@ class InspectorGetDepthTextureResourceBindingsTestWithParam
 class InspectorGetDepthMultisampledTextureResourceBindingsTest : public InspectorBuilder,
                                                                  public testing::Test {};
 
-typedef std::tuple<ast::TextureDimension, ResourceBinding::TextureDimension> DimensionParams;
-typedef std::tuple<ast::TexelFormat, ResourceBinding::TexelFormat, ResourceBinding::SampledKind>
+typedef std::tuple<type::TextureDimension, ResourceBinding::TextureDimension> DimensionParams;
+typedef std::tuple<type::TexelFormat, ResourceBinding::TexelFormat, ResourceBinding::SampledKind>
     TexelFormatParams;
 typedef std::tuple<DimensionParams, TexelFormatParams> GetStorageTextureTestParams;
 class InspectorGetStorageTextureResourceBindingsTestWithParam
@@ -742,7 +743,7 @@ TEST_F(InspectorGetEntryPointTest, OverrideReferencedIndirectly) {
 
 TEST_F(InspectorGetEntryPointTest, OverrideReferencedIndirectly_ViaPrivateInitializer) {
     Override("foo", ty.f32());
-    GlobalVar("bar", ast::AddressSpace::kPrivate, ty.f32(), Mul(2_a, "foo"));
+    GlobalVar("bar", type::AddressSpace::kPrivate, ty.f32(), Mul(2_a, "foo"));
     MakePlainGlobalReferenceBodyFunction("ep_func", "bar", ty.f32(),
                                          utils::Vector{
                                              Stage(ast::PipelineStage::kCompute),
@@ -833,7 +834,7 @@ TEST_F(InspectorGetEntryPointTest, OverrideReferencedByAttributeIndirectly) {
 
 TEST_F(InspectorGetEntryPointTest, OverrideReferencedByArraySize) {
     Override("size", ty.u32());
-    GlobalVar("v", ast::AddressSpace::kWorkgroup, ty.array(ty.f32(), "size"));
+    GlobalVar("v", type::AddressSpace::kWorkgroup, ty.array(ty.f32(), "size"));
     Func("ep", utils::Empty, ty.void_(),
          utils::Vector{
              Assign(Phony(), IndexAccessor("v", 0_a)),
@@ -856,7 +857,7 @@ TEST_F(InspectorGetEntryPointTest, OverrideReferencedByArraySize) {
 TEST_F(InspectorGetEntryPointTest, OverrideReferencedByArraySizeIndirectly) {
     Override("foo", ty.u32());
     Override("bar", ty.u32(), Mul(2_a, "foo"));
-    GlobalVar("v", ast::AddressSpace::kWorkgroup, ty.array(ty.f32(), Mul(2_a, Expr("bar"))));
+    GlobalVar("v", type::AddressSpace::kWorkgroup, ty.array(ty.f32(), Mul(2_a, Expr("bar"))));
     Func("ep", utils::Empty, ty.void_(),
          utils::Vector{
              Assign(Phony(), IndexAccessor("v", 0_a)),
@@ -884,7 +885,7 @@ TEST_F(InspectorGetEntryPointTest, OverrideReferencedByArraySizeViaAlias) {
     Alias("MyArray", ty.array(ty.f32(), Mul(2_a, Expr("bar"))));
     Override("zoo", ty.u32());
     Alias("MyArrayUnused", ty.array(ty.f32(), Mul(2_a, Expr("zoo"))));
-    GlobalVar("v", ast::AddressSpace::kWorkgroup, ty.type_name("MyArray"));
+    GlobalVar("v", type::AddressSpace::kWorkgroup, ty.type_name("MyArray"));
     Func("ep", utils::Empty, ty.void_(),
          utils::Vector{
              Assign(Phony(), IndexAccessor("v", 0_a)),
@@ -1650,8 +1651,8 @@ TEST_F(InspectorGetStorageSizeTest, Empty) {
 
 TEST_F(InspectorGetStorageSizeTest, Simple_NonStruct) {
     AddUniformBuffer("ub_var", ty.i32(), 0, 0);
-    AddStorageBuffer("sb_var", ty.i32(), ast::Access::kReadWrite, 1, 0);
-    AddStorageBuffer("rosb_var", ty.i32(), ast::Access::kRead, 1, 1);
+    AddStorageBuffer("sb_var", ty.i32(), type::Access::kReadWrite, 1, 0);
+    AddStorageBuffer("rosb_var", ty.i32(), type::Access::kRead, 1, 1);
     Func("ep_func", utils::Empty, ty.void_(),
          utils::Vector{
              Decl(Let("ub", Expr("ub_var"))),
@@ -1682,7 +1683,7 @@ TEST_F(InspectorGetStorageSizeTest, Simple_Struct) {
     auto sb = MakeStorageBufferTypes("sb_type", utils::Vector{
                                                     ty.i32(),
                                                 });
-    AddStorageBuffer("sb_var", sb(), ast::Access::kReadWrite, 1, 0);
+    AddStorageBuffer("sb_var", sb(), type::Access::kReadWrite, 1, 0);
     MakeStructVariableReferenceBodyFunction("sb_func", "sb_var",
                                             utils::Vector{
                                                 MemberInfo{0, ty.i32()},
@@ -1691,7 +1692,7 @@ TEST_F(InspectorGetStorageSizeTest, Simple_Struct) {
     auto ro_sb = MakeStorageBufferTypes("rosb_type", utils::Vector{
                                                          ty.i32(),
                                                      });
-    AddStorageBuffer("rosb_var", ro_sb(), ast::Access::kRead, 1, 1);
+    AddStorageBuffer("rosb_var", ro_sb(), type::Access::kRead, 1, 1);
     MakeStructVariableReferenceBodyFunction("rosb_func", "rosb_var",
                                             utils::Vector{
                                                 MemberInfo{0, ty.i32()},
@@ -1769,7 +1770,7 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
     auto sb = MakeStorageBufferTypes("sb_type", utils::Vector{
                                                     ty.i32(),
                                                 });
-    AddStorageBuffer("sb_var", sb(), ast::Access::kReadWrite, 1, 0);
+    AddStorageBuffer("sb_var", sb(), type::Access::kReadWrite, 1, 0);
     MakeStructVariableReferenceBodyFunction("sb_func", "sb_var",
                                             utils::Vector{
                                                 MemberInfo{0, ty.i32()},
@@ -1778,20 +1779,20 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
     auto ro_sb = MakeStorageBufferTypes("rosb_type", utils::Vector{
                                                          ty.i32(),
                                                      });
-    AddStorageBuffer("rosb_var", ro_sb(), ast::Access::kRead, 1, 1);
+    AddStorageBuffer("rosb_var", ro_sb(), type::Access::kRead, 1, 1);
     MakeStructVariableReferenceBodyFunction("rosb_func", "rosb_var",
                                             utils::Vector{
                                                 MemberInfo{0, ty.i32()},
                                             });
 
-    auto* s_texture_type = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* s_texture_type = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     AddResource("s_texture", s_texture_type, 2, 0);
     AddSampler("s_var", 3, 0);
     AddGlobalVariable("s_coords", ty.f32());
     MakeSamplerReferenceBodyFunction("s_func", "s_texture", "s_var", "s_coords", ty.f32(),
                                      utils::Empty);
 
-    auto* cs_depth_texture_type = ty.depth_texture(ast::TextureDimension::k2d);
+    auto* cs_depth_texture_type = ty.depth_texture(type::TextureDimension::k2d);
     AddResource("cs_texture", cs_depth_texture_type, 3, 1);
     AddComparisonSampler("cs_var", 3, 2);
     AddGlobalVariable("cs_coords", ty.vec2<f32>());
@@ -1799,14 +1800,15 @@ TEST_F(InspectorGetResourceBindingsTest, Simple) {
     MakeComparisonSamplerReferenceBodyFunction("cs_func", "cs_texture", "cs_var", "cs_coords",
                                                "cs_depth", ty.f32(), utils::Empty);
 
-    auto* depth_ms_texture_type = ty.depth_multisampled_texture(ast::TextureDimension::k2d);
+    auto* depth_ms_texture_type = ty.depth_multisampled_texture(type::TextureDimension::k2d);
     AddResource("depth_ms_texture", depth_ms_texture_type, 3, 3);
     Func("depth_ms_func", utils::Empty, ty.void_(),
          utils::Vector{
              Ignore("depth_ms_texture"),
          });
 
-    auto* st_type = MakeStorageTextureTypes(ast::TextureDimension::k2d, ast::TexelFormat::kR32Uint);
+    auto* st_type =
+        MakeStorageTextureTypes(type::TextureDimension::k2d, type::TexelFormat::kR32Uint);
     AddStorageTexture("st_var", st_type, 4, 0);
     MakeStorageTextureBodyFunction("st_func", "st_var", ty.vec2<u32>(), utils::Empty);
 
@@ -2132,7 +2134,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, ContainingArray) {
 }
 
 TEST_F(InspectorGetStorageBufferResourceBindingsTest, Simple_NonStruct) {
-    AddStorageBuffer("foo_sb", ty.i32(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", ty.i32(), type::Access::kReadWrite, 0, 0);
     MakePlainGlobalReferenceBodyFunction("sb_func", "foo_sb", ty.i32(), utils::Empty);
 
     MakeCallerBodyFunction("ep_func", utils::Vector{std::string("sb_func")},
@@ -2157,7 +2159,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, Simple_Struct) {
     auto foo_struct_type = MakeStorageBufferTypes("foo_type", utils::Vector{
                                                                   ty.i32(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2188,7 +2190,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, MultipleMembers) {
                                                                   ty.u32(),
                                                                   ty.f32(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2221,9 +2223,9 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, MultipleStorageBuffers) {
                                                                 ty.u32(),
                                                                 ty.f32(),
                                                             });
-    AddStorageBuffer("sb_foo", sb_struct_type(), ast::Access::kReadWrite, 0, 0);
-    AddStorageBuffer("sb_bar", sb_struct_type(), ast::Access::kReadWrite, 0, 1);
-    AddStorageBuffer("sb_baz", sb_struct_type(), ast::Access::kReadWrite, 2, 0);
+    AddStorageBuffer("sb_foo", sb_struct_type(), type::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("sb_bar", sb_struct_type(), type::Access::kReadWrite, 0, 1);
+    AddStorageBuffer("sb_baz", sb_struct_type(), type::Access::kReadWrite, 2, 0);
 
     auto AddReferenceFunc = [this](const std::string& func_name, const std::string& var_name) {
         MakeStructVariableReferenceBodyFunction(func_name, var_name,
@@ -2282,7 +2284,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, ContainingArray) {
                                                                   ty.i32(),
                                                                   ty.array<u32, 4>(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2312,7 +2314,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, ContainingRuntimeArray) {
                                                                   ty.i32(),
                                                                   ty.array<u32>(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2341,7 +2343,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, ContainingPadding) {
     auto foo_struct_type = MakeStorageBufferTypes("foo_type", utils::Vector{
                                                                   ty.vec3<f32>(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2367,7 +2369,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, ContainingPadding) {
 }
 
 TEST_F(InspectorGetStorageBufferResourceBindingsTest, NonStructVec3) {
-    AddStorageBuffer("foo_ub", ty.vec3<f32>(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_ub", ty.vec3<f32>(), type::Access::kReadWrite, 0, 0);
     MakePlainGlobalReferenceBodyFunction("ub_func", "foo_ub", ty.vec3<f32>(), utils::Empty);
 
     MakeCallerBodyFunction("ep_func", utils::Vector{std::string("ub_func")},
@@ -2392,7 +2394,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, SkipReadOnly) {
     auto foo_struct_type = MakeStorageBufferTypes("foo_type", utils::Vector{
                                                                   ty.i32(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kRead, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kRead, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2415,7 +2417,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, Simple) {
     auto foo_struct_type = MakeStorageBufferTypes("foo_type", utils::Vector{
                                                                   ty.i32(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kRead, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kRead, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2446,9 +2448,9 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, MultipleStorageBuf
                                                                 ty.u32(),
                                                                 ty.f32(),
                                                             });
-    AddStorageBuffer("sb_foo", sb_struct_type(), ast::Access::kRead, 0, 0);
-    AddStorageBuffer("sb_bar", sb_struct_type(), ast::Access::kRead, 0, 1);
-    AddStorageBuffer("sb_baz", sb_struct_type(), ast::Access::kRead, 2, 0);
+    AddStorageBuffer("sb_foo", sb_struct_type(), type::Access::kRead, 0, 0);
+    AddStorageBuffer("sb_bar", sb_struct_type(), type::Access::kRead, 0, 1);
+    AddStorageBuffer("sb_baz", sb_struct_type(), type::Access::kRead, 2, 0);
 
     auto AddReferenceFunc = [this](const std::string& func_name, const std::string& var_name) {
         MakeStructVariableReferenceBodyFunction(func_name, var_name,
@@ -2507,7 +2509,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, ContainingArray) {
                                                                   ty.i32(),
                                                                   ty.array<u32, 4>(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kRead, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kRead, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2537,7 +2539,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, ContainingRuntimeA
                                                                   ty.i32(),
                                                                   ty.array<u32>(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kRead, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kRead, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2566,7 +2568,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, SkipNonReadOnly) {
     auto foo_struct_type = MakeStorageBufferTypes("foo_type", utils::Vector{
                                                                   ty.i32(),
                                                               });
-    AddStorageBuffer("foo_sb", foo_struct_type(), ast::Access::kReadWrite, 0, 0);
+    AddStorageBuffer("foo_sb", foo_struct_type(), type::Access::kReadWrite, 0, 0);
 
     MakeStructVariableReferenceBodyFunction("sb_func", "foo_sb",
                                             utils::Vector{
@@ -2586,7 +2588,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, SkipNonReadOnly) {
 }
 
 TEST_F(InspectorGetSamplerResourceBindingsTest, Simple) {
-    auto* sampled_texture_type = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* sampled_texture_type = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     AddResource("foo_texture", sampled_texture_type, 0, 0);
     AddSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.f32());
@@ -2621,7 +2623,7 @@ TEST_F(InspectorGetSamplerResourceBindingsTest, NoSampler) {
 }
 
 TEST_F(InspectorGetSamplerResourceBindingsTest, InFunction) {
-    auto* sampled_texture_type = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* sampled_texture_type = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     AddResource("foo_texture", sampled_texture_type, 0, 0);
     AddSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.f32());
@@ -2646,7 +2648,7 @@ TEST_F(InspectorGetSamplerResourceBindingsTest, InFunction) {
 }
 
 TEST_F(InspectorGetSamplerResourceBindingsTest, UnknownEntryPoint) {
-    auto* sampled_texture_type = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* sampled_texture_type = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     AddResource("foo_texture", sampled_texture_type, 0, 0);
     AddSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.f32());
@@ -2663,7 +2665,7 @@ TEST_F(InspectorGetSamplerResourceBindingsTest, UnknownEntryPoint) {
 }
 
 TEST_F(InspectorGetSamplerResourceBindingsTest, SkipsComparisonSamplers) {
-    auto* depth_texture_type = ty.depth_texture(ast::TextureDimension::k2d);
+    auto* depth_texture_type = ty.depth_texture(type::TextureDimension::k2d);
     AddResource("foo_texture", depth_texture_type, 0, 0);
     AddComparisonSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.vec2<f32>());
@@ -2684,7 +2686,7 @@ TEST_F(InspectorGetSamplerResourceBindingsTest, SkipsComparisonSamplers) {
 }
 
 TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, Simple) {
-    auto* depth_texture_type = ty.depth_texture(ast::TextureDimension::k2d);
+    auto* depth_texture_type = ty.depth_texture(type::TextureDimension::k2d);
     AddResource("foo_texture", depth_texture_type, 0, 0);
     AddComparisonSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.vec2<f32>());
@@ -2721,7 +2723,7 @@ TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, NoSampler) {
 }
 
 TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, InFunction) {
-    auto* depth_texture_type = ty.depth_texture(ast::TextureDimension::k2d);
+    auto* depth_texture_type = ty.depth_texture(type::TextureDimension::k2d);
     AddResource("foo_texture", depth_texture_type, 0, 0);
     AddComparisonSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.vec2<f32>());
@@ -2747,7 +2749,7 @@ TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, InFunction) {
 }
 
 TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, UnknownEntryPoint) {
-    auto* depth_texture_type = ty.depth_texture(ast::TextureDimension::k2d);
+    auto* depth_texture_type = ty.depth_texture(type::TextureDimension::k2d);
     AddResource("foo_texture", depth_texture_type, 0, 0);
     AddComparisonSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.vec2<f32>());
@@ -2766,7 +2768,7 @@ TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, UnknownEntryPoint) {
 }
 
 TEST_F(InspectorGetComparisonSamplerResourceBindingsTest, SkipsSamplers) {
-    auto* sampled_texture_type = ty.sampled_texture(ast::TextureDimension::k1d, ty.f32());
+    auto* sampled_texture_type = ty.sampled_texture(type::TextureDimension::k1d, ty.f32());
     AddResource("foo_texture", sampled_texture_type, 0, 0);
     AddSampler("foo_sampler", 0, 1);
     AddGlobalVariable("foo_coords", ty.f32());
@@ -2833,16 +2835,16 @@ TEST_P(InspectorGetSampledTextureResourceBindingsTestWithParam, textureSample) {
 INSTANTIATE_TEST_SUITE_P(
     InspectorGetSampledTextureResourceBindingsTest,
     InspectorGetSampledTextureResourceBindingsTestWithParam,
-    testing::Values(GetSampledTextureTestParams{ast::TextureDimension::k1d,
+    testing::Values(GetSampledTextureTestParams{type::TextureDimension::k1d,
                                                 inspector::ResourceBinding::TextureDimension::k1d,
                                                 inspector::ResourceBinding::SampledKind::kFloat},
-                    GetSampledTextureTestParams{ast::TextureDimension::k2d,
+                    GetSampledTextureTestParams{type::TextureDimension::k2d,
                                                 inspector::ResourceBinding::TextureDimension::k2d,
                                                 inspector::ResourceBinding::SampledKind::kFloat},
-                    GetSampledTextureTestParams{ast::TextureDimension::k3d,
+                    GetSampledTextureTestParams{type::TextureDimension::k3d,
                                                 inspector::ResourceBinding::TextureDimension::k3d,
                                                 inspector::ResourceBinding::SampledKind::kFloat},
-                    GetSampledTextureTestParams{ast::TextureDimension::kCube,
+                    GetSampledTextureTestParams{type::TextureDimension::kCube,
                                                 inspector::ResourceBinding::TextureDimension::kCube,
                                                 inspector::ResourceBinding::SampledKind::kFloat}));
 
@@ -2878,10 +2880,10 @@ INSTANTIATE_TEST_SUITE_P(
     InspectorGetSampledArrayTextureResourceBindingsTest,
     InspectorGetSampledArrayTextureResourceBindingsTestWithParam,
     testing::Values(
-        GetSampledTextureTestParams{ast::TextureDimension::k2dArray,
+        GetSampledTextureTestParams{type::TextureDimension::k2dArray,
                                     inspector::ResourceBinding::TextureDimension::k2dArray,
                                     inspector::ResourceBinding::SampledKind::kFloat},
-        GetSampledTextureTestParams{ast::TextureDimension::kCubeArray,
+        GetSampledTextureTestParams{type::TextureDimension::kCubeArray,
                                     inspector::ResourceBinding::TextureDimension::kCubeArray,
                                     inspector::ResourceBinding::SampledKind::kFloat}));
 
@@ -2924,13 +2926,13 @@ INSTANTIATE_TEST_SUITE_P(
     InspectorGetMultisampledTextureResourceBindingsTest,
     InspectorGetMultisampledTextureResourceBindingsTestWithParam,
     testing::Values(
-        GetMultisampledTextureTestParams{ast::TextureDimension::k2d,
+        GetMultisampledTextureTestParams{type::TextureDimension::k2d,
                                          inspector::ResourceBinding::TextureDimension::k2d,
                                          inspector::ResourceBinding::SampledKind::kFloat},
-        GetMultisampledTextureTestParams{ast::TextureDimension::k2d,
+        GetMultisampledTextureTestParams{type::TextureDimension::k2d,
                                          inspector::ResourceBinding::TextureDimension::k2d,
                                          inspector::ResourceBinding::SampledKind::kSInt},
-        GetMultisampledTextureTestParams{ast::TextureDimension::k2d,
+        GetMultisampledTextureTestParams{type::TextureDimension::k2d,
                                          inspector::ResourceBinding::TextureDimension::k2d,
                                          inspector::ResourceBinding::SampledKind::kUInt}));
 
@@ -2964,11 +2966,11 @@ TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
     TexelFormatParams format_params;
     std::tie(dim_params, format_params) = GetParam();
 
-    ast::TextureDimension dim;
+    type::TextureDimension dim;
     ResourceBinding::TextureDimension expected_dim;
     std::tie(dim, expected_dim) = dim_params;
 
-    ast::TexelFormat format;
+    type::TexelFormat format;
     ResourceBinding::TexelFormat expected_format;
     ResourceBinding::SampledKind expected_kind;
     std::tie(format, expected_format, expected_kind) = format_params;
@@ -2978,14 +2980,14 @@ TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
 
     const ast::Type* dim_type = nullptr;
     switch (dim) {
-        case ast::TextureDimension::k1d:
+        case type::TextureDimension::k1d:
             dim_type = ty.u32();
             break;
-        case ast::TextureDimension::k2d:
-        case ast::TextureDimension::k2dArray:
+        case type::TextureDimension::k2d:
+        case type::TextureDimension::k2dArray:
             dim_type = ty.vec2<u32>();
             break;
-        case ast::TextureDimension::k3d:
+        case type::TextureDimension::k3d:
             dim_type = ty.vec3<u32>();
             break;
         default:
@@ -3016,60 +3018,60 @@ TEST_P(InspectorGetStorageTextureResourceBindingsTestWithParam, Simple) {
 INSTANTIATE_TEST_SUITE_P(
     InspectorGetStorageTextureResourceBindingsTest,
     InspectorGetStorageTextureResourceBindingsTestWithParam,
-    testing::Combine(testing::Values(std::make_tuple(ast::TextureDimension::k1d,
+    testing::Combine(testing::Values(std::make_tuple(type::TextureDimension::k1d,
                                                      ResourceBinding::TextureDimension::k1d),
-                                     std::make_tuple(ast::TextureDimension::k2d,
+                                     std::make_tuple(type::TextureDimension::k2d,
                                                      ResourceBinding::TextureDimension::k2d),
-                                     std::make_tuple(ast::TextureDimension::k2dArray,
+                                     std::make_tuple(type::TextureDimension::k2dArray,
                                                      ResourceBinding::TextureDimension::k2dArray),
-                                     std::make_tuple(ast::TextureDimension::k3d,
+                                     std::make_tuple(type::TextureDimension::k3d,
                                                      ResourceBinding::TextureDimension::k3d)),
-                     testing::Values(std::make_tuple(ast::TexelFormat::kR32Float,
+                     testing::Values(std::make_tuple(type::TexelFormat::kR32Float,
                                                      ResourceBinding::TexelFormat::kR32Float,
                                                      ResourceBinding::SampledKind::kFloat),
-                                     std::make_tuple(ast::TexelFormat::kR32Sint,
+                                     std::make_tuple(type::TexelFormat::kR32Sint,
                                                      ResourceBinding::TexelFormat::kR32Sint,
                                                      ResourceBinding::SampledKind::kSInt),
-                                     std::make_tuple(ast::TexelFormat::kR32Uint,
+                                     std::make_tuple(type::TexelFormat::kR32Uint,
                                                      ResourceBinding::TexelFormat::kR32Uint,
                                                      ResourceBinding::SampledKind::kUInt),
-                                     std::make_tuple(ast::TexelFormat::kRg32Float,
+                                     std::make_tuple(type::TexelFormat::kRg32Float,
                                                      ResourceBinding::TexelFormat::kRg32Float,
                                                      ResourceBinding::SampledKind::kFloat),
-                                     std::make_tuple(ast::TexelFormat::kRg32Sint,
+                                     std::make_tuple(type::TexelFormat::kRg32Sint,
                                                      ResourceBinding::TexelFormat::kRg32Sint,
                                                      ResourceBinding::SampledKind::kSInt),
-                                     std::make_tuple(ast::TexelFormat::kRg32Uint,
+                                     std::make_tuple(type::TexelFormat::kRg32Uint,
                                                      ResourceBinding::TexelFormat::kRg32Uint,
                                                      ResourceBinding::SampledKind::kUInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba16Float,
+                                     std::make_tuple(type::TexelFormat::kRgba16Float,
                                                      ResourceBinding::TexelFormat::kRgba16Float,
                                                      ResourceBinding::SampledKind::kFloat),
-                                     std::make_tuple(ast::TexelFormat::kRgba16Sint,
+                                     std::make_tuple(type::TexelFormat::kRgba16Sint,
                                                      ResourceBinding::TexelFormat::kRgba16Sint,
                                                      ResourceBinding::SampledKind::kSInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba16Uint,
+                                     std::make_tuple(type::TexelFormat::kRgba16Uint,
                                                      ResourceBinding::TexelFormat::kRgba16Uint,
                                                      ResourceBinding::SampledKind::kUInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba32Float,
+                                     std::make_tuple(type::TexelFormat::kRgba32Float,
                                                      ResourceBinding::TexelFormat::kRgba32Float,
                                                      ResourceBinding::SampledKind::kFloat),
-                                     std::make_tuple(ast::TexelFormat::kRgba32Sint,
+                                     std::make_tuple(type::TexelFormat::kRgba32Sint,
                                                      ResourceBinding::TexelFormat::kRgba32Sint,
                                                      ResourceBinding::SampledKind::kSInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba32Uint,
+                                     std::make_tuple(type::TexelFormat::kRgba32Uint,
                                                      ResourceBinding::TexelFormat::kRgba32Uint,
                                                      ResourceBinding::SampledKind::kUInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba8Sint,
+                                     std::make_tuple(type::TexelFormat::kRgba8Sint,
                                                      ResourceBinding::TexelFormat::kRgba8Sint,
                                                      ResourceBinding::SampledKind::kSInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba8Snorm,
+                                     std::make_tuple(type::TexelFormat::kRgba8Snorm,
                                                      ResourceBinding::TexelFormat::kRgba8Snorm,
                                                      ResourceBinding::SampledKind::kFloat),
-                                     std::make_tuple(ast::TexelFormat::kRgba8Uint,
+                                     std::make_tuple(type::TexelFormat::kRgba8Uint,
                                                      ResourceBinding::TexelFormat::kRgba8Uint,
                                                      ResourceBinding::SampledKind::kUInt),
-                                     std::make_tuple(ast::TexelFormat::kRgba8Unorm,
+                                     std::make_tuple(type::TexelFormat::kRgba8Unorm,
                                                      ResourceBinding::TexelFormat::kRgba8Unorm,
                                                      ResourceBinding::SampledKind::kFloat))));
 
@@ -3101,17 +3103,17 @@ INSTANTIATE_TEST_SUITE_P(
     InspectorGetDepthTextureResourceBindingsTest,
     InspectorGetDepthTextureResourceBindingsTestWithParam,
     testing::Values(
-        GetDepthTextureTestParams{ast::TextureDimension::k2d,
+        GetDepthTextureTestParams{type::TextureDimension::k2d,
                                   inspector::ResourceBinding::TextureDimension::k2d},
-        GetDepthTextureTestParams{ast::TextureDimension::k2dArray,
+        GetDepthTextureTestParams{type::TextureDimension::k2dArray,
                                   inspector::ResourceBinding::TextureDimension::k2dArray},
-        GetDepthTextureTestParams{ast::TextureDimension::kCube,
+        GetDepthTextureTestParams{type::TextureDimension::kCube,
                                   inspector::ResourceBinding::TextureDimension::kCube},
-        GetDepthTextureTestParams{ast::TextureDimension::kCubeArray,
+        GetDepthTextureTestParams{type::TextureDimension::kCubeArray,
                                   inspector::ResourceBinding::TextureDimension::kCubeArray}));
 
 TEST_F(InspectorGetDepthMultisampledTextureResourceBindingsTest, textureDimensions) {
-    auto* depth_ms_texture_type = ty.depth_multisampled_texture(ast::TextureDimension::k2d);
+    auto* depth_ms_texture_type = ty.depth_multisampled_texture(type::TextureDimension::k2d);
     AddResource("tex", depth_ms_texture_type, 0, 0);
 
     Func("ep", utils::Empty, ty.void_(),

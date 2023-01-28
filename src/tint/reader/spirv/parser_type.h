@@ -19,12 +19,12 @@
 #include <string>
 #include <vector>
 
-#include "src/tint/ast/access.h"
-#include "src/tint/ast/address_space.h"
 #include "src/tint/ast/sampler.h"
 #include "src/tint/ast/storage_texture.h"
-#include "src/tint/ast/texture.h"
 #include "src/tint/castable.h"
+#include "src/tint/type/access.h"
+#include "src/tint/type/address_space.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/block_allocator.h"
 
 // Forward declarations
@@ -163,7 +163,7 @@ struct Pointer final : public Castable<Pointer, Type> {
     /// @param ty the store type
     /// @param sc the pointer address space
     /// @param access the declared access mode
-    Pointer(const Type* ty, ast::AddressSpace sc, ast::Access access);
+    Pointer(const Type* ty, type::AddressSpace sc, type::Access access);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -181,9 +181,9 @@ struct Pointer final : public Castable<Pointer, Type> {
     /// the store type
     Type const* const type;
     /// the pointer address space
-    ast::AddressSpace const address_space;
+    type::AddressSpace const address_space;
     /// the pointer declared access mode
-    ast::Access const access;
+    type::Access const access;
 };
 
 /// `ref<SC, T, AM>` type
@@ -194,7 +194,7 @@ struct Reference final : public Castable<Reference, Type> {
     /// @param ty the referenced type
     /// @param sc the reference address space
     /// @param access the reference declared access mode
-    Reference(const Type* ty, ast::AddressSpace sc, ast::Access access);
+    Reference(const Type* ty, type::AddressSpace sc, type::Access access);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -212,9 +212,9 @@ struct Reference final : public Castable<Reference, Type> {
     /// the store type
     Type const* const type;
     /// the pointer address space
-    ast::AddressSpace const address_space;
+    type::AddressSpace const address_space;
     /// the pointer declared access mode
-    ast::Access const access;
+    type::Access const access;
 };
 
 /// `vecN<T>` type
@@ -306,7 +306,7 @@ struct Array final : public Castable<Array, Type> {
 struct Sampler final : public Castable<Sampler, Type> {
     /// Constructor
     /// @param k the sampler kind
-    explicit Sampler(ast::SamplerKind k);
+    explicit Sampler(type::SamplerKind k);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -322,7 +322,7 @@ struct Sampler final : public Castable<Sampler, Type> {
 #endif  // NDEBUG
 
     /// the sampler kind
-    ast::SamplerKind const kind;
+    type::SamplerKind const kind;
 };
 
 /// Base class for texture types
@@ -331,21 +331,21 @@ struct Texture : public Castable<Texture, Type> {
 
     /// Constructor
     /// @param d the texture dimensions
-    explicit Texture(ast::TextureDimension d);
+    explicit Texture(type::TextureDimension d);
 
     /// Copy constructor
     /// @param other the other type to copy
     Texture(const Texture& other);
 
     /// the texture dimensions
-    ast::TextureDimension const dims;
+    type::TextureDimension const dims;
 };
 
 /// `texture_depth_D` type
 struct DepthTexture final : public Castable<DepthTexture, Texture> {
     /// Constructor
     /// @param d the texture dimensions
-    explicit DepthTexture(ast::TextureDimension d);
+    explicit DepthTexture(type::TextureDimension d);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -365,7 +365,7 @@ struct DepthTexture final : public Castable<DepthTexture, Texture> {
 struct DepthMultisampledTexture final : public Castable<DepthMultisampledTexture, Texture> {
     /// Constructor
     /// @param d the texture dimensions
-    explicit DepthMultisampledTexture(ast::TextureDimension d);
+    explicit DepthMultisampledTexture(type::TextureDimension d);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -386,7 +386,7 @@ struct MultisampledTexture final : public Castable<MultisampledTexture, Texture>
     /// Constructor
     /// @param d the texture dimensions
     /// @param t the multisampled texture type
-    MultisampledTexture(ast::TextureDimension d, const Type* t);
+    MultisampledTexture(type::TextureDimension d, const Type* t);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -410,7 +410,7 @@ struct SampledTexture final : public Castable<SampledTexture, Texture> {
     /// Constructor
     /// @param d the texture dimensions
     /// @param t the sampled texture type
-    SampledTexture(ast::TextureDimension d, const Type* t);
+    SampledTexture(type::TextureDimension d, const Type* t);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -435,7 +435,7 @@ struct StorageTexture final : public Castable<StorageTexture, Texture> {
     /// @param d the texture dimensions
     /// @param f the storage image format
     /// @param a the access control
-    StorageTexture(ast::TextureDimension d, ast::TexelFormat f, ast::Access a);
+    StorageTexture(type::TextureDimension d, type::TexelFormat f, type::Access a);
 
     /// Copy constructor
     /// @param other the other type to copy
@@ -451,10 +451,10 @@ struct StorageTexture final : public Castable<StorageTexture, Texture> {
 #endif  // NDEBUG
 
     /// the storage image format
-    ast::TexelFormat const format;
+    type::TexelFormat const format;
 
     /// the access control
-    ast::Access const access;
+    type::Access const access;
 };
 
 /// Base class for named types
@@ -550,16 +550,16 @@ class TypeManager {
     /// @return a Pointer type. Repeated calls with the same arguments will return
     /// the same pointer.
     const spirv::Pointer* Pointer(const Type* ty,
-                                  ast::AddressSpace address_space,
-                                  ast::Access access = ast::Access::kUndefined);
+                                  type::AddressSpace address_space,
+                                  type::Access access = type::Access::kUndefined);
     /// @param ty the referenced type
     /// @param address_space the reference address space
     /// @param access the declared access mode
     /// @return a Reference type. Repeated calls with the same arguments will
     /// return the same pointer.
     const spirv::Reference* Reference(const Type* ty,
-                                      ast::AddressSpace address_space,
-                                      ast::Access access = ast::Access::kUndefined);
+                                      type::AddressSpace address_space,
+                                      type::Access access = type::Access::kUndefined);
     /// @param ty the element type
     /// @param sz the number of elements in the vector
     /// @return a Vector type. Repeated calls with the same arguments will return
@@ -591,33 +591,33 @@ class TypeManager {
     /// @param k the sampler kind
     /// @return a Sampler type. Repeated calls with the same arguments will return
     /// the same pointer.
-    const spirv::Sampler* Sampler(ast::SamplerKind k);
+    const spirv::Sampler* Sampler(type::SamplerKind k);
     /// @param d the texture dimensions
     /// @return a DepthTexture type. Repeated calls with the same arguments will
     /// return the same pointer.
-    const spirv::DepthTexture* DepthTexture(ast::TextureDimension d);
+    const spirv::DepthTexture* DepthTexture(type::TextureDimension d);
     /// @param d the texture dimensions
     /// @return a DepthMultisampledTexture type. Repeated calls with the same
     /// arguments will return the same pointer.
-    const spirv::DepthMultisampledTexture* DepthMultisampledTexture(ast::TextureDimension d);
+    const spirv::DepthMultisampledTexture* DepthMultisampledTexture(type::TextureDimension d);
     /// @param d the texture dimensions
     /// @param t the multisampled texture type
     /// @return a MultisampledTexture type. Repeated calls with the same arguments
     /// will return the same pointer.
-    const spirv::MultisampledTexture* MultisampledTexture(ast::TextureDimension d, const Type* t);
+    const spirv::MultisampledTexture* MultisampledTexture(type::TextureDimension d, const Type* t);
     /// @param d the texture dimensions
     /// @param t the sampled texture type
     /// @return a SampledTexture type. Repeated calls with the same arguments will
     /// return the same pointer.
-    const spirv::SampledTexture* SampledTexture(ast::TextureDimension d, const Type* t);
+    const spirv::SampledTexture* SampledTexture(type::TextureDimension d, const Type* t);
     /// @param d the texture dimensions
     /// @param f the storage image format
     /// @param a the access control
     /// @return a StorageTexture type. Repeated calls with the same arguments will
     /// return the same pointer.
-    const spirv::StorageTexture* StorageTexture(ast::TextureDimension d,
-                                                ast::TexelFormat f,
-                                                ast::Access a);
+    const spirv::StorageTexture* StorageTexture(type::TextureDimension d,
+                                                type::TexelFormat f,
+                                                type::Access a);
 
   private:
     struct State;

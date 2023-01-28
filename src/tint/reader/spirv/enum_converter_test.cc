@@ -17,6 +17,7 @@
 #include <string>
 
 #include "gmock/gmock.h"
+#include "src/tint/type/texture_dimension.h"
 
 namespace tint::reader::spirv {
 namespace {
@@ -84,7 +85,7 @@ INSTANTIATE_TEST_SUITE_P(EnumConverterBad,
 struct StorageClassCase {
     spv::StorageClass sc;
     bool expect_success;
-    ast::AddressSpace expected;
+    type::AddressSpace expected;
 };
 inline std::ostream& operator<<(std::ostream& out, StorageClassCase scc) {
     out << "StorageClassCase{ spv::StorageClass:::" << int(scc.sc)
@@ -125,19 +126,19 @@ INSTANTIATE_TEST_SUITE_P(
     EnumConverterGood,
     SpvStorageClassTest,
     testing::Values(
-        StorageClassCase{spv::StorageClass::Input, true, ast::AddressSpace::kIn},
-        StorageClassCase{spv::StorageClass::Output, true, ast::AddressSpace::kOut},
-        StorageClassCase{spv::StorageClass::Uniform, true, ast::AddressSpace::kUniform},
-        StorageClassCase{spv::StorageClass::Workgroup, true, ast::AddressSpace::kWorkgroup},
-        StorageClassCase{spv::StorageClass::UniformConstant, true, ast::AddressSpace::kNone},
-        StorageClassCase{spv::StorageClass::StorageBuffer, true, ast::AddressSpace::kStorage},
-        StorageClassCase{spv::StorageClass::Private, true, ast::AddressSpace::kPrivate},
-        StorageClassCase{spv::StorageClass::Function, true, ast::AddressSpace::kFunction}));
+        StorageClassCase{spv::StorageClass::Input, true, type::AddressSpace::kIn},
+        StorageClassCase{spv::StorageClass::Output, true, type::AddressSpace::kOut},
+        StorageClassCase{spv::StorageClass::Uniform, true, type::AddressSpace::kUniform},
+        StorageClassCase{spv::StorageClass::Workgroup, true, type::AddressSpace::kWorkgroup},
+        StorageClassCase{spv::StorageClass::UniformConstant, true, type::AddressSpace::kNone},
+        StorageClassCase{spv::StorageClass::StorageBuffer, true, type::AddressSpace::kStorage},
+        StorageClassCase{spv::StorageClass::Private, true, type::AddressSpace::kPrivate},
+        StorageClassCase{spv::StorageClass::Function, true, type::AddressSpace::kFunction}));
 
 INSTANTIATE_TEST_SUITE_P(EnumConverterBad,
                          SpvStorageClassTest,
                          testing::Values(StorageClassCase{static_cast<spv::StorageClass>(9999),
-                                                          false, ast::AddressSpace::kUndefined}));
+                                                          false, type::AddressSpace::kUndefined}));
 
 // Builtin
 
@@ -217,7 +218,7 @@ struct DimCase {
     spv::Dim dim;
     bool arrayed;
     bool expect_success;
-    ast::TextureDimension expected;
+    type::TextureDimension expected;
 };
 inline std::ostream& operator<<(std::ostream& out, DimCase dc) {
     out << "DimCase{ spv::Dim:::" << int(dc.dim) << " arrayed?:" << int(dc.arrayed)
@@ -256,38 +257,38 @@ INSTANTIATE_TEST_SUITE_P(EnumConverterGood,
                          SpvDimTest,
                          testing::Values(
                              // Non-arrayed
-                             DimCase{spv::Dim::Dim1D, false, true, ast::TextureDimension::k1d},
-                             DimCase{spv::Dim::Dim2D, false, true, ast::TextureDimension::k2d},
-                             DimCase{spv::Dim::Dim3D, false, true, ast::TextureDimension::k3d},
-                             DimCase{spv::Dim::Cube, false, true, ast::TextureDimension::kCube},
+                             DimCase{spv::Dim::Dim1D, false, true, type::TextureDimension::k1d},
+                             DimCase{spv::Dim::Dim2D, false, true, type::TextureDimension::k2d},
+                             DimCase{spv::Dim::Dim3D, false, true, type::TextureDimension::k3d},
+                             DimCase{spv::Dim::Cube, false, true, type::TextureDimension::kCube},
                              // Arrayed
-                             DimCase{spv::Dim::Dim2D, true, true, ast::TextureDimension::k2dArray},
+                             DimCase{spv::Dim::Dim2D, true, true, type::TextureDimension::k2dArray},
                              DimCase{spv::Dim::Cube, true, true,
-                                     ast::TextureDimension::kCubeArray}));
+                                     type::TextureDimension::kCubeArray}));
 
 INSTANTIATE_TEST_SUITE_P(
     EnumConverterBad,
     SpvDimTest,
     testing::Values(
         // Invalid SPIR-V dimensionality.
-        DimCase{spv::Dim::Max, false, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::Max, true, false, ast::TextureDimension::kNone},
+        DimCase{spv::Dim::Max, false, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::Max, true, false, type::TextureDimension::kNone},
         // Vulkan non-arrayed dimensionalities not supported by WGSL.
-        DimCase{spv::Dim::Rect, false, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::Buffer, false, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::SubpassData, false, false, ast::TextureDimension::kNone},
+        DimCase{spv::Dim::Rect, false, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::Buffer, false, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::SubpassData, false, false, type::TextureDimension::kNone},
         // Arrayed dimensionalities not supported by WGSL
-        DimCase{spv::Dim::Dim3D, true, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::Rect, true, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::Buffer, true, false, ast::TextureDimension::kNone},
-        DimCase{spv::Dim::SubpassData, true, false, ast::TextureDimension::kNone}));
+        DimCase{spv::Dim::Dim3D, true, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::Rect, true, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::Buffer, true, false, type::TextureDimension::kNone},
+        DimCase{spv::Dim::SubpassData, true, false, type::TextureDimension::kNone}));
 
 // TexelFormat
 
 struct TexelFormatCase {
     spv::ImageFormat format;
     bool expect_success;
-    ast::TexelFormat expected;
+    type::TexelFormat expected;
 };
 inline std::ostream& operator<<(std::ostream& out, TexelFormatCase ifc) {
     out << "TexelFormatCase{ spv::ImageFormat:::" << int(ifc.format)
@@ -329,52 +330,52 @@ INSTANTIATE_TEST_SUITE_P(
     SpvImageFormatTest,
     testing::Values(
         // Unknown.  This is used for sampled images.
-        TexelFormatCase{spv::ImageFormat::Unknown, true, ast::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Unknown, true, type::TexelFormat::kUndefined},
         // 8 bit channels
-        TexelFormatCase{spv::ImageFormat::Rgba8, true, ast::TexelFormat::kRgba8Unorm},
-        TexelFormatCase{spv::ImageFormat::Rgba8Snorm, true, ast::TexelFormat::kRgba8Snorm},
-        TexelFormatCase{spv::ImageFormat::Rgba8ui, true, ast::TexelFormat::kRgba8Uint},
-        TexelFormatCase{spv::ImageFormat::Rgba8i, true, ast::TexelFormat::kRgba8Sint},
+        TexelFormatCase{spv::ImageFormat::Rgba8, true, type::TexelFormat::kRgba8Unorm},
+        TexelFormatCase{spv::ImageFormat::Rgba8Snorm, true, type::TexelFormat::kRgba8Snorm},
+        TexelFormatCase{spv::ImageFormat::Rgba8ui, true, type::TexelFormat::kRgba8Uint},
+        TexelFormatCase{spv::ImageFormat::Rgba8i, true, type::TexelFormat::kRgba8Sint},
         // 16 bit channels
-        TexelFormatCase{spv::ImageFormat::Rgba16ui, true, ast::TexelFormat::kRgba16Uint},
-        TexelFormatCase{spv::ImageFormat::Rgba16i, true, ast::TexelFormat::kRgba16Sint},
-        TexelFormatCase{spv::ImageFormat::Rgba16f, true, ast::TexelFormat::kRgba16Float},
+        TexelFormatCase{spv::ImageFormat::Rgba16ui, true, type::TexelFormat::kRgba16Uint},
+        TexelFormatCase{spv::ImageFormat::Rgba16i, true, type::TexelFormat::kRgba16Sint},
+        TexelFormatCase{spv::ImageFormat::Rgba16f, true, type::TexelFormat::kRgba16Float},
         // 32 bit channels
         // ... 1 channel
-        TexelFormatCase{spv::ImageFormat::R32ui, true, ast::TexelFormat::kR32Uint},
-        TexelFormatCase{spv::ImageFormat::R32i, true, ast::TexelFormat::kR32Sint},
-        TexelFormatCase{spv::ImageFormat::R32f, true, ast::TexelFormat::kR32Float},
+        TexelFormatCase{spv::ImageFormat::R32ui, true, type::TexelFormat::kR32Uint},
+        TexelFormatCase{spv::ImageFormat::R32i, true, type::TexelFormat::kR32Sint},
+        TexelFormatCase{spv::ImageFormat::R32f, true, type::TexelFormat::kR32Float},
         // ... 2 channels
-        TexelFormatCase{spv::ImageFormat::Rg32ui, true, ast::TexelFormat::kRg32Uint},
-        TexelFormatCase{spv::ImageFormat::Rg32i, true, ast::TexelFormat::kRg32Sint},
-        TexelFormatCase{spv::ImageFormat::Rg32f, true, ast::TexelFormat::kRg32Float},
+        TexelFormatCase{spv::ImageFormat::Rg32ui, true, type::TexelFormat::kRg32Uint},
+        TexelFormatCase{spv::ImageFormat::Rg32i, true, type::TexelFormat::kRg32Sint},
+        TexelFormatCase{spv::ImageFormat::Rg32f, true, type::TexelFormat::kRg32Float},
         // ... 4 channels
-        TexelFormatCase{spv::ImageFormat::Rgba32ui, true, ast::TexelFormat::kRgba32Uint},
-        TexelFormatCase{spv::ImageFormat::Rgba32i, true, ast::TexelFormat::kRgba32Sint},
-        TexelFormatCase{spv::ImageFormat::Rgba32f, true, ast::TexelFormat::kRgba32Float}));
+        TexelFormatCase{spv::ImageFormat::Rgba32ui, true, type::TexelFormat::kRgba32Uint},
+        TexelFormatCase{spv::ImageFormat::Rgba32i, true, type::TexelFormat::kRgba32Sint},
+        TexelFormatCase{spv::ImageFormat::Rgba32f, true, type::TexelFormat::kRgba32Float}));
 
 INSTANTIATE_TEST_SUITE_P(
     EnumConverterBad,
     SpvImageFormatTest,
     testing::Values(
         // Scanning in order from the SPIR-V spec.
-        TexelFormatCase{spv::ImageFormat::Rg16f, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::R11fG11fB10f, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::R16f, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rgb10A2, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg16, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg8, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::R16, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::R8, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rgba16Snorm, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg16Snorm, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg8Snorm, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg16i, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg8i, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::R8i, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rgb10a2ui, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg16ui, false, ast::TexelFormat::kUndefined},
-        TexelFormatCase{spv::ImageFormat::Rg8ui, false, ast::TexelFormat::kUndefined}));
+        TexelFormatCase{spv::ImageFormat::Rg16f, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::R11fG11fB10f, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::R16f, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rgb10A2, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg16, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg8, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::R16, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::R8, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rgba16Snorm, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg16Snorm, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg8Snorm, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg16i, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg8i, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::R8i, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rgb10a2ui, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg16ui, false, type::TexelFormat::kUndefined},
+        TexelFormatCase{spv::ImageFormat::Rg8ui, false, type::TexelFormat::kUndefined}));
 
 }  // namespace
 }  // namespace tint::reader::spirv

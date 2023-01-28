@@ -22,6 +22,7 @@
 #include "src/tint/ast/pipeline_stage.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/resolver/sem_helper.h"
+#include "src/tint/scope_stack.h"
 #include "src/tint/sem/evaluation_stage.h"
 #include "src/tint/source.h"
 #include "src/tint/utils/hash.h"
@@ -74,7 +75,7 @@ struct TypeAndAddressSpace {
     /// The type
     const type::Type* type;
     /// The address space
-    ast::AddressSpace address_space;
+    type::AddressSpace address_space;
 
     /// Equality operator
     /// @param other the other TypeAndAddressSpace to compare this TypeAndAddressSpace to
@@ -83,6 +84,9 @@ struct TypeAndAddressSpace {
         return type == other.type && address_space == other.address_space;
     }
 };
+
+/// DiagnosticFilterStack is a scoped stack of diagnostic filters.
+using DiagnosticFilterStack = ScopeStack<ast::DiagnosticRule, ast::DiagnosticSeverity>;
 
 /// Validation logic for various ast nodes. The validations in general should
 /// be shallow and depend on the resolver to call on children. The validations
@@ -117,6 +121,18 @@ class Validator {
     /// @param msg the note message
     /// @param source the note source
     void AddNote(const std::string& msg, const Source& source) const;
+
+    /// Adds the given message to the diagnostics with current severity for the given rule.
+    /// @param rule the diagnostic trigger rule
+    /// @param msg the diagnostic message
+    /// @param source the diagnostic source
+    /// @returns false if the diagnostic is an error for the given trigger rule
+    bool AddDiagnostic(ast::DiagnosticRule rule,
+                       const std::string& msg,
+                       const Source& source) const;
+
+    /// @returns the diagnostic filter stack
+    DiagnosticFilterStack& DiagnosticFilters() { return diagnostic_filters_; }
 
     /// @param type the given type
     /// @returns true if the given type is a plain type
@@ -418,7 +434,7 @@ class Validator {
     /// @param initializer the RHS initializer expression
     /// @returns true on succes, false otherwise
     bool VariableInitializer(const ast::Variable* v,
-                             ast::AddressSpace address_space,
+                             type::AddressSpace address_space,
                              const type::Type* storage_type,
                              const sem::Expression* initializer) const;
 
@@ -459,12 +475,19 @@ class Validator {
     /// @returns true on success, false otherwise.
     bool NoDuplicateAttributes(utils::VectorRef<const ast::Attribute*> attributes) const;
 
+    /// Validates a set of diagnostic controls.
+    /// @param controls the diagnostic controls to validate
+    /// @param use the place where the controls are being used ("directive" or "attribute")
+    /// @returns true on success, false otherwise.
+    bool DiagnosticControls(utils::VectorRef<const ast::DiagnosticControl*> controls,
+                            const char* use) const;
+
     /// Validates a address space layout
     /// @param type the type to validate
     /// @param sc the address space
     /// @param source the source of the type
     /// @returns true on success, false otherwise
-    bool AddressSpaceLayout(const type::Type* type, ast::AddressSpace sc, Source source) const;
+    bool AddressSpaceLayout(const type::Type* type, type::AddressSpace sc, Source source) const;
 
     /// @returns true if the attribute list contains a
     /// ast::DisableValidationAttribute with the validation mode equal to
@@ -518,13 +541,14 @@ class Validator {
     /// @param source the source for the error
     /// @returns true on success, false if an error was raised.
     bool CheckTypeAccessAddressSpace(const type::Type* store_ty,
-                                     ast::Access access,
-                                     ast::AddressSpace address_space,
+                                     type::Access access,
+                                     type::AddressSpace address_space,
                                      utils::VectorRef<const tint::ast::Attribute*> attributes,
                                      const Source& source) const;
     SymbolTable& symbols_;
     diag::List& diagnostics_;
     SemHelper& sem_;
+    DiagnosticFilterStack diagnostic_filters_;
     const ast::Extensions& enabled_extensions_;
     const utils::Hashmap<const type::Type*, const Source*, 8>& atomic_composite_info_;
     utils::Hashset<TypeAndAddressSpace, 8>& valid_type_storage_layouts_;

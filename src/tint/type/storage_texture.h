@@ -17,9 +17,10 @@
 
 #include <string>
 
-#include "src/tint/ast/access.h"
-#include "src/tint/ast/storage_texture.h"
+#include "src/tint/type/access.h"
+#include "src/tint/type/texel_format.h"
 #include "src/tint/type/texture.h"
+#include "src/tint/type/texture_dimension.h"
 
 // Forward declarations
 namespace tint::type {
@@ -36,9 +37,9 @@ class StorageTexture final : public Castable<StorageTexture, Texture> {
     /// @param format the texel format of the texture
     /// @param access the access control type of the texture
     /// @param subtype the storage subtype. Use SubtypeFor() to calculate this.
-    StorageTexture(ast::TextureDimension dim,
-                   ast::TexelFormat format,
-                   ast::Access access,
+    StorageTexture(TextureDimension dim,
+                   type::TexelFormat format,
+                   type::Access access,
                    Type* subtype);
 
     /// Destructor
@@ -52,10 +53,10 @@ class StorageTexture final : public Castable<StorageTexture, Texture> {
     Type* type() const { return subtype_; }
 
     /// @returns the texel format
-    ast::TexelFormat texel_format() const { return texel_format_; }
+    type::TexelFormat texel_format() const { return texel_format_; }
 
     /// @returns the access control
-    ast::Access access() const { return access_; }
+    type::Access access() const { return access_; }
 
     /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
@@ -65,15 +66,15 @@ class StorageTexture final : public Castable<StorageTexture, Texture> {
     /// @param format the storage texture image format
     /// @param type_mgr the Manager used to build the returned type
     /// @returns the storage texture subtype for the given TexelFormat
-    static Type* SubtypeFor(ast::TexelFormat format, Manager& type_mgr);
+    static Type* SubtypeFor(type::TexelFormat format, Manager& type_mgr);
 
     /// @param ctx the clone context
     /// @returns a clone of this type
     StorageTexture* Clone(CloneContext& ctx) const override;
 
   private:
-    ast::TexelFormat const texel_format_;
-    ast::Access const access_;
+    type::TexelFormat const texel_format_;
+    type::Access const access_;
     Type* const subtype_;
 };
 

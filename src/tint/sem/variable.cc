@@ -31,8 +31,8 @@ namespace tint::sem {
 Variable::Variable(const ast::Variable* declaration,
                    const type::Type* type,
                    EvaluationStage stage,
-                   ast::AddressSpace address_space,
-                   ast::Access access,
+                   type::AddressSpace address_space,
+                   type::Access access,
                    const constant::Value* constant_value)
     : declaration_(declaration),
       type_(type),
@@ -46,8 +46,8 @@ Variable::~Variable() = default;
 LocalVariable::LocalVariable(const ast::Variable* declaration,
                              const type::Type* type,
                              EvaluationStage stage,
-                             ast::AddressSpace address_space,
-                             ast::Access access,
+                             type::AddressSpace address_space,
+                             type::Access access,
                              const sem::Statement* statement,
                              const constant::Value* constant_value)
     : Base(declaration, type, stage, address_space, access, constant_value),
@@ -58,8 +58,8 @@ LocalVariable::~LocalVariable() = default;
 GlobalVariable::GlobalVariable(const ast::Variable* declaration,
                                const type::Type* type,
                                EvaluationStage stage,
-                               ast::AddressSpace address_space,
-                               ast::Access access,
+                               type::AddressSpace address_space,
+                               type::Access access,
                                const constant::Value* constant_value,
                                sem::BindingPoint binding_point,
                                std::optional<uint32_t> location)
@@ -72,8 +72,8 @@ GlobalVariable::~GlobalVariable() = default;
 Parameter::Parameter(const ast::Parameter* declaration,
                      uint32_t index,
                      const type::Type* type,
-                     ast::AddressSpace address_space,
-                     ast::Access access,
+                     type::AddressSpace address_space,
+                     type::Access access,
                      const ParameterUsage usage /* = ParameterUsage::kNone */,
                      sem::BindingPoint binding_point /* = {} */,
                      std::optional<uint32_t> location /* = std::nullopt */)

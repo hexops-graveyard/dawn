@@ -18,31 +18,31 @@
 #include "src/tint/type/external_texture.h"
 #include "src/tint/type/sampled_texture.h"
 #include "src/tint/type/test_helper.h"
+#include "src/tint/type/texture_dimension.h"
 
 namespace tint::type {
 namespace {
 
 struct StorageTextureTest : public TestHelper {
-    StorageTexture* Create(ast::TextureDimension dims, ast::TexelFormat fmt, ast::Access access) {
+    StorageTexture* Create(TextureDimension dims, type::TexelFormat fmt, type::Access access) {
         auto* subtype = StorageTexture::SubtypeFor(fmt, Types());
         return create<StorageTexture>(dims, fmt, access, subtype);
     }
 };
 
 TEST_F(StorageTextureTest, Creation) {
-    auto* a = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
-    auto* b = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    auto* a =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
+    auto* b =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
     auto* c =
-        Create(ast::TextureDimension::k2d, ast::TexelFormat::kRgba32Float, ast::Access::kReadWrite);
+        Create(TextureDimension::k2d, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
     auto* d =
-        Create(ast::TextureDimension::kCube, ast::TexelFormat::kR32Float, ast::Access::kReadWrite);
-    auto* e =
-        Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float, ast::Access::kRead);
+        Create(TextureDimension::kCube, type::TexelFormat::kR32Float, type::Access::kReadWrite);
+    auto* e = Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kRead);
 
     EXPECT_TRUE(a->type()->Is<F32>());
-    EXPECT_EQ(a->dim(), ast::TextureDimension::kCube);
+    EXPECT_EQ(a->dim(), TextureDimension::kCube);
 
     EXPECT_EQ(a, b);
     EXPECT_NE(a, c);
@@ -51,25 +51,24 @@ TEST_F(StorageTextureTest, Creation) {
 }
 
 TEST_F(StorageTextureTest, Hash) {
-    auto* a = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
-    auto* b = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    auto* a =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
+    auto* b =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
 
     EXPECT_EQ(a->unique_hash, b->unique_hash);
 }
 
 TEST_F(StorageTextureTest, Equals) {
-    auto* a = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
-    auto* b = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    auto* a =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
+    auto* b =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
     auto* c =
-        Create(ast::TextureDimension::k2d, ast::TexelFormat::kRgba32Float, ast::Access::kReadWrite);
+        Create(TextureDimension::k2d, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
     auto* d =
-        Create(ast::TextureDimension::kCube, ast::TexelFormat::kR32Float, ast::Access::kReadWrite);
-    auto* e =
-        Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float, ast::Access::kRead);
+        Create(TextureDimension::kCube, type::TexelFormat::kR32Float, type::Access::kReadWrite);
+    auto* e = Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kRead);
 
     EXPECT_TRUE(a->Equals(*b));
     EXPECT_FALSE(a->Equals(*c));
@@ -79,26 +78,26 @@ TEST_F(StorageTextureTest, Equals) {
 }
 
 TEST_F(StorageTextureTest, Dim) {
-    auto* s = Create(ast::TextureDimension::k2dArray, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
-    EXPECT_EQ(s->dim(), ast::TextureDimension::k2dArray);
+    auto* s = Create(TextureDimension::k2dArray, type::TexelFormat::kRgba32Float,
+                     type::Access::kReadWrite);
+    EXPECT_EQ(s->dim(), TextureDimension::k2dArray);
 }
 
 TEST_F(StorageTextureTest, Format) {
-    auto* s = Create(ast::TextureDimension::k2dArray, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
-    EXPECT_EQ(s->texel_format(), ast::TexelFormat::kRgba32Float);
+    auto* s = Create(TextureDimension::k2dArray, type::TexelFormat::kRgba32Float,
+                     type::Access::kReadWrite);
+    EXPECT_EQ(s->texel_format(), type::TexelFormat::kRgba32Float);
 }
 
 TEST_F(StorageTextureTest, FriendlyName) {
-    auto* s = Create(ast::TextureDimension::k2dArray, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    auto* s = Create(TextureDimension::k2dArray, type::TexelFormat::kRgba32Float,
+                     type::Access::kReadWrite);
     EXPECT_EQ(s->FriendlyName(Symbols()), "texture_storage_2d_array<rgba32float, read_write>");
 }
 
 TEST_F(StorageTextureTest, F32) {
-    Type* s = Create(ast::TextureDimension::k2dArray, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    Type* s = Create(TextureDimension::k2dArray, type::TexelFormat::kRgba32Float,
+                     type::Access::kReadWrite);
 
     auto program = Build();
 
@@ -109,9 +108,9 @@ TEST_F(StorageTextureTest, F32) {
 }
 
 TEST_F(StorageTextureTest, U32) {
-    auto* subtype = StorageTexture::SubtypeFor(ast::TexelFormat::kRg32Uint, Types());
-    Type* s = create<StorageTexture>(ast::TextureDimension::k2dArray, ast::TexelFormat::kRg32Uint,
-                                     ast::Access::kReadWrite, subtype);
+    auto* subtype = StorageTexture::SubtypeFor(type::TexelFormat::kRg32Uint, Types());
+    Type* s = create<StorageTexture>(TextureDimension::k2dArray, type::TexelFormat::kRg32Uint,
+                                     type::Access::kReadWrite, subtype);
 
     auto program = Build();
 
@@ -122,9 +121,9 @@ TEST_F(StorageTextureTest, U32) {
 }
 
 TEST_F(StorageTextureTest, I32) {
-    auto* subtype = StorageTexture::SubtypeFor(ast::TexelFormat::kRgba32Sint, Types());
-    Type* s = create<StorageTexture>(ast::TextureDimension::k2dArray, ast::TexelFormat::kRgba32Sint,
-                                     ast::Access::kReadWrite, subtype);
+    auto* subtype = StorageTexture::SubtypeFor(type::TexelFormat::kRgba32Sint, Types());
+    Type* s = create<StorageTexture>(TextureDimension::k2dArray, type::TexelFormat::kRgba32Sint,
+                                     type::Access::kReadWrite, subtype);
 
     auto program = Build();
 
@@ -135,15 +134,15 @@ TEST_F(StorageTextureTest, I32) {
 }
 
 TEST_F(StorageTextureTest, Clone) {
-    auto* a = Create(ast::TextureDimension::kCube, ast::TexelFormat::kRgba32Float,
-                     ast::Access::kReadWrite);
+    auto* a =
+        Create(TextureDimension::kCube, type::TexelFormat::kRgba32Float, type::Access::kReadWrite);
 
     type::Manager mgr;
     type::CloneContext ctx{{nullptr}, {nullptr, &mgr}};
 
     auto* mt = a->Clone(ctx);
-    EXPECT_EQ(mt->dim(), ast::TextureDimension::kCube);
-    EXPECT_EQ(mt->texel_format(), ast::TexelFormat::kRgba32Float);
+    EXPECT_EQ(mt->dim(), TextureDimension::kCube);
+    EXPECT_EQ(mt->texel_format(), type::TexelFormat::kRgba32Float);
     EXPECT_TRUE(mt->type()->Is<F32>());
 }
 

@@ -18,6 +18,7 @@
 #include "src/tint/type/f32.h"
 #include "src/tint/type/i32.h"
 #include "src/tint/type/matrix.h"
+#include "src/tint/type/texture_dimension.h"
 #include "src/tint/type/type.h"
 #include "src/tint/type/u32.h"
 #include "src/tint/type/vector.h"
@@ -25,21 +26,21 @@
 namespace tint::inspector {
 
 ResourceBinding::TextureDimension TypeTextureDimensionToResourceBindingTextureDimension(
-    const ast::TextureDimension& type_dim) {
+    const type::TextureDimension& type_dim) {
     switch (type_dim) {
-        case ast::TextureDimension::k1d:
+        case type::TextureDimension::k1d:
             return ResourceBinding::TextureDimension::k1d;
-        case ast::TextureDimension::k2d:
+        case type::TextureDimension::k2d:
             return ResourceBinding::TextureDimension::k2d;
-        case ast::TextureDimension::k2dArray:
+        case type::TextureDimension::k2dArray:
             return ResourceBinding::TextureDimension::k2dArray;
-        case ast::TextureDimension::k3d:
+        case type::TextureDimension::k3d:
             return ResourceBinding::TextureDimension::k3d;
-        case ast::TextureDimension::kCube:
+        case type::TextureDimension::kCube:
             return ResourceBinding::TextureDimension::kCube;
-        case ast::TextureDimension::kCubeArray:
+        case type::TextureDimension::kCubeArray:
             return ResourceBinding::TextureDimension::kCubeArray;
-        case ast::TextureDimension::kNone:
+        case type::TextureDimension::kNone:
             return ResourceBinding::TextureDimension::kNone;
     }
     return ResourceBinding::TextureDimension::kNone;
@@ -70,43 +71,43 @@ ResourceBinding::SampledKind BaseTypeToSampledKind(const type::Type* base_type) 
 }
 
 ResourceBinding::TexelFormat TypeTexelFormatToResourceBindingTexelFormat(
-    const ast::TexelFormat& image_format) {
+    const type::TexelFormat& image_format) {
     switch (image_format) {
-        case ast::TexelFormat::kBgra8Unorm:
+        case type::TexelFormat::kBgra8Unorm:
             return ResourceBinding::TexelFormat::kBgra8Unorm;
-        case ast::TexelFormat::kR32Uint:
+        case type::TexelFormat::kR32Uint:
             return ResourceBinding::TexelFormat::kR32Uint;
-        case ast::TexelFormat::kR32Sint:
+        case type::TexelFormat::kR32Sint:
             return ResourceBinding::TexelFormat::kR32Sint;
-        case ast::TexelFormat::kR32Float:
+        case type::TexelFormat::kR32Float:
             return ResourceBinding::TexelFormat::kR32Float;
-        case ast::TexelFormat::kRgba8Unorm:
+        case type::TexelFormat::kRgba8Unorm:
             return ResourceBinding::TexelFormat::kRgba8Unorm;
-        case ast::TexelFormat::kRgba8Snorm:
+        case type::TexelFormat::kRgba8Snorm:
             return ResourceBinding::TexelFormat::kRgba8Snorm;
-        case ast::TexelFormat::kRgba8Uint:
+        case type::TexelFormat::kRgba8Uint:
             return ResourceBinding::TexelFormat::kRgba8Uint;
-        case ast::TexelFormat::kRgba8Sint:
+        case type::TexelFormat::kRgba8Sint:
             return ResourceBinding::TexelFormat::kRgba8Sint;
-        case ast::TexelFormat::kRg32Uint:
+        case type::TexelFormat::kRg32Uint:
             return ResourceBinding::TexelFormat::kRg32Uint;
-        case ast::TexelFormat::kRg32Sint:
+        case type::TexelFormat::kRg32Sint:
             return ResourceBinding::TexelFormat::kRg32Sint;
-        case ast::TexelFormat::kRg32Float:
+        case type::TexelFormat::kRg32Float:
             return ResourceBinding::TexelFormat::kRg32Float;
-        case ast::TexelFormat::kRgba16Uint:
+        case type::TexelFormat::kRgba16Uint:
             return ResourceBinding::TexelFormat::kRgba16Uint;
-        case ast::TexelFormat::kRgba16Sint:
+        case type::TexelFormat::kRgba16Sint:
             return ResourceBinding::TexelFormat::kRgba16Sint;
-        case ast::TexelFormat::kRgba16Float:
+        case type::TexelFormat::kRgba16Float:
             return ResourceBinding::TexelFormat::kRgba16Float;
-        case ast::TexelFormat::kRgba32Uint:
+        case type::TexelFormat::kRgba32Uint:
             return ResourceBinding::TexelFormat::kRgba32Uint;
-        case ast::TexelFormat::kRgba32Sint:
+        case type::TexelFormat::kRgba32Sint:
             return ResourceBinding::TexelFormat::kRgba32Sint;
-        case ast::TexelFormat::kRgba32Float:
+        case type::TexelFormat::kRgba32Float:
             return ResourceBinding::TexelFormat::kRgba32Float;
-        case ast::TexelFormat::kUndefined:
+        case type::TexelFormat::kUndefined:
             return ResourceBinding::TexelFormat::kNone;
     }
     return ResourceBinding::TexelFormat::kNone;

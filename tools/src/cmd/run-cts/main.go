@@ -132,7 +132,7 @@ func run() error {
 	unrollConstEvalLoopsDefault := runtime.GOOS != "windows"
 
 	var dawnNode, cts, node, npx, resultsPath, expectationsPath, logFilename, backend, adapterName, coverageFile string
-	var verbose, isolated, build, dumpShaders, unrollConstEvalLoops, genCoverage bool
+	var verbose, isolated, build, validate, dumpShaders, unrollConstEvalLoops, genCoverage bool
 	var numRunners int
 	var flags dawnNodeFlags
 	flag.StringVar(&dawnNode, "dawn-node", "", "path to dawn.node module")
@@ -142,8 +142,9 @@ func run() error {
 	flag.StringVar(&resultsPath, "output", "", "path to write test results file")
 	flag.StringVar(&expectationsPath, "expect", "", "path to expectations file")
 	flag.BoolVar(&verbose, "verbose", false, "print extra information while testing")
-	flag.BoolVar(&build, "build", true, "attempt to build the CTS before running")
 	flag.BoolVar(&isolated, "isolate", false, "run each test in an isolated process")
+	flag.BoolVar(&build, "build", true, "attempt to build the CTS before running")
+	flag.BoolVar(&validate, "validate", false, "enable backend validation")
 	flag.BoolVar(&colors, "colors", colors, "enable / disable colors")
 	flag.IntVar(&numRunners, "j", runtime.NumCPU()/2, "number of concurrent runners. 0 runs serially")
 	flag.StringVar(&logFilename, "log", "", "path to log file of tests run and result")
@@ -217,6 +218,9 @@ func run() error {
 	if adapterName != "" {
 		flags.Set("adapter=" + adapterName)
 	}
+	if validate {
+		flags.Set("validate=1")
+	}
 
 	// While running the CTS, always allow unsafe APIs so they can be tested.
 	disableDawnFeaturesFound := false
@@ -259,17 +263,36 @@ func run() error {
 	}
 
 	if genCoverage {
-		llvmCov, err := exec.LookPath("llvm-cov")
+		dawnOutDir := filepath.Dir(dawnNode)
+
+		profdata, err := exec.LookPath("llvm-profdata")
 		if err != nil {
-			return fmt.Errorf("failed to find LLVM, required for --coverage")
+			profdata = ""
+			if runtime.GOOS == "darwin" {
+				profdata = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/llvm-profdata"
+				if !fileutils.IsExe(profdata) {
+					profdata = ""
+				}
+			}
 		}
-		turboCov := filepath.Join(filepath.Dir(dawnNode), "turbo-cov"+fileutils.ExeExt)
+		if profdata == "" {
+			return fmt.Errorf("failed to find llvm-profdata, required for --coverage")
+		}
+
+		llvmCov := ""
+		turboCov := filepath.Join(dawnOutDir, "turbo-cov"+fileutils.ExeExt)
 		if !fileutils.IsExe(turboCov) {
 			turboCov = ""
+			if path, err := exec.LookPath("llvm-cov"); err == nil {
+				llvmCov = path
+			} else {
+				return fmt.Errorf("failed to find turbo-cov or llvm-cov")
+			}
 		}
 		r.covEnv = &cov.Env{
-			LLVMBin:  filepath.Dir(llvmCov),
+			Profdata: profdata,
 			Binary:   dawnNode,
+			Cov:      llvmCov,
 			TurboCov: turboCov,
 		}
 	}

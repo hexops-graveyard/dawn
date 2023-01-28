@@ -30,7 +30,6 @@
 #include "src/tint/resolver/intrinsic_table.h"
 #include "src/tint/resolver/sem_helper.h"
 #include "src/tint/resolver/validator.h"
-#include "src/tint/scope_stack.h"
 #include "src/tint/sem/binding_point.h"
 #include "src/tint/sem/block_statement.h"
 #include "src/tint/sem/function.h"
@@ -230,6 +229,7 @@ class Resolver {
     sem::CaseStatement* CaseStatement(const ast::CaseStatement*, const type::Type*);
     sem::Statement* CompoundAssignmentStatement(const ast::CompoundAssignmentStatement*);
     sem::Statement* ContinueStatement(const ast::ContinueStatement*);
+    sem::Statement* ConstAssert(const ast::ConstAssert*);
     sem::Statement* DiscardStatement(const ast::DiscardStatement*);
     sem::ForLoopStatement* ForLoopStatement(const ast::ForLoopStatement*);
     sem::WhileStatement* WhileStatement(const ast::WhileStatement*);
@@ -240,7 +240,6 @@ class Resolver {
     sem::LoopStatement* LoopStatement(const ast::LoopStatement*);
     sem::Statement* ReturnStatement(const ast::ReturnStatement*);
     sem::Statement* Statement(const ast::Statement*);
-    sem::Statement* StaticAssert(const ast::StaticAssert*);
     sem::SwitchStatement* SwitchStatement(const ast::SwitchStatement* s);
     sem::Statement* VariableDeclStatement(const ast::VariableDeclStatement*);
     bool Statements(utils::VectorRef<const ast::Statement*>);
@@ -261,6 +260,10 @@ class Resolver {
     /// returned.
     /// @param ty the ast::Type
     type::Type* Type(const ast::Type* ty);
+
+    /// @param control the diagnostic control
+    /// @returns true on success, false on failure
+    bool DiagnosticControl(const ast::DiagnosticControl* control);
 
     /// @param enable the enable declaration
     /// @returns the resolved extension
@@ -378,11 +381,11 @@ class Resolver {
     /// given type and address space. Used for generating sensible error
     /// messages.
     /// @returns true on success, false on error
-    bool ApplyAddressSpaceUsageToType(ast::AddressSpace sc, type::Type* ty, const Source& usage);
+    bool ApplyAddressSpaceUsageToType(type::AddressSpace sc, type::Type* ty, const Source& usage);
 
     /// @param address_space the address space
     /// @returns the default access control for the given address space
-    ast::Access DefaultAccessForAddressSpace(ast::AddressSpace address_space);
+    type::Access DefaultAccessForAddressSpace(type::AddressSpace address_space);
 
     /// Allocate constant IDs for pipeline-overridable constants.
     /// @returns true on success, false on error
@@ -410,6 +413,11 @@ class Resolver {
     /// @param node the AST node.
     /// @returns true on success, false on error
     bool Mark(const ast::Node* node);
+
+    /// Applies the diagnostic severities from the current scope to a semantic node.
+    /// @param node the semantic node to apply the diagnostic severities to
+    template <typename NODE>
+    void ApplyDiagnosticSeverities(NODE* node);
 
     /// Adds the given error message to the diagnostics
     void AddError(const std::string& msg, const Source& source) const;

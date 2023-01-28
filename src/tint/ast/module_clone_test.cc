@@ -22,10 +22,12 @@ namespace tint::ast {
 namespace {
 
 TEST(ModuleCloneTest, Clone) {
-#if TINT_BUILD_WGSL_READER && TINT_BUILD_WGSL_WRITER
     // Shader that exercises the bulk of the AST nodes and types.
     // See also fuzzers/tint_ast_clone_fuzzer.cc for further coverage of cloning.
-    Source::File file("test.wgsl", R"(struct S0 {
+    Source::File file("test.wgsl", R"(enable f16;
+diagnostic(off, chromium_unreachable_code);
+
+struct S0 {
   @size(4)
   m0 : u32,
   m1 : array<u32>,
@@ -63,6 +65,7 @@ fn f0(p0 : bool) -> f32 {
   return 0.0;
 }
 
+@diagnostic(warning, chromium_unreachable_code)
 fn f1(p0 : f32, p1 : i32) -> f32 {
   var l0 : i32 = 3;
   var l1 : f32 = 8.0;
@@ -170,11 +173,6 @@ const declaration_order_check_4 : i32 = 1;
     ASSERT_TRUE(result.success);
     auto dst_wgsl = result.wgsl;
     ASSERT_EQ(src_wgsl, dst_wgsl);
-
-#else  // #if TINT_BUILD_WGSL_READER && TINT_BUILD_WGSL_WRITER
-    GTEST_SKIP() << "ModuleCloneTest requires TINT_BUILD_WGSL_READER and "
-                    "TINT_BUILD_WGSL_WRITER to be enabled";
-#endif
 }
 
 }  // namespace
