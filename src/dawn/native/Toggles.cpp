@@ -342,12 +342,23 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "for stencil8 formats if metal_use_combined_depth_stencil_format_for_stencil8 is also "
       "enabled.",
       "https://crbug.com/dawn/1389"}},
-    {Toggle::UseTempTextureInStencilTextureToBufferCopy,
-     {"use_temp_texture_in_stencil_texture_to_buffer_copy",
-      "Use an intermediate temporary texture when copying the stencil aspect of a texture to a "
-      "buffer. Works around an issue where stencil writes from a render pass are not reflected in "
-      "the destination buffer.",
+    {Toggle::UseBlitForBufferToDepthTextureCopy,
+     {"use_blit_for_buffer_to_depth_texture_copy",
+      "Use a blit instead of a copy command to copy buffer data to the depth aspect of a "
+      "texture. Works around an issue where depth writes by copy commands are not visible "
+      "to a render or compute pass.",
       "https://crbug.com/dawn/1389"}},
+    {Toggle::UseBlitForBufferToStencilTextureCopy,
+     {"use_blit_for_buffer_to_stencil_texture_copy",
+      "Use a blit instead of a copy command to copy buffer data to the stencil aspect of a "
+      "texture. Works around an issue where stencil writes by copy commands are not visible "
+      "to a render or compute pass.",
+      "https://crbug.com/dawn/1389"}},
+    {Toggle::UseBlitForDepthTextureToTextureCopyToNonzeroSubresource,
+     {"use_blit_for_depth_texture_to_texture_copy_to_nonzero_subresource",
+      "Use a blit to copy from a depth texture to the nonzero subresource of a depth texture. "
+      "Works around an issue where nonzero layers are not written.",
+      "https://crbug.com/dawn/1083"}},
     {Toggle::DisallowDeprecatedAPIs,
      {"disallow_deprecated_apis",
       "Disallow all deprecated paths by changing the deprecation warnings to validation error for "
@@ -400,20 +411,20 @@ std::vector<const char*> TogglesSet::GetContainedToggleNames() const {
     return togglesNameInUse;
 }
 
-TripleStateTogglesSet TripleStateTogglesSet::CreateFromTogglesDeviceDescriptor(
-    const DawnTogglesDeviceDescriptor* togglesDesc) {
+TripleStateTogglesSet TripleStateTogglesSet::CreateFromTogglesDescriptor(
+    const DawnTogglesDescriptor* togglesDesc) {
     TripleStateTogglesSet userToggles;
     if (togglesDesc != nullptr) {
         TogglesInfo togglesInfo;
-        for (uint32_t i = 0; i < togglesDesc->forceEnabledTogglesCount; ++i) {
-            Toggle toggle = togglesInfo.ToggleNameToEnum(togglesDesc->forceEnabledToggles[i]);
+        for (uint32_t i = 0; i < togglesDesc->enabledTogglesCount; ++i) {
+            Toggle toggle = togglesInfo.ToggleNameToEnum(togglesDesc->enabledToggles[i]);
             if (toggle != Toggle::InvalidEnum) {
                 userToggles.togglesIsProvided.Set(toggle, true);
                 userToggles.providedTogglesEnabled.Set(toggle, true);
             }
         }
-        for (uint32_t i = 0; i < togglesDesc->forceDisabledTogglesCount; ++i) {
-            Toggle toggle = togglesInfo.ToggleNameToEnum(togglesDesc->forceDisabledToggles[i]);
+        for (uint32_t i = 0; i < togglesDesc->disabledTogglesCount; ++i) {
+            Toggle toggle = togglesInfo.ToggleNameToEnum(togglesDesc->disabledToggles[i]);
             if (toggle != Toggle::InvalidEnum) {
                 userToggles.togglesIsProvided.Set(toggle, true);
                 userToggles.providedTogglesEnabled.Set(toggle, false);

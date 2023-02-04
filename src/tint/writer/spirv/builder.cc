@@ -558,7 +558,7 @@ bool Builder::GenerateExecutionModes(const ast::Function* func, uint32_t id) {
     return true;
 }
 
-uint32_t Builder::GenerateExpression(const sem::Expression* expr) {
+uint32_t Builder::GenerateExpression(const sem::ValueExpression* expr) {
     if (auto* constant = expr->ConstantValue()) {
         return GenerateConstantIfNeeded(constant);
     }
@@ -1153,7 +1153,7 @@ uint32_t Builder::GenerateIdentifierExpression(const ast::IdentifierExpression* 
             return LookupVariableID(user->Variable());
         }
     }
-    error_ = "identifier '" + builder_.Symbols().NameFor(expr->symbol) +
+    error_ = "identifier '" + builder_.Symbols().NameFor(expr->identifier->symbol) +
              "' does not resolve to a variable";
     return 0;
 }
@@ -2129,7 +2129,7 @@ uint32_t Builder::GenerateBinaryExpression(const ast::BinaryExpression* expr) {
         } else if (lhs_is_unsigned) {
             op = spv::Op::OpUMod;
         } else {
-            op = spv::Op::OpSMod;
+            op = spv::Op::OpSRem;
         }
     } else if (expr->IsMultiply()) {
         if (lhs_type->is_integer_scalar_or_vector()) {
@@ -2625,7 +2625,7 @@ bool Builder::GenerateTextureBuiltin(const sem::Call* call,
     auto& arguments = call->Arguments();
 
     // Generates the given expression, returning the operand ID
-    auto gen = [&](const sem::Expression* expr) { return Operand(GenerateExpression(expr)); };
+    auto gen = [&](const sem::ValueExpression* expr) { return Operand(GenerateExpression(expr)); };
 
     // Returns the argument with the given usage
     auto arg = [&](Usage usage) {

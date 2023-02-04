@@ -384,7 +384,7 @@ bool Validator::Materialize(const type::Type* to,
 bool Validator::VariableInitializer(const ast::Variable* v,
                                     type::AddressSpace address_space,
                                     const type::Type* storage_ty,
-                                    const sem::Expression* initializer) const {
+                                    const sem::ValueExpression* initializer) const {
     auto* initializer_ty = initializer->Type();
     auto* value_type = initializer_ty->UnwrapRef();  // Implicit load of RHS
 
@@ -1343,7 +1343,7 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
     return true;
 }
 
-bool Validator::EvaluationStage(const sem::Expression* expr,
+bool Validator::EvaluationStage(const sem::ValueExpression* expr,
                                 sem::EvaluationStage latest_stage,
                                 std::string_view constraint) const {
     if (expr->Stage() == sem::EvaluationStage::kNotEvaluated) {
@@ -2433,7 +2433,7 @@ bool Validator::NoDuplicateAttributes(utils::VectorRef<const ast::Attribute*> at
     for (auto* d : attributes) {
         if (auto* diag = d->As<ast::DiagnosticAttribute>()) {
             // Allow duplicate diagnostic attributes, and check for conflicts later.
-            diagnostic_controls.Push(diag->control);
+            diagnostic_controls.Push(&diag->control);
         } else {
             auto added = seen.Add(&d->TypeInfo(), d->source);
             if (!added && !d->Is<ast::InternalAttribute>()) {
@@ -2457,13 +2457,13 @@ bool Validator::DiagnosticControls(utils::VectorRef<const ast::DiagnosticControl
             {
                 std::ostringstream ss;
                 ss << "conflicting diagnostic " << use;
-                AddError(ss.str(), dc->source);
+                AddError(ss.str(), dc->rule_name->source);
             }
             {
                 std::ostringstream ss;
                 ss << "severity of '" << symbols_.NameFor(dc->rule_name->symbol) << "' set to '"
                    << dc->severity << "' here";
-                AddNote(ss.str(), (*diag_added.value)->source);
+                AddNote(ss.str(), (*diag_added.value)->rule_name->source);
             }
             return false;
         }

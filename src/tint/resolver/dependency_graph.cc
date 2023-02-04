@@ -39,6 +39,7 @@
 #include "src/tint/ast/for_loop_statement.h"
 #include "src/tint/ast/i32.h"
 #include "src/tint/ast/id_attribute.h"
+#include "src/tint/ast/identifier.h"
 #include "src/tint/ast/if_statement.h"
 #include "src/tint/ast/increment_decrement_statement.h"
 #include "src/tint/ast/internal_attribute.h"
@@ -60,6 +61,7 @@
 #include "src/tint/ast/struct_member_offset_attribute.h"
 #include "src/tint/ast/struct_member_size_attribute.h"
 #include "src/tint/ast/switch_statement.h"
+#include "src/tint/ast/templated_identifier.h"
 #include "src/tint/ast/traverse_expressions.h"
 #include "src/tint/ast/type_name.h"
 #include "src/tint/ast/u32.h"
@@ -205,8 +207,8 @@ class DependencyScanner {
                     TraverseExpression(var->initializer);
                 }
             },
-            [&](const ast::DiagnosticControl*) {
-                // Diagnostic control directives do not affect the dependency graph.
+            [&](const ast::DiagnosticDirective*) {
+                // Diagnostic directives do not affect the dependency graph.
             },
             [&](const ast::Enable*) {
                 // Enable directives do not affect the dependency graph.
@@ -353,7 +355,7 @@ class DependencyScanner {
             Switch(
                 expr,
                 [&](const ast::IdentifierExpression* ident) {
-                    AddDependency(ident, ident->symbol, "identifier", "references");
+                    AddDependency(ident, ident->identifier->symbol, "identifier", "references");
                 },
                 [&](const ast::CallExpression* call) {
                     if (call->target.name) {
@@ -391,7 +393,7 @@ class DependencyScanner {
                 TraverseType(ptr->type);
             },
             [&](const ast::TypeName* tn) {  //
-                AddDependency(tn, tn->name, "type", "references");
+                AddDependency(tn, tn->name->symbol, "type", "references");
             },
             [&](const ast::Vector* vec) {  //
                 TraverseType(vec->type);
@@ -559,7 +561,7 @@ struct DependencyAnalysis {
             [&](const ast::TypeDecl* td) { return td->name; },
             [&](const ast::Function* func) { return func->symbol; },
             [&](const ast::Variable* var) { return var->symbol; },
-            [&](const ast::DiagnosticControl*) { return Symbol(); },
+            [&](const ast::DiagnosticDirective*) { return Symbol(); },
             [&](const ast::Enable*) { return Symbol(); },
             [&](const ast::ConstAssert*) { return Symbol(); },
             [&](Default) {
@@ -670,13 +672,13 @@ struct DependencyAnalysis {
 
         // Make sure all directives go before any other global declarations.
         for (auto* global : declaration_order_) {
-            if (global->node->IsAnyOf<ast::DiagnosticControl, ast::Enable>()) {
+            if (global->node->IsAnyOf<ast::DiagnosticDirective, ast::Enable>()) {
                 sorted_.Add(global->node);
             }
         }
 
         for (auto* global : declaration_order_) {
-            if (global->node->IsAnyOf<ast::DiagnosticControl, ast::Enable>()) {
+            if (global->node->IsAnyOf<ast::DiagnosticDirective, ast::Enable>()) {
                 // Skip directives here, as they are already added.
                 continue;
             }

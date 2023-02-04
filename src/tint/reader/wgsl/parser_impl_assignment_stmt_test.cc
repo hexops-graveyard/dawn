@@ -30,9 +30,14 @@ TEST_F(ParserImplTest, AssignmentStmt_Parses_ToVariable) {
     ASSERT_NE(a->lhs, nullptr);
     ASSERT_NE(a->rhs, nullptr);
 
+    EXPECT_EQ(a->source.range.begin.line, 1u);
+    EXPECT_EQ(a->source.range.begin.column, 3u);
+    EXPECT_EQ(a->source.range.end.line, 1u);
+    EXPECT_EQ(a->source.range.end.column, 4u);
+
     ASSERT_TRUE(a->lhs->Is<ast::IdentifierExpression>());
-    auto* ident = a->lhs->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+    auto* ident_expr = a->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident_expr->identifier->symbol, p->builder().Symbols().Get("a"));
 
     ASSERT_TRUE(a->rhs->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(a->rhs->As<ast::IntLiteralExpression>()->value, 123);
@@ -53,6 +58,11 @@ TEST_F(ParserImplTest, AssignmentStmt_Parses_ToMember) {
     ASSERT_NE(a->lhs, nullptr);
     ASSERT_NE(a->rhs, nullptr);
 
+    EXPECT_EQ(a->source.range.begin.line, 1u);
+    EXPECT_EQ(a->source.range.begin.column, 12u);
+    EXPECT_EQ(a->source.range.end.line, 1u);
+    EXPECT_EQ(a->source.range.end.column, 13u);
+
     ASSERT_TRUE(a->rhs->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(a->rhs->As<ast::IntLiteralExpression>()->value, 123);
     EXPECT_EQ(a->rhs->As<ast::IntLiteralExpression>()->suffix,
@@ -61,9 +71,7 @@ TEST_F(ParserImplTest, AssignmentStmt_Parses_ToMember) {
     ASSERT_TRUE(a->lhs->Is<ast::MemberAccessorExpression>());
     auto* mem = a->lhs->As<ast::MemberAccessorExpression>();
 
-    ASSERT_TRUE(mem->member->Is<ast::IdentifierExpression>());
-    auto* ident = mem->member->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("d"));
+    EXPECT_EQ(mem->member->symbol, p->builder().Symbols().Get("d"));
 
     ASSERT_TRUE(mem->structure->Is<ast::IndexAccessorExpression>());
     auto* idx = mem->structure->As<ast::IndexAccessorExpression>();
@@ -74,20 +82,15 @@ TEST_F(ParserImplTest, AssignmentStmt_Parses_ToMember) {
 
     ASSERT_TRUE(idx->object->Is<ast::MemberAccessorExpression>());
     mem = idx->object->As<ast::MemberAccessorExpression>();
-    ASSERT_TRUE(mem->member->Is<ast::IdentifierExpression>());
-    ident = mem->member->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("c"));
+    EXPECT_EQ(mem->member->symbol, p->builder().Symbols().Get("c"));
 
     ASSERT_TRUE(mem->structure->Is<ast::MemberAccessorExpression>());
+
     mem = mem->structure->As<ast::MemberAccessorExpression>();
-
     ASSERT_TRUE(mem->structure->Is<ast::IdentifierExpression>());
-    ident = mem->structure->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
-
-    ASSERT_TRUE(mem->member->Is<ast::IdentifierExpression>());
-    ident = mem->member->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("b"));
+    auto* ident_expr = mem->structure->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident_expr->identifier->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(mem->member->symbol, p->builder().Symbols().Get("b"));
 }
 
 TEST_F(ParserImplTest, AssignmentStmt_Parses_ToPhony) {
@@ -102,6 +105,11 @@ TEST_F(ParserImplTest, AssignmentStmt_Parses_ToPhony) {
     ASSERT_NE(a, nullptr);
     ASSERT_NE(a->lhs, nullptr);
     ASSERT_NE(a->rhs, nullptr);
+
+    EXPECT_EQ(a->source.range.begin.line, 1u);
+    EXPECT_EQ(a->source.range.begin.column, 3u);
+    EXPECT_EQ(a->source.range.end.line, 1u);
+    EXPECT_EQ(a->source.range.end.column, 4u);
 
     ASSERT_TRUE(a->rhs->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(a->rhs->As<ast::IntLiteralExpression>()->value, 123);
@@ -163,9 +171,14 @@ TEST_P(CompoundOpTest, CompoundOp) {
     ASSERT_NE(a->rhs, nullptr);
     EXPECT_EQ(a->op, params.op);
 
+    EXPECT_EQ(a->source.range.begin.line, 1u);
+    EXPECT_EQ(a->source.range.begin.column, 3u);
+    EXPECT_EQ(a->source.range.end.line, 1u);
+    EXPECT_EQ(a->source.range.end.column, 3u + params.str.length());
+
     ASSERT_TRUE(a->lhs->Is<ast::IdentifierExpression>());
-    auto* ident = a->lhs->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident->symbol, p->builder().Symbols().Get("a"));
+    auto* ident_expr = a->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(ident_expr->identifier->symbol, p->builder().Symbols().Get("a"));
 
     ASSERT_TRUE(a->rhs->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(a->rhs->As<ast::IntLiteralExpression>()->value, 123);

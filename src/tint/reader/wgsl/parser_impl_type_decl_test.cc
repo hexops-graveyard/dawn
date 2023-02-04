@@ -40,7 +40,7 @@ TEST_F(ParserImplTest, TypeDecl_Identifier) {
     ASSERT_NE(t.value, nullptr) << p->error();
     auto* type_name = t.value->As<ast::TypeName>();
     ASSERT_NE(type_name, nullptr);
-    EXPECT_EQ(p->builder().Symbols().Get("A"), type_name->name);
+    EXPECT_EQ(p->builder().Symbols().Get("A"), type_name->name->symbol);
     EXPECT_EQ(type_name->source.range, (Source::Range{{1u, 1u}, {1u, 2u}}));
 }
 
@@ -473,7 +473,7 @@ TEST_F(ParserImplTest, TypeDecl_Array_ConstantSize) {
 
     auto* count_expr = a->count->As<ast::IdentifierExpression>();
     ASSERT_NE(count_expr, nullptr);
-    EXPECT_EQ(p->builder().Symbols().NameFor(count_expr->symbol), "size");
+    EXPECT_EQ(p->builder().Symbols().NameFor(count_expr->identifier->symbol), "size");
 }
 
 TEST_F(ParserImplTest, TypeDecl_Array_ExpressionSize) {
@@ -495,8 +495,8 @@ TEST_F(ParserImplTest, TypeDecl_Array_ExpressionSize) {
     EXPECT_EQ(ast::BinaryOp::kAdd, count_expr->op);
 
     ASSERT_TRUE(count_expr->lhs->Is<ast::IdentifierExpression>());
-    auto* ident = count_expr->lhs->As<ast::IdentifierExpression>();
-    EXPECT_EQ(p->builder().Symbols().NameFor(ident->symbol), "size");
+    auto* ident_expr = count_expr->lhs->As<ast::IdentifierExpression>();
+    EXPECT_EQ(p->builder().Symbols().NameFor(ident_expr->identifier->symbol), "size");
 
     ASSERT_TRUE(count_expr->rhs->Is<ast::IntLiteralExpression>());
     auto* val = count_expr->rhs->As<ast::IntLiteralExpression>();

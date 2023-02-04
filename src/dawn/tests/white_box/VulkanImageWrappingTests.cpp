@@ -267,11 +267,11 @@ class VulkanImageWrappingUsageTests : public VulkanImageWrappingTestBase {
         // Create another device based on the original
         backendAdapter =
             dawn::native::vulkan::ToBackend(dawn::native::FromAPI(device.Get())->GetAdapter());
-        deviceDescriptor.nextInChain = &togglesDesc;
-        togglesDesc.forceEnabledToggles = GetParam().forceEnabledWorkarounds.data();
-        togglesDesc.forceEnabledTogglesCount = GetParam().forceEnabledWorkarounds.size();
-        togglesDesc.forceDisabledToggles = GetParam().forceDisabledWorkarounds.data();
-        togglesDesc.forceDisabledTogglesCount = GetParam().forceDisabledWorkarounds.size();
+        deviceDescriptor.nextInChain = &deviceTogglesDesc;
+        deviceTogglesDesc.enabledToggles = GetParam().forceEnabledWorkarounds.data();
+        deviceTogglesDesc.enabledTogglesCount = GetParam().forceEnabledWorkarounds.size();
+        deviceTogglesDesc.disabledToggles = GetParam().forceDisabledWorkarounds.data();
+        deviceTogglesDesc.disabledTogglesCount = GetParam().forceDisabledWorkarounds.size();
 
         secondDeviceVk =
             dawn::native::vulkan::ToBackend(backendAdapter->APICreateDevice(&deviceDescriptor));
@@ -281,7 +281,7 @@ class VulkanImageWrappingUsageTests : public VulkanImageWrappingTestBase {
   protected:
     dawn::native::vulkan::Adapter* backendAdapter;
     dawn::native::DeviceDescriptor deviceDescriptor;
-    dawn::native::DawnTogglesDeviceDescriptor togglesDesc;
+    dawn::native::DawnTogglesDescriptor deviceTogglesDesc;
 
     wgpu::Device secondDevice;
     dawn::native::vulkan::Device* secondDeviceVk;
@@ -821,23 +821,23 @@ TEST_P(VulkanImageWrappingUsageTests, SRGBReinterpretation) {
     utils::ComboRenderPipelineDescriptor pipelineDesc;
     pipelineDesc.vertex.module = utils::CreateShaderModule(device, R"(
             @vertex
-            fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4<f32> {
-                var pos = array<vec2<f32>, 6>(
-                                            vec2<f32>(-1.0, -1.0),
-                                            vec2<f32>(-1.0,  1.0),
-                                            vec2<f32>( 1.0, -1.0),
-                                            vec2<f32>(-1.0,  1.0),
-                                            vec2<f32>( 1.0, -1.0),
-                                            vec2<f32>( 1.0,  1.0));
-                return vec4<f32>(pos[VertexIndex], 0.0, 1.0);
+            fn main(@builtin(vertex_index) VertexIndex : u32) -> @builtin(position) vec4f {
+                var pos = array(
+                                            vec2f(-1.0, -1.0),
+                                            vec2f(-1.0,  1.0),
+                                            vec2f( 1.0, -1.0),
+                                            vec2f(-1.0,  1.0),
+                                            vec2f( 1.0, -1.0),
+                                            vec2f( 1.0,  1.0));
+                return vec4f(pos[VertexIndex], 0.0, 1.0);
             }
         )");
     pipelineDesc.cFragment.module = utils::CreateShaderModule(device, R"(
             @group(0) @binding(0) var texture : texture_2d<f32>;
 
             @fragment
-            fn main(@builtin(position) coord: vec4<f32>) -> @location(0) vec4<f32> {
-                return textureLoad(texture, vec2<i32>(coord.xy), 0);
+            fn main(@builtin(position) coord: vec4f) -> @location(0) vec4f {
+                return textureLoad(texture, vec2i(coord.xy), 0);
             }
         )");
 

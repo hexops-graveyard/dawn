@@ -5330,7 +5330,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
         args.Push(b.AddressOf(name));
     }
     main_body.Push(b.Assign("v0", "non_uniform_global"));
-    main_body.Push(b.CallStmt(b.create<ast::CallExpression>(b.Expr("foo"), args)));
+    main_body.Push(b.CallStmt(b.create<ast::CallExpression>(b.Ident("foo"), args)));
     main_body.Push(b.If(b.Equal("v254", 0_i), b.Block(b.CallStmt(b.Call("workgroupBarrier")))));
     b.Func("main", utils::Empty, ty.void_(), main_body);
 
@@ -7942,6 +7942,32 @@ TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
     }
 }
 
+TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnBlock) {
+    auto& param = GetParam();
+    std::ostringstream ss;
+    ss << R"(
+@group(0) @binding(0) var<storage, read_write> non_uniform : i32;
+@group(0) @binding(1) var t : texture_2d<f32>;
+@group(0) @binding(2) var s : sampler;
+fn foo() {
+  if (non_uniform == 42))"
+       << "@diagnostic(" << param << ", derivative_uniformity)"
+       << R"({
+    let color = textureSample(t, s, vec2(0, 0));
+  }
+}
+)";
+
+    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
+    if (param == ast::DiagnosticSeverity::kOff) {
+        EXPECT_TRUE(error_.empty());
+    } else {
+        std::ostringstream err;
+        err << ToStr(param) << ": 'textureSample' must only be called";
+        EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(UniformityAnalysisTest,
                          UniformityAnalysisDiagnosticFilterTest,
                          ::testing::Values(ast::DiagnosticSeverity::kError,
@@ -8103,6 +8129,80 @@ test:35:3 note: control flow depends on possibly non-uniform value
 test:35:7 note: reading from read_write storage buffer 'non_uniform' may result in a non-uniform value
   if (non_uniform == 42) {
       ^^^^^^^^^^^
+)");
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest, BuiltinReturnValueNotAffected) {
+    // Make sure that a diagnostic filter does not affect the uniformity of the return value of a
+    // derivative builtin.
+    std::string src = R"(
+fn foo() {
+  var x: f32;
+
+  @diagnostic(off,derivative_uniformity) {
+    x = dpdx(1.0);
+  }
+
+  if (x < 0.5) {
+    _ = dpdy(1.0); // Should trigger an error
+  }
+}
+
+)";
+
+    RunTest(src, false);
+    EXPECT_EQ(error_,
+              R"(test:10:9 error: 'dpdy' must only be called from uniform control flow
+    _ = dpdy(1.0); // Should trigger an error
+        ^^^^
+
+test:9:3 note: control flow depends on possibly non-uniform value
+  if (x < 0.5) {
+  ^^
+
+test:6:9 note: return value of 'dpdx' may be non-uniform
+    x = dpdx(1.0);
+        ^^^^
+)");
+}
+
+TEST_F(UniformityAnalysisDiagnosticFilterTest,
+       ParameterRequiredToBeUniform_With_ParameterRequiredToBeUniformForReturnValue) {
+    // Make sure that both requirements on parameters are captured.
+    std::string src = R"(
+@diagnostic(info,derivative_uniformity)
+fn foo(x : bool) -> bool {
+  if (x) {
+    _ = dpdx(1.0); // Should trigger an info
+  }
+  return x;
+}
+
+var<private> non_uniform: bool;
+
+@diagnostic(error,derivative_uniformity)
+fn bar() {
+  let ret = foo(non_uniform);
+  if (ret) {
+    _ = dpdy(1.0); // Should trigger an error
+  }
+}
+
+)";
+
+    RunTest(src, false);
+    EXPECT_EQ(error_,
+              R"(test:16:9 error: 'dpdy' must only be called from uniform control flow
+    _ = dpdy(1.0); // Should trigger an error
+        ^^^^
+
+test:15:3 note: control flow depends on possibly non-uniform value
+  if (ret) {
+  ^^
+
+test:14:17 note: reading from module-scope private variable 'non_uniform' may result in a non-uniform value
+  let ret = foo(non_uniform);
+                ^^^^^^^^^^^
 )");
 }
 

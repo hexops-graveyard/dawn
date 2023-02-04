@@ -44,8 +44,8 @@ exit /b 0
 
 set ORIGINAL_SRC_DIR= %~dp0\..\..\..
 set TEMP_DIR=%TEMP%\dawn-temp
-set SRC_DIR="%TEMP_DIR%\dawn-src"
-set BUILD_DIR="%TEMP_DIR%\dawn-build"
+set SRC_DIR=%TEMP_DIR%\dawn-src
+set BUILD_DIR=%TEMP_DIR%\dawn-build
 
 cd /d %ORIGINAL_SRC_DIR%
 if not exist ".git\" (
@@ -103,6 +103,11 @@ call :status "Fetching dependencies"
 @echo on
 copy scripts\standalone.gclient .gclient || goto :error
 call gclient sync || goto :error
+@echo off
+
+call :status "Adding the Ninja from DEPS to the PATH"
+@echo on
+set PATH=%SRC_DIR%\third_party\ninja;%PATH%
 @echo off
 
 call :status "Configuring build system"

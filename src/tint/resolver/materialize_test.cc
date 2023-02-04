@@ -76,7 +76,7 @@ class MaterializeTest : public resolver::ResolverTestWithParam<CASE> {
   protected:
     using ProgramBuilder::FriendlyName;
 
-    void CheckTypesAndValues(const sem::Expression* expr,
+    void CheckTypesAndValues(const sem::ValueExpression* expr,
                              const tint::type::Type* expected_sem_ty,
                              const std::variant<AInt, AFloat>& expected_value) {
         std::visit([&](auto v) { CheckTypesAndValuesImpl(expr, expected_sem_ty, v); },
@@ -85,7 +85,7 @@ class MaterializeTest : public resolver::ResolverTestWithParam<CASE> {
 
   private:
     template <typename T>
-    void CheckTypesAndValuesImpl(const sem::Expression* expr,
+    void CheckTypesAndValuesImpl(const sem::ValueExpression* expr,
                                  const tint::type::Type* expected_sem_ty,
                                  T expected_value) {
         EXPECT_TYPE(expr->Type(), expected_sem_ty);
@@ -350,7 +350,7 @@ TEST_P(MaterializeAbstractNumericToConcreteType, Test) {
             break;
         case Method::kStruct:
             Structure("S", utils::Vector{Member("v", target_ty())});
-            WrapInFunction(Construct(ty.type_name("S"), abstract_expr));
+            WrapInFunction(Construct(ty("S"), abstract_expr));
             break;
         case Method::kBinaryOp: {
             // Add 0 to ensure no overflow with max float values
@@ -1218,7 +1218,7 @@ using MaterializeAbstractNumericToUnrelatedType = resolver::ResolverTest;
 
 TEST_F(MaterializeAbstractNumericToUnrelatedType, AIntToStructVarInit) {
     Structure("S", utils::Vector{Member("a", ty.i32())});
-    WrapInFunction(Decl(Var("v", ty.type_name("S"), Expr(Source{{12, 34}}, 1_a))));
+    WrapInFunction(Decl(Var("v", ty("S"), Expr(Source{{12, 34}}, 1_a))));
     EXPECT_FALSE(r()->Resolve());
     EXPECT_THAT(
         r()->error(),
@@ -1227,7 +1227,7 @@ TEST_F(MaterializeAbstractNumericToUnrelatedType, AIntToStructVarInit) {
 
 TEST_F(MaterializeAbstractNumericToUnrelatedType, AIntToStructLetInit) {
     Structure("S", utils::Vector{Member("a", ty.i32())});
-    WrapInFunction(Decl(Let("v", ty.type_name("S"), Expr(Source{{12, 34}}, 1_a))));
+    WrapInFunction(Decl(Let("v", ty("S"), Expr(Source{{12, 34}}, 1_a))));
     EXPECT_FALSE(r()->Resolve());
     EXPECT_THAT(
         r()->error(),

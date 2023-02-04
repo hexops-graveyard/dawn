@@ -28,11 +28,11 @@ class UnsafeAPIValidationTest : public ValidationTest {
   protected:
     WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
         wgpu::DeviceDescriptor descriptor;
-        wgpu::DawnTogglesDeviceDescriptor togglesDesc;
-        descriptor.nextInChain = &togglesDesc;
+        wgpu::DawnTogglesDescriptor deviceTogglesDesc;
+        descriptor.nextInChain = &deviceTogglesDesc;
         const char* toggle = "disallow_unsafe_apis";
-        togglesDesc.forceEnabledToggles = &toggle;
-        togglesDesc.forceEnabledTogglesCount = 1;
+        deviceTogglesDesc.enabledToggles = &toggle;
+        deviceTogglesDesc.enabledTogglesCount = 1;
         return dawnAdapter.CreateDevice(&descriptor);
     }
 };
@@ -43,7 +43,7 @@ TEST_F(UnsafeAPIValidationTest, chromium_disable_uniformity_analysis) {
         enable chromium_disable_uniformity_analysis;
 
         @compute @workgroup_size(8) fn uniformity_error(
-            @builtin(local_invocation_id) local_invocation_id : vec3<u32>
+            @builtin(local_invocation_id) local_invocation_id : vec3u
         ) {
             if (local_invocation_id.x == 0u) {
                 workgroupBarrier();

@@ -383,6 +383,7 @@ Maybe<Void> ParserImpl::diagnostic_directive() {
             return Failure::kNoMatch;
         }
 
+        auto source = last_source();
         auto control = expect_diagnostic_control();
         if (control.errored) {
             return Failure::kErrored;
@@ -392,7 +393,8 @@ Maybe<Void> ParserImpl::diagnostic_directive() {
             return Failure::kErrored;
         }
 
-        builder_.AST().AddDiagnosticControl(std::move(control.value));
+        auto* directive = create<ast::DiagnosticDirective>(source, std::move(control.value));
+        builder_.AST().AddDiagnosticDirective(directive);
 
         return kSuccess;
     });
@@ -1213,7 +1215,7 @@ Maybe<const ast::Type*> ParserImpl::type_specifier() {
     auto& t = peek();
     Source source;
     if (match(Token::Type::kIdentifier, &source)) {
-        return builder_.create<ast::TypeName>(source, builder_.Symbols().Register(t.to_str()));
+        return builder_.ty(source, t.to_str());
     }
 
     return type_specifier_without_ident();
@@ -1500,7 +1502,7 @@ Maybe<const ast::Function*> ParserImpl::function_decl(AttributeList& attrs) {
             // function body. The AST isn't used as we've already errored, but this
             // catches any errors inside the body, and can help keep the parser in
             // sync.
-            expect_compound_statement();
+            expect_compound_statement("function body");
         }
         return Failure::kErrored;
     }
@@ -1510,7 +1512,7 @@ Maybe<const ast::Function*> ParserImpl::function_decl(AttributeList& attrs) {
 
     bool errored = false;
 
-    auto body = expect_compound_statement();
+    auto body = expect_compound_statement("function body");
     if (body.errored) {
         errored = true;
     }
@@ -1666,15 +1668,29 @@ Expect<ast::BuiltinValue> ParserImpl::expect_builtin() {
 }
 
 // compound_statement
-//   : BRACE_LEFT statement* BRACE_RIGHT
-Expect<ast::BlockStatement*> ParserImpl::expect_compound_statement() {
-    return expect_brace_block("", [&]() -> Expect<ast::BlockStatement*> {
-        auto stmts = expect_statements();
-        if (stmts.errored) {
-            return Failure::kErrored;
-        }
-        return create<ast::BlockStatement>(Source{}, stmts.value);
-    });
+//   : attribute* BRACE_LEFT statement* BRACE_RIGHT
+Expect<ast::BlockStatement*> ParserImpl::expect_compound_statement(std::string_view use) {
+    auto attrs = attribute_list();
+    if (attrs.errored) {
+        return Failure::kErrored;
+    }
+    return expect_compound_statement(attrs.value, use);
+}
+
+// compound_statement
+//   : attribute* BRACE_LEFT statement* BRACE_RIGHT
+Expect<ast::BlockStatement*> ParserImpl::expect_compound_statement(AttributeList& attrs,
+                                                                   std::string_view use) {
+    auto source_start = peek().source();
+    auto stmts =
+        expect_brace_block(use, [&]() -> Expect<StatementList> { return expect_statements(); });
+    auto source_end = last_source();
+    if (stmts.errored) {
+        return Failure::kErrored;
+    }
+    TINT_DEFER(attrs.Clear());
+    return create<ast::BlockStatement>(Source::Combine(source_start, source_end), stmts.value,
+                                       std::move(attrs));
 }
 
 // paren_expression
@@ -1731,6 +1747,12 @@ Maybe<const ast::Statement*> ParserImpl::statement() {
         // Skip empty statements
     }
 
+    auto attrs = attribute_list();
+    if (attrs.errored) {
+        return Failure::kErrored;
+    }
+    TINT_DEFER(expect_attributes_consumed(attrs.value));
+
     // Non-block statements that error can resynchronize on semicolon.
     auto stmt = sync(Token::Type::kSemicolon, [&] { return non_block_statement(); });
     if (stmt.errored) {
@@ -1781,7 +1803,7 @@ Maybe<const ast::Statement*> ParserImpl::statement() {
     }
 
     if (peek_is(Token::Type::kBraceLeft)) {
-        auto body = expect_compound_statement();
+        auto body = expect_compound_statement(attrs.value, "block statement");
         if (body.errored) {
             return Failure::kErrored;
         }
@@ -2023,7 +2045,7 @@ Maybe<const ast::IfStatement*> ParserImpl::if_statement() {
             return add_error(peek(), "unable to parse condition expression");
         }
 
-        auto body = expect_compound_statement();
+        auto body = expect_compound_statement("if statement");
         if (body.errored) {
             return Failure::kErrored;
         }
@@ -2059,7 +2081,7 @@ Maybe<const ast::IfStatement*> ParserImpl::if_statement() {
         }
 
         // If it wasn't an "else if", it must just be an "else".
-        auto else_body = expect_compound_statement();
+        auto else_body = expect_compound_statement("else statement");
         if (else_body.errored) {
             return Failure::kErrored;
         }
@@ -2119,8 +2141,8 @@ Maybe<const ast::SwitchStatement*> ParserImpl::switch_statement() {
 }
 
 // switch_body
-//   : CASE case_selectors COLON? BRACKET_LEFT case_body BRACKET_RIGHT
-//   | DEFAULT COLON? BRACKET_LEFT case_body BRACKET_RIGHT
+//   : CASE case_selectors COLON? compound_statement
+//   | DEFAULT COLON? compound_statement
 Maybe<const ast::CaseStatement*> ParserImpl::switch_body() {
     if (!peek_is(Token::Type::kCase) && !peek_is(Token::Type::kDefault)) {
         return Failure::kNoMatch;
@@ -2145,13 +2167,9 @@ Maybe<const ast::CaseStatement*> ParserImpl::switch_body() {
     match(Token::Type::kColon);
 
     const char* use = "case statement";
-    auto body = expect_brace_block(use, [&] { return case_body(); });
-
+    auto body = expect_compound_statement(use);
     if (body.errored) {
         return Failure::kErrored;
-    }
-    if (!body.matched) {
-        return add_error(body.source, "expected case body");
     }
 
     return create<ast::CaseStatement>(t.source(), selector_list, body.value);
@@ -2231,7 +2249,7 @@ Maybe<const ast::BlockStatement*> ParserImpl::case_body() {
         stmts.Push(stmt.value);
     }
 
-    return create<ast::BlockStatement>(Source{}, stmts);
+    return create<ast::BlockStatement>(Source{}, stmts, utils::Empty);
 }
 
 // loop_statement
@@ -2242,20 +2260,30 @@ Maybe<const ast::LoopStatement*> ParserImpl::loop_statement() {
         return Failure::kNoMatch;
     }
 
-    return expect_brace_block("loop", [&]() -> Maybe<const ast::LoopStatement*> {
+    Maybe<const ast::BlockStatement*> continuing(Failure::kErrored);
+    auto body_start = peek().source();
+    auto body = expect_brace_block("loop", [&]() -> Maybe<StatementList> {
         auto stmts = expect_statements();
         if (stmts.errored) {
             return Failure::kErrored;
         }
 
-        auto continuing = continuing_statement();
+        continuing = continuing_statement();
         if (continuing.errored) {
             return Failure::kErrored;
         }
-
-        auto* body = create<ast::BlockStatement>(source, stmts.value);
-        return create<ast::LoopStatement>(source, body, continuing.value);
+        return stmts;
     });
+    if (body.errored) {
+        return Failure::kErrored;
+    }
+    auto body_end = last_source();
+
+    return create<ast::LoopStatement>(
+        source,
+        create<ast::BlockStatement>(Source::Combine(body_start, body_end), body.value,
+                                    utils::Empty),
+        continuing.value);
 }
 
 ForHeader::ForHeader(const ast::Statement* init,
@@ -2345,7 +2373,7 @@ Expect<std::unique_ptr<ForHeader>> ParserImpl::expect_for_header() {
 }
 
 // for_statement
-//   : FOR PAREN_LEFT for_header PAREN_RIGHT BRACE_LEFT statements BRACE_RIGHT
+//   : FOR PAREN_LEFT for_header PAREN_RIGHT compound_statement
 Maybe<const ast::ForLoopStatement*> ParserImpl::for_statement() {
     Source source;
     if (!match(Token::Type::kFor, &source)) {
@@ -2357,14 +2385,13 @@ Maybe<const ast::ForLoopStatement*> ParserImpl::for_statement() {
         return Failure::kErrored;
     }
 
-    auto stmts = expect_brace_block("for loop", [&] { return expect_statements(); });
-    if (stmts.errored) {
+    auto body = expect_compound_statement("for loop");
+    if (body.errored) {
         return Failure::kErrored;
     }
 
     return create<ast::ForLoopStatement>(source, header->initializer, header->condition,
-                                         header->continuing,
-                                         create<ast::BlockStatement>(stmts.value));
+                                         header->continuing, body.value);
 }
 
 // while_statement
@@ -2383,7 +2410,7 @@ Maybe<const ast::WhileStatement*> ParserImpl::while_statement() {
         return add_error(peek(), "unable to parse while condition expression");
     }
 
-    auto body = expect_compound_statement();
+    auto body = expect_compound_statement("while loop");
     if (body.errored) {
         return Failure::kErrored;
     }
@@ -2411,7 +2438,7 @@ Maybe<const ast::CallStatement*> ParserImpl::func_call_statement() {
         t.source(),
         create<ast::CallExpression>(
             t.source(),
-            create<ast::IdentifierExpression>(t.source(), builder_.Symbols().Register(t.to_str())),
+            create<ast::Identifier>(t.source(), builder_.Symbols().Register(t.to_str())),
             std::move(params.value)));
 }
 
@@ -2467,7 +2494,8 @@ Maybe<const ast::Statement*> ParserImpl::break_if_statement() {
 // continuing_compound_statement:
 //   brace_left statement* break_if_statement? brace_right
 Maybe<const ast::BlockStatement*> ParserImpl::continuing_compound_statement() {
-    return expect_brace_block("", [&]() -> Expect<ast::BlockStatement*> {
+    auto source_start = peek().source();
+    auto body = expect_brace_block("", [&]() -> Expect<StatementList> {
         StatementList stmts;
 
         while (continue_parsing()) {
@@ -2491,15 +2519,22 @@ Maybe<const ast::BlockStatement*> ParserImpl::continuing_compound_statement() {
             stmts.Push(stmt.value);
         }
 
-        return create<ast::BlockStatement>(Source{}, stmts);
+        return stmts;
     });
+    if (body.errored) {
+        return Failure::kErrored;
+    }
+    auto source_end = last_source();
+
+    return create<ast::BlockStatement>(Source::Combine(source_start, source_end), body.value,
+                                       utils::Empty);
 }
 
 // continuing_statement
 //   : CONTINUING continuing_compound_statement
 Maybe<const ast::BlockStatement*> ParserImpl::continuing_statement() {
     if (!match(Token::Type::kContinuing)) {
-        return create<ast::BlockStatement>(Source{}, utils::Empty);
+        return create<ast::BlockStatement>(Source{}, utils::Empty, utils::Empty);
     }
 
     return continuing_compound_statement();
@@ -2609,19 +2644,16 @@ Maybe<const ast::Expression*> ParserImpl::primary_expression() {
                 "in parentheses");
         }
 
-        auto* ident =
-            create<ast::IdentifierExpression>(t.source(), builder_.Symbols().Register(t.to_str()));
-
         if (peek_is(Token::Type::kParenLeft)) {
             auto params = expect_argument_expression_list("function call");
             if (params.errored) {
                 return Failure::kErrored;
             }
 
-            return create<ast::CallExpression>(t.source(), ident, std::move(params.value));
+            return builder_.Call(t.source(), t.to_str(), std::move(params.value));
         }
 
-        return ident;
+        return builder_.Expr(t.source(), t.to_str());
     }
 
     if (t.Is(Token::Type::kParenLeft)) {
@@ -2676,10 +2708,8 @@ Maybe<const ast::Expression*> ParserImpl::component_or_swizzle_specifier(
                 return Failure::kErrored;
             }
 
-            prefix = create<ast::MemberAccessorExpression>(
-                ident.source, prefix,
-                create<ast::IdentifierExpression>(ident.source,
-                                                  builder_.Symbols().Register(ident.value)));
+            prefix = builder_.MemberAccessor(ident.source, prefix,
+                                             builder_.Ident(ident.source, ident.value));
             continue;
         }
 
@@ -3234,8 +3264,7 @@ Maybe<const ast::Expression*> ParserImpl::core_lhs_expression() {
     if (t.IsIdentifier()) {
         next();
 
-        return create<ast::IdentifierExpression>(t.source(),
-                                                 builder_.Symbols().Register(t.to_str()));
+        return builder_.Expr(t.source(), t.to_str());
     }
 
     if (peek_is(Token::Type::kParenLeft)) {
@@ -3331,6 +3360,7 @@ Maybe<const ast::Statement*> ParserImpl::variable_updating_statement() {
         return add_error(peek(0).source(), "expected 'var' for variable declaration");
     }
 
+    Source source;
     const ast::Expression* lhs = nullptr;
     ast::BinaryOp compound_op = ast::BinaryOp::kNone;
     if (peek_is(Token::Type::kUnderscore)) {
@@ -3339,6 +3369,7 @@ Maybe<const ast::Statement*> ParserImpl::variable_updating_statement() {
         if (!expect("assignment", Token::Type::kEqual)) {
             return Failure::kErrored;
         }
+        source = last_source();
 
         lhs = create<ast::PhonyExpression>(t.source());
 
@@ -3355,12 +3386,13 @@ Maybe<const ast::Statement*> ParserImpl::variable_updating_statement() {
 
         // Handle increment and decrement statements.
         if (match(Token::Type::kPlusPlus)) {
-            return create<ast::IncrementDecrementStatement>(t.source(), lhs, true);
+            return create<ast::IncrementDecrementStatement>(last_source(), lhs, true);
         }
         if (match(Token::Type::kMinusMinus)) {
-            return create<ast::IncrementDecrementStatement>(t.source(), lhs, false);
+            return create<ast::IncrementDecrementStatement>(last_source(), lhs, false);
         }
 
+        source = peek().source();
         auto compound_op_result = compound_assignment_operator();
         if (compound_op_result.errored) {
             return Failure::kErrored;
@@ -3383,9 +3415,9 @@ Maybe<const ast::Statement*> ParserImpl::variable_updating_statement() {
     }
 
     if (compound_op != ast::BinaryOp::kNone) {
-        return create<ast::CompoundAssignmentStatement>(t.source(), lhs, rhs.value, compound_op);
+        return create<ast::CompoundAssignmentStatement>(source, lhs, rhs.value, compound_op);
     }
-    return create<ast::AssignmentStatement>(t.source(), lhs, rhs.value);
+    return create<ast::AssignmentStatement>(source, lhs, rhs.value);
 }
 
 // const_literal
@@ -3557,7 +3589,7 @@ Maybe<const ast::Attribute*> ParserImpl::attribute() {
         if (control.errored) {
             return Failure::kErrored;
         }
-        return create<ast::DiagnosticAttribute>(t.source(), control.value);
+        return create<ast::DiagnosticAttribute>(t.source(), std::move(control.value));
     }
 
     if (t == "fragment") {
@@ -3726,9 +3758,8 @@ Expect<ast::DiagnosticSeverity> ParserImpl::expect_severity_control_name() {
 
 // diagnostic_control
 // : PAREN_LEFT severity_control_name COMMA ident_pattern_token COMMA ? PAREN_RIGHT
-Expect<const ast::DiagnosticControl*> ParserImpl::expect_diagnostic_control() {
-    auto source = last_source();
-    return expect_paren_block("diagnostic control", [&]() -> Expect<const ast::DiagnosticControl*> {
+Expect<ast::DiagnosticControl> ParserImpl::expect_diagnostic_control() {
+    return expect_paren_block("diagnostic control", [&]() -> Expect<ast::DiagnosticControl> {
         auto severity_control = expect_severity_control_name();
         if (severity_control.errored) {
             return Failure::kErrored;
@@ -3744,10 +3775,8 @@ Expect<const ast::DiagnosticControl*> ParserImpl::expect_diagnostic_control() {
         }
         match(Token::Type::kComma);
 
-        return create<ast::DiagnosticControl>(
-            source, severity_control.value,
-            create<ast::IdentifierExpression>(rule_name.source,
-                                              builder_.Symbols().Register(rule_name.value)));
+        return ast::DiagnosticControl(severity_control.value,
+                                      builder_.Ident(rule_name.source, rule_name.value));
     });
 }
 

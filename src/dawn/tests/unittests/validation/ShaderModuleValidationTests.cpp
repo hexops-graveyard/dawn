@@ -137,6 +137,56 @@ TEST_F(ShaderModuleValidationTest, MultisampledArrayTexture) {
 
     ASSERT_DEVICE_ERROR(utils::CreateShaderModuleFromASM(device, shader));
 }
+
+const char* kShaderWithNonUniformDerivative = R"(
+               OpCapability Shader
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint Fragment %foo "foo" %x
+               OpExecutionMode %foo OriginUpperLeft
+               OpDecorate %x Location 0
+      %float = OpTypeFloat 32
+%_ptr_Input_float = OpTypePointer Input %float
+          %x = OpVariable %_ptr_Input_float Input
+       %void = OpTypeVoid
+    %float_0 = OpConstantNull %float
+       %bool = OpTypeBool
+  %func_type = OpTypeFunction %void
+        %foo = OpFunction %void None %func_type
+  %foo_start = OpLabel
+    %x_value = OpLoad %float %x
+  %condition = OpFOrdGreaterThan %bool %x_value %float_0
+               OpSelectionMerge %merge None
+               OpBranchConditional %condition %true_branch %merge
+%true_branch = OpLabel
+     %result = OpDPdx %float %x_value
+               OpBranch %merge
+      %merge = OpLabel
+               OpReturn
+               OpFunctionEnd)";
+
+// Test that creating a module with a SPIR-V shader that has a uniformity violation fails when no
+// SPIR-V options descriptor is used.
+TEST_F(ShaderModuleValidationTest, NonUniformDerivatives_NoOptions) {
+    ASSERT_DEVICE_ERROR(utils::CreateShaderModuleFromASM(device, kShaderWithNonUniformDerivative));
+}
+
+// Test that creating a module with a SPIR-V shader that has a uniformity violation fails when
+// passing a SPIR-V options descriptor with the `allowNonUniformDerivatives` flag set to `false`.
+TEST_F(ShaderModuleValidationTest, NonUniformDerivatives_FlagSetToFalse) {
+    wgpu::DawnShaderModuleSPIRVOptionsDescriptor spirv_options_desc = {};
+    spirv_options_desc.allowNonUniformDerivatives = false;
+    ASSERT_DEVICE_ERROR(utils::CreateShaderModuleFromASM(device, kShaderWithNonUniformDerivative,
+                                                         &spirv_options_desc));
+}
+
+// Test that creating a module with a SPIR-V shader that has a uniformity violation succeeds when
+// passing a SPIR-V options descriptor with the `allowNonUniformDerivatives` flag set to `true`.
+TEST_F(ShaderModuleValidationTest, NonUniformDerivatives_FlagSetToTrue) {
+    wgpu::DawnShaderModuleSPIRVOptionsDescriptor spirv_options_desc = {};
+    spirv_options_desc.allowNonUniformDerivatives = true;
+    utils::CreateShaderModuleFromASM(device, kShaderWithNonUniformDerivative, &spirv_options_desc);
+}
+
 #endif  // TINT_BUILD_SPV_READER
 
 // Test that it is invalid to create a shader module with no chained descriptor. (It must be
@@ -146,6 +196,47 @@ TEST_F(ShaderModuleValidationTest, NoChainedDescriptor) {
     ASSERT_DEVICE_ERROR(device.CreateShaderModule(&desc));
 }
 
+// Test that it is invalid to create a shader module that uses both the WGSL descriptor and the
+// SPIRV descriptor.
+TEST_F(ShaderModuleValidationTest, MultipleChainedDescriptor_WgslAndSpirv) {
+    uint32_t code = 42;
+    wgpu::ShaderModuleDescriptor desc = {};
+    wgpu::ShaderModuleSPIRVDescriptor spirv_desc = {};
+    spirv_desc.code = &code;
+    spirv_desc.codeSize = 1;
+    wgpu::ShaderModuleWGSLDescriptor wgsl_desc = {};
+    wgsl_desc.source = "";
+    wgsl_desc.nextInChain = &spirv_desc;
+    desc.nextInChain = &wgsl_desc;
+    ASSERT_DEVICE_ERROR(device.CreateShaderModule(&desc),
+                        testing::HasSubstr("is part of a group of exclusive sTypes"));
+}
+
+// Test that it is invalid to create a shader module that uses both the WGSL descriptor and the
+// Dawn SPIRV options descriptor.
+TEST_F(ShaderModuleValidationTest, MultipleChainedDescriptor_WgslAndDawnSpirvOptions) {
+    wgpu::ShaderModuleDescriptor desc = {};
+    wgpu::DawnShaderModuleSPIRVOptionsDescriptor spirv_options_desc = {};
+    wgpu::ShaderModuleWGSLDescriptor wgsl_desc = {};
+    wgsl_desc.nextInChain = &spirv_options_desc;
+    wgsl_desc.source = "";
+    desc.nextInChain = &wgsl_desc;
+    ASSERT_DEVICE_ERROR(
+        device.CreateShaderModule(&desc),
+        testing::HasSubstr("SPIR-V options descriptor not valid with WGSL descriptor"));
+}
+
+// Test that it is invalid to create a shader module that only uses the Dawn SPIRV options
+// descriptor without the SPIRV descriptor.
+TEST_F(ShaderModuleValidationTest, OnlySpirvOptionsDescriptor) {
+    wgpu::ShaderModuleDescriptor desc = {};
+    wgpu::DawnShaderModuleSPIRVOptionsDescriptor spirv_options_desc = {};
+    desc.nextInChain = &spirv_options_desc;
+    ASSERT_DEVICE_ERROR(
+        device.CreateShaderModule(&desc),
+        testing::HasSubstr("SPIR-V options descriptor can only be used with SPIR-V input"));
+}
+
 // Tests that shader module compilation messages can be queried.
 TEST_F(ShaderModuleValidationTest, GetCompilationMessages) {
     // This test works assuming ShaderModule is backed by a dawn::native::ShaderModuleBase, which
@@ -153,8 +244,8 @@ TEST_F(ShaderModuleValidationTest, GetCompilationMessages) {
     DAWN_SKIP_TEST_IF(UsesWire());
 
     wgpu::ShaderModule shaderModule = utils::CreateShaderModule(device, R"(
-        @fragment fn main() -> @location(0) vec4<f32> {
-            return vec4<f32>(0.0, 1.0, 0.0, 1.0);
+        @fragment fn main() -> @location(0) vec4f {
+            return vec4f(0.0, 1.0, 0.0, 1.0);
         })");
 
     dawn::native::ShaderModuleBase* shaderModuleBase = dawn::native::FromAPI(shaderModule.Get());
@@ -215,7 +306,7 @@ TEST_F(ShaderModuleValidationTest, MaximumShaderIOLocations) {
         }
 
         if (failingShaderStage == wgpu::ShaderStage::Vertex) {
-            stream << " @builtin(position) pos: vec4<f32>,";
+            stream << " @builtin(position) pos: vec4f,";
         }
         stream << "}\n";
 
@@ -235,14 +326,14 @@ TEST_F(ShaderModuleValidationTest, MaximumShaderIOLocations) {
                 pDesc.vertex.module = utils::CreateShaderModule(device, (ioStruct + R"(
                     @vertex fn failingVertex() -> ShaderIO {
                         var shaderIO : ShaderIO;
-                        shaderIO.pos = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+                        shaderIO.pos = vec4f(0.0, 0.0, 0.0, 1.0);
                         return shaderIO;
                      }
                 )")
                                                                             .c_str());
                 pDesc.cFragment.module = utils::CreateShaderModule(device, R"(
-                    @fragment fn main() -> @location(0) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @fragment fn main() -> @location(0) vec4f {
+                        return vec4f(0.0);
                     }
                 )");
                 break;
@@ -252,14 +343,14 @@ TEST_F(ShaderModuleValidationTest, MaximumShaderIOLocations) {
                 errorMatcher = "failingFragment";
                 pDesc.cFragment.entryPoint = "failingFragment";
                 pDesc.cFragment.module = utils::CreateShaderModule(device, (ioStruct + R"(
-                    @fragment fn failingFragment(io : ShaderIO) -> @location(0) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @fragment fn failingFragment(io : ShaderIO) -> @location(0) vec4f {
+                        return vec4f(0.0);
                      }
                 )")
                                                                                .c_str());
                 pDesc.vertex.module = utils::CreateShaderModule(device, R"(
-                    @vertex fn main() -> @builtin(position) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @vertex fn main() -> @builtin(position) vec4f {
+                        return vec4f(0.0);
                     }
                 )");
                 break;
@@ -316,8 +407,7 @@ TEST_F(ShaderModuleValidationTest, MaximumInterStageShaderComponents) {
         uint32_t vec4InputLocations = totalUserDefinedInterStageShaderComponentCount / 4;
 
         for (uint32_t location = 0; location < vec4InputLocations; ++location) {
-            stream << "@location(" << location << ") var" << location << ": vec4<f32>,"
-                   << std::endl;
+            stream << "@location(" << location << ") var" << location << ": vec4f," << std::endl;
         }
 
         uint32_t lastComponentCount = totalUserDefinedInterStageShaderComponentCount % 4;
@@ -332,7 +422,7 @@ TEST_F(ShaderModuleValidationTest, MaximumInterStageShaderComponents) {
         }
 
         if (failingShaderStage == wgpu::ShaderStage::Vertex) {
-            stream << " @builtin(position) pos: vec4<f32>,";
+            stream << " @builtin(position) pos: vec4f,";
         }
         stream << "}\n";
 
@@ -361,14 +451,14 @@ TEST_F(ShaderModuleValidationTest, MaximumInterStageShaderComponents) {
                 pDesc.vertex.module = utils::CreateShaderModule(device, (ioStruct + R"(
                     @vertex fn failingVertex() -> ShaderIO {
                         var shaderIO : ShaderIO;
-                        shaderIO.pos = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+                        shaderIO.pos = vec4f(0.0, 0.0, 0.0, 1.0);
                         return shaderIO;
                      }
                 )")
                                                                             .c_str());
                 pDesc.cFragment.module = utils::CreateShaderModule(device, R"(
-                    @fragment fn main() -> @location(0) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @fragment fn main() -> @location(0) vec4f {
+                        return vec4f(0.0);
                     }
                 )");
                 break;
@@ -378,14 +468,14 @@ TEST_F(ShaderModuleValidationTest, MaximumInterStageShaderComponents) {
                 errorMatcher = "failingFragment";
                 pDesc.cFragment.entryPoint = "failingFragment";
                 pDesc.cFragment.module = utils::CreateShaderModule(device, (ioStruct + R"(
-                    @fragment fn failingFragment(io : ShaderIO) -> @location(0) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @fragment fn failingFragment(io : ShaderIO) -> @location(0) vec4f {
+                        return vec4f(0.0);
                      }
                 )")
                                                                                .c_str());
                 pDesc.vertex.module = utils::CreateShaderModule(device, R"(
-                    @vertex fn main() -> @builtin(position) vec4<f32> {
-                        return vec4<f32>(0.0);
+                    @vertex fn main() -> @builtin(position) vec4f {
+                        return vec4f(0.0);
                     }
                 )");
                 break;
@@ -438,7 +528,7 @@ TEST_F(ShaderModuleValidationTest, MaximumInterStageShaderComponents) {
     // component count.
     {
         CheckTestPipeline(true, kMaxInterStageShaderComponents, wgpu::ShaderStage::Fragment,
-                          "@builtin(position) fragCoord : vec4<f32>,");
+                          "@builtin(position) fragCoord : vec4f,");
     }
 
     // @builtin(front_facing) should be counted into the maximum inter-stage component count.
@@ -515,12 +605,12 @@ TEST_F(ShaderModuleValidationTest, MaxBindingNumber) {
 TEST_F(ShaderModuleValidationTest, MissingDecorations) {
     // Vertex input.
     utils::CreateShaderModule(device, R"(
-        @vertex fn main(@location(0) a : vec4<f32>) -> @builtin(position) vec4<f32> {
+        @vertex fn main(@location(0) a : vec4f) -> @builtin(position) vec4f {
             return vec4(1.0);
         }
     )");
     ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, R"(
-        @vertex fn main(a : vec4<f32>) -> @builtin(position) vec4<f32> {
+        @vertex fn main(a : vec4f) -> @builtin(position) vec4f {
             return vec4(1.0);
         }
     )"));
@@ -528,7 +618,7 @@ TEST_F(ShaderModuleValidationTest, MissingDecorations) {
     // Vertex output
     utils::CreateShaderModule(device, R"(
         struct Output {
-            @builtin(position) pos : vec4<f32>,
+            @builtin(position) pos : vec4f,
             @location(0) a : f32,
         }
         @vertex fn main() -> Output {
@@ -538,7 +628,7 @@ TEST_F(ShaderModuleValidationTest, MissingDecorations) {
     )");
     ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, R"(
         struct Output {
-            @builtin(position) pos : vec4<f32>,
+            @builtin(position) pos : vec4f,
             a : f32,
         }
         @vertex fn main() -> Output {
@@ -549,12 +639,12 @@ TEST_F(ShaderModuleValidationTest, MissingDecorations) {
 
     // Fragment input
     utils::CreateShaderModule(device, R"(
-        @fragment fn main(@location(0) a : vec4<f32>) -> @location(0) f32 {
+        @fragment fn main(@location(0) a : vec4f) -> @location(0) f32 {
             return 1.0;
         }
     )");
     ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, R"(
-        @fragment fn main(a : vec4<f32>) -> @location(0) f32 {
+        @fragment fn main(a : vec4f) -> @location(0) f32 {
             return 1.0;
         }
     )"));

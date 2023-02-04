@@ -313,7 +313,7 @@ bool GeneratorImpl::Generate() {
                 }
                 return EmitFunction(func);
             },
-            [&](const ast::DiagnosticControl*) {
+            [&](const ast::DiagnosticDirective*) {
                 // Do nothing for diagnostic directives in MSL
                 return true;
             },
@@ -2101,7 +2101,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
 }
 
 bool GeneratorImpl::EmitIdentifier(std::ostream& out, const ast::IdentifierExpression* expr) {
-    out << program_->Symbols().NameFor(expr->symbol);
+    out << program_->Symbols().NameFor(expr->identifier->symbol);
     return true;
 }
 

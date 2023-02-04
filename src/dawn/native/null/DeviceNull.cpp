@@ -57,10 +57,9 @@ MaybeError Adapter::InitializeImpl() {
     return {};
 }
 
-MaybeError Adapter::InitializeSupportedFeaturesImpl() {
+void Adapter::InitializeSupportedFeaturesImpl() {
     // Enable all features by default for the convenience of tests.
     mSupportedFeatures.featuresBitSet.set();
-    return {};
 }
 
 MaybeError Adapter::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
@@ -234,7 +233,7 @@ MaybeError Device::CopyFromStagingToBufferImpl(BufferBase* source,
 
 MaybeError Device::CopyFromStagingToTextureImpl(const BufferBase* source,
                                                 const TextureDataLayout& src,
-                                                TextureCopy* dst,
+                                                const TextureCopy& dst,
                                                 const Extent3D& copySizePixels) {
     return {};
 }

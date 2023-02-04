@@ -24,7 +24,7 @@
 
 namespace dawn::native {
 
-struct DawnTogglesDeviceDescriptor;
+struct DawnTogglesDescriptor;
 
 enum class Toggle {
     EmulateStoreAndMSAAResolve,
@@ -84,7 +84,9 @@ enum class Toggle {
     D3D12Allocate2DTexturewithCopyDstAsCommittedResource,
     MetalUseCombinedDepthStencilFormatForStencil8,
     MetalUseBothDepthAndStencilAttachmentsForCombinedDepthStencilFormats,
-    UseTempTextureInStencilTextureToBufferCopy,
+    UseBlitForBufferToDepthTextureCopy,
+    UseBlitForBufferToStencilTextureCopy,
+    UseBlitForDepthTextureToTextureCopyToNonzeroSubresource,
     DisallowDeprecatedAPIs,
 
     // Unresolved issues.
@@ -114,8 +116,8 @@ struct TripleStateTogglesSet {
     TogglesSet togglesIsProvided;
     TogglesSet providedTogglesEnabled;
 
-    static TripleStateTogglesSet CreateFromTogglesDeviceDescriptor(
-        const DawnTogglesDeviceDescriptor* togglesDesc);
+    static TripleStateTogglesSet CreateFromTogglesDescriptor(
+        const DawnTogglesDescriptor* togglesDesc);
     // Provide a single toggle with given state.
     void Set(Toggle toggle, bool enabled);
     bool IsProvided(Toggle toggle) const;

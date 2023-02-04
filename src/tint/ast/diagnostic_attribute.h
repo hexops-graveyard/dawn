@@ -30,10 +30,7 @@ class DiagnosticAttribute final : public Castable<DiagnosticAttribute, Attribute
     /// @param nid the unique node identifier
     /// @param src the source of this node
     /// @param dc the diagnostic control
-    DiagnosticAttribute(ProgramID pid,
-                        NodeID nid,
-                        const Source& src,
-                        const ast::DiagnosticControl* dc);
+    DiagnosticAttribute(ProgramID pid, NodeID nid, const Source& src, ast::DiagnosticControl&& dc);
     ~DiagnosticAttribute() override;
 
     /// @returns the WGSL name for the attribute
@@ -44,8 +41,8 @@ class DiagnosticAttribute final : public Castable<DiagnosticAttribute, Attribute
     /// @return the newly cloned node
     const DiagnosticAttribute* Clone(CloneContext* ctx) const override;
 
-    /// The diagnostic control expression.
-    const ast::DiagnosticControl* const control;
+    /// The diagnostic control.
+    const ast::DiagnosticControl control;
 };
 
 }  // namespace tint::ast

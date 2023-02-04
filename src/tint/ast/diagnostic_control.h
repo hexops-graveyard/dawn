@@ -27,11 +27,11 @@
 #include <string>
 #include <unordered_map>
 
-#include "src/tint/ast/node.h"
+#include "src/tint/diagnostic/diagnostic.h"
 
 // Forward declarations
 namespace tint::ast {
-class IdentifierExpression;
+class Identifier;
 }  // namespace tint::ast
 
 namespace tint::ast {
@@ -91,33 +91,21 @@ diag::Severity ToSeverity(DiagnosticSeverity sc);
 using DiagnosticRuleSeverities = std::unordered_map<DiagnosticRule, DiagnosticSeverity>;
 
 /// A diagnostic control used for diagnostic directives and attributes.
-class DiagnosticControl : public Castable<DiagnosticControl, Node> {
+struct DiagnosticControl {
   public:
+    /// Default constructor.
+    DiagnosticControl() {}
+
     /// Constructor
-    /// @param pid the identifier of the program that owns this node
-    /// @param nid the unique node identifier
-    /// @param src the source of this node
     /// @param sev the diagnostic severity
     /// @param rule the diagnostic rule name
-    DiagnosticControl(ProgramID pid,
-                      NodeID nid,
-                      const Source& src,
-                      DiagnosticSeverity sev,
-                      const IdentifierExpression* rule)
-        : Base(pid, nid, src), severity(sev), rule_name(rule) {}
-
-    ~DiagnosticControl() override;
-
-    /// Clones this node and all transitive child nodes using the `CloneContext` `ctx`.
-    /// @param ctx the clone context
-    /// @return the newly cloned node
-    const DiagnosticControl* Clone(CloneContext* ctx) const override;
+    DiagnosticControl(DiagnosticSeverity sev, const Identifier* rule);
 
     /// The diagnostic severity control.
     DiagnosticSeverity severity;
 
     /// The diagnostic rule name.
-    const IdentifierExpression* rule_name;
+    const Identifier* rule_name;
 };
 
 }  // namespace tint::ast

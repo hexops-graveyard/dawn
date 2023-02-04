@@ -56,7 +56,7 @@ class GeneratorImpl : public TextGenerator {
     /// @param out the output of the expression stream
     /// @param diagnostic the diagnostic control node
     /// @returns true if the diagnostic control was emitted
-    bool EmitDiagnosticControl(std::ostream& out, const ast::DiagnosticControl* diagnostic);
+    bool EmitDiagnosticControl(std::ostream& out, const ast::DiagnosticControl& diagnostic);
     /// Handles generating an enable directive
     /// @param enable the enable node
     /// @returns true if the enable directive was emitted
@@ -93,6 +93,11 @@ class GeneratorImpl : public TextGenerator {
     /// @param stmt the statement to emit
     /// @returns true if the statement was emitted successfully
     bool EmitBlock(const ast::BlockStatement* stmt);
+    /// Handles emitting the start of a block statement (including attributes)
+    /// @param out the output stream to write the header to
+    /// @param stmt the block statement to emit the header for
+    /// @returns true if the statement was emitted successfully
+    bool EmitBlockHeader(std::ostream& out, const ast::BlockStatement* stmt);
     /// Handles a break statement
     /// @param stmt the statement to emit
     /// @returns true if the statement was emitted successfully

@@ -259,9 +259,11 @@ void Device::InitTogglesFromDriver() {
 
 #if DAWN_PLATFORM_IS(MACOS)
     if (gpu_info::IsIntel(vendorId)) {
-        SetToggle(Toggle::UseTempTextureInStencilTextureToBufferCopy, true);
         SetToggle(Toggle::MetalUseBothDepthAndStencilAttachmentsForCombinedDepthStencilFormats,
                   true);
+        SetToggle(Toggle::UseBlitForBufferToStencilTextureCopy, true);
+        SetToggle(Toggle::UseBlitForBufferToDepthTextureCopy, true);
+        SetToggle(Toggle::UseBlitForDepthTextureToTextureCopyToNonzeroSubresource, true);
 
         if ([NSProcessInfo.processInfo
                 isOperatingSystemAtLeastVersion:NSOperatingSystemVersion{12, 0, 0}]) {
@@ -274,6 +276,25 @@ void Device::InitTogglesFromDriver() {
     }
     if (gpu_info::IsAMD(vendorId) || gpu_info::IsIntel(vendorId)) {
         SetToggle(Toggle::MetalUseCombinedDepthStencilFormatForStencil8, true);
+    }
+
+    // Local testing shows the workaround is needed on AMD Radeon HD 8870M (gcn-1) MacOS 12.1;
+    // not on AMD Radeon Pro 555 (gcn-4) MacOS 13.1.
+    // Conservatively enable the workaround on AMD unless the system is MacOS 13.1+
+    // with architecture at least AMD gcn-4.
+    bool isLessThanAMDGN4OrMac13Dot1 = false;
+    if (gpu_info::IsAMDGCN1(vendorId, deviceId) || gpu_info::IsAMDGCN2(vendorId, deviceId) ||
+        gpu_info::IsAMDGCN3(vendorId, deviceId)) {
+        isLessThanAMDGN4OrMac13Dot1 = true;
+    } else if (gpu_info::IsAMD(vendorId)) {
+        if (@available(macos 13.1, *)) {
+        } else {
+            isLessThanAMDGN4OrMac13Dot1 = true;
+        }
+    }
+    if (isLessThanAMDGN4OrMac13Dot1) {
+        SetToggle(Toggle::MetalUseBothDepthAndStencilAttachmentsForCombinedDepthStencilFormats,
+                  true);
     }
 #endif
 }
@@ -496,17 +517,17 @@ MaybeError Device::CopyFromStagingToBufferImpl(BufferBase* source,
 // sets the private storage mode by default for all textures except IOSurfaces on macOS.
 MaybeError Device::CopyFromStagingToTextureImpl(const BufferBase* source,
                                                 const TextureDataLayout& dataLayout,
-                                                TextureCopy* dst,
+                                                const TextureCopy& dst,
                                                 const Extent3D& copySizePixels) {
-    Texture* texture = ToBackend(dst->texture.Get());
+    Texture* texture = ToBackend(dst.texture.Get());
     texture->SynchronizeTextureBeforeUse(GetPendingCommandContext());
     EnsureDestinationTextureInitialized(GetPendingCommandContext(DeviceBase::SubmitMode::Passive),
-                                        texture, *dst, copySizePixels);
+                                        texture, dst, copySizePixels);
 
     RecordCopyBufferToTexture(GetPendingCommandContext(DeviceBase::SubmitMode::Passive),
                               ToBackend(source)->GetMTLBuffer(), source->GetSize(),
                               dataLayout.offset, dataLayout.bytesPerRow, dataLayout.rowsPerImage,
-                              texture, dst->mipLevel, dst->origin, dst->aspect, copySizePixels);
+                              texture, dst.mipLevel, dst.origin, dst.aspect, copySizePixels);
     return {};
 }
 

@@ -542,8 +542,15 @@ class ParserImpl {
     /// @returns the parsed builtin.
     Expect<ast::BuiltinValue> expect_builtin();
     /// Parses a `compound_statement` grammar element, erroring on parse failure.
+    /// @param use a description of what was being parsed if an error was raised
     /// @returns the parsed statements
-    Expect<ast::BlockStatement*> expect_compound_statement();
+    Expect<ast::BlockStatement*> expect_compound_statement(std::string_view use);
+    /// Parses a `compound_statement` grammar element, with the attribute list provided as `attrs`.
+    /// @param attrs the list of attributes for the statement
+    /// @param use a description of what was being parsed if an error was raised
+    /// @returns the parsed statements
+    Expect<ast::BlockStatement*> expect_compound_statement(AttributeList& attrs,
+                                                           std::string_view use);
     /// Parses a `paren_expression` grammar element, erroring on parse failure.
     /// @returns the parsed element or nullptr
     Expect<const ast::Expression*> expect_paren_expression();
@@ -710,7 +717,7 @@ class ParserImpl {
     Expect<ast::DiagnosticSeverity> expect_severity_control_name();
     /// Parses a diagnostic_control grammar element.
     /// @return the parsed diagnostic control, or nullptr on error.
-    Expect<const ast::DiagnosticControl*> expect_diagnostic_control();
+    Expect<ast::DiagnosticControl> expect_diagnostic_control();
 
     /// Splits a peekable token into to parts filling in the peekable fields.
     /// @param lhs the token to set in the current position

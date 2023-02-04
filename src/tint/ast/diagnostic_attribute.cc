@@ -15,6 +15,7 @@
 #include "src/tint/ast/diagnostic_attribute.h"
 
 #include <string>
+#include <utility>
 
 #include "src/tint/program_builder.h"
 
@@ -25,8 +26,8 @@ namespace tint::ast {
 DiagnosticAttribute::DiagnosticAttribute(ProgramID pid,
                                          NodeID nid,
                                          const Source& src,
-                                         const ast::DiagnosticControl* dc)
-    : Base(pid, nid, src), control(dc) {}
+                                         ast::DiagnosticControl&& dc)
+    : Base(pid, nid, src), control(std::move(dc)) {}
 
 DiagnosticAttribute::~DiagnosticAttribute() = default;
 
@@ -37,8 +38,9 @@ std::string DiagnosticAttribute::Name() const {
 const DiagnosticAttribute* DiagnosticAttribute::Clone(CloneContext* ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
     auto src = ctx->Clone(source);
-    auto dc = ctx->Clone(control);
-    return ctx->dst->create<DiagnosticAttribute>(src, dc);
+    auto rule = ctx->Clone(control.rule_name);
+    DiagnosticControl dc(control.severity, rule);
+    return ctx->dst->create<DiagnosticAttribute>(src, std::move(dc));
 }
 
 }  // namespace tint::ast
