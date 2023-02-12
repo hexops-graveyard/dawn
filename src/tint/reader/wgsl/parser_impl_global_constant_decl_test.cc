@@ -42,9 +42,10 @@ TEST_F(ParserImplTest, GlobalConstDecl) {
     auto* c = e.value->As<ast::Const>();
     ASSERT_NE(c, nullptr);
 
-    EXPECT_EQ(c->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(c->name->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(c->type, nullptr);
-    EXPECT_TRUE(c->type->Is<ast::F32>());
+    ASSERT_TRUE(c->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(c->type->As<ast::TypeName>()->name->symbol), "f32");
 
     EXPECT_EQ(c->source.range.begin.line, 1u);
     EXPECT_EQ(c->source.range.begin.column, 7u);
@@ -67,7 +68,7 @@ TEST_F(ParserImplTest, GlobalConstDecl_Inferred) {
     auto* c = e.value->As<ast::Const>();
     ASSERT_NE(c, nullptr);
 
-    EXPECT_EQ(c->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(c->name->symbol, p->builder().Symbols().Get("a"));
     EXPECT_EQ(c->type, nullptr);
 
     EXPECT_EQ(c->source.range.begin.line, 1u);
@@ -118,9 +119,11 @@ TEST_F(ParserImplTest, GlobalOverrideDecl_WithId) {
     auto* override = e.value->As<ast::Override>();
     ASSERT_NE(override, nullptr);
 
-    EXPECT_EQ(override->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(override->name->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(override->type, nullptr);
-    EXPECT_TRUE(override->type->Is<ast::F32>());
+    ASSERT_TRUE(override->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(override->type->As<ast::TypeName>()->name->symbol),
+              "f32");
 
     EXPECT_EQ(override->source.range.begin.line, 1u);
     EXPECT_EQ(override->source.range.begin.column, 17u);
@@ -148,9 +151,11 @@ TEST_F(ParserImplTest, GlobalOverrideDecl_WithId_TrailingComma) {
     auto* override = e.value->As<ast::Override>();
     ASSERT_NE(override, nullptr);
 
-    EXPECT_EQ(override->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(override->name->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(override->type, nullptr);
-    EXPECT_TRUE(override->type->Is<ast::F32>());
+    ASSERT_TRUE(override->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(override->type->As<ast::TypeName>()->name->symbol),
+              "f32");
 
     EXPECT_EQ(override->source.range.begin.line, 1u);
     EXPECT_EQ(override->source.range.begin.column, 18u);
@@ -178,9 +183,11 @@ TEST_F(ParserImplTest, GlobalOverrideDecl_WithoutId) {
     auto* override = e.value->As<ast::Override>();
     ASSERT_NE(override, nullptr);
 
-    EXPECT_EQ(override->symbol, p->builder().Symbols().Get("a"));
+    EXPECT_EQ(override->name->symbol, p->builder().Symbols().Get("a"));
     ASSERT_NE(override->type, nullptr);
-    EXPECT_TRUE(override->type->Is<ast::F32>());
+    ASSERT_TRUE(override->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(override->type->As<ast::TypeName>()->name->symbol),
+              "f32");
 
     EXPECT_EQ(override->source.range.begin.line, 1u);
     EXPECT_EQ(override->source.range.begin.column, 10u);

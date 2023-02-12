@@ -658,8 +658,8 @@ bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
         // with at least one dynamic index
         if (auto* lhs_sub_access = lhs_access->object->As<ast::IndexAccessorExpression>()) {
             if (auto* mat = TypeOf(lhs_sub_access->object)->UnwrapRef()->As<type::Matrix>()) {
-                auto* rhs_row_idx_sem = builder_.Sem().Get(lhs_access->index);
-                auto* rhs_col_idx_sem = builder_.Sem().Get(lhs_sub_access->index);
+                auto* rhs_row_idx_sem = builder_.Sem().GetVal(lhs_access->index);
+                auto* rhs_col_idx_sem = builder_.Sem().GetVal(lhs_sub_access->index);
                 if (!rhs_row_idx_sem->ConstantValue() || !rhs_col_idx_sem->ConstantValue()) {
                     return EmitDynamicMatrixScalarAssignment(stmt, mat);
                 }
@@ -669,7 +669,7 @@ bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
         // with dynamic indices
         const auto* lhs_access_type = TypeOf(lhs_access->object)->UnwrapRef();
         if (auto* mat = lhs_access_type->As<type::Matrix>()) {
-            auto* lhs_index_sem = builder_.Sem().Get(lhs_access->index);
+            auto* lhs_index_sem = builder_.Sem().GetVal(lhs_access->index);
             if (!lhs_index_sem->ConstantValue()) {
                 return EmitDynamicMatrixVectorAssignment(stmt, mat);
             }
@@ -677,7 +677,7 @@ bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
         // BUG(crbug.com/tint/534): work around assignment to vectors with dynamic
         // indices
         if (auto* vec = lhs_access_type->As<type::Vector>()) {
-            auto* rhs_sem = builder_.Sem().Get(lhs_access->index);
+            auto* rhs_sem = builder_.Sem().GetVal(lhs_access->index);
             if (!rhs_sem->ConstantValue()) {
                 return EmitDynamicVectorAssignment(stmt, vec);
             }
@@ -923,7 +923,7 @@ bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
         }
     }
 
-    out << builder_.Symbols().NameFor(func->Declaration()->symbol) << "(";
+    out << builder_.Symbols().NameFor(func->Declaration()->name->symbol) << "(";
 
     bool first = true;
     for (auto* arg : call->Arguments()) {
@@ -1109,7 +1109,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
     const ast::CallExpression* expr,
     const transform::DecomposeMemoryAccess::Intrinsic* intrinsic) {
     const auto& args = expr->args;
-    auto* offset_arg = builder_.Sem().Get(args[1]);
+    auto* offset_arg = builder_.Sem().GetVal(args[1]);
 
     // offset in bytes
     uint32_t scalar_offset_bytes = 0;
@@ -1585,7 +1585,7 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
     const sem::Function* sem_func = builder_.Sem().Get(func);
     auto* result_ty = sem_func->ReturnType();
     const auto& params = sem_func->Parameters();
-    const auto name = builder_.Symbols().NameFor(func->symbol);
+    const auto name = builder_.Symbols().NameFor(func->name->symbol);
     auto& buf = *current_buffer_;
 
     auto rmw = [&](const char* hlsl) -> bool {
@@ -2790,7 +2790,7 @@ bool GeneratorImpl::EmitDiscard(const ast::DiscardStatement*) {
 }
 
 bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* expr) {
-    if (auto* sem = builder_.Sem().Get(expr)) {
+    if (auto* sem = builder_.Sem().GetVal(expr)) {
         if (auto* constant = sem->ConstantValue()) {
             bool is_variable_initializer = false;
             if (auto* stmt = sem->Stmt()) {
@@ -2875,7 +2875,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
 
     {
         auto out = line();
-        auto name = builder_.Symbols().NameFor(func->symbol);
+        auto name = builder_.Symbols().NameFor(func->name->symbol);
         // If the function returns an array, then we need to declare a typedef for
         // this.
         if (sem->ReturnType()->Is<type::Array>()) {
@@ -2934,7 +2934,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
             // correctly translate the parameter to a [RW]ByteAddressBuffer for
             // storage buffers and a uint4[N] for uniform buffers.
             if (!EmitTypeAndName(out, type, address_space, access,
-                                 builder_.Symbols().NameFor(v->Declaration()->symbol))) {
+                                 builder_.Symbols().NameFor(v->Declaration()->name->symbol))) {
                 return false;
             }
         }
@@ -3040,7 +3040,7 @@ bool GeneratorImpl::EmitGlobalVariable(const ast::Variable* global) {
 bool GeneratorImpl::EmitUniformVariable(const ast::Var* var, const sem::Variable* sem) {
     auto binding_point = sem->As<sem::GlobalVariable>()->BindingPoint();
     auto* type = sem->Type()->UnwrapRef();
-    auto name = builder_.Symbols().NameFor(var->symbol);
+    auto name = builder_.Symbols().NameFor(var->name->symbol);
     line() << "cbuffer cbuffer_" << name << RegisterAndSpace('b', binding_point) << " {";
 
     {
@@ -3061,7 +3061,7 @@ bool GeneratorImpl::EmitStorageVariable(const ast::Var* var, const sem::Variable
     auto* type = sem->Type()->UnwrapRef();
     auto out = line();
     if (!EmitTypeAndName(out, type, type::AddressSpace::kStorage, sem->Access(),
-                         builder_.Symbols().NameFor(var->symbol))) {
+                         builder_.Symbols().NameFor(var->name->symbol))) {
         return false;
     }
 
@@ -3077,7 +3077,7 @@ bool GeneratorImpl::EmitHandleVariable(const ast::Var* var, const sem::Variable*
     auto* unwrapped_type = sem->Type()->UnwrapRef();
     auto out = line();
 
-    auto name = builder_.Symbols().NameFor(var->symbol);
+    auto name = builder_.Symbols().NameFor(var->name->symbol);
     auto* type = sem->Type()->UnwrapRef();
     if (!EmitTypeAndName(out, type, sem->AddressSpace(), sem->Access(), name)) {
         return false;
@@ -3109,7 +3109,7 @@ bool GeneratorImpl::EmitPrivateVariable(const sem::Variable* var) {
 
     out << "static ";
 
-    auto name = builder_.Symbols().NameFor(decl->symbol);
+    auto name = builder_.Symbols().NameFor(decl->name->symbol);
     auto* type = var->Type()->UnwrapRef();
     if (!EmitTypeAndName(out, type, var->AddressSpace(), var->Access(), name)) {
         return false;
@@ -3136,7 +3136,7 @@ bool GeneratorImpl::EmitWorkgroupVariable(const sem::Variable* var) {
 
     out << "groupshared ";
 
-    auto name = builder_.Symbols().NameFor(decl->symbol);
+    auto name = builder_.Symbols().NameFor(decl->name->symbol);
     auto* type = var->Type()->UnwrapRef();
     if (!EmitTypeAndName(out, type, var->AddressSpace(), var->Access(), name)) {
         return false;
@@ -3238,9 +3238,12 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
             out << ")]" << std::endl;
         }
 
-        out << func->return_type->FriendlyName(builder_.Symbols());
-
-        out << " " << builder_.Symbols().NameFor(func->symbol) << "(";
+        if (!EmitTypeAndName(out, func_sem->ReturnType(), type::AddressSpace::kUndefined,
+                             type::Access::kUndefined,
+                             builder_.Symbols().NameFor(func->name->symbol))) {
+            return false;
+        }
+        out << "(";
 
         bool first = true;
 
@@ -3260,7 +3263,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
             first = false;
 
             if (!EmitTypeAndName(out, type, sem->AddressSpace(), sem->Access(),
-                                 builder_.Symbols().NameFor(var->symbol))) {
+                                 builder_.Symbols().NameFor(var->name->symbol))) {
                 return false;
             }
         }
@@ -3745,7 +3748,7 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
 
 bool GeneratorImpl::EmitMemberAccessor(std::ostream& out,
                                        const ast::MemberAccessorExpression* expr) {
-    if (!EmitExpression(out, expr->structure)) {
+    if (!EmitExpression(out, expr->object)) {
         return false;
     }
     out << ".";
@@ -3864,7 +3867,7 @@ bool GeneratorImpl::EmitDefaultOnlySwitch(const ast::SwitchStatement* stmt) {
 
     // Emit the switch condition as-is if it has side-effects (e.g.
     // function call). Note that we can ignore the result of the expression (if any).
-    if (auto* sem_cond = builder_.Sem().Get(stmt->condition); sem_cond->HasSideEffects()) {
+    if (auto* sem_cond = builder_.Sem().GetVal(stmt->condition); sem_cond->HasSideEffects()) {
         auto out = line();
         if (!EmitExpression(out, stmt->condition)) {
             return false;
@@ -4272,7 +4275,7 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
 
     auto out = line();
     if (!EmitTypeAndName(out, type, sem->AddressSpace(), sem->Access(),
-                         builder_.Symbols().NameFor(var->symbol))) {
+                         builder_.Symbols().NameFor(var->name->symbol))) {
         return false;
     }
 
@@ -4299,7 +4302,7 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     auto out = line();
     out << "const ";
     if (!EmitTypeAndName(out, type, type::AddressSpace::kNone, type::Access::kUndefined,
-                         builder_.Symbols().NameFor(let->symbol))) {
+                         builder_.Symbols().NameFor(let->name->symbol))) {
         return false;
     }
     out << " = ";

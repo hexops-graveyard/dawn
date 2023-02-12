@@ -311,7 +311,7 @@ uint32_t Builder::LookupVariableID(const sem::Variable* var) {
     auto it = var_to_id_.find(var);
     if (it == var_to_id_.end()) {
         error_ = "unable to find ID for variable: " +
-                 builder_.Symbols().NameFor(var->Declaration()->symbol);
+                 builder_.Symbols().NameFor(var->Declaration()->name->symbol);
         return 0;
     }
     return it->second;
@@ -424,7 +424,7 @@ bool Builder::GenerateLabel(uint32_t id) {
 
 bool Builder::GenerateAssignStatement(const ast::AssignmentStatement* assign) {
     if (assign->lhs->Is<ast::PhonyExpression>()) {
-        if (builder_.Sem().Get(assign->rhs)->ConstantValue()) {
+        if (builder_.Sem().GetVal(assign->rhs)->ConstantValue()) {
             // RHS of phony assignment is constant.
             // Constants can't have side-effects, so just drop this.
             return true;
@@ -500,7 +500,7 @@ bool Builder::GenerateEntryPoint(const ast::Function* func, uint32_t id) {
     }
 
     OperandList operands = {Operand(stage), Operand(id),
-                            Operand(builder_.Symbols().NameFor(func->symbol))};
+                            Operand(builder_.Symbols().NameFor(func->name->symbol))};
 
     auto* func_sem = builder_.Sem().Get(func);
     for (const auto* var : func_sem->TransitivelyReferencedGlobals()) {
@@ -514,7 +514,7 @@ bool Builder::GenerateEntryPoint(const ast::Function* func, uint32_t id) {
         uint32_t var_id = LookupVariableID(var);
         if (var_id == 0) {
             error_ = "unable to find ID for global variable: " +
-                     builder_.Symbols().NameFor(var->Declaration()->symbol);
+                     builder_.Symbols().NameFor(var->Declaration()->name->symbol);
             return false;
         }
 
@@ -558,9 +558,11 @@ bool Builder::GenerateExecutionModes(const ast::Function* func, uint32_t id) {
     return true;
 }
 
-uint32_t Builder::GenerateExpression(const sem::ValueExpression* expr) {
-    if (auto* constant = expr->ConstantValue()) {
-        return GenerateConstantIfNeeded(constant);
+uint32_t Builder::GenerateExpression(const sem::Expression* expr) {
+    if (auto* val_expr = expr->As<sem::ValueExpression>()) {
+        if (auto* constant = val_expr->ConstantValue()) {
+            return GenerateConstantIfNeeded(constant);
+        }
     }
     if (auto* load = expr->As<sem::Load>()) {
         auto ref_id = GenerateExpression(load->Reference());
@@ -571,13 +573,12 @@ uint32_t Builder::GenerateExpression(const sem::ValueExpression* expr) {
     }
     return Switch(
         expr->Declaration(),  //
-        [&](const ast::IndexAccessorExpression* a) { return GenerateAccessorExpression(a); },
+        [&](const ast::AccessorExpression* a) { return GenerateAccessorExpression(a); },
         [&](const ast::BinaryExpression* b) { return GenerateBinaryExpression(b); },
         [&](const ast::BitcastExpression* b) { return GenerateBitcastExpression(b); },
         [&](const ast::CallExpression* c) { return GenerateCallExpression(c); },
         [&](const ast::IdentifierExpression* i) { return GenerateIdentifierExpression(i); },
         [&](const ast::LiteralExpression* l) { return GenerateLiteralIfNeeded(l); },
-        [&](const ast::MemberAccessorExpression* m) { return GenerateAccessorExpression(m); },
         [&](const ast::UnaryOpExpression* u) { return GenerateUnaryOpExpression(u); },
         [&](Default) {
             error_ = "unknown expression type: " + std::string(expr->TypeInfo().name);
@@ -601,7 +602,7 @@ bool Builder::GenerateFunction(const ast::Function* func_ast) {
     auto func_id = std::get<uint32_t>(func_op);
 
     push_debug(spv::Op::OpName,
-               {Operand(func_id), Operand(builder_.Symbols().NameFor(func_ast->symbol))});
+               {Operand(func_id), Operand(builder_.Symbols().NameFor(func_ast->name->symbol))});
 
     auto ret_id = GenerateTypeIfNeeded(func->ReturnType());
     if (ret_id == 0) {
@@ -625,9 +626,9 @@ bool Builder::GenerateFunction(const ast::Function* func_ast) {
             return false;
         }
 
-        push_debug(
-            spv::Op::OpName,
-            {Operand(param_id), Operand(builder_.Symbols().NameFor(param->Declaration()->symbol))});
+        push_debug(spv::Op::OpName,
+                   {Operand(param_id),
+                    Operand(builder_.Symbols().NameFor(param->Declaration()->name->symbol))});
         params.push_back(
             Instruction{spv::Op::OpFunctionParameter, {Operand(param_type_id), param_op}});
 
@@ -660,7 +661,7 @@ bool Builder::GenerateFunction(const ast::Function* func_ast) {
         }
     }
 
-    func_symbol_to_id_[func_ast->symbol] = func_id;
+    func_symbol_to_id_[func_ast->name->symbol] = func_id;
 
     return true;
 }
@@ -724,7 +725,8 @@ bool Builder::GenerateFunctionVariable(const ast::Variable* v) {
         return false;
     }
 
-    push_debug(spv::Op::OpName, {Operand(var_id), Operand(builder_.Symbols().NameFor(v->symbol))});
+    push_debug(spv::Op::OpName,
+               {Operand(var_id), Operand(builder_.Symbols().NameFor(v->name->symbol))});
 
     // TODO(dsinclair) We could detect if the initializer is fully const and emit
     // an initializer value for the variable instead of doing the OpLoad.
@@ -784,7 +786,8 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
         return false;
     }
 
-    push_debug(spv::Op::OpName, {Operand(var_id), Operand(builder_.Symbols().NameFor(v->symbol))});
+    push_debug(spv::Op::OpName,
+               {Operand(var_id), Operand(builder_.Symbols().NameFor(v->name->symbol))});
 
     OperandList ops = {Operand(type_id), result, U32Operand(ConvertAddressSpace(sc))};
 
@@ -910,7 +913,7 @@ bool Builder::GenerateIndexAccessor(const ast::IndexAccessorExpression* expr, Ac
     auto extract_id = std::get<uint32_t>(extract);
 
     // If the index is compile-time constant, we use OpCompositeExtract.
-    auto* idx = builder_.Sem().Get(expr->index);
+    auto* idx = builder_.Sem().GetVal(expr->index);
     if (auto idx_constval = idx->ConstantValue()) {
         if (!push_function_inst(spv::Op::OpCompositeExtract,
                                 {
@@ -1070,13 +1073,7 @@ bool Builder::GenerateMemberAccessor(const ast::MemberAccessorExpression* expr,
         });
 }
 
-uint32_t Builder::GenerateAccessorExpression(const ast::Expression* expr) {
-    if (TINT_UNLIKELY(
-            (!expr->IsAnyOf<ast::IndexAccessorExpression, ast::MemberAccessorExpression>()))) {
-        TINT_ICE(Writer, builder_.Diagnostics()) << "expression is not an accessor";
-        return 0;
-    }
-
+uint32_t Builder::GenerateAccessorExpression(const ast::AccessorExpression* expr) {
     // Gather a list of all the member and index accessors that are in this chain.
     // The list is built in reverse order as that's the order we need to access
     // the chain.
@@ -1088,7 +1085,7 @@ uint32_t Builder::GenerateAccessorExpression(const ast::Expression* expr) {
             source = array->object;
         } else if (auto* member = source->As<ast::MemberAccessorExpression>()) {
             accessors.insert(accessors.begin(), source);
-            source = member->structure;
+            source = member->object;
         } else {
             break;
         }
@@ -1147,8 +1144,7 @@ uint32_t Builder::GenerateAccessorExpression(const ast::Expression* expr) {
 }
 
 uint32_t Builder::GenerateIdentifierExpression(const ast::IdentifierExpression* expr) {
-    auto* sem = builder_.Sem().Get(expr);
-    if (sem) {
+    if (auto* sem = builder_.Sem().GetVal(expr); sem) {
         if (auto* user = sem->UnwrapLoad()->As<sem::VariableUser>()) {
             return LookupVariableID(user->Variable());
         }
@@ -1238,7 +1234,7 @@ uint32_t Builder::GetGLSLstd450Import() {
 
 uint32_t Builder::GenerateInitializerExpression(const ast::Variable* var,
                                                 const ast::Expression* expr) {
-    if (auto* sem = builder_.Sem().Get(expr)) {
+    if (auto* sem = builder_.Sem().GetVal(expr)) {
         if (auto constant = sem->ConstantValue()) {
             return GenerateConstantIfNeeded(constant);
         }
@@ -2380,13 +2376,13 @@ uint32_t Builder::GenerateBuiltinCall(const sem::Call* call, const sem::Builtin*
                 return 0;
             }
 
-            auto struct_id = GenerateExpression(accessor->structure);
+            auto struct_id = GenerateExpression(accessor->object);
             if (struct_id == 0) {
                 return 0;
             }
             params.push_back(Operand(struct_id));
 
-            auto* type = TypeOf(accessor->structure)->UnwrapRef();
+            auto* type = TypeOf(accessor->object)->UnwrapRef();
             if (!type->Is<sem::Struct>()) {
                 error_ = "invalid type (" + type->FriendlyName(builder_.Symbols()) +
                          ") for runtime array length";

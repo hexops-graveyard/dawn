@@ -118,27 +118,6 @@ TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunctionUsedAsVariable)
     EXPECT_EQ(r()->error(), R"(56:78 error: missing '(' for function call)");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsFunctionUsedAsType) {
-    Func(Source{{12, 34}}, "mix", utils::Empty, ty.i32(),
-         utils::Vector{
-             Return(1_i),
-         });
-    WrapInFunction(Construct(ty(Source{{56, 78}}, "mix")));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use function 'mix' as type
-12:34 note: 'mix' declared here)");
-}
-
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsFunction) {
-    GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
-    WrapInFunction(Call(Ident(Source{{56, 78}}, "mix"), 1_f, 2_f, 3_f));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: cannot call variable 'mix'
-12:34 note: 'mix' declared here)");
-}
-
 TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsVariable) {
     auto* mix = GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
     auto* use = Expr("mix");
@@ -150,24 +129,6 @@ TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsVariab
     EXPECT_EQ(sem->Variable(), Sem().Get(mix));
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalConstUsedAsType) {
-    GlobalConst(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i));
-    WrapInFunction(Construct(ty(Source{{56, 78}}, "mix")));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use variable 'mix' as type
-12:34 note: 'mix' declared here)");
-}
-
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsFunction) {
-    GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), type::AddressSpace::kPrivate);
-    WrapInFunction(Call(Ident(Source{{56, 78}}, "mix"), 1_f, 2_f, 3_f));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: cannot call variable 'mix'
-12:34 note: 'mix' declared here)");
-}
-
 TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsVariable) {
     auto* mix =
         GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), type::AddressSpace::kPrivate);
@@ -175,18 +136,9 @@ TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsVariable
     WrapInFunction(Decl(Var("v", use)));
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
-    auto* sem = Sem().Get(use)->UnwrapLoad()->As<sem::VariableUser>();
+    auto* sem = Sem().GetVal(use)->UnwrapLoad()->As<sem::VariableUser>();
     ASSERT_NE(sem, nullptr);
     EXPECT_EQ(sem->Variable(), Sem().Get(mix));
-}
-
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsGlobalVarUsedAsType) {
-    GlobalVar(Source{{12, 34}}, "mix", ty.i32(), Expr(1_i), type::AddressSpace::kPrivate);
-    WrapInFunction(Construct(ty(Source{{56, 78}}, "mix")));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: cannot use variable 'mix' as type
-12:34 note: 'mix' declared here)");
 }
 
 TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsFunction) {
@@ -205,17 +157,9 @@ TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsFunction) {
 )");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsVariable) {
-    Alias(Source{{12, 34}}, "mix", ty.i32());
-    WrapInFunction(Decl(Var("v", Expr(Source{{56, 78}}, "mix"))));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(56:78 error: missing '(' for builtin call)");
-}
-
 TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsAliasUsedAsType) {
     auto* mix = Alias(Source{{12, 34}}, "mix", ty.i32());
-    auto* use = Construct(ty("mix"));
+    auto* use = Call(ty("mix"));
     WrapInFunction(use);
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
@@ -235,21 +179,11 @@ TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsFunction) {
               R"(12:34 error: struct initializer has too many inputs: expected 1, found 3)");
 }
 
-TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsVariable) {
-    Structure("mix", utils::Vector{
-                         Member("m", ty.i32()),
-                     });
-    WrapInFunction(Decl(Var("v", Expr(Source{{12, 34}}, "mix"))));
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(12:34 error: missing '(' for builtin call)");
-}
-
 TEST_F(ResolverBuiltinValidationTest, BuiltinRedeclaredAsStructUsedAsType) {
     auto* mix = Structure("mix", utils::Vector{
                                      Member("m", ty.i32()),
                                  });
-    auto* use = Construct(ty("mix"));
+    auto* use = Call(ty("mix"));
     WrapInFunction(use);
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
@@ -308,20 +242,20 @@ class Constexpr {
             case Kind::kScalar:
                 return b.Expr(src, i32(values[0]));
             case Kind::kVec2:
-                return b.Construct(src, b.ty.vec2<i32>(), i32(values[0]), i32(values[1]));
+                return b.Call(src, b.ty.vec2<i32>(), i32(values[0]), i32(values[1]));
             case Kind::kVec3:
-                return b.Construct(src, b.ty.vec3<i32>(), i32(values[0]), i32(values[1]),
-                                   i32(values[2]));
+                return b.Call(src, b.ty.vec3<i32>(), i32(values[0]), i32(values[1]),
+                              i32(values[2]));
             case Kind::kVec3_Scalar_Vec2:
-                return b.Construct(src, b.ty.vec3<i32>(), i32(values[0]),
-                                   b.vec2<i32>(i32(values[1]), i32(values[2])));
+                return b.Call(src, b.ty.vec3<i32>(), i32(values[0]),
+                              b.vec2<i32>(i32(values[1]), i32(values[2])));
             case Kind::kVec3_Vec2_Scalar:
-                return b.Construct(src, b.ty.vec3<i32>(),
-                                   b.vec2<i32>(i32(values[0]), i32(values[1])), i32(values[2]));
+                return b.Call(src, b.ty.vec3<i32>(), b.vec2<i32>(i32(values[0]), i32(values[1])),
+                              i32(values[2]));
             case Kind::kEmptyVec2:
-                return b.Construct(src, b.ty.vec2<i32>());
+                return b.Call(src, b.ty.vec2<i32>());
             case Kind::kEmptyVec3:
-                return b.Construct(src, b.ty.vec3<i32>());
+                return b.Call(src, b.ty.vec3<i32>());
         }
         return nullptr;
     }

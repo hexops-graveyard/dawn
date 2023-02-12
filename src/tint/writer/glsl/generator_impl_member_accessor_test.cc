@@ -219,7 +219,7 @@ TEST_P(GlslGeneratorImplTest_MemberAccessor_StorageBufferStore, Test) {
     });
 
     SetupFunction(utils::Vector{
-        Decl(Var("value", p.member_type(ty), Construct(p.member_type(ty)))),
+        Decl(Var("value", p.member_type(ty), Call(p.member_type(ty)))),
         Assign(MemberAccessor("data", "b"), Expr("value")),
     });
 
@@ -267,7 +267,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Store_Matrix_Empty) {
     });
 
     SetupFunction(utils::Vector{
-        Assign(MemberAccessor("data", "b"), Construct(ty.mat2x3<f32>())),
+        Assign(MemberAccessor("data", "b"), Call(ty.mat2x3<f32>())),
     });
 
     GeneratorImpl& gen = SanitizeAndBuild();
@@ -359,7 +359,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor,
 
     SetupStorageBuffer(utils::Vector{
         Member("z", ty.f32()),
-        Member("a", ty.array<i32, 5>(4)),
+        Member("a", ty.array<i32, 5>()),
     });
 
     SetupFunction(utils::Vector{
@@ -404,7 +404,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor,
 
     SetupStorageBuffer(utils::Vector{
         Member("z", ty.f32()),
-        Member("a", ty.array<i32, 5>(4)),
+        Member("a", ty.array<i32, 5>()),
     });
 
     SetupFunction(utils::Vector{
@@ -454,7 +454,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Store_ToArray) {
 
     SetupStorageBuffer(utils::Vector{
         Member("z", ty.f32()),
-        Member("a", ty.array<i32, 5>(4)),
+        Member("a", ty.array<i32, 5>()),
     });
 
     SetupFunction(utils::Vector{
@@ -507,7 +507,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Load_MultiLevel) {
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{
@@ -566,7 +566,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Load_MultiLevel_Swizz
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{
@@ -628,7 +628,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor,
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{
@@ -689,7 +689,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Load_MultiLevel_Index
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{
@@ -750,7 +750,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Store_MultiLevel) {
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{
@@ -810,7 +810,7 @@ TEST_F(GlslGeneratorImplTest_MemberAccessor, StorageBuffer_Store_Swizzle_SingleL
                                      });
 
     SetupStorageBuffer(utils::Vector{
-        Member("c", ty.array(ty.Of(inner), 4_u, 32)),
+        Member("c", ty.array(ty.Of(inner), 4_u)),
     });
 
     SetupFunction(utils::Vector{

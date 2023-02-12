@@ -86,7 +86,10 @@ struct ExpandCompoundAssignment::State {
 
         // Helper function that returns `true` if the type of `expr` is a vector.
         auto is_vec = [&](const ast::Expression* expr) {
-            return ctx.src->Sem().Get(expr)->Type()->UnwrapRef()->Is<type::Vector>();
+            if (auto* val_expr = ctx.src->Sem().GetVal(expr)) {
+                return val_expr->Type()->UnwrapRef()->Is<type::Vector>();
+            }
+            return false;
         };
 
         // Hoist the LHS expression subtree into local constants to produce a new
@@ -96,7 +99,7 @@ struct ExpandCompoundAssignment::State {
         auto* index_accessor = lhs->As<ast::IndexAccessorExpression>();
         auto* member_accessor = lhs->As<ast::MemberAccessorExpression>();
         if (lhs->Is<ast::IdentifierExpression>() ||
-            (member_accessor && member_accessor->structure->Is<ast::IdentifierExpression>())) {
+            (member_accessor && member_accessor->object->Is<ast::IdentifierExpression>())) {
             // This is the simple case with no side effects, so we can just use the
             // original LHS expression directly.
             // Before:
@@ -116,7 +119,7 @@ struct ExpandCompoundAssignment::State {
             auto lhs_ptr = hoist_pointer_to(index_accessor->object);
             auto index = hoist_expr_to_let(index_accessor->index);
             new_lhs = [&, lhs_ptr, index]() { return b.IndexAccessor(b.Deref(lhs_ptr), index); };
-        } else if (member_accessor && is_vec(member_accessor->structure)) {
+        } else if (member_accessor && is_vec(member_accessor->object)) {
             // This is the case for vector component via a member accessor. We just
             // need to capture a pointer to the vector.
             // Before:
@@ -124,7 +127,7 @@ struct ExpandCompoundAssignment::State {
             // After:
             //     let vec_ptr = &a[idx()];
             //     (*vec_ptr).y = (*vec_ptr).y + rhs;
-            auto lhs_ptr = hoist_pointer_to(member_accessor->structure);
+            auto lhs_ptr = hoist_pointer_to(member_accessor->object);
             new_lhs = [&, lhs_ptr]() {
                 return b.MemberAccessor(b.Deref(lhs_ptr), ctx.Clone(member_accessor->member));
             };

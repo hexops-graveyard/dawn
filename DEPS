@@ -37,11 +37,11 @@ vars = {
 deps = {
   # Dependencies required to use GN/Clang in standalone
   'build': {
-    'url': '{chromium_git}/chromium/src/build@6dc6eb47fb899a7d3ddbc6812d09ee9f7f1879ce',
+    'url': '{chromium_git}/chromium/src/build@8cbb95464bb7f05b442f3ece4951efbe0825a131',
     'condition': 'dawn_standalone',
   },
   'buildtools': {
-    'url': '{chromium_git}/chromium/src/buildtools@3c7e3f1b8b1e4c0b6ec693430379cea682de78d6',
+    'url': '{chromium_git}/chromium/src/buildtools@70e9f44cbc8bc4c3dff18800ba5d962154a4f2a6',
     'condition': 'dawn_standalone',
   },
   'buildtools/clang_format/script': {
@@ -74,7 +74,7 @@ deps = {
   },
 
   'buildtools/third_party/libc++/trunk': {
-    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@bfaf65c48faadc153f3b31c42c5d7b5dc76b30a1',
+    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@035440c7077237787869cb08ab99bcc8b5ddc97e',
     'condition': 'dawn_standalone',
   },
 
@@ -84,7 +84,7 @@ deps = {
   },
 
   'tools/clang': {
-    'url': '{chromium_git}/chromium/src/tools/clang@c272f2cdc17991d3298d6263a7a2326941b25129',
+    'url': '{chromium_git}/chromium/src/tools/clang@fff7f04d30a0687029ddc7e174d5548a525ddf0b',
     'condition': 'dawn_standalone',
   },
   'tools/clang/dsymutil': {
@@ -98,16 +98,16 @@ deps = {
 
   # Testing, GTest and GMock
   'testing': {
-    'url': '{chromium_git}/chromium/src/testing@a9787cefaec53e7c15bd2bf7f31cd913b640c871',
+    'url': '{chromium_git}/chromium/src/testing@d5ea1bf4b64781cfe38f207f56f264eb080d06b2',
     'condition': 'dawn_standalone',
   },
   'third_party/googletest': {
-    'url': '{chromium_git}/external/github.com/google/googletest@b72202078d0a7a2f2509eb5237685bcf1baea3b4',
+    'url': '{chromium_git}/external/github.com/google/googletest@b73f27fd164456fea9aba56163f5511355a03272',
     'condition': 'dawn_standalone',
   },
   # This is a dependency of //testing
   'third_party/catapult': {
-    'url': '{chromium_git}/catapult.git@35952dc547f244194377541105ce1e5776200ae3',
+    'url': '{chromium_git}/catapult.git@37e879a7d13cbaa4925e09fc02b0f9276e060f0a',
     'condition': 'dawn_standalone',
   },
 
@@ -132,17 +132,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@c58d7079681b365d3456c2e1bb19a92eee829f25',
+    'url': '{chromium_git}/angle/angle@90ddd7c7602d681db0cb7de0544ad1d94bc9df0f',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@bcb8f46b86b711706772283071efefdee571aaab',
+    'url': '{swiftshader_git}/SwiftShader@938d3a1fac4deda77efb1c22c5e080ee4686eb0a',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@525984c7fd54a660d2c33c9a6711ca099e89366b',
+    'url': '{chromium_git}/vulkan-deps@e780219ed8ba181c8c5dd81b9c34799dc8325733',
     'condition': 'dawn_standalone',
   },
 
@@ -239,6 +239,18 @@ hooks = [
     'action': ['python3', 'build/mac_toolchain.py'],
   },
   {
+    # Case-insensitivity for the Win SDK. Must run before win_toolchain below.
+    'name': 'ciopfs_linux',
+    'pattern': '.',
+    'condition': 'checkout_win and host_os == "linux"',
+    'action': [ 'download_from_google_storage',
+                '--no_resume',
+                '--no_auth',
+                '--bucket', 'chromium-browser-clang/ciopfs',
+                '-s', 'build/ciopfs.sha1',
+    ]
+  },
+  {
     # Update the Windows toolchain if necessary. Must run before 'clang' below.
     'name': 'win_toolchain',
     'pattern': '.',
@@ -272,6 +284,17 @@ hooks = [
                 '--bucket', 'chromium-browser-clang/rc',
                 '-s', 'build/toolchain/win/rc/win/rc.exe.sha1',
     ],
+  },
+  {
+    'name': 'rc_linux',
+    'pattern': '.',
+    'condition': 'checkout_win and host_os == "linux"',
+    'action': [ 'download_from_google_storage',
+                '--no_resume',
+                '--no_auth',
+                '--bucket', 'chromium-browser-clang/rc',
+                '-s', 'build/toolchain/win/rc/linux64/rc.sha1',
+    ]
   },
   # Pull clang-format binaries using checked-in hashes.
   {

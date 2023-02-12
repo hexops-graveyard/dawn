@@ -116,8 +116,8 @@ TEST_F(ResolverVariableTest, LocalVar_WithInitializer) {
     auto* f_c = Expr(1_f);
     auto* h_c = Expr(1_h);
     auto* b_c = Expr(true);
-    auto* s_c = Construct(ty.Of(S), Expr(1_i));
-    auto* a_c = Construct(ty.Of(A), Expr(1_i));
+    auto* s_c = Call(ty.Of(S), Expr(1_i));
+    auto* a_c = Call(ty.Of(A), Expr(1_i));
 
     auto* i = Var("i", ty.i32(), i_c);
     auto* u = Var("u", ty.u32(), u_c);
@@ -250,7 +250,7 @@ TEST_F(ResolverVariableTest, LocalVar_ShadowsGlobalVar) {
     EXPECT_EQ(local->Shadows(), global);
 
     auto* user_v =
-        Sem().Get(local->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
+        Sem().GetVal(local->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
     ASSERT_NE(user_v, nullptr);
     EXPECT_EQ(user_v->Variable(), global);
 }
@@ -300,7 +300,7 @@ TEST_F(ResolverVariableTest, LocalVar_ShadowsLocalVar) {
     EXPECT_EQ(local_y->Shadows(), local_x);
 
     auto* user_y =
-        Sem().Get(local_y->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
+        Sem().GetVal(local_y->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
     ASSERT_NE(user_y, nullptr);
     EXPECT_EQ(user_y->Variable(), local_x);
 }
@@ -370,7 +370,7 @@ TEST_F(ResolverVariableTest, LocalVar_ShadowsParam) {
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
 
-    auto* param = Sem().Get<sem::Parameter>(p);
+    auto* param = Sem().Get(p);
     auto* local = Sem().Get<sem::LocalVariable>(v);
 
     ASSERT_NE(param, nullptr);
@@ -410,8 +410,8 @@ TEST_F(ResolverVariableTest, LocalLet) {
     auto* f_c = Expr(1_f);
     auto* h_c = Expr(1_h);
     auto* b_c = Expr(true);
-    auto* s_c = Construct(ty.Of(S), Expr(1_i));
-    auto* a_c = Construct(ty.Of(A), Expr(1_i));
+    auto* s_c = Call(ty.Of(S), Expr(1_i));
+    auto* a_c = Call(ty.Of(A), Expr(1_i));
     auto* p_c = AddressOf(v);
 
     auto* i = Let("i", ty.i32(), i_c);
@@ -566,7 +566,7 @@ TEST_F(ResolverVariableTest, LocalLet_ShadowsGlobalVar) {
     EXPECT_EQ(local->Shadows(), global);
 
     auto* user =
-        Sem().Get(local->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
+        Sem().GetVal(local->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
     ASSERT_NE(user, nullptr);
     EXPECT_EQ(user->Variable(), global);
 }
@@ -616,7 +616,7 @@ TEST_F(ResolverVariableTest, LocalLet_ShadowsLocalVar) {
     EXPECT_EQ(local_l->Shadows(), local_v);
 
     auto* user =
-        Sem().Get(local_l->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
+        Sem().GetVal(local_l->Declaration()->initializer)->UnwrapLoad()->As<sem::VariableUser>();
     ASSERT_NE(user, nullptr);
     EXPECT_EQ(user->Variable(), local_v);
 }
@@ -902,7 +902,7 @@ TEST_F(ResolverVariableTest, LocalConst_ExplicitType_Decls) {
     auto* c_vu32 = Const("e", ty.vec3<u32>(), vec3<u32>());
     auto* c_vf32 = Const("f", ty.vec3<f32>(), vec3<f32>());
     auto* c_mf32 = Const("g", ty.mat3x3<f32>(), mat3x3<f32>());
-    auto* c_s = Const("h", ty("S"), Construct(ty("S")));
+    auto* c_s = Const("h", ty("S"), Call(ty("S")));
 
     WrapInFunction(c_i32, c_u32, c_f32, c_vi32, c_vu32, c_vf32, c_mf32, c_s);
 
@@ -947,14 +947,14 @@ TEST_F(ResolverVariableTest, LocalConst_ImplicitType_Decls) {
     auto* c_vi32 = Const("f", vec3<i32>());
     auto* c_vu32 = Const("g", vec3<u32>());
     auto* c_vf32 = Const("h", vec3<f32>());
-    auto* c_vai = Const("i", Construct(ty.vec(nullptr, 3), Expr(0_a)));
-    auto* c_vaf = Const("j", Construct(ty.vec(nullptr, 3), Expr(0._a)));
+    auto* c_vai = Const("i", Call(ty.vec(nullptr, 3), Expr(0_a)));
+    auto* c_vaf = Const("j", Call(ty.vec(nullptr, 3), Expr(0._a)));
     auto* c_mf32 = Const("k", mat3x3<f32>());
-    auto* c_maf32 = Const("l", Construct(ty.mat(nullptr, 3, 3),  //
-                                         Construct(ty.vec(nullptr, 3), Expr(0._a)),
-                                         Construct(ty.vec(nullptr, 3), Expr(0._a)),
-                                         Construct(ty.vec(nullptr, 3), Expr(0._a))));
-    auto* c_s = Const("m", Construct(ty("S")));
+    auto* c_maf32 =
+        Const("l", Call(ty.mat(nullptr, 3, 3),  //
+                        Call(ty.vec(nullptr, 3), Expr(0._a)), Call(ty.vec(nullptr, 3), Expr(0._a)),
+                        Call(ty.vec(nullptr, 3), Expr(0._a))));
+    auto* c_s = Const("m", Call(ty("S")));
 
     WrapInFunction(c_i32, c_u32, c_f32, c_ai, c_af, c_vi32, c_vu32, c_vf32, c_vai, c_vaf, c_mf32,
                    c_maf32, c_s);
@@ -1123,13 +1123,13 @@ TEST_F(ResolverVariableTest, GlobalConst_ImplicitType_Decls) {
     auto* c_vi32 = GlobalConst("f", vec3<i32>());
     auto* c_vu32 = GlobalConst("g", vec3<u32>());
     auto* c_vf32 = GlobalConst("h", vec3<f32>());
-    auto* c_vai = GlobalConst("i", Construct(ty.vec(nullptr, 3), Expr(0_a)));
-    auto* c_vaf = GlobalConst("j", Construct(ty.vec(nullptr, 3), Expr(0._a)));
+    auto* c_vai = GlobalConst("i", Call(ty.vec(nullptr, 3), Expr(0_a)));
+    auto* c_vaf = GlobalConst("j", Call(ty.vec(nullptr, 3), Expr(0._a)));
     auto* c_mf32 = GlobalConst("k", mat3x3<f32>());
-    auto* c_maf32 = GlobalConst("l", Construct(ty.mat(nullptr, 3, 3),  //
-                                               Construct(ty.vec(nullptr, 3), Expr(0._a)),
-                                               Construct(ty.vec(nullptr, 3), Expr(0._a)),
-                                               Construct(ty.vec(nullptr, 3), Expr(0._a))));
+    auto* c_maf32 = GlobalConst(
+        "l", Call(ty.mat(nullptr, 3, 3),  //
+                  Call(ty.vec(nullptr, 3), Expr(0._a)), Call(ty.vec(nullptr, 3), Expr(0._a)),
+                  Call(ty.vec(nullptr, 3), Expr(0._a))));
 
     ASSERT_TRUE(r()->Resolve()) << r()->error();
 

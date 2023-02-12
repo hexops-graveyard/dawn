@@ -131,7 +131,7 @@ struct ArrayLengthFromUniform::State {
             // Load the total storage buffer size from the UBO.
             uint32_t array_index = size_index / 4;
             auto* vec_expr = b.IndexAccessor(
-                b.MemberAccessor(get_ubo()->symbol, kBufferSizeMemberName), u32(array_index));
+                b.MemberAccessor(get_ubo()->name->symbol, kBufferSizeMemberName), u32(array_index));
             uint32_t vec_index = size_index % 4;
             auto* total_storage_buffer_size = b.IndexAccessor(vec_expr, u32(vec_index));
 
@@ -226,7 +226,7 @@ struct ArrayLengthFromUniform::State {
             }
             auto* storage_buffer_expr = param->expr;
             if (auto* accessor = param->expr->As<ast::MemberAccessorExpression>()) {
-                storage_buffer_expr = accessor->structure;
+                storage_buffer_expr = accessor->object;
             }
             auto* storage_buffer_sem = sem.Get<sem::VariableUser>(storage_buffer_expr);
             if (TINT_UNLIKELY(!storage_buffer_sem)) {

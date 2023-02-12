@@ -97,7 +97,7 @@ void ProgramBuilder::AssertNotMoved() const {
 }
 
 const type::Type* ProgramBuilder::TypeOf(const ast::Expression* expr) const {
-    auto* sem = Sem().Get(expr);
+    auto* sem = Sem().GetVal(expr);
     return sem ? sem->Type() : nullptr;
 }
 
@@ -128,7 +128,7 @@ std::string ProgramBuilder::FriendlyName(std::nullptr_t) const {
 }
 
 const ast::TypeName* ProgramBuilder::TypesBuilder::Of(const ast::TypeDecl* decl) const {
-    return (*this)(decl->name);
+    return (*this)(decl->name->symbol);
 }
 
 ProgramBuilder::TypesBuilder::TypesBuilder(ProgramBuilder* pb) : builder(pb) {}

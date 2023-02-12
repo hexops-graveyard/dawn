@@ -19,14 +19,9 @@
 #include "src/tint/ast/alias.h"
 #include "src/tint/ast/array.h"
 #include "src/tint/ast/atomic.h"
-#include "src/tint/ast/bool.h"
 #include "src/tint/ast/bool_literal_expression.h"
 #include "src/tint/ast/call_statement.h"
-#include "src/tint/ast/depth_texture.h"
-#include "src/tint/ast/external_texture.h"
-#include "src/tint/ast/f32.h"
 #include "src/tint/ast/float_literal_expression.h"
-#include "src/tint/ast/i32.h"
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/internal_attribute.h"
 #include "src/tint/ast/interpolate_attribute.h"
@@ -37,16 +32,13 @@
 #include "src/tint/ast/pointer.h"
 #include "src/tint/ast/sampled_texture.h"
 #include "src/tint/ast/stage_attribute.h"
-#include "src/tint/ast/storage_texture.h"
 #include "src/tint/ast/stride_attribute.h"
 #include "src/tint/ast/struct_member_align_attribute.h"
 #include "src/tint/ast/struct_member_offset_attribute.h"
 #include "src/tint/ast/struct_member_size_attribute.h"
 #include "src/tint/ast/type_name.h"
-#include "src/tint/ast/u32.h"
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/ast/vector.h"
-#include "src/tint/ast/void.h"
 #include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
@@ -125,7 +117,7 @@ bool GeneratorImpl::EmitTypeDecl(const ast::TypeDecl* ty) {
         ty,
         [&](const ast::Alias* alias) {  //
             auto out = line();
-            out << "alias " << program_->Symbols().NameFor(alias->name) << " = ";
+            out << "alias " << program_->Symbols().NameFor(alias->name->symbol) << " = ";
             if (!EmitType(out, alias->type)) {
                 return false;
             }
@@ -181,8 +173,8 @@ bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* exp
 
 bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccessorExpression* expr) {
     bool paren_lhs =
-        !expr->object->IsAnyOf<ast::IndexAccessorExpression, ast::CallExpression,
-                               ast::IdentifierExpression, ast::MemberAccessorExpression>();
+        !expr->object
+             ->IsAnyOf<ast::AccessorExpression, ast::CallExpression, ast::IdentifierExpression>();
     if (paren_lhs) {
         out << "(";
     }
@@ -205,12 +197,12 @@ bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccesso
 bool GeneratorImpl::EmitMemberAccessor(std::ostream& out,
                                        const ast::MemberAccessorExpression* expr) {
     bool paren_lhs =
-        !expr->structure->IsAnyOf<ast::IndexAccessorExpression, ast::CallExpression,
-                                  ast::IdentifierExpression, ast::MemberAccessorExpression>();
+        !expr->object
+             ->IsAnyOf<ast::AccessorExpression, ast::CallExpression, ast::IdentifierExpression>();
     if (paren_lhs) {
         out << "(";
     }
-    if (!EmitExpression(out, expr->structure)) {
+    if (!EmitExpression(out, expr->object)) {
         return false;
     }
     if (paren_lhs) {
@@ -297,7 +289,23 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
 }
 
 bool GeneratorImpl::EmitIdentifier(std::ostream& out, const ast::IdentifierExpression* expr) {
-    out << program_->Symbols().NameFor(expr->identifier->symbol);
+    return EmitIdentifier(out, expr->identifier);
+}
+
+bool GeneratorImpl::EmitIdentifier(std::ostream& out, const ast::Identifier* ident) {
+    out << program_->Symbols().NameFor(ident->symbol);
+    if (auto* tmpl_ident = ident->As<ast::TemplatedIdentifier>()) {
+        out << "<";
+        TINT_DEFER(out << ">");
+        for (auto* expr : tmpl_ident->arguments) {
+            if (expr != tmpl_ident->arguments.Front()) {
+                out << ", ";
+            }
+            if (!EmitExpression(out, expr)) {
+                return false;
+            }
+        }
+    }
     return true;
 }
 
@@ -309,7 +317,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
     }
     {
         auto out = line();
-        out << "fn " << program_->Symbols().NameFor(func->symbol) << "(";
+        out << "fn " << program_->Symbols().NameFor(func->name->symbol) << "(";
 
         bool first = true;
         for (auto* v : func->params) {
@@ -325,7 +333,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
                 out << " ";
             }
 
-            out << program_->Symbols().NameFor(v->symbol) << " : ";
+            out << program_->Symbols().NameFor(v->name->symbol) << " : ";
 
             if (!EmitType(out, v->type)) {
                 return false;
@@ -334,7 +342,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
 
         out << ")";
 
-        if (!func->return_type->Is<ast::Void>() || !func->return_type_attributes.IsEmpty()) {
+        if (func->return_type || !func->return_type_attributes.IsEmpty()) {
             out << " -> ";
 
             if (!func->return_type_attributes.IsEmpty()) {
@@ -424,22 +432,6 @@ bool GeneratorImpl::EmitType(std::ostream& out, const ast::Type* ty) {
             }
             return true;
         },
-        [&](const ast::Bool*) {
-            out << "bool";
-            return true;
-        },
-        [&](const ast::F32*) {
-            out << "f32";
-            return true;
-        },
-        [&](const ast::F16*) {
-            out << "f16";
-            return true;
-        },
-        [&](const ast::I32*) {
-            out << "i32";
-            return true;
-        },
         [&](const ast::Matrix* mat) {
             out << "mat" << mat->columns << "x" << mat->rows;
             if (auto* el_ty = mat->type) {
@@ -473,40 +465,16 @@ bool GeneratorImpl::EmitType(std::ostream& out, const ast::Type* ty) {
             out << ">";
             return true;
         },
-        [&](const ast::Sampler* sampler) {
-            out << "sampler";
-
-            if (sampler->IsComparison()) {
-                out << "_comparison";
-            }
-            return true;
-        },
-        [&](const ast::ExternalTexture*) {
-            out << "texture_external";
-            return true;
-        },
         [&](const ast::Texture* texture) {
             out << "texture_";
             bool ok = Switch(
                 texture,
-                [&](const ast::DepthTexture*) {  //
-                    out << "depth_";
-                    return true;
-                },
-                [&](const ast::DepthMultisampledTexture*) {  //
-                    out << "depth_multisampled_";
-                    return true;
-                },
                 [&](const ast::SampledTexture*) {  //
                     /* nothing to emit */
                     return true;
                 },
                 [&](const ast::MultisampledTexture*) {  //
                     out << "multisampled_";
-                    return true;
-                },
-                [&](const ast::StorageTexture*) {  //
-                    out << "storage_";
                     return true;
                 },
                 [&](Default) {  //
@@ -559,25 +527,9 @@ bool GeneratorImpl::EmitType(std::ostream& out, const ast::Type* ty) {
                     out << ">";
                     return true;
                 },
-                [&](const ast::StorageTexture* storage) {  //
-                    out << "<";
-                    if (!EmitImageFormat(out, storage->format)) {
-                        return false;
-                    }
-                    out << ", ";
-                    if (!EmitAccess(out, storage->access)) {
-                        return false;
-                    }
-                    out << ">";
-                    return true;
-                },
                 [&](Default) {  //
                     return true;
                 });
-        },
-        [&](const ast::U32*) {
-            out << "u32";
-            return true;
         },
         [&](const ast::Vector* vec) {
             out << "vec" << vec->width;
@@ -590,14 +542,7 @@ bool GeneratorImpl::EmitType(std::ostream& out, const ast::Type* ty) {
             }
             return true;
         },
-        [&](const ast::Void*) {
-            out << "void";
-            return true;
-        },
-        [&](const ast::TypeName* tn) {
-            out << program_->Symbols().NameFor(tn->name->symbol);
-            return true;
-        },
+        [&](const ast::TypeName* tn) { return EmitIdentifier(out, tn->name); },
         [&](Default) {
             diagnostics_.add_error(diag::System::Writer,
                                    "unknown type in EmitType: " + std::string(ty->TypeInfo().name));
@@ -611,7 +556,7 @@ bool GeneratorImpl::EmitStructType(const ast::Struct* str) {
             return false;
         }
     }
-    line() << "struct " << program_->Symbols().NameFor(str->name) << " {";
+    line() << "struct " << program_->Symbols().NameFor(str->name->symbol) << " {";
 
     auto add_padding = [&](uint32_t size) {
         line() << "@size(" << size << ")";
@@ -660,7 +605,7 @@ bool GeneratorImpl::EmitStructType(const ast::Struct* str) {
         }
 
         auto out = line();
-        out << program_->Symbols().NameFor(mem->symbol) << " : ";
+        out << program_->Symbols().NameFor(mem->name->symbol) << " : ";
         if (!EmitType(out, mem->type)) {
             return false;
         }
@@ -718,7 +663,7 @@ bool GeneratorImpl::EmitVariable(std::ostream& out, const ast::Variable* v) {
         return false;
     }
 
-    out << " " << program_->Symbols().NameFor(v->symbol);
+    out << " " << program_->Symbols().NameFor(v->name->symbol);
 
     if (auto* ty = v->type) {
         out << " : ";

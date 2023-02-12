@@ -128,7 +128,13 @@ enum interpolation_sampling {
   sample
 }
 
-enum short_name {
+enum builtin_type {
+  // https://www.w3.org/TR/WGSL/#scalar-types
+  bool
+  f16
+  f32
+  i32
+  u32
   // https://www.w3.org/TR/WGSL/#matrix-types
   mat2x2f
   mat2x2h
@@ -161,6 +167,22 @@ enum short_name {
   vec4h
   vec4i
   vec4u
+  // https://www.w3.org/TR/WGSL/#sampler-type
+  sampler
+  sampler_comparison
+  // https://www.w3.org/TR/WGSL/#texture-depth
+  texture_depth_2d
+  texture_depth_2d_array
+  texture_depth_cube
+  texture_depth_cube_array
+  texture_depth_multisampled_2d
+  // https://www.w3.org/TR/WGSL/#texture-storage
+  texture_storage_1d
+  texture_storage_2d
+  texture_storage_2d_array
+  texture_storage_3d
+  // https://www.w3.org/TR/WGSL/#external-texture-type
+  texture_external
 }
 
 ////////////////////////////////////////////////////////////////////////////////

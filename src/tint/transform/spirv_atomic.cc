@@ -101,7 +101,7 @@ struct SpirvAtomic::State {
 
                     // Keep track of this expression. We'll need to modify the root identifier /
                     // structure to be atomic.
-                    atomic_expressions.Add(ctx.src->Sem().Get(args[0]));
+                    atomic_expressions.Add(ctx.src->Sem().GetVal(args[0]));
                 }
 
                 // Remove the stub from the output program
@@ -132,7 +132,7 @@ struct SpirvAtomic::State {
                         auto* member = str->members[i];
                         if (forked.atomic_members.count(i)) {
                             auto* type = AtomicTypeFor(ctx.src->Sem().Get(member)->Type());
-                            auto name = ctx.src->Symbols().NameFor(member->symbol);
+                            auto name = ctx.src->Symbols().NameFor(member->name->symbol);
                             members.Push(b.Member(name, type, ctx.Clone(member->attributes)));
                         } else {
                             members.Push(ctx.Clone(member));
@@ -156,7 +156,8 @@ struct SpirvAtomic::State {
     ForkedStruct& Fork(const ast::Struct* str) {
         auto& forked = forked_structs[str];
         if (!forked.name.IsValid()) {
-            forked.name = b.Symbols().New(ctx.src->Symbols().NameFor(str->name) + "_atomic");
+            forked.name =
+                b.Symbols().New(ctx.src->Symbols().NameFor(str->name->symbol) + "_atomic");
         }
         return forked;
     }
@@ -186,7 +187,7 @@ struct SpirvAtomic::State {
                 },
                 [&](const sem::ValueExpression* e) {
                     if (auto* unary = e->Declaration()->As<ast::UnaryOpExpression>()) {
-                        atomic_expressions.Add(ctx.src->Sem().Get(unary->expr));
+                        atomic_expressions.Add(ctx.src->Sem().GetVal(unary->expr));
                     }
                 });
         }
@@ -249,7 +250,7 @@ struct SpirvAtomic::State {
                 Switch(
                     vu->Stmt()->Declaration(),
                     [&](const ast::AssignmentStatement* assign) {
-                        auto* sem_lhs = ctx.src->Sem().Get(assign->lhs);
+                        auto* sem_lhs = ctx.src->Sem().GetVal(assign->lhs);
                         if (is_ref_to_atomic_var(sem_lhs)) {
                             ctx.Replace(assign, [=] {
                                 auto* lhs = ctx.CloneWithoutTransform(assign->lhs);
@@ -261,7 +262,7 @@ struct SpirvAtomic::State {
                             return;
                         }
 
-                        auto sem_rhs = ctx.src->Sem().Get(assign->rhs);
+                        auto sem_rhs = ctx.src->Sem().GetVal(assign->rhs);
                         if (is_ref_to_atomic_var(sem_rhs->UnwrapLoad())) {
                             ctx.Replace(assign->rhs, [=] {
                                 auto* rhs = ctx.CloneWithoutTransform(assign->rhs);
@@ -273,7 +274,7 @@ struct SpirvAtomic::State {
                     },
                     [&](const ast::VariableDeclStatement* decl) {
                         auto* var = decl->variable;
-                        if (auto* sem_init = ctx.src->Sem().Get(var->initializer)) {
+                        if (auto* sem_init = ctx.src->Sem().GetVal(var->initializer)) {
                             if (is_ref_to_atomic_var(sem_init->UnwrapLoad())) {
                                 ctx.Replace(var->initializer, [=] {
                                     auto* rhs = ctx.CloneWithoutTransform(var->initializer);

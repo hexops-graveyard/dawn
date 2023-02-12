@@ -122,11 +122,15 @@ class Resolver {
     /// ProgramBuilder.
     void CreateSemanticNodes() const;
 
+    /// @returns the call of Expression() cast to a sem::ValueExpression. If the sem::Expression is
+    /// not a sem::ValueExpression, then an error diagnostic is raised and nullptr is returned.
+    sem::ValueExpression* ValueExpression(const ast::Expression* expr);
+
     /// Expression traverses the graph of expressions starting at `expr`, building a postordered
     /// list (leaf-first) of all the expression nodes. Each of the expressions are then resolved by
     /// dispatching to the appropriate expression handlers below.
     /// @returns the resolved semantic node for the expression `expr`, or nullptr on failure.
-    sem::ValueExpression* Expression(const ast::Expression* expr);
+    sem::Expression* Expression(const ast::Expression* expr);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // Expression resolving methods
@@ -147,7 +151,7 @@ class Resolver {
                             sem::Function* target,
                             utils::Vector<const sem::ValueExpression*, N>& args,
                             sem::Behaviors arg_behaviors);
-    sem::ValueExpression* Identifier(const ast::IdentifierExpression*);
+    sem::Expression* Identifier(const ast::IdentifierExpression*);
     template <size_t N>
     sem::Call* BuiltinCall(const ast::CallExpression*,
                            sem::BuiltinType,
@@ -419,6 +423,20 @@ class Resolver {
     template <typename NODE>
     void ApplyDiagnosticSeverities(NODE* node);
 
+    /// Raises an error diagnostic that the resolved identifier @p resolved was not of the expected
+    /// kind.
+    /// @param source the source of the error diagnostic
+    /// @param resolved the resolved identifier
+    /// @param wanted the expected kind
+    void ErrorMismatchedResolvedIdentifier(const Source& source,
+                                           const ResolvedIdentifier& resolved,
+                                           std::string_view wanted);
+
+    /// If @p node is a module-scope type, variable or function declaration, then appends a note
+    /// diagnostic where this declaration was declared, otherwise the function does nothing.
+    /// @param node the AST node.
+    void NoteDeclarationSource(const ast::Node* node);
+
     /// Adds the given error message to the diagnostics
     void AddError(const std::string& msg, const Source& source) const;
 
@@ -428,12 +446,9 @@ class Resolver {
     /// Adds the given note message to the diagnostics
     void AddNote(const std::string& msg, const Source& source) const;
 
-    /// @returns true if the symbol is the name of a builtin function.
-    bool IsBuiltin(Symbol) const;
-
-    /// @returns the type short-name alias for the symbol @p symbol at @p source
-    /// @note: Will raise an ICE if @p symbol is not a short-name type.
-    type::Type* ShortName(Symbol symbol, const Source& source) const;
+    /// @returns the type::Type for the builtin type @p builtin_ty with the identifier @p ident
+    /// @note: Will raise an ICE if @p symbol is not a builtin type.
+    type::Type* BuiltinType(type::Builtin builtin_ty, const ast::Identifier* ident);
 
     // ArrayInitializerSig represents a unique array initializer signature.
     // It is a tuple of the array type, number of arguments provided and earliest evaluation stage.

@@ -82,7 +82,7 @@ TEST_F(SideEffectsTest, VariableUser) {
     WrapInFunction(var, expr);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
-    auto* sem = Sem().Get(expr);
+    auto* sem = Sem().GetVal(expr);
     ASSERT_NE(sem, nullptr);
     EXPECT_TRUE(sem->UnwrapLoad()->Is<sem::VariableUser>());
     EXPECT_FALSE(sem->HasSideEffects());
@@ -218,7 +218,7 @@ TEST_P(SideEffectsBuiltinTest, Test) {
         attrs.Push(WorkgroupSize(Expr(1_u)));
     }
 
-    stmts.Push(create<ast::CallStatement>(expr));
+    stmts.Push(CallStmt(expr));
 
     Func("func", utils::Empty, ty.void_(), stmts, attrs);
 
@@ -370,7 +370,7 @@ TEST_F(SideEffectsTest, Call_Function) {
 
 TEST_F(SideEffectsTest, Call_TypeConversion_NoSE) {
     auto* var = Decl(Var("a", ty.i32()));
-    auto* expr = Construct(ty.f32(), "a");
+    auto* expr = Call<f32>("a");
     WrapInFunction(var, expr);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -382,7 +382,7 @@ TEST_F(SideEffectsTest, Call_TypeConversion_NoSE) {
 
 TEST_F(SideEffectsTest, Call_TypeConversion_SE) {
     MakeSideEffectFunc<i32>("se");
-    auto* expr = Construct(ty.f32(), Call("se"));
+    auto* expr = Call<f32>(Call("se"));
     WrapInFunction(expr);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -394,7 +394,7 @@ TEST_F(SideEffectsTest, Call_TypeConversion_SE) {
 
 TEST_F(SideEffectsTest, Call_TypeInitializer_NoSE) {
     auto* var = Decl(Var("a", ty.f32()));
-    auto* expr = Construct(ty.f32(), "a");
+    auto* expr = Call<f32>("a");
     WrapInFunction(var, expr);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -406,7 +406,7 @@ TEST_F(SideEffectsTest, Call_TypeInitializer_NoSE) {
 
 TEST_F(SideEffectsTest, Call_TypeInitializer_SE) {
     MakeSideEffectFunc<f32>("se");
-    auto* expr = Construct(ty.f32(), Call("se"));
+    auto* expr = Call<f32>(Call("se"));
     WrapInFunction(expr);
 
     EXPECT_TRUE(r()->Resolve()) << r()->error();

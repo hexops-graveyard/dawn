@@ -23,21 +23,15 @@
 #include "src/tint/ast/assignment_statement.h"
 #include "src/tint/ast/atomic.h"
 #include "src/tint/ast/block_statement.h"
-#include "src/tint/ast/bool.h"
 #include "src/tint/ast/break_if_statement.h"
 #include "src/tint/ast/break_statement.h"
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/ast/compound_assignment_statement.h"
+#include "src/tint/ast/const.h"
 #include "src/tint/ast/continue_statement.h"
-#include "src/tint/ast/depth_multisampled_texture.h"
-#include "src/tint/ast/depth_texture.h"
 #include "src/tint/ast/diagnostic_attribute.h"
 #include "src/tint/ast/discard_statement.h"
-#include "src/tint/ast/external_texture.h"
-#include "src/tint/ast/f16.h"
-#include "src/tint/ast/f32.h"
 #include "src/tint/ast/for_loop_statement.h"
-#include "src/tint/ast/i32.h"
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/identifier.h"
 #include "src/tint/ast/if_statement.h"
@@ -49,12 +43,11 @@
 #include "src/tint/ast/loop_statement.h"
 #include "src/tint/ast/matrix.h"
 #include "src/tint/ast/multisampled_texture.h"
+#include "src/tint/ast/override.h"
 #include "src/tint/ast/pointer.h"
 #include "src/tint/ast/return_statement.h"
 #include "src/tint/ast/sampled_texture.h"
-#include "src/tint/ast/sampler.h"
 #include "src/tint/ast/stage_attribute.h"
-#include "src/tint/ast/storage_texture.h"
 #include "src/tint/ast/stride_attribute.h"
 #include "src/tint/ast/struct.h"
 #include "src/tint/ast/struct_member_align_attribute.h"
@@ -64,16 +57,15 @@
 #include "src/tint/ast/templated_identifier.h"
 #include "src/tint/ast/traverse_expressions.h"
 #include "src/tint/ast/type_name.h"
-#include "src/tint/ast/u32.h"
+#include "src/tint/ast/var.h"
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/ast/vector.h"
-#include "src/tint/ast/void.h"
 #include "src/tint/ast/while_statement.h"
 #include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/scope_stack.h"
 #include "src/tint/sem/builtin.h"
 #include "src/tint/symbol_table.h"
-#include "src/tint/type/short_name.h"
+#include "src/tint/type/builtin.h"
 #include "src/tint/utils/block_allocator.h"
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/defer.h"
@@ -185,22 +177,22 @@ class DependencyScanner {
         Switch(
             global->node,
             [&](const ast::Struct* str) {
-                Declare(str->name, str);
+                Declare(str->name->symbol, str);
                 for (auto* member : str->members) {
                     TraverseAttributes(member->attributes);
                     TraverseType(member->type);
                 }
             },
             [&](const ast::Alias* alias) {
-                Declare(alias->name, alias);
+                Declare(alias->name->symbol, alias);
                 TraverseType(alias->type);
             },
             [&](const ast::Function* func) {
-                Declare(func->symbol, func);
+                Declare(func->name->symbol, func);
                 TraverseFunction(func);
             },
             [&](const ast::Variable* var) {
-                Declare(var->symbol, var);
+                Declare(var->name->symbol, var);
                 TraverseType(var->type);
                 TraverseAttributes(var->attributes);
                 if (var->initializer) {
@@ -238,10 +230,10 @@ class DependencyScanner {
         TINT_DEFER(scope_stack_.Pop());
 
         for (auto* param : func->params) {
-            if (auto* shadows = scope_stack_.Get(param->symbol)) {
+            if (auto* shadows = scope_stack_.Get(param->name->symbol)) {
                 graph_.shadows.Add(param, shadows);
             }
-            Declare(param->symbol, param);
+            Declare(param->name->symbol, param);
         }
         if (func->body) {
             TraverseStatements(func->body->statements);
@@ -312,12 +304,12 @@ class DependencyScanner {
                 }
             },
             [&](const ast::VariableDeclStatement* v) {
-                if (auto* shadows = scope_stack_.Get(v->variable->symbol)) {
+                if (auto* shadows = scope_stack_.Get(v->variable->name->symbol)) {
                     graph_.shadows.Add(v->variable, shadows);
                 }
                 TraverseType(v->variable->type);
                 TraverseExpression(v->variable->initializer);
-                Declare(v->variable->symbol, v->variable);
+                Declare(v->variable->name->symbol, v->variable);
             },
             [&](const ast::WhileStatement* w) {
                 scope_stack_.Push();
@@ -345,30 +337,44 @@ class DependencyScanner {
         }
     }
 
-    /// Traverses the expression, performing symbol resolution and determining
-    /// global dependencies.
+    /// Traverses the expression, performing symbol resolution and determining global dependencies.
     void TraverseExpression(const ast::Expression* root) {
         if (!root) {
             return;
         }
-        ast::TraverseExpressions(root, diagnostics_, [&](const ast::Expression* expr) {
-            Switch(
-                expr,
-                [&](const ast::IdentifierExpression* ident) {
-                    AddDependency(ident, ident->identifier->symbol, "identifier", "references");
-                },
-                [&](const ast::CallExpression* call) {
-                    if (call->target.name) {
-                        AddDependency(call->target.name, call->target.name->symbol, "function",
-                                      "calls");
-                    }
-                    if (call->target.type) {
-                        TraverseType(call->target.type);
-                    }
-                },
-                [&](const ast::BitcastExpression* cast) { TraverseType(cast->type); });
-            return ast::TraverseAction::Descend;
-        });
+        utils::Vector<const ast::Expression*, 8> pending{root};
+        while (!pending.IsEmpty()) {
+            ast::TraverseExpressions(pending.Pop(), diagnostics_, [&](const ast::Expression* expr) {
+                Switch(
+                    expr,
+                    [&](const ast::IdentifierExpression* e) {
+                        AddDependency(e->identifier, e->identifier->symbol, "identifier",
+                                      "references");
+                        if (auto* tmpl_ident = e->identifier->As<ast::TemplatedIdentifier>()) {
+                            for (auto* arg : tmpl_ident->arguments) {
+                                pending.Push(arg);
+                            }
+                        }
+                    },
+                    [&](const ast::CallExpression* call) {
+                        if (call->target.name) {
+                            AddDependency(call->target.name, call->target.name->symbol, "function",
+                                          "calls");
+                            if (auto* tmpl_ident =
+                                    call->target.name->As<ast::TemplatedIdentifier>()) {
+                                for (auto* arg : tmpl_ident->arguments) {
+                                    pending.Push(arg);
+                                }
+                            }
+                        }
+                        if (call->target.type) {
+                            TraverseType(call->target.type);
+                        }
+                    },
+                    [&](const ast::BitcastExpression* cast) { TraverseType(cast->type); });
+                return ast::TraverseAction::Descend;
+            });
+        }
     }
 
     /// Traverses the type node, performing symbol resolution and determining
@@ -393,7 +399,12 @@ class DependencyScanner {
                 TraverseType(ptr->type);
             },
             [&](const ast::TypeName* tn) {  //
-                AddDependency(tn, tn->name->symbol, "type", "references");
+                AddDependency(tn->name, tn->name->symbol, "type", "references");
+                if (auto* tmpl_ident = tn->name->As<ast::TemplatedIdentifier>()) {
+                    for (auto* arg : tmpl_ident->arguments) {
+                        TraverseExpression(arg);
+                    }
+                }
             },
             [&](const ast::Vector* vec) {  //
                 TraverseType(vec->type);
@@ -404,13 +415,7 @@ class DependencyScanner {
             [&](const ast::MultisampledTexture* tex) {  //
                 TraverseType(tex->type);
             },
-            [&](Default) {
-                if (!ty->IsAnyOf<ast::Void, ast::Bool, ast::I32, ast::U32, ast::F16, ast::F32,
-                                 ast::DepthTexture, ast::DepthMultisampledTexture,
-                                 ast::StorageTexture, ast::ExternalTexture, ast::Sampler>()) {
-                    UnhandledNode(diagnostics_, ty);
-                }
-            });
+            [&](Default) { UnhandledNode(diagnostics_, ty); });
     }
 
     /// Traverses the attribute list, performing symbol resolution and
@@ -469,15 +474,37 @@ class DependencyScanner {
         UnhandledNode(diagnostics_, attr);
     }
 
-    /// Adds the dependency from `from` to `to`, erroring if `to` cannot be
-    /// resolved.
-    void AddDependency(const ast::Node* from, Symbol to, const char* use, const char* action) {
+    /// Adds the dependency from @p from to @p to, erroring if @p to cannot be resolved.
+    void AddDependency(const ast::Identifier* from,
+                       Symbol to,
+                       const char* use,
+                       const char* action) {
         auto* resolved = scope_stack_.Get(to);
         if (!resolved) {
-            if (!IsBuiltin(to)) {
-                UnknownSymbol(to, from->source, use);
+            auto s = symbols_.NameFor(to);
+            if (auto builtin_fn = sem::ParseBuiltinType(s); builtin_fn != sem::BuiltinType::kNone) {
+                graph_.resolved_identifiers.Add(from, ResolvedIdentifier(builtin_fn));
                 return;
             }
+            if (auto builtin_ty = type::ParseBuiltin(s); builtin_ty != type::Builtin::kUndefined) {
+                graph_.resolved_identifiers.Add(from, ResolvedIdentifier(builtin_ty));
+                return;
+            }
+            if (auto addr = type::ParseAddressSpace(s); addr != type::AddressSpace::kUndefined) {
+                graph_.resolved_identifiers.Add(from, ResolvedIdentifier(addr));
+                return;
+            }
+            if (auto fmt = type::ParseTexelFormat(s); fmt != type::TexelFormat::kUndefined) {
+                graph_.resolved_identifiers.Add(from, ResolvedIdentifier(fmt));
+                return;
+            }
+            if (auto access = type::ParseAccess(s); access != type::Access::kUndefined) {
+                graph_.resolved_identifiers.Add(from, ResolvedIdentifier(access));
+                return;
+            }
+
+            UnknownSymbol(to, from->source, use);
+            return;
         }
 
         if (auto global = globals_.Find(to); global && (*global)->node == resolved) {
@@ -487,17 +514,7 @@ class DependencyScanner {
             }
         }
 
-        graph_.resolved_symbols.Add(from, resolved);
-    }
-
-    /// @returns true if `name` is the name of a builtin function, or builtin type alias
-    bool IsBuiltin(Symbol name) const {
-        auto s = symbols_.NameFor(name);
-        if (sem::ParseBuiltinType(s) != sem::BuiltinType::kNone ||
-            type::ParseShortName(s) != type::ShortName::kUndefined) {
-            return true;
-        }
-        return false;
+        graph_.resolved_identifiers.Add(from, ResolvedIdentifier(resolved));
     }
 
     /// Appends an error to the diagnostics that the given symbol cannot be
@@ -530,7 +547,7 @@ struct DependencyAnalysis {
     /// @returns true if analysis found no errors, otherwise false.
     bool Run(const ast::Module& module) {
         // Reserve container memory
-        graph_.resolved_symbols.Reserve(module.GlobalDeclarations().Length());
+        graph_.resolved_identifiers.Reserve(module.GlobalDeclarations().Length());
         sorted_.Reserve(module.GlobalDeclarations().Length());
 
         // Collect all the named globals from the AST module
@@ -558,9 +575,9 @@ struct DependencyAnalysis {
     Symbol SymbolOf(const ast::Node* node) const {
         return Switch(
             node,  //
-            [&](const ast::TypeDecl* td) { return td->name; },
-            [&](const ast::Function* func) { return func->symbol; },
-            [&](const ast::Variable* var) { return var->symbol; },
+            [&](const ast::TypeDecl* td) { return td->name->symbol; },
+            [&](const ast::Function* func) { return func->name->symbol; },
+            [&](const ast::Variable* var) { return var->name->symbol; },
             [&](const ast::DiagnosticDirective*) { return Symbol(); },
             [&](const ast::Enable*) { return Symbol(); },
             [&](const ast::ConstAssert*) { return Symbol(); },
@@ -820,6 +837,53 @@ bool DependencyGraph::Build(const ast::Module& module,
                             DependencyGraph& output) {
     DependencyAnalysis da{symbols, diagnostics, output};
     return da.Run(module);
+}
+
+std::string ResolvedIdentifier::String(const SymbolTable& symbols, diag::List& diagnostics) const {
+    if (!Resolved()) {
+        return "<unresolved symbol>";
+    }
+    if (auto* node = Node()) {
+        return Switch(
+            node,
+            [&](const ast::TypeDecl* n) {  //
+                return "type '" + symbols.NameFor(n->name->symbol) + "'";
+            },
+            [&](const ast::Var* n) {  //
+                return "var '" + symbols.NameFor(n->name->symbol) + "'";
+            },
+            [&](const ast::Const* n) {  //
+                return "const '" + symbols.NameFor(n->name->symbol) + "'";
+            },
+            [&](const ast::Override* n) {  //
+                return "override '" + symbols.NameFor(n->name->symbol) + "'";
+            },
+            [&](const ast::Function* n) {  //
+                return "function '" + symbols.NameFor(n->name->symbol) + "'";
+            },
+            [&](Default) {
+                TINT_UNREACHABLE(Resolver, diagnostics)
+                    << "unhandled ast::Node: " << node->TypeInfo().name;
+                return "<unknown>";
+            });
+    }
+    if (auto builtin_fn = BuiltinFunction(); builtin_fn != sem::BuiltinType::kNone) {
+        return "builtin function '" + utils::ToString(builtin_fn) + "'";
+    }
+    if (auto builtin_ty = BuiltinType(); builtin_ty != type::Builtin::kUndefined) {
+        return "builtin type '" + utils::ToString(builtin_ty) + "'";
+    }
+    if (auto access = Access(); access != type::Access::kUndefined) {
+        return "access '" + utils::ToString(access) + "'";
+    }
+    if (auto addr = AddressSpace(); addr != type::AddressSpace::kUndefined) {
+        return "address space '" + utils::ToString(addr) + "'";
+    }
+    if (auto fmt = TexelFormat(); fmt != type::TexelFormat::kUndefined) {
+        return "texel format '" + utils::ToString(fmt) + "'";
+    }
+    TINT_UNREACHABLE(Resolver, diagnostics) << "unhandled ResolvedIdentifier";
+    return "<unknown>";
 }
 
 }  // namespace tint::resolver

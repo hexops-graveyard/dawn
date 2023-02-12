@@ -48,7 +48,7 @@ struct PreservePadding::State {
             Switch(
                 node,  //
                 [&](const ast::AssignmentStatement* assign) {
-                    auto* ty = sem.Get(assign->lhs)->Type();
+                    auto* ty = sem.GetVal(assign->lhs)->Type();
                     if (assign->lhs->Is<ast::PhonyExpression>()) {
                         // Ignore phony assignment.
                         return;
@@ -80,7 +80,7 @@ struct PreservePadding::State {
             if (!assignments_to_transform.count(assign)) {
                 return nullptr;
             }
-            auto* ty = sem.Get(assign->lhs)->Type()->UnwrapRef();
+            auto* ty = sem.GetVal(assign->lhs)->Type()->UnwrapRef();
             return MakeAssignment(ty, ctx.Clone(assign->lhs), ctx.Clone(assign->rhs));
         });
 
@@ -151,7 +151,7 @@ struct PreservePadding::State {
                 return call_helper([&]() {
                     utils::Vector<const ast::Statement*, 8> body;
                     for (auto member : str->Members()) {
-                        auto name = sym.NameFor(member->Declaration()->symbol);
+                        auto name = sym.NameFor(member->Declaration()->name->symbol);
                         body.Push(MakeAssignment(member->Type(),
                                                  b.MemberAccessor(b.Deref(kDestParamName), name),
                                                  b.MemberAccessor(kValueParamName, name)));

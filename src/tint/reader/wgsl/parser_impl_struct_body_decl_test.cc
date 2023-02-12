@@ -28,8 +28,9 @@ TEST_F(ParserImplTest, StructBodyDecl_Parses) {
     ASSERT_EQ(m.value.Length(), 1u);
 
     const auto* mem = m.value[0];
-    EXPECT_EQ(mem->symbol, builder.Symbols().Get("a"));
-    EXPECT_TRUE(mem->type->Is<ast::I32>());
+    EXPECT_EQ(mem->name->symbol, builder.Symbols().Get("a"));
+    ASSERT_TRUE(mem->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(mem->type->As<ast::TypeName>()->name->symbol), "i32");
     EXPECT_EQ(mem->attributes.Length(), 0u);
 }
 
@@ -44,8 +45,9 @@ TEST_F(ParserImplTest, StructBodyDecl_Parses_TrailingComma) {
     ASSERT_EQ(m.value.Length(), 1u);
 
     const auto* mem = m.value[0];
-    EXPECT_EQ(mem->symbol, builder.Symbols().Get("a"));
-    EXPECT_TRUE(mem->type->Is<ast::I32>());
+    EXPECT_EQ(mem->name->symbol, builder.Symbols().Get("a"));
+    ASSERT_TRUE(mem->type->Is<ast::TypeName>());
+    EXPECT_EQ(p->builder().Symbols().NameFor(mem->type->As<ast::TypeName>()->name->symbol), "i32");
     EXPECT_EQ(mem->attributes.Length(), 0u);
 }
 

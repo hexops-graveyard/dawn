@@ -83,9 +83,12 @@ class TestHelper : public ProgramBuilder {
     /// @return the resolved sem::Variable of the identifier, or nullptr if
     /// the expression did not resolve to a variable.
     const sem::Variable* VarOf(const ast::Expression* expr) {
-        auto* sem_ident = Sem().Get(expr)->UnwrapLoad();
-        auto* var_user = sem_ident ? sem_ident->As<sem::VariableUser>() : nullptr;
-        return var_user ? var_user->Variable() : nullptr;
+        if (auto* sem = Sem().GetVal(expr)) {
+            if (auto* var_user = As<sem::VariableUser>(sem->UnwrapLoad())) {
+                return var_user->Variable();
+            }
+        }
+        return nullptr;
     }
 
     /// Checks that all the users of the given variable are as expected
@@ -464,7 +467,7 @@ struct DataType<vec<N, T>> {
     /// @param args args of size 1 or N with values of type T to initialize with
     /// @return a new AST vector value expression
     static inline const ast::Expression* Expr(ProgramBuilder& b, utils::VectorRef<Scalar> args) {
-        return b.Construct(AST(b), ExprArgs(b, std::move(args)));
+        return b.Call(AST(b), ExprArgs(b, std::move(args)));
     }
     /// @param b the ProgramBuilder
     /// @param args args of size 1 or N with values of type T to initialize with
@@ -513,7 +516,7 @@ struct DataType<mat<N, M, T>> {
     /// @param args args of size 1 or N*M with values of type T to initialize with
     /// @return a new AST matrix value expression
     static inline const ast::Expression* Expr(ProgramBuilder& b, utils::VectorRef<Scalar> args) {
-        return b.Construct(AST(b), ExprArgs(b, std::move(args)));
+        return b.Call(AST(b), ExprArgs(b, std::move(args)));
     }
     /// @param b the ProgramBuilder
     /// @param args args of size 1 or N*M with values of type T to initialize with
@@ -579,7 +582,7 @@ struct DataType<alias<T, ID>> {
         ProgramBuilder& b,
         utils::VectorRef<Scalar> args) {
         // Cast
-        return b.Construct(AST(b), DataType<T>::Expr(b, std::move(args)));
+        return b.Call(AST(b), DataType<T>::Expr(b, std::move(args)));
     }
 
     /// @param b the ProgramBuilder
@@ -590,7 +593,7 @@ struct DataType<alias<T, ID>> {
         ProgramBuilder& b,
         utils::VectorRef<Scalar> args) {
         // Construct
-        return b.Construct(AST(b), DataType<T>::ExprArgs(b, std::move(args)));
+        return b.Call(AST(b), DataType<T>::ExprArgs(b, std::move(args)));
     }
 
     /// @param b the ProgramBuilder
@@ -686,7 +689,7 @@ struct DataType<array<N, T>> {
     /// with
     /// @return a new AST array value expression
     static inline const ast::Expression* Expr(ProgramBuilder& b, utils::VectorRef<Scalar> args) {
-        return b.Construct(AST(b), ExprArgs(b, std::move(args)));
+        return b.Call(AST(b), ExprArgs(b, std::move(args)));
     }
     /// @param b the ProgramBuilder
     /// @param args args of size 1 or N with values of type T to initialize with

@@ -15,13 +15,126 @@
 #ifndef SRC_TINT_RESOLVER_DEPENDENCY_GRAPH_H_
 #define SRC_TINT_RESOLVER_DEPENDENCY_GRAPH_H_
 
+#include <string>
 #include <vector>
 
 #include "src/tint/ast/module.h"
 #include "src/tint/diagnostic/diagnostic.h"
+#include "src/tint/sem/builtin_type.h"
+#include "src/tint/type/access.h"
+#include "src/tint/type/builtin.h"
+#include "src/tint/type/texel_format.h"
 #include "src/tint/utils/hashmap.h"
 
 namespace tint::resolver {
+
+/// ResolvedIdentifier holds the resolution of an ast::Identifier.
+/// Can hold one of:
+/// - const ast::TypeDecl*  (as const ast::Node*)
+/// - const ast::Variable*  (as const ast::Node*)
+/// - const ast::Function*  (as const ast::Node*)
+/// - sem::BuiltinType
+/// - type::Access
+/// - type::AddressSpace
+/// - type::Builtin
+/// - type::TexelFormat
+class ResolvedIdentifier {
+  public:
+    ResolvedIdentifier() = default;
+
+    /// Constructor
+    /// @param value the resolved identifier value
+    template <typename T>
+    ResolvedIdentifier(T value) : value_(value) {}  // NOLINT(runtime/explicit)
+
+    /// @return true if the ResolvedIdentifier holds a value (successfully resolved)
+    bool Resolved() const { return !std::holds_alternative<std::monostate>(value_); }
+
+    /// @return the node pointer if the ResolvedIdentifier holds an AST node, otherwise nullptr
+    const ast::Node* Node() const {
+        if (auto n = std::get_if<const ast::Node*>(&value_)) {
+            return *n;
+        }
+        return nullptr;
+    }
+
+    /// @return the builtin function if the ResolvedIdentifier holds sem::BuiltinType, otherwise
+    /// sem::BuiltinType::kNone
+    sem::BuiltinType BuiltinFunction() const {
+        if (auto n = std::get_if<sem::BuiltinType>(&value_)) {
+            return *n;
+        }
+        return sem::BuiltinType::kNone;
+    }
+
+    /// @return the access if the ResolvedIdentifier holds type::Access, otherwise
+    /// type::Access::kUndefined
+    type::Access Access() const {
+        if (auto n = std::get_if<type::Access>(&value_)) {
+            return *n;
+        }
+        return type::Access::kUndefined;
+    }
+
+    /// @return the address space if the ResolvedIdentifier holds type::AddressSpace, otherwise
+    /// type::AddressSpace::kUndefined
+    type::AddressSpace AddressSpace() const {
+        if (auto n = std::get_if<type::AddressSpace>(&value_)) {
+            return *n;
+        }
+        return type::AddressSpace::kUndefined;
+    }
+
+    /// @return the builtin type if the ResolvedIdentifier holds type::Builtin, otherwise
+    /// type::Builtin::kUndefined
+    type::Builtin BuiltinType() const {
+        if (auto n = std::get_if<type::Builtin>(&value_)) {
+            return *n;
+        }
+        return type::Builtin::kUndefined;
+    }
+
+    /// @return the texel format if the ResolvedIdentifier holds type::TexelFormat, otherwise
+    /// type::TexelFormat::kUndefined
+    type::TexelFormat TexelFormat() const {
+        if (auto n = std::get_if<type::TexelFormat>(&value_)) {
+            return *n;
+        }
+        return type::TexelFormat::kUndefined;
+    }
+
+    /// @param value the value to compare the ResolvedIdentifier to
+    /// @return true if the ResolvedIdentifier is equal to @p value
+    template <typename T>
+    bool operator==(const T& value) const {
+        if (auto n = std::get_if<T>(&value_)) {
+            return *n == value;
+        }
+        return false;
+    }
+
+    /// @param other the other value to compare to this
+    /// @return true if this ResolvedIdentifier and @p other are not equal
+    template <typename T>
+    bool operator!=(const T& other) const {
+        return !(*this == other);
+    }
+
+    /// @param symbols the program's symbol table
+    /// @param diagnostics diagnostics used to report ICEs
+    /// @return a description of the resolved symbol
+    std::string String(const SymbolTable& symbols, diag::List& diagnostics) const;
+
+  private:
+    std::variant<std::monostate,
+                 const ast::Node*,
+                 sem::BuiltinType,
+                 type::Access,
+                 type::AddressSpace,
+                 type::Builtin,
+                 type::TexelFormat>
+        value_;
+};
 
 /// DependencyGraph holds information about module-scope declaration dependency
 /// analysis and symbol resolutions.
@@ -48,9 +161,8 @@ struct DependencyGraph {
     /// All globals in dependency-sorted order.
     utils::Vector<const ast::Node*, 32> ordered_globals;
 
-    /// Map of ast::IdentifierExpression or ast::TypeName to a type, function, or
-    /// variable that declares the symbol.
-    utils::Hashmap<const ast::Node*, const ast::Node*, 64> resolved_symbols;
+    /// Map of ast::Identifier to a ResolvedIdentifier
+    utils::Hashmap<const ast::Identifier*, ResolvedIdentifier, 64> resolved_identifiers;
 
     /// Map of ast::Variable to a type, function, or variable that is shadowed by
     /// the variable key. A declaration (X) shadows another (Y) if X and Y use

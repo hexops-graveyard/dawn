@@ -15,16 +15,15 @@
 #include "src/tint/transform/renamer.h"
 
 #include <memory>
-#include <unordered_set>
 #include <utility>
 
 #include "src/tint/program_builder.h"
+#include "src/tint/sem/builtin_enum_expression.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/member_accessor_expression.h"
 #include "src/tint/sem/type_conversion.h"
 #include "src/tint/sem/type_initializer.h"
 #include "src/tint/text/unicode.h"
-#include "src/tint/type/short_name.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::transform::Renamer);
 TINT_INSTANTIATE_TYPEINFO(tint::transform::Renamer::Data);
@@ -1258,57 +1257,33 @@ Renamer::~Renamer() = default;
 Transform::ApplyResult Renamer::Apply(const Program* src,
                                       const DataMap& inputs,
                                       DataMap& outputs) const {
-    ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ false};
+    utils::Hashset<Symbol, 16> global_decls;
+    for (auto* decl : src->AST().TypeDecls()) {
+        global_decls.Add(decl->name->symbol);
+    }
 
     // Identifiers that need to keep their symbols preserved.
-    utils::Hashset<const ast::Identifier*, 8> preserved_identifiers;
-
-    auto is_type_short_name = [&](const Symbol& symbol) {
-        auto name = src->Symbols().NameFor(symbol);
-        if (type::ParseShortName(name) != type::ShortName::kUndefined) {
-            // Identifier *looks* like a builtin short-name, but check the using actually
-            // shadowing a short-name with a type alias.
-            for (auto* decl : src->AST().TypeDecls()) {
-                if (decl->name == symbol) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    };
+    utils::Hashset<const ast::Identifier*, 16> preserved_identifiers;
 
     for (auto* node : src->ASTNodes().Objects()) {
+        auto preserve_if_builtin_type = [&](const ast::Identifier* ident) {
+            if (!global_decls.Contains(ident->symbol)) {
+                preserved_identifiers.Add(ident);
+            }
+        };
+
         Switch(
             node,
             [&](const ast::MemberAccessorExpression* accessor) {
                 auto* sem = src->Sem().Get(accessor)->UnwrapLoad();
                 if (sem->Is<sem::Swizzle>()) {
                     preserved_identifiers.Add(accessor->member);
-                } else if (auto* str_expr = src->Sem().Get(accessor->structure)) {
+                } else if (auto* str_expr = src->Sem().GetVal(accessor->object)) {
                     if (auto* ty = str_expr->Type()->UnwrapRef()->As<sem::Struct>()) {
                         if (ty->Declaration() == nullptr) {  // Builtin structure
                             preserved_identifiers.Add(accessor->member);
                         }
                     }
-                }
-            },
-            [&](const ast::CallExpression* call) {
-                if (auto* ident = call->target.name) {
-                    Switch(
-                        src->Sem().Get(call)->UnwrapMaterialize()->As<sem::Call>()->Target(),
-                        [&](const sem::Builtin*) { preserved_identifiers.Add(ident); },
-                        [&](const sem::TypeConversion*) {
-                            if (is_type_short_name(ident->symbol)) {
-                                preserved_identifiers.Add(ident);
-                            }
-                        },
-                        [&](const sem::TypeInitializer*) {
-                            if (is_type_short_name(ident->symbol)) {
-                                preserved_identifiers.Add(ident);
-                            }
-                        });
                 }
             },
             [&](const ast::DiagnosticAttribute* diagnostic) {
@@ -1317,14 +1292,22 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
             [&](const ast::DiagnosticDirective* diagnostic) {
                 preserved_identifiers.Add(diagnostic->control.rule_name);
             },
-            [&](const ast::TypeName* type_name) {
-                if (is_type_short_name(type_name->name->symbol)) {
-                    preserved_identifiers.Add(type_name->name);
+            [&](const ast::TypeName* ty) { preserve_if_builtin_type(ty->name); },
+            [&](const ast::IdentifierExpression* expr) {
+                if (src->Sem().Get<sem::BuiltinEnumExpressionBase>(expr)) {
+                    preserved_identifiers.Add(expr->identifier);
+                }
+            },
+            [&](const ast::CallExpression* call) {
+                if (auto* ident = call->target.name) {
+                    Switch(
+                        src->Sem().Get(call)->UnwrapMaterialize()->As<sem::Call>()->Target(),
+                        [&](const sem::Builtin*) { preserved_identifiers.Add(ident); },
+                        [&](const sem::TypeConversion*) { preserve_if_builtin_type(ident); },
+                        [&](const sem::TypeInitializer*) { preserve_if_builtin_type(ident); });
                 }
             });
     }
-
-    Data::Remappings remappings;
 
     Target target = Target::kAll;
     bool preserve_unicode = false;
@@ -1334,62 +1317,70 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
         preserve_unicode = cfg->preserve_unicode;
     }
 
-    ctx.ReplaceAll([&](Symbol sym_in) {
-        auto name_in = src->Symbols().NameFor(sym_in);
-        if (preserve_unicode || text::utf8::IsASCII(name_in)) {
-            switch (target) {
-                case Target::kAll:
-                    // Always rename.
-                    break;
-                case Target::kGlslKeywords:
-                    if (!std::binary_search(kReservedKeywordsGLSL,
-                                            kReservedKeywordsGLSL +
-                                                sizeof(kReservedKeywordsGLSL) / sizeof(const char*),
-                                            name_in) &&
-                        name_in.compare(0, 3, "gl_")) {
-                        // No match, just reuse the original name.
-                        return ctx.dst->Symbols().New(name_in);
-                    }
-                    break;
-                case Target::kHlslKeywords:
-                    if (!std::binary_search(kReservedKeywordsHLSL,
-                                            kReservedKeywordsHLSL +
-                                                sizeof(kReservedKeywordsHLSL) / sizeof(const char*),
-                                            name_in)) {
-                        // No match, just reuse the original name.
-                        return ctx.dst->Symbols().New(name_in);
-                    }
-                    break;
-                case Target::kMslKeywords:
-                    if (!std::binary_search(kReservedKeywordsMSL,
-                                            kReservedKeywordsMSL +
-                                                sizeof(kReservedKeywordsMSL) / sizeof(const char*),
-                                            name_in)) {
-                        // No match, just reuse the original name.
-                        return ctx.dst->Symbols().New(name_in);
-                    }
-                    break;
-            }
+    // Returns true if the symbol should be renamed based on the input configuration settings.
+    auto should_rename = [&](Symbol symbol) {
+        if (target == Target::kAll) {
+            return true;
         }
+        auto name = src->Symbols().NameFor(symbol);
+        if (!text::utf8::IsASCII(name)) {
+            // name is non-ascii. All of the backend keywords are ascii, so rename if we're not
+            // preserving unicode symbols.
+            return !preserve_unicode;
+        }
+        switch (target) {
+            case Target::kGlslKeywords:
+                return std::binary_search(kReservedKeywordsGLSL,
+                                          kReservedKeywordsGLSL +
+                                              sizeof(kReservedKeywordsGLSL) / sizeof(const char*),
+                                          name) ||
+                       name.compare(0, 3, "gl_") == 0;
+            case Target::kHlslKeywords:
+                return std::binary_search(
+                    kReservedKeywordsHLSL,
+                    kReservedKeywordsHLSL + sizeof(kReservedKeywordsHLSL) / sizeof(const char*),
+                    name);
+            case Target::kMslKeywords:
+                return std::binary_search(
+                    kReservedKeywordsMSL,
+                    kReservedKeywordsMSL + sizeof(kReservedKeywordsMSL) / sizeof(const char*),
+                    name);
+            default:
+                break;
+        }
+        return true;
+    };
 
-        auto sym_out = ctx.dst->Sym();
-        remappings.emplace(name_in, ctx.dst->Symbols().NameFor(sym_out));
-        return sym_out;
-    });
+    utils::Hashmap<Symbol, Symbol, 32> remappings;
+
+    ProgramBuilder b;
+    CloneContext ctx{&b, src, /* auto_clone_symbols */ false};
 
     ctx.ReplaceAll([&](const ast::Identifier* ident) -> const ast::Identifier* {
-        if (preserved_identifiers.Contains(ident)) {
-            auto sym_in = ident->symbol;
-            auto str = src->Symbols().NameFor(sym_in);
-            auto sym_out = b.Symbols().Register(str);
-            return ctx.dst->create<ast::Identifier>(ctx.Clone(ident->source), sym_out);
+        const auto symbol = ident->symbol;
+        if (preserved_identifiers.Contains(ident) || !should_rename(symbol)) {
+            return nullptr;  // Preserve symbol
         }
-        return nullptr;  // Clone ident. Uses the symbol remapping above.
+
+        // Create a replacement for this symbol, if we haven't already.
+        auto replacement = remappings.GetOrCreate(symbol, [&] { return b.Symbols().New(); });
+
+        // Reconstruct the identifier
+        if (auto* tmpl_ident = ident->As<ast::TemplatedIdentifier>()) {
+            auto args = ctx.Clone(tmpl_ident->arguments);
+            return ctx.dst->create<ast::TemplatedIdentifier>(ctx.Clone(ident->source), replacement,
+                                                             std::move(args));
+        }
+        return ctx.dst->create<ast::Identifier>(ctx.Clone(ident->source), replacement);
     });
 
-    ctx.Clone();  // Must come before the std::move()
+    ctx.Clone();
 
-    outputs.Add<Data>(std::move(remappings));
+    Data::Remappings out;
+    for (auto it : remappings) {
+        out[ctx.src->Symbols().NameFor(it.key)] = ctx.dst->Symbols().NameFor(it.value);
+    }
+    outputs.Add<Data>(std::move(out));
 
     return Program(std::move(b));
 }

@@ -25,7 +25,6 @@
 #include "src/tint/ast/break_statement.h"
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/ast/continue_statement.h"
-#include "src/tint/ast/depth_texture.h"
 #include "src/tint/ast/disable_validation_attribute.h"
 #include "src/tint/ast/discard_statement.h"
 #include "src/tint/ast/for_loop_statement.h"
@@ -38,8 +37,6 @@
 #include "src/tint/ast/pointer.h"
 #include "src/tint/ast/return_statement.h"
 #include "src/tint/ast/sampled_texture.h"
-#include "src/tint/ast/sampler.h"
-#include "src/tint/ast/storage_texture.h"
 #include "src/tint/ast/switch_statement.h"
 #include "src/tint/ast/traverse_expressions.h"
 #include "src/tint/ast/type_name.h"
@@ -318,28 +315,28 @@ bool Validator::Pointer(const ast::Pointer* a, const type::Pointer* s) const {
                                        a->source);
 }
 
-bool Validator::StorageTexture(const ast::StorageTexture* t) const {
-    switch (t->access) {
+bool Validator::StorageTexture(const type::StorageTexture* t, const Source& source) const {
+    switch (t->access()) {
         case type::Access::kWrite:
             break;
         case type::Access::kUndefined:
-            AddError("storage texture missing access control", t->source);
+            AddError("storage texture missing access control", source);
             return false;
         default:
-            AddError("storage textures currently only support 'write' access control", t->source);
+            AddError("storage textures currently only support 'write' access control", source);
             return false;
     }
 
-    if (!IsValidStorageTextureDimension(t->dim)) {
-        AddError("cube dimensions for storage textures are not supported", t->source);
+    if (!IsValidStorageTextureDimension(t->dim())) {
+        AddError("cube dimensions for storage textures are not supported", source);
         return false;
     }
 
-    if (!IsValidStorageTextureTexelFormat(t->format)) {
+    if (!IsValidStorageTextureTexelFormat(t->texel_format())) {
         AddError(
             "image format must be one of the texel formats specified for storage "
             "textues in https://gpuweb.github.io/gpuweb/wgsl/#texel-formats",
-            t->source);
+            source);
         return false;
     }
     return true;
@@ -1037,7 +1034,7 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
         } else if (TINT_UNLIKELY(IsValidationEnabled(
                        decl->attributes, ast::DisabledValidation::kFunctionHasNoBody))) {
             TINT_ICE(Resolver, diagnostics_)
-                << "Function " << symbols_.NameFor(decl->symbol) << " has no body";
+                << "Function " << symbols_.NameFor(decl->name->symbol) << " has no body";
         }
 
         for (auto* attr : decl->return_type_attributes) {
@@ -1069,7 +1066,7 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
     // a function behavior is always one of {}, or {Next}.
     if (TINT_UNLIKELY(func->Behaviors() != sem::Behaviors{} &&
                       func->Behaviors() != sem::Behavior::kNext)) {
-        auto name = symbols_.NameFor(decl->symbol);
+        auto name = symbols_.NameFor(decl->name->symbol);
         TINT_ICE(Resolver, diagnostics_)
             << "function '" << name << "' behaviors are: " << func->Behaviors();
     }
@@ -1236,30 +1233,30 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
     };
 
     // Outer lambda for validating the entry point attributes for a type.
-    auto validate_entry_point_attributes = [&](utils::VectorRef<const ast::Attribute*> attrs,
-                                               const type::Type* ty, Source source,
-                                               ParamOrRetType param_or_ret,
-                                               std::optional<uint32_t> location) {
-        if (!validate_entry_point_attributes_inner(attrs, ty, source, param_or_ret,
-                                                   /*is_struct_member*/ false, location)) {
-            return false;
-        }
+    auto validate_entry_point_attributes =
+        [&](utils::VectorRef<const ast::Attribute*> attrs, const type::Type* ty, Source source,
+            ParamOrRetType param_or_ret, std::optional<uint32_t> location) {
+            if (!validate_entry_point_attributes_inner(attrs, ty, source, param_or_ret,
+                                                       /*is_struct_member*/ false, location)) {
+                return false;
+            }
 
-        if (auto* str = ty->As<sem::Struct>()) {
-            for (auto* member : str->Members()) {
-                if (!validate_entry_point_attributes_inner(
-                        member->Declaration()->attributes, member->Type(), member->Source(),
-                        param_or_ret,
-                        /*is_struct_member*/ true, member->Location())) {
-                    AddNote("while analyzing entry point '" + symbols_.NameFor(decl->symbol) + "'",
-                            decl->source);
-                    return false;
+            if (auto* str = ty->As<sem::Struct>()) {
+                for (auto* member : str->Members()) {
+                    if (!validate_entry_point_attributes_inner(
+                            member->Declaration()->attributes, member->Type(), member->Source(),
+                            param_or_ret,
+                            /*is_struct_member*/ true, member->Location())) {
+                        AddNote("while analyzing entry point '" +
+                                    symbols_.NameFor(decl->name->symbol) + "'",
+                                decl->source);
+                        return false;
+                    }
                 }
             }
-        }
 
-        return true;
-    };
+            return true;
+        };
 
     for (auto* param : func->Parameters()) {
         auto* param_decl = param->Declaration();
@@ -1329,7 +1326,7 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
             // Bindings must not alias within a shader stage: two different variables in the
             // resource interface of a given shader must not have the same group and binding values,
             // when considered as a pair of values.
-            auto func_name = symbols_.NameFor(decl->symbol);
+            auto func_name = symbols_.NameFor(decl->name->symbol);
             AddError(
                 "entry point '" + func_name +
                     "' references multiple variables that use the same resource binding @group(" +
@@ -1875,11 +1872,12 @@ bool Validator::PipelineStages(utils::VectorRef<sem::Function*> entry_points) co
     auto backtrace = [&](const sem::Function* func, const sem::Function* entry_point) {
         if (func != entry_point) {
             TraverseCallChain(diagnostics_, entry_point, func, [&](const sem::Function* f) {
-                AddNote("called by function '" + symbols_.NameFor(f->Declaration()->symbol) + "'",
-                        f->Declaration()->source);
+                AddNote(
+                    "called by function '" + symbols_.NameFor(f->Declaration()->name->symbol) + "'",
+                    f->Declaration()->source);
             });
             AddNote("called by entry point '" +
-                        symbols_.NameFor(entry_point->Declaration()->symbol) + "'",
+                        symbols_.NameFor(entry_point->Declaration()->name->symbol) + "'",
                     entry_point->Declaration()->source);
         }
     };
@@ -1986,7 +1984,7 @@ bool Validator::PushConstants(utils::VectorRef<sem::Function*> entry_points) con
                     continue;
                 }
 
-                AddError("entry point '" + symbols_.NameFor(ep->Declaration()->symbol) +
+                AddError("entry point '" + symbols_.NameFor(ep->Declaration()->name->symbol) +
                              "' uses two different 'push_constant' variables.",
                          ep->Declaration()->source);
                 AddNote("first 'push_constant' variable declaration is here",
@@ -1994,11 +1992,11 @@ bool Validator::PushConstants(utils::VectorRef<sem::Function*> entry_points) con
                 if (func != ep) {
                     TraverseCallChain(diagnostics_, ep, func, [&](const sem::Function* f) {
                         AddNote("called by function '" +
-                                    symbols_.NameFor(f->Declaration()->symbol) + "'",
+                                    symbols_.NameFor(f->Declaration()->name->symbol) + "'",
                                 f->Declaration()->source);
                     });
                     AddNote("called by entry point '" +
-                                symbols_.NameFor(ep->Declaration()->symbol) + "'",
+                                symbols_.NameFor(ep->Declaration()->name->symbol) + "'",
                             ep->Declaration()->source);
                 }
                 AddNote("second 'push_constant' variable declaration is here",
@@ -2007,11 +2005,11 @@ bool Validator::PushConstants(utils::VectorRef<sem::Function*> entry_points) con
                     TraverseCallChain(
                         diagnostics_, ep, push_constant_func, [&](const sem::Function* f) {
                             AddNote("called by function '" +
-                                        symbols_.NameFor(f->Declaration()->symbol) + "'",
+                                        symbols_.NameFor(f->Declaration()->name->symbol) + "'",
                                     f->Declaration()->source);
                         });
                     AddNote("called by entry point '" +
-                                symbols_.NameFor(ep->Declaration()->symbol) + "'",
+                                symbols_.NameFor(ep->Declaration()->name->symbol) + "'",
                             ep->Declaration()->source);
                 }
                 return false;
@@ -2344,8 +2342,8 @@ bool Validator::Assignment(const ast::Statement* a, const type::Type* rhs_ty) co
     // https://gpuweb.github.io/gpuweb/wgsl/#assignment-statement
     auto const* lhs_ty = sem_.TypeOf(lhs);
 
-    if (auto* variable = sem_.ResolvedSymbol<sem::Variable>(lhs)) {
-        auto* v = variable->Declaration();
+    if (auto* var_user = sem_.Get<sem::VariableUser>(lhs)) {
+        auto* v = var_user->Variable()->Declaration();
         const char* err = Switch(
             v,  //
             [&](const ast::Parameter*) { return "cannot assign to function parameter"; },
@@ -2353,7 +2351,7 @@ bool Validator::Assignment(const ast::Statement* a, const type::Type* rhs_ty) co
             [&](const ast::Override*) { return "cannot assign to 'override'"; });
         if (err) {
             AddError(err, lhs->source);
-            AddNote("'" + symbols_.NameFor(v->symbol) + "' is declared here:", v->source);
+            AddNote("'" + symbols_.NameFor(v->name->symbol) + "' is declared here:", v->source);
             return false;
         }
     }
@@ -2392,8 +2390,8 @@ bool Validator::IncrementDecrementStatement(const ast::IncrementDecrementStateme
 
     // https://gpuweb.github.io/gpuweb/wgsl/#increment-decrement
 
-    if (auto* variable = sem_.ResolvedSymbol<sem::Variable>(lhs)) {
-        auto* v = variable->Declaration();
+    if (auto* var_user = sem_.Get<sem::VariableUser>(lhs)) {
+        auto* v = var_user->Variable()->Declaration();
         const char* err = Switch(
             v,  //
             [&](const ast::Parameter*) { return "cannot modify function parameter"; },
@@ -2401,7 +2399,7 @@ bool Validator::IncrementDecrementStatement(const ast::IncrementDecrementStateme
             [&](const ast::Override*) { return "cannot modify 'override'"; });
         if (err) {
             AddError(err, lhs->source);
-            AddNote("'" + symbols_.NameFor(v->symbol) + "' is declared here:", v->source);
+            AddNote("'" + symbols_.NameFor(v->name->symbol) + "' is declared here:", v->source);
             return false;
         }
     }

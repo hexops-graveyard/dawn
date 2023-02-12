@@ -74,10 +74,10 @@ struct OffsetExpr : Offset {
     explicit OffsetExpr(const ast::Expression* e) : expr(e) {}
 
     const ast::Expression* Build(CloneContext& ctx) const override {
-        auto* type = ctx.src->Sem().Get(expr)->Type()->UnwrapRef();
+        auto* type = ctx.src->Sem().GetVal(expr)->Type()->UnwrapRef();
         auto* res = ctx.Clone(expr);
         if (!type->Is<type::U32>()) {
-            res = ctx.dst->Construct<u32>(res);
+            res = ctx.dst->Call<u32>(res);
         }
         return res;
     }
@@ -483,7 +483,7 @@ struct DecomposeMemoryAccess::State {
                 if (auto* intrinsic = IntrinsicLoadFor(ctx.dst, address_space, el_ty)) {
                     auto* el_ast_ty = CreateASTTypeFor(ctx, el_ty);
                     auto* func = b.create<ast::Function>(
-                        name, params, el_ast_ty, nullptr,
+                        b.Ident(name), params, el_ast_ty, nullptr,
                         utils::Vector{
                             intrinsic,
                             b.Disable(ast::DisabledValidation::kFunctionHasNoBody),
@@ -545,7 +545,7 @@ struct DecomposeMemoryAccess::State {
                     }
                     b.Func(name, params, CreateASTTypeFor(ctx, el_ty),
                            utils::Vector{
-                               b.Return(b.Construct(CreateASTTypeFor(ctx, el_ty), values)),
+                               b.Return(b.Call(CreateASTTypeFor(ctx, el_ty), values)),
                            });
                 }
                 return name;
@@ -582,7 +582,7 @@ struct DecomposeMemoryAccess::State {
 
                 if (auto* intrinsic = IntrinsicStoreFor(ctx.dst, address_space, el_ty)) {
                     auto* func = b.create<ast::Function>(
-                        name, params, b.ty.void_(), nullptr,
+                        b.Ident(name), params, b.ty.void_(), nullptr,
                         utils::Vector{
                             intrinsic,
                             b.Disable(ast::DisabledValidation::kFunctionHasNoBody),
@@ -728,7 +728,8 @@ struct DecomposeMemoryAccess::State {
             }
 
             auto* func = b.create<ast::Function>(
-                b.Symbols().New(std::string{"tint_"} + intrinsic->str()), params, ret_ty, nullptr,
+                b.Ident(b.Symbols().New(std::string{"tint_"} + intrinsic->str())), params, ret_ty,
+                nullptr,
                 utils::Vector{
                     atomic,
                     b.Disable(ast::DisabledValidation::kFunctionHasNoBody),
@@ -736,7 +737,7 @@ struct DecomposeMemoryAccess::State {
                 utils::Empty);
 
             b.AST().AddFunction(func);
-            return func->symbol;
+            return func->name->symbol;
         });
     }
 };
@@ -881,7 +882,7 @@ Transform::ApplyResult DecomposeMemoryAccess::Apply(const Program* src,
     for (auto* node : src->ASTNodes().Objects()) {
         if (auto* ident = node->As<ast::IdentifierExpression>()) {
             // X
-            if (auto* sem_ident = sem.Get(ident)) {
+            if (auto* sem_ident = sem.GetVal(ident)) {
                 if (auto* var = sem_ident->UnwrapLoad()->As<sem::VariableUser>()) {
                     if (var->Variable()->AddressSpace() == type::AddressSpace::kStorage ||
                         var->Variable()->AddressSpace() == type::AddressSpace::kUniform) {
@@ -902,7 +903,7 @@ Transform::ApplyResult DecomposeMemoryAccess::Apply(const Program* src,
             auto* accessor_sem = sem.Get(accessor)->UnwrapLoad();
             if (auto* swizzle = accessor_sem->As<sem::Swizzle>()) {
                 if (swizzle->Indices().Length() == 1) {
-                    if (auto access = state.TakeAccess(accessor->structure)) {
+                    if (auto access = state.TakeAccess(accessor->object)) {
                         auto* vec_ty = access.type->As<type::Vector>();
                         auto* offset = state.Mul(vec_ty->type()->Size(), swizzle->Indices()[0u]);
                         state.AddAccess(accessor, {
@@ -913,7 +914,7 @@ Transform::ApplyResult DecomposeMemoryAccess::Apply(const Program* src,
                     }
                 }
             } else {
-                if (auto access = state.TakeAccess(accessor->structure)) {
+                if (auto access = state.TakeAccess(accessor->object)) {
                     auto* str_ty = access.type->As<sem::Struct>();
                     auto* member = str_ty->FindMember(accessor->member->symbol);
                     auto offset = member->Offset();

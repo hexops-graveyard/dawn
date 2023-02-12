@@ -193,7 +193,7 @@ TEST_F(ResolverCallValidationTest, PointerArgument_AddressOfLetMember) {
     Func("foo", utils::Vector{param}, ty.void_(), utils::Empty);
     Func("main", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Let("v", ty.Of(S), Construct(ty.Of(S)))),
+             Decl(Let("v", ty.Of(S), Call(ty.Of(S)))),
              CallStmt(Call("foo", AddressOf(MemberAccessor(Source{{12, 34}}, "v", "m")))),
          });
 
@@ -455,40 +455,6 @@ TEST_F(ResolverCallValidationTest, ComplexPointerChain_NotWholeVar_WithFullPtrPa
              Stage(ast::PipelineStage::kFragment),
          });
     EXPECT_TRUE(r()->Resolve());
-}
-
-TEST_F(ResolverCallValidationTest, CallVariable) {
-    // var v : i32;
-    // fn f() {
-    //   v();
-    // }
-    GlobalVar("v", ty.i32(), type::AddressSpace::kPrivate);
-    Func("f", utils::Empty, ty.void_(),
-         utils::Vector{
-             CallStmt(Call(Source{{12, 34}}, "v")),
-         });
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(error: cannot call variable 'v'
-note: 'v' declared here)");
-}
-
-TEST_F(ResolverCallValidationTest, CallVariableShadowsFunction) {
-    // fn x() {}
-    // fn f() {
-    //   var x : i32;
-    //   x();
-    // }
-    Func("x", utils::Empty, ty.void_(), utils::Empty);
-    Func("f", utils::Empty, ty.void_(),
-         utils::Vector{
-             Decl(Var(Source{{56, 78}}, "x", ty.i32())),
-             CallStmt(Call(Source{{12, 34}}, "x")),
-         });
-
-    EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), R"(error: cannot call variable 'x'
-56:78 note: 'x' declared here)");
 }
 
 }  // namespace

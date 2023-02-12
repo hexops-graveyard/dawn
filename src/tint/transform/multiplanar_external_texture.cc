@@ -139,7 +139,7 @@ struct MultiplanarExternalTexture::State {
             // with the texture_external binding that corresponds with the new destination bindings.
             // NewBindingSymbols new_binding_syms;
             auto& syms = new_binding_symbols[sem_var];
-            syms.plane_0 = ctx.Clone(global->symbol);
+            syms.plane_0 = ctx.Clone(global->name->symbol);
             syms.plane_1 = b.Symbols().New("ext_tex_plane_1");
             b.GlobalVar(syms.plane_1, b.ty.sampled_texture(type::TextureDimension::k2d, b.ty.f32()),
                         b.Group(AInt(bps.plane_1.group)), b.Binding(AInt(bps.plane_1.binding)));
@@ -174,7 +174,7 @@ struct MultiplanarExternalTexture::State {
                     // into the transform state so they can be used when transforming function
                     // calls.
                     auto& syms = new_binding_symbols[sem_var];
-                    syms.plane_0 = ctx.Clone(param->symbol);
+                    syms.plane_0 = ctx.Clone(param->name->symbol);
                     syms.plane_1 = b.Symbols().New("ext_tex_plane_1");
                     syms.params = b.Symbols().New("ext_tex_params");
                     auto tex2d_f32 = [&] {
@@ -198,7 +198,7 @@ struct MultiplanarExternalTexture::State {
                 builtin->Parameters()[0]->Type()->Is<type::ExternalTexture>() &&
                 builtin->Type() != sem::BuiltinType::kTextureDimensions) {
                 if (auto* var_user =
-                        sem.Get(expr->args[0])->UnwrapLoad()->As<sem::VariableUser>()) {
+                        sem.GetVal(expr->args[0])->UnwrapLoad()->As<sem::VariableUser>()) {
                     auto it = new_binding_symbols.find(var_user->Variable());
                     if (it == new_binding_symbols.end()) {
                         // If valid new binding locations were not provided earlier, we would have
@@ -223,7 +223,7 @@ struct MultiplanarExternalTexture::State {
                 // texture_external parameter. These need to be expanded out to multiple plane
                 // textures and the texture parameters structure.
                 for (auto* arg : expr->args) {
-                    if (auto* var_user = sem.Get(arg)->UnwrapLoad()->As<sem::VariableUser>()) {
+                    if (auto* var_user = sem.GetVal(arg)->UnwrapLoad()->As<sem::VariableUser>()) {
                         // Check if a parameter is a texture_external by trying to find
                         // it in the transform state.
                         auto it = new_binding_symbols.find(var_user->Variable());
@@ -320,17 +320,17 @@ struct MultiplanarExternalTexture::State {
                     "modifiedCoords", b.Mul(b.MemberAccessor("params", "coordTransformationMatrix"),
                                             b.vec3<f32>("coord", 1_a)))));
 
-                stmts.Push(b.Decl(b.Let(
-                    "plane0_dims",
-                    b.Construct(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane0", 0_a)))));
+                stmts.Push(b.Decl(
+                    b.Let("plane0_dims",
+                          b.Call(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane0", 0_a)))));
                 stmts.Push(
                     b.Decl(b.Let("plane0_half_texel", b.Div(b.vec2<f32>(0.5_a), "plane0_dims"))));
                 stmts.Push(b.Decl(
                     b.Let("plane0_clamped", b.Call("clamp", "modifiedCoords", "plane0_half_texel",
                                                    b.Sub(1_a, "plane0_half_texel")))));
-                stmts.Push(b.Decl(b.Let(
-                    "plane1_dims",
-                    b.Construct(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane1", 0_a)))));
+                stmts.Push(b.Decl(
+                    b.Let("plane1_dims",
+                          b.Call(b.ty.vec2<f32>(), b.Call("textureDimensions", "plane1", 0_a)))));
                 stmts.Push(
                     b.Decl(b.Let("plane1_half_texel", b.Div(b.vec2<f32>(0.5_a), "plane1_dims"))));
                 stmts.Push(b.Decl(

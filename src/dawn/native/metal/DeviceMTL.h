@@ -41,7 +41,7 @@ class Device final : public DeviceBase {
     static ResultOrError<Ref<Device>> Create(AdapterBase* adapter,
                                              NSPRef<id<MTLDevice>> mtlDevice,
                                              const DeviceDescriptor* descriptor,
-                                             const TripleStateTogglesSet& userProvidedToggles);
+                                             const TogglesState& deviceToggles);
     ~Device() override;
 
     MaybeError Initialize(const DeviceDescriptor* descriptor);
@@ -91,7 +91,7 @@ class Device final : public DeviceBase {
     Device(AdapterBase* adapter,
            NSPRef<id<MTLDevice>> mtlDevice,
            const DeviceDescriptor* descriptor,
-           const TripleStateTogglesSet& userProvidedToggles);
+           const TogglesState& deviceToggles);
 
     ResultOrError<Ref<BindGroupBase>> CreateBindGroupImpl(
         const BindGroupDescriptor* descriptor) override;
@@ -132,7 +132,6 @@ class Device final : public DeviceBase {
                                            WGPUCreateRenderPipelineAsyncCallback callback,
                                            void* userdata) override;
 
-    void InitTogglesFromDriver();
     void DestroyImpl() override;
     MaybeError WaitForIdleForDestruction() override;
     bool HasPendingCommands() const override;
@@ -161,6 +160,7 @@ class Device final : public DeviceBase {
     MTLTimestamp mGpuTimestamp API_AVAILABLE(macos(10.15), ios(14.0)) = 0;
     // The parameters for kalman filter
     std::unique_ptr<KalmanInfo> mKalmanInfo;
+    bool mIsTimestampQueryEnabled = false;
 
     // Support counter sampling between blit commands, dispatches and draw calls
     bool mCounterSamplingAtCommandBoundary;

@@ -334,7 +334,7 @@ struct CanonicalizeEntryPointIO::State {
             }
         }
 
-        auto name = ctx.src->Symbols().NameFor(param->Declaration()->symbol);
+        auto name = ctx.src->Symbols().NameFor(param->Declaration()->name->symbol);
         auto* input_expr = AddInput(name, param->Type(), param->Location(), std::move(attributes));
         inner_call_parameters.Push(input_expr);
     }
@@ -370,7 +370,7 @@ struct CanonicalizeEntryPointIO::State {
 
         // Construct the original structure using the new shader input objects.
         inner_call_parameters.Push(
-            ctx.dst->Construct(ctx.Clone(param->Declaration()->type), inner_struct_values));
+            ctx.dst->Call(ctx.Clone(param->Declaration()->type), inner_struct_values));
     }
 
     /// Process the entry point return type.
@@ -455,7 +455,8 @@ struct CanonicalizeEntryPointIO::State {
 
         // Create the new struct type.
         auto struct_name = ctx.dst->Sym();
-        auto* in_struct = ctx.dst->create<ast::Struct>(struct_name, members, utils::Empty);
+        auto* in_struct = ctx.dst->create<ast::Struct>(ctx.dst->Ident(struct_name),
+                                                       std::move(members), utils::Empty);
         ctx.InsertBefore(ctx.src->AST().GlobalDeclarations(), func_ast, in_struct);
 
         // Create a new function parameter using this struct type.
@@ -499,11 +500,12 @@ struct CanonicalizeEntryPointIO::State {
         }
 
         // Create the new struct type.
-        auto* out_struct = ctx.dst->create<ast::Struct>(ctx.dst->Sym(), members, utils::Empty);
+        auto* out_struct = ctx.dst->create<ast::Struct>(ctx.dst->Ident(ctx.dst->Sym()),
+                                                        std::move(members), utils::Empty);
         ctx.InsertBefore(ctx.src->AST().GlobalDeclarations(), func_ast, out_struct);
 
         // Create the output struct object, assign its members, and return it.
-        auto* result_object = ctx.dst->Var(wrapper_result, ctx.dst->ty(out_struct->name));
+        auto* result_object = ctx.dst->Var(wrapper_result, ctx.dst->ty(out_struct->name->symbol));
         wrapper_body.Push(ctx.dst->Decl(result_object));
         for (auto* assignment : assignments) {
             wrapper_body.Push(assignment);
@@ -542,24 +544,25 @@ struct CanonicalizeEntryPointIO::State {
         if (cfg.shader_style == ShaderStyle::kGlsl) {
             // In GLSL, clone the original entry point name, as the wrapper will be
             // called "main".
-            inner_name = ctx.Clone(func_ast->symbol);
+            inner_name = ctx.Clone(func_ast->name->symbol);
         } else {
             // Add a suffix to the function name, as the wrapper function will take
             // the original entry point name.
-            auto ep_name = ctx.src->Symbols().NameFor(func_ast->symbol);
+            auto ep_name = ctx.src->Symbols().NameFor(func_ast->name->symbol);
             inner_name = ctx.dst->Symbols().New(ep_name + "_inner");
         }
 
         // Clone everything, dropping the function and return type attributes.
         // The parameter attributes will have already been stripped during
         // processing.
-        auto* inner_function = ctx.dst->create<ast::Function>(
-            inner_name, ctx.Clone(func_ast->params), ctx.Clone(func_ast->return_type),
-            ctx.Clone(func_ast->body), utils::Empty, utils::Empty);
+        auto* inner_function =
+            ctx.dst->create<ast::Function>(ctx.dst->Ident(inner_name), ctx.Clone(func_ast->params),
+                                           ctx.Clone(func_ast->return_type),
+                                           ctx.Clone(func_ast->body), utils::Empty, utils::Empty);
         ctx.Replace(func_ast, inner_function);
 
         // Call the function.
-        return ctx.dst->Call(inner_function->symbol, inner_call_parameters);
+        return ctx.dst->Call(inner_function->name->symbol, inner_call_parameters);
     }
 
     /// Process the entry point function.
@@ -614,7 +617,7 @@ struct CanonicalizeEntryPointIO::State {
 
             // Process the original return type to determine the outputs that the
             // outer function needs to produce.
-            ProcessReturnType(func_sem->ReturnType(), inner_result->symbol);
+            ProcessReturnType(func_sem->ReturnType(), inner_result->name->symbol);
         }
 
         // Add a fixed sample mask, if necessary.
@@ -633,7 +636,9 @@ struct CanonicalizeEntryPointIO::State {
                 CreateGlobalOutputVariables();
             } else {
                 auto* output_struct = CreateOutputStruct();
-                wrapper_ret_type = [&, output_struct] { return ctx.dst->ty(output_struct->name); };
+                wrapper_ret_type = [&, output_struct] {
+                    return ctx.dst->ty(output_struct->name->symbol);
+                };
             }
         }
 
@@ -656,12 +661,12 @@ struct CanonicalizeEntryPointIO::State {
         if (cfg.shader_style == ShaderStyle::kGlsl) {
             name = ctx.dst->Symbols().New("main");
         } else {
-            name = ctx.Clone(func_ast->symbol);
+            name = ctx.Clone(func_ast->name->symbol);
         }
 
         auto* wrapper_func = ctx.dst->create<ast::Function>(
-            name, wrapper_ep_parameters, wrapper_ret_type(), ctx.dst->Block(wrapper_body),
-            ctx.Clone(func_ast->attributes), utils::Empty);
+            ctx.dst->Ident(name), wrapper_ep_parameters, wrapper_ret_type(),
+            ctx.dst->Block(wrapper_body), ctx.Clone(func_ast->attributes), utils::Empty);
         ctx.InsertAfter(ctx.src->AST().GlobalDeclarations(), func_ast, wrapper_func);
     }
 

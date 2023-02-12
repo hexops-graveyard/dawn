@@ -29,10 +29,10 @@ struct S {
     EXPECT_FALSE(s.errored);
     EXPECT_TRUE(s.matched);
     ASSERT_NE(s.value, nullptr);
-    ASSERT_EQ(s->name, p->builder().Symbols().Register("S"));
+    ASSERT_EQ(s->name->symbol, p->builder().Symbols().Register("S"));
     ASSERT_EQ(s->members.Length(), 2u);
-    EXPECT_EQ(s->members[0]->symbol, p->builder().Symbols().Register("a"));
-    EXPECT_EQ(s->members[1]->symbol, p->builder().Symbols().Register("b"));
+    EXPECT_EQ(s->members[0]->name->symbol, p->builder().Symbols().Register("a"));
+    EXPECT_EQ(s->members[1]->name->symbol, p->builder().Symbols().Register("b"));
 }
 
 TEST_F(ParserImplTest, StructDecl_Unicode_Parses) {
@@ -63,10 +63,10 @@ struct $struct {
     EXPECT_FALSE(s.errored);
     EXPECT_TRUE(s.matched);
     ASSERT_NE(s.value, nullptr);
-    ASSERT_EQ(s->name, p->builder().Symbols().Register(struct_ident));
+    ASSERT_EQ(s->name->symbol, p->builder().Symbols().Register(struct_ident));
     ASSERT_EQ(s->members.Length(), 2u);
-    EXPECT_EQ(s->members[0]->symbol, p->builder().Symbols().Register(member_a_ident));
-    EXPECT_EQ(s->members[1]->symbol, p->builder().Symbols().Register(member_b_ident));
+    EXPECT_EQ(s->members[0]->name->symbol, p->builder().Symbols().Register(member_a_ident));
+    EXPECT_EQ(s->members[1]->name->symbol, p->builder().Symbols().Register(member_b_ident));
 }
 
 TEST_F(ParserImplTest, StructDecl_EmptyMembers) {

@@ -169,6 +169,19 @@ crbug.com/dawn/1125 [ monterey ] webgpu:api,operation,rendering,depth_clip_clamp
 crbug.com/dawn/1125 [ monterey ] webgpu:api,operation,rendering,depth_clip_clamp:depth_clamp_and_clip:format="depth32float-stencil8";unclippedDepth=false;writeDepth=true;multisampled=true [ Failure ]
 
 ################################################################################
+# f32_arithmetic tests are slow on code-coverage builders
+# KEEP
+################################################################################
+crbug.com/1399354 webgpu:shader,execution,expression,binary,f32_arithmetic:addition:* [ Slow ]
+crbug.com/1399354 webgpu:shader,execution,expression,binary,f32_arithmetic:division:* [ Slow ]
+crbug.com/1399354 webgpu:shader,execution,expression,binary,f32_arithmetic:multiplication:* [ Slow ]
+crbug.com/1399354 webgpu:shader,execution,expression,binary,f32_arithmetic:subtraction:* [ Slow ]
+# TODO(crbug.com/dawn/1799): Remove platform filter here when conflicting expectations are removed
+crbug.com/1399354 [ linux ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:* [ Slow ]
+crbug.com/1399354 [ mac ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:* [ Slow ]
+crbug.com/1399354 [ win10 ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:inputSource="const";* [ Slow ]
+
+################################################################################
 # shader execution failures
 ################################################################################
 crbug.com/dawn/1799 [ win10 ] webgpu:shader,execution,expression,binary,f32_arithmetic:remainder:inputSource="storage_r";vectorize="_undef_" [ Failure ]
@@ -313,10 +326,13 @@ crbug.com/dawn/1500 [ intel-gen-9 monterey ] webgpu:api,operation,command_buffer
 crbug.com/dawn/1599 [ webgpu-adapter-swiftshader ] webgpu:web_platform,copyToTexture,canvas:color_space_conversion:* [ Failure ]
 
 ################################################################################
-# webgpu:api,operation,render_pass,storeOp:render_pass_store_op,color_attachment_only:* fail on win10 Intel
-# KEEP
+# Failures about the validation on the storage usage of bgra8unorm
 ################################################################################
-crbug.com/dawn/1628 [ intel-gen-9 win10 ] webgpu:api,operation,render_pass,storeOp:render_pass_store_op,color_attachment_only:* [ Failure ]
+crbug.com/dawn/1641 webgpu:api,validation,createBindGroupLayout:storage_texture,formats:format="bgra8unorm" [ Failure ]
+crbug.com/dawn/1641 webgpu:api,validation,createTexture:texture_usage:dimension="1d";format="bgra8unorm" [ Failure ]
+crbug.com/dawn/1641 webgpu:api,validation,createTexture:texture_usage:dimension="2d";format="bgra8unorm" [ Failure ]
+crbug.com/dawn/1641 webgpu:api,validation,createTexture:texture_usage:dimension="3d";format="bgra8unorm" [ Failure ]
+crbug.com/dawn/1641 webgpu:api,validation,createTexture:texture_usage:dimension="_undef_";format="bgra8unorm" [ Failure ]
 
 ################################################################################
 # untriaged failures
@@ -399,19 +415,7 @@ crbug.com/dawn/0000 webgpu:api,validation,buffer,mapping:mapAsync,earlyRejection
 crbug.com/dawn/0000 webgpu:api,validation,buffer,mapping:mapAsync,state,mappingPending: [ Failure ]
 crbug.com/dawn/0000 webgpu:api,validation,createBindGroupLayout:multisampled_validation:viewDimension="2d" [ Failure ]
 crbug.com/dawn/0000 webgpu:api,validation,createBindGroupLayout:multisampled_validation:viewDimension="_undef_" [ Failure ]
-crbug.com/dawn/0000 webgpu:api,validation,encoding,encoder_state:pass_end_twice: [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_r";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_r";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_r";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_r";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_rw";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_rw";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_rw";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="storage_rw";vectorize=4 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="uniform";vectorize="_undef_" [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="uniform";vectorize=2 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="uniform";vectorize=3 [ Failure ]
-crbug.com/dawn/0000 [ nvidia-0x2184 target-cpu-64 ubuntu ] webgpu:shader,execution,expression,binary,i32_arithmetic:remainder:inputSource="uniform";vectorize=4 [ Failure ]
+crbug.com/dawn/0000 webgpu:api,validation,encoding,encoder_state:pass_end_invalid_order:* [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:web_platform,canvas,configure:alpha_mode:* [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:web_platform,canvas,configure:defaults:* [ Failure ]
 crbug.com/dawn/0000 [ monterey ] webgpu:web_platform,canvas,configure:device:* [ Failure ]

@@ -22,6 +22,7 @@
 #include "src/tint/ast/extension.h"
 #include "src/tint/ast/float_literal_expression.h"
 #include "src/tint/ast/id_attribute.h"
+#include "src/tint/ast/identifier.h"
 #include "src/tint/ast/int_literal_expression.h"
 #include "src/tint/ast/interpolate_attribute.h"
 #include "src/tint/ast/location_attribute.h"
@@ -180,8 +181,8 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
 
     auto* sem = program_->Sem().Get(func);
 
-    entry_point.name = program_->Symbols().NameFor(func->symbol);
-    entry_point.remapped_name = program_->Symbols().NameFor(func->symbol);
+    entry_point.name = program_->Symbols().NameFor(func->name->symbol);
+    entry_point.remapped_name = program_->Symbols().NameFor(func->name->symbol);
 
     switch (func->PipelineStage()) {
         case ast::PipelineStage::kCompute: {
@@ -210,7 +211,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
     }
 
     for (auto* param : sem->Parameters()) {
-        AddEntryPointInOutVariables(program_->Symbols().NameFor(param->Declaration()->symbol),
+        AddEntryPointInOutVariables(program_->Symbols().NameFor(param->Declaration()->name->symbol),
                                     param->Type(), param->Declaration()->attributes,
                                     param->Location(), entry_point.input_variables);
 
@@ -239,7 +240,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
     for (auto* var : sem->TransitivelyReferencedGlobals()) {
         auto* decl = var->Declaration();
 
-        auto name = program_->Symbols().NameFor(decl->symbol);
+        auto name = program_->Symbols().NameFor(decl->name->symbol);
 
         auto* global = var->As<sem::GlobalVariable>();
         if (global && global->Declaration()->Is<ast::Override>()) {
@@ -334,7 +335,7 @@ std::map<std::string, OverrideId> Inspector::GetNamedOverrideIds() {
     for (auto* var : program_->AST().GlobalVariables()) {
         auto* global = program_->Sem().Get<sem::GlobalVariable>(var);
         if (global && global->Declaration()->Is<ast::Override>()) {
-            auto name = program_->Symbols().NameFor(var->symbol);
+            auto name = program_->Symbols().NameFor(var->name->symbol);
             result[name] = global->OverrideId();
         }
     }
@@ -877,7 +878,7 @@ void Inspector::GenerateSamplerTargets() {
 
                                     for (auto* entry_point : entry_points) {
                                         const auto& ep_name = program_->Symbols().NameFor(
-                                            entry_point->Declaration()->symbol);
+                                            entry_point->Declaration()->name->symbol);
                                         (*sampler_targets_)[ep_name].Add(
                                             {sampler_binding_point, texture_binding_point});
                                     }
@@ -900,7 +901,7 @@ void Inspector::GetOriginatingResources(std::array<const ast::Expression*, N> ex
     utils::UniqueVector<const ast::CallExpression*, 8> callsites;
 
     for (size_t i = 0; i < N; i++) {
-        const sem::Variable* root_ident = sem.Get(exprs[i])->RootIdentifier();
+        const sem::Variable* root_ident = sem.GetVal(exprs[i])->RootIdentifier();
         if (auto* global = root_ident->As<sem::GlobalVariable>()) {
             globals[i] = global;
         } else if (auto* param = root_ident->As<sem::Parameter>()) {

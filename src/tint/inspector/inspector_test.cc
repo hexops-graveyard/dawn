@@ -547,7 +547,7 @@ TEST_F(InspectorGetEntryPointTest, MultipleEntryPointsInOutSharedStruct) {
                                                    });
     Func("foo", utils::Empty, ty.Of(interface),
          utils::Vector{
-             Return(Construct(ty.Of(interface))),
+             Return(Call(ty.Of(interface))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -1628,16 +1628,16 @@ TEST_F(InspectorGetConstantNameToIdMapTest, WithAndWithoutIds) {
     EXPECT_EQ(result["v300"].value, 300u);
 
     ASSERT_TRUE(result.count("a"));
-    ASSERT_TRUE(program_->Sem().Get<sem::GlobalVariable>(a));
-    EXPECT_EQ(result["a"], program_->Sem().Get<sem::GlobalVariable>(a)->OverrideId());
+    ASSERT_TRUE(program_->Sem().Get(a));
+    EXPECT_EQ(result["a"], program_->Sem().Get(a)->OverrideId());
 
     ASSERT_TRUE(result.count("b"));
-    ASSERT_TRUE(program_->Sem().Get<sem::GlobalVariable>(b));
-    EXPECT_EQ(result["b"], program_->Sem().Get<sem::GlobalVariable>(b)->OverrideId());
+    ASSERT_TRUE(program_->Sem().Get(b));
+    EXPECT_EQ(result["b"], program_->Sem().Get(b)->OverrideId());
 
     ASSERT_TRUE(result.count("c"));
-    ASSERT_TRUE(program_->Sem().Get<sem::GlobalVariable>(c));
-    EXPECT_EQ(result["c"], program_->Sem().Get<sem::GlobalVariable>(c)->OverrideId());
+    ASSERT_TRUE(program_->Sem().Get(c));
+    EXPECT_EQ(result["c"], program_->Sem().Get(c)->OverrideId());
 }
 
 TEST_F(InspectorGetStorageSizeTest, Empty) {
@@ -2058,9 +2058,7 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleUniformBuffers) {
     AddReferenceFunc("ub_bar_func", "ub_bar");
     AddReferenceFunc("ub_baz_func", "ub_baz");
 
-    auto FuncCall = [&](const std::string& callee) {
-        return create<ast::CallStatement>(Call(callee));
-    };
+    auto FuncCall = [&](const std::string& callee) { return CallStmt(Call(callee)); };
 
     Func("ep_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -2101,12 +2099,16 @@ TEST_F(InspectorGetUniformBufferResourceBindingsTest, MultipleUniformBuffers) {
 TEST_F(InspectorGetUniformBufferResourceBindingsTest, ContainingArray) {
     // Manually create uniform buffer to make sure it had a valid layout (array
     // with elem stride of 16, and that is 16-byte aligned within the struct)
-    auto* foo_struct_type = Structure(
-        "foo_type",
-        utils::Vector{
-            Member("0i32", ty.i32()),
-            Member("b", ty.array(ty.u32(), 4_u, /*stride*/ 16), utils::Vector{MemberAlign(16_i)}),
-        });
+    auto* foo_struct_type = Structure("foo_type", utils::Vector{
+                                                      Member("0i32", ty.i32()),
+                                                      Member("b",
+                                                             ty.array<u32, 4>(utils::Vector{
+                                                                 Stride(16),
+                                                             }),
+                                                             utils::Vector{
+                                                                 MemberAlign(16_i),
+                                                             }),
+                                                  });
 
     AddUniformBuffer("foo_ub", ty.Of(foo_struct_type), 0, 0);
 
@@ -2239,9 +2241,7 @@ TEST_F(InspectorGetStorageBufferResourceBindingsTest, MultipleStorageBuffers) {
     AddReferenceFunc("sb_bar_func", "sb_bar");
     AddReferenceFunc("sb_baz_func", "sb_baz");
 
-    auto FuncCall = [&](const std::string& callee) {
-        return create<ast::CallStatement>(Call(callee));
-    };
+    auto FuncCall = [&](const std::string& callee) { return CallStmt(Call(callee)); };
 
     Func("ep_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -2464,9 +2464,7 @@ TEST_F(InspectorGetReadOnlyStorageBufferResourceBindingsTest, MultipleStorageBuf
     AddReferenceFunc("sb_bar_func", "sb_bar");
     AddReferenceFunc("sb_baz_func", "sb_baz");
 
-    auto FuncCall = [&](const std::string& callee) {
-        return create<ast::CallStatement>(Call(callee));
-    };
+    auto FuncCall = [&](const std::string& callee) { return CallStmt(Call(callee)); };
 
     Func("ep_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3448,7 +3446,9 @@ TEST_F(InspectorGetWorkgroupStorageSizeTest, CompoundTypes) {
     // from the 4-element array with 16-byte stride.
     auto* wg_struct_type = MakeStructType("WgStruct", utils::Vector{
                                                           ty.i32(),
-                                                          ty.array(ty.i32(), 4_u, /*stride=*/16),
+                                                          ty.array<i32, 4>(utils::Vector{
+                                                              Stride(16),
+                                                          }),
                                                       });
     AddWorkgroupStorage("wg_struct_var", ty.Of(wg_struct_type));
     MakeStructVariableReferenceBodyFunction("wg_struct_func", "wg_struct_var",

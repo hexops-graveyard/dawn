@@ -141,7 +141,7 @@ struct ZeroInitWorkgroupMemory::State {
         for (auto* var : func->TransitivelyReferencedGlobals()) {
             if (var->AddressSpace() == type::AddressSpace::kWorkgroup) {
                 auto get_expr = [&](uint32_t num_values) {
-                    auto var_name = ctx.Clone(var->Declaration()->symbol);
+                    auto var_name = ctx.Clone(var->Declaration()->name->symbol);
                     return Expression{b.Expr(var_name), num_values, ArrayIndices{}};
                 };
                 if (!BuildZeroingStatements(var->Type()->UnwrapRef(), get_expr)) {
@@ -160,7 +160,7 @@ struct ZeroInitWorkgroupMemory::State {
         for (auto* param : fn->params) {
             if (auto* builtin = ast::GetAttribute<ast::BuiltinAttribute>(param->attributes)) {
                 if (builtin->builtin == ast::BuiltinValue::kLocalInvocationIndex) {
-                    local_index = [=] { return b.Expr(ctx.Clone(param->symbol)); };
+                    local_index = [=] { return b.Expr(ctx.Clone(param->name->symbol)); };
                     break;
                 }
             }
@@ -171,8 +171,8 @@ struct ZeroInitWorkgroupMemory::State {
                             member->Declaration()->attributes)) {
                         if (builtin->builtin == ast::BuiltinValue::kLocalInvocationIndex) {
                             local_index = [=] {
-                                auto* param_expr = b.Expr(ctx.Clone(param->symbol));
-                                auto member_name = ctx.Clone(member->Declaration()->symbol);
+                                auto* param_expr = b.Expr(ctx.Clone(param->name->symbol));
+                                auto* member_name = ctx.Clone(member->Declaration()->name);
                                 return b.MemberAccessor(param_expr, member_name);
                             };
                             break;
@@ -188,7 +188,7 @@ struct ZeroInitWorkgroupMemory::State {
                                       b.Builtin(ast::BuiltinValue::kLocalInvocationIndex),
                                   });
             ctx.InsertBack(fn->params, param);
-            local_index = [=] { return b.Expr(param->symbol); };
+            local_index = [=] { return b.Expr(param->name->symbol); };
         }
 
         // Take the zeroing statements and bin them by the number of iterations
@@ -297,14 +297,14 @@ struct ZeroInitWorkgroupMemory::State {
             if (!var) {
                 return false;
             }
-            auto* zero_init = b.Construct(CreateASTTypeFor(ctx, ty));
+            auto* zero_init = b.Call(CreateASTTypeFor(ctx, ty));
             statements.emplace_back(
                 Statement{b.Assign(var.expr, zero_init), var.num_iterations, var.array_indices});
             return true;
         }
 
         if (auto* atomic = ty->As<type::Atomic>()) {
-            auto* zero_init = b.Construct(CreateASTTypeFor(ctx, atomic->Type()));
+            auto* zero_init = b.Call(CreateASTTypeFor(ctx, atomic->Type()));
             auto expr = get_expr(1u);
             if (!expr) {
                 return false;
@@ -317,7 +317,7 @@ struct ZeroInitWorkgroupMemory::State {
 
         if (auto* str = ty->As<sem::Struct>()) {
             for (auto* member : str->Members()) {
-                auto name = ctx.Clone(member->Declaration()->symbol);
+                auto name = ctx.Clone(member->Declaration()->name->symbol);
                 auto get_member = [&](uint32_t num_values) {
                     auto s = get_expr(num_values);
                     if (!s) {
@@ -403,7 +403,7 @@ struct ZeroInitWorkgroupMemory::State {
             if (!expr) {
                 continue;
             }
-            auto* sem = ctx.src->Sem().Get(expr);
+            auto* sem = ctx.src->Sem().GetVal(expr);
             if (auto* c = sem->ConstantValue()) {
                 workgroup_size_const *= c->ValueAs<AInt>();
                 continue;
@@ -412,7 +412,7 @@ struct ZeroInitWorkgroupMemory::State {
             workgroup_size_expr = [this, expr, size = workgroup_size_expr] {
                 auto* e = ctx.Clone(expr);
                 if (ctx.src->TypeOf(expr)->UnwrapRef()->Is<type::I32>()) {
-                    e = b.Construct<u32>(e);
+                    e = b.Call<u32>(e);
                 }
                 return size ? b.Mul(size(), e) : e;
             };

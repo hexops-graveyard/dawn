@@ -75,22 +75,22 @@ void Transform::RemoveStatement(CloneContext& ctx, const ast::Statement* stmt) {
 
 const ast::Type* Transform::CreateASTTypeFor(CloneContext& ctx, const type::Type* ty) {
     if (ty->Is<type::Void>()) {
-        return ctx.dst->create<ast::Void>();
+        return nullptr;
     }
     if (ty->Is<type::I32>()) {
-        return ctx.dst->create<ast::I32>();
+        return ctx.dst->ty.i32();
     }
     if (ty->Is<type::U32>()) {
-        return ctx.dst->create<ast::U32>();
+        return ctx.dst->ty.u32();
     }
     if (ty->Is<type::F16>()) {
-        return ctx.dst->create<ast::F16>();
+        return ctx.dst->ty.f16();
     }
     if (ty->Is<type::F32>()) {
-        return ctx.dst->create<ast::F32>();
+        return ctx.dst->ty.f32();
     }
     if (ty->Is<type::Bool>()) {
-        return ctx.dst->create<ast::Bool>();
+        return ctx.dst->ty.bool_();
     }
     if (auto* m = ty->As<type::Matrix>()) {
         auto* el = CreateASTTypeFor(ctx, m->type());
@@ -122,7 +122,7 @@ const ast::Type* Transform::CreateASTTypeFor(CloneContext& ctx, const type::Type
                 if (auto* alias = type_decl->As<ast::Alias>()) {
                     if (ty == ctx.src->Sem().Get(alias)) {
                         // Alias found. Use the alias name to ensure types compare equal.
-                        return ctx.dst->ty(ctx.Clone(alias->name));
+                        return ctx.dst->ty(ctx.Clone(alias->name->symbol));
                     }
                 }
             }
@@ -138,7 +138,7 @@ const ast::Type* Transform::CreateASTTypeFor(CloneContext& ctx, const type::Type
         return ctx.dst->ty.array(el, u32(count.value()), std::move(attrs));
     }
     if (auto* s = ty->As<sem::Struct>()) {
-        return ctx.dst->ty(ctx.Clone(s->Declaration()->name));
+        return ctx.dst->ty(ctx.Clone(s->Declaration()->name->symbol));
     }
     if (auto* s = ty->As<type::Reference>()) {
         return CreateASTTypeFor(ctx, s->StoreType());
@@ -147,13 +147,13 @@ const ast::Type* Transform::CreateASTTypeFor(CloneContext& ctx, const type::Type
         return ctx.dst->create<ast::Atomic>(CreateASTTypeFor(ctx, a->Type()));
     }
     if (auto* t = ty->As<type::DepthTexture>()) {
-        return ctx.dst->create<ast::DepthTexture>(t->dim());
+        return ctx.dst->ty.depth_texture(t->dim());
     }
     if (auto* t = ty->As<type::DepthMultisampledTexture>()) {
-        return ctx.dst->create<ast::DepthMultisampledTexture>(t->dim());
+        return ctx.dst->ty.depth_multisampled_texture(t->dim());
     }
     if (ty->Is<type::ExternalTexture>()) {
-        return ctx.dst->create<ast::ExternalTexture>();
+        return ctx.dst->ty.external_texture();
     }
     if (auto* t = ty->As<type::MultisampledTexture>()) {
         return ctx.dst->create<ast::MultisampledTexture>(t->dim(),
@@ -163,11 +163,10 @@ const ast::Type* Transform::CreateASTTypeFor(CloneContext& ctx, const type::Type
         return ctx.dst->create<ast::SampledTexture>(t->dim(), CreateASTTypeFor(ctx, t->type()));
     }
     if (auto* t = ty->As<type::StorageTexture>()) {
-        return ctx.dst->create<ast::StorageTexture>(t->dim(), t->texel_format(),
-                                                    CreateASTTypeFor(ctx, t->type()), t->access());
+        return ctx.dst->ty.storage_texture(t->dim(), t->texel_format(), t->access());
     }
     if (auto* s = ty->As<type::Sampler>()) {
-        return ctx.dst->create<ast::Sampler>(s->kind());
+        return ctx.dst->ty.sampler(s->kind());
     }
     TINT_UNREACHABLE(Transform, ctx.dst->Diagnostics())
         << "Unhandled type: " << ty->TypeInfo().name;

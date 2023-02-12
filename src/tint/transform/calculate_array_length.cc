@@ -107,7 +107,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
             auto* type = CreateASTTypeFor(ctx, buffer_type);
             auto* disable_validation = b.Disable(ast::DisabledValidation::kFunctionParameter);
             b.AST().AddFunction(b.create<ast::Function>(
-                name,
+                b.Ident(name),
                 utils::Vector{
                     b.Param("buffer",
                             b.ty.pointer(type, buffer_type->AddressSpace(), buffer_type->Access()),
@@ -158,7 +158,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                     }
                     auto* storage_buffer_expr = address_of->expr;
                     if (auto* accessor = storage_buffer_expr->As<ast::MemberAccessorExpression>()) {
-                        storage_buffer_expr = accessor->structure;
+                        storage_buffer_expr = accessor->object;
                     }
                     auto* storage_buffer_sem = sem.Get<sem::VariableUser>(storage_buffer_expr);
                     if (TINT_UNLIKELY(!storage_buffer_sem)) {
@@ -192,7 +192,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                                 // translated to:
                                 //  X.GetDimensions(ARGS..) by the writer
                                 buffer_size, b.AddressOf(ctx.Clone(storage_buffer_expr)),
-                                b.AddressOf(b.Expr(buffer_size_result->variable->symbol))));
+                                b.AddressOf(b.Expr(buffer_size_result->variable->name->symbol))));
 
                             // Calculate actual array length
                             //                total_storage_buffer_size - array_offset

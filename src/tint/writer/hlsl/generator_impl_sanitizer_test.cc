@@ -25,7 +25,7 @@ namespace {
 using HlslSanitizerTest = TestHelper;
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength) {
-    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
+    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>())});
     GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
               Group(2_a));
 
@@ -58,7 +58,7 @@ void a_func() {
 TEST_F(HlslSanitizerTest, Call_ArrayLength_OtherMembersInStruct) {
     auto* s = Structure("my_struct", utils::Vector{
                                          Member(0, "z", ty.f32()),
-                                         Member(4, "a", ty.array<f32>(4)),
+                                         Member(4, "a", ty.array<f32>()),
                                      });
     GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
               Group(2_a));
@@ -91,7 +91,7 @@ void a_func() {
 }
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength_ViaLets) {
-    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
+    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>())});
     GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
               Group(2_a));
 
@@ -128,7 +128,7 @@ void a_func() {
 }
 
 TEST_F(HlslSanitizerTest, Call_ArrayLength_ArrayLengthFromUniform) {
-    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>(4))});
+    auto* s = Structure("my_struct", utils::Vector{Member(0, "a", ty.array<f32>())});
     GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
               Group(2_a));
     GlobalVar("c", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(2_a),
@@ -203,7 +203,7 @@ TEST_F(HlslSanitizerTest, PromoteStructInitializerToConstVar) {
                                    Member("b", ty.vec3<f32>()),
                                    Member("c", ty.i32()),
                                });
-    auto* struct_init = Construct(ty.Of(str), 1_i, vec3<f32>(2_f, runtime_value, 4_f), 4_i);
+    auto* struct_init = Call(ty.Of(str), 1_i, vec3<f32>(2_f, runtime_value, 4_f), 4_i);
     auto* struct_access = MemberAccessor(struct_init, "b");
     auto* pos = Var("pos", ty.vec3<f32>(), struct_access);
 

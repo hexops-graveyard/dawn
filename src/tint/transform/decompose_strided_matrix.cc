@@ -40,7 +40,10 @@ struct MatrixInfo {
     /// @returns a new ast::Array that holds an vector column for each row of the
     /// matrix.
     const ast::Array* array(ProgramBuilder* b) const {
-        return b->ty.array(b->ty.vec<f32>(matrix->rows()), u32(matrix->columns()), stride);
+        return b->ty.array(b->ty.vec<f32>(matrix->rows()), u32(matrix->columns()),
+                           utils::Vector{
+                               b->Stride(stride),
+                           });
     }
 
     /// Equality operator
@@ -150,7 +153,7 @@ Transform::ApplyResult DecomposeStridedMatrix::Apply(const Program* src,
                            },
                            array(),
                            utils::Vector{
-                               b.Return(b.Construct(array(), columns)),
+                               b.Return(b.Call(array(), columns)),
                            });
                     return name;
                 });
@@ -189,7 +192,7 @@ Transform::ApplyResult DecomposeStridedMatrix::Apply(const Program* src,
                            },
                            matrix(),
                            utils::Vector{
-                               b.Return(b.Construct(matrix(), columns)),
+                               b.Return(b.Call(matrix(), columns)),
                            });
                     return name;
                 });

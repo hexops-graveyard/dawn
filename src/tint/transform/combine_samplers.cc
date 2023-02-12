@@ -143,7 +143,7 @@ struct CombineSamplers::State {
         const type::Type* texture_type = texture->Type()->UnwrapRef();
         const type::DepthTexture* depth = texture_type->As<type::DepthTexture>();
         if (depth && !sampler) {
-            return ctx.dst->create<ast::SampledTexture>(depth->dim(), ctx.dst->create<ast::F32>());
+            return ctx.dst->create<ast::SampledTexture>(depth->dim(), ctx.dst->ty.f32());
         } else {
             return CreateASTTypeFor(ctx, texture_type);
         }
@@ -185,10 +185,10 @@ struct CombineSamplers::State {
                     const sem::Variable* texture_var = pair.first;
                     const sem::Variable* sampler_var = pair.second;
                     std::string name =
-                        ctx.src->Symbols().NameFor(texture_var->Declaration()->symbol);
+                        ctx.src->Symbols().NameFor(texture_var->Declaration()->name->symbol);
                     if (sampler_var) {
-                        name +=
-                            "_" + ctx.src->Symbols().NameFor(sampler_var->Declaration()->symbol);
+                        name += "_" + ctx.src->Symbols().NameFor(
+                                          sampler_var->Declaration()->name->symbol);
                     }
                     if (IsGlobal(pair)) {
                         // Both texture and sampler are global; add a new global variable
@@ -214,12 +214,12 @@ struct CombineSamplers::State {
                 }
                 // Create a new function signature that differs only in the parameter
                 // list.
-                auto symbol = ctx.Clone(ast_fn->symbol);
+                auto name = ctx.Clone(ast_fn->name);
                 auto* return_type = ctx.Clone(ast_fn->return_type);
                 auto* body = ctx.Clone(ast_fn->body);
                 auto attributes = ctx.Clone(ast_fn->attributes);
                 auto return_type_attributes = ctx.Clone(ast_fn->return_type_attributes);
-                return ctx.dst->create<ast::Function>(symbol, params, return_type, body,
+                return ctx.dst->create<ast::Function>(name, params, return_type, body,
                                                       std::move(attributes),
                                                       std::move(return_type_attributes));
             }
@@ -263,7 +263,7 @@ struct CombineSamplers::State {
                                     ? global_combined_texture_samplers_[new_pair]
                                     : function_combined_texture_samplers_[call->Stmt()->Function()]
                                                                          [new_pair];
-                            args.Push(ctx.dst->Expr(var->symbol));
+                            args.Push(ctx.dst->Expr(var->name->symbol));
                         } else if (auto* sampler_type = type->As<type::Sampler>()) {
                             type::SamplerKind kind = sampler_type->kind();
                             int index = (kind == type::SamplerKind::kSampler) ? 0 : 1;
@@ -271,7 +271,7 @@ struct CombineSamplers::State {
                             if (!p) {
                                 p = CreatePlaceholder(kind);
                             }
-                            args.Push(ctx.dst->Expr(p->symbol));
+                            args.Push(ctx.dst->Expr(p->name->symbol));
                         } else {
                             args.Push(ctx.Clone(arg));
                         }
@@ -317,7 +317,7 @@ struct CombineSamplers::State {
                                 ? global_combined_texture_samplers_[new_pair]
                                 : function_combined_texture_samplers_[call->Stmt()->Function()]
                                                                      [new_pair];
-                        auto* arg = ctx.dst->Expr(var->symbol);
+                        auto* arg = ctx.dst->Expr(var->name->symbol);
                         args.Push(arg);
                     }
                     // Append all of the remaining non-texture and non-sampler

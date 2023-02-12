@@ -25,15 +25,68 @@ namespace {
 
 using FunctionTest = TestHelper;
 
-TEST_F(FunctionTest, Creation) {
+TEST_F(FunctionTest, Creation_i32ReturnType) {
+    utils::Vector params{Param("var", ty.i32())};
+    auto* i32 = ty.i32();
+    auto* var = params[0];
+
+    auto* f = Func("func", params, i32, utils::Empty);
+    EXPECT_EQ(f->name->symbol, Symbols().Get("func"));
+    ASSERT_EQ(f->params.Length(), 1u);
+    EXPECT_EQ(f->return_type, i32);
+    EXPECT_EQ(f->params[0], var);
+}
+
+TEST_F(FunctionTest, Creation_NoReturnType) {
     utils::Vector params{Param("var", ty.i32())};
     auto* var = params[0];
 
     auto* f = Func("func", params, ty.void_(), utils::Empty);
-    EXPECT_EQ(f->symbol, Symbols().Get("func"));
+    EXPECT_EQ(f->name->symbol, Symbols().Get("func"));
     ASSERT_EQ(f->params.Length(), 1u);
-    EXPECT_TRUE(f->return_type->Is<ast::Void>());
+    EXPECT_EQ(f->return_type, nullptr);
     EXPECT_EQ(f->params[0], var);
+}
+
+TEST_F(FunctionTest, Creation_SingleParam) {
+    utils::Vector params{Param("var", ty.i32())};
+    auto* var = params[0];
+
+    auto* f = Func("func", params, ty.void_(), utils::Empty);
+    EXPECT_EQ(f->name->symbol, Symbols().Get("func"));
+    ASSERT_EQ(f->params.Length(), 1u);
+    EXPECT_EQ(f->return_type, nullptr);
+    EXPECT_EQ(f->params[0], var);
+    ASSERT_NE(f->body, nullptr);
+    ASSERT_EQ(f->body->statements.Length(), 0u);
+}
+
+TEST_F(FunctionTest, Creation_Body_Vector) {
+    auto* f = Func("func", utils::Empty, ty.void_(), utils::Vector{Discard(), Return()});
+    ASSERT_NE(f->body, nullptr);
+    ASSERT_EQ(f->body->statements.Length(), 2u);
+    EXPECT_TRUE(f->body->statements[0]->Is<ast::DiscardStatement>());
+    EXPECT_TRUE(f->body->statements[1]->Is<ast::ReturnStatement>());
+}
+
+TEST_F(FunctionTest, Creation_Body_Block) {
+    auto* f = Func("func", utils::Empty, ty.void_(), Block(Discard(), Return()));
+    ASSERT_NE(f->body, nullptr);
+    ASSERT_EQ(f->body->statements.Length(), 2u);
+    EXPECT_TRUE(f->body->statements[0]->Is<ast::DiscardStatement>());
+    EXPECT_TRUE(f->body->statements[1]->Is<ast::ReturnStatement>());
+}
+
+TEST_F(FunctionTest, Creation_Body_Stmt) {
+    auto* f = Func("func", utils::Empty, ty.void_(), Return());
+    ASSERT_NE(f->body, nullptr);
+    ASSERT_EQ(f->body->statements.Length(), 1u);
+    EXPECT_TRUE(f->body->statements[0]->Is<ast::ReturnStatement>());
+}
+
+TEST_F(FunctionTest, Creation_Body_Nullptr) {
+    auto* f = Func("func", utils::Empty, ty.void_(), nullptr);
+    EXPECT_EQ(f->body, nullptr);
 }
 
 TEST_F(FunctionTest, Creation_WithSource) {
@@ -45,6 +98,24 @@ TEST_F(FunctionTest, Creation_WithSource) {
     EXPECT_EQ(src.range.begin.column, 2u);
 }
 
+TEST_F(FunctionTest, Assert_NullName) {
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder b;
+            b.Func(static_cast<Identifier*>(nullptr), utils::Empty, b.ty.void_(), utils::Empty);
+        },
+        "internal compiler error");
+}
+
+TEST_F(FunctionTest, Assert_TemplatedName) {
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder b;
+            b.Func(b.Ident("a", "b"), utils::Empty, b.ty.void_(), utils::Empty);
+        },
+        "internal compiler error");
+}
+
 TEST_F(FunctionTest, Assert_InvalidName) {
     EXPECT_FATAL_FAILURE(
         {
@@ -54,16 +125,7 @@ TEST_F(FunctionTest, Assert_InvalidName) {
         "internal compiler error");
 }
 
-TEST_F(FunctionTest, Assert_Null_ReturnType) {
-    EXPECT_FATAL_FAILURE(
-        {
-            ProgramBuilder b;
-            b.Func("f", utils::Empty, nullptr, utils::Empty);
-        },
-        "internal compiler error");
-}
-
-TEST_F(FunctionTest, Assert_Null_Param) {
+TEST_F(FunctionTest, Assert_NullParam) {
     using ParamList = utils::Vector<const ast::Parameter*, 2>;
     EXPECT_FATAL_FAILURE(
         {
@@ -109,6 +171,16 @@ TEST_F(FunctionTest, Assert_DifferentProgramID_Attr) {
                     utils::Vector{
                         b2.WorkgroupSize(2_i, 4_i, 6_i),
                     });
+        },
+        "internal compiler error");
+}
+
+TEST_F(FunctionTest, Assert_DifferentProgramID_ReturnType) {
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder b1;
+            ProgramBuilder b2;
+            b1.Func("func", utils::Empty, b2.ty.i32(), utils::Empty);
         },
         "internal compiler error");
 }
