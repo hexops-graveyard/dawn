@@ -32,7 +32,7 @@ TEST_F(MslGeneratorImplTest, InvalidProgram) {
 }
 
 TEST_F(MslGeneratorImplTest, UnsupportedExtension) {
-    Enable(Source{{12, 34}}, ast::Extension::kUndefined);
+    Enable(Source{{12, 34}}, builtin::Extension::kUndefined);
 
     GeneratorImpl& gen = Build();
 
@@ -61,7 +61,7 @@ kernel void my_func() {
 }
 
 struct MslBuiltinData {
-    ast::BuiltinValue builtin;
+    builtin::BuiltinValue builtin;
     const char* attribute_name;
 };
 inline std::ostream& operator<<(std::ostream& out, MslBuiltinData data) {
@@ -80,25 +80,25 @@ INSTANTIATE_TEST_SUITE_P(
     MslGeneratorImplTest,
     MslBuiltinConversionTest,
     testing::Values(
-        MslBuiltinData{ast::BuiltinValue::kPosition, "position"},
-        MslBuiltinData{ast::BuiltinValue::kVertexIndex, "vertex_id"},
-        MslBuiltinData{ast::BuiltinValue::kInstanceIndex, "instance_id"},
-        MslBuiltinData{ast::BuiltinValue::kFrontFacing, "front_facing"},
-        MslBuiltinData{ast::BuiltinValue::kFragDepth, "depth(any)"},
-        MslBuiltinData{ast::BuiltinValue::kLocalInvocationId, "thread_position_in_threadgroup"},
-        MslBuiltinData{ast::BuiltinValue::kLocalInvocationIndex, "thread_index_in_threadgroup"},
-        MslBuiltinData{ast::BuiltinValue::kGlobalInvocationId, "thread_position_in_grid"},
-        MslBuiltinData{ast::BuiltinValue::kWorkgroupId, "threadgroup_position_in_grid"},
-        MslBuiltinData{ast::BuiltinValue::kNumWorkgroups, "threadgroups_per_grid"},
-        MslBuiltinData{ast::BuiltinValue::kSampleIndex, "sample_id"},
-        MslBuiltinData{ast::BuiltinValue::kSampleMask, "sample_mask"},
-        MslBuiltinData{ast::BuiltinValue::kPointSize, "point_size"}));
+        MslBuiltinData{builtin::BuiltinValue::kPosition, "position"},
+        MslBuiltinData{builtin::BuiltinValue::kVertexIndex, "vertex_id"},
+        MslBuiltinData{builtin::BuiltinValue::kInstanceIndex, "instance_id"},
+        MslBuiltinData{builtin::BuiltinValue::kFrontFacing, "front_facing"},
+        MslBuiltinData{builtin::BuiltinValue::kFragDepth, "depth(any)"},
+        MslBuiltinData{builtin::BuiltinValue::kLocalInvocationId, "thread_position_in_threadgroup"},
+        MslBuiltinData{builtin::BuiltinValue::kLocalInvocationIndex, "thread_index_in_threadgroup"},
+        MslBuiltinData{builtin::BuiltinValue::kGlobalInvocationId, "thread_position_in_grid"},
+        MslBuiltinData{builtin::BuiltinValue::kWorkgroupId, "threadgroup_position_in_grid"},
+        MslBuiltinData{builtin::BuiltinValue::kNumWorkgroups, "threadgroups_per_grid"},
+        MslBuiltinData{builtin::BuiltinValue::kSampleIndex, "sample_id"},
+        MslBuiltinData{builtin::BuiltinValue::kSampleMask, "sample_mask"},
+        MslBuiltinData{builtin::BuiltinValue::kPointSize, "point_size"}));
 
 TEST_F(MslGeneratorImplTest, HasInvariantAttribute_True) {
     auto* out = Structure("Out", utils::Vector{
                                      Member("pos", ty.vec4<f32>(),
                                             utils::Vector{
-                                                Builtin(ast::BuiltinValue::kPosition),
+                                                Builtin(builtin::BuiltinValue::kPosition),
                                                 Invariant(),
                                             }),
                                  });
@@ -136,7 +136,7 @@ TEST_F(MslGeneratorImplTest, HasInvariantAttribute_False) {
     auto* out = Structure("Out", utils::Vector{
                                      Member("pos", ty.vec4<f32>(),
                                             utils::Vector{
-                                                Builtin(ast::BuiltinValue::kPosition),
+                                                Builtin(builtin::BuiltinValue::kPosition),
                                             }),
                                  });
     Func("vert_main", utils::Empty, ty.Of(out), utils::Vector{Return(Call(ty.Of(out)))},
@@ -163,7 +163,7 @@ vertex Out vert_main() {
 }
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrix) {
-    GlobalVar("m", ty.mat2x2<f32>(), type::AddressSpace::kWorkgroup);
+    GlobalVar("m", ty.mat2x2<f32>(), builtin::AddressSpace::kWorkgroup);
     Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", Expr("m")))},
          utils::Vector{
              Stage(ast::PipelineStage::kCompute),
@@ -203,7 +203,7 @@ kernel void comp_main(threadgroup tint_symbol_3* tint_symbol_2 [[threadgroup(0)]
 }
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrixInArray) {
-    GlobalVar("m", ty.array(ty.mat2x2<f32>(), 4_i), type::AddressSpace::kWorkgroup);
+    GlobalVar("m", ty.array(ty.mat2x2<f32>(), 4_i), builtin::AddressSpace::kWorkgroup);
     Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", Expr("m")))},
          utils::Vector{
              Stage(ast::PipelineStage::kCompute),
@@ -264,7 +264,7 @@ TEST_F(MslGeneratorImplTest, WorkgroupMatrixInStruct) {
     Structure("S2", utils::Vector{
                         Member("s", ty("S1")),
                     });
-    GlobalVar("s", ty("S2"), type::AddressSpace::kWorkgroup);
+    GlobalVar("s", ty("S2"), builtin::AddressSpace::kWorkgroup);
     Func("comp_main", utils::Empty, ty.void_(), utils::Vector{Decl(Let("x", Expr("s")))},
          utils::Vector{
              Stage(ast::PipelineStage::kCompute),
@@ -314,15 +314,15 @@ kernel void comp_main(threadgroup tint_symbol_4* tint_symbol_3 [[threadgroup(0)]
 }
 
 TEST_F(MslGeneratorImplTest, WorkgroupMatrix_Multiples) {
-    GlobalVar("m1", ty.mat2x2<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m2", ty.mat2x3<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m3", ty.mat2x4<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m4", ty.mat3x2<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m5", ty.mat3x3<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m6", ty.mat3x4<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m7", ty.mat4x2<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m8", ty.mat4x3<f32>(), type::AddressSpace::kWorkgroup);
-    GlobalVar("m9", ty.mat4x4<f32>(), type::AddressSpace::kWorkgroup);
+    GlobalVar("m1", ty.mat2x2<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m2", ty.mat2x3<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m3", ty.mat2x4<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m4", ty.mat3x2<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m5", ty.mat3x3<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m6", ty.mat3x4<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m7", ty.mat4x2<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m8", ty.mat4x3<f32>(), builtin::AddressSpace::kWorkgroup);
+    GlobalVar("m9", ty.mat4x4<f32>(), builtin::AddressSpace::kWorkgroup);
     Func("main1", utils::Empty, ty.void_(),
          utils::Vector{
              Decl(Let("a1", Expr("m1"))),

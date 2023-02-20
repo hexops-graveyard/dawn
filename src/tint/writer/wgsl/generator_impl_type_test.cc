@@ -27,138 +27,130 @@ using WgslGeneratorImplTest = TestHelper;
 
 TEST_F(WgslGeneratorImplTest, EmitType_Alias) {
     auto* alias = Alias("alias", ty.f32());
-    auto* alias_ty = ty.Of(alias);
-    WrapInFunction(Var("make_reachable", alias_ty));
+    auto type = Alias("make_type_reachable", ty.Of(alias))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, alias_ty)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "alias");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Array) {
-    auto* arr = ty.array<bool, 4u>();
-    Alias("make_type_reachable", arr);
+    auto type = Alias("make_type_reachable", ty.array<bool, 4u>())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, arr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "array<bool, 4u>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Array_Attribute) {
-    auto* a = ty.array(ty.bool_(), 4_u, utils::Vector{Stride(16)});
-    Alias("make_type_reachable", a);
+    auto type =
+        Alias("make_type_reachable", ty.array(ty.bool_(), 4_u, utils::Vector{Stride(16)}))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, a)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "@stride(16) array<bool, 4u>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_RuntimeArray) {
-    auto* a = ty.array(ty.bool_());
-    Alias("make_type_reachable", a);
+    auto type = Alias("make_type_reachable", ty.array(ty.bool_()))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, a)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "array<bool>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Bool) {
-    auto* bool_ = ty.bool_();
-    Alias("make_type_reachable", bool_);
+    auto type = Alias("make_type_reachable", ty.bool_())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, bool_)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "bool");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_F32) {
-    auto* f32 = ty.f32();
-    Alias("make_type_reachable", f32);
+    auto type = Alias("make_type_reachable", ty.f32())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, f32)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "f32");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* f16 = ty.f16();
-    Alias("make_type_reachable", f16);
+    auto type = Alias("make_type_reachable", ty.f16())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, f16)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "f16");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_I32) {
-    auto* i32 = ty.i32();
-    Alias("make_type_reachable", i32);
+    auto type = Alias("make_type_reachable", ty.i32())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, i32)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "i32");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Matrix_F32) {
-    auto* mat2x3 = ty.mat2x3<f32>();
-    Alias("make_type_reachable", mat2x3);
+    auto type = Alias("make_type_reachable", ty.mat2x3<f32>())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, mat2x3)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "mat2x3<f32>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Matrix_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* mat2x3 = ty.mat2x3<f16>();
-    Alias("make_type_reachable", mat2x3);
+    auto type = Alias("make_type_reachable", ty.mat2x3<f16>())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, mat2x3)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "mat2x3<f16>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Pointer) {
-    auto* p = ty.pointer<f32>(type::AddressSpace::kWorkgroup);
-    Alias("make_type_reachable", p);
+    auto type =
+        Alias("make_type_reachable", ty.pointer<f32>(builtin::AddressSpace::kWorkgroup))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, p)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "ptr<workgroup, f32>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_PointerAccessMode) {
-    auto* p = ty.pointer<f32>(type::AddressSpace::kStorage, type::Access::kReadWrite);
-    Alias("make_type_reachable", p);
+    auto type = Alias("make_type_reachable",
+                      ty.pointer<f32>(builtin::AddressSpace::kStorage, builtin::Access::kReadWrite))
+                    ->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, p)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "ptr<storage, f32, read_write>");
 }
 
@@ -167,13 +159,12 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct) {
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
-    auto* s_ty = ty.Of(s);
-    WrapInFunction(Var("make_reachable", s_ty));
+    auto type = Alias("make_reachable", ty.Of(s))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, s_ty)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "S");
 }
 
@@ -278,7 +269,7 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithAttribute) {
 TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithEntryPointAttributes) {
     auto* s = Structure(
         "S", utils::Vector{
-                 Member("a", ty.u32(), utils::Vector{Builtin(ast::BuiltinValue::kVertexIndex)}),
+                 Member("a", ty.u32(), utils::Vector{Builtin(builtin::BuiltinValue::kVertexIndex)}),
                  Member("b", ty.f32(), utils::Vector{Location(2_a)}),
              });
 
@@ -295,37 +286,34 @@ TEST_F(WgslGeneratorImplTest, EmitType_Struct_WithEntryPointAttributes) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_U32) {
-    auto* u32 = ty.u32();
-    Alias("make_type_reachable", u32);
+    auto type = Alias("make_type_reachable", ty.u32())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, u32)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "u32");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Vector_F32) {
-    auto* vec3 = ty.vec3<f32>();
-    Alias("make_type_reachable", vec3);
+    auto type = Alias("make_type_reachable", ty.vec3<f32>())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, vec3)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "vec3<f32>");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_Vector_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* vec3 = ty.vec3<f16>();
-    Alias("make_type_reachable", vec3);
+    auto type = Alias("make_type_reachable", ty.vec3<f16>())->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, vec3)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "vec3<f16>");
 }
 
@@ -342,13 +330,12 @@ using WgslGenerator_DepthTextureTest = TestParamHelper<TextureData>;
 TEST_P(WgslGenerator_DepthTextureTest, EmitType_DepthTexture) {
     auto param = GetParam();
 
-    auto* d = ty.depth_texture(param.dim);
-    Alias("make_type_reachable", d);
+    auto type = Alias("make_type_reachable", ty.depth_texture(param.dim))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, d)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), param.name);
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -363,39 +350,39 @@ using WgslGenerator_SampledTextureTest = TestParamHelper<TextureData>;
 TEST_P(WgslGenerator_SampledTextureTest, EmitType_SampledTexture_F32) {
     auto param = GetParam();
 
-    auto* t = ty.sampled_texture(param.dim, ty.f32());
-    Alias("make_type_reachable", t);
+    auto t = ty.sampled_texture(param.dim, ty.f32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<f32>");
 }
 
 TEST_P(WgslGenerator_SampledTextureTest, EmitType_SampledTexture_I32) {
     auto param = GetParam();
 
-    auto* t = ty.sampled_texture(param.dim, ty.i32());
-    Alias("make_type_reachable", t);
+    auto t = ty.sampled_texture(param.dim, ty.i32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<i32>");
 }
 
 TEST_P(WgslGenerator_SampledTextureTest, EmitType_SampledTexture_U32) {
     auto param = GetParam();
 
-    auto* t = ty.sampled_texture(param.dim, ty.u32());
-    Alias("make_type_reachable", t);
+    auto t = ty.sampled_texture(param.dim, ty.u32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<u32>");
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -412,39 +399,39 @@ using WgslGenerator_MultiampledTextureTest = TestParamHelper<TextureData>;
 TEST_P(WgslGenerator_MultiampledTextureTest, EmitType_MultisampledTexture_F32) {
     auto param = GetParam();
 
-    auto* t = ty.multisampled_texture(param.dim, ty.f32());
-    Alias("make_type_reachable", t);
+    auto t = ty.multisampled_texture(param.dim, ty.f32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<f32>");
 }
 
 TEST_P(WgslGenerator_MultiampledTextureTest, EmitType_MultisampledTexture_I32) {
     auto param = GetParam();
 
-    auto* t = ty.multisampled_texture(param.dim, ty.i32());
-    Alias("make_type_reachable", t);
+    auto t = ty.multisampled_texture(param.dim, ty.i32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<i32>");
 }
 
 TEST_P(WgslGenerator_MultiampledTextureTest, EmitType_MultisampledTexture_U32) {
     auto param = GetParam();
 
-    auto* t = ty.multisampled_texture(param.dim, ty.u32());
-    Alias("make_type_reachable", t);
+    auto t = ty.multisampled_texture(param.dim, ty.u32());
+    auto type = Alias("make_type_reachable", t)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), std::string(param.name) + "<u32>");
 }
 INSTANTIATE_TEST_SUITE_P(WgslGeneratorImplTest,
@@ -453,9 +440,9 @@ INSTANTIATE_TEST_SUITE_P(WgslGeneratorImplTest,
                                                      "texture_multisampled_2d"}));
 
 struct StorageTextureData {
-    type::TexelFormat fmt;
+    builtin::TexelFormat fmt;
     type::TextureDimension dim;
-    type::Access access;
+    builtin::Access access;
     const char* name;
 };
 inline std::ostream& operator<<(std::ostream& out, StorageTextureData data) {
@@ -466,30 +453,30 @@ using WgslGenerator_StorageTextureTest = TestParamHelper<StorageTextureData>;
 TEST_P(WgslGenerator_StorageTextureTest, EmitType_StorageTexture) {
     auto param = GetParam();
 
-    auto* t = ty.storage_texture(param.dim, param.fmt, param.access);
-    GlobalVar("g", t, Binding(1_a), Group(2_a));
+    auto s = ty.storage_texture(param.dim, param.fmt, param.access);
+    auto type = GlobalVar("g", s, Binding(1_a), Group(2_a))->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, t)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), param.name);
 }
 INSTANTIATE_TEST_SUITE_P(
     WgslGeneratorImplTest,
     WgslGenerator_StorageTextureTest,
     testing::Values(
-        StorageTextureData{type::TexelFormat::kRgba8Sint, type::TextureDimension::k1d,
-                           type::Access::kWrite, "texture_storage_1d<rgba8sint, write>"},
-        StorageTextureData{type::TexelFormat::kRgba8Sint, type::TextureDimension::k2d,
-                           type::Access::kWrite, "texture_storage_2d<rgba8sint, write>"},
-        StorageTextureData{type::TexelFormat::kRgba8Sint, type::TextureDimension::k2dArray,
-                           type::Access::kWrite, "texture_storage_2d_array<rgba8sint, write>"},
-        StorageTextureData{type::TexelFormat::kRgba8Sint, type::TextureDimension::k3d,
-                           type::Access::kWrite, "texture_storage_3d<rgba8sint, write>"}));
+        StorageTextureData{builtin::TexelFormat::kRgba8Sint, type::TextureDimension::k1d,
+                           builtin::Access::kWrite, "texture_storage_1d<rgba8sint, write>"},
+        StorageTextureData{builtin::TexelFormat::kRgba8Sint, type::TextureDimension::k2d,
+                           builtin::Access::kWrite, "texture_storage_2d<rgba8sint, write>"},
+        StorageTextureData{builtin::TexelFormat::kRgba8Sint, type::TextureDimension::k2dArray,
+                           builtin::Access::kWrite, "texture_storage_2d_array<rgba8sint, write>"},
+        StorageTextureData{builtin::TexelFormat::kRgba8Sint, type::TextureDimension::k3d,
+                           builtin::Access::kWrite, "texture_storage_3d<rgba8sint, write>"}));
 
 struct ImageFormatData {
-    type::TexelFormat fmt;
+    builtin::TexelFormat fmt;
     const char* name;
 };
 inline std::ostream& operator<<(std::ostream& out, ImageFormatData data) {
@@ -510,42 +497,42 @@ TEST_P(WgslGenerator_ImageFormatTest, EmitType_StorageTexture_ImageFormat) {
 INSTANTIATE_TEST_SUITE_P(
     WgslGeneratorImplTest,
     WgslGenerator_ImageFormatTest,
-    testing::Values(ImageFormatData{type::TexelFormat::kR32Uint, "r32uint"},
-                    ImageFormatData{type::TexelFormat::kR32Sint, "r32sint"},
-                    ImageFormatData{type::TexelFormat::kR32Float, "r32float"},
-                    ImageFormatData{type::TexelFormat::kRgba8Unorm, "rgba8unorm"},
-                    ImageFormatData{type::TexelFormat::kRgba8Snorm, "rgba8snorm"},
-                    ImageFormatData{type::TexelFormat::kRgba8Uint, "rgba8uint"},
-                    ImageFormatData{type::TexelFormat::kRgba8Sint, "rgba8sint"},
-                    ImageFormatData{type::TexelFormat::kRg32Uint, "rg32uint"},
-                    ImageFormatData{type::TexelFormat::kRg32Sint, "rg32sint"},
-                    ImageFormatData{type::TexelFormat::kRg32Float, "rg32float"},
-                    ImageFormatData{type::TexelFormat::kRgba16Uint, "rgba16uint"},
-                    ImageFormatData{type::TexelFormat::kRgba16Sint, "rgba16sint"},
-                    ImageFormatData{type::TexelFormat::kRgba16Float, "rgba16float"},
-                    ImageFormatData{type::TexelFormat::kRgba32Uint, "rgba32uint"},
-                    ImageFormatData{type::TexelFormat::kRgba32Sint, "rgba32sint"},
-                    ImageFormatData{type::TexelFormat::kRgba32Float, "rgba32float"}));
+    testing::Values(ImageFormatData{builtin::TexelFormat::kR32Uint, "r32uint"},
+                    ImageFormatData{builtin::TexelFormat::kR32Sint, "r32sint"},
+                    ImageFormatData{builtin::TexelFormat::kR32Float, "r32float"},
+                    ImageFormatData{builtin::TexelFormat::kRgba8Unorm, "rgba8unorm"},
+                    ImageFormatData{builtin::TexelFormat::kRgba8Snorm, "rgba8snorm"},
+                    ImageFormatData{builtin::TexelFormat::kRgba8Uint, "rgba8uint"},
+                    ImageFormatData{builtin::TexelFormat::kRgba8Sint, "rgba8sint"},
+                    ImageFormatData{builtin::TexelFormat::kRg32Uint, "rg32uint"},
+                    ImageFormatData{builtin::TexelFormat::kRg32Sint, "rg32sint"},
+                    ImageFormatData{builtin::TexelFormat::kRg32Float, "rg32float"},
+                    ImageFormatData{builtin::TexelFormat::kRgba16Uint, "rgba16uint"},
+                    ImageFormatData{builtin::TexelFormat::kRgba16Sint, "rgba16sint"},
+                    ImageFormatData{builtin::TexelFormat::kRgba16Float, "rgba16float"},
+                    ImageFormatData{builtin::TexelFormat::kRgba32Uint, "rgba32uint"},
+                    ImageFormatData{builtin::TexelFormat::kRgba32Sint, "rgba32sint"},
+                    ImageFormatData{builtin::TexelFormat::kRgba32Float, "rgba32float"}));
 
 TEST_F(WgslGeneratorImplTest, EmitType_Sampler) {
-    auto* sampler = ty.sampler(type::SamplerKind::kSampler);
-    Alias("make_type_reachable", sampler);
+    auto sampler = ty.sampler(type::SamplerKind::kSampler);
+    auto type = Alias("make_type_reachable", sampler)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, sampler)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "sampler");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitType_SamplerComparison) {
-    auto* sampler = ty.sampler(type::SamplerKind::kComparisonSampler);
-    Alias("make_type_reachable", sampler);
+    auto sampler = ty.sampler(type::SamplerKind::kComparisonSampler);
+    auto type = Alias("make_type_reachable", sampler)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, sampler)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, type)) << gen.error();
     EXPECT_EQ(out.str(), "sampler_comparison");
 }
 

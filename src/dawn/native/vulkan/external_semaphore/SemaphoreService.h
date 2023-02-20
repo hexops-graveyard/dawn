@@ -15,17 +15,19 @@
 #ifndef SRC_DAWN_NATIVE_VULKAN_EXTERNAL_SEMAPHORE_SEMAPHORESERVICE_H_
 #define SRC_DAWN_NATIVE_VULKAN_EXTERNAL_SEMAPHORE_SEMAPHORESERVICE_H_
 
-#include "dawn/common/vulkan_platform.h"
+#include <memory>
+
 #include "dawn/native/Error.h"
 #include "dawn/native/vulkan/ExternalHandle.h"
-#include "dawn/native/vulkan/VulkanFunctions.h"
-#include "dawn/native/vulkan/VulkanInfo.h"
 
 namespace dawn::native::vulkan {
 class Device;
+struct VulkanDeviceInfo;
+struct VulkanFunctions;
 }  // namespace dawn::native::vulkan
 
 namespace dawn::native::vulkan::external_semaphore {
+class ServiceImplementation;
 
 class Service {
   public:
@@ -35,6 +37,7 @@ class Service {
     static bool CheckSupport(const VulkanDeviceInfo& deviceInfo,
                              VkPhysicalDevice physicalDevice,
                              const VulkanFunctions& fn);
+    void CloseHandle(ExternalSemaphoreHandle handle);
 
     // True if the device reports it supports this feature
     bool Supported();
@@ -51,14 +54,9 @@ class Service {
     // Duplicate a new external handle from the given one.
     ExternalSemaphoreHandle DuplicateHandle(ExternalSemaphoreHandle handle);
 
-    // Close an external handle.
-    static void CloseHandle(ExternalSemaphoreHandle handle);
-
   private:
-    Device* mDevice = nullptr;
-
-    // True if early checks pass that determine if the service is supported
-    bool mSupported = false;
+    // Linux, ChromeOS and Android use FD semaphore and Fuchia uses ZirconHandle.
+    std::unique_ptr<ServiceImplementation> mServiceImpl;
 };
 
 }  // namespace dawn::native::vulkan::external_semaphore

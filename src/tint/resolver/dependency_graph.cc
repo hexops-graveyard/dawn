@@ -19,9 +19,7 @@
 #include <vector>
 
 #include "src/tint/ast/alias.h"
-#include "src/tint/ast/array.h"
 #include "src/tint/ast/assignment_statement.h"
-#include "src/tint/ast/atomic.h"
 #include "src/tint/ast/block_statement.h"
 #include "src/tint/ast/break_if_statement.h"
 #include "src/tint/ast/break_statement.h"
@@ -41,12 +39,8 @@
 #include "src/tint/ast/invariant_attribute.h"
 #include "src/tint/ast/location_attribute.h"
 #include "src/tint/ast/loop_statement.h"
-#include "src/tint/ast/matrix.h"
-#include "src/tint/ast/multisampled_texture.h"
 #include "src/tint/ast/override.h"
-#include "src/tint/ast/pointer.h"
 #include "src/tint/ast/return_statement.h"
-#include "src/tint/ast/sampled_texture.h"
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/stride_attribute.h"
 #include "src/tint/ast/struct.h"
@@ -56,16 +50,14 @@
 #include "src/tint/ast/switch_statement.h"
 #include "src/tint/ast/templated_identifier.h"
 #include "src/tint/ast/traverse_expressions.h"
-#include "src/tint/ast/type_name.h"
 #include "src/tint/ast/var.h"
 #include "src/tint/ast/variable_decl_statement.h"
-#include "src/tint/ast/vector.h"
 #include "src/tint/ast/while_statement.h"
 #include "src/tint/ast/workgroup_attribute.h"
+#include "src/tint/builtin/builtin.h"
 #include "src/tint/scope_stack.h"
 #include "src/tint/sem/builtin.h"
 #include "src/tint/symbol_table.h"
-#include "src/tint/type/builtin.h"
 #include "src/tint/utils/block_allocator.h"
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/defer.h"
@@ -180,24 +172,20 @@ class DependencyScanner {
                 Declare(str->name->symbol, str);
                 for (auto* member : str->members) {
                     TraverseAttributes(member->attributes);
-                    TraverseType(member->type);
+                    TraverseTypeExpression(member->type);
                 }
             },
             [&](const ast::Alias* alias) {
                 Declare(alias->name->symbol, alias);
-                TraverseType(alias->type);
+                TraverseTypeExpression(alias->type);
             },
             [&](const ast::Function* func) {
                 Declare(func->name->symbol, func);
                 TraverseFunction(func);
             },
-            [&](const ast::Variable* var) {
-                Declare(var->name->symbol, var);
-                TraverseType(var->type);
-                TraverseAttributes(var->attributes);
-                if (var->initializer) {
-                    TraverseExpression(var->initializer);
-                }
+            [&](const ast::Variable* v) {
+                Declare(v->name->symbol, v);
+                TraverseVariable(v);
             },
             [&](const ast::DiagnosticDirective*) {
                 // Diagnostic directives do not affect the dependency graph.
@@ -205,13 +193,25 @@ class DependencyScanner {
             [&](const ast::Enable*) {
                 // Enable directives do not affect the dependency graph.
             },
-            [&](const ast::ConstAssert* assertion) { TraverseExpression(assertion->condition); },
+            [&](const ast::ConstAssert* assertion) {
+                TraverseValueExpression(assertion->condition);
+            },
             [&](Default) { UnhandledNode(diagnostics_, global->node); });
     }
 
   private:
-    /// Traverses the function, performing symbol resolution and determining
-    /// global dependencies.
+    /// Traverses the variable, performing symbol resolution.
+    void TraverseVariable(const ast::Variable* v) {
+        if (auto* var = v->As<ast::Var>()) {
+            TraverseAddressSpaceExpression(var->declared_address_space);
+            TraverseAccessExpression(var->declared_access);
+        }
+        TraverseTypeExpression(v->type);
+        TraverseAttributes(v->attributes);
+        TraverseValueExpression(v->initializer);
+    }
+
+    /// Traverses the function, performing symbol resolution and determining global dependencies.
     void TraverseFunction(const ast::Function* func) {
         TraverseAttributes(func->attributes);
         TraverseAttributes(func->return_type_attributes);
@@ -220,10 +220,10 @@ class DependencyScanner {
         // with the same identifier as its type.
         for (auto* param : func->params) {
             TraverseAttributes(param->attributes);
-            TraverseType(param->type);
+            TraverseTypeExpression(param->type);
         }
         // Resolve the return type
-        TraverseType(func->return_type);
+        TraverseTypeExpression(func->return_type);
 
         // Push the scope stack for the parameters and function body.
         scope_stack_.Push();
@@ -257,29 +257,29 @@ class DependencyScanner {
         Switch(
             stmt,  //
             [&](const ast::AssignmentStatement* a) {
-                TraverseExpression(a->lhs);
-                TraverseExpression(a->rhs);
+                TraverseValueExpression(a->lhs);
+                TraverseValueExpression(a->rhs);
             },
             [&](const ast::BlockStatement* b) {
                 scope_stack_.Push();
                 TINT_DEFER(scope_stack_.Pop());
                 TraverseStatements(b->statements);
             },
-            [&](const ast::BreakIfStatement* b) { TraverseExpression(b->condition); },
-            [&](const ast::CallStatement* r) { TraverseExpression(r->expr); },
+            [&](const ast::BreakIfStatement* b) { TraverseValueExpression(b->condition); },
+            [&](const ast::CallStatement* r) { TraverseValueExpression(r->expr); },
             [&](const ast::CompoundAssignmentStatement* a) {
-                TraverseExpression(a->lhs);
-                TraverseExpression(a->rhs);
+                TraverseValueExpression(a->lhs);
+                TraverseValueExpression(a->rhs);
             },
             [&](const ast::ForLoopStatement* l) {
                 scope_stack_.Push();
                 TINT_DEFER(scope_stack_.Pop());
                 TraverseStatement(l->initializer);
-                TraverseExpression(l->condition);
+                TraverseValueExpression(l->condition);
                 TraverseStatement(l->continuing);
                 TraverseStatement(l->body);
             },
-            [&](const ast::IncrementDecrementStatement* i) { TraverseExpression(i->lhs); },
+            [&](const ast::IncrementDecrementStatement* i) { TraverseValueExpression(i->lhs); },
             [&](const ast::LoopStatement* l) {
                 scope_stack_.Push();
                 TINT_DEFER(scope_stack_.Pop());
@@ -287,18 +287,18 @@ class DependencyScanner {
                 TraverseStatement(l->continuing);
             },
             [&](const ast::IfStatement* i) {
-                TraverseExpression(i->condition);
+                TraverseValueExpression(i->condition);
                 TraverseStatement(i->body);
                 if (i->else_statement) {
                     TraverseStatement(i->else_statement);
                 }
             },
-            [&](const ast::ReturnStatement* r) { TraverseExpression(r->value); },
+            [&](const ast::ReturnStatement* r) { TraverseValueExpression(r->value); },
             [&](const ast::SwitchStatement* s) {
-                TraverseExpression(s->condition);
+                TraverseValueExpression(s->condition);
                 for (auto* c : s->body) {
                     for (auto* sel : c->selectors) {
-                        TraverseExpression(sel->expr);
+                        TraverseValueExpression(sel->expr);
                     }
                     TraverseStatement(c->body);
                 }
@@ -307,17 +307,18 @@ class DependencyScanner {
                 if (auto* shadows = scope_stack_.Get(v->variable->name->symbol)) {
                     graph_.shadows.Add(v->variable, shadows);
                 }
-                TraverseType(v->variable->type);
-                TraverseExpression(v->variable->initializer);
+                TraverseVariable(v->variable);
                 Declare(v->variable->name->symbol, v->variable);
             },
             [&](const ast::WhileStatement* w) {
                 scope_stack_.Push();
                 TINT_DEFER(scope_stack_.Pop());
-                TraverseExpression(w->condition);
+                TraverseValueExpression(w->condition);
                 TraverseStatement(w->body);
             },
-            [&](const ast::ConstAssert* assertion) { TraverseExpression(assertion->condition); },
+            [&](const ast::ConstAssert* assertion) {
+                TraverseValueExpression(assertion->condition);
+            },
             [&](Default) {
                 if (TINT_UNLIKELY((!stmt->IsAnyOf<ast::BreakStatement, ast::ContinueStatement,
                                                   ast::DiscardStatement>()))) {
@@ -337,85 +338,73 @@ class DependencyScanner {
         }
     }
 
-    /// Traverses the expression, performing symbol resolution and determining global dependencies.
-    void TraverseExpression(const ast::Expression* root) {
-        if (!root) {
+    /// Traverses the expression @p root_expr for the intended use as a value, performing symbol
+    /// resolution and determining global dependencies.
+    void TraverseValueExpression(const ast::Expression* root) {
+        TraverseExpression(root, "identifier", "references");
+    }
+
+    /// Traverses the expression @p root_expr for the intended use as a type, performing symbol
+    /// resolution and determining global dependencies.
+    void TraverseTypeExpression(const ast::Expression* root) {
+        TraverseExpression(root, "type", "references");
+    }
+
+    /// Traverses the expression @p root_expr for the intended use as an address space, performing
+    /// symbol resolution and determining global dependencies.
+    void TraverseAddressSpaceExpression(const ast::Expression* root) {
+        TraverseExpression(root, "address space", "references");
+    }
+
+    /// Traverses the expression @p root_expr for the intended use as an access, performing symbol
+    /// resolution and determining global dependencies.
+    void TraverseAccessExpression(const ast::Expression* root) {
+        TraverseExpression(root, "access", "references");
+    }
+
+    /// Traverses the expression @p root_expr for the intended use as a call target, performing
+    /// symbol resolution and determining global dependencies.
+    void TraverseCallableExpression(const ast::Expression* root) {
+        TraverseExpression(root, "function", "calls");
+    }
+
+    /// Traverses the expression @p root_expr, performing symbol resolution and determining global
+    /// dependencies.
+    void TraverseExpression(const ast::Expression* root_expr,
+                            const char* root_use,
+                            const char* root_action) {
+        if (!root_expr) {
             return;
         }
-        utils::Vector<const ast::Expression*, 8> pending{root};
+
+        struct Pending {
+            const ast::Expression* expr;
+            const char* use;
+            const char* action;
+        };
+        utils::Vector<Pending, 8> pending{{root_expr, root_use, root_action}};
         while (!pending.IsEmpty()) {
-            ast::TraverseExpressions(pending.Pop(), diagnostics_, [&](const ast::Expression* expr) {
+            auto next = pending.Pop();
+            ast::TraverseExpressions(next.expr, diagnostics_, [&](const ast::Expression* expr) {
                 Switch(
                     expr,
                     [&](const ast::IdentifierExpression* e) {
-                        AddDependency(e->identifier, e->identifier->symbol, "identifier",
-                                      "references");
+                        AddDependency(e->identifier, e->identifier->symbol, next.use, next.action);
                         if (auto* tmpl_ident = e->identifier->As<ast::TemplatedIdentifier>()) {
                             for (auto* arg : tmpl_ident->arguments) {
-                                pending.Push(arg);
+                                pending.Push({arg, "identifier", "references"});
                             }
                         }
                     },
                     [&](const ast::CallExpression* call) {
-                        if (call->target.name) {
-                            AddDependency(call->target.name, call->target.name->symbol, "function",
-                                          "calls");
-                            if (auto* tmpl_ident =
-                                    call->target.name->As<ast::TemplatedIdentifier>()) {
-                                for (auto* arg : tmpl_ident->arguments) {
-                                    pending.Push(arg);
-                                }
-                            }
-                        }
-                        if (call->target.type) {
-                            TraverseType(call->target.type);
-                        }
+                        TraverseCallableExpression(call->target);
                     },
-                    [&](const ast::BitcastExpression* cast) { TraverseType(cast->type); });
+                    [&](const ast::BitcastExpression* cast) {
+                        TraverseTypeExpression(cast->type);
+                    });
                 return ast::TraverseAction::Descend;
             });
         }
-    }
-
-    /// Traverses the type node, performing symbol resolution and determining
-    /// global dependencies.
-    void TraverseType(const ast::Type* ty) {
-        if (!ty) {
-            return;
-        }
-        Switch(
-            ty,  //
-            [&](const ast::Array* arr) {
-                TraverseType(arr->type);  //
-                TraverseExpression(arr->count);
-            },
-            [&](const ast::Atomic* atomic) {  //
-                TraverseType(atomic->type);
-            },
-            [&](const ast::Matrix* mat) {  //
-                TraverseType(mat->type);
-            },
-            [&](const ast::Pointer* ptr) {  //
-                TraverseType(ptr->type);
-            },
-            [&](const ast::TypeName* tn) {  //
-                AddDependency(tn->name, tn->name->symbol, "type", "references");
-                if (auto* tmpl_ident = tn->name->As<ast::TemplatedIdentifier>()) {
-                    for (auto* arg : tmpl_ident->arguments) {
-                        TraverseExpression(arg);
-                    }
-                }
-            },
-            [&](const ast::Vector* vec) {  //
-                TraverseType(vec->type);
-            },
-            [&](const ast::SampledTexture* tex) {  //
-                TraverseType(tex->type);
-            },
-            [&](const ast::MultisampledTexture* tex) {  //
-                TraverseType(tex->type);
-            },
-            [&](Default) { UnhandledNode(diagnostics_, ty); });
     }
 
     /// Traverses the attribute list, performing symbol resolution and
@@ -432,33 +421,33 @@ class DependencyScanner {
         bool handled = Switch(
             attr,
             [&](const ast::BindingAttribute* binding) {
-                TraverseExpression(binding->expr);
+                TraverseValueExpression(binding->expr);
                 return true;
             },
             [&](const ast::GroupAttribute* group) {
-                TraverseExpression(group->expr);
+                TraverseValueExpression(group->expr);
                 return true;
             },
             [&](const ast::IdAttribute* id) {
-                TraverseExpression(id->expr);
+                TraverseValueExpression(id->expr);
                 return true;
             },
             [&](const ast::LocationAttribute* loc) {
-                TraverseExpression(loc->expr);
+                TraverseValueExpression(loc->expr);
                 return true;
             },
             [&](const ast::StructMemberAlignAttribute* align) {
-                TraverseExpression(align->expr);
+                TraverseValueExpression(align->expr);
                 return true;
             },
             [&](const ast::StructMemberSizeAttribute* size) {
-                TraverseExpression(size->expr);
+                TraverseValueExpression(size->expr);
                 return true;
             },
             [&](const ast::WorkgroupAttribute* wg) {
-                TraverseExpression(wg->x);
-                TraverseExpression(wg->y);
-                TraverseExpression(wg->z);
+                TraverseValueExpression(wg->x);
+                TraverseValueExpression(wg->y);
+                TraverseValueExpression(wg->z);
                 return true;
             });
         if (handled) {
@@ -486,19 +475,21 @@ class DependencyScanner {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(builtin_fn));
                 return;
             }
-            if (auto builtin_ty = type::ParseBuiltin(s); builtin_ty != type::Builtin::kUndefined) {
+            if (auto builtin_ty = builtin::ParseBuiltin(s);
+                builtin_ty != builtin::Builtin::kUndefined) {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(builtin_ty));
                 return;
             }
-            if (auto addr = type::ParseAddressSpace(s); addr != type::AddressSpace::kUndefined) {
+            if (auto addr = builtin::ParseAddressSpace(s);
+                addr != builtin::AddressSpace::kUndefined) {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(addr));
                 return;
             }
-            if (auto fmt = type::ParseTexelFormat(s); fmt != type::TexelFormat::kUndefined) {
+            if (auto fmt = builtin::ParseTexelFormat(s); fmt != builtin::TexelFormat::kUndefined) {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(fmt));
                 return;
             }
-            if (auto access = type::ParseAccess(s); access != type::Access::kUndefined) {
+            if (auto access = builtin::ParseAccess(s); access != builtin::Access::kUndefined) {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(access));
                 return;
             }
@@ -517,8 +508,7 @@ class DependencyScanner {
         graph_.resolved_identifiers.Add(from, ResolvedIdentifier(resolved));
     }
 
-    /// Appends an error to the diagnostics that the given symbol cannot be
-    /// resolved.
+    /// Appends an error to the diagnostics that the given symbol cannot be resolved.
     void UnknownSymbol(Symbol name, Source source, const char* use) {
         AddError(diagnostics_, "unknown " + std::string(use) + ": '" + symbols_.NameFor(name) + "'",
                  source);
@@ -870,16 +860,16 @@ std::string ResolvedIdentifier::String(const SymbolTable& symbols, diag::List& d
     if (auto builtin_fn = BuiltinFunction(); builtin_fn != sem::BuiltinType::kNone) {
         return "builtin function '" + utils::ToString(builtin_fn) + "'";
     }
-    if (auto builtin_ty = BuiltinType(); builtin_ty != type::Builtin::kUndefined) {
+    if (auto builtin_ty = BuiltinType(); builtin_ty != builtin::Builtin::kUndefined) {
         return "builtin type '" + utils::ToString(builtin_ty) + "'";
     }
-    if (auto access = Access(); access != type::Access::kUndefined) {
+    if (auto access = Access(); access != builtin::Access::kUndefined) {
         return "access '" + utils::ToString(access) + "'";
     }
-    if (auto addr = AddressSpace(); addr != type::AddressSpace::kUndefined) {
+    if (auto addr = AddressSpace(); addr != builtin::AddressSpace::kUndefined) {
         return "address space '" + utils::ToString(addr) + "'";
     }
-    if (auto fmt = TexelFormat(); fmt != type::TexelFormat::kUndefined) {
+    if (auto fmt = TexelFormat(); fmt != builtin::TexelFormat::kUndefined) {
         return "texel format '" + utils::ToString(fmt) + "'";
     }
     TINT_UNREACHABLE(Resolver, diagnostics) << "unhandled ResolvedIdentifier";

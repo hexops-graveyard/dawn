@@ -328,9 +328,9 @@ class TemplateNumberMatcher : public NumberMatcher {
 // TODO(bclayton): See if we can move more of this hand-rolled code to the
 // template
 ////////////////////////////////////////////////////////////////////////////////
-using TexelFormat = type::TexelFormat;
-using Access = type::Access;
-using AddressSpace = type::AddressSpace;
+using TexelFormat = builtin::TexelFormat;
+using Access = builtin::Access;
+using AddressSpace = builtin::AddressSpace;
 using ParameterUsage = sem::ParameterUsage;
 using PipelineStage = ast::PipelineStage;
 
@@ -560,8 +560,8 @@ bool match_ptr(MatchState&, const type::Type* ty, Number& S, const type::Type*& 
 }
 
 const type::Pointer* build_ptr(MatchState& state, Number S, const type::Type* T, Number& A) {
-    return state.builder.create<type::Pointer>(T, static_cast<type::AddressSpace>(S.Value()),
-                                               static_cast<type::Access>(A.Value()));
+    return state.builder.create<type::Pointer>(T, static_cast<builtin::AddressSpace>(S.Value()),
+                                               static_cast<builtin::Access>(A.Value()));
 }
 
 bool match_atomic(MatchState&, const type::Type* ty, const type::Type*& T) {
@@ -1143,7 +1143,7 @@ class Impl : public IntrinsicTable {
                                       utils::VectorRef<const type::Type*> args,
                                       sem::EvaluationStage earliest_eval_stage,
                                       TemplateState templates,
-                                      OnNoMatch on_no_match) const;
+                                      const OnNoMatch& on_no_match) const;
 
     /// Evaluates the single overload for the provided argument types.
     /// @param overload the overload being considered
@@ -1275,8 +1275,8 @@ Impl::Builtin Impl::Lookup(sem::BuiltinType builtin_type,
         params.Reserve(match.parameters.Length());
         for (auto& p : match.parameters) {
             params.Push(builder.create<sem::Parameter>(
-                nullptr, static_cast<uint32_t>(params.Length()), p.type, type::AddressSpace::kNone,
-                type::Access::kUndefined, p.usage));
+                nullptr, static_cast<uint32_t>(params.Length()), p.type,
+                builtin::AddressSpace::kUndefined, builtin::Access::kUndefined, p.usage));
         }
         sem::PipelineStageSet supported_stages;
         if (match.overload->flags.Contains(OverloadFlag::kSupportsVertexPipeline)) {
@@ -1476,8 +1476,8 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
         params.Reserve(match.parameters.Length());
         for (auto& p : match.parameters) {
             params.Push(builder.create<sem::Parameter>(
-                nullptr, static_cast<uint32_t>(params.Length()), p.type, type::AddressSpace::kNone,
-                type::Access::kUndefined, p.usage));
+                nullptr, static_cast<uint32_t>(params.Length()), p.type,
+                builtin::AddressSpace::kUndefined, builtin::Access::kUndefined, p.usage));
         }
         auto eval_stage = match.overload->const_eval_fn ? sem::EvaluationStage::kConstant
                                                         : sem::EvaluationStage::kRuntime;
@@ -1491,8 +1491,8 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
     // Conversion.
     auto* target = converters.GetOrCreate(match, [&]() {
         auto param = builder.create<sem::Parameter>(
-            nullptr, 0u, match.parameters[0].type, type::AddressSpace::kNone,
-            type::Access::kUndefined, match.parameters[0].usage);
+            nullptr, 0u, match.parameters[0].type, builtin::AddressSpace::kUndefined,
+            builtin::Access::kUndefined, match.parameters[0].usage);
         auto eval_stage = match.overload->const_eval_fn ? sem::EvaluationStage::kConstant
                                                         : sem::EvaluationStage::kRuntime;
         return builder.create<sem::TypeConversion>(match.return_type, param, eval_stage);
@@ -1505,7 +1505,7 @@ IntrinsicPrototype Impl::MatchIntrinsic(const IntrinsicInfo& intrinsic,
                                         utils::VectorRef<const type::Type*> args,
                                         sem::EvaluationStage earliest_eval_stage,
                                         TemplateState templates,
-                                        OnNoMatch on_no_match) const {
+                                        const OnNoMatch& on_no_match) const {
     size_t num_matched = 0;
     size_t match_idx = 0;
     utils::Vector<Candidate, kNumFixedCandidates> candidates;

@@ -150,8 +150,9 @@ class GeneratorImpl : public TextGenerator {
     /// Handles generating a function call expression
     /// @param out the output of the expression stream
     /// @param call the call expression
+    /// @param fn the function being called
     /// @returns true if the expression is emitted
-    bool EmitFunctionCall(std::ostream& out, const sem::Call* call);
+    bool EmitFunctionCall(std::ostream& out, const sem::Call* call, const sem::Function* fn);
     /// Handles generating a builtin call expression
     /// @param out the output of the expression stream
     /// @param call the call expression
@@ -413,8 +414,8 @@ class GeneratorImpl : public TextGenerator {
     /// @returns true if the type is emitted
     bool EmitType(std::ostream& out,
                   const type::Type* type,
-                  type::AddressSpace address_space,
-                  type::Access access,
+                  builtin::AddressSpace address_space,
+                  builtin::Access access,
                   const std::string& name,
                   bool* name_printed = nullptr);
     /// Handles generating type and name
@@ -426,8 +427,8 @@ class GeneratorImpl : public TextGenerator {
     /// @returns true if the type is emitted
     bool EmitTypeAndName(std::ostream& out,
                          const type::Type* type,
-                         type::AddressSpace address_space,
-                         type::Access access,
+                         builtin::AddressSpace address_space,
+                         builtin::Access access,
                          const std::string& name);
     /// Handles generating a structure declaration. If the structure has already been emitted, then
     /// this function will simply return `true` without emitting anything.
@@ -470,11 +471,11 @@ class GeneratorImpl : public TextGenerator {
     /// @param builtin the builtin to convert
     /// @param stage pipeline stage in which this builtin is used
     /// @returns the string name of the builtin or blank on error
-    const char* builtin_to_string(ast::BuiltinValue builtin, ast::PipelineStage stage);
+    const char* builtin_to_string(builtin::BuiltinValue builtin, ast::PipelineStage stage);
     /// Converts a builtin to a type::Type appropriate for GLSL.
     /// @param builtin the builtin to convert
     /// @returns the appropriate semantic type or null on error.
-    type::Type* builtin_type(ast::BuiltinValue builtin);
+    type::Type* builtin_type(builtin::BuiltinValue builtin);
 
   private:
     enum class VarType { kIn, kOut };

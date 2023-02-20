@@ -18,11 +18,10 @@
 
 #include "src/tint/ast/attribute.h"
 #include "src/tint/ast/builtin_attribute.h"
-#include "src/tint/ast/builtin_value.h"
 #include "src/tint/ast/function.h"
 #include "src/tint/ast/module.h"
 #include "src/tint/ast/struct.h"
-#include "src/tint/ast/type.h"
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/function.h"
 #include "src/tint/sem/statement.h"
@@ -39,7 +38,7 @@ namespace {
 bool ContainsFragDepth(utils::VectorRef<const ast::Attribute*> attributes) {
     for (auto* attribute : attributes) {
         if (auto* builtin_attribute = attribute->As<ast::BuiltinAttribute>()) {
-            if (builtin_attribute->builtin == ast::BuiltinValue::kFragDepth) {
+            if (builtin_attribute->builtin == builtin::BuiltinValue::kFragDepth) {
                 return true;
             }
         }
@@ -89,10 +88,11 @@ Transform::ApplyResult ClampFragDepth::Apply(const Program* src, const DataMap&,
     // Abort on any use of push constants in the module.
     for (auto* global : src->AST().GlobalVariables()) {
         if (auto* var = global->As<ast::Var>()) {
-            if (TINT_UNLIKELY(var->declared_address_space == type::AddressSpace::kPushConstant)) {
+            auto* v = src->Sem().Get(var);
+            if (TINT_UNLIKELY(v->AddressSpace() == builtin::AddressSpace::kPushConstant)) {
                 TINT_ICE(Transform, b.Diagnostics())
                     << "ClampFragDepth doesn't know how to handle module that already use push "
-                       "constants.";
+                       "constants";
                 return Program(std::move(b));
             }
         }
@@ -118,13 +118,13 @@ Transform::ApplyResult ClampFragDepth::Apply(const Program* src, const DataMap&,
     //   fn clamp_frag_depth(v : f32) -> f32 {
     //       return clamp(v, frag_depth_clamp_args.min, frag_depth_clamp_args.max);
     //   }
-    b.Enable(ast::Extension::kChromiumExperimentalPushConstant);
+    b.Enable(builtin::Extension::kChromiumExperimentalPushConstant);
 
     b.Structure(b.Symbols().New("FragDepthClampArgs"),
                 utils::Vector{b.Member("min", b.ty.f32()), b.Member("max", b.ty.f32())});
 
     auto args_sym = b.Symbols().New("frag_depth_clamp_args");
-    b.GlobalVar(args_sym, b.ty("FragDepthClampArgs"), type::AddressSpace::kPushConstant);
+    b.GlobalVar(args_sym, b.ty("FragDepthClampArgs"), builtin::AddressSpace::kPushConstant);
 
     auto base_fn_sym = b.Symbols().New("clamp_frag_depth");
     b.Func(base_fn_sym, utils::Vector{b.Param("v", b.ty.f32())}, b.ty.f32(),
@@ -163,10 +163,9 @@ Transform::ApplyResult ClampFragDepth::Apply(const Program* src, const DataMap&,
             //   }
             auto* struct_ty = sem.Get(fn)->ReturnType()->As<sem::Struct>()->Declaration();
             auto helper = io_structs_clamp_helpers.GetOrCreate(struct_ty, [&] {
-                auto* return_ty = fn->return_type;
+                auto return_ty = fn->return_type;
                 auto fn_sym =
-                    b.Symbols().New("clamp_frag_depth_" +
-                                    sym.NameFor(return_ty->As<ast::TypeName>()->name->symbol));
+                    b.Symbols().New("clamp_frag_depth_" + sym.NameFor(struct_ty->name->symbol));
 
                 utils::Vector<const ast::Expression*, 8u> initializer_args;
                 for (auto* member : struct_ty->members) {

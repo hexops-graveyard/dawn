@@ -413,8 +413,8 @@ class GeneratorImpl : public TextGenerator {
     /// @returns true if the type is emitted
     bool EmitType(std::ostream& out,
                   const type::Type* type,
-                  type::AddressSpace address_space,
-                  type::Access access,
+                  builtin::AddressSpace address_space,
+                  builtin::Access access,
                   const std::string& name,
                   bool* name_printed = nullptr);
     /// Handles generating type and name
@@ -426,8 +426,8 @@ class GeneratorImpl : public TextGenerator {
     /// @returns true if the type is emitted
     bool EmitTypeAndName(std::ostream& out,
                          const type::Type* type,
-                         type::AddressSpace address_space,
-                         type::Access access,
+                         builtin::AddressSpace address_space,
+                         builtin::Access access,
                          const std::string& name);
     /// Handles generating a structure declaration. If the structure has already been emitted, then
     /// this function will simply return `true` without emitting anything.
@@ -495,14 +495,14 @@ class GeneratorImpl : public TextGenerator {
     /// Converts a builtin to an attribute name
     /// @param builtin the builtin to convert
     /// @returns the string name of the builtin or blank on error
-    std::string builtin_to_attribute(ast::BuiltinValue builtin) const;
+    std::string builtin_to_attribute(builtin::BuiltinValue builtin) const;
 
     /// Converts interpolation attributes to a HLSL modifiers
     /// @param type the interpolation type
     /// @param sampling the interpolation sampling
     /// @returns the string name of the attribute or blank on error
-    std::string interpolation_to_modifiers(ast::InterpolationType type,
-                                           ast::InterpolationSampling sampling) const;
+    std::string interpolation_to_modifiers(builtin::InterpolationType type,
+                                           builtin::InterpolationSampling sampling) const;
 
   private:
     enum class VarType { kIn, kOut };

@@ -265,11 +265,11 @@ Builder::~Builder() = default;
 bool Builder::Build() {
     if (!CheckSupportedExtensions("SPIR-V", builder_.AST(), builder_.Diagnostics(),
                                   utils::Vector{
-                                      ast::Extension::kChromiumDisableUniformityAnalysis,
-                                      ast::Extension::kChromiumExperimentalDp4A,
-                                      ast::Extension::kChromiumExperimentalFullPtrParameters,
-                                      ast::Extension::kChromiumExperimentalPushConstant,
-                                      ast::Extension::kF16,
+                                      builtin::Extension::kChromiumDisableUniformityAnalysis,
+                                      builtin::Extension::kChromiumExperimentalDp4A,
+                                      builtin::Extension::kChromiumExperimentalFullPtrParameters,
+                                      builtin::Extension::kChromiumExperimentalPushConstant,
+                                      builtin::Extension::kF16,
                                   })) {
         error_ = builder_.Diagnostics().str();
         return false;
@@ -394,14 +394,14 @@ void Builder::push_extension(const char* extension) {
     extensions_.push_back(Instruction{spv::Op::OpExtension, {Operand(extension)}});
 }
 
-bool Builder::GenerateExtension(ast::Extension extension) {
+bool Builder::GenerateExtension(builtin::Extension extension) {
     switch (extension) {
-        case ast::Extension::kChromiumExperimentalDp4A:
+        case builtin::Extension::kChromiumExperimentalDp4A:
             push_extension("SPV_KHR_integer_dot_product");
             push_capability(SpvCapabilityDotProductKHR);
             push_capability(SpvCapabilityDotProductInput4x8BitPackedKHR);
             break;
-        case ast::Extension::kF16:
+        case builtin::Extension::kF16:
             push_capability(SpvCapabilityFloat16);
             push_capability(SpvCapabilityUniformAndStorageBuffer16BitAccess);
             push_capability(SpvCapabilityStorageBuffer16BitAccess);
@@ -506,8 +506,8 @@ bool Builder::GenerateEntryPoint(const ast::Function* func, uint32_t id) {
     for (const auto* var : func_sem->TransitivelyReferencedGlobals()) {
         // For SPIR-V 1.3 we only output Input/output variables. If we update to
         // SPIR-V 1.4 or later this should be all variables.
-        if (var->AddressSpace() != type::AddressSpace::kIn &&
-            var->AddressSpace() != type::AddressSpace::kOut) {
+        if (var->AddressSpace() != builtin::AddressSpace::kIn &&
+            var->AddressSpace() != builtin::AddressSpace::kOut) {
             continue;
         }
 
@@ -549,7 +549,7 @@ bool Builder::GenerateExecutionModes(const ast::Function* func, uint32_t id) {
     }
 
     for (auto builtin : func_sem->TransitivelyReferencedBuiltinVariables()) {
-        if (builtin.second->builtin == ast::BuiltinValue::kFragDepth) {
+        if (builtin.second->builtin == builtin::BuiltinValue::kFragDepth) {
             push_execution_mode(spv::Op::OpExecutionMode,
                                 {Operand(id), U32Operand(SpvExecutionModeDepthReplacing)});
         }
@@ -718,7 +718,7 @@ bool Builder::GenerateFunctionVariable(const ast::Variable* v) {
 
     auto result = result_op();
     auto var_id = std::get<uint32_t>(result);
-    auto sc = type::AddressSpace::kFunction;
+    auto sc = builtin::AddressSpace::kFunction;
     auto* type = sem->Type();
     auto type_id = GenerateTypeIfNeeded(type);
     if (type_id == 0) {
@@ -778,8 +778,9 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
     auto result = result_op();
     auto var_id = std::get<uint32_t>(result);
 
-    auto sc = sem->AddressSpace() == type::AddressSpace::kNone ? type::AddressSpace::kPrivate
-                                                               : sem->AddressSpace();
+    auto sc = sem->AddressSpace() == builtin::AddressSpace::kUndefined
+                  ? builtin::AddressSpace::kPrivate
+                  : sem->AddressSpace();
 
     auto type_id = GenerateTypeIfNeeded(sem->Type());
     if (type_id == 0) {
@@ -799,16 +800,16 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
             // type is a sem::Struct or a type::StorageTexture
             auto access = st ? st->access() : sem->Access();
             switch (access) {
-                case type::Access::kWrite:
+                case builtin::Access::kWrite:
                     push_annot(spv::Op::OpDecorate,
                                {Operand(var_id), U32Operand(SpvDecorationNonReadable)});
                     break;
-                case type::Access::kRead:
+                case builtin::Access::kRead:
                     push_annot(spv::Op::OpDecorate,
                                {Operand(var_id), U32Operand(SpvDecorationNonWritable)});
                     break;
-                case type::Access::kUndefined:
-                case type::Access::kReadWrite:
+                case builtin::Access::kUndefined:
+                case builtin::Access::kReadWrite:
                     break;
             }
         }
@@ -818,10 +819,10 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
             // If we're a Workgroup variable, and the
             // VK_KHR_zero_initialize_workgroup_memory extension is enabled, we should
             // also zero-initialize.
-            if (sem->AddressSpace() == type::AddressSpace::kPrivate ||
-                sem->AddressSpace() == type::AddressSpace::kOut ||
+            if (sem->AddressSpace() == builtin::AddressSpace::kPrivate ||
+                sem->AddressSpace() == builtin::AddressSpace::kOut ||
                 (zero_initialize_workgroup_memory_ &&
-                 sem->AddressSpace() == type::AddressSpace::kWorkgroup)) {
+                 sem->AddressSpace() == builtin::AddressSpace::kWorkgroup)) {
                 init_id = GenerateConstantNullIfNeeded(type);
                 if (init_id == 0) {
                     return 0;
@@ -1900,9 +1901,9 @@ uint32_t Builder::GenerateSplat(uint32_t scalar_id, const type::Type* vec_type) 
     // Create a new vector to splat scalar into
     auto splat_vector = result_op();
     auto* splat_vector_type = builder_.create<type::Pointer>(
-        vec_type, type::AddressSpace::kFunction, type::Access::kReadWrite);
+        vec_type, builtin::AddressSpace::kFunction, builtin::Access::kReadWrite);
     push_function_var({Operand(GenerateTypeIfNeeded(splat_vector_type)), splat_vector,
-                       U32Operand(ConvertAddressSpace(type::AddressSpace::kFunction)),
+                       U32Operand(ConvertAddressSpace(builtin::AddressSpace::kFunction)),
                        Operand(GenerateConstantNullIfNeeded(vec_type))});
 
     // Splat scalar into vector
@@ -2243,9 +2244,9 @@ uint32_t Builder::GenerateCallExpression(const ast::CallExpression* expr) {
         });
 }
 
-uint32_t Builder::GenerateFunctionCall(const sem::Call* call, const sem::Function*) {
+uint32_t Builder::GenerateFunctionCall(const sem::Call* call, const sem::Function* fn) {
     auto* expr = call->Declaration();
-    auto* ident = expr->target.name;
+    auto* ident = fn->Declaration()->name;
 
     auto type_id = GenerateTypeIfNeeded(call->Type());
     if (type_id == 0) {
@@ -3069,11 +3070,11 @@ bool Builder::GenerateAtomicBuiltin(const sem::Call* call,
 
     uint32_t memory_id = 0;
     switch (builtin->Parameters()[0]->Type()->As<type::Pointer>()->AddressSpace()) {
-        case type::AddressSpace::kWorkgroup:
+        case builtin::AddressSpace::kWorkgroup:
             memory_id = GenerateConstantIfNeeded(
                 ScalarConstant::U32(static_cast<uint32_t>(spv::Scope::Workgroup)));
             break;
-        case type::AddressSpace::kStorage:
+        case builtin::AddressSpace::kStorage:
             memory_id = GenerateConstantIfNeeded(
                 ScalarConstant::U32(static_cast<uint32_t>(spv::Scope::Device)));
             break;
@@ -3656,10 +3657,10 @@ uint32_t Builder::GenerateTypeIfNeeded(const type::Type* type) {
     // fine.
     if (auto* ptr = type->As<type::Pointer>()) {
         type = builder_.create<type::Pointer>(ptr->StoreType(), ptr->AddressSpace(),
-                                              type::Access::kReadWrite);
+                                              builtin::Access::kReadWrite);
     } else if (auto* ref = type->As<type::Reference>()) {
         type = builder_.create<type::Pointer>(ref->StoreType(), ref->AddressSpace(),
-                                              type::Access::kReadWrite);
+                                              builtin::Access::kReadWrite);
     }
 
     return utils::GetOrCreate(type_to_id_, type, [&]() -> uint32_t {
@@ -3718,11 +3719,12 @@ uint32_t Builder::GenerateTypeIfNeeded(const type::Type* type) {
                 // SPIR-V, we must output a single type, while the variable is
                 // annotated with the access type. Doing this ensures we de-dupe.
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), type::Access::kRead, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), builtin::Access::kRead, tex->type())] = id;
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), type::Access::kWrite, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), builtin::Access::kWrite, tex->type())] = id;
                 type_to_id_[builder_.create<type::StorageTexture>(
-                    tex->dim(), tex->texel_format(), type::Access::kReadWrite, tex->type())] = id;
+                    tex->dim(), tex->texel_format(), builtin::Access::kReadWrite, tex->type())] =
+                    id;
                 return true;
             },
             [&](const type::Texture* tex) { return GenerateTextureType(tex, result); },
@@ -3976,146 +3978,144 @@ bool Builder::GenerateVectorType(const type::Vector* vec, const Operand& result)
     return true;
 }
 
-SpvStorageClass Builder::ConvertAddressSpace(type::AddressSpace klass) const {
+SpvStorageClass Builder::ConvertAddressSpace(builtin::AddressSpace klass) const {
     switch (klass) {
-        case type::AddressSpace::kUndefined:
-            return SpvStorageClassMax;
-        case type::AddressSpace::kIn:
+        case builtin::AddressSpace::kIn:
             return SpvStorageClassInput;
-        case type::AddressSpace::kOut:
+        case builtin::AddressSpace::kOut:
             return SpvStorageClassOutput;
-        case type::AddressSpace::kUniform:
+        case builtin::AddressSpace::kUniform:
             return SpvStorageClassUniform;
-        case type::AddressSpace::kWorkgroup:
+        case builtin::AddressSpace::kWorkgroup:
             return SpvStorageClassWorkgroup;
-        case type::AddressSpace::kPushConstant:
+        case builtin::AddressSpace::kPushConstant:
             return SpvStorageClassPushConstant;
-        case type::AddressSpace::kHandle:
+        case builtin::AddressSpace::kHandle:
             return SpvStorageClassUniformConstant;
-        case type::AddressSpace::kStorage:
+        case builtin::AddressSpace::kStorage:
             return SpvStorageClassStorageBuffer;
-        case type::AddressSpace::kPrivate:
+        case builtin::AddressSpace::kPrivate:
             return SpvStorageClassPrivate;
-        case type::AddressSpace::kFunction:
+        case builtin::AddressSpace::kFunction:
             return SpvStorageClassFunction;
-        case type::AddressSpace::kNone:
+        case builtin::AddressSpace::kUndefined:
             break;
     }
     return SpvStorageClassMax;
 }
 
-SpvBuiltIn Builder::ConvertBuiltin(ast::BuiltinValue builtin, type::AddressSpace storage) {
+SpvBuiltIn Builder::ConvertBuiltin(builtin::BuiltinValue builtin, builtin::AddressSpace storage) {
     switch (builtin) {
-        case ast::BuiltinValue::kPosition:
-            if (storage == type::AddressSpace::kIn) {
+        case builtin::BuiltinValue::kPosition:
+            if (storage == builtin::AddressSpace::kIn) {
                 return SpvBuiltInFragCoord;
-            } else if (TINT_LIKELY(storage == type::AddressSpace::kOut)) {
+            } else if (TINT_LIKELY(storage == builtin::AddressSpace::kOut)) {
                 return SpvBuiltInPosition;
             } else {
                 TINT_ICE(Writer, builder_.Diagnostics()) << "invalid address space for builtin";
                 break;
             }
-        case ast::BuiltinValue::kVertexIndex:
+        case builtin::BuiltinValue::kVertexIndex:
             return SpvBuiltInVertexIndex;
-        case ast::BuiltinValue::kInstanceIndex:
+        case builtin::BuiltinValue::kInstanceIndex:
             return SpvBuiltInInstanceIndex;
-        case ast::BuiltinValue::kFrontFacing:
+        case builtin::BuiltinValue::kFrontFacing:
             return SpvBuiltInFrontFacing;
-        case ast::BuiltinValue::kFragDepth:
+        case builtin::BuiltinValue::kFragDepth:
             return SpvBuiltInFragDepth;
-        case ast::BuiltinValue::kLocalInvocationId:
+        case builtin::BuiltinValue::kLocalInvocationId:
             return SpvBuiltInLocalInvocationId;
-        case ast::BuiltinValue::kLocalInvocationIndex:
+        case builtin::BuiltinValue::kLocalInvocationIndex:
             return SpvBuiltInLocalInvocationIndex;
-        case ast::BuiltinValue::kGlobalInvocationId:
+        case builtin::BuiltinValue::kGlobalInvocationId:
             return SpvBuiltInGlobalInvocationId;
-        case ast::BuiltinValue::kPointSize:
+        case builtin::BuiltinValue::kPointSize:
             return SpvBuiltInPointSize;
-        case ast::BuiltinValue::kWorkgroupId:
+        case builtin::BuiltinValue::kWorkgroupId:
             return SpvBuiltInWorkgroupId;
-        case ast::BuiltinValue::kNumWorkgroups:
+        case builtin::BuiltinValue::kNumWorkgroups:
             return SpvBuiltInNumWorkgroups;
-        case ast::BuiltinValue::kSampleIndex:
+        case builtin::BuiltinValue::kSampleIndex:
             push_capability(SpvCapabilitySampleRateShading);
             return SpvBuiltInSampleId;
-        case ast::BuiltinValue::kSampleMask:
+        case builtin::BuiltinValue::kSampleMask:
             return SpvBuiltInSampleMask;
-        case ast::BuiltinValue::kUndefined:
+        case builtin::BuiltinValue::kUndefined:
             break;
     }
     return SpvBuiltInMax;
 }
 
 void Builder::AddInterpolationDecorations(uint32_t id,
-                                          ast::InterpolationType type,
-                                          ast::InterpolationSampling sampling) {
+                                          builtin::InterpolationType type,
+                                          builtin::InterpolationSampling sampling) {
     switch (type) {
-        case ast::InterpolationType::kLinear:
+        case builtin::InterpolationType::kLinear:
             push_annot(spv::Op::OpDecorate, {Operand(id), U32Operand(SpvDecorationNoPerspective)});
             break;
-        case ast::InterpolationType::kFlat:
+        case builtin::InterpolationType::kFlat:
             push_annot(spv::Op::OpDecorate, {Operand(id), U32Operand(SpvDecorationFlat)});
             break;
-        case ast::InterpolationType::kPerspective:
-        case ast::InterpolationType::kUndefined:
+        case builtin::InterpolationType::kPerspective:
+        case builtin::InterpolationType::kUndefined:
             break;
     }
     switch (sampling) {
-        case ast::InterpolationSampling::kCentroid:
+        case builtin::InterpolationSampling::kCentroid:
             push_annot(spv::Op::OpDecorate, {Operand(id), U32Operand(SpvDecorationCentroid)});
             break;
-        case ast::InterpolationSampling::kSample:
+        case builtin::InterpolationSampling::kSample:
             push_capability(SpvCapabilitySampleRateShading);
             push_annot(spv::Op::OpDecorate, {Operand(id), U32Operand(SpvDecorationSample)});
             break;
-        case ast::InterpolationSampling::kCenter:
-        case ast::InterpolationSampling::kUndefined:
+        case builtin::InterpolationSampling::kCenter:
+        case builtin::InterpolationSampling::kUndefined:
             break;
     }
 }
 
-SpvImageFormat Builder::convert_texel_format_to_spv(const type::TexelFormat format) {
+SpvImageFormat Builder::convert_texel_format_to_spv(const builtin::TexelFormat format) {
     switch (format) {
-        case type::TexelFormat::kBgra8Unorm:
+        case builtin::TexelFormat::kBgra8Unorm:
             TINT_ICE(Writer, builder_.Diagnostics())
                 << "bgra8unorm should have been polyfilled to rgba8unorm";
             return SpvImageFormatUnknown;
-        case type::TexelFormat::kR32Uint:
+        case builtin::TexelFormat::kR32Uint:
             return SpvImageFormatR32ui;
-        case type::TexelFormat::kR32Sint:
+        case builtin::TexelFormat::kR32Sint:
             return SpvImageFormatR32i;
-        case type::TexelFormat::kR32Float:
+        case builtin::TexelFormat::kR32Float:
             return SpvImageFormatR32f;
-        case type::TexelFormat::kRgba8Unorm:
+        case builtin::TexelFormat::kRgba8Unorm:
             return SpvImageFormatRgba8;
-        case type::TexelFormat::kRgba8Snorm:
+        case builtin::TexelFormat::kRgba8Snorm:
             return SpvImageFormatRgba8Snorm;
-        case type::TexelFormat::kRgba8Uint:
+        case builtin::TexelFormat::kRgba8Uint:
             return SpvImageFormatRgba8ui;
-        case type::TexelFormat::kRgba8Sint:
+        case builtin::TexelFormat::kRgba8Sint:
             return SpvImageFormatRgba8i;
-        case type::TexelFormat::kRg32Uint:
+        case builtin::TexelFormat::kRg32Uint:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32ui;
-        case type::TexelFormat::kRg32Sint:
+        case builtin::TexelFormat::kRg32Sint:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32i;
-        case type::TexelFormat::kRg32Float:
+        case builtin::TexelFormat::kRg32Float:
             push_capability(SpvCapabilityStorageImageExtendedFormats);
             return SpvImageFormatRg32f;
-        case type::TexelFormat::kRgba16Uint:
+        case builtin::TexelFormat::kRgba16Uint:
             return SpvImageFormatRgba16ui;
-        case type::TexelFormat::kRgba16Sint:
+        case builtin::TexelFormat::kRgba16Sint:
             return SpvImageFormatRgba16i;
-        case type::TexelFormat::kRgba16Float:
+        case builtin::TexelFormat::kRgba16Float:
             return SpvImageFormatRgba16f;
-        case type::TexelFormat::kRgba32Uint:
+        case builtin::TexelFormat::kRgba32Uint:
             return SpvImageFormatRgba32ui;
-        case type::TexelFormat::kRgba32Sint:
+        case builtin::TexelFormat::kRgba32Sint:
             return SpvImageFormatRgba32i;
-        case type::TexelFormat::kRgba32Float:
+        case builtin::TexelFormat::kRgba32Float:
             return SpvImageFormatRgba32f;
-        case type::TexelFormat::kUndefined:
+        case builtin::TexelFormat::kUndefined:
             return SpvImageFormatUnknown;
     }
     return SpvImageFormatUnknown;

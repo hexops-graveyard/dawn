@@ -62,7 +62,7 @@ TEST_F(WgslGeneratorImplTest, EmitInitializer_F32) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitInitializer_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     // Use a number close to 1<<16 but whose decimal representation ends in 0.
     WrapInFunction(Expr(f16((1 << 15) - 8)));
@@ -83,7 +83,7 @@ TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_F32) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     WrapInFunction(Call<f16>(Expr(-1.2e-5_h)));
 
@@ -130,7 +130,7 @@ TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_Vec_F32) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_Vec_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     WrapInFunction(vec3<f16>(1_h, 2_h, 3_h));
 
@@ -151,7 +151,7 @@ TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_Mat_F32) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_Mat_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     WrapInFunction(mat2x3<f16>(vec3<f16>(1_h, 2_h, 3_h), vec3<f16>(3_h, 4_h, 5_h)));
 
@@ -175,8 +175,8 @@ TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_Array) {
 }
 
 TEST_F(WgslGeneratorImplTest, EmitInitializer_Type_ImplicitArray) {
-    WrapInFunction(Call(ty.array(nullptr, nullptr), vec3<f32>(1_f, 2_f, 3_f),
-                        vec3<f32>(4_f, 5_f, 6_f), vec3<f32>(7_f, 8_f, 9_f)));
+    WrapInFunction(Call(ty.array<Infer>(), vec3<f32>(1_f, 2_f, 3_f), vec3<f32>(4_f, 5_f, 6_f),
+                        vec3<f32>(7_f, 8_f, 9_f)));
 
     GeneratorImpl& gen = Build();
 

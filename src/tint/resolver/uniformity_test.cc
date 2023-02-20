@@ -5301,8 +5301,8 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
     }
     foo_body.Push(b.Decl(b.Let("rhs", rhs_init)));
     for (int i = 0; i < 255; i++) {
-        params.Push(
-            b.Param("p" + std::to_string(i), ty.pointer(ty.i32(), type::AddressSpace::kFunction)));
+        params.Push(b.Param("p" + std::to_string(i),
+                            ty.pointer(ty.i32(), builtin::AddressSpace::kFunction)));
         if (i > 0) {
             foo_body.Push(b.Assign(b.Deref("p" + std::to_string(i)), "rhs"));
         }
@@ -5321,7 +5321,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
     //     workgroupBarrier();
     //   }
     // }
-    b.GlobalVar("non_uniform_global", ty.i32(), type::AddressSpace::kPrivate);
+    b.GlobalVar("non_uniform_global", ty.i32(), builtin::AddressSpace::kPrivate);
     utils::Vector<const ast::Statement*, 8> main_body;
     utils::Vector<const ast::Expression*, 8> args;
     for (int i = 0; i < 255; i++) {
@@ -5330,7 +5330,7 @@ TEST_F(UniformityAnalysisTest, MaximumNumberOfPointerParameters) {
         args.Push(b.AddressOf(name));
     }
     main_body.Push(b.Assign("v0", "non_uniform_global"));
-    main_body.Push(b.CallStmt(b.create<ast::CallExpression>(b.Ident("foo"), args)));
+    main_body.Push(b.CallStmt(b.Call("foo", args)));
     main_body.Push(b.If(b.Equal("v254", 0_i), b.Block(b.CallStmt(b.Call("workgroupBarrier")))));
     b.Func("main", utils::Empty, ty.void_(), main_body);
 
@@ -7390,7 +7390,7 @@ fn main() {
     EXPECT_EQ(error_,
               R"(test:5:41 error: 'dpdx' must only be called from uniform control flow
   let b = (non_uniform_global == 0) && (dpdx(1.0) == 0.0);
-                                        ^^^^
+                                        ^^^^^^^^^
 
 test:5:37 note: control flow depends on possibly non-uniform value
   let b = (non_uniform_global == 0) && (dpdx(1.0) == 0.0);
@@ -7784,7 +7784,7 @@ test:5:3 note: control flow depends on possibly non-uniform value
 
 test:5:7 note: return value of 'atomicAdd' may be non-uniform
   if (atomicAdd(&a, 1) == 1) {
-      ^^^^^^^^^
+      ^^^^^^^^^^^^^^^^
 )");
 }
 
@@ -7811,7 +7811,7 @@ test:5:3 note: control flow depends on possibly non-uniform value
 
 test:5:7 note: return value of 'atomicAdd' may be non-uniform
   if (atomicAdd(&a, 1) == 1) {
-      ^^^^^^^^^
+      ^^^^^^^^^^^^^^^^
 )");
 }
 
@@ -7847,7 +7847,7 @@ TEST_F(UniformityAnalysisTest, StressGraphTraversalDepth) {
     //     workgroupBarrier();
     //   }
     // }
-    b.GlobalVar("v0", ty.i32(), type::AddressSpace::kPrivate, b.Expr(0_i));
+    b.GlobalVar("v0", ty.i32(), builtin::AddressSpace::kPrivate, b.Expr(0_i));
     utils::Vector<const ast::Statement*, 8> foo_body;
     std::string v_last = "v0";
     for (int i = 1; i < 100000; i++) {
@@ -7871,16 +7871,16 @@ note: reading from module-scope private variable 'v0' may result in a non-unifor
 
 class UniformityAnalysisDiagnosticFilterTest
     : public UniformityAnalysisTestBase,
-      public ::testing::TestWithParam<ast::DiagnosticSeverity> {
+      public ::testing::TestWithParam<builtin::DiagnosticSeverity> {
   protected:
     // TODO(jrprice): Remove this in favour of utils::ToString() when we change "note" to "info".
-    const char* ToStr(ast::DiagnosticSeverity severity) {
+    const char* ToStr(builtin::DiagnosticSeverity severity) {
         switch (severity) {
-            case ast::DiagnosticSeverity::kError:
+            case builtin::DiagnosticSeverity::kError:
                 return "error";
-            case ast::DiagnosticSeverity::kWarning:
+            case builtin::DiagnosticSeverity::kWarning:
                 return "warning";
-            case ast::DiagnosticSeverity::kInfo:
+            case builtin::DiagnosticSeverity::kInfo:
                 return "note";
             default:
                 return "<undefined>";
@@ -7904,9 +7904,9 @@ fn foo() {
 }
 )";
 
-    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
+    RunTest(ss.str(), param != builtin::DiagnosticSeverity::kError);
 
-    if (param == ast::DiagnosticSeverity::kOff) {
+    if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
         std::ostringstream err;
@@ -7932,8 +7932,8 @@ TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
 }
 )";
 
-    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
-    if (param == ast::DiagnosticSeverity::kOff) {
+    RunTest(ss.str(), param != builtin::DiagnosticSeverity::kError);
+    if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
         std::ostringstream err;
@@ -7958,8 +7958,8 @@ fn foo() {
 }
 )";
 
-    RunTest(ss.str(), param != ast::DiagnosticSeverity::kError);
-    if (param == ast::DiagnosticSeverity::kOff) {
+    RunTest(ss.str(), param != builtin::DiagnosticSeverity::kError);
+    if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
         std::ostringstream err;
@@ -7970,10 +7970,10 @@ fn foo() {
 
 INSTANTIATE_TEST_SUITE_P(UniformityAnalysisTest,
                          UniformityAnalysisDiagnosticFilterTest,
-                         ::testing::Values(ast::DiagnosticSeverity::kError,
-                                           ast::DiagnosticSeverity::kWarning,
-                                           ast::DiagnosticSeverity::kInfo,
-                                           ast::DiagnosticSeverity::kOff));
+                         ::testing::Values(builtin::DiagnosticSeverity::kError,
+                                           builtin::DiagnosticSeverity::kWarning,
+                                           builtin::DiagnosticSeverity::kInfo,
+                                           builtin::DiagnosticSeverity::kOff));
 
 TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_CalledByAnotherFunction) {
     std::string src = R"(
@@ -8154,7 +8154,7 @@ fn foo() {
     EXPECT_EQ(error_,
               R"(test:10:9 error: 'dpdy' must only be called from uniform control flow
     _ = dpdy(1.0); // Should trigger an error
-        ^^^^
+        ^^^^^^^^^
 
 test:9:3 note: control flow depends on possibly non-uniform value
   if (x < 0.5) {
@@ -8162,7 +8162,7 @@ test:9:3 note: control flow depends on possibly non-uniform value
 
 test:6:9 note: return value of 'dpdx' may be non-uniform
     x = dpdx(1.0);
-        ^^^^
+        ^^^^^^^^^
 )");
 }
 
@@ -8194,7 +8194,7 @@ fn bar() {
     EXPECT_EQ(error_,
               R"(test:16:9 error: 'dpdy' must only be called from uniform control flow
     _ = dpdy(1.0); // Should trigger an error
-        ^^^^
+        ^^^^^^^^^
 
 test:15:3 note: control flow depends on possibly non-uniform value
   if (ret) {
@@ -8423,7 +8423,7 @@ test:17:3 note: control flow depends on possibly non-uniform value
 
 test:17:7 note: return value of 'foo' may be non-uniform
   if (foo() == 42) {
-      ^^^
+      ^^^^^
 )");
 }
 

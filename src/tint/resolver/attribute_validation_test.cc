@@ -95,17 +95,17 @@ static utils::Vector<const ast::Attribute*, 2> createAttributes(const Source& so
         case AttributeKind::kBinding:
             return {builder.Binding(source, 1_a)};
         case AttributeKind::kBuiltin:
-            return {builder.Builtin(source, ast::BuiltinValue::kPosition)};
+            return {builder.Builtin(source, builtin::BuiltinValue::kPosition)};
         case AttributeKind::kDiagnostic:
-            return {builder.DiagnosticAttribute(source, ast::DiagnosticSeverity::kInfo,
+            return {builder.DiagnosticAttribute(source, builtin::DiagnosticSeverity::kInfo,
                                                 "chromium_unreachable_code")};
         case AttributeKind::kGroup:
             return {builder.Group(source, 1_a)};
         case AttributeKind::kId:
             return {builder.Id(source, 0_a)};
         case AttributeKind::kInterpolate:
-            return {builder.Interpolate(source, ast::InterpolationType::kLinear,
-                                        ast::InterpolationSampling::kCenter)};
+            return {builder.Interpolate(source, builtin::InterpolationType::kLinear,
+                                        builtin::InterpolationSampling::kCenter)};
         case AttributeKind::kInvariant:
             return {builder.Invariant(source)};
         case AttributeKind::kLocation:
@@ -257,7 +257,7 @@ TEST_P(FragmentShaderParameterAttributeTest, IsValid) {
     auto& params = GetParam();
     auto attrs = createAttributes(Source{{12, 34}}, *this, params.kind);
     if (params.kind != AttributeKind::kBuiltin && params.kind != AttributeKind::kLocation) {
-        attrs.Push(Builtin(Source{{34, 56}}, ast::BuiltinValue::kPosition));
+        attrs.Push(Builtin(Source{{34, 56}}, builtin::BuiltinValue::kPosition));
     }
     auto* p = Param("a", ty.vec4<f32>(), attrs);
     Func("frag_main", utils::Vector{p}, ty.void_(), utils::Empty,
@@ -306,7 +306,7 @@ TEST_P(VertexShaderParameterAttributeTest, IsValid) {
              Stage(ast::PipelineStage::kVertex),
          },
          utils::Vector{
-             Builtin(ast::BuiltinValue::kPosition),
+             Builtin(builtin::BuiltinValue::kPosition),
          });
 
     if (params.should_pass) {
@@ -453,7 +453,7 @@ TEST_P(VertexShaderReturnTypeAttributeTest, IsValid) {
     auto attrs = createAttributes(Source{{12, 34}}, *this, params.kind);
     // a vertex shader must include the 'position' builtin in its return type
     if (params.kind != AttributeKind::kBuiltin) {
-        attrs.Push(Builtin(Source{{34, 56}}, ast::BuiltinValue::kPosition));
+        attrs.Push(Builtin(Source{{34, 56}}, builtin::BuiltinValue::kPosition));
     }
     Func("vertex_main", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
@@ -654,7 +654,7 @@ TEST_F(StructMemberAttributeTest, InvariantAttributeWithPosition) {
                               Member("a", ty.vec4<f32>(),
                                      utils::Vector{
                                          Invariant(),
-                                         Builtin(ast::BuiltinValue::kPosition),
+                                         Builtin(builtin::BuiltinValue::kPosition),
                                      }),
                           });
     EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -734,8 +734,8 @@ TEST_F(StructMemberAttributeTest, Align_Attribute_ConstAFloat) {
 }
 
 TEST_F(StructMemberAttributeTest, Align_Attribute_Var) {
-    GlobalVar(Source{{1, 2}}, "val", ty.f32(), type::AddressSpace::kPrivate,
-              type::Access::kUndefined, Expr(1.23_f));
+    GlobalVar(Source{{1, 2}}, "val", ty.f32(), builtin::AddressSpace::kPrivate,
+              builtin::Access::kUndefined, Expr(1.23_f));
 
     Structure(Source{{6, 4}}, "mystruct",
               utils::Vector{Member(Source{{12, 5}}, "a", ty.f32(),
@@ -808,8 +808,8 @@ TEST_F(StructMemberAttributeTest, Size_Attribute_ConstAFloat) {
 }
 
 TEST_F(StructMemberAttributeTest, Size_Attribute_Var) {
-    GlobalVar(Source{{1, 2}}, "val", ty.f32(), type::AddressSpace::kPrivate,
-              type::Access::kUndefined, Expr(1.23_f));
+    GlobalVar(Source{{1, 2}}, "val", ty.f32(), builtin::AddressSpace::kPrivate,
+              builtin::Access::kUndefined, Expr(1.23_f));
 
     Structure(Source{{6, 4}}, "mystruct",
               utils::Vector{Member(Source{{12, 5}}, "a", ty.f32(),
@@ -849,7 +849,7 @@ using ArrayAttributeTest = TestWithParams;
 TEST_P(ArrayAttributeTest, IsValid) {
     auto& params = GetParam();
 
-    auto* arr = ty.array(ty.f32(), nullptr, createAttributes(Source{{12, 34}}, *this, params.kind));
+    auto arr = ty.array(ty.f32(), createAttributes(Source{{12, 34}}, *this, params.kind));
     Structure("mystruct", utils::Vector{
                               Member("a", arr),
                           });
@@ -888,7 +888,7 @@ TEST_P(VariableAttributeTest, IsValid) {
     if (IsBindingAttribute(params.kind)) {
         GlobalVar("a", ty.sampler(type::SamplerKind::kSampler), attrs);
     } else {
-        GlobalVar("a", ty.f32(), type::AddressSpace::kPrivate, attrs);
+        GlobalVar("a", ty.f32(), builtin::AddressSpace::kPrivate, attrs);
     }
 
     if (params.should_pass) {
@@ -1145,19 +1145,19 @@ struct TestWithParams : ResolverTestWithParam<Params> {};
 using ArrayStrideTest = TestWithParams;
 TEST_P(ArrayStrideTest, All) {
     auto& params = GetParam();
-    auto* el_ty = params.create_el_type(*this);
+    ast::Type el_ty = params.create_el_type(*this);
 
     std::stringstream ss;
     ss << "el_ty: " << FriendlyName(el_ty) << ", stride: " << params.stride
        << ", should_pass: " << params.should_pass;
     SCOPED_TRACE(ss.str());
 
-    auto* arr = ty.array(el_ty, 4_u,
-                         utils::Vector{
-                             create<ast::StrideAttribute>(Source{{12, 34}}, params.stride),
-                         });
+    auto arr = ty.array(el_ty, 4_u,
+                        utils::Vector{
+                            create<ast::StrideAttribute>(Source{{12, 34}}, params.stride),
+                        });
 
-    GlobalVar("myarray", arr, type::AddressSpace::kPrivate);
+    GlobalVar("myarray", arr, builtin::AddressSpace::kPrivate);
 
     if (params.should_pass) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
@@ -1234,13 +1234,13 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                              ParamsFor<mat4x4<f32>>((default_mat4x4.align - 1) * 7, false)));
 
 TEST_F(ArrayStrideTest, DuplicateAttribute) {
-    auto* arr = ty.array(Source{{12, 34}}, ty.i32(), 4_u,
-                         utils::Vector{
-                             create<ast::StrideAttribute>(Source{{12, 34}}, 4u),
-                             create<ast::StrideAttribute>(Source{{56, 78}}, 4u),
-                         });
+    auto arr = ty.array(Source{{12, 34}}, ty.i32(), 4_u,
+                        utils::Vector{
+                            create<ast::StrideAttribute>(Source{{12, 34}}, 4u),
+                            create<ast::StrideAttribute>(Source{{56, 78}}, 4u),
+                        });
 
-    GlobalVar("myarray", arr, type::AddressSpace::kPrivate);
+    GlobalVar("myarray", arr, builtin::AddressSpace::kPrivate);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1259,7 +1259,7 @@ TEST_F(ResourceAttributeTest, UniformBufferMissingBinding) {
     auto* s = Structure("S", utils::Vector{
                                  Member("x", ty.i32()),
                              });
-    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), type::AddressSpace::kUniform);
+    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), builtin::AddressSpace::kUniform);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1270,7 +1270,8 @@ TEST_F(ResourceAttributeTest, StorageBufferMissingBinding) {
     auto* s = Structure("S", utils::Vector{
                                  Member("x", ty.i32()),
                              });
-    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead);
+    GlobalVar(Source{{12, 34}}, "G", ty.Of(s), builtin::AddressSpace::kStorage,
+              builtin::Access::kRead);
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
@@ -1356,7 +1357,7 @@ TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByDifferentEntryPoints) {
 }
 
 TEST_F(ResourceAttributeTest, BindingPointOnNonResource) {
-    GlobalVar(Source{{12, 34}}, "G", ty.f32(), type::AddressSpace::kPrivate, Binding(1_a),
+    GlobalVar(Source{{12, 34}}, "G", ty.f32(), builtin::AddressSpace::kPrivate, Binding(1_a),
               Group(2_a));
 
     EXPECT_FALSE(r()->Resolve());
@@ -1374,7 +1375,7 @@ TEST_F(InvariantAttributeTests, InvariantWithPosition) {
     auto* param = Param("p", ty.vec4<f32>(),
                         utils::Vector{
                             Invariant(Source{{12, 34}}),
-                            Builtin(Source{{56, 78}}, ast::BuiltinValue::kPosition),
+                            Builtin(Source{{56, 78}}, builtin::BuiltinValue::kPosition),
                         });
     Func("main", utils::Vector{param}, ty.vec4<f32>(),
          utils::Vector{
@@ -1487,8 +1488,8 @@ namespace {
 using InterpolateTest = ResolverTest;
 
 struct Params {
-    ast::InterpolationType type;
-    ast::InterpolationSampling sampling;
+    builtin::InterpolationType type;
+    builtin::InterpolationSampling sampling;
     bool should_pass;
 };
 
@@ -1537,7 +1538,7 @@ TEST_P(InterpolateParameterTest, IntegerScalar) {
              Stage(ast::PipelineStage::kFragment),
          });
 
-    if (params.type != ast::InterpolationType::kFlat) {
+    if (params.type != builtin::InterpolationType::kFlat) {
         EXPECT_FALSE(r()->Resolve());
         EXPECT_EQ(r()->error(),
                   "12:34 error: interpolation type must be 'flat' for integral "
@@ -1568,7 +1569,7 @@ TEST_P(InterpolateParameterTest, IntegerVector) {
              Stage(ast::PipelineStage::kFragment),
          });
 
-    if (params.type != ast::InterpolationType::kFlat) {
+    if (params.type != builtin::InterpolationType::kFlat) {
         EXPECT_FALSE(r()->Resolve());
         EXPECT_EQ(r()->error(),
                   "12:34 error: interpolation type must be 'flat' for integral "
@@ -1587,19 +1588,25 @@ INSTANTIATE_TEST_SUITE_P(
     ResolverAttributeValidationTest,
     InterpolateParameterTest,
     testing::Values(
-        Params{ast::InterpolationType::kPerspective, ast::InterpolationSampling::kUndefined, true},
-        Params{ast::InterpolationType::kPerspective, ast::InterpolationSampling::kCenter, true},
-        Params{ast::InterpolationType::kPerspective, ast::InterpolationSampling::kCentroid, true},
-        Params{ast::InterpolationType::kPerspective, ast::InterpolationSampling::kSample, true},
-        Params{ast::InterpolationType::kLinear, ast::InterpolationSampling::kUndefined, true},
-        Params{ast::InterpolationType::kLinear, ast::InterpolationSampling::kCenter, true},
-        Params{ast::InterpolationType::kLinear, ast::InterpolationSampling::kCentroid, true},
-        Params{ast::InterpolationType::kLinear, ast::InterpolationSampling::kSample, true},
+        Params{builtin::InterpolationType::kPerspective, builtin::InterpolationSampling::kUndefined,
+               true},
+        Params{builtin::InterpolationType::kPerspective, builtin::InterpolationSampling::kCenter,
+               true},
+        Params{builtin::InterpolationType::kPerspective, builtin::InterpolationSampling::kCentroid,
+               true},
+        Params{builtin::InterpolationType::kPerspective, builtin::InterpolationSampling::kSample,
+               true},
+        Params{builtin::InterpolationType::kLinear, builtin::InterpolationSampling::kUndefined,
+               true},
+        Params{builtin::InterpolationType::kLinear, builtin::InterpolationSampling::kCenter, true},
+        Params{builtin::InterpolationType::kLinear, builtin::InterpolationSampling::kCentroid,
+               true},
+        Params{builtin::InterpolationType::kLinear, builtin::InterpolationSampling::kSample, true},
         // flat interpolation must not have a sampling type
-        Params{ast::InterpolationType::kFlat, ast::InterpolationSampling::kUndefined, true},
-        Params{ast::InterpolationType::kFlat, ast::InterpolationSampling::kCenter, false},
-        Params{ast::InterpolationType::kFlat, ast::InterpolationSampling::kCentroid, false},
-        Params{ast::InterpolationType::kFlat, ast::InterpolationSampling::kSample, false}));
+        Params{builtin::InterpolationType::kFlat, builtin::InterpolationSampling::kUndefined, true},
+        Params{builtin::InterpolationType::kFlat, builtin::InterpolationSampling::kCenter, false},
+        Params{builtin::InterpolationType::kFlat, builtin::InterpolationSampling::kCentroid, false},
+        Params{builtin::InterpolationType::kFlat, builtin::InterpolationSampling::kSample, false}));
 
 TEST_F(InterpolateTest, FragmentInput_Integer_MissingFlatInterpolation) {
     Func("main",
@@ -1619,7 +1626,7 @@ TEST_F(InterpolateTest, VertexOutput_Integer_MissingFlatInterpolation) {
     auto* s = Structure(
         "S",
         utils::Vector{
-            Member("pos", ty.vec4<f32>(), utils::Vector{Builtin(ast::BuiltinValue::kPosition)}),
+            Member("pos", ty.vec4<f32>(), utils::Vector{Builtin(builtin::BuiltinValue::kPosition)}),
             Member(Source{{12, 34}}, "u", ty.u32(), utils::Vector{Location(0_a)}),
         });
     Func("main", utils::Empty, ty.Of(s),
@@ -1642,9 +1649,9 @@ TEST_F(InterpolateTest, MissingLocationAttribute_Parameter) {
          utils::Vector{
              Param("a", ty.vec4<f32>(),
                    utils::Vector{
-                       Builtin(ast::BuiltinValue::kPosition),
-                       Interpolate(Source{{12, 34}}, ast::InterpolationType::kFlat,
-                                   ast::InterpolationSampling::kUndefined),
+                       Builtin(builtin::BuiltinValue::kPosition),
+                       Interpolate(Source{{12, 34}}, builtin::InterpolationType::kFlat,
+                                   builtin::InterpolationSampling::kUndefined),
                    }),
          },
          ty.void_(), utils::Empty,
@@ -1666,9 +1673,9 @@ TEST_F(InterpolateTest, MissingLocationAttribute_ReturnType) {
              Stage(ast::PipelineStage::kVertex),
          },
          utils::Vector{
-             Builtin(ast::BuiltinValue::kPosition),
-             Interpolate(Source{{12, 34}}, ast::InterpolationType::kFlat,
-                         ast::InterpolationSampling::kUndefined),
+             Builtin(builtin::BuiltinValue::kPosition),
+             Interpolate(Source{{12, 34}}, builtin::InterpolationType::kFlat,
+                         builtin::InterpolationSampling::kUndefined),
          });
 
     EXPECT_FALSE(r()->Resolve());
@@ -1677,12 +1684,13 @@ TEST_F(InterpolateTest, MissingLocationAttribute_ReturnType) {
 }
 
 TEST_F(InterpolateTest, MissingLocationAttribute_Struct) {
-    Structure("S",
-              utils::Vector{
-                  Member("a", ty.f32(),
-                         utils::Vector{Interpolate(Source{{12, 34}}, ast::InterpolationType::kFlat,
-                                                   ast::InterpolationSampling::kUndefined)}),
-              });
+    Structure(
+        "S",
+        utils::Vector{
+            Member("a", ty.f32(),
+                   utils::Vector{Interpolate(Source{{12, 34}}, builtin::InterpolationType::kFlat,
+                                             builtin::InterpolationSampling::kUndefined)}),
+        });
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),

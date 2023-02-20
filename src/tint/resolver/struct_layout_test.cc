@@ -55,7 +55,7 @@ TEST_F(ResolverStructLayoutTest, Scalars) {
 }
 
 TEST_F(ResolverStructLayoutTest, ScalarsWithF16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.f32()),
@@ -134,7 +134,7 @@ TEST_F(ResolverStructLayoutTest, Alias) {
 }
 
 TEST_F(ResolverStructLayoutTest, ImplicitStrideArrayStaticSize) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.array<i32, 3>()),
@@ -174,7 +174,7 @@ TEST_F(ResolverStructLayoutTest, ImplicitStrideArrayStaticSize) {
 }
 
 TEST_F(ResolverStructLayoutTest, ExplicitStrideArrayStaticSize) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* s = Structure("S", utils::Vector{
                                  Member("a", ty.array<i32, 3>(utils::Vector{Stride(8)})),
@@ -256,8 +256,8 @@ TEST_F(ResolverStructLayoutTest, ExplicitStrideArrayRuntimeSized) {
 }
 
 TEST_F(ResolverStructLayoutTest, ImplicitStrideArrayOfExplicitStrideArray) {
-    auto* inner = ty.array<i32, 2>(utils::Vector{Stride(16)});  // size: 32
-    auto* outer = ty.array(inner, 12_u);                        // size: 12 * 32
+    auto inner = ty.array<i32, 2>(utils::Vector{Stride(16)});  // size: 32
+    auto outer = ty.array(inner, 12_u);                        // size: 12 * 32
     auto* s = Structure("S", utils::Vector{
                                  Member("c", outer),
                              });
@@ -283,8 +283,8 @@ TEST_F(ResolverStructLayoutTest, ImplicitStrideArrayOfStructure) {
                                          Member("a", ty.vec2<i32>()),
                                          Member("b", ty.vec3<i32>()),
                                          Member("c", ty.vec4<i32>()),
-                                     });         // size: 48
-    auto* outer = ty.array(ty.Of(inner), 12_u);  // size: 12 * 48
+                                     });        // size: 48
+    auto outer = ty.array(ty.Of(inner), 12_u);  // size: 12 * 48
     auto* s = Structure("S", utils::Vector{
                                  Member("c", outer),
                              });
@@ -335,7 +335,7 @@ TEST_F(ResolverStructLayoutTest, Vector) {
 }
 
 TEST_F(ResolverStructLayoutTest, Matrix) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* s = Structure("S", utils::Vector{
                                  Member("a_1", ty.mat2x2<f32>()),

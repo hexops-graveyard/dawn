@@ -19,7 +19,6 @@
 
 #include "src/tint/ast/bool_literal_expression.h"
 #include "src/tint/ast/call_expression.h"
-#include "src/tint/ast/extension.h"
 #include "src/tint/ast/float_literal_expression.h"
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/identifier.h"
@@ -29,6 +28,7 @@
 #include "src/tint/ast/module.h"
 #include "src/tint/ast/override.h"
 #include "src/tint/ast/var.h"
+#include "src/tint/builtin/extension.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/function.h"
 #include "src/tint/sem/module.h"
@@ -129,38 +129,38 @@ std::tuple<InterpolationType, InterpolationSampling> CalculateInterpolationData(
 
     auto ast_interpolation_type = interpolation_attribute->type;
     auto ast_sampling_type = interpolation_attribute->sampling;
-    if (ast_interpolation_type != ast::InterpolationType::kFlat &&
-        ast_sampling_type == ast::InterpolationSampling::kUndefined) {
-        ast_sampling_type = ast::InterpolationSampling::kCenter;
+    if (ast_interpolation_type != builtin::InterpolationType::kFlat &&
+        ast_sampling_type == builtin::InterpolationSampling::kUndefined) {
+        ast_sampling_type = builtin::InterpolationSampling::kCenter;
     }
 
     auto interpolation_type = InterpolationType::kUnknown;
     switch (ast_interpolation_type) {
-        case ast::InterpolationType::kPerspective:
+        case builtin::InterpolationType::kPerspective:
             interpolation_type = InterpolationType::kPerspective;
             break;
-        case ast::InterpolationType::kLinear:
+        case builtin::InterpolationType::kLinear:
             interpolation_type = InterpolationType::kLinear;
             break;
-        case ast::InterpolationType::kFlat:
+        case builtin::InterpolationType::kFlat:
             interpolation_type = InterpolationType::kFlat;
             break;
-        case ast::InterpolationType::kUndefined:
+        case builtin::InterpolationType::kUndefined:
             break;
     }
 
     auto sampling_type = InterpolationSampling::kUnknown;
     switch (ast_sampling_type) {
-        case ast::InterpolationSampling::kUndefined:
+        case builtin::InterpolationSampling::kUndefined:
             sampling_type = InterpolationSampling::kNone;
             break;
-        case ast::InterpolationSampling::kCenter:
+        case builtin::InterpolationSampling::kCenter:
             sampling_type = InterpolationSampling::kCenter;
             break;
-        case ast::InterpolationSampling::kCentroid:
+        case builtin::InterpolationSampling::kCentroid:
             sampling_type = InterpolationSampling::kCentroid;
             break;
-        case ast::InterpolationSampling::kSample:
+        case builtin::InterpolationSampling::kSample:
             sampling_type = InterpolationSampling::kSample;
             break;
     }
@@ -216,15 +216,15 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
                                     param->Location(), entry_point.input_variables);
 
         entry_point.input_position_used |= ContainsBuiltin(
-            ast::BuiltinValue::kPosition, param->Type(), param->Declaration()->attributes);
+            builtin::BuiltinValue::kPosition, param->Type(), param->Declaration()->attributes);
         entry_point.front_facing_used |= ContainsBuiltin(
-            ast::BuiltinValue::kFrontFacing, param->Type(), param->Declaration()->attributes);
+            builtin::BuiltinValue::kFrontFacing, param->Type(), param->Declaration()->attributes);
         entry_point.sample_index_used |= ContainsBuiltin(
-            ast::BuiltinValue::kSampleIndex, param->Type(), param->Declaration()->attributes);
+            builtin::BuiltinValue::kSampleIndex, param->Type(), param->Declaration()->attributes);
         entry_point.input_sample_mask_used |= ContainsBuiltin(
-            ast::BuiltinValue::kSampleMask, param->Type(), param->Declaration()->attributes);
+            builtin::BuiltinValue::kSampleMask, param->Type(), param->Declaration()->attributes);
         entry_point.num_workgroups_used |= ContainsBuiltin(
-            ast::BuiltinValue::kNumWorkgroups, param->Type(), param->Declaration()->attributes);
+            builtin::BuiltinValue::kNumWorkgroups, param->Type(), param->Declaration()->attributes);
     }
 
     if (!sem->ReturnType()->Is<type::Void>()) {
@@ -232,9 +232,9 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
                                     sem->ReturnLocation(), entry_point.output_variables);
 
         entry_point.output_sample_mask_used = ContainsBuiltin(
-            ast::BuiltinValue::kSampleMask, sem->ReturnType(), func->return_type_attributes);
+            builtin::BuiltinValue::kSampleMask, sem->ReturnType(), func->return_type_attributes);
         entry_point.frag_depth_used = ContainsBuiltin(
-            ast::BuiltinValue::kFragDepth, sem->ReturnType(), func->return_type_attributes);
+            builtin::BuiltinValue::kFragDepth, sem->ReturnType(), func->return_type_attributes);
     }
 
     for (auto* var : sem->TransitivelyReferencedGlobals()) {
@@ -587,7 +587,7 @@ uint32_t Inspector::GetWorkgroupStorageSize(const std::string& entry_point) {
     uint32_t total_size = 0;
     auto* func_sem = program_->Sem().Get(func);
     for (const sem::Variable* var : func_sem->TransitivelyReferencedGlobals()) {
-        if (var->AddressSpace() == type::AddressSpace::kWorkgroup) {
+        if (var->AddressSpace() == builtin::AddressSpace::kWorkgroup) {
             auto* ty = var->Type()->UnwrapRef();
             uint32_t align = ty->Align();
             uint32_t size = ty->Size();
@@ -681,7 +681,7 @@ void Inspector::AddEntryPointInOutVariables(std::string name,
     variables.push_back(stage_variable);
 }
 
-bool Inspector::ContainsBuiltin(ast::BuiltinValue builtin,
+bool Inspector::ContainsBuiltin(builtin::BuiltinValue builtin,
                                 const type::Type* type,
                                 utils::VectorRef<const ast::Attribute*> attributes) const {
     auto* unwrapped_type = type->UnwrapRef();
@@ -719,7 +719,7 @@ std::vector<ResourceBinding> Inspector::GetStorageBufferResourceBindingsImpl(
         auto* var = rsv.first;
         auto binding_info = rsv.second;
 
-        if (read_only != (var->Access() == type::Access::kRead)) {
+        if (read_only != (var->Access() == builtin::Access::kRead)) {
             continue;
         }
 

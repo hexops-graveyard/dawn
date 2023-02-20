@@ -208,12 +208,12 @@ class Builder {
     /// Converts a address space to a SPIR-V address space.
     /// @param klass the address space to convert
     /// @returns the SPIR-V address space or SpvStorageClassMax on error.
-    SpvStorageClass ConvertAddressSpace(type::AddressSpace klass) const;
+    SpvStorageClass ConvertAddressSpace(builtin::AddressSpace klass) const;
     /// Converts a builtin to a SPIR-V builtin and pushes a capability if needed.
     /// @param builtin the builtin to convert
     /// @param storage the address space that this builtin is being used with
     /// @returns the SPIR-V builtin or SpvBuiltInMax on error.
-    SpvBuiltIn ConvertBuiltin(ast::BuiltinValue builtin, type::AddressSpace storage);
+    SpvBuiltIn ConvertBuiltin(builtin::BuiltinValue builtin, builtin::AddressSpace storage);
 
     /// Converts an interpolate attribute to SPIR-V decorations and pushes a
     /// capability if needed.
@@ -221,14 +221,14 @@ class Builder {
     /// @param type the interpolation type
     /// @param sampling the interpolation sampling
     void AddInterpolationDecorations(uint32_t id,
-                                     ast::InterpolationType type,
-                                     ast::InterpolationSampling sampling);
+                                     builtin::InterpolationType type,
+                                     builtin::InterpolationSampling sampling);
 
     /// Generates the enabling of an extension. Emits an error and returns false if the extension is
     /// not supported.
     /// @param ext the extension to generate
     /// @returns true on success.
-    bool GenerateExtension(ast::Extension ext);
+    bool GenerateExtension(builtin::Extension ext);
     /// Generates a label for the given id. Emits an error and returns false if
     /// we're currently outside a function.
     /// @param id the id to use for the label
@@ -535,7 +535,7 @@ class Builder {
     /// Converts TexelFormat to SPIR-V and pushes an appropriate capability.
     /// @param format AST image format type
     /// @returns SPIR-V image format type
-    SpvImageFormat convert_texel_format_to_spv(const type::TexelFormat format);
+    SpvImageFormat convert_texel_format_to_spv(const builtin::TexelFormat format);
 
     /// Determines if the given type initializer is created from constant values
     /// @param expr the expression to check

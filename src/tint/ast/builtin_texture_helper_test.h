@@ -17,8 +17,9 @@
 
 #include <vector>
 
+#include "src/tint/builtin/access.h"
+#include "src/tint/builtin/texel_format.h"
 #include "src/tint/program_builder.h"
-#include "src/tint/type/access.h"
 #include "src/tint/type/storage_texture.h"
 #include "src/tint/type/texture_dimension.h"
 
@@ -207,8 +208,8 @@ struct TextureOverloadCase {
     /// Constructor for textureLoad() with storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
-                        type::Access,
-                        type::TexelFormat,
+                        tint::builtin::Access,
+                        tint::builtin::TexelFormat,
                         type::TextureDimension,
                         TextureDataType,
                         const char*,
@@ -224,7 +225,7 @@ struct TextureOverloadCase {
 
     /// @param builder the AST builder used for the test
     /// @returns the vector component type of the texture function return value
-    const ast::Type* BuildResultVectorComponentType(ProgramBuilder* builder) const;
+    ast::Type BuildResultVectorComponentType(ProgramBuilder* builder) const;
     /// @param builder the AST builder used for the test
     /// @returns a variable holding the test texture, automatically registered as
     /// a global variable.
@@ -245,10 +246,10 @@ struct TextureOverloadCase {
     type::SamplerKind const sampler_kind = type::SamplerKind::kSampler;
     /// The access control for the storage texture
     /// Used only when texture_kind is kStorage
-    type::Access const access = type::Access::kReadWrite;
+    tint::builtin::Access const access = tint::builtin::Access::kReadWrite;
     /// The image format for the storage texture
     /// Used only when texture_kind is kStorage
-    type::TexelFormat const texel_format = type::TexelFormat::kUndefined;
+    tint::builtin::TexelFormat const texel_format = tint::builtin::TexelFormat::kUndefined;
     /// The dimensions of the texture parameter
     type::TextureDimension const texture_dimension;
     /// The data type of the texture parameter

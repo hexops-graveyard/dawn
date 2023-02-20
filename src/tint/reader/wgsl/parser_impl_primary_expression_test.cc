@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "src/tint/ast/bitcast_expression.h"
+#include "src/tint/ast/test_helper.h"
 #include "src/tint/reader/wgsl/parser_impl_test_helper.h"
 
 namespace tint::reader::wgsl {
@@ -26,8 +27,7 @@ TEST_F(ParserImplTest, PrimaryExpression_Ident) {
     EXPECT_FALSE(p->has_error()) << p->error();
     ASSERT_NE(e.value, nullptr);
     ASSERT_TRUE(e->Is<ast::IdentifierExpression>());
-    auto* ident_expr = e->As<ast::IdentifierExpression>();
-    EXPECT_EQ(ident_expr->identifier->symbol, p->builder().Symbols().Get("a"));
+    ast::CheckIdentifier(p->builder().Symbols(), e.value, "a");
 }
 
 TEST_F(ParserImplTest, PrimaryExpression_TypeDecl) {
@@ -39,8 +39,6 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl) {
     ASSERT_NE(e.value, nullptr);
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* call = e->As<ast::CallExpression>();
-
-    EXPECT_NE(call->target.type, nullptr);
 
     ASSERT_EQ(call->args.Length(), 4u);
     const auto& val = call->args;
@@ -79,26 +77,6 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_ZeroInitializer) {
     ASSERT_EQ(call->args.Length(), 0u);
 }
 
-TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_InvalidTypeDecl) {
-    auto p = parser("vec4<if>(2., 3., 4., 5.)");
-    auto e = p->primary_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_TRUE(e.errored);
-    EXPECT_EQ(e.value, nullptr);
-    ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:6: invalid type for vector");
-}
-
-TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_MissingLeftParen) {
-    auto p = parser("vec4<f32> 2., 3., 4., 5.)");
-    auto e = p->primary_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_TRUE(e.errored);
-    EXPECT_EQ(e.value, nullptr);
-    ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:11: expected '(' for type initializer");
-}
-
 TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_MissingRightParen) {
     auto p = parser("vec4<f32>(2., 3., 4., 5.");
     auto e = p->primary_expression();
@@ -106,7 +84,7 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_MissingRightParen) {
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
     ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:25: expected ')' for type initializer");
+    EXPECT_EQ(p->error(), "1:25: expected ')' for function call");
 }
 
 TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_InvalidValue) {
@@ -116,7 +94,7 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_InvalidValue) {
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
     ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:5: expected ')' for type initializer");
+    EXPECT_EQ(p->error(), "1:5: expected ')' for function call");
 }
 
 TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_StructInitializer_Empty) {
@@ -137,8 +115,8 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_StructInitializer_Empty) {
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* call = e->As<ast::CallExpression>();
 
-    ASSERT_NE(call->target.name, nullptr);
-    EXPECT_EQ(call->target.name->symbol, p->builder().Symbols().Get("S"));
+    ASSERT_NE(call->target, nullptr);
+    ast::CheckIdentifier(p->builder().Symbols(), call->target, "S");
 
     ASSERT_EQ(call->args.Length(), 0u);
 }
@@ -161,8 +139,8 @@ TEST_F(ParserImplTest, PrimaryExpression_TypeDecl_StructInitializer_NotEmpty) {
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* call = e->As<ast::CallExpression>();
 
-    ASSERT_NE(call->target.name, nullptr);
-    EXPECT_EQ(call->target.name->symbol, p->builder().Symbols().Get("S"));
+    ASSERT_NE(call->target, nullptr);
+    ast::CheckIdentifier(p->builder().Symbols(), call->target, "S");
 
     ASSERT_EQ(call->args.Length(), 2u);
 
@@ -237,10 +215,7 @@ TEST_F(ParserImplTest, PrimaryExpression_Cast) {
 
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* call = e->As<ast::CallExpression>();
-
-    auto* type_name = As<ast::TypeName>(call->target.type);
-    ASSERT_NE(type_name, nullptr);
-    EXPECT_EQ(p->builder().Symbols().NameFor(type_name->name->symbol), "f32");
+    ast::CheckIdentifier(p->builder().Symbols(), call->target, "f32");
 
     ASSERT_EQ(call->args.Length(), 1u);
     ASSERT_TRUE(call->args[0]->Is<ast::IntLiteralExpression>());
@@ -258,8 +233,7 @@ TEST_F(ParserImplTest, PrimaryExpression_Bitcast) {
 
     auto* c = e->As<ast::BitcastExpression>();
 
-    ASSERT_TRUE(c->type->Is<ast::TypeName>());
-    EXPECT_EQ(p->builder().Symbols().NameFor(c->type->As<ast::TypeName>()->name->symbol), "f32");
+    ast::CheckIdentifier(p->builder().Symbols(), c->type, "f32");
 
     ASSERT_TRUE(c->expr->Is<ast::IntLiteralExpression>());
 }
@@ -322,19 +296,6 @@ TEST_F(ParserImplTest, PrimaryExpression_bitcast_InvalidExpression) {
     EXPECT_EQ(e.value, nullptr);
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(p->error(), "1:14: unable to parse expression");
-}
-
-TEST_F(ParserImplTest, PrimaryExpression_Template) {
-    auto p = parser("a<b>()");
-    auto e = p->primary_expression();
-    EXPECT_FALSE(e.matched);
-    EXPECT_TRUE(e.errored);
-    EXPECT_EQ(e.value, nullptr);
-    ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(),
-              "1:2: '<' treated as the start of a template argument list, which is not supported "
-              "for user-declared types or functions. If you intended less-than, wrap the "
-              "expression in parentheses");
 }
 
 }  // namespace

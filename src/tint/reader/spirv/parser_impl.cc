@@ -24,7 +24,6 @@
 #include "src/tint/ast/disable_validation_attribute.h"
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/interpolate_attribute.h"
-#include "src/tint/ast/type_name.h"
 #include "src/tint/ast/unary_op_expression.h"
 #include "src/tint/reader/spirv/function.h"
 #include "src/tint/type/depth_texture.h"
@@ -1223,21 +1222,16 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
     }
 
     auto ast_address_space = enum_converter_.ToAddressSpace(storage_class);
-    if (ast_address_space == type::AddressSpace::kUndefined) {
-        Fail() << "SPIR-V pointer type with ID " << type_id << " has invalid storage class "
-               << static_cast<uint32_t>(storage_class);
-        return nullptr;
-    }
-    if (ast_address_space == type::AddressSpace::kUniform &&
+    if (ast_address_space == builtin::AddressSpace::kUniform &&
         remap_buffer_block_type_.count(pointee_type_id)) {
-        ast_address_space = type::AddressSpace::kStorage;
+        ast_address_space = builtin::AddressSpace::kStorage;
         remap_buffer_block_type_.insert(type_id);
     }
 
     // Pipeline input and output variables map to private variables.
-    if (ast_address_space == type::AddressSpace::kIn ||
-        ast_address_space == type::AddressSpace::kOut) {
-        ast_address_space = type::AddressSpace::kPrivate;
+    if (ast_address_space == builtin::AddressSpace::kIn ||
+        ast_address_space == builtin::AddressSpace::kOut) {
+        ast_address_space = builtin::AddressSpace::kPrivate;
     }
     switch (ptr_as) {
         case PtrAs::Ref:
@@ -1460,14 +1454,14 @@ bool ParserImpl::EmitModuleScopeVariables() {
             continue;
         }
         switch (enum_converter_.ToAddressSpace(spirv_storage_class)) {
-            case type::AddressSpace::kNone:
-            case type::AddressSpace::kIn:
-            case type::AddressSpace::kOut:
-            case type::AddressSpace::kUniform:
-            case type::AddressSpace::kHandle:
-            case type::AddressSpace::kStorage:
-            case type::AddressSpace::kWorkgroup:
-            case type::AddressSpace::kPrivate:
+            case builtin::AddressSpace::kUndefined:
+            case builtin::AddressSpace::kIn:
+            case builtin::AddressSpace::kOut:
+            case builtin::AddressSpace::kUniform:
+            case builtin::AddressSpace::kHandle:
+            case builtin::AddressSpace::kStorage:
+            case builtin::AddressSpace::kWorkgroup:
+            case builtin::AddressSpace::kPrivate:
                 break;
             default:
                 return Fail() << "invalid SPIR-V storage class " << int(spirv_storage_class)
@@ -1477,7 +1471,7 @@ bool ParserImpl::EmitModuleScopeVariables() {
             return false;
         }
         const Type* ast_store_type = nullptr;
-        type::AddressSpace ast_address_space = type::AddressSpace::kNone;
+        builtin::AddressSpace ast_address_space = builtin::AddressSpace::kUndefined;
         if (spirv_storage_class == spv::StorageClass::UniformConstant) {
             // These are opaque handles: samplers or textures
             ast_store_type = GetHandleTypeForSpirvHandle(var);
@@ -1510,12 +1504,15 @@ bool ParserImpl::EmitModuleScopeVariables() {
             // here.)
             ast_initializer = MakeConstantExpression(var.GetSingleWordInOperand(1)).expr;
         }
-        auto* ast_var = MakeVar(var.result_id(), ast_address_space, ast_store_type, ast_initializer,
-                                utils::Empty);
+        auto ast_access = VarAccess(ast_store_type, ast_address_space);
+        auto* ast_var = MakeVar(var.result_id(), ast_address_space, ast_access, ast_store_type,
+                                ast_initializer, utils::Empty);
         // TODO(dneto): initializers (a.k.a. initializer expression)
         if (ast_var) {
             builder_.AST().AddGlobalVariable(ast_var);
-            module_variable_.GetOrCreate(var.result_id(), [ast_var] { return ast_var; });
+            module_variable_.GetOrCreate(var.result_id(), [&] {
+                return ModuleVariable{ast_var, ast_address_space, ast_access};
+            });
         }
     }
 
@@ -1542,14 +1539,16 @@ bool ParserImpl::EmitModuleScopeVariables() {
                                   << init->PrettyPrint();
             }
         }
-        auto* ast_var =
-            MakeVar(builtin_position_.per_vertex_var_id,
-                    enum_converter_.ToAddressSpace(builtin_position_.storage_class),
-                    ConvertType(builtin_position_.position_member_type_id), ast_initializer, {});
+        auto storage_type = ConvertType(builtin_position_.position_member_type_id);
+        auto ast_address_space = enum_converter_.ToAddressSpace(builtin_position_.storage_class);
+        auto ast_access = VarAccess(storage_type, ast_address_space);
+        auto* ast_var = MakeVar(builtin_position_.per_vertex_var_id, ast_address_space, ast_access,
+                                storage_type, ast_initializer, {});
 
         builder_.AST().AddGlobalVariable(ast_var);
-        module_variable_.GetOrCreate(builtin_position_.per_vertex_var_id,
-                                     [ast_var] { return ast_var; });
+        module_variable_.GetOrCreate(builtin_position_.per_vertex_var_id, [&] {
+            return ModuleVariable{ast_var, ast_address_space};
+        });
     }
     return success_;
 }
@@ -1577,8 +1576,24 @@ const spvtools::opt::analysis::IntConstant* ParserImpl::GetArraySize(uint32_t va
     return size->AsIntConstant();
 }
 
+builtin::Access ParserImpl::VarAccess(const Type* storage_type,
+                                      builtin::AddressSpace address_space) {
+    if (address_space != builtin::AddressSpace::kStorage) {
+        return builtin::Access::kUndefined;
+    }
+
+    bool read_only = false;
+    if (auto* tn = storage_type->As<Named>()) {
+        read_only = read_only_struct_types_.count(tn->name) > 0;
+    }
+
+    // Apply the access(read) or access(read_write) modifier.
+    return read_only ? builtin::Access::kRead : builtin::Access::kReadWrite;
+}
+
 const ast::Var* ParserImpl::MakeVar(uint32_t id,
-                                    type::AddressSpace address_space,
+                                    builtin::AddressSpace address_space,
+                                    builtin::Access access,
                                     const Type* storage_type,
                                     const ast::Expression* initializer,
                                     AttributeList decorations) {
@@ -1587,25 +1602,14 @@ const ast::Var* ParserImpl::MakeVar(uint32_t id,
         return nullptr;
     }
 
-    type::Access access = type::Access::kUndefined;
-    if (address_space == type::AddressSpace::kStorage) {
-        bool read_only = false;
-        if (auto* tn = storage_type->As<Named>()) {
-            read_only = read_only_struct_types_.count(tn->name) > 0;
-        }
-
-        // Apply the access(read) or access(read_write) modifier.
-        access = read_only ? type::Access::kRead : type::Access::kReadWrite;
-    }
-
     // Handle variables (textures and samplers) are always in the handle
     // address space, so we don't mention the address space.
-    if (address_space == type::AddressSpace::kHandle) {
-        address_space = type::AddressSpace::kNone;
+    if (address_space == builtin::AddressSpace::kHandle) {
+        address_space = builtin::AddressSpace::kUndefined;
     }
 
     if (!ConvertDecorationsForVariable(id, &storage_type, &decorations,
-                                       address_space != type::AddressSpace::kPrivate)) {
+                                       address_space != builtin::AddressSpace::kPrivate)) {
         return nullptr;
     }
 
@@ -1700,7 +1704,7 @@ bool ParserImpl::ConvertDecorationsForVariable(uint32_t id,
                     break;
             }
             auto ast_builtin = enum_converter_.ToBuiltin(spv_builtin);
-            if (ast_builtin == ast::BuiltinValue::kUndefined) {
+            if (ast_builtin == builtin::BuiltinValue::kUndefined) {
                 // A diagnostic has already been emitted.
                 return false;
             }
@@ -1771,8 +1775,8 @@ bool ParserImpl::ConvertPipelineDecorations(const Type* store_type,
                                             const DecorationList& decorations,
                                             AttributeList* attributes) {
     // Vulkan defaults to perspective-correct interpolation.
-    ast::InterpolationType type = ast::InterpolationType::kPerspective;
-    ast::InterpolationSampling sampling = ast::InterpolationSampling::kUndefined;
+    builtin::InterpolationType type = builtin::InterpolationType::kPerspective;
+    builtin::InterpolationSampling sampling = builtin::InterpolationSampling::kUndefined;
 
     for (const auto& deco : decorations) {
         TINT_ASSERT(Reader, deco.size() > 0);
@@ -1785,49 +1789,49 @@ bool ParserImpl::ConvertPipelineDecorations(const Type* store_type,
                 SetLocation(attributes, builder_.Location(AInt(deco[1])));
                 if (store_type->IsIntegerScalarOrVector()) {
                     // Default to flat interpolation for integral user-defined IO types.
-                    type = ast::InterpolationType::kFlat;
+                    type = builtin::InterpolationType::kFlat;
                 }
                 break;
             case spv::Decoration::Flat:
-                type = ast::InterpolationType::kFlat;
+                type = builtin::InterpolationType::kFlat;
                 break;
             case spv::Decoration::NoPerspective:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "NoPerspective is invalid on integral IO";
                 }
-                type = ast::InterpolationType::kLinear;
+                type = builtin::InterpolationType::kLinear;
                 break;
             case spv::Decoration::Centroid:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "Centroid interpolation sampling is invalid on integral IO";
                 }
-                sampling = ast::InterpolationSampling::kCentroid;
+                sampling = builtin::InterpolationSampling::kCentroid;
                 break;
             case spv::Decoration::Sample:
                 if (store_type->IsIntegerScalarOrVector()) {
                     // This doesn't capture the array or struct case.
                     return Fail() << "Sample interpolation sampling is invalid on integral IO";
                 }
-                sampling = ast::InterpolationSampling::kSample;
+                sampling = builtin::InterpolationSampling::kSample;
                 break;
             default:
                 break;
         }
     }
 
-    if (type == ast::InterpolationType::kFlat &&
+    if (type == builtin::InterpolationType::kFlat &&
         !ast::HasAttribute<ast::LocationAttribute>(*attributes)) {
         // WGSL requires that '@interpolate(flat)' needs to be paired with '@location', however
         // SPIR-V requires all fragment shader integer Inputs are 'flat'. If the decorations do not
         // contain a spv::Decoration::Location, then make this perspective.
-        type = ast::InterpolationType::kPerspective;
+        type = builtin::InterpolationType::kPerspective;
     }
 
     // Apply interpolation.
-    if (type == ast::InterpolationType::kPerspective &&
-        sampling == ast::InterpolationSampling::kUndefined) {
+    if (type == builtin::InterpolationType::kPerspective &&
+        sampling == builtin::InterpolationSampling::kUndefined) {
         // This is the default. Don't add a decoration.
     } else {
         attributes->Push(create<ast::InterpolateAttribute>(type, sampling));
@@ -2523,9 +2527,9 @@ const Type* ParserImpl::GetHandleTypeForSpirvHandle(const spvtools::opt::Instruc
                 ast_handle_type = ty_.SampledTexture(dim, ast_sampled_component_type);
             }
         } else {
-            const auto access = type::Access::kWrite;
+            const auto access = builtin::Access::kWrite;
             const auto format = enum_converter_.ToTexelFormat(image_type->format());
-            if (format == type::TexelFormat::kUndefined) {
+            if (format == builtin::TexelFormat::kUndefined) {
                 return nullptr;
             }
             ast_handle_type = ty_.StorageTexture(dim, format, access);
@@ -2542,28 +2546,28 @@ const Type* ParserImpl::GetHandleTypeForSpirvHandle(const spvtools::opt::Instruc
     return ast_handle_type;
 }
 
-const Type* ParserImpl::GetComponentTypeForFormat(type::TexelFormat format) {
+const Type* ParserImpl::GetComponentTypeForFormat(builtin::TexelFormat format) {
     switch (format) {
-        case type::TexelFormat::kR32Uint:
-        case type::TexelFormat::kRgba8Uint:
-        case type::TexelFormat::kRg32Uint:
-        case type::TexelFormat::kRgba16Uint:
-        case type::TexelFormat::kRgba32Uint:
+        case builtin::TexelFormat::kR32Uint:
+        case builtin::TexelFormat::kRgba8Uint:
+        case builtin::TexelFormat::kRg32Uint:
+        case builtin::TexelFormat::kRgba16Uint:
+        case builtin::TexelFormat::kRgba32Uint:
             return ty_.U32();
 
-        case type::TexelFormat::kR32Sint:
-        case type::TexelFormat::kRgba8Sint:
-        case type::TexelFormat::kRg32Sint:
-        case type::TexelFormat::kRgba16Sint:
-        case type::TexelFormat::kRgba32Sint:
+        case builtin::TexelFormat::kR32Sint:
+        case builtin::TexelFormat::kRgba8Sint:
+        case builtin::TexelFormat::kRg32Sint:
+        case builtin::TexelFormat::kRgba16Sint:
+        case builtin::TexelFormat::kRgba32Sint:
             return ty_.I32();
 
-        case type::TexelFormat::kRgba8Unorm:
-        case type::TexelFormat::kRgba8Snorm:
-        case type::TexelFormat::kR32Float:
-        case type::TexelFormat::kRg32Float:
-        case type::TexelFormat::kRgba16Float:
-        case type::TexelFormat::kRgba32Float:
+        case builtin::TexelFormat::kRgba8Unorm:
+        case builtin::TexelFormat::kRgba8Snorm:
+        case builtin::TexelFormat::kR32Float:
+        case builtin::TexelFormat::kRg32Float:
+        case builtin::TexelFormat::kRgba16Float:
+        case builtin::TexelFormat::kRgba32Float:
             return ty_.F32();
         default:
             break;
@@ -2572,30 +2576,30 @@ const Type* ParserImpl::GetComponentTypeForFormat(type::TexelFormat format) {
     return nullptr;
 }
 
-unsigned ParserImpl::GetChannelCountForFormat(type::TexelFormat format) {
+unsigned ParserImpl::GetChannelCountForFormat(builtin::TexelFormat format) {
     switch (format) {
-        case type::TexelFormat::kR32Float:
-        case type::TexelFormat::kR32Sint:
-        case type::TexelFormat::kR32Uint:
+        case builtin::TexelFormat::kR32Float:
+        case builtin::TexelFormat::kR32Sint:
+        case builtin::TexelFormat::kR32Uint:
             // One channel
             return 1;
 
-        case type::TexelFormat::kRg32Float:
-        case type::TexelFormat::kRg32Sint:
-        case type::TexelFormat::kRg32Uint:
+        case builtin::TexelFormat::kRg32Float:
+        case builtin::TexelFormat::kRg32Sint:
+        case builtin::TexelFormat::kRg32Uint:
             // Two channels
             return 2;
 
-        case type::TexelFormat::kRgba16Float:
-        case type::TexelFormat::kRgba16Sint:
-        case type::TexelFormat::kRgba16Uint:
-        case type::TexelFormat::kRgba32Float:
-        case type::TexelFormat::kRgba32Sint:
-        case type::TexelFormat::kRgba32Uint:
-        case type::TexelFormat::kRgba8Sint:
-        case type::TexelFormat::kRgba8Snorm:
-        case type::TexelFormat::kRgba8Uint:
-        case type::TexelFormat::kRgba8Unorm:
+        case builtin::TexelFormat::kRgba16Float:
+        case builtin::TexelFormat::kRgba16Sint:
+        case builtin::TexelFormat::kRgba16Uint:
+        case builtin::TexelFormat::kRgba32Float:
+        case builtin::TexelFormat::kRgba32Sint:
+        case builtin::TexelFormat::kRgba32Uint:
+        case builtin::TexelFormat::kRgba8Sint:
+        case builtin::TexelFormat::kRgba8Snorm:
+        case builtin::TexelFormat::kRgba8Uint:
+        case builtin::TexelFormat::kRgba8Unorm:
             // Four channels
             return 4;
 
@@ -2606,7 +2610,7 @@ unsigned ParserImpl::GetChannelCountForFormat(type::TexelFormat format) {
     return 0;
 }
 
-const Type* ParserImpl::GetTexelTypeForFormat(type::TexelFormat format) {
+const Type* ParserImpl::GetTexelTypeForFormat(builtin::TexelFormat format) {
     const auto* component_type = GetComponentTypeForFormat(format);
     if (!component_type) {
         return nullptr;

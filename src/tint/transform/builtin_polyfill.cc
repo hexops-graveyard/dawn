@@ -45,7 +45,7 @@ struct BuiltinPolyfill::State {
     State(CloneContext& c, Builtins p) : ctx(c), polyfill(p) {
         has_full_ptr_params = false;
         for (auto* enable : c.src->AST().Enables()) {
-            if (enable->extension == ast::Extension::kChromiumExperimentalFullPtrParameters) {
+            if (enable->extension == builtin::Extension::kChromiumExperimentalFullPtrParameters) {
                 has_full_ptr_params = true;
             }
         }
@@ -176,7 +176,7 @@ struct BuiltinPolyfill::State {
         uint32_t width = WidthOf(ty);
 
         // Returns either u32 or vecN<u32>
-        auto U = [&]() -> const ast::Type* {
+        auto U = [&]() {
             if (width == 1) {
                 return b.ty.u32();
             }
@@ -234,7 +234,7 @@ struct BuiltinPolyfill::State {
         uint32_t width = WidthOf(ty);
 
         // Returns either u32 or vecN<u32>
-        auto U = [&]() -> const ast::Type* {
+        auto U = [&]() {
             if (width == 1) {
                 return b.ty.u32();
             }
@@ -351,7 +351,7 @@ struct BuiltinPolyfill::State {
         uint32_t width = WidthOf(ty);
 
         // Returns either u32 or vecN<u32>
-        auto U = [&]() -> const ast::Type* {
+        auto U = [&]() {
             if (width == 1) {
                 return b.ty.u32();
             }
@@ -423,7 +423,7 @@ struct BuiltinPolyfill::State {
         uint32_t width = WidthOf(ty);
 
         // Returns either u32 or vecN<u32>
-        auto U = [&]() -> const ast::Type* {
+        auto U = [&]() {
             if (width == 1) {
                 return b.ty.u32();
             }
@@ -673,13 +673,13 @@ struct BuiltinPolyfill::State {
     /// @return the polyfill function name
     Symbol workgroupUniformLoad(const type::Type* type) {
         if (!has_full_ptr_params) {
-            b.Enable(ast::Extension::kChromiumExperimentalFullPtrParameters);
+            b.Enable(builtin::Extension::kChromiumExperimentalFullPtrParameters);
             has_full_ptr_params = true;
         }
         auto name = b.Symbols().New("tint_workgroupUniformLoad");
         b.Func(name,
                utils::Vector{
-                   b.Param("p", b.ty.pointer(T(type), type::AddressSpace::kWorkgroup)),
+                   b.Param("p", b.ty.pointer(T(type), builtin::AddressSpace::kWorkgroup)),
                },
                T(type),
                utils::Vector{
@@ -808,6 +808,58 @@ struct BuiltinPolyfill::State {
         return b.Call(fn, lhs, rhs);
     }
 
+    /// Builds the polyfill inline expression for a precise float modulo, as defined in the spec.
+    /// @param bin_op the original BinaryExpression
+    /// @return the polyfill divide or modulo
+    const ast::Expression* PreciseFloatMod(const ast::BinaryExpression* bin_op) {
+        auto* lhs_ty = ctx.src->TypeOf(bin_op->lhs)->UnwrapRef();
+        auto* rhs_ty = ctx.src->TypeOf(bin_op->rhs)->UnwrapRef();
+        BinaryOpSignature sig{bin_op->op, lhs_ty, rhs_ty};
+        auto fn = binary_op_polyfills.GetOrCreate(sig, [&] {
+            uint32_t lhs_width = 1;
+            uint32_t rhs_width = 1;
+            const auto* lhs_el_ty = type::Type::ElementOf(lhs_ty, &lhs_width);
+            const auto* rhs_el_ty = type::Type::ElementOf(rhs_ty, &rhs_width);
+
+            const uint32_t width = std::max(lhs_width, rhs_width);
+
+            const char* lhs = "lhs";
+            const char* rhs = "rhs";
+
+            utils::Vector<const ast::Statement*, 4> body;
+
+            if (lhs_width < width) {
+                // lhs is scalar, rhs is vector. Convert lhs to vector.
+                body.Push(b.Decl(b.Let("l", b.vec(T(lhs_el_ty), width, b.Expr(lhs)))));
+                lhs = "l";
+            }
+            if (rhs_width < width) {
+                // lhs is vector, rhs is scalar. Convert rhs to vector.
+                body.Push(b.Decl(b.Let("r", b.vec(T(rhs_el_ty), width, b.Expr(rhs)))));
+                rhs = "r";
+            }
+
+            auto name = b.Symbols().New("tint_float_mod");
+
+            // lhs - trunc(lhs / rhs) * rhs
+            auto* precise_mod = b.Sub(lhs, b.Mul(b.Call("trunc", b.Div(lhs, rhs)), rhs));
+            body.Push(b.Return(precise_mod));
+
+            b.Func(name,
+                   utils::Vector{
+                       b.Param("lhs", T(lhs_ty)),
+                       b.Param("rhs", T(rhs_ty)),
+                   },
+                   width == 1 ? T(lhs_ty) : b.ty.vec(T(lhs_el_ty), width),  // return type
+                   std::move(body));
+
+            return name;
+        });
+        auto* lhs = ctx.Clone(bin_op->lhs);
+        auto* rhs = ctx.Clone(bin_op->rhs);
+        return b.Call(fn, lhs, rhs);
+    }
+
   private:
     /// The clone context
     CloneContext& ctx;
@@ -825,7 +877,7 @@ struct BuiltinPolyfill::State {
     bool has_full_ptr_params;
 
     /// @returns the AST type for the given sem type
-    const ast::Type* T(const type::Type* ty) const { return CreateASTTypeFor(ctx, ty); }
+    ast::Type T(const type::Type* ty) const { return CreateASTTypeFor(ctx, ty); }
 
     /// @returns 1 if `ty` is not a vector, otherwise the vector width
     uint32_t WidthOf(const type::Type* ty) const {
@@ -988,7 +1040,7 @@ Transform::ApplyResult BuiltinPolyfill::Apply(const Program* src,
                             auto& sig = builtin->Signature();
                             auto* tex = sig.Parameter(sem::ParameterUsage::kTexture);
                             if (auto* stex = tex->Type()->As<type::StorageTexture>()) {
-                                if (stex->texel_format() == type::TexelFormat::kBgra8Unorm) {
+                                if (stex->texel_format() == builtin::TexelFormat::kBgra8Unorm) {
                                     size_t value_idx = static_cast<size_t>(
                                         sig.IndexOf(sem::ParameterUsage::kValue));
                                     ctx.Replace(expr, [&ctx, expr, value_idx] {
@@ -1052,8 +1104,7 @@ Transform::ApplyResult BuiltinPolyfill::Apply(const Program* src,
                         }
                         break;
                     }
-                    case ast::BinaryOp::kDivide:
-                    case ast::BinaryOp::kModulo: {
+                    case ast::BinaryOp::kDivide: {
                         if (polyfill.int_div_mod) {
                             auto* lhs_ty = src->TypeOf(bin_op->lhs)->UnwrapRef();
                             if (lhs_ty->is_integer_scalar_or_vector()) {
@@ -1063,19 +1114,40 @@ Transform::ApplyResult BuiltinPolyfill::Apply(const Program* src,
                         }
                         break;
                     }
+                    case ast::BinaryOp::kModulo: {
+                        if (polyfill.int_div_mod) {
+                            auto* lhs_ty = src->TypeOf(bin_op->lhs)->UnwrapRef();
+                            if (lhs_ty->is_integer_scalar_or_vector()) {
+                                ctx.Replace(bin_op, [bin_op, &s] { return s.IntDivMod(bin_op); });
+                                made_changes = true;
+                            }
+                        }
+                        if (polyfill.precise_float_mod) {
+                            auto* lhs_ty = src->TypeOf(bin_op->lhs)->UnwrapRef();
+                            if (lhs_ty->is_float_scalar_or_vector()) {
+                                ctx.Replace(bin_op,
+                                            [bin_op, &s] { return s.PreciseFloatMod(bin_op); });
+                                made_changes = true;
+                            }
+                        }
+                        break;
+                    }
                     default:
                         break;
                 }
             },
-            [&](const ast::TypeName* type_name) {
+            [&](const ast::Expression* expr) {
                 if (polyfill.bgra8unorm) {
-                    if (auto* tex = src->Sem().Get<type::StorageTexture>(type_name)) {
-                        if (tex->texel_format() == type::TexelFormat::kBgra8Unorm) {
-                            ctx.Replace(type_name, [&ctx, tex] {
-                                return ctx.dst->ty.storage_texture(
-                                    tex->dim(), type::TexelFormat::kRgba8Unorm, tex->access());
-                            });
-                            made_changes = true;
+                    if (auto* ty_expr = src->Sem().Get<sem::TypeExpression>(expr)) {
+                        if (auto* tex = ty_expr->Type()->As<type::StorageTexture>()) {
+                            if (tex->texel_format() == builtin::TexelFormat::kBgra8Unorm) {
+                                ctx.Replace(expr, [&ctx, tex] {
+                                    return ctx.dst->Expr(ctx.dst->ty.storage_texture(
+                                        tex->dim(), builtin::TexelFormat::kRgba8Unorm,
+                                        tex->access()));
+                                });
+                                made_changes = true;
+                            }
                         }
                     }
                 }

@@ -53,7 +53,8 @@ struct PreservePadding::State {
                         // Ignore phony assignment.
                         return;
                     }
-                    if (ty->As<type::Reference>()->AddressSpace() != type::AddressSpace::kStorage) {
+                    if (ty->As<type::Reference>()->AddressSpace() !=
+                        builtin::AddressSpace::kStorage) {
                         // We only care about assignments that write to variables in the storage
                         // address space, as nothing else is host-visible.
                         return;
@@ -66,7 +67,7 @@ struct PreservePadding::State {
                 [&](const ast::Enable* enable) {
                     // Check if the full pointer parameters extension is already enabled.
                     if (enable->extension ==
-                        ast::Extension::kChromiumExperimentalFullPtrParameters) {
+                        builtin::Extension::kChromiumExperimentalFullPtrParameters) {
                         ext_enabled = true;
                     }
                 });
@@ -120,8 +121,8 @@ struct PreservePadding::State {
                 auto helper_name = b.Symbols().New("assign_and_preserve_padding");
                 utils::Vector<const ast::Parameter*, 2> params = {
                     b.Param(kDestParamName,
-                            b.ty.pointer(CreateASTTypeFor(ctx, ty), type::AddressSpace::kStorage,
-                                         type::Access::kReadWrite)),
+                            b.ty.pointer(CreateASTTypeFor(ctx, ty), builtin::AddressSpace::kStorage,
+                                         builtin::Access::kReadWrite)),
                     b.Param(kValueParamName, CreateASTTypeFor(ctx, ty)),
                 };
                 b.Func(helper_name, params, b.ty.void_(), body());
@@ -197,7 +198,7 @@ struct PreservePadding::State {
     /// Enable the full pointer parameters extension, if we have not already done so.
     void EnableExtension() {
         if (!ext_enabled) {
-            b.Enable(ast::Extension::kChromiumExperimentalFullPtrParameters);
+            b.Enable(builtin::Extension::kChromiumExperimentalFullPtrParameters);
             ext_enabled = true;
         }
     }

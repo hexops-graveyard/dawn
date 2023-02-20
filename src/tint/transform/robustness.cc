@@ -38,7 +38,7 @@ struct Robustness::State {
     /// Constructor
     /// @param program the source program
     /// @param omitted the omitted address spaces
-    State(const Program* program, std::unordered_set<type::AddressSpace>&& omitted)
+    State(const Program* program, std::unordered_set<builtin::AddressSpace>&& omitted)
         : src(program), omitted_address_spaces(std::move(omitted)) {}
 
     /// Runs the transform
@@ -60,7 +60,7 @@ struct Robustness::State {
     CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Set of address spaces to not apply the transform to
-    std::unordered_set<type::AddressSpace> omitted_address_spaces;
+    std::unordered_set<builtin::AddressSpace> omitted_address_spaces;
 
     /// Apply bounds clamping to array, vector and matrix indexing
     /// @param expr the array, vector or matrix index expression
@@ -182,7 +182,7 @@ struct Robustness::State {
             }
             return 1u;
         };
-        auto scalar_or_vec_ty = [&](const ast::Type* scalar, uint32_t width) -> const ast::Type* {
+        auto scalar_or_vec_ty = [&](ast::Type scalar, uint32_t width) {
             if (width > 1) {
                 return b.ty.vec(scalar, width);
             }
@@ -191,7 +191,7 @@ struct Robustness::State {
         auto scalar_or_vec = [&](const ast::Expression* scalar,
                                  uint32_t width) -> const ast::Expression* {
             if (width > 1) {
-                return b.Call(b.ty.vec(nullptr, width), scalar);
+                return b.Call(b.ty.vec<Infer>(width), scalar);
             }
             return scalar;
         };
@@ -294,14 +294,14 @@ Transform::ApplyResult Robustness::Apply(const Program* src,
         cfg = *cfg_data;
     }
 
-    std::unordered_set<type::AddressSpace> omitted_address_spaces;
+    std::unordered_set<builtin::AddressSpace> omitted_address_spaces;
     for (auto sc : cfg.omitted_address_spaces) {
         switch (sc) {
             case AddressSpace::kUniform:
-                omitted_address_spaces.insert(type::AddressSpace::kUniform);
+                omitted_address_spaces.insert(builtin::AddressSpace::kUniform);
                 break;
             case AddressSpace::kStorage:
-                omitted_address_spaces.insert(type::AddressSpace::kStorage);
+                omitted_address_spaces.insert(builtin::AddressSpace::kStorage);
                 break;
         }
     }

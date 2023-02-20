@@ -41,8 +41,8 @@ inline std::ostream& operator<<(std::ostream& out, BuiltinData data) {
 
 // This tests that we do not push OpTypeSampledImage and float_0 type twice.
 TEST_F(BuiltinBuilderTest, Call_TextureSampleCompare_Twice) {
-    auto* s = ty.sampler(type::SamplerKind::kComparisonSampler);
-    auto* t = ty.depth_texture(type::TextureDimension::k2d);
+    auto s = ty.sampler(type::SamplerKind::kComparisonSampler);
+    auto t = ty.depth_texture(type::TextureDimension::k2d);
 
     auto* tex = GlobalVar("texture", t, Binding(0_a), Group(0_a));
     auto* sampler = GlobalVar("sampler", s, Binding(1_a), Group(0_a));
@@ -98,7 +98,7 @@ TEST_F(BuiltinBuilderTest, Call_TextureSampleCompare_Twice) {
 }
 
 TEST_F(BuiltinBuilderTest, Call_GLSLMethod_WithLoad_f32) {
-    auto* var = GlobalVar("ident", ty.f32(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("ident", ty.f32(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("round", "ident");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -132,9 +132,9 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_GLSLMethod_WithLoad_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* var = GlobalVar("ident", ty.f16(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("ident", ty.f16(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("round", "ident");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -173,7 +173,7 @@ namespace logical_builtin_tests {
 using BuiltinBoolTest = BuiltinBuilderTestWithParam<BuiltinData>;
 TEST_P(BuiltinBoolTest, Call_Bool_Scalar) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.bool_(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.bool_(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -199,7 +199,7 @@ TEST_P(BuiltinBoolTest, Call_Bool_Scalar) {
 
 TEST_P(BuiltinBoolTest, Call_Bool_Vector) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.vec3<bool>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<bool>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -232,9 +232,9 @@ INSTANTIATE_TEST_SUITE_P(BuiltinBuilderTest,
                          testing::Values(BuiltinData{"any", "OpAny"}, BuiltinData{"all", "OpAll"}));
 
 TEST_F(BuiltinBuilderTest, Call_Select) {
-    auto* v3 = GlobalVar("v3", ty.vec3<f32>(), type::AddressSpace::kPrivate);
+    auto* v3 = GlobalVar("v3", ty.vec3<f32>(), builtin::AddressSpace::kPrivate);
 
-    auto* bool_v3 = GlobalVar("bool_v3", ty.vec3<bool>(), type::AddressSpace::kPrivate);
+    auto* bool_v3 = GlobalVar("bool_v3", ty.vec3<bool>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("select", "v3", "v3", "bool_v3");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -278,7 +278,7 @@ TEST_F(BuiltinBuilderTest, Call_ArrayLength) {
     auto* s = Structure("my_struct", utils::Vector{
                                          Member("a", ty.array<f32>()),
                                      });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(1_a),
               Group(2_a));
     auto* expr = Call("arrayLength", AddressOf(MemberAccessor("b", "a")));
 
@@ -322,7 +322,7 @@ TEST_F(BuiltinBuilderTest, Call_ArrayLength_OtherMembersInStruct) {
                                          Member("z", ty.f32()),
                                          Member(4, "a", ty.array<f32>()),
                                      });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(1_a),
               Group(2_a));
     auto* expr = Call("arrayLength", AddressOf(MemberAccessor("b", "a")));
 
@@ -365,7 +365,7 @@ TEST_F(BuiltinBuilderTest, Call_ArrayLength_ViaLets) {
     auto* s = Structure("my_struct", utils::Vector{
                                          Member("a", ty.array<f32>()),
                                      });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(1_a),
               Group(2_a));
 
     auto* p = Let("p", AddressOf("b"));
@@ -424,7 +424,7 @@ TEST_F(BuiltinBuilderTest, Call_ArrayLength_ViaLets_WithPtrNoise) {
     auto* s = Structure("my_struct", utils::Vector{
                                          Member("a", ty.array<f32>()),
                                      });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kRead, Binding(1_a),
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(1_a),
               Group(2_a));
 
     auto* p = Let("p", AddressOf(Deref(AddressOf("b"))));
@@ -516,7 +516,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_SingleParam_Float_Test, Call_Scalar_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
     // Use a variable to prevent the function being evaluated as constant.
@@ -599,7 +599,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_SingleParam_Float_Test, Call_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
 
@@ -705,7 +705,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Length_Scalar_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* scalar = Var("a", Expr(1_h));
     auto* expr = Call("length", scalar);
@@ -779,7 +779,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Length_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("a", vec2<f16>(1_h, 1_h));
     auto* expr = Call("length", vec);
@@ -855,7 +855,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Normalize_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("a", vec2<f16>(1_h, 1_h));
     auto* expr = Call("normalize", vec);
@@ -934,7 +934,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_DualParam_Float_Test, Call_Scalar_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
     auto* scalar = Var("scalar", Expr(1_h));
@@ -1016,7 +1016,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_DualParam_Float_Test, Call_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
     auto* vec = Var("vec", vec2<f16>(1_h, 1_h));
@@ -1105,7 +1105,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Reflect_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec2<f16>(1_h, 1_h));
     auto* expr = Call("reflect", vec, vec);
@@ -1181,7 +1181,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Distance_Scalar_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* scalar = Var("scalar", Expr(1_h));
     auto* expr = Call("distance", scalar, scalar);
@@ -1257,7 +1257,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Distance_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec2<f16>(1_h, 1_h));
     auto* expr = Call("distance", vec, vec);
@@ -1335,7 +1335,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Cross_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec3<f16>(1_h, 1_h, 1_h));
     auto* expr = Call("cross", vec, vec);
@@ -1416,7 +1416,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_ThreeParam_Float_Test, Call_Scalar_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
     auto* scalar = Var("scalar", Expr(1_h));
@@ -1500,7 +1500,7 @@ OpFunctionEnd
 }
 
 TEST_P(Builtin_Builder_ThreeParam_Float_Test, Call_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
     auto* vec = Var("vec", vec2<f16>(1_h, 1_h));
@@ -1591,7 +1591,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_FaceForward_Vector_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec2<f16>(1_h, 1_h));
     auto* expr = Call("faceForward", vec, vec, vec);
@@ -1684,7 +1684,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Runtime_Call_Modf_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec2<f16>(1_h, 2_h));
     auto* expr = Call("modf", vec);
@@ -1786,7 +1786,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Const_Call_Modf_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* expr = Call("modf", vec2<f16>(1_h, 2_h));
     Func("a_func", utils::Empty, ty.void_(),
@@ -1890,7 +1890,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Runtime_Call_Frexp_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* vec = Var("vec", vec2<f16>(1_h, 2_h));
     auto* expr = Call("frexp", vec);
@@ -1995,7 +1995,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Const_Call_Frexp_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -2046,7 +2046,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_QuantizeToF16_Scalar) {
-    GlobalVar("v", Expr(2_f), type::AddressSpace::kPrivate);
+    GlobalVar("v", Expr(2_f), builtin::AddressSpace::kPrivate);
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -2085,7 +2085,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_QuantizeToF16_Vector) {
-    GlobalVar("v", vec3<f32>(2_f), type::AddressSpace::kPrivate);
+    GlobalVar("v", vec3<f32>(2_f), builtin::AddressSpace::kPrivate);
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -2152,7 +2152,7 @@ namespace integer_builtin_tests {
 using BuiltinIntTest = BuiltinBuilderTestWithParam<BuiltinData>;
 TEST_P(BuiltinIntTest, Call_SInt_Scalar) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.i32(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.i32(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -2182,7 +2182,7 @@ OpReturn
 
 TEST_P(BuiltinIntTest, Call_SInt_Vector) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.vec3<i32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<i32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -2213,7 +2213,7 @@ OpReturn
 
 TEST_P(BuiltinIntTest, Call_UInt_Scalar) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.u32(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.u32(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -2243,7 +2243,7 @@ OpReturn
 
 TEST_P(BuiltinIntTest, Call_UInt_Vector) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.vec3<u32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<u32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3114,7 +3114,7 @@ OpFunctionEnd
 namespace matrix_builtin_tests {
 
 TEST_F(BuiltinBuilderTest, Call_Determinant_f32) {
-    auto* var = GlobalVar("var", ty.mat3x3<f32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("var", ty.mat3x3<f32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("determinant", "var");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3149,9 +3149,9 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Determinant_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* var = GlobalVar("var", ty.mat3x3<f16>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("var", ty.mat3x3<f16>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("determinant", "var");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3186,7 +3186,7 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Transpose_f32) {
-    auto* var = GlobalVar("var", ty.mat2x3<f32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("var", ty.mat2x3<f32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("transpose", "var");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3222,9 +3222,9 @@ OpFunctionEnd
 }
 
 TEST_F(BuiltinBuilderTest, Call_Transpose_f16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* var = GlobalVar("var", ty.mat2x3<f16>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("var", ty.mat2x3<f16>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("transpose", "var");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3265,7 +3265,7 @@ OpFunctionEnd
 namespace vector_builtin_tests {
 
 TEST_F(BuiltinBuilderTest, Call_Dot_F32) {
-    auto* var = GlobalVar("v", ty.vec3<f32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<f32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("dot", "v", "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3294,9 +3294,9 @@ OpReturn
 }
 
 TEST_F(BuiltinBuilderTest, Call_Dot_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
-    auto* var = GlobalVar("v", ty.vec3<f16>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<f16>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("dot", "v", "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3325,7 +3325,7 @@ OpReturn
 }
 
 TEST_F(BuiltinBuilderTest, Call_Dot_U32) {
-    auto* var = GlobalVar("v", ty.vec3<u32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<u32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("dot", "v", "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3364,7 +3364,7 @@ OpReturn
 }
 
 TEST_F(BuiltinBuilderTest, Call_Dot_I32) {
-    auto* var = GlobalVar("v", ty.vec3<i32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<i32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call("dot", "v", "v");
     auto* func = Func("a_func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3410,7 +3410,7 @@ namespace derivative_builtin_tests {
 using BuiltinDeriveTest = BuiltinBuilderTestWithParam<BuiltinData>;
 TEST_P(BuiltinDeriveTest, Call_Derivative_Scalar) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.f32(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.f32(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3443,7 +3443,7 @@ OpReturn
 
 TEST_P(BuiltinDeriveTest, Call_Derivative_Vector) {
     auto param = GetParam();
-    auto* var = GlobalVar("v", ty.vec3<f32>(), type::AddressSpace::kPrivate);
+    auto* var = GlobalVar("v", ty.vec3<f32>(), builtin::AddressSpace::kPrivate);
     auto* expr = Call(param.name, "v");
     auto* func = Func("func", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -3513,8 +3513,8 @@ TEST_F(BuiltinBuilderTest, Call_AtomicLoad) {
                                  Member("u", ty.atomic<u32>()),
                                  Member("i", ty.atomic<i32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3577,8 +3577,8 @@ TEST_F(BuiltinBuilderTest, Call_AtomicStore) {
                                  Member("u", ty.atomic<u32>()),
                                  Member("i", ty.atomic<i32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3649,8 +3649,8 @@ TEST_P(Builtin_Builder_AtomicRMW_i32, Test) {
     auto* s = Structure("S", utils::Vector{
                                  Member("v", ty.atomic<i32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3722,8 +3722,8 @@ TEST_P(Builtin_Builder_AtomicRMW_u32, Test) {
     auto* s = Structure("S", utils::Vector{
                                  Member("v", ty.atomic<u32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3797,8 +3797,8 @@ TEST_F(BuiltinBuilderTest, Call_AtomicExchange) {
                                  Member("u", ty.atomic<u32>()),
                                  Member("i", ty.atomic<i32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -3873,8 +3873,8 @@ TEST_F(BuiltinBuilderTest, Call_AtomicCompareExchangeWeak) {
                                  Member("u", ty.atomic<u32>()),
                                  Member("i", ty.atomic<i32>()),
                              });
-    GlobalVar("b", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite, Binding(1_a),
-              Group(2_a));
+    GlobalVar("b", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
+              Binding(1_a), Group(2_a));
 
     Func("a_func", utils::Empty, ty.void_(),
          utils::Vector{
@@ -4153,7 +4153,7 @@ namespace DP4A_builtin_tests {
 TEST_F(BuiltinBuilderTest, Call_Dot4I8Packed) {
     auto* ext =
         create<ast::Enable>(Source{Source::Range{Source::Location{10, 2}, Source::Location{10, 5}}},
-                            ast::Extension::kChromiumExperimentalDp4A);
+                            builtin::Extension::kChromiumExperimentalDp4A);
     AST().AddEnable(ext);
 
     auto* val1 = Var("val1", ty.u32());
@@ -4193,7 +4193,7 @@ OpFunctionEnd
 TEST_F(BuiltinBuilderTest, Call_Dot4U8Packed) {
     auto* ext =
         create<ast::Enable>(Source{Source::Range{Source::Location{10, 2}, Source::Location{10, 5}}},
-                            ast::Extension::kChromiumExperimentalDp4A);
+                            builtin::Extension::kChromiumExperimentalDp4A);
     AST().AddEnable(ext);
 
     auto* val1 = Var("val1", ty.u32());

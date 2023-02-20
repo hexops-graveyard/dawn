@@ -33,53 +33,53 @@ namespace {
 using GlslGeneratorImplTest_Type = TestHelper;
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_Array) {
-    auto* arr = ty.array<bool, 4>();
-    GlobalVar("G", arr, type::AddressSpace::kPrivate);
+    auto arr = ty.array<bool, 4>();
+    ast::Type ty = GlobalVar("G", arr, builtin::AddressSpace::kPrivate)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(arr), type::AddressSpace::kNone,
-                             type::Access::kReadWrite, "ary"))
+    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(ty), builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, "ary"))
         << gen.error();
     EXPECT_EQ(out.str(), "bool ary[4]");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_ArrayOfArray) {
-    auto* arr = ty.array(ty.array<bool, 4>(), 5_u);
-    GlobalVar("G", arr, type::AddressSpace::kPrivate);
+    auto arr = ty.array(ty.array<bool, 4>(), 5_u);
+    ast::Type ty = GlobalVar("G", arr, builtin::AddressSpace::kPrivate)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(arr), type::AddressSpace::kNone,
-                             type::Access::kReadWrite, "ary"))
+    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(ty), builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, "ary"))
         << gen.error();
     EXPECT_EQ(out.str(), "bool ary[5][4]");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_ArrayOfArrayOfArray) {
-    auto* arr = ty.array(ty.array(ty.array<bool, 4>(), 5_u), 6_u);
-    GlobalVar("G", arr, type::AddressSpace::kPrivate);
+    auto arr = ty.array(ty.array(ty.array<bool, 4>(), 5_u), 6_u);
+    ast::Type ty = GlobalVar("G", arr, builtin::AddressSpace::kPrivate)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(arr), type::AddressSpace::kNone,
-                             type::Access::kReadWrite, "ary"))
+    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(ty), builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, "ary"))
         << gen.error();
     EXPECT_EQ(out.str(), "bool ary[6][5][4]");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_Array_WithoutName) {
-    auto* arr = ty.array<bool, 4>();
-    GlobalVar("G", arr, type::AddressSpace::kPrivate);
+    auto arr = ty.array<bool, 4>();
+    ast::Type ty = GlobalVar("G", arr, builtin::AddressSpace::kPrivate)->type;
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(arr), type::AddressSpace::kNone,
-                             type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, program->TypeOf(ty), builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "bool[4]");
 }
@@ -90,7 +90,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Bool) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, bool_, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, bool_, builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "bool");
 }
@@ -101,20 +102,22 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_F32) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, f32, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, f32, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "float");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* f16 = create<type::F16>();
 
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, f16, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, f16, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "float16_t");
 }
@@ -125,7 +128,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_I32) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, i32, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, i32, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "int");
 }
@@ -138,13 +142,14 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Matrix_F32) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, mat2x3, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, mat2x3, builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "mat2x3");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_Matrix_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* f16 = create<type::F16>();
     auto* vec3 = create<type::Vector>(f16, 3u);
@@ -153,7 +158,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Matrix_F16) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, mat2x3, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, mat2x3, builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "f16mat2x3");
 }
@@ -163,7 +169,7 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_StructDecl) {
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
-    GlobalVar("g", ty.Of(s), type::AddressSpace::kPrivate);
+    GlobalVar("g", ty.Of(s), builtin::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -183,13 +189,14 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Struct) {
                                  Member("a", ty.i32()),
                                  Member("b", ty.f32()),
                              });
-    GlobalVar("g", ty.Of(s), type::AddressSpace::kPrivate);
+    GlobalVar("g", ty.Of(s), builtin::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
     auto* sem_s = program->TypeOf(s)->As<sem::Struct>();
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, sem_s, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, sem_s, builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "S");
 }
@@ -199,7 +206,7 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Struct_NameCollision) {
                                  Member("double", ty.i32()),
                                  Member("float", ty.f32()),
                              });
-    GlobalVar("g", ty.Of(s), type::AddressSpace::kPrivate);
+    GlobalVar("g", ty.Of(s), builtin::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -216,7 +223,7 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Struct_WithOffsetAttributes) {
                                  Member("a", ty.i32(), utils::Vector{MemberOffset(0_a)}),
                                  Member("b", ty.f32(), utils::Vector{MemberOffset(8_a)}),
                              });
-    GlobalVar("g", ty.Of(s), type::AddressSpace::kPrivate);
+    GlobalVar("g", ty.Of(s), builtin::AddressSpace::kPrivate);
 
     GeneratorImpl& gen = Build();
 
@@ -237,7 +244,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_U32) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, u32, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, u32, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "uint");
 }
@@ -249,13 +257,14 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Vector_F32) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, vec3, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, vec3, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "vec3");
 }
 
 TEST_F(GlslGeneratorImplTest_Type, EmitType_Vector_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* f16 = create<type::F16>();
     auto* vec3 = create<type::Vector>(f16, 3u);
@@ -263,7 +272,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Vector_F16) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, vec3, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, vec3, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "f16vec3");
 }
@@ -274,7 +284,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitType_Void) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, void_, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(gen.EmitType(out, void_, builtin::AddressSpace::kUndefined,
+                             builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "void");
 }
@@ -285,8 +296,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitSampler) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_FALSE(
-        gen.EmitType(out, sampler, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_FALSE(gen.EmitType(out, sampler, builtin::AddressSpace::kUndefined,
+                              builtin::Access::kReadWrite, ""))
         << gen.error();
 }
 
@@ -296,8 +307,8 @@ TEST_F(GlslGeneratorImplTest_Type, EmitSamplerComparison) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_FALSE(
-        gen.EmitType(out, sampler, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_FALSE(gen.EmitType(out, sampler, builtin::AddressSpace::kUndefined,
+                              builtin::Access::kReadWrite, ""))
         << gen.error();
 }
 
@@ -313,7 +324,7 @@ using GlslDepthTexturesTest = TestParamHelper<GlslDepthTextureData>;
 TEST_P(GlslDepthTexturesTest, Emit) {
     auto params = GetParam();
 
-    auto* t = ty.depth_texture(params.dim);
+    auto t = ty.depth_texture(params.dim);
 
     GlobalVar("tex", t, Binding(1_a), Group(2_a));
 
@@ -341,7 +352,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 using GlslDepthMultisampledTexturesTest = TestHelper;
 TEST_F(GlslDepthMultisampledTexturesTest, Emit) {
-    auto* t = ty.depth_multisampled_texture(type::TextureDimension::k2d);
+    auto t = ty.depth_multisampled_texture(type::TextureDimension::k2d);
 
     GlobalVar("tex", t, Binding(1_a), Group(2_a));
 
@@ -373,7 +384,7 @@ using GlslSampledTexturesTest = TestParamHelper<GlslSampledTextureData>;
 TEST_P(GlslSampledTexturesTest, Emit) {
     auto params = GetParam();
 
-    const ast::Type* datatype = nullptr;
+    ast::Type datatype;
     switch (params.datatype) {
         case TextureDataType::F32:
             datatype = ty.f32();
@@ -385,7 +396,7 @@ TEST_P(GlslSampledTexturesTest, Emit) {
             datatype = ty.i32();
             break;
     }
-    auto* t = ty.sampled_texture(params.dim, datatype);
+    ast::Type t = ty.sampled_texture(params.dim, datatype);
 
     GlobalVar("tex", t, Binding(1_a), Group(2_a));
 
@@ -503,14 +514,15 @@ TEST_F(GlslGeneratorImplTest_Type, EmitMultisampledTexture) {
     GeneratorImpl& gen = Build();
 
     std::stringstream out;
-    ASSERT_TRUE(gen.EmitType(out, s, type::AddressSpace::kNone, type::Access::kReadWrite, ""))
+    ASSERT_TRUE(
+        gen.EmitType(out, s, builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite, ""))
         << gen.error();
     EXPECT_EQ(out.str(), "highp sampler2DMS");
 }
 
 struct GlslStorageTextureData {
     type::TextureDimension dim;
-    type::TexelFormat imgfmt;
+    builtin::TexelFormat imgfmt;
     std::string result;
 };
 inline std::ostream& operator<<(std::ostream& out, GlslStorageTextureData data) {
@@ -520,7 +532,7 @@ using GlslStorageTexturesTest = TestParamHelper<GlslStorageTextureData>;
 TEST_P(GlslStorageTexturesTest, Emit) {
     auto params = GetParam();
 
-    auto* t = ty.storage_texture(params.dim, params.imgfmt, type::Access::kWrite);
+    auto t = ty.storage_texture(params.dim, params.imgfmt, builtin::Access::kWrite);
 
     GlobalVar("tex", t, Binding(1_a), Group(2_a));
 
@@ -541,31 +553,31 @@ INSTANTIATE_TEST_SUITE_P(
     GlslGeneratorImplTest_Type,
     GlslStorageTexturesTest,
     testing::Values(GlslStorageTextureData{type::TextureDimension::k1d,
-                                           type::TexelFormat::kRgba8Unorm, "image1D tex;"},
+                                           builtin::TexelFormat::kRgba8Unorm, "image1D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2d,
-                                           type::TexelFormat::kRgba16Float, "image2D tex;"},
+                                           builtin::TexelFormat::kRgba16Float, "image2D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2dArray,
-                                           type::TexelFormat::kR32Float, "image2DArray tex;"},
+                                           builtin::TexelFormat::kR32Float, "image2DArray tex;"},
                     GlslStorageTextureData{type::TextureDimension::k3d,
-                                           type::TexelFormat::kRg32Float, "image3D tex;"},
+                                           builtin::TexelFormat::kRg32Float, "image3D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k1d,
-                                           type::TexelFormat::kRgba32Float, "image1D tex;"},
+                                           builtin::TexelFormat::kRgba32Float, "image1D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2d,
-                                           type::TexelFormat::kRgba16Uint, "image2D tex;"},
+                                           builtin::TexelFormat::kRgba16Uint, "image2D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2dArray,
-                                           type::TexelFormat::kR32Uint, "image2DArray tex;"},
+                                           builtin::TexelFormat::kR32Uint, "image2DArray tex;"},
                     GlslStorageTextureData{type::TextureDimension::k3d,
-                                           type::TexelFormat::kRg32Uint, "image3D tex;"},
+                                           builtin::TexelFormat::kRg32Uint, "image3D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k1d,
-                                           type::TexelFormat::kRgba32Uint, "image1D tex;"},
+                                           builtin::TexelFormat::kRgba32Uint, "image1D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2d,
-                                           type::TexelFormat::kRgba16Sint, "image2D tex;"},
+                                           builtin::TexelFormat::kRgba16Sint, "image2D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k2dArray,
-                                           type::TexelFormat::kR32Sint, "image2DArray tex;"},
+                                           builtin::TexelFormat::kR32Sint, "image2DArray tex;"},
                     GlslStorageTextureData{type::TextureDimension::k3d,
-                                           type::TexelFormat::kRg32Sint, "image3D tex;"},
+                                           builtin::TexelFormat::kRg32Sint, "image3D tex;"},
                     GlslStorageTextureData{type::TextureDimension::k1d,
-                                           type::TexelFormat::kRgba32Sint, "image1D tex;"}));
+                                           builtin::TexelFormat::kRgba32Sint, "image1D tex;"}));
 
 }  // namespace
 }  // namespace tint::writer::glsl

@@ -68,7 +68,7 @@ static std::ostream& operator<<(std::ostream& o, const Case& c) {
 
 using ResolverConstEvalSwizzleTest = ResolverTestWithParam<Case>;
 TEST_P(ResolverConstEvalSwizzleTest, Test) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
     auto& param = GetParam();
     auto* expr = MemberAccessor(param.input.Expr(*this), param.swizzle);
     auto* a = Const("a", expr);
@@ -279,7 +279,7 @@ TEST_F(ResolverConstEvalTest, Array_vec3_f32_Index_OOB_Low) {
 
 TEST_F(ResolverConstEvalTest, RuntimeArray_vec3_f32_Index_OOB_Low) {
     auto* sb = GlobalVar("sb", ty.array(ty.vec3<f32>()), Group(0_a), Binding(0_a),
-                         type::AddressSpace::kStorage);
+                         builtin::AddressSpace::kStorage);
     auto* expr = IndexAccessor(sb, Expr(Source{{12, 34}}, -2_i));
     WrapInFunction(expr);
 

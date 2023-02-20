@@ -81,7 +81,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
 
     // Create a module-scope flag that indicates whether the current invocation has been discarded.
     auto flag = b.Symbols().New("tint_discarded");
-    b.GlobalVar(flag, type::AddressSpace::kPrivate, b.Expr(false));
+    b.GlobalVar(flag, builtin::AddressSpace::kPrivate, b.Expr(false));
 
     // Replace all discard statements with a statement that marks the invocation as discarded.
     ctx.ReplaceAll([&](const ast::DiscardStatement*) -> const ast::Statement* {
@@ -125,12 +125,12 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
                 // Skip writes to invocation-private address spaces.
                 auto* ref = sem.GetVal(assign->lhs)->Type()->As<type::Reference>();
                 switch (ref->AddressSpace()) {
-                    case type::AddressSpace::kStorage:
+                    case builtin::AddressSpace::kStorage:
                         // Need to mask these.
                         break;
-                    case type::AddressSpace::kFunction:
-                    case type::AddressSpace::kPrivate:
-                    case type::AddressSpace::kOut:
+                    case builtin::AddressSpace::kFunction:
+                    case builtin::AddressSpace::kPrivate:
+                    case builtin::AddressSpace::kOut:
                         // Skip these.
                         return;
                     default:
@@ -177,7 +177,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
                         //   }
                         //   let y = x + tmp;
                         auto result = b.Sym();
-                        const ast::Type* result_ty = nullptr;
+                        ast::Type result_ty;
                         const ast::Statement* masked_call = nullptr;
                         if (builtin->Type() == sem::BuiltinType::kAtomicCompareExchangeWeak) {
                             // Special case for atomicCompareExchangeWeak as we cannot name its

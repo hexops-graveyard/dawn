@@ -104,21 +104,20 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
     auto get_buffer_size_intrinsic = [&](const type::Reference* buffer_type) {
         return utils::GetOrCreate(buffer_size_intrinsics, buffer_type, [&] {
             auto name = b.Sym();
-            auto* type = CreateASTTypeFor(ctx, buffer_type);
+            auto type = CreateASTTypeFor(ctx, buffer_type);
             auto* disable_validation = b.Disable(ast::DisabledValidation::kFunctionParameter);
-            b.AST().AddFunction(b.create<ast::Function>(
-                b.Ident(name),
+            b.Func(
+                name,
                 utils::Vector{
                     b.Param("buffer",
                             b.ty.pointer(type, buffer_type->AddressSpace(), buffer_type->Access()),
                             utils::Vector{disable_validation}),
-                    b.Param("result", b.ty.pointer(b.ty.u32(), type::AddressSpace::kFunction)),
+                    b.Param("result", b.ty.pointer(b.ty.u32(), builtin::AddressSpace::kFunction)),
                 },
                 b.ty.void_(), nullptr,
                 utils::Vector{
                     b.ASTNodes().Create<BufferSizeIntrinsic>(b.ID(), b.AllocateNodeID()),
-                },
-                utils::Empty));
+                });
 
             return name;
         });

@@ -109,10 +109,10 @@ TEST_F(WgslGeneratorImplTest, Emit_Function_WithAttribute_WorkgroupSize_WithIden
 }
 
 TEST_F(WgslGeneratorImplTest, Emit_Function_EntryPoint_Parameters) {
-    auto* vec4 = ty.vec4<f32>();
+    auto vec4 = ty.vec4<f32>();
     auto* coord = Param("coord", vec4,
                         utils::Vector{
-                            Builtin(ast::BuiltinValue::kPosition),
+                            Builtin(builtin::BuiltinValue::kPosition),
                         });
     auto* loc1 = Param("loc1", ty.f32(),
                        utils::Vector{
@@ -179,7 +179,7 @@ TEST_F(WgslGeneratorImplTest, Emit_Function_Multiple_EntryPoint_With_Same_Module
                                     Member("d", ty.f32()),
                                 });
 
-    GlobalVar("data", ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite,
+    GlobalVar("data", ty.Of(s), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
               Binding(0_a), Group(0_a));
 
     {

@@ -103,7 +103,7 @@ TEST_F(ResolverOverrideTest, IdTooLarge) {
 }
 
 TEST_F(ResolverOverrideTest, F16_TemporallyBan) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     Override(Source{{12, 34}}, "a", ty.f16(), Expr(1_h), Id(1_u));
 
@@ -159,7 +159,7 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_ViaOverrideInit) {
 
 TEST_F(ResolverOverrideTest, TransitiveReferences_ViaPrivateInit) {
     auto* a = Override("a", ty.f32());
-    auto* b = GlobalVar("b", type::AddressSpace::kPrivate, ty.f32(), Mul(2_a, "a"));
+    auto* b = GlobalVar("b", builtin::AddressSpace::kPrivate, ty.f32(), Mul(2_a, "a"));
     Override("unused", ty.f32(), Expr(1_f));
     auto* func = Func("foo", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -208,8 +208,9 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_ViaAttribute) {
 TEST_F(ResolverOverrideTest, TransitiveReferences_ViaArraySize) {
     auto* a = Override("a", ty.i32());
     auto* b = Override("b", ty.i32(), Mul(2_a, "a"));
-    auto* arr_ty = ty.array(ty.i32(), Mul(2_a, "b"));
-    auto* arr = GlobalVar("arr", type::AddressSpace::kWorkgroup, arr_ty);
+    auto* arr =
+        GlobalVar("arr", builtin::AddressSpace::kWorkgroup, ty.array(ty.i32(), Mul(2_a, "b")));
+    auto arr_ty = arr->type;
     Override("unused", ty.i32(), Expr(1_a));
     auto* func = Func("foo", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -219,7 +220,7 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_ViaArraySize) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
 
     {
-        auto* r = Sem().TransitivelyReferencedOverrides(Sem().Get(arr_ty));
+        auto* r = Sem().TransitivelyReferencedOverrides(TypeOf(arr_ty));
         ASSERT_NE(r, nullptr);
         auto& refs = *r;
         ASSERT_EQ(refs.Length(), 2u);
@@ -248,8 +249,9 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_ViaArraySize) {
 TEST_F(ResolverOverrideTest, TransitiveReferences_ViaArraySize_Alias) {
     auto* a = Override("a", ty.i32());
     auto* b = Override("b", ty.i32(), Mul(2_a, "a"));
-    auto* arr_ty = Alias("arr_ty", ty.array(ty.i32(), Mul(2_a, "b")));
-    auto* arr = GlobalVar("arr", type::AddressSpace::kWorkgroup, ty("arr_ty"));
+    Alias("arr_ty", ty.array(ty.i32(), Mul(2_a, "b")));
+    auto* arr = GlobalVar("arr", builtin::AddressSpace::kWorkgroup, ty("arr_ty"));
+    auto arr_ty = arr->type;
     Override("unused", ty.i32(), Expr(1_a));
     auto* func = Func("foo", utils::Empty, ty.void_(),
                       utils::Vector{
@@ -259,7 +261,7 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_ViaArraySize_Alias) {
     EXPECT_TRUE(r()->Resolve()) << r()->error();
 
     {
-        auto* r = Sem().TransitivelyReferencedOverrides(Sem().Get<type::Array>(arr_ty->type));
+        auto* r = Sem().TransitivelyReferencedOverrides(TypeOf(arr_ty));
         ASSERT_NE(r, nullptr);
         auto& refs = *r;
         ASSERT_EQ(refs.Length(), 2u);
@@ -294,8 +296,8 @@ TEST_F(ResolverOverrideTest, TransitiveReferences_MultipleEntryPoints) {
     auto* d = Override("d", ty.i32());
     Alias("arr_ty1", ty.array(ty.i32(), Mul("b1", "c1")));
     Alias("arr_ty2", ty.array(ty.i32(), Mul("b2", "c2")));
-    auto* arr1 = GlobalVar("arr1", type::AddressSpace::kWorkgroup, ty("arr_ty1"));
-    auto* arr2 = GlobalVar("arr2", type::AddressSpace::kWorkgroup, ty("arr_ty2"));
+    auto* arr1 = GlobalVar("arr1", builtin::AddressSpace::kWorkgroup, ty("arr_ty1"));
+    auto* arr2 = GlobalVar("arr2", builtin::AddressSpace::kWorkgroup, ty("arr_ty2"));
     Override("unused", ty.i32(), Expr(1_a));
     auto* func1 = Func("foo1", utils::Empty, ty.void_(),
                        utils::Vector{

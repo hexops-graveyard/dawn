@@ -312,7 +312,7 @@ using MaterializeAbstractNumericToConcreteType =
     MaterializeTest<std::tuple<Expectation, Method, Data>>;
 
 TEST_P(MaterializeAbstractNumericToConcreteType, Test) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     const auto& param = GetParam();
     const auto& expectation = std::get<0>(param);
@@ -350,7 +350,7 @@ TEST_P(MaterializeAbstractNumericToConcreteType, Test) {
             break;
         case Method::kStruct:
             Structure("S", utils::Vector{Member("v", target_ty())});
-            WrapInFunction(Call(ty("S"), abstract_expr));
+            WrapInFunction(Call("S", abstract_expr));
             break;
         case Method::kBinaryOp: {
             // Add 0 to ensure no overflow with max float values
@@ -929,7 +929,7 @@ TEST_P(MaterializeAbstractNumericToDefaultType, Test) {
             break;
         }
         case Method::kIndex: {
-            GlobalVar("arr", ty.array<i32, 4>(), type::AddressSpace::kPrivate);
+            GlobalVar("arr", ty.array<i32, 4>(), builtin::AddressSpace::kPrivate);
             WrapInFunction(IndexAccessor("arr", abstract_expr()));
             break;
         }
@@ -1262,7 +1262,7 @@ TEST_F(MaterializeAbstractStructure, Modf_Scalar_DefaultType) {
 
 TEST_F(MaterializeAbstractStructure, Modf_Vector_DefaultType) {
     // var v = modf(vec2(1));
-    auto* call = Call("modf", Call(ty.vec2(nullptr), 1_a));
+    auto* call = Call("modf", Call(ty.vec2<Infer>(), 1_a));
     WrapInFunction(Decl(Var("v", call)));
     ASSERT_TRUE(r()->Resolve()) << r()->error();
     auto* sem = Sem().Get(call);
@@ -1282,7 +1282,7 @@ TEST_F(MaterializeAbstractStructure, Modf_Vector_DefaultType) {
 TEST_F(MaterializeAbstractStructure, Modf_Scalar_ExplicitType) {
     // var v = modf(1_h); // v is __modf_result_f16
     // v = modf(1);       // __modf_result_f16 <- __modf_result_abstract
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
     auto* call = Call("modf", 1_a);
     WrapInFunction(Decl(Var("v", Call("modf", 1_h))),  //
                    Assign("v", call));
@@ -1301,9 +1301,9 @@ TEST_F(MaterializeAbstractStructure, Modf_Scalar_ExplicitType) {
 TEST_F(MaterializeAbstractStructure, Modf_Vector_ExplicitType) {
     // var v = modf(vec2(1_h)); // v is __modf_result_vec2_f16
     // v = modf(vec2(1));       // __modf_result_vec2_f16 <- __modf_result_vec2_abstract
-    Enable(ast::Extension::kF16);
-    auto* call = Call("modf", Call(ty.vec2(nullptr), 1_a));
-    WrapInFunction(Decl(Var("v", Call("modf", Call(ty.vec2(nullptr), 1_h)))), Assign("v", call));
+    Enable(builtin::Extension::kF16);
+    auto* call = Call("modf", Call(ty.vec2<Infer>(), 1_a));
+    WrapInFunction(Decl(Var("v", Call("modf", Call(ty.vec2<Infer>(), 1_h)))), Assign("v", call));
     ASSERT_TRUE(r()->Resolve()) << r()->error();
     auto* sem = Sem().Get(call);
     ASSERT_TRUE(sem->Is<sem::Materialize>());
@@ -1339,7 +1339,7 @@ TEST_F(MaterializeAbstractStructure, Frexp_Scalar_DefaultType) {
 
 TEST_F(MaterializeAbstractStructure, Frexp_Vector_DefaultType) {
     // var v = frexp(vec2(1));
-    auto* call = Call("frexp", Call(ty.vec2(nullptr), 1_a));
+    auto* call = Call("frexp", Call(ty.vec2<Infer>(), 1_a));
     WrapInFunction(Decl(Var("v", call)));
     ASSERT_TRUE(r()->Resolve()) << r()->error();
     auto* sem = Sem().Get(call);
@@ -1363,7 +1363,7 @@ TEST_F(MaterializeAbstractStructure, Frexp_Vector_DefaultType) {
 TEST_F(MaterializeAbstractStructure, Frexp_Scalar_ExplicitType) {
     // var v = frexp(1_h); // v is __frexp_result_f16
     // v = frexp(1);       // __frexp_result_f16 <- __frexp_result_abstract
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
     auto* call = Call("frexp", 1_a);
     WrapInFunction(Decl(Var("v", Call("frexp", 1_h))),  //
                    Assign("v", call));
@@ -1384,9 +1384,9 @@ TEST_F(MaterializeAbstractStructure, Frexp_Scalar_ExplicitType) {
 TEST_F(MaterializeAbstractStructure, Frexp_Vector_ExplicitType) {
     // var v = frexp(vec2(1_h)); // v is __frexp_result_vec2_f16
     // v = frexp(vec2(1));       // __frexp_result_vec2_f16 <- __frexp_result_vec2_abstract
-    Enable(ast::Extension::kF16);
-    auto* call = Call("frexp", Call(ty.vec2(nullptr), 1_a));
-    WrapInFunction(Decl(Var("v", Call("frexp", Call(ty.vec2(nullptr), 1_h)))), Assign("v", call));
+    Enable(builtin::Extension::kF16);
+    auto* call = Call("frexp", Call(ty.vec2<Infer>(), 1_a));
+    WrapInFunction(Decl(Var("v", Call("frexp", Call(ty.vec2<Infer>(), 1_h)))), Assign("v", call));
     ASSERT_TRUE(r()->Resolve()) << r()->error();
     auto* sem = Sem().Get(call);
     ASSERT_TRUE(sem->Is<sem::Materialize>());

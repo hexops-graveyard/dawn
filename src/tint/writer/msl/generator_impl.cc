@@ -204,7 +204,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         // Use the SSBO binding numbers as the indices for the buffer size lookups.
         for (auto* var : in->AST().GlobalVariables()) {
             auto* global = in->Sem().Get<sem::GlobalVariable>(var);
-            if (global && global->AddressSpace() == type::AddressSpace::kStorage) {
+            if (global && global->AddressSpace() == builtin::AddressSpace::kStorage) {
                 array_length_from_uniform_cfg.bindpoint_to_size_index.emplace(
                     global->BindingPoint(), global->BindingPoint().binding);
             }
@@ -270,10 +270,10 @@ GeneratorImpl::~GeneratorImpl() = default;
 bool GeneratorImpl::Generate() {
     if (!CheckSupportedExtensions("MSL", program_->AST(), diagnostics_,
                                   utils::Vector{
-                                      ast::Extension::kChromiumDisableUniformityAnalysis,
-                                      ast::Extension::kChromiumExperimentalFullPtrParameters,
-                                      ast::Extension::kChromiumExperimentalPushConstant,
-                                      ast::Extension::kF16,
+                                      builtin::Extension::kChromiumDisableUniformityAnalysis,
+                                      builtin::Extension::kChromiumExperimentalFullPtrParameters,
+                                      builtin::Extension::kChromiumExperimentalPushConstant,
+                                      builtin::Extension::kF16,
                                   })) {
         return false;
     }
@@ -650,9 +650,8 @@ bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr)
 
 bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
                                      const sem::Call* call,
-                                     const sem::Function*) {
-    auto* ident = call->Declaration()->target.name;
-    out << program_->Symbols().NameFor(ident->symbol) << "(";
+                                     const sem::Function* fn) {
+    out << program_->Symbols().NameFor(fn->Declaration()->name->symbol) << "(";
 
     bool first = true;
     for (auto* arg : call->Arguments()) {
@@ -1906,33 +1905,33 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
     return true;
 }
 
-std::string GeneratorImpl::builtin_to_attribute(ast::BuiltinValue builtin) const {
+std::string GeneratorImpl::builtin_to_attribute(builtin::BuiltinValue builtin) const {
     switch (builtin) {
-        case ast::BuiltinValue::kPosition:
+        case builtin::BuiltinValue::kPosition:
             return "position";
-        case ast::BuiltinValue::kVertexIndex:
+        case builtin::BuiltinValue::kVertexIndex:
             return "vertex_id";
-        case ast::BuiltinValue::kInstanceIndex:
+        case builtin::BuiltinValue::kInstanceIndex:
             return "instance_id";
-        case ast::BuiltinValue::kFrontFacing:
+        case builtin::BuiltinValue::kFrontFacing:
             return "front_facing";
-        case ast::BuiltinValue::kFragDepth:
+        case builtin::BuiltinValue::kFragDepth:
             return "depth(any)";
-        case ast::BuiltinValue::kLocalInvocationId:
+        case builtin::BuiltinValue::kLocalInvocationId:
             return "thread_position_in_threadgroup";
-        case ast::BuiltinValue::kLocalInvocationIndex:
+        case builtin::BuiltinValue::kLocalInvocationIndex:
             return "thread_index_in_threadgroup";
-        case ast::BuiltinValue::kGlobalInvocationId:
+        case builtin::BuiltinValue::kGlobalInvocationId:
             return "thread_position_in_grid";
-        case ast::BuiltinValue::kWorkgroupId:
+        case builtin::BuiltinValue::kWorkgroupId:
             return "threadgroup_position_in_grid";
-        case ast::BuiltinValue::kNumWorkgroups:
+        case builtin::BuiltinValue::kNumWorkgroups:
             return "threadgroups_per_grid";
-        case ast::BuiltinValue::kSampleIndex:
+        case builtin::BuiltinValue::kSampleIndex:
             return "sample_id";
-        case ast::BuiltinValue::kSampleMask:
+        case builtin::BuiltinValue::kSampleMask:
             return "sample_mask";
-        case ast::BuiltinValue::kPointSize:
+        case builtin::BuiltinValue::kPointSize:
             return "point_size";
         default:
             break;
@@ -1940,33 +1939,34 @@ std::string GeneratorImpl::builtin_to_attribute(ast::BuiltinValue builtin) const
     return "";
 }
 
-std::string GeneratorImpl::interpolation_to_attribute(ast::InterpolationType type,
-                                                      ast::InterpolationSampling sampling) const {
+std::string GeneratorImpl::interpolation_to_attribute(
+    builtin::InterpolationType type,
+    builtin::InterpolationSampling sampling) const {
     std::string attr;
     switch (sampling) {
-        case ast::InterpolationSampling::kCenter:
+        case builtin::InterpolationSampling::kCenter:
             attr = "center_";
             break;
-        case ast::InterpolationSampling::kCentroid:
+        case builtin::InterpolationSampling::kCentroid:
             attr = "centroid_";
             break;
-        case ast::InterpolationSampling::kSample:
+        case builtin::InterpolationSampling::kSample:
             attr = "sample_";
             break;
-        case ast::InterpolationSampling::kUndefined:
+        case builtin::InterpolationSampling::kUndefined:
             break;
     }
     switch (type) {
-        case ast::InterpolationType::kPerspective:
+        case builtin::InterpolationType::kPerspective:
             attr += "perspective";
             break;
-        case ast::InterpolationType::kLinear:
+        case builtin::InterpolationType::kLinear:
             attr += "no_perspective";
             break;
-        case ast::InterpolationType::kFlat:
+        case builtin::InterpolationType::kFlat:
             attr += "flat";
             break;
-        case ast::InterpolationType::kUndefined:
+        case builtin::InterpolationType::kUndefined:
             break;
     }
     return attr;
@@ -2049,15 +2049,15 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                 },
                 [&](const type::Pointer* ptr) {
                     switch (ptr->AddressSpace()) {
-                        case type::AddressSpace::kWorkgroup: {
+                        case builtin::AddressSpace::kWorkgroup: {
                             auto& allocations = workgroup_allocations_[func_name];
                             out << " [[threadgroup(" << allocations.size() << ")]]";
                             allocations.push_back(ptr->StoreType()->Size());
                             return true;
                         }
 
-                        case type::AddressSpace::kStorage:
-                        case type::AddressSpace::kUniform: {
+                        case builtin::AddressSpace::kStorage:
+                        case builtin::AddressSpace::kUniform: {
                             uint32_t binding = get_binding_index(param);
                             if (binding == kInvalidBindingIndex) {
                                 return false;
@@ -2097,7 +2097,6 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
                     }
                     return true;
                 });
-
             if (!ok) {
                 return false;
             }
@@ -2612,7 +2611,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
             return true;
         },
         [&](const type::Pointer* ptr) {
-            if (ptr->Access() == type::Access::kRead) {
+            if (ptr->Access() == builtin::Access::kRead) {
                 out << "const ";
             }
             if (!EmitAddressSpace(out, ptr->AddressSpace())) {
@@ -2696,9 +2695,9 @@ bool GeneratorImpl::EmitType(std::ostream& out,
                     }
 
                     std::string access_str;
-                    if (storage->access() == type::Access::kRead) {
+                    if (storage->access() == builtin::Access::kRead) {
                         out << ", access::read";
-                    } else if (storage->access() == type::Access::kWrite) {
+                    } else if (storage->access() == builtin::Access::kWrite) {
                         out << ", access::write";
                     } else {
                         diagnostics_.add_error(diag::System::Writer,
@@ -2762,20 +2761,20 @@ bool GeneratorImpl::EmitTypeAndName(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitAddressSpace(std::ostream& out, type::AddressSpace sc) {
+bool GeneratorImpl::EmitAddressSpace(std::ostream& out, builtin::AddressSpace sc) {
     switch (sc) {
-        case type::AddressSpace::kFunction:
-        case type::AddressSpace::kPrivate:
-        case type::AddressSpace::kHandle:
+        case builtin::AddressSpace::kFunction:
+        case builtin::AddressSpace::kPrivate:
+        case builtin::AddressSpace::kHandle:
             out << "thread";
             return true;
-        case type::AddressSpace::kWorkgroup:
+        case builtin::AddressSpace::kWorkgroup:
             out << "threadgroup";
             return true;
-        case type::AddressSpace::kStorage:
+        case builtin::AddressSpace::kStorage:
             out << "device";
             return true;
-        case type::AddressSpace::kUniform:
+        case builtin::AddressSpace::kUniform:
             out << "constant";
             return true;
         default:
@@ -3027,14 +3026,13 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
     auto out = line();
 
     switch (sem->AddressSpace()) {
-        case type::AddressSpace::kFunction:
-        case type::AddressSpace::kHandle:
-        case type::AddressSpace::kNone:
+        case builtin::AddressSpace::kFunction:
+        case builtin::AddressSpace::kHandle:
             break;
-        case type::AddressSpace::kPrivate:
+        case builtin::AddressSpace::kPrivate:
             out << "thread ";
             break;
-        case type::AddressSpace::kWorkgroup:
+        case builtin::AddressSpace::kWorkgroup:
             out << "threadgroup ";
             break;
         default:
@@ -3056,9 +3054,9 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
         if (!EmitExpression(out, var->initializer)) {
             return false;
         }
-    } else if (sem->AddressSpace() == type::AddressSpace::kPrivate ||
-               sem->AddressSpace() == type::AddressSpace::kFunction ||
-               sem->AddressSpace() == type::AddressSpace::kNone) {
+    } else if (sem->AddressSpace() == builtin::AddressSpace::kPrivate ||
+               sem->AddressSpace() == builtin::AddressSpace::kFunction ||
+               sem->AddressSpace() == builtin::AddressSpace::kUndefined) {
         out << " = ";
         if (!EmitZeroValue(out, type)) {
             return false;
@@ -3076,14 +3074,14 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     auto out = line();
 
     switch (sem->AddressSpace()) {
-        case type::AddressSpace::kFunction:
-        case type::AddressSpace::kHandle:
-        case type::AddressSpace::kNone:
+        case builtin::AddressSpace::kFunction:
+        case builtin::AddressSpace::kHandle:
+        case builtin::AddressSpace::kUndefined:
             break;
-        case type::AddressSpace::kPrivate:
+        case builtin::AddressSpace::kPrivate:
             out << "thread ";
             break;
-        case type::AddressSpace::kWorkgroup:
+        case builtin::AddressSpace::kWorkgroup:
             out << "threadgroup ";
             break;
         default:

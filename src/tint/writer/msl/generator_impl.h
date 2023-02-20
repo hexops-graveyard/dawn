@@ -326,7 +326,7 @@ class GeneratorImpl : public TextGenerator {
     /// @param out the output of the type stream
     /// @param sc the address space to generate
     /// @returns true if the address space is emitted
-    bool EmitAddressSpace(std::ostream& out, type::AddressSpace sc);
+    bool EmitAddressSpace(std::ostream& out, builtin::AddressSpace sc);
     /// Handles generating a struct declaration. If the structure has already been emitted, then
     /// this function will simply return `true` without emitting anything.
     /// @param buffer the text buffer that the type declaration will be written to
@@ -360,14 +360,14 @@ class GeneratorImpl : public TextGenerator {
     /// Converts a builtin to an attribute name
     /// @param builtin the builtin to convert
     /// @returns the string name of the builtin or blank on error
-    std::string builtin_to_attribute(ast::BuiltinValue builtin) const;
+    std::string builtin_to_attribute(builtin::BuiltinValue builtin) const;
 
     /// Converts interpolation attributes to an MSL attribute
     /// @param type the interpolation type
     /// @param sampling the interpolation sampling
     /// @returns the string name of the attribute or blank on error
-    std::string interpolation_to_attribute(ast::InterpolationType type,
-                                           ast::InterpolationSampling sampling) const;
+    std::string interpolation_to_attribute(builtin::InterpolationType type,
+                                           builtin::InterpolationSampling sampling) const;
 
   private:
     // A pair of byte size and alignment `uint32_t`s.
@@ -410,7 +410,7 @@ class GeneratorImpl : public TextGenerator {
     /// Name of atomicCompareExchangeWeak() helper for the given pointer storage
     /// class and struct return type
     using ACEWKeyType =
-        utils::UnorderedKeyWrapper<std::tuple<type::AddressSpace, const sem::Struct*>>;
+        utils::UnorderedKeyWrapper<std::tuple<builtin::AddressSpace, const sem::Struct*>>;
     std::unordered_map<ACEWKeyType, std::string> atomicCompareExchangeWeak_;
 
     /// Unique name of the 'TINT_INVARIANT' preprocessor define.

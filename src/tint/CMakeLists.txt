@@ -84,12 +84,8 @@ list(APPEND TINT_LIB_SRCS
   ast/accessor_expression.h
   ast/alias.cc
   ast/alias.h
-  ast/array.cc
-  ast/array.h
   ast/assignment_statement.cc
   ast/assignment_statement.h
-  ast/atomic.cc
-  ast/atomic.h
   ast/attribute.cc
   ast/attribute.h
   ast/binary_expression.cc
@@ -162,6 +158,8 @@ list(APPEND TINT_LIB_SRCS
   ast/int_literal_expression.h
   ast/internal_attribute.cc
   ast/internal_attribute.h
+  ast/interpolate_attribute.cc
+  ast/interpolate_attribute.h
   ast/invariant_attribute.cc
   ast/invariant_attribute.h
   ast/let.cc
@@ -172,14 +170,10 @@ list(APPEND TINT_LIB_SRCS
   ast/location_attribute.h
   ast/loop_statement.cc
   ast/loop_statement.h
-  ast/matrix.cc
-  ast/matrix.h
   ast/member_accessor_expression.cc
   ast/member_accessor_expression.h
   ast/module.cc
   ast/module.h
-  ast/multisampled_texture.cc
-  ast/multisampled_texture.h
   ast/node_id.h
   ast/node.cc
   ast/node.h
@@ -191,12 +185,8 @@ list(APPEND TINT_LIB_SRCS
   ast/phony_expression.h
   ast/pipeline_stage.cc
   ast/pipeline_stage.h
-  ast/pointer.cc
-  ast/pointer.h
   ast/return_statement.cc
   ast/return_statement.h
-  ast/sampled_texture.cc
-  ast/sampled_texture.h
   ast/stage_attribute.cc
   ast/stage_attribute.h
   ast/statement.cc
@@ -217,15 +207,11 @@ list(APPEND TINT_LIB_SRCS
   ast/switch_statement.h
   ast/templated_identifier.cc
   ast/templated_identifier.h
-  ast/texture.cc
-  ast/texture.h
   ast/traverse_expressions.h
-  ast/type_decl.cc
-  ast/type_decl.h
-  ast/type_name.cc
-  ast/type_name.h
   ast/type.cc
   ast/type.h
+  ast/type_decl.cc
+  ast/type_decl.h
   ast/unary_op_expression.cc
   ast/unary_op_expression.h
   ast/unary_op.cc
@@ -236,8 +222,6 @@ list(APPEND TINT_LIB_SRCS
   ast/variable_decl_statement.h
   ast/variable.cc
   ast/variable.h
-  ast/vector.cc
-  ast/vector.h
   ast/while_statement.cc
   ast/while_statement.h
   ast/workgroup_attribute.cc
@@ -316,6 +300,8 @@ list(APPEND TINT_LIB_SRCS
   sem/expression.h
   sem/for_loop_statement.cc
   sem/for_loop_statement.h
+  sem/function_expression.cc
+  sem/function_expression.h
   sem/function.cc
   sem/if_statement.cc
   sem/if_statement.h
@@ -564,17 +550,20 @@ list(APPEND TINT_LIB_SRCS
   writer/writer.h
 )
 
-tint_generated(ast/builtin_value BENCH TEST)
-tint_generated(ast/diagnostic_control BENCH TEST)
-tint_generated(ast/extension BENCH TEST)
-tint_generated(ast/interpolate_attribute BENCH TEST)
+tint_generated(builtin/access BENCH TEST)
+tint_generated(builtin/address_space BENCH TEST)
+tint_generated(builtin/builtin BENCH TEST)
+tint_generated(builtin/builtin_value BENCH TEST)
+tint_generated(builtin/diagnostic_rule BENCH TEST)
+tint_generated(builtin/diagnostic_severity BENCH TEST)
+tint_generated(builtin/extension BENCH TEST)
+tint_generated(builtin/interpolation_sampling BENCH TEST)
+tint_generated(builtin/interpolation_type BENCH TEST)
+tint_generated(builtin/texel_format BENCH TEST)
+
 tint_generated(resolver/init_conv_intrinsic)
 tint_generated(sem/builtin_type)
 tint_generated(sem/parameter_usage)
-tint_generated(type/access BENCH TEST)
-tint_generated(type/address_space BENCH TEST)
-tint_generated(type/builtin BENCH TEST)
-tint_generated(type/texel_format BENCH TEST)
 
 if(UNIX)
   list(APPEND TINT_LIB_SRCS diagnostic/printer_posix.cc)
@@ -806,9 +795,7 @@ endif()
 if(TINT_BUILD_TESTS)
   list(APPEND TINT_TEST_SRCS
     ast/alias_test.cc
-    ast/array_test.cc
     ast/assignment_statement_test.cc
-    ast/atomic_test.cc
     ast/binary_expression_test.cc
     ast/binding_attribute_test.cc
     ast/bitcast_expression_test.cc
@@ -842,17 +829,14 @@ if(TINT_BUILD_TESTS)
     ast/increment_decrement_statement_test.cc
     ast/index_accessor_expression_test.cc
     ast/int_literal_expression_test.cc
+    ast/interpolate_attribute_test.cc
     ast/invariant_attribute_test.cc
     ast/location_attribute_test.cc
     ast/loop_statement_test.cc
-    ast/matrix_test.cc
     ast/member_accessor_expression_test.cc
     ast/module_test.cc
-    ast/multisampled_texture_test.cc
     ast/phony_expression_test.cc
-    ast/pointer_test.cc
     ast/return_statement_test.cc
-    ast/sampled_texture_test.cc
     ast/stage_attribute_test.cc
     ast/stride_attribute_test.cc
     ast/struct_member_align_attribute_test.cc
@@ -864,13 +848,10 @@ if(TINT_BUILD_TESTS)
     ast/templated_identifier_test.cc
     ast/test_helper.h
     ast/test_helper_test.cc
-    ast/texture_test.cc
     ast/traverse_expressions_test.cc
-    ast/type_name_test.cc
     ast/unary_op_expression_test.cc
     ast/variable_decl_statement_test.cc
     ast/variable_test.cc
-    ast/vector_test.cc
     ast/while_statement_test.cc
     ast/workgroup_attribute_test.cc
     castable_test.cc
@@ -1080,14 +1061,12 @@ if(TINT_BUILD_TESTS)
       reader/wgsl/parser_impl_break_stmt_test.cc
       reader/wgsl/parser_impl_bug_cases_test.cc
       reader/wgsl/parser_impl_call_stmt_test.cc
-      reader/wgsl/parser_impl_callable_test.cc
       reader/wgsl/parser_impl_case_body_test.cc
       reader/wgsl/parser_impl_compound_stmt_test.cc
       reader/wgsl/parser_impl_const_literal_test.cc
       reader/wgsl/parser_impl_continue_stmt_test.cc
       reader/wgsl/parser_impl_continuing_stmt_test.cc
       reader/wgsl/parser_impl_core_lhs_expression_test.cc
-      reader/wgsl/parser_impl_depth_texture_test.cc
       reader/wgsl/parser_impl_diagnostic_attribute_test.cc
       reader/wgsl/parser_impl_diagnostic_control_test.cc
       reader/wgsl/parser_impl_diagnostic_directive_test.cc
@@ -1096,7 +1075,6 @@ if(TINT_BUILD_TESTS)
       reader/wgsl/parser_impl_error_msg_test.cc
       reader/wgsl/parser_impl_error_resync_test.cc
       reader/wgsl/parser_impl_expression_test.cc
-      reader/wgsl/parser_impl_external_texture_test.cc
       reader/wgsl/parser_impl_for_stmt_test.cc
       reader/wgsl/parser_impl_function_decl_test.cc
       reader/wgsl/parser_impl_function_attribute_list_test.cc
@@ -1116,14 +1094,10 @@ if(TINT_BUILD_TESTS)
       reader/wgsl/parser_impl_primary_expression_test.cc
       reader/wgsl/parser_impl_relational_expression_test.cc
       reader/wgsl/parser_impl_reserved_keyword_test.cc
-      reader/wgsl/parser_impl_sampled_texture_test.cc
-      reader/wgsl/parser_impl_sampler_test.cc
       reader/wgsl/parser_impl_shift_expression_test.cc
       reader/wgsl/parser_impl_singular_expression_test.cc
       reader/wgsl/parser_impl_statement_test.cc
       reader/wgsl/parser_impl_statements_test.cc
-      reader/wgsl/parser_impl_address_space_test.cc
-      reader/wgsl/parser_impl_storage_texture_test.cc
       reader/wgsl/parser_impl_struct_body_decl_test.cc
       reader/wgsl/parser_impl_struct_decl_test.cc
       reader/wgsl/parser_impl_struct_attribute_decl_test.cc
@@ -1135,11 +1109,8 @@ if(TINT_BUILD_TESTS)
       reader/wgsl/parser_impl_test.cc
       reader/wgsl/parser_impl_test_helper.cc
       reader/wgsl/parser_impl_test_helper.h
-      reader/wgsl/parser_impl_texel_format_test.cc
-      reader/wgsl/parser_impl_texture_sampler_test.cc
       reader/wgsl/parser_impl_type_alias_test.cc
       reader/wgsl/parser_impl_type_decl_test.cc
-      reader/wgsl/parser_impl_type_decl_without_ident_test.cc
       reader/wgsl/parser_impl_unary_expression_test.cc
       reader/wgsl/parser_impl_variable_decl_test.cc
       reader/wgsl/parser_impl_variable_attribute_list_test.cc
@@ -1147,7 +1118,6 @@ if(TINT_BUILD_TESTS)
       reader/wgsl/parser_impl_variable_ident_decl_test.cc
       reader/wgsl/parser_impl_variable_stmt_test.cc
       reader/wgsl/parser_impl_variable_qualifier_test.cc
-      reader/wgsl/parser_impl_vec_mat_prefix_test.cc
       reader/wgsl/parser_impl_while_stmt_test.cc
       reader/wgsl/token_test.cc
     )

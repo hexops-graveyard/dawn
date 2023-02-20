@@ -34,8 +34,8 @@ namespace {
 
 bool ShouldRun(const Program* program) {
     for (auto* node : program->ASTNodes().Objects()) {
-        if (auto* ty = node->As<ast::Type>()) {
-            if (program->Sem().Get<type::ExternalTexture>(ty)) {
+        if (auto* expr = node->As<ast::Expression>()) {
+            if (Is<type::ExternalTexture>(program->TypeOf(expr))) {
                 return true;
             }
         }
@@ -144,7 +144,7 @@ struct MultiplanarExternalTexture::State {
             b.GlobalVar(syms.plane_1, b.ty.sampled_texture(type::TextureDimension::k2d, b.ty.f32()),
                         b.Group(AInt(bps.plane_1.group)), b.Binding(AInt(bps.plane_1.binding)));
             syms.params = b.Symbols().New("ext_tex_params");
-            b.GlobalVar(syms.params, b.ty("ExternalTextureParams"), type::AddressSpace::kUniform,
+            b.GlobalVar(syms.params, b.ty("ExternalTextureParams"), builtin::AddressSpace::kUniform,
                         b.Group(AInt(bps.params.group)), b.Binding(AInt(bps.params.binding)));
 
             // Replace the original texture_external binding with a texture_2d<f32> binding.
@@ -263,7 +263,8 @@ struct MultiplanarExternalTexture::State {
             b.Member("gammaDecodeParams", b.ty("GammaTransferParams")),
             b.Member("gammaEncodeParams", b.ty("GammaTransferParams")),
             b.Member("gamutConversionMatrix", b.ty.mat3x3<f32>()),
-            b.Member("coordTransformationMatrix", b.ty.mat3x2<f32>())};
+            b.Member("coordTransformationMatrix", b.ty.mat3x2<f32>()),
+        };
 
         params_struct_sym = b.Symbols().New("ExternalTextureParams");
 

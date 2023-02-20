@@ -17,6 +17,7 @@
 #include <string>
 
 #include "dawn/common/Constants.h"
+#include "dawn/common/Platform.h"
 #include "dawn/common/WindowsUtils.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/d3d12/BackendD3D12.h"
@@ -98,6 +99,20 @@ MaybeError Adapter::InitializeImpl() {
         mDriverDescription = std::string("D3D12 driver version ") + mDriverVersion.ToString();
     }
 
+    if (GetInstance()->IsAdapterBlocklistEnabled()) {
+#if DAWN_PLATFORM_IS(I386)
+        DAWN_INVALID_IF(
+            mDeviceInfo.shaderModel >= 60,
+            "D3D12 x86 SM6.0+ adapter is blocklisted. See https://crbug.com/tint/1753.");
+
+        DAWN_INVALID_IF(
+            gpu_info::IsNvidia(mVendorId),
+            "D3D12 NVIDIA x86 adapter is blocklisted. See https://crbug.com/dawn/1196.");
+#elif DAWN_PLATFORM_IS(ARM)
+        return DAWN_VALIDATION_ERROR(
+            "D3D12 on ARM CPU is blocklisted. See https://crbug.com/dawn/884.");
+#endif
+    }
     return {};
 }
 
@@ -144,6 +159,15 @@ void Adapter::InitializeSupportedFeaturesImpl() {
         if (mDeviceInfo.supportsShaderF16) {
             mSupportedFeatures.EnableFeature(Feature::ShaderF16);
         }
+    }
+
+    D3D12_FEATURE_DATA_FORMAT_SUPPORT bgra8unormFormatInfo = {};
+    bgra8unormFormatInfo.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    HRESULT hr = mD3d12Device->CheckFeatureSupport(
+        D3D12_FEATURE_FORMAT_SUPPORT, &bgra8unormFormatInfo, sizeof(bgra8unormFormatInfo));
+    if (SUCCEEDED(hr) &&
+        (bgra8unormFormatInfo.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW)) {
+        mSupportedFeatures.EnableFeature(Feature::BGRA8UnormStorage);
     }
 }
 
@@ -529,6 +553,11 @@ void Adapter::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     if (gpu_info::IsIntelGen9(vendorId, deviceId)) {
         deviceToggles->ForceSet(Toggle::NoWorkaroundDstAlphaBlendDoesNotWork, true);
     }
+
+    // TODO(http://crbug.com/dawn/1216): Actually query D3D12_FEATURE_DATA_D3D12_OPTIONS13.
+    // This is blocked on updating the Windows SDK.
+    deviceToggles->ForceSet(
+        Toggle::D3D12UseTempBufferInTextureToTextureCopyBetweenDifferentDimensions, true);
 }
 
 ResultOrError<Ref<DeviceBase>> Adapter::CreateDeviceImpl(const DeviceDescriptor* descriptor,

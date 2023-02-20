@@ -39,9 +39,9 @@ TEST_F(FlattenBindingsTest, NoBindings) {
 
 TEST_F(FlattenBindingsTest, AlreadyFlat) {
     ProgramBuilder b;
-    b.GlobalVar("a", b.ty.i32(), type::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
-    b.GlobalVar("b", b.ty.i32(), type::AddressSpace::kUniform, b.Group(0_a), b.Binding(1_a));
-    b.GlobalVar("c", b.ty.i32(), type::AddressSpace::kUniform, b.Group(0_a), b.Binding(2_a));
+    b.GlobalVar("a", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
+    b.GlobalVar("b", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(1_a));
+    b.GlobalVar("c", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(2_a));
 
     Program program(std::move(b));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
@@ -52,9 +52,9 @@ TEST_F(FlattenBindingsTest, AlreadyFlat) {
 
 TEST_F(FlattenBindingsTest, NotFlat_SingleNamespace) {
     ProgramBuilder b;
-    b.GlobalVar("a", b.ty.i32(), type::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
-    b.GlobalVar("b", b.ty.i32(), type::AddressSpace::kUniform, b.Group(1_a), b.Binding(1_a));
-    b.GlobalVar("c", b.ty.i32(), type::AddressSpace::kUniform, b.Group(2_a), b.Binding(2_a));
+    b.GlobalVar("a", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
+    b.GlobalVar("b", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(1_a), b.Binding(1_a));
+    b.GlobalVar("c", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(2_a), b.Binding(2_a));
     b.WrapInFunction(b.Expr("a"), b.Expr("b"), b.Expr("c"));
 
     Program program(std::move(b));
@@ -85,9 +85,11 @@ TEST_F(FlattenBindingsTest, NotFlat_MultipleNamespaces) {
     ProgramBuilder b;
 
     const size_t num_buffers = 3;
-    b.GlobalVar("buffer1", b.ty.i32(), type::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
-    b.GlobalVar("buffer2", b.ty.i32(), type::AddressSpace::kStorage, b.Group(1_a), b.Binding(1_a));
-    b.GlobalVar("buffer3", b.ty.i32(), type::AddressSpace::kStorage, type::Access::kRead,
+    b.GlobalVar("buffer1", b.ty.i32(), builtin::AddressSpace::kUniform, b.Group(0_a),
+                b.Binding(0_a));
+    b.GlobalVar("buffer2", b.ty.i32(), builtin::AddressSpace::kStorage, b.Group(1_a),
+                b.Binding(1_a));
+    b.GlobalVar("buffer3", b.ty.i32(), builtin::AddressSpace::kStorage, builtin::Access::kRead,
                 b.Group(2_a), b.Binding(2_a));
 
     const size_t num_samplers = 2;
@@ -102,8 +104,8 @@ TEST_F(FlattenBindingsTest, NotFlat_MultipleNamespaces) {
     b.GlobalVar("texture2", b.ty.multisampled_texture(type::TextureDimension::k2d, b.ty.f32()),
                 b.Group(6_a), b.Binding(6_a));
     b.GlobalVar("texture3",
-                b.ty.storage_texture(type::TextureDimension::k2d, type::TexelFormat::kR32Float,
-                                     type::Access::kWrite),
+                b.ty.storage_texture(type::TextureDimension::k2d, builtin::TexelFormat::kR32Float,
+                                     builtin::Access::kWrite),
                 b.Group(7_a), b.Binding(7_a));
     b.GlobalVar("texture4", b.ty.depth_texture(type::TextureDimension::k2d), b.Group(8_a),
                 b.Binding(8_a));

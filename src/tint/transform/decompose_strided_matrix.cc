@@ -37,9 +37,8 @@ struct MatrixInfo {
     /// The type of the matrix
     const type::Matrix* matrix = nullptr;
 
-    /// @returns a new ast::Array that holds an vector column for each row of the
-    /// matrix.
-    const ast::Array* array(ProgramBuilder* b) const {
+    /// @returns the identifier of an array that holds an vector column for each row of the matrix.
+    ast::Type array(ProgramBuilder* b) const {
         return b->ty.array(b->ty.vec<f32>(matrix->rows()), u32(matrix->columns()),
                            utils::Vector{
                                b->Stride(stride),
@@ -75,8 +74,8 @@ Transform::ApplyResult DecomposeStridedMatrix::Apply(const Program* src,
     for (auto* node : src->ASTNodes().Objects()) {
         if (auto* str = node->As<ast::Struct>()) {
             auto* str_ty = src->Sem().Get(str);
-            if (!str_ty->UsedAs(type::AddressSpace::kUniform) &&
-                !str_ty->UsedAs(type::AddressSpace::kStorage)) {
+            if (!str_ty->UsedAs(builtin::AddressSpace::kUniform) &&
+                !str_ty->UsedAs(builtin::AddressSpace::kStorage)) {
                 continue;
             }
             for (auto* member : str_ty->Members()) {

@@ -50,7 +50,7 @@ struct AccessRoot {
     /// function-scope variable ('function'), or pointer parameter in the source program.
     tint::sem::Variable const* variable = nullptr;
     /// The address space of the variable or pointer type.
-    tint::type::AddressSpace address_space = tint::type::AddressSpace::kUndefined;
+    tint::builtin::AddressSpace address_space = tint::builtin::AddressSpace::kUndefined;
 };
 
 /// Inequality operator for AccessRoot
@@ -203,7 +203,7 @@ struct DirectVariableAccess::State {
     /// @returns the ApplyResult
     ApplyResult Run() {
         if (!ctx.src->Sem().Module()->Extensions().Contains(
-                ast::Extension::kChromiumExperimentalFullPtrParameters)) {
+                builtin::Extension::kChromiumExperimentalFullPtrParameters)) {
             // If the 'chromium_experimental_full_ptr_parameters' extension is not enabled, then
             // there's nothing for this transform to do.
             return SkipTransform;
@@ -450,7 +450,7 @@ struct DirectVariableAccess::State {
                 Switch(
                     variable->Declaration(),
                     [&](const ast::Var*) {
-                        if (variable->AddressSpace() != type::AddressSpace::kHandle) {
+                        if (variable->AddressSpace() != builtin::AddressSpace::kHandle) {
                             // Start a new access chain for the non-handle 'var' access
                             create_new_chain();
                         }
@@ -749,15 +749,15 @@ struct DirectVariableAccess::State {
 
     /// @returns true if the address space @p address_space requires transforming given the
     /// transform's options.
-    bool AddressSpaceRequiresTransform(type::AddressSpace address_space) const {
+    bool AddressSpaceRequiresTransform(builtin::AddressSpace address_space) const {
         switch (address_space) {
-            case type::AddressSpace::kUniform:
-            case type::AddressSpace::kStorage:
-            case type::AddressSpace::kWorkgroup:
+            case builtin::AddressSpace::kUniform:
+            case builtin::AddressSpace::kStorage:
+            case builtin::AddressSpace::kWorkgroup:
                 return true;
-            case type::AddressSpace::kPrivate:
+            case builtin::AddressSpace::kPrivate:
                 return opts.transform_private;
-            case type::AddressSpace::kFunction:
+            case builtin::AddressSpace::kFunction:
                 return opts.transform_function;
             default:
                 return false;
@@ -831,14 +831,14 @@ struct DirectVariableAccess::State {
                     if (auto incoming_shape = variant_sig.Find(param)) {
                         auto& symbols = *variant.ptr_param_symbols.Find(param);
                         if (symbols.base_ptr.IsValid()) {
-                            auto* base_ptr_ty =
+                            auto base_ptr_ty =
                                 b.ty.pointer(CreateASTTypeFor(ctx, incoming_shape->root.type),
                                              incoming_shape->root.address_space);
                             params.Push(b.Param(symbols.base_ptr, base_ptr_ty));
                         }
                         if (symbols.indices.IsValid()) {
                             // Variant has dynamic indices for this variant, replace it.
-                            auto* dyn_idx_arr_type = DynamicIndexArrayType(*incoming_shape);
+                            auto dyn_idx_arr_type = DynamicIndexArrayType(*incoming_shape);
                             params.Push(b.Param(symbols.indices, dyn_idx_arr_type));
                         }
                     } else {
@@ -850,7 +850,7 @@ struct DirectVariableAccess::State {
                 // Build the variant by cloning the source function. The other clone callbacks will
                 // use clone_state->current_variant and clone_state->current_variant_sig to produce
                 // the variant.
-                auto* ret_ty = ctx.Clone(fn->Declaration()->return_type);
+                auto ret_ty = ctx.Clone(fn->Declaration()->return_type);
                 auto body = ctx.Clone(fn->Declaration()->body);
                 auto attrs = ctx.Clone(fn->Declaration()->attributes);
                 auto ret_attrs = ctx.Clone(fn->Declaration()->return_type_attributes);
@@ -912,7 +912,7 @@ struct DirectVariableAccess::State {
                 }
 
                 // Get or create the dynamic indices array.
-                if (auto* dyn_idx_arr_ty = DynamicIndexArrayType(full_indices)) {
+                if (auto dyn_idx_arr_ty = DynamicIndexArrayType(full_indices)) {
                     // Build an array of dynamic indices to pass as the replacement for the pointer.
                     utils::Vector<const ast::Expression*, 8> dyn_idx_args;
                     if (auto* root_param = chain->root.variable->As<sem::Parameter>()) {
@@ -1064,7 +1064,7 @@ struct DirectVariableAccess::State {
 
     /// @returns the type alias used to hold the dynamic indices for @p shape, declaring a new alias
     /// if this is the first call for the given shape.
-    const ast::TypeName* DynamicIndexArrayType(const AccessShape& shape) {
+    ast::Type DynamicIndexArrayType(const AccessShape& shape) {
         auto name = dynamic_index_array_aliases.GetOrCreate(shape, [&] {
             // Count the number of dynamic indices
             uint32_t num_dyn_indices = shape.NumDynamicIndices();
@@ -1075,7 +1075,7 @@ struct DirectVariableAccess::State {
             b.Alias(symbol, b.ty.array(b.ty.u32(), u32(num_dyn_indices)));
             return symbol;
         });
-        return name.IsValid() ? b.ty(name) : nullptr;
+        return name.IsValid() ? b.ty(name) : ast::Type{};
     }
 
     /// @returns a name describing the given shape
@@ -1180,9 +1180,9 @@ struct DirectVariableAccess::State {
         for (auto* param : fn->Parameters()) {
             if (auto* ptr = param->Type()->As<type::Pointer>()) {
                 switch (ptr->AddressSpace()) {
-                    case type::AddressSpace::kUniform:
-                    case type::AddressSpace::kStorage:
-                    case type::AddressSpace::kWorkgroup:
+                    case builtin::AddressSpace::kUniform:
+                    case builtin::AddressSpace::kStorage:
+                    case builtin::AddressSpace::kWorkgroup:
                         return true;
                     default:
                         return false;
@@ -1193,8 +1193,8 @@ struct DirectVariableAccess::State {
     }
 
     /// @returns true if the given address space is 'private' or 'function'.
-    static bool IsPrivateOrFunction(const type::AddressSpace sc) {
-        return sc == type::AddressSpace::kPrivate || sc == type::AddressSpace::kFunction;
+    static bool IsPrivateOrFunction(const builtin::AddressSpace sc) {
+        return sc == builtin::AddressSpace::kPrivate || sc == builtin::AddressSpace::kFunction;
     }
 };
 

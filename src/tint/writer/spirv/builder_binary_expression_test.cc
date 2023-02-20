@@ -248,7 +248,7 @@ INSTANTIATE_TEST_SUITE_P(BuilderTest,
 
 using BinaryArithF16Test = TestParamHelper<BinaryData>;
 TEST_P(BinaryArithF16Test, Scalar) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
 
@@ -273,7 +273,7 @@ TEST_P(BinaryArithF16Test, Scalar) {
 }
 
 TEST_P(BinaryArithF16Test, Vector) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
 
@@ -543,7 +543,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 using BinaryCompareF16Test = TestParamHelper<BinaryData>;
 TEST_P(BinaryCompareF16Test, Scalar) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
 
@@ -569,7 +569,7 @@ TEST_P(BinaryCompareF16Test, Scalar) {
 }
 
 TEST_P(BinaryCompareF16Test, Vector) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto param = GetParam();
 
@@ -629,7 +629,7 @@ TEST_F(BuilderTest, Binary_Multiply_VectorScalar_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_VectorScalar_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
     auto* rhs = Expr(1_h);
@@ -677,7 +677,7 @@ TEST_F(BuilderTest, Binary_Multiply_ScalarVector_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_ScalarVector_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* lhs = Expr(1_h);
     auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
@@ -728,7 +728,7 @@ TEST_F(BuilderTest, Binary_Multiply_MatrixScalar_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_MatrixScalar_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* var = Var("mat", ty.mat3x3<f16>());
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr("mat"), Expr(1_h));
@@ -782,7 +782,7 @@ TEST_F(BuilderTest, Binary_Multiply_ScalarMatrix_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_ScalarMatrix_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* var = Var("mat", ty.mat3x3<f16>());
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr(1_h), Expr("mat"));
@@ -838,7 +838,7 @@ TEST_F(BuilderTest, Binary_Multiply_MatrixVector_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_MatrixVector_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* var = Var("mat", ty.mat3x3<f16>());
     auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
@@ -896,7 +896,7 @@ TEST_F(BuilderTest, Binary_Multiply_VectorMatrix_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_VectorMatrix_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* var = Var("mat", ty.mat3x3<f16>());
     auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
@@ -953,7 +953,7 @@ TEST_F(BuilderTest, Binary_Multiply_MatrixMatrix_F32) {
 }
 
 TEST_F(BuilderTest, Binary_Multiply_MatrixMatrix_F16) {
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* var = Var("mat", ty.mat3x3<f16>());
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr("mat"), Expr("mat"));
@@ -1031,8 +1031,8 @@ OpBranch %17
 }
 
 TEST_F(BuilderTest, Binary_LogicalAnd_WithLoads) {
-    auto* a_var = GlobalVar("a", ty.bool_(), type::AddressSpace::kPrivate, Expr(true));
-    auto* b_var = GlobalVar("b", ty.bool_(), type::AddressSpace::kPrivate, Expr(false));
+    auto* a_var = GlobalVar("a", ty.bool_(), builtin::AddressSpace::kPrivate, Expr(true));
+    auto* b_var = GlobalVar("b", ty.bool_(), builtin::AddressSpace::kPrivate, Expr(false));
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalAnd, Expr("a"), Expr("b"));
 
     WrapInFunction(expr);
@@ -1207,8 +1207,8 @@ OpBranch %17
 }
 
 TEST_F(BuilderTest, Binary_LogicalOr_WithLoads) {
-    auto* a_var = GlobalVar("a", ty.bool_(), type::AddressSpace::kPrivate, Expr(true));
-    auto* b_var = GlobalVar("b", ty.bool_(), type::AddressSpace::kPrivate, Expr(false));
+    auto* a_var = GlobalVar("a", ty.bool_(), builtin::AddressSpace::kPrivate, Expr(true));
+    auto* b_var = GlobalVar("b", ty.bool_(), builtin::AddressSpace::kPrivate, Expr(false));
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kLogicalOr, Expr("a"), Expr("b"));
 
@@ -1251,19 +1251,19 @@ static const ast::Expression* MakeVectorExpr(ProgramBuilder* builder, Type type)
     switch (type) {
         case Type::f32:
             builder->GlobalVar(name, builder->ty.vec3<f32>(), builder->vec3<f32>(1_f, 1_f, 1_f),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::f16:
             builder->GlobalVar(name, builder->ty.vec3<f16>(), builder->vec3<f16>(1_h, 1_h, 1_h),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::i32:
             builder->GlobalVar(name, builder->ty.vec3<i32>(), builder->vec3<i32>(1_i, 1_i, 1_i),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::u32:
             builder->GlobalVar(name, builder->ty.vec3<u32>(), builder->vec3<u32>(1_u, 1_u, 1_u),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
     }
     return builder->Expr(name);
@@ -1273,19 +1273,19 @@ static const ast::Expression* MakeScalarExpr(ProgramBuilder* builder, Type type)
     switch (type) {
         case Type::f32:
             builder->GlobalVar(name, builder->ty.f32(), builder->Expr(1_f),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::f16:
             builder->GlobalVar(name, builder->ty.f16(), builder->Expr(1_h),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::i32:
             builder->GlobalVar(name, builder->ty.i32(), builder->Expr(1_i),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::u32:
             builder->GlobalVar(name, builder->ty.u32(), builder->Expr(1_u),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
     }
     return builder->Expr(name);
@@ -1341,7 +1341,7 @@ TEST_P(BinaryArithVectorScalarTest, VectorScalar) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeVectorExpr(this, param.type);
@@ -1393,7 +1393,7 @@ TEST_P(BinaryArithVectorScalarTest, ScalarVector) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeScalarExpr(this, param.type);
@@ -1473,7 +1473,7 @@ TEST_P(BinaryArithVectorScalarMultiplyTest, VectorScalar) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeVectorExpr(this, param.type);
@@ -1521,7 +1521,7 @@ TEST_P(BinaryArithVectorScalarMultiplyTest, ScalarVector) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeScalarExpr(this, param.type);
@@ -1580,11 +1580,11 @@ static const ast::Expression* MakeMat3x4Expr(ProgramBuilder* builder, Type type)
     switch (type) {
         case Type::f32:
             builder->GlobalVar(name, builder->ty.mat3x4<f32>(), builder->mat3x4<f32>(),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::f16:
             builder->GlobalVar(name, builder->ty.mat3x4<f16>(), builder->mat3x4<f16>(),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
     }
     return builder->Expr(name);
@@ -1594,11 +1594,11 @@ static const ast::Expression* MakeMat4x3Expr(ProgramBuilder* builder, Type type)
     switch (type) {
         case Type::f32:
             builder->GlobalVar(name, builder->ty.mat4x3<f32>(), builder->mat4x3<f32>(),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
             break;
         case Type::f16:
             builder->GlobalVar(name, builder->ty.mat4x3<f16>(), builder->mat4x3<f16>(),
-                               type::AddressSpace::kPrivate);
+                               builtin::AddressSpace::kPrivate);
     }
     return builder->Expr(name);
 }
@@ -1636,7 +1636,7 @@ TEST_P(BinaryArithMatrixMatrix, AddOrSubtract) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeMat3x4Expr(this, param.type);
@@ -1699,7 +1699,7 @@ TEST_P(BinaryArithMatrixMatrixMultiply, Multiply) {
     auto& param = GetParam();
 
     if (param.type == Type::f16) {
-        Enable(ast::Extension::kF16);
+        Enable(builtin::Extension::kF16);
     }
 
     const ast::Expression* lhs = MakeMat3x4Expr(this, param.type);

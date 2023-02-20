@@ -88,13 +88,13 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
         if (auto* var = node->As<ast::Variable>()) {
             for (auto* attr : var->attributes) {
                 if (auto* builtin_attr = attr->As<ast::BuiltinAttribute>()) {
-                    ast::BuiltinValue builtin = builtin_attr->builtin;
-                    if (builtin == ast::BuiltinValue::kVertexIndex) {
+                    builtin::BuiltinValue builtin = builtin_attr->builtin;
+                    if (builtin == builtin::BuiltinValue::kVertexIndex) {
                         auto* sem_var = ctx.src->Sem().Get(var);
                         builtin_vars.emplace(sem_var, kFirstVertexName);
                         has_vertex_or_instance_index = true;
                     }
-                    if (builtin == ast::BuiltinValue::kInstanceIndex) {
+                    if (builtin == builtin::BuiltinValue::kInstanceIndex) {
                         auto* sem_var = ctx.src->Sem().Get(var);
                         builtin_vars.emplace(sem_var, kFirstInstanceName);
                         has_vertex_or_instance_index = true;
@@ -105,13 +105,13 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
         if (auto* member = node->As<ast::StructMember>()) {
             for (auto* attr : member->attributes) {
                 if (auto* builtin_attr = attr->As<ast::BuiltinAttribute>()) {
-                    ast::BuiltinValue builtin = builtin_attr->builtin;
-                    if (builtin == ast::BuiltinValue::kVertexIndex) {
+                    builtin::BuiltinValue builtin = builtin_attr->builtin;
+                    if (builtin == builtin::BuiltinValue::kVertexIndex) {
                         auto* sem_mem = ctx.src->Sem().Get(member);
                         builtin_members.emplace(sem_mem, kFirstVertexName);
                         has_vertex_or_instance_index = true;
                     }
-                    if (builtin == ast::BuiltinValue::kInstanceIndex) {
+                    if (builtin == builtin::BuiltinValue::kInstanceIndex) {
                         auto* sem_mem = ctx.src->Sem().Get(member);
                         builtin_members.emplace(sem_mem, kFirstInstanceName);
                         has_vertex_or_instance_index = true;
@@ -130,7 +130,7 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
 
         // Create a global to hold the uniform buffer
         Symbol buffer_name = b.Sym();
-        b.GlobalVar(buffer_name, b.ty.Of(struct_), type::AddressSpace::kUniform,
+        b.GlobalVar(buffer_name, b.ty.Of(struct_), builtin::AddressSpace::kUniform,
                     utils::Vector{
                         b.Binding(AInt(ub_binding)),
                         b.Group(AInt(ub_group)),

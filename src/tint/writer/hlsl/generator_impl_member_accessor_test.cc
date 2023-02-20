@@ -23,66 +23,66 @@ using namespace tint::number_suffixes;  // NOLINT
 namespace tint::writer::hlsl {
 namespace {
 
-using create_type_func_ptr = const ast::Type* (*)(const ProgramBuilder::TypesBuilder& ty);
+using create_type_func_ptr = ast::Type (*)(const ProgramBuilder::TypesBuilder& ty);
 
-inline const ast::Type* ty_i32(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_i32(const ProgramBuilder::TypesBuilder& ty) {
     return ty.i32();
 }
-inline const ast::Type* ty_u32(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_u32(const ProgramBuilder::TypesBuilder& ty) {
     return ty.u32();
 }
-inline const ast::Type* ty_f32(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_f32(const ProgramBuilder::TypesBuilder& ty) {
     return ty.f32();
 }
-inline const ast::Type* ty_f16(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_f16(const ProgramBuilder::TypesBuilder& ty) {
     return ty.f16();
 }
 template <typename T>
-inline const ast::Type* ty_vec2(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_vec2(const ProgramBuilder::TypesBuilder& ty) {
     return ty.vec2<T>();
 }
 template <typename T>
-inline const ast::Type* ty_vec3(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_vec3(const ProgramBuilder::TypesBuilder& ty) {
     return ty.vec3<T>();
 }
 template <typename T>
-inline const ast::Type* ty_vec4(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_vec4(const ProgramBuilder::TypesBuilder& ty) {
     return ty.vec4<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat2x2(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat2x2(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat2x2<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat2x3(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat2x3(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat2x3<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat2x4(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat2x4(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat2x4<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat3x2(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat3x2(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat3x2<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat3x3(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat3x3(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat3x3<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat3x4(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat3x4(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat3x4<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat4x2(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat4x2(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat4x2<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat4x3(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat4x3(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat4x3<T>();
 }
 template <typename T>
-inline const ast::Type* ty_mat4x4(const ProgramBuilder::TypesBuilder& ty) {
+inline ast::Type ty_mat4x4(const ProgramBuilder::TypesBuilder& ty) {
     return ty.mat4x4<T>();
 }
 
@@ -93,16 +93,16 @@ class HlslGeneratorImplTest_MemberAccessorBase : public BASE {
         ProgramBuilder& b = *this;
         auto* s = b.Structure("Data", members);
 
-        b.GlobalVar("data", b.ty.Of(s), type::AddressSpace::kStorage, type::Access::kReadWrite,
-                    b.Group(1_a), b.Binding(0_a));
+        b.GlobalVar("data", b.ty.Of(s), builtin::AddressSpace::kStorage,
+                    builtin::Access::kReadWrite, b.Group(1_a), b.Binding(0_a));
     }
 
     void SetupUniformBuffer(utils::VectorRef<const ast::StructMember*> members) {
         ProgramBuilder& b = *this;
         auto* s = b.Structure("Data", members);
 
-        b.GlobalVar("data", b.ty.Of(s), type::AddressSpace::kUniform, type::Access::kUndefined,
-                    b.Group(1_a), b.Binding(1_a));
+        b.GlobalVar("data", b.ty.Of(s), builtin::AddressSpace::kUniform,
+                    builtin::Access::kUndefined, b.Group(1_a), b.Binding(1_a));
     }
 
     void SetupFunction(utils::VectorRef<const ast::Statement*> statements) {
@@ -122,7 +122,7 @@ using HlslGeneratorImplTest_MemberAccessorWithParam =
 
 TEST_F(HlslGeneratorImplTest_MemberAccessor, EmitExpression_MemberAccessor) {
     auto* s = Structure("Data", utils::Vector{Member("mem", ty.f32())});
-    GlobalVar("str", ty.Of(s), type::AddressSpace::kPrivate);
+    GlobalVar("str", ty.Of(s), builtin::AddressSpace::kPrivate);
 
     auto* expr = MemberAccessor("str", "mem");
     WrapInFunction(Var("expr", ty.f32(), expr));
@@ -149,10 +149,7 @@ struct TypeCase {
     std::string expected;
 };
 inline std::ostream& operator<<(std::ostream& out, TypeCase c) {
-    ProgramBuilder b;
-    auto* ty = c.member_type(b.ty);
-    out << ty->FriendlyName(b.Symbols());
-    return out;
+    return out << c.expected;
 }
 
 using HlslGeneratorImplTest_MemberAccessor_StorageBufferLoad_ConstantOffset =
@@ -168,7 +165,7 @@ TEST_P(HlslGeneratorImplTest_MemberAccessor_StorageBufferLoad_ConstantOffset, Te
 
     auto p = GetParam();
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     SetupStorageBuffer(utils::Vector{
         Member("a", ty.i32()),
@@ -303,7 +300,7 @@ TEST_P(HlslGeneratorImplTest_MemberAccessor_StorageBufferLoad_DynamicOffset, Tes
 
     auto p = GetParam();
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* inner = Structure("Inner", utils::Vector{
                                          Member("a", ty.i32()),
@@ -442,7 +439,7 @@ TEST_P(HlslGeneratorImplTest_MemberAccessor_UniformBufferLoad_ConstantOffset, Te
 
     auto p = GetParam();
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     SetupUniformBuffer(utils::Vector{
         Member("a", ty.i32()),
@@ -710,7 +707,7 @@ TEST_P(HlslGeneratorImplTest_MemberAccessor_UniformBufferLoad_DynamicOffset, Tes
 
     auto p = GetParam();
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     auto* inner = Structure("Inner", utils::Vector{
                                          Member("a", ty.i32()),
@@ -992,7 +989,7 @@ TEST_P(HlslGeneratorImplTest_MemberAccessor_StorageBufferStore, Test) {
 
     auto p = GetParam();
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     SetupStorageBuffer(utils::Vector{
         Member("a", ty.i32()),
@@ -1195,7 +1192,7 @@ TEST_F(HlslGeneratorImplTest_MemberAccessor, StorageBuffer_Load_Matrix_F16_Singl
     // var<storage> data : Data;
     // data.a[2i][1i];
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     SetupStorageBuffer(utils::Vector{
         Member("z", ty.f16()),
@@ -1261,7 +1258,7 @@ TEST_F(HlslGeneratorImplTest_MemberAccessor, UniformBuffer_Load_Matrix_F16_Singl
     // var<uniform> data : Data;
     // data.a[2i][1i];
 
-    Enable(ast::Extension::kF16);
+    Enable(builtin::Extension::kF16);
 
     SetupUniformBuffer(utils::Vector{
         Member("z", ty.f16()),
