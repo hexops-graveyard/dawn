@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/resolver/dependency_graph.h"
 #include "src/tint/scope_stack.h"
@@ -33,12 +34,13 @@
 #include "src/tint/sem/loop_statement.h"
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/sem/while_statement.h"
 #include "src/tint/utils/block_allocator.h"
 #include "src/tint/utils/map.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/utils/unique_vector.h"
 
 // Set to `1` to dump the uniformity graph for each function in graphviz format.
@@ -1145,11 +1147,12 @@ class UniformityGraph {
                                                    const ast::IdentifierExpression* ident,
                                                    bool load_rule = false) {
         // Helper to check if the entry point attribute of `obj` indicates non-uniformity.
-        auto has_nonuniform_entry_point_attribute = [](auto* obj) {
+        auto has_nonuniform_entry_point_attribute = [&](auto* obj) {
             // Only the num_workgroups and workgroup_id builtins are uniform.
-            if (auto* builtin = ast::GetAttribute<ast::BuiltinAttribute>(obj->attributes)) {
-                if (builtin->builtin == builtin::BuiltinValue::kNumWorkgroups ||
-                    builtin->builtin == builtin::BuiltinValue::kWorkgroupId) {
+            if (auto* builtin_attr = ast::GetAttribute<ast::BuiltinAttribute>(obj->attributes)) {
+                auto builtin = builder_->Sem().Get(builtin_attr)->Value();
+                if (builtin == builtin::BuiltinValue::kNumWorkgroups ||
+                    builtin == builtin::BuiltinValue::kWorkgroupId) {
                     return false;
                 }
             }
@@ -1350,14 +1353,14 @@ class UniformityGraph {
         // To determine if we're dereferencing a partial pointer, unwrap *&
         // chains; if the final expression is an identifier, see if it's a
         // partial pointer. If it's not an identifier, then it must be an
-        // index/accessor expression, and thus a partial pointer.
+        // index/member accessor expression, and thus a partial pointer.
         auto* e = UnwrapIndirectAndAddressOfChain(u);
         if (auto* var_user = sem_.Get<sem::VariableUser>(e)) {
             if (current_function_->partial_ptrs.Contains(var_user->Variable())) {
                 return true;
             }
         } else {
-            TINT_ASSERT(Resolver, e->Is<ast::IndexAccessorExpression>());
+            TINT_ASSERT(Resolver, e->Is<ast::AccessorExpression>());
             return true;
         }
         return false;
@@ -1539,11 +1542,11 @@ class UniformityGraph {
                 function_tag = info->function_tag;
                 func_info = info;
             },
-            [&](const sem::TypeInitializer*) {
+            [&](const sem::ValueConstructor*) {
                 callsite_tag = {CallSiteTag::CallSiteNoRestriction};
                 function_tag = NoRestriction;
             },
-            [&](const sem::TypeConversion*) {
+            [&](const sem::ValueConversion*) {
                 callsite_tag = {CallSiteTag::CallSiteNoRestriction};
                 function_tag = NoRestriction;
             },
@@ -1629,7 +1632,7 @@ class UniformityGraph {
                     current_function_->RequiredToBeUniform(default_severity)->AddEdge(args[i]);
                 } else {
                     // All other builtin function parameters are RequiredToBeUniformForReturnValue,
-                    // as are parameters for type initializers and type conversions.
+                    // as are parameters for value constructors and value conversions.
                     result->AddEdge(args[i]);
                 }
             }
@@ -1776,7 +1779,7 @@ class UniformityGraph {
             non_uniform_source->ast,
             [&](const ast::IdentifierExpression* ident) {
                 auto* var = sem_.GetVal(ident)->UnwrapLoad()->As<sem::VariableUser>()->Variable();
-                std::ostringstream ss;
+                utils::StringStream ss;
                 if (auto* param = var->As<sem::Parameter>()) {
                     auto* func = param->Owner()->As<sem::Function>();
                     ss << param_type(param) << "'" << NameFor(ident) << "' of '" << NameFor(func)
@@ -1789,7 +1792,7 @@ class UniformityGraph {
             },
             [&](const ast::Variable* v) {
                 auto* var = sem_.Get(v);
-                std::ostringstream ss;
+                utils::StringStream ss;
                 ss << "reading from " << var_type(var) << "'" << NameFor(v)
                    << "' may result in a non-uniform value";
                 diagnostics_.add_note(diag::System::Resolver, ss.str(), v->source);
@@ -1806,7 +1809,7 @@ class UniformityGraph {
                     case Node::kFunctionCallArgumentContents: {
                         auto* arg = c->args[non_uniform_source->arg_index];
                         auto* var = sem_.GetVal(arg)->RootIdentifier();
-                        std::ostringstream ss;
+                        utils::StringStream ss;
                         ss << "reading from " << var_type(var) << "'" << NameFor(var)
                            << "' may result in a non-uniform value";
                         diagnostics_.add_note(diag::System::Resolver, ss.str(),
@@ -1893,7 +1896,7 @@ class UniformityGraph {
 
             // Show the place where the non-uniform argument was passed.
             // If this is a builtin, this will be the trigger location for the failure.
-            std::ostringstream ss;
+            utils::StringStream ss;
             ss << "possibly non-uniform value passed" << (is_value ? "" : " via pointer")
                << " here";
             report(call->args[cause->arg_index]->source, ss.str(), /* note */ user_func != nullptr);
@@ -1905,7 +1908,7 @@ class UniformityGraph {
             {
                 // Show a builtin was reachable from this call (which may be the call itself).
                 // This will be the trigger location for the failure.
-                std::ostringstream ss;
+                utils::StringStream ss;
                 ss << "'" << NameFor(builtin_call->target)
                    << "' must only be called from uniform control flow";
                 report(builtin_call->source, ss.str(), /* note */ false);
@@ -1913,7 +1916,7 @@ class UniformityGraph {
 
             if (builtin_call != call) {
                 // The call was to a user function, so show that call too.
-                std::ostringstream ss;
+                utils::StringStream ss;
                 ss << "called ";
                 if (target->As<sem::Function>() != SemCall(builtin_call)->Stmt()->Function()) {
                     ss << "indirectly ";

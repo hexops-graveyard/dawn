@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "src/tint/ast/test_helper.h"
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/reader/wgsl/parser_impl_test_helper.h"
 
 namespace tint::reader::wgsl {
@@ -103,7 +105,7 @@ TEST_F(ParserImplTest, Attribute_Id_MissingValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:4: expected id expression");
+    EXPECT_EQ(p->error(), "1:1: id expects 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Id_MissingInvalid) {
@@ -113,7 +115,7 @@ TEST_F(ParserImplTest, Attribute_Id_MissingInvalid) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:4: expected id expression");
+    EXPECT_EQ(p->error(), "1:4: expected expression for id");
 }
 
 TEST_F(ParserImplTest, Attribute_Location) {
@@ -202,7 +204,7 @@ TEST_F(ParserImplTest, Attribute_Location_MissingValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:10: expected location expression");
+    EXPECT_EQ(p->error(), "1:1: location expects 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Location_MissingInvalid) {
@@ -212,23 +214,14 @@ TEST_F(ParserImplTest, Attribute_Location_MissingInvalid) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:10: expected location expression");
+    EXPECT_EQ(p->error(), "1:10: expected expression for location");
 }
 
-struct BuiltinData {
-    const char* input;
-    builtin::BuiltinValue result;
-};
-inline std::ostream& operator<<(std::ostream& out, BuiltinData data) {
-    out << std::string(data.input);
-    return out;
-}
-
-class BuiltinTest : public ParserImplTestWithParam<BuiltinData> {};
+class BuiltinTest : public ParserImplTestWithParam<builtin::BuiltinValue> {};
 
 TEST_P(BuiltinTest, Attribute_Builtin) {
-    auto params = GetParam();
-    auto p = parser(std::string("builtin(") + params.input + ")");
+    auto str = utils::ToString(GetParam());
+    auto p = parser("builtin(" + str + ")");
 
     auto attr = p->attribute();
     EXPECT_TRUE(attr.matched);
@@ -240,11 +233,11 @@ TEST_P(BuiltinTest, Attribute_Builtin) {
     ASSERT_TRUE(var_attr->Is<ast::BuiltinAttribute>());
 
     auto* builtin = var_attr->As<ast::BuiltinAttribute>();
-    EXPECT_EQ(builtin->builtin, params.result);
+    ast::CheckIdentifier(p->builder().Symbols(), builtin->builtin, str);
 }
 TEST_P(BuiltinTest, Attribute_Builtin_TrailingComma) {
-    auto params = GetParam();
-    auto p = parser(std::string("builtin(") + params.input + ",)");
+    auto str = utils::ToString(GetParam());
+    auto p = parser("builtin(" + str + ",)");
 
     auto attr = p->attribute();
     EXPECT_TRUE(attr.matched);
@@ -256,24 +249,22 @@ TEST_P(BuiltinTest, Attribute_Builtin_TrailingComma) {
     ASSERT_TRUE(var_attr->Is<ast::BuiltinAttribute>());
 
     auto* builtin = var_attr->As<ast::BuiltinAttribute>();
-    EXPECT_EQ(builtin->builtin, params.result);
+    ast::CheckIdentifier(p->builder().Symbols(), builtin->builtin, str);
 }
-INSTANTIATE_TEST_SUITE_P(
-    ParserImplTest,
-    BuiltinTest,
-    testing::Values(BuiltinData{"position", builtin::BuiltinValue::kPosition},
-                    BuiltinData{"vertex_index", builtin::BuiltinValue::kVertexIndex},
-                    BuiltinData{"instance_index", builtin::BuiltinValue::kInstanceIndex},
-                    BuiltinData{"front_facing", builtin::BuiltinValue::kFrontFacing},
-                    BuiltinData{"frag_depth", builtin::BuiltinValue::kFragDepth},
-                    BuiltinData{"local_invocation_id", builtin::BuiltinValue::kLocalInvocationId},
-                    BuiltinData{"local_invocation_index",
-                                builtin::BuiltinValue::kLocalInvocationIndex},
-                    BuiltinData{"global_invocation_id", builtin::BuiltinValue::kGlobalInvocationId},
-                    BuiltinData{"workgroup_id", builtin::BuiltinValue::kWorkgroupId},
-                    BuiltinData{"num_workgroups", builtin::BuiltinValue::kNumWorkgroups},
-                    BuiltinData{"sample_index", builtin::BuiltinValue::kSampleIndex},
-                    BuiltinData{"sample_mask", builtin::BuiltinValue::kSampleMask}));
+INSTANTIATE_TEST_SUITE_P(ParserImplTest,
+                         BuiltinTest,
+                         testing::Values(builtin::BuiltinValue::kPosition,
+                                         builtin::BuiltinValue::kVertexIndex,
+                                         builtin::BuiltinValue::kInstanceIndex,
+                                         builtin::BuiltinValue::kFrontFacing,
+                                         builtin::BuiltinValue::kFragDepth,
+                                         builtin::BuiltinValue::kLocalInvocationId,
+                                         builtin::BuiltinValue::kLocalInvocationIndex,
+                                         builtin::BuiltinValue::kGlobalInvocationId,
+                                         builtin::BuiltinValue::kWorkgroupId,
+                                         builtin::BuiltinValue::kNumWorkgroups,
+                                         builtin::BuiltinValue::kSampleIndex,
+                                         builtin::BuiltinValue::kSampleMask));
 
 TEST_F(ParserImplTest, Attribute_Builtin_MissingLeftParen) {
     auto p = parser("builtin position)");
@@ -302,42 +293,7 @@ TEST_F(ParserImplTest, Attribute_Builtin_MissingValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:9: expected builtin
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
-}
-
-TEST_F(ParserImplTest, Attribute_Builtin_InvalidValue) {
-    auto p = parser("builtin(other_thingy)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:9: expected builtin
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
-}
-
-TEST_F(ParserImplTest, Attribute_Builtin_InvalidValueSuggest) {
-    auto p = parser("builtin(front_face)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:9: expected builtin
-Did you mean 'front_facing'?
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
-}
-
-TEST_F(ParserImplTest, Attribute_Builtin_MissingInvalid) {
-    auto p = parser("builtin(3)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:9: expected builtin
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
+    EXPECT_EQ(p->error(), "1:1: builtin expects 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Flat) {
@@ -352,8 +308,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Flat) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kFlat);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kUndefined);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "flat");
+    EXPECT_EQ(interp->sampling, nullptr);
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Single_TrailingComma) {
@@ -368,8 +324,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Single_TrailingComma) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kFlat);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kUndefined);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "flat");
+    EXPECT_EQ(interp->sampling, nullptr);
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Single_DoubleTrailingComma) {
@@ -379,8 +335,7 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Single_DoubleTrailingComma) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:18: expected interpolation sampling
-Possible values: 'center', 'centroid', 'sample')");
+    EXPECT_EQ(p->error(), "1:18: expected expression for interpolate");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Perspective_Center) {
@@ -395,8 +350,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Perspective_Center) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kPerspective);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kCenter);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "perspective");
+    ast::CheckIdentifier(p->builder().Symbols(), interp->sampling, "center");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Double_TrailingComma) {
@@ -411,8 +366,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Double_TrailingComma) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kPerspective);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kCenter);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "perspective");
+    ast::CheckIdentifier(p->builder().Symbols(), interp->sampling, "center");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Perspective_Centroid) {
@@ -427,8 +382,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Perspective_Centroid) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kPerspective);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kCentroid);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "perspective");
+    ast::CheckIdentifier(p->builder().Symbols(), interp->sampling, "centroid");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_Linear_Sample) {
@@ -443,8 +398,8 @@ TEST_F(ParserImplTest, Attribute_Interpolate_Linear_Sample) {
     ASSERT_TRUE(var_attr->Is<ast::InterpolateAttribute>());
 
     auto* interp = var_attr->As<ast::InterpolateAttribute>();
-    EXPECT_EQ(interp->type, builtin::InterpolationType::kLinear);
-    EXPECT_EQ(interp->sampling, builtin::InterpolationSampling::kSample);
+    ast::CheckIdentifier(p->builder().Symbols(), interp->type, "linear");
+    ast::CheckIdentifier(p->builder().Symbols(), interp->sampling, "sample");
 }
 
 TEST_F(ParserImplTest, Attribute_Interpolate_MissingLeftParen) {
@@ -474,31 +429,7 @@ TEST_F(ParserImplTest, Attribute_Interpolate_MissingFirstValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:13: expected interpolation type
-Possible values: 'flat', 'linear', 'perspective')");
-}
-
-TEST_F(ParserImplTest, Attribute_Interpolate_InvalidFirstValue) {
-    auto p = parser("interpolate(other_thingy)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:13: expected interpolation type
-Possible values: 'flat', 'linear', 'perspective')");
-}
-
-TEST_F(ParserImplTest, Attribute_Interpolate_InvalidSecondValue) {
-    auto p = parser("interpolate(perspective, nope)");
-    auto attr = p->attribute();
-    EXPECT_FALSE(attr.matched);
-    EXPECT_TRUE(attr.errored);
-    EXPECT_EQ(attr.value, nullptr);
-    EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), R"(1:26: expected interpolation sampling
-Did you mean 'sample'?
-Possible values: 'center', 'centroid', 'sample')");
+    EXPECT_EQ(p->error(), "1:1: interpolate expects at least 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Binding) {
@@ -589,7 +520,7 @@ TEST_F(ParserImplTest, Attribute_Binding_MissingValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:9: expected binding expression");
+    EXPECT_EQ(p->error(), "1:1: binding expects 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Binding_MissingInvalid) {
@@ -599,7 +530,7 @@ TEST_F(ParserImplTest, Attribute_Binding_MissingInvalid) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:9: expected binding expression");
+    EXPECT_EQ(p->error(), "1:9: expected expression for binding");
 }
 
 TEST_F(ParserImplTest, Attribute_group) {
@@ -690,7 +621,7 @@ TEST_F(ParserImplTest, Attribute_Group_MissingValue) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:7: expected group expression");
+    EXPECT_EQ(p->error(), "1:1: group expects 1 argument");
 }
 
 TEST_F(ParserImplTest, Attribute_Group_MissingInvalid) {
@@ -700,7 +631,7 @@ TEST_F(ParserImplTest, Attribute_Group_MissingInvalid) {
     EXPECT_TRUE(attr.errored);
     EXPECT_EQ(attr.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:7: expected group expression");
+    EXPECT_EQ(p->error(), "1:7: expected expression for group");
 }
 
 }  // namespace

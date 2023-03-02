@@ -25,6 +25,7 @@
 
 #include "tint/override_id.h"
 
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/inspector/entry_point.h"
 #include "src/tint/inspector/resource_binding.h"
 #include "src/tint/inspector/scalar.h"
@@ -126,16 +127,15 @@ class Inspector {
     /// @param entry_point name of the entry point to get information about.
     /// @returns vector of all of the sampler/texture sampling pairs that are used
     /// by that entry point.
-    utils::VectorRef<sem::SamplerTexturePair> GetSamplerTextureUses(const std::string& entry_point);
+    utils::VectorRef<SamplerTexturePair> GetSamplerTextureUses(const std::string& entry_point);
 
     /// @param entry_point name of the entry point to get information about.
     /// @param placeholder the sampler binding point to use for texture-only
     /// access (e.g., textureLoad)
     /// @returns vector of all of the sampler/texture sampling pairs that are used
     /// by that entry point.
-    std::vector<sem::SamplerTexturePair> GetSamplerTextureUses(
-        const std::string& entry_point,
-        const sem::BindingPoint& placeholder);
+    std::vector<SamplerTexturePair> GetSamplerTextureUses(const std::string& entry_point,
+                                                          const sem::BindingPoint& placeholder);
 
     /// @param entry_point name of the entry point to get information about.
     /// @returns the total size in bytes of all Workgroup storage-class storage
@@ -157,8 +157,7 @@ class Inspector {
   private:
     const Program* program_;
     diag::List diagnostics_;
-    std::unique_ptr<
-        std::unordered_map<std::string, utils::UniqueVector<sem::SamplerTexturePair, 4>>>
+    std::unique_ptr<std::unordered_map<std::string, utils::UniqueVector<SamplerTexturePair, 4>>>
         sampler_targets_;
 
     /// @param name name of the entry point to find
@@ -222,6 +221,13 @@ class Inspector {
 
     /// Constructs |sampler_targets_| if it hasn't already been instantiated.
     void GenerateSamplerTargets();
+
+    /// @param type the type of the parameter or structure member
+    /// @param attributes attributes associated with the parameter or structure member
+    /// @returns the interpolation type and sampling modes for the value
+    std::tuple<InterpolationType, InterpolationSampling> CalculateInterpolationData(
+        const type::Type* type,
+        utils::VectorRef<const ast::Attribute*> attributes) const;
 
     /// For a N-uple of expressions, resolve to the appropriate global resources
     /// and call 'cb'.

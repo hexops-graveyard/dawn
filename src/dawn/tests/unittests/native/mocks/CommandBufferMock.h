@@ -18,13 +18,15 @@
 #include "gmock/gmock.h"
 
 #include "dawn/native/CommandBuffer.h"
-#include "dawn/native/Device.h"
+#include "dawn/tests/unittests/native/mocks/DeviceMock.h"
 
 namespace dawn::native {
 
 class CommandBufferMock : public CommandBufferBase {
   public:
-    explicit CommandBufferMock(DeviceBase* device);
+    CommandBufferMock(DeviceMock* device,
+                      CommandEncoder* encoder,
+                      const CommandBufferDescriptor* descriptor);
     ~CommandBufferMock() override;
 
     MOCK_METHOD(void, DestroyImpl, (), (override));

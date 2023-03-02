@@ -374,6 +374,12 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Use a blit to copy from a depth texture to the nonzero subresource of a depth texture. "
       "Works around an issue where nonzero layers are not written.",
       "https://crbug.com/dawn/1083", ToggleStage::Device}},
+    {Toggle::D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha,
+     {"d3d12_replace_add_with_minus_when_dst_factor_is_zero_and_src_factor_is_dst_alpha",
+      "Replace the blending operation 'Add' with 'Minus' when dstBlendFactor is 'Zero' and "
+      "srcBlendFactor is 'DstAlpha'. Works around an Intel D3D12 driver issue about alpha "
+      "blending.",
+      "https://crbug.com/dawn/1579", ToggleStage::Device}},
     {Toggle::DisallowDeprecatedAPIs,
      {"disallow_deprecated_apis",
       "Disallow all deprecated paths by changing the deprecation warnings to validation error for "
@@ -381,6 +387,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "This toggle is off by default. It is expected to turn on or get removed when WebGPU V1 "
       "ships and stays stable.",
       "https://crbug.com/dawn/1563", ToggleStage::Device}},
+    {Toggle::D3D12PolyfillReflectVec2F32,
+     {"d3d12_polyfill_reflect_vec2_f32",
+      "Polyfill the reflect builtin for vec2<f32> for D3D12. This toggle is enabled by default on "
+      "D3D12 backends using FXC on Intel GPUs due to a driver issue on Intel D3D12 driver.",
+      "https://crbug.com/tint/1798", ToggleStage::Device}},
     {Toggle::NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
      {"no_workaround_sample_mask_becomes_zero_for_all_but_last_color_target",
       "MacOS 12.0+ Intel has a bug where the sample mask is only applied for the last color "
@@ -392,10 +403,10 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "MacOS Intel < Gen9 has a bug where indirect base vertex is not applied for "
       "drawIndexedIndirect. Draws are done as if it is always zero.",
       "https://crbug.com/dawn/966", ToggleStage::Device}},
-    {Toggle::NoWorkaroundDstAlphaBlendDoesNotWork,
-     {"no_workaround_dst_alpha_blend_does_not_work",
-      "Using D3D12_BLEND_DEST_ALPHA as blend factor doesn't work correctly on the D3D12 backend "
-      "using Intel Gen9 or Gen9.5 GPUs.",
+    {Toggle::NoWorkaroundDstAlphaAsSrcBlendFactorForBothColorAndAlphaDoesNotWork,
+     {"no_workaround_dst_alpha_as_src_blend_factor_for_both_color_and_alpha_does_not_work",
+      "Using D3D12_BLEND_DEST_ALPHA as source blend factor for both color and alpha blending "
+      "doesn't work correctly on the D3D12 backend using Intel Gen9 or Gen9.5 GPUs.",
       "https://crbug.com/dawn/1579", ToggleStage::Device}},
     // Comment to separate the }} so it is clearer what to copy-paste to add a toggle.
 }};

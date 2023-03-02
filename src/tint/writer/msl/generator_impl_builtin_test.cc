@@ -14,6 +14,7 @@
 
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/sem/call.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/msl/test_helper.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -61,8 +62,8 @@ const ast::CallExpression* GenerateCall(BuiltinType builtin,
                                         CallParamType type,
                                         ProgramBuilder* builder) {
     std::string name;
-    std::ostringstream str(name);
-    str << builtin;
+    utils::StringStream str;
+    str << name << builtin;
     switch (builtin) {
         case BuiltinType::kAcos:
         case BuiltinType::kAsin:
@@ -374,11 +375,11 @@ TEST_F(MslGeneratorImplTest, Builtin_Call) {
     GlobalVar("param2", ty.vec2<f32>(), builtin::AddressSpace::kPrivate);
 
     auto* call = Call("dot", "param1", "param2");
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "dot(param1, param2)");
 }
@@ -389,7 +390,7 @@ TEST_F(MslGeneratorImplTest, StorageBarrier) {
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "threadgroup_barrier(mem_flags::mem_device)");
 }
@@ -400,7 +401,7 @@ TEST_F(MslGeneratorImplTest, WorkgroupBarrier) {
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "threadgroup_barrier(mem_flags::mem_threadgroup)");
 }
@@ -850,7 +851,7 @@ TEST_F(MslGeneratorImplTest, Degrees_Scalar_f32) {
 using namespace metal;
 
 float tint_degrees(float param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 kernel void test_function() {
@@ -875,7 +876,7 @@ TEST_F(MslGeneratorImplTest, Degrees_Vector_f32) {
 using namespace metal;
 
 float3 tint_degrees(float3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 kernel void test_function() {
@@ -902,7 +903,7 @@ TEST_F(MslGeneratorImplTest, Degrees_Scalar_f16) {
 using namespace metal;
 
 half tint_degrees(half param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 kernel void test_function() {
@@ -929,7 +930,7 @@ TEST_F(MslGeneratorImplTest, Degrees_Vector_f16) {
 using namespace metal;
 
 half3 tint_degrees(half3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 kernel void test_function() {
@@ -954,7 +955,7 @@ TEST_F(MslGeneratorImplTest, Radians_Scalar_f32) {
 using namespace metal;
 
 float tint_radians(float param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 kernel void test_function() {
@@ -979,7 +980,7 @@ TEST_F(MslGeneratorImplTest, Radians_Vector_f32) {
 using namespace metal;
 
 float3 tint_radians(float3 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 kernel void test_function() {
@@ -1006,7 +1007,7 @@ TEST_F(MslGeneratorImplTest, Radians_Scalar_f16) {
 using namespace metal;
 
 half tint_radians(half param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 kernel void test_function() {
@@ -1033,7 +1034,7 @@ TEST_F(MslGeneratorImplTest, Radians_Vector_f16) {
 using namespace metal;
 
 half3 tint_radians(half3 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 kernel void test_function() {
@@ -1048,11 +1049,11 @@ kernel void test_function() {
 TEST_F(MslGeneratorImplTest, Pack2x16Float) {
     auto* call = Call("pack2x16float", "p1");
     GlobalVar("p1", ty.vec2<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "as_type<uint>(half2(p1))");
 }
@@ -1060,18 +1061,18 @@ TEST_F(MslGeneratorImplTest, Pack2x16Float) {
 TEST_F(MslGeneratorImplTest, Unpack2x16Float) {
     auto* call = Call("unpack2x16float", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "float2(as_type<half2>(p1))");
 }
 
 TEST_F(MslGeneratorImplTest, DotI32) {
     GlobalVar("v", ty.vec3<i32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(Call("dot", "v", "v")));
+    WrapInFunction(Decl(Var("r", Call("dot", "v", "v"))));
 
     GeneratorImpl& gen = SanitizeAndBuild();
 
@@ -1086,7 +1087,7 @@ T tint_dot3(vec<T,3> a, vec<T,3> b) {
 }
 kernel void test_function() {
   thread int3 tint_symbol = 0;
-  tint_dot3(tint_symbol, tint_symbol);
+  int r = tint_dot3(tint_symbol, tint_symbol);
   return;
 }
 

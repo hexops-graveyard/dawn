@@ -269,36 +269,45 @@ MaybeError Adapter::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
     //    CBVs/UAVs/SRVs for bind group are a root descriptor table
     //  - (maxBindGroups)
     //    Samplers for each bind group are a root descriptor table
-    //  - (2 * maxDynamicBuffers)
-    //    Each dynamic buffer is a root descriptor
+    //  - dynamic uniform buffers - root descriptor
+    //  - dynamic storage buffers - root descriptor plus a root constant for the size
     //  RESERVED:
     //  - 3 = max of:
     //    - 2 root constants for the baseVertex/baseInstance constants.
     //    - 3 root constants for num workgroups X, Y, Z
-    //  - 4 root constants (kMaxDynamicStorageBuffersPerPipelineLayout) for dynamic storage
-    //  buffer lengths.
-    static constexpr uint32_t kReservedSlots = 7;
+    static constexpr uint32_t kReservedSlots = 3;
+
+    // Costs:
+    //  - bind group: 2 = 1 cbv/uav/srv table + 1 sampler table
+    //  - dynamic uniform buffer: 2 slots for a root descriptor
+    //  - dynamic storage buffer: 3 slots for a root descriptor + root constant
 
     // Available slots after base limits considered.
     uint32_t availableRootSignatureSlots =
-        kMaxRootSignatureSize - kReservedSlots -
-        2 * (limits->v1.maxBindGroups + limits->v1.maxDynamicUniformBuffersPerPipelineLayout +
-             limits->v1.maxDynamicStorageBuffersPerPipelineLayout);
+        kMaxRootSignatureSize - kReservedSlots - 2 * limits->v1.maxBindGroups -
+        2 * limits->v1.maxDynamicUniformBuffersPerPipelineLayout -
+        3 * limits->v1.maxDynamicStorageBuffersPerPipelineLayout;
 
-    // Because we need either:
-    //  - 1 cbv/uav/srv table + 1 sampler table
-    //  - 2 slots for a root descriptor
-    uint32_t availableDynamicBufferOrBindGroup = availableRootSignatureSlots / 2;
+    while (availableRootSignatureSlots >= 2) {
+        // Start by incrementing maxDynamicStorageBuffersPerPipelineLayout since the
+        // default is just 4 and developers likely want more. This scheme currently
+        // gets us to 8.
+        if (availableRootSignatureSlots >= 3) {
+            limits->v1.maxDynamicStorageBuffersPerPipelineLayout += 1;
+            availableRootSignatureSlots -= 3;
+        }
+        if (availableRootSignatureSlots >= 2) {
+            limits->v1.maxBindGroups += 1;
+            availableRootSignatureSlots -= 2;
+        }
+        if (availableRootSignatureSlots >= 2) {
+            limits->v1.maxDynamicUniformBuffersPerPipelineLayout += 1;
+            availableRootSignatureSlots -= 2;
+        }
+    }
 
-    // We can either have a bind group, a dyn uniform buffer or a dyn storage buffer.
-    // Distribute evenly.
-    limits->v1.maxBindGroups += availableDynamicBufferOrBindGroup / 3;
-    limits->v1.maxDynamicUniformBuffersPerPipelineLayout += availableDynamicBufferOrBindGroup / 3;
-    limits->v1.maxDynamicStorageBuffersPerPipelineLayout +=
-        (availableDynamicBufferOrBindGroup - 2 * (availableDynamicBufferOrBindGroup / 3));
-
-    ASSERT(2 * (limits->v1.maxBindGroups + limits->v1.maxDynamicUniformBuffersPerPipelineLayout +
-                limits->v1.maxDynamicStorageBuffersPerPipelineLayout) <=
+    ASSERT(2 * limits->v1.maxBindGroups + 2 * limits->v1.maxDynamicUniformBuffersPerPipelineLayout +
+               3 * limits->v1.maxDynamicStorageBuffersPerPipelineLayout <=
            kMaxRootSignatureSize - kReservedSlots);
 
     // https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/sm5-attributes-numthreads
@@ -536,6 +545,17 @@ void Adapter::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
         }
     }
 
+    // This workaround is needed on Intel Gen12LP GPUs with driver >= 30.0.101.4091.
+    // See http://crbug.com/dawn/1083 for more information.
+    if (gpu_info::IsIntelGen12LP(vendorId, deviceId)) {
+        const gpu_info::DriverVersion kDriverVersion = {30, 0, 101, 4091};
+        if (gpu_info::CompareWindowsDriverVersion(vendorId, GetDriverVersion(), kDriverVersion) !=
+            -1) {
+            deviceToggles->Default(Toggle::UseBlitForDepthTextureToTextureCopyToNonzeroSubresource,
+                                   true);
+        }
+    }
+
     // Currently these workarounds are only needed on Intel Gen9.5 and Gen11 GPUs.
     // See http://crbug.com/1237175 and http://crbug.com/dawn/1628 for more information.
     if ((gpu_info::IsIntelGen9(vendorId, deviceId) && !gpu_info::IsSkylake(deviceId)) ||
@@ -551,13 +571,36 @@ void Adapter::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     // Currently this toggle is only needed on Intel Gen9 and Gen9.5 GPUs.
     // See http://crbug.com/dawn/1579 for more information.
     if (gpu_info::IsIntelGen9(vendorId, deviceId)) {
-        deviceToggles->ForceSet(Toggle::NoWorkaroundDstAlphaBlendDoesNotWork, true);
+        // We can add workaround when the blending operation is "Add", DstFactor is "Zero" and
+        // SrcFactor is "DstAlpha".
+        deviceToggles->ForceSet(
+            Toggle::D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha, true);
+
+        // Unfortunately we cannot add workaround for other cases.
+        deviceToggles->ForceSet(
+            Toggle::NoWorkaroundDstAlphaAsSrcBlendFactorForBothColorAndAlphaDoesNotWork, true);
     }
 
-    // TODO(http://crbug.com/dawn/1216): Actually query D3D12_FEATURE_DATA_D3D12_OPTIONS13.
-    // This is blocked on updating the Windows SDK.
-    deviceToggles->ForceSet(
-        Toggle::D3D12UseTempBufferInTextureToTextureCopyBetweenDifferentDimensions, true);
+#if D3D12_SDK_VERSION >= 602
+    D3D12_FEATURE_DATA_D3D12_OPTIONS13 featureData13;
+    if (FAILED(mD3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS13, &featureData13,
+                                                 sizeof(featureData13)))) {
+        // If the platform doesn't support D3D12_FEATURE_D3D12_OPTIONS13, default initialize the
+        // struct to set all features to false.
+        featureData13 = {};
+    }
+    if (!featureData13.TextureCopyBetweenDimensionsSupported)
+#endif
+    {
+        deviceToggles->ForceSet(
+            Toggle::D3D12UseTempBufferInTextureToTextureCopyBetweenDifferentDimensions, true);
+    }
+
+    // Polyfill reflect builtin for vec2<f32> on Intel device in usng FXC.
+    // See https://crbug.com/tint/1798 for more information.
+    if (gpu_info::IsIntel(vendorId) && !deviceToggles->IsEnabled(Toggle::UseDXC)) {
+        deviceToggles->Default(Toggle::D3D12PolyfillReflectVec2F32, true);
+    }
 }
 
 ResultOrError<Ref<DeviceBase>> Adapter::CreateDeviceImpl(const DeviceDescriptor* descriptor,

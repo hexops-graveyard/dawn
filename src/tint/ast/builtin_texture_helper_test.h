@@ -185,8 +185,8 @@ bool ReturnsVoid(ValidTextureOverload texture_overload);
 
 /// Describes a texture builtin overload
 struct TextureOverloadCase {
-    /// Args is a list of ast::Expression used as arguments to the texture overload case.
-    using Args = utils::Vector<const ast::Expression*, 8>;
+    /// Args is a list of Expression used as arguments to the texture overload case.
+    using Args = utils::Vector<const Expression*, 8>;
 
     /// Constructor for textureSample...() functions
     TextureOverloadCase(ValidTextureOverload,
@@ -196,7 +196,8 @@ struct TextureOverloadCase {
                         type::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<Args(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>,
+                        bool /* returns_value */);
     /// Constructor for textureLoad() functions with non-storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
@@ -204,7 +205,8 @@ struct TextureOverloadCase {
                         type::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<Args(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>,
+                        bool /* returns_value */);
     /// Constructor for textureLoad() with storage textures
     TextureOverloadCase(ValidTextureOverload,
                         const char*,
@@ -213,7 +215,8 @@ struct TextureOverloadCase {
                         type::TextureDimension,
                         TextureDataType,
                         const char*,
-                        std::function<Args(ProgramBuilder*)>);
+                        std::function<Args(ProgramBuilder*)>,
+                        bool /* returns_value */);
     /// Copy constructor
     TextureOverloadCase(const TextureOverloadCase&);
     /// Destructor
@@ -225,15 +228,15 @@ struct TextureOverloadCase {
 
     /// @param builder the AST builder used for the test
     /// @returns the vector component type of the texture function return value
-    ast::Type BuildResultVectorComponentType(ProgramBuilder* builder) const;
+    Type BuildResultVectorComponentType(ProgramBuilder* builder) const;
     /// @param builder the AST builder used for the test
     /// @returns a variable holding the test texture, automatically registered as
     /// a global variable.
-    const ast::Variable* BuildTextureVariable(ProgramBuilder* builder) const;
+    const Variable* BuildTextureVariable(ProgramBuilder* builder) const;
     /// @param builder the AST builder used for the test
     /// @returns a Variable holding the test sampler, automatically registered as
     /// a global variable.
-    const ast::Variable* BuildSamplerVariable(ProgramBuilder* builder) const;
+    const Variable* BuildSamplerVariable(ProgramBuilder* builder) const;
 
     /// The enumerator for this overload
     const ValidTextureOverload overload;
@@ -258,6 +261,8 @@ struct TextureOverloadCase {
     const char* const function;
     /// A function that builds the AST arguments for the overload
     std::function<Args(ProgramBuilder*)> const args;
+    /// True if the function returns a value
+    const bool returns_value;
 };
 
 std::ostream& operator<<(std::ostream& out, const TextureOverloadCase& data);

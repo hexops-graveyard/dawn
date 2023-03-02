@@ -111,10 +111,6 @@ QuerySetBase::QuerySetBase(DeviceBase* device, const QuerySetDescriptor* descrip
     GetObjectTrackingList()->Track(this);
 }
 
-QuerySetBase::QuerySetBase(DeviceBase* device) : ApiObjectBase(device, kLabelNotImplemented) {
-    GetObjectTrackingList()->Track(this);
-}
-
 QuerySetBase::QuerySetBase(DeviceBase* device,
                            const QuerySetDescriptor* descriptor,
                            ObjectBase::ErrorTag tag)
@@ -165,9 +161,6 @@ MaybeError QuerySetBase::ValidateCanUseInSubmitNow() const {
 }
 
 void QuerySetBase::APIDestroy() {
-    if (GetDevice()->ConsumedError(ValidateDestroy())) {
-        return;
-    }
     Destroy();
 }
 
@@ -177,11 +170,6 @@ wgpu::QueryType QuerySetBase::APIGetType() const {
 
 uint32_t QuerySetBase::APIGetCount() const {
     return mQueryCount;
-}
-
-MaybeError QuerySetBase::ValidateDestroy() const {
-    DAWN_TRY(GetDevice()->ValidateObject(this));
-    return {};
 }
 
 }  // namespace dawn::native

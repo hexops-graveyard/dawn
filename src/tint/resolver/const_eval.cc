@@ -29,7 +29,7 @@
 #include "src/tint/number.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/member_accessor_expression.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
 #include "src/tint/type/abstract_float.h"
 #include "src/tint/type/abstract_int.h"
 #include "src/tint/type/array.h"
@@ -44,6 +44,7 @@
 #include "src/tint/utils/bitcast.h"
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/map.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/utils/transform.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -184,8 +185,7 @@ auto ZeroTypeDispatch(const type::Type* type, F&& f) {
 
 template <typename NumberT>
 std::string OverflowErrorMessage(NumberT lhs, const char* op, NumberT rhs) {
-    std::stringstream ss;
-    ss << std::setprecision(20);
+    utils::StringStream ss;
     ss << "'" << lhs.value << " " << op << " " << rhs.value << "' cannot be represented as '"
        << FriendlyName<NumberT>() << "'";
     return ss.str();
@@ -193,8 +193,7 @@ std::string OverflowErrorMessage(NumberT lhs, const char* op, NumberT rhs) {
 
 template <typename VALUE_TY>
 std::string OverflowErrorMessage(VALUE_TY value, std::string_view target_ty) {
-    std::stringstream ss;
-    ss << std::setprecision(20);
+    utils::StringStream ss;
     ss << "value " << value << " cannot be represented as "
        << "'" << target_ty << "'";
     return ss.str();
@@ -202,8 +201,7 @@ std::string OverflowErrorMessage(VALUE_TY value, std::string_view target_ty) {
 
 template <typename NumberT>
 std::string OverflowExpErrorMessage(std::string_view base, NumberT exp) {
-    std::stringstream ss;
-    ss << std::setprecision(20);
+    utils::StringStream ss;
     ss << base << "^" << exp << " cannot be represented as "
        << "'" << FriendlyName<NumberT>() << "'";
     return ss.str();
@@ -714,7 +712,7 @@ utils::Result<NumberT> ConstEval::Mod(const Source& source, NumberT a, NumberT b
         } else {
             AddError(OverflowErrorMessage(a, "%", b), source);
             if (use_runtime_semantics_) {
-                return a;
+                return NumberT{0};
             } else {
                 return utils::Failure;
             }
@@ -727,7 +725,7 @@ utils::Result<NumberT> ConstEval::Mod(const Source& source, NumberT a, NumberT b
             // lhs % 0 is an error
             AddError(OverflowErrorMessage(a, "%", b), source);
             if (use_runtime_semantics_) {
-                return a;
+                return NumberT{0};
             } else {
                 return utils::Failure;
             }
@@ -738,7 +736,7 @@ utils::Result<NumberT> ConstEval::Mod(const Source& source, NumberT a, NumberT b
             if (rhs == -1 && lhs == std::numeric_limits<T>::min()) {
                 AddError(OverflowErrorMessage(a, "%", b), source);
                 if (use_runtime_semantics_) {
-                    return a;
+                    return NumberT{0};
                 } else {
                     return utils::Failure;
                 }
@@ -1228,24 +1226,19 @@ ConstEval::Result ConstEval::Literal(const type::Type* ty, const ast::LiteralExp
         });
 }
 
-ConstEval::Result ConstEval::ArrayOrStructInit(const type::Type* ty,
-                                               utils::VectorRef<const sem::ValueExpression*> args) {
+ConstEval::Result ConstEval::ArrayOrStructCtor(const type::Type* ty,
+                                               utils::VectorRef<const constant::Value*> args) {
     if (args.IsEmpty()) {
         return ZeroValue(ty);
     }
 
     if (args.Length() == 1 && args[0]->Type() == ty) {
-        // Identity initializer.
-        return args[0]->ConstantValue();
+        // Identity constructor.
+        return args[0];
     }
 
-    // Multiple arguments. Must be a type initializer.
-    utils::Vector<const constant::Value*, 4> els;
-    els.Reserve(args.Length());
-    for (auto* arg : args) {
-        els.Push(arg->ConstantValue());
-    }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    // Multiple arguments. Must be a value constructor.
+    return builder.create<constant::Composite>(ty, std::move(args));
 }
 
 ConstEval::Result ConstEval::Conv(const type::Type* ty,

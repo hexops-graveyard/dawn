@@ -1293,25 +1293,32 @@ TEST_F(BindGroupLayoutValidationTest, PerStageLimits) {
         wgpu::BindGroupLayoutEntry otherEntry;
     };
 
+    wgpu::Limits limits = GetSupportedLimits().limits;
+
     std::array<TestInfo, 7> kTestInfos = {
-        TestInfo{kMaxSampledTexturesPerShaderStage, BGLEntryType(wgpu::TextureSampleType::Float),
+        TestInfo{limits.maxSampledTexturesPerShaderStage,
+                 BGLEntryType(wgpu::TextureSampleType::Float),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxSamplersPerShaderStage, BGLEntryType(wgpu::SamplerBindingType::Filtering),
+        TestInfo{limits.maxSamplersPerShaderStage,
+                 BGLEntryType(wgpu::SamplerBindingType::Filtering),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxSamplersPerShaderStage, BGLEntryType(wgpu::SamplerBindingType::Comparison),
+        TestInfo{limits.maxSamplersPerShaderStage,
+                 BGLEntryType(wgpu::SamplerBindingType::Comparison),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxStorageBuffersPerShaderStage, BGLEntryType(wgpu::BufferBindingType::Storage),
+        TestInfo{limits.maxStorageBuffersPerShaderStage,
+                 BGLEntryType(wgpu::BufferBindingType::Storage),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
         TestInfo{
-            kMaxStorageTexturesPerShaderStage,
+            limits.maxStorageTexturesPerShaderStage,
             BGLEntryType(wgpu::StorageTextureAccess::WriteOnly, wgpu::TextureFormat::RGBA8Unorm),
             BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxUniformBuffersPerShaderStage, BGLEntryType(wgpu::BufferBindingType::Uniform),
+        TestInfo{limits.maxUniformBuffersPerShaderStage,
+                 BGLEntryType(wgpu::BufferBindingType::Uniform),
                  BGLEntryType(wgpu::TextureSampleType::Float)},
         // External textures use multiple bindings (3 sampled textures, 1 sampler, 1 uniform buffer)
         // that count towards the per stage binding limits. The number of external textures are
         // currently restricted by the maximum number of sampled textures.
-        TestInfo{kMaxSampledTexturesPerShaderStage / kSampledTexturesPerExternalTexture,
+        TestInfo{limits.maxSampledTexturesPerShaderStage / kSampledTexturesPerExternalTexture,
                  BGLEntryType(&utils::kExternalTextureBindingLayout),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)}};
 
@@ -1388,14 +1395,16 @@ TEST_F(BindGroupLayoutValidationTest, PerStageLimitsWithExternalTexture) {
         wgpu::BindGroupLayoutEntry otherEntry;
     };
 
+    wgpu::Limits limits = GetSupportedLimits().limits;
+
     std::array<TestInfo, 3> kTestInfos = {
-        TestInfo{kMaxSampledTexturesPerShaderStage, kSampledTexturesPerExternalTexture,
+        TestInfo{limits.maxSampledTexturesPerShaderStage, kSampledTexturesPerExternalTexture,
                  BGLEntryType(wgpu::TextureSampleType::Float),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxSamplersPerShaderStage, kSamplersPerExternalTexture,
+        TestInfo{limits.maxSamplersPerShaderStage, kSamplersPerExternalTexture,
                  BGLEntryType(wgpu::SamplerBindingType::Filtering),
                  BGLEntryType(wgpu::BufferBindingType::Uniform)},
-        TestInfo{kMaxUniformBuffersPerShaderStage, kUniformsPerExternalTexture,
+        TestInfo{limits.maxUniformBuffersPerShaderStage, kUniformsPerExternalTexture,
                  BGLEntryType(wgpu::BufferBindingType::Uniform),
                  BGLEntryType(wgpu::TextureSampleType::Float)},
     };
@@ -1476,22 +1485,26 @@ TEST_F(BindGroupLayoutValidationTest, DynamicBufferNumberLimit) {
     std::vector<wgpu::BindGroupLayoutEntry> maxStorageDB;
     std::vector<wgpu::BindGroupLayoutEntry> maxReadonlyStorageDB;
 
+    wgpu::Limits limits = GetSupportedLimits().limits;
+
     // In this test, we use all the same shader stage. Ensure that this does not exceed the
     // per-stage limit.
-    static_assert(kMaxDynamicUniformBuffersPerPipelineLayout <= kMaxUniformBuffersPerShaderStage);
-    static_assert(kMaxDynamicStorageBuffersPerPipelineLayout <= kMaxStorageBuffersPerShaderStage);
+    ASSERT(limits.maxDynamicUniformBuffersPerPipelineLayout <=
+           limits.maxUniformBuffersPerShaderStage);
+    ASSERT(limits.maxDynamicStorageBuffersPerPipelineLayout <=
+           limits.maxStorageBuffersPerShaderStage);
 
-    for (uint32_t i = 0; i < kMaxDynamicUniformBuffersPerPipelineLayout; ++i) {
+    for (uint32_t i = 0; i < limits.maxDynamicUniformBuffersPerPipelineLayout; ++i) {
         maxUniformDB.push_back(utils::BindingLayoutEntryInitializationHelper(
             i, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::Uniform, true));
     }
 
-    for (uint32_t i = 0; i < kMaxDynamicStorageBuffersPerPipelineLayout; ++i) {
+    for (uint32_t i = 0; i < limits.maxDynamicStorageBuffersPerPipelineLayout; ++i) {
         maxStorageDB.push_back(utils::BindingLayoutEntryInitializationHelper(
             i, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::Storage, true));
     }
 
-    for (uint32_t i = 0; i < kMaxDynamicStorageBuffersPerPipelineLayout; ++i) {
+    for (uint32_t i = 0; i < limits.maxDynamicStorageBuffersPerPipelineLayout; ++i) {
         maxReadonlyStorageDB.push_back(utils::BindingLayoutEntryInitializationHelper(
             i, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::ReadOnlyStorage, true));
     }
@@ -1561,7 +1574,7 @@ TEST_F(BindGroupLayoutValidationTest, DynamicBufferNumberLimit) {
     // Check dynamic uniform buffers exceed maximum in bind group layout.
     {
         maxUniformDB.push_back(utils::BindingLayoutEntryInitializationHelper(
-            kMaxDynamicUniformBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
+            limits.maxDynamicUniformBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
             wgpu::BufferBindingType::Uniform, true));
         TestCreateBindGroupLayout(maxUniformDB.data(), maxUniformDB.size(), false);
     }
@@ -1569,7 +1582,7 @@ TEST_F(BindGroupLayoutValidationTest, DynamicBufferNumberLimit) {
     // Check dynamic storage buffers exceed maximum in bind group layout.
     {
         maxStorageDB.push_back(utils::BindingLayoutEntryInitializationHelper(
-            kMaxDynamicStorageBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
+            limits.maxDynamicStorageBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
             wgpu::BufferBindingType::Storage, true));
         TestCreateBindGroupLayout(maxStorageDB.data(), maxStorageDB.size(), false);
     }
@@ -1577,7 +1590,7 @@ TEST_F(BindGroupLayoutValidationTest, DynamicBufferNumberLimit) {
     // Check dynamic readonly storage buffers exceed maximum in bind group layout.
     {
         maxReadonlyStorageDB.push_back(utils::BindingLayoutEntryInitializationHelper(
-            kMaxDynamicStorageBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
+            limits.maxDynamicStorageBuffersPerPipelineLayout, wgpu::ShaderStage::Fragment,
             wgpu::BufferBindingType::ReadOnlyStorage, true));
         TestCreateBindGroupLayout(maxReadonlyStorageDB.data(), maxReadonlyStorageDB.size(), false);
     }
@@ -2472,12 +2485,12 @@ TEST_F(BindGroupLayoutCompatibilityTest, TextureViewDimension) {
     constexpr char kTexture2DShaderFS[] = R"(
         @group(0) @binding(0) var myTexture : texture_2d<f32>;
         @fragment fn main() {
-            textureDimensions(myTexture);
+            _ = textureDimensions(myTexture);
         })";
     constexpr char kTexture2DShaderCS[] = R"(
         @group(0) @binding(0) var myTexture : texture_2d<f32>;
         @compute @workgroup_size(1) fn main() {
-            textureDimensions(myTexture);
+            _ = textureDimensions(myTexture);
         })";
 
     // Render: Test that 2D texture with 2D view dimension works
@@ -2511,12 +2524,12 @@ TEST_F(BindGroupLayoutCompatibilityTest, TextureViewDimension) {
     constexpr char kTexture2DArrayShaderFS[] = R"(
         @group(0) @binding(0) var myTexture : texture_2d_array<f32>;
         @fragment fn main() {
-            textureDimensions(myTexture);
+            _ = textureDimensions(myTexture);
         })";
     constexpr char kTexture2DArrayShaderCS[] = R"(
         @group(0) @binding(0) var myTexture : texture_2d_array<f32>;
         @compute @workgroup_size(1) fn main() {
-            textureDimensions(myTexture);
+            _ = textureDimensions(myTexture);
         })";
 
     // Render: Test that 2D texture array with 2D array view dimension works
@@ -2873,7 +2886,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_2d<f32>;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })");
     }
 
@@ -2887,7 +2900,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_2d<f32>;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })");
     }
 
@@ -2901,7 +2914,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_depth_2d;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })");
     }
 
@@ -2915,7 +2928,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_depth_2d;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })");
     }
 
@@ -2929,7 +2942,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler_comparison;
             @group(0) @binding(1) var myTexture: texture_depth_2d;
             @fragment fn main() {
-                textureSampleCompare(myTexture, mySampler, vec2f(0.0, 0.0), 0.0);
+                _ = textureSampleCompare(myTexture, mySampler, vec2f(0.0, 0.0), 0.0);
             })");
     }
 
@@ -2943,7 +2956,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_2d<f32>;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })"));
     }
 
@@ -2957,7 +2970,7 @@ TEST_F(SamplerTypeBindingTest, ShaderAndBGLMatches) {
             @group(0) @binding(0) var mySampler: sampler;
             @group(0) @binding(1) var myTexture: texture_2d<f32>;
             @fragment fn main() {
-                textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
+                _ = textureSample(myTexture, mySampler, vec2f(0.0, 0.0));
             })");
     }
 }

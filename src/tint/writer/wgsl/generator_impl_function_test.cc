@@ -15,6 +15,7 @@
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/variable_decl_statement.h"
 #include "src/tint/ast/workgroup_attribute.h"
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -81,6 +82,27 @@ TEST_F(WgslGeneratorImplTest, Emit_Function_WithAttribute_WorkgroupSize) {
     EXPECT_EQ(gen.result(), R"(  @compute @workgroup_size(2i, 4i, 6i)
   fn my_func() {
     return;
+  }
+)");
+}
+
+TEST_F(WgslGeneratorImplTest, Emit_Function_WithAttribute_MustUse) {
+    auto* func = Func("my_func", utils::Empty, ty.i32(),
+                      utils::Vector{
+                          Return(1_i),
+                      },
+                      utils::Vector{
+                          MustUse(),
+                      });
+
+    GeneratorImpl& gen = Build();
+
+    gen.increment_indent();
+
+    ASSERT_TRUE(gen.EmitFunction(func));
+    EXPECT_EQ(gen.result(), R"(  @must_use
+  fn my_func() -> i32 {
+    return 1i;
   }
 )");
 }

@@ -581,11 +581,6 @@ TextureBase::~TextureBase() = default;
 
 static constexpr Format kUnusedFormat;
 
-TextureBase::TextureBase(DeviceBase* device, TextureState state)
-    : ApiObjectBase(device, kLabelNotImplemented), mFormat(kUnusedFormat), mState(state) {
-    GetObjectTrackingList()->Track(this);
-}
-
 TextureBase::TextureBase(DeviceBase* device,
                          const TextureDescriptor* descriptor,
                          ObjectBase::ErrorTag tag)
@@ -807,10 +802,6 @@ TextureViewBase* TextureBase::APICreateView(const TextureViewDescriptor* descrip
 }
 
 void TextureBase::APIDestroy() {
-    if (GetDevice()->ConsumedError(ValidateDestroy(), "calling %s.Destroy().", this)) {
-        return;
-    }
-    ASSERT(!IsError());
     Destroy();
 }
 
@@ -845,11 +836,6 @@ wgpu::TextureUsage TextureBase::APIGetUsage() const {
     return mUsage;
 }
 
-MaybeError TextureBase::ValidateDestroy() const {
-    DAWN_TRY(GetDevice()->ValidateObject(this));
-    return {};
-}
-
 // TextureViewBase
 
 TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDescriptor* descriptor)
@@ -860,13 +846,6 @@ TextureViewBase::TextureViewBase(TextureBase* texture, const TextureViewDescript
       mRange({ConvertViewAspect(mFormat, descriptor->aspect),
               {descriptor->baseArrayLayer, descriptor->arrayLayerCount},
               {descriptor->baseMipLevel, descriptor->mipLevelCount}}) {
-    GetObjectTrackingList()->Track(this);
-}
-
-TextureViewBase::TextureViewBase(TextureBase* texture)
-    : ApiObjectBase(texture->GetDevice(), kLabelNotImplemented),
-      mTexture(texture),
-      mFormat(kUnusedFormat) {
     GetObjectTrackingList()->Track(this);
 }
 

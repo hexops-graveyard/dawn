@@ -50,7 +50,7 @@ MaybeError ValidatePipelineLayoutDescriptor(DeviceBase* device,
                                 descriptor->bindGroupLayouts[i]->GetBindingCountInfo());
     }
 
-    DAWN_TRY(ValidateBindingCounts(bindingCounts));
+    DAWN_TRY(ValidateBindingCounts(device->GetLimits(), bindingCounts));
     return {};
 }
 
@@ -71,11 +71,6 @@ PipelineLayoutBase::PipelineLayoutBase(DeviceBase* device,
 PipelineLayoutBase::PipelineLayoutBase(DeviceBase* device,
                                        const PipelineLayoutDescriptor* descriptor)
     : PipelineLayoutBase(device, descriptor, kUntrackedByDevice) {
-    GetObjectTrackingList()->Track(this);
-}
-
-PipelineLayoutBase::PipelineLayoutBase(DeviceBase* device)
-    : ApiObjectBase(device, kLabelNotImplemented) {
     GetObjectTrackingList()->Track(this);
 }
 

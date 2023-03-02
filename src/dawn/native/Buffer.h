@@ -77,7 +77,7 @@ class BufferBase : public ApiObjectBase {
 
     virtual void* GetMappedPointer() = 0;
     void* GetMappedRange(size_t offset, size_t size, bool writable = true);
-    void Unmap();
+    MaybeError Unmap();
 
     // Dawn API
     void APIMapAsync(wgpu::MapMode mode,
@@ -96,8 +96,6 @@ class BufferBase : public ApiObjectBase {
   protected:
     BufferBase(DeviceBase* device, const BufferDescriptor* descriptor);
     BufferBase(DeviceBase* device, const BufferDescriptor* descriptor, ObjectBase::ErrorTag tag);
-    // Constructor used only for mocking and testing.
-    BufferBase(DeviceBase* device, BufferState state);
 
     void DestroyImpl() override;
 

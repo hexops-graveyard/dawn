@@ -164,7 +164,7 @@ fn frag_main(tint_symbol : tint_symbol_1) {
 
 TEST_F(CanonicalizeEntryPointIOTest, Parameter_TypeAlias) {
     auto* src = R"(
-type myf32 = f32;
+alias myf32 = f32;
 
 @fragment
 fn frag_main(@location(1) loc1 : myf32) {
@@ -204,7 +204,7 @@ fn frag_main(@location(1) loc1 : myf32) {
   var x : myf32 = loc1;
 }
 
-type myf32 = f32;
+alias myf32 = f32;
 )";
 
     auto* expect = R"(
@@ -1561,7 +1561,7 @@ struct FragmentInput {
 
 TEST_F(CanonicalizeEntryPointIOTest, Struct_TypeAliases) {
     auto* src = R"(
-type myf32 = f32;
+alias myf32 = f32;
 
 struct FragmentInput {
   @location(0) col1 : myf32,
@@ -1573,9 +1573,9 @@ struct FragmentOutput {
   @location(1) col2 : myf32,
 };
 
-type MyFragmentInput = FragmentInput;
+alias MyFragmentInput = FragmentInput;
 
-type MyFragmentOutput = FragmentOutput;
+alias MyFragmentOutput = FragmentOutput;
 
 fn foo(x : MyFragmentInput) -> myf32 {
   return x.col1;
@@ -1653,9 +1653,9 @@ fn frag_main(inputs : MyFragmentInput) -> MyFragmentOutput {
   return MyFragmentOutput(x, inputs.col2);
 }
 
-type MyFragmentInput = FragmentInput;
+alias MyFragmentInput = FragmentInput;
 
-type MyFragmentOutput = FragmentOutput;
+alias MyFragmentOutput = FragmentOutput;
 
 fn foo(x : MyFragmentInput) -> myf32 {
   return x.col1;
@@ -1671,7 +1671,7 @@ struct FragmentOutput {
   @location(1) col2 : myf32,
 };
 
-type myf32 = f32;
+alias myf32 = f32;
 )";
 
     auto* expect = R"(
@@ -3163,7 +3163,7 @@ fn vert_main() -> @builtin(position) vec4<f32> {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_address_space) var<__out> value : vec4<f32>;
 
-@builtin(point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
+@builtin(__point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
 
 fn vert_main_inner() -> vec4<f32> {
   return vec4<f32>();
@@ -3197,7 +3197,7 @@ fn vert_main() -> @builtin(position) vec4<f32> {
 struct tint_symbol {
   @builtin(position)
   value : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size : f32,
 }
 
@@ -3238,7 +3238,7 @@ fn vert_main() -> VertOut {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_address_space) var<__out> pos_1 : vec4<f32>;
 
-@builtin(point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
+@builtin(__point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
 
 struct VertOut {
   pos : vec4<f32>,
@@ -3279,7 +3279,7 @@ struct VertOut {
     auto* expect = R"(
 @builtin(position) @internal(disable_validation__ignore_address_space) var<__out> pos_1 : vec4<f32>;
 
-@builtin(point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
+@builtin(__point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size : f32;
 
 fn vert_main_inner() -> VertOut {
   return VertOut();
@@ -3325,7 +3325,7 @@ struct VertOut {
 struct tint_symbol {
   @builtin(position)
   pos : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size : f32,
 }
 
@@ -3367,7 +3367,7 @@ struct VertOut {
 struct tint_symbol {
   @builtin(position)
   pos : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size : f32,
 }
 
@@ -3432,7 +3432,7 @@ fn vert_main(collide : VertIn1, collide_1 : VertIn2) -> VertOut {
 
 @builtin(position) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_1_1 : vec4<f32>;
 
-@builtin(point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_4 : f32;
+@builtin(__point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_4 : f32;
 
 var<private> vertex_point_size : f32;
 
@@ -3510,7 +3510,7 @@ struct VertOut {
 
 @builtin(position) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_1_1 : vec4<f32>;
 
-@builtin(point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_4 : f32;
+@builtin(__point_size) @internal(disable_validation__ignore_address_space) var<__out> vertex_point_size_4 : f32;
 
 fn vert_main_inner(collide : VertIn1, collide_1 : VertIn2) -> VertOut {
   let x = (collide.collide + collide_1.collide);
@@ -3601,7 +3601,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3664,7 +3664,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3753,7 +3753,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size_2 : f32,
 }
 
@@ -3816,7 +3816,7 @@ struct tint_symbol_2 {
   vertex_point_size : vec4<f32>,
   @builtin(position)
   vertex_point_size_1 : vec4<f32>,
-  @builtin(point_size)
+  @builtin(__point_size)
   vertex_point_size_2 : f32,
 }
 

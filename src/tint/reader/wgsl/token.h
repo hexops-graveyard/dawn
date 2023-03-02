@@ -193,16 +193,14 @@ class Token {
         kOverride,
         /// A 'return'
         kReturn,
-        /// A 'static_assert'
-        kStaticAssert,
+        /// A 'requires'
+        kRequires,
         /// A 'struct'
         kStruct,
         /// A 'switch'
         kSwitch,
         /// A 'true'
         kTrue,
-        /// A 'type'
-        kType,
         /// A 'var'
         kVar,
         /// A 'while'

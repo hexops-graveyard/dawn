@@ -16,10 +16,14 @@
 
 namespace dawn::native {
 
-PipelineLayoutMock::PipelineLayoutMock(DeviceBase* device) : PipelineLayoutBase(device) {
+PipelineLayoutMock::PipelineLayoutMock(DeviceMock* device,
+                                       const PipelineLayoutDescriptor* descriptor)
+    : PipelineLayoutBase(device, descriptor) {
     ON_CALL(*this, DestroyImpl).WillByDefault([this]() {
         this->PipelineLayoutBase::DestroyImpl();
     });
+
+    SetContentHash(ComputeContentHash());
 }
 
 PipelineLayoutMock::~PipelineLayoutMock() = default;

@@ -16,6 +16,7 @@
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/sem/call.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/hlsl/test_helper.h"
 
 using ::testing::HasSubstr;
@@ -64,8 +65,8 @@ const ast::CallExpression* GenerateCall(BuiltinType builtin,
                                         CallParamType type,
                                         ProgramBuilder* builder) {
     std::string name;
-    std::ostringstream str(name);
-    str << builtin;
+    utils::StringStream str;
+    str << name << builtin;
     switch (builtin) {
         case BuiltinType::kAcos:
         case BuiltinType::kAsin:
@@ -215,7 +216,7 @@ TEST_P(HlslBuiltinTest, Emit) {
     ASSERT_NE(nullptr, call) << "Unhandled builtin";
     Func("func", utils::Empty, ty.void_(),
          utils::Vector{
-             CallStmt(call),
+             Assign(Phony(), call),
          },
          utils::Vector{create<ast::StageAttribute>(ast::PipelineStage::kFragment)});
 
@@ -342,12 +343,12 @@ TEST_F(HlslGeneratorImplTest_Builtin, Builtin_Call) {
     GlobalVar("param1", ty.vec3<f32>(), builtin::AddressSpace::kPrivate);
     GlobalVar("param2", ty.vec3<f32>(), builtin::AddressSpace::kPrivate);
 
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
 
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "dot(param1, param2)");
 }
@@ -356,11 +357,11 @@ TEST_F(HlslGeneratorImplTest_Builtin, Select_Scalar) {
     GlobalVar("a", Expr(1_f), builtin::AddressSpace::kPrivate);
     GlobalVar("b", Expr(2_f), builtin::AddressSpace::kPrivate);
     auto* call = Call("select", "a", "b", true);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "(true ? b : a)");
 }
@@ -369,11 +370,11 @@ TEST_F(HlslGeneratorImplTest_Builtin, Select_Vector) {
     GlobalVar("a", vec2<i32>(1_i, 2_i), builtin::AddressSpace::kPrivate);
     GlobalVar("b", vec2<i32>(3_i, 4_i), builtin::AddressSpace::kPrivate);
     auto* call = Call("select", "a", "b", vec2<bool>(true, false));
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     gen.increment_indent();
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
     EXPECT_EQ(out.str(), "(bool2(true, false) ? b : a)");
 }
@@ -811,7 +812,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Degrees_Scalar_f32) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float tint_degrees(float param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 [numthreads(1, 1, 1)]
@@ -832,7 +833,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Degrees_Vector_f32) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float3 tint_degrees(float3 param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 [numthreads(1, 1, 1)]
@@ -855,7 +856,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Degrees_Scalar_f16) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float16_t tint_degrees(float16_t param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 [numthreads(1, 1, 1)]
@@ -878,7 +879,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Degrees_Vector_f16) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(vector<float16_t, 3> tint_degrees(vector<float16_t, 3> param_0) {
-  return param_0 * 57.295779513082322865;
+  return param_0 * 57.295779513082323;
 }
 
 [numthreads(1, 1, 1)]
@@ -899,7 +900,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Radians_Scalar_f32) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float tint_radians(float param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 [numthreads(1, 1, 1)]
@@ -920,7 +921,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Radians_Vector_f32) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float3 tint_radians(float3 param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 [numthreads(1, 1, 1)]
@@ -943,7 +944,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Radians_Scalar_f16) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(float16_t tint_radians(float16_t param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 [numthreads(1, 1, 1)]
@@ -966,7 +967,7 @@ TEST_F(HlslGeneratorImplTest_Builtin, Radians_Vector_f16) {
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
     EXPECT_EQ(gen.result(), R"(vector<float16_t, 3> tint_radians(vector<float16_t, 3> param_0) {
-  return param_0 * 0.017453292519943295474;
+  return param_0 * 0.017453292519943295;
 }
 
 [numthreads(1, 1, 1)]
@@ -1087,7 +1088,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Pack4x8Snorm) {
     auto* call = Call("pack4x8snorm", "p1");
     GlobalVar("p1", ty.vec4<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1100,7 +1101,7 @@ static float4 p1 = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_pack4x8snorm(p1);
+  uint r = tint_pack4x8snorm(p1);
   return;
 }
 )");
@@ -1109,7 +1110,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Pack4x8Unorm) {
     auto* call = Call("pack4x8unorm", "p1");
     GlobalVar("p1", ty.vec4<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1122,7 +1123,7 @@ static float4 p1 = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_pack4x8unorm(p1);
+  uint r = tint_pack4x8unorm(p1);
   return;
 }
 )");
@@ -1131,7 +1132,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Pack2x16Snorm) {
     auto* call = Call("pack2x16snorm", "p1");
     GlobalVar("p1", ty.vec2<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1144,7 +1145,7 @@ static float2 p1 = float2(0.0f, 0.0f);
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_pack2x16snorm(p1);
+  uint r = tint_pack2x16snorm(p1);
   return;
 }
 )");
@@ -1153,7 +1154,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Pack2x16Unorm) {
     auto* call = Call("pack2x16unorm", "p1");
     GlobalVar("p1", ty.vec2<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1166,7 +1167,7 @@ static float2 p1 = float2(0.0f, 0.0f);
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_pack2x16unorm(p1);
+  uint r = tint_pack2x16unorm(p1);
   return;
 }
 )");
@@ -1175,7 +1176,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Pack2x16Float) {
     auto* call = Call("pack2x16float", "p1");
     GlobalVar("p1", ty.vec2<f32>(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1188,7 +1189,7 @@ static float2 p1 = float2(0.0f, 0.0f);
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_pack2x16float(p1);
+  uint r = tint_pack2x16float(p1);
   return;
 }
 )");
@@ -1197,7 +1198,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Unpack4x8Snorm) {
     auto* call = Call("unpack4x8snorm", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1211,7 +1212,7 @@ static uint p1 = 0u;
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_unpack4x8snorm(p1);
+  float4 r = tint_unpack4x8snorm(p1);
   return;
 }
 )");
@@ -1220,7 +1221,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Unpack4x8Unorm) {
     auto* call = Call("unpack4x8unorm", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1234,7 +1235,7 @@ static uint p1 = 0u;
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_unpack4x8unorm(p1);
+  float4 r = tint_unpack4x8unorm(p1);
   return;
 }
 )");
@@ -1243,7 +1244,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Unpack2x16Snorm) {
     auto* call = Call("unpack2x16snorm", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1257,7 +1258,7 @@ static uint p1 = 0u;
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_unpack2x16snorm(p1);
+  float2 r = tint_unpack2x16snorm(p1);
   return;
 }
 )");
@@ -1266,7 +1267,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Unpack2x16Unorm) {
     auto* call = Call("unpack2x16unorm", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1280,7 +1281,7 @@ static uint p1 = 0u;
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_unpack2x16unorm(p1);
+  float2 r = tint_unpack2x16unorm(p1);
   return;
 }
 )");
@@ -1289,7 +1290,7 @@ void test_function() {
 TEST_F(HlslGeneratorImplTest_Builtin, Unpack2x16Float) {
     auto* call = Call("unpack2x16float", "p1");
     GlobalVar("p1", ty.u32(), builtin::AddressSpace::kPrivate);
-    WrapInFunction(CallStmt(call));
+    WrapInFunction(Decl(Var("r", call)));
     GeneratorImpl& gen = Build();
 
     ASSERT_TRUE(gen.Generate()) << gen.error();
@@ -1302,7 +1303,7 @@ static uint p1 = 0u;
 
 [numthreads(1, 1, 1)]
 void test_function() {
-  tint_unpack2x16float(p1);
+  float2 r = tint_unpack2x16float(p1);
   return;
 }
 )");

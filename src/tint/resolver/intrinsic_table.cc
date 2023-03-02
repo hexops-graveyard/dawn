@@ -22,8 +22,8 @@
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/evaluation_stage.h"
 #include "src/tint/sem/pipeline_stage_set.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/type/abstract_float.h"
 #include "src/tint/type/abstract_int.h"
 #include "src/tint/type/abstract_numeric.h"
@@ -39,6 +39,7 @@
 #include "src/tint/utils/hashmap.h"
 #include "src/tint/utils/math.h"
 #include "src/tint/utils/scoped_assignment.h"
+#include "src/tint/utils/string_stream.h"
 
 namespace tint::resolver {
 namespace {
@@ -338,11 +339,12 @@ using PipelineStage = ast::PipelineStage;
 enum class OverloadFlag {
     kIsBuiltin,                 // The overload is a builtin ('fn')
     kIsOperator,                // The overload is an operator ('op')
-    kIsInitializer,             // The overload is a type initializer ('ctor')
-    kIsConverter,               // The overload is a type converter ('conv')
+    kIsConstructor,             // The overload is a value constructor ('ctor')
+    kIsConverter,               // The overload is a value converter ('conv')
     kSupportsVertexPipeline,    // The overload can be used in vertex shaders
     kSupportsFragmentPipeline,  // The overload can be used in fragment shaders
     kSupportsComputePipeline,   // The overload can be used in compute shaders
+    kMustUse,                   // The overload cannot be called as a statement
     kIsDeprecated,              // The overload is deprecated
 };
 
@@ -454,6 +456,25 @@ constexpr auto match_vec4 = match_vec<4>;
 constexpr auto build_vec2 = build_vec<2>;
 constexpr auto build_vec3 = build_vec<3>;
 constexpr auto build_vec4 = build_vec<4>;
+
+bool match_packedVec3(MatchState&, const type::Type* ty, const type::Type*& T) {
+    if (ty->Is<Any>()) {
+        T = ty;
+        return true;
+    }
+
+    if (auto* v = ty->As<type::Vector>()) {
+        if (v->Packed()) {
+            T = v->type();
+            return true;
+        }
+    }
+    return false;
+}
+
+const type::Vector* build_packedVec3(MatchState& state, const type::Type* el) {
+    return state.builder.create<type::Vector>(el, 3u, /* packed */ true);
+}
 
 bool match_mat(MatchState&, const type::Type* ty, Number& M, Number& N, const type::Type*& T) {
     if (ty->Is<Any>()) {
@@ -1092,7 +1113,7 @@ class Impl : public IntrinsicTable {
                           const Source& source,
                           bool is_compound) override;
 
-    InitOrConv Lookup(InitConvIntrinsic type,
+    CtorOrConv Lookup(CtorConvIntrinsic type,
                       const type::Type* template_arg,
                       utils::VectorRef<const type::Type*> args,
                       sem::EvaluationStage earliest_eval_stage,
@@ -1182,12 +1203,12 @@ class Impl : public IntrinsicTable {
                      sem::EvaluationStage earliest_eval_stage) const;
 
     // Prints the overload for emitting diagnostics
-    void PrintOverload(std::ostream& ss,
+    void PrintOverload(utils::StringStream& ss,
                        const OverloadInfo* overload,
                        const char* intrinsic_name) const;
 
     // Prints the list of candidates for emitting diagnostics
-    void PrintCandidates(std::ostream& ss,
+    void PrintCandidates(utils::StringStream& ss,
                          utils::VectorRef<Candidate> candidates,
                          const char* intrinsic_name) const;
 
@@ -1200,9 +1221,9 @@ class Impl : public IntrinsicTable {
     ProgramBuilder& builder;
     Matchers matchers;
     utils::Hashmap<IntrinsicPrototype, sem::Builtin*, 64, IntrinsicPrototype::Hasher> builtins;
-    utils::Hashmap<IntrinsicPrototype, sem::TypeInitializer*, 16, IntrinsicPrototype::Hasher>
-        initializers;
-    utils::Hashmap<IntrinsicPrototype, sem::TypeConversion*, 16, IntrinsicPrototype::Hasher>
+    utils::Hashmap<IntrinsicPrototype, sem::ValueConstructor*, 16, IntrinsicPrototype::Hasher>
+        constructors;
+    utils::Hashmap<IntrinsicPrototype, sem::ValueConversion*, 16, IntrinsicPrototype::Hasher>
         converters;
 };
 
@@ -1212,7 +1233,7 @@ std::string CallSignature(ProgramBuilder& builder,
                           const char* intrinsic_name,
                           utils::VectorRef<const type::Type*> args,
                           const type::Type* template_arg = nullptr) {
-    std::stringstream ss;
+    utils::StringStream ss;
     ss << intrinsic_name;
     if (template_arg) {
         ss << "<" << template_arg->FriendlyName(builder.Symbols()) << ">";
@@ -1251,7 +1272,7 @@ Impl::Builtin Impl::Lookup(sem::BuiltinType builtin_type,
 
     // Generates an error when no overloads match the provided arguments
     auto on_no_match = [&](utils::VectorRef<Candidate> candidates) {
-        std::stringstream ss;
+        utils::StringStream ss;
         ss << "no matching call to " << CallSignature(builder, intrinsic_name, args) << std::endl;
         if (!candidates.IsEmpty()) {
             ss << std::endl
@@ -1279,20 +1300,22 @@ Impl::Builtin Impl::Lookup(sem::BuiltinType builtin_type,
                 builtin::AddressSpace::kUndefined, builtin::Access::kUndefined, p.usage));
         }
         sem::PipelineStageSet supported_stages;
-        if (match.overload->flags.Contains(OverloadFlag::kSupportsVertexPipeline)) {
+        auto& overload = *match.overload;
+        if (overload.flags.Contains(OverloadFlag::kSupportsVertexPipeline)) {
             supported_stages.Add(ast::PipelineStage::kVertex);
         }
-        if (match.overload->flags.Contains(OverloadFlag::kSupportsFragmentPipeline)) {
+        if (overload.flags.Contains(OverloadFlag::kSupportsFragmentPipeline)) {
             supported_stages.Add(ast::PipelineStage::kFragment);
         }
-        if (match.overload->flags.Contains(OverloadFlag::kSupportsComputePipeline)) {
+        if (overload.flags.Contains(OverloadFlag::kSupportsComputePipeline)) {
             supported_stages.Add(ast::PipelineStage::kCompute);
         }
-        auto eval_stage = match.overload->const_eval_fn ? sem::EvaluationStage::kConstant
-                                                        : sem::EvaluationStage::kRuntime;
-        return builder.create<sem::Builtin>(
-            builtin_type, match.return_type, std::move(params), eval_stage, supported_stages,
-            match.overload->flags.Contains(OverloadFlag::kIsDeprecated));
+        auto eval_stage = overload.const_eval_fn ? sem::EvaluationStage::kConstant
+                                                 : sem::EvaluationStage::kRuntime;
+        return builder.create<sem::Builtin>(builtin_type, match.return_type, std::move(params),
+                                            eval_stage, supported_stages,
+                                            overload.flags.Contains(OverloadFlag::kIsDeprecated),
+                                            overload.flags.Contains(OverloadFlag::kMustUse));
     });
     return Builtin{sem, match.overload->const_eval_fn};
 }
@@ -1318,7 +1341,7 @@ IntrinsicTable::UnaryOperator Impl::Lookup(ast::UnaryOp op,
 
     // Generates an error when no overloads match the provided arguments
     auto on_no_match = [&, name = intrinsic_name](utils::VectorRef<Candidate> candidates) {
-        std::stringstream ss;
+        utils::StringStream ss;
         ss << "no matching overload for " << CallSignature(builder, name, args) << std::endl;
         if (!candidates.IsEmpty()) {
             ss << std::endl
@@ -1396,7 +1419,7 @@ IntrinsicTable::BinaryOperator Impl::Lookup(ast::BinaryOp op,
 
     // Generates an error when no overloads match the provided arguments
     auto on_no_match = [&, name = intrinsic_name](utils::VectorRef<Candidate> candidates) {
-        std::stringstream ss;
+        utils::StringStream ss;
         ss << "no matching overload for " << CallSignature(builder, name, args) << std::endl;
         if (!candidates.IsEmpty()) {
             ss << std::endl
@@ -1422,7 +1445,7 @@ IntrinsicTable::BinaryOperator Impl::Lookup(ast::BinaryOp op,
     };
 }
 
-IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
+IntrinsicTable::CtorOrConv Impl::Lookup(CtorConvIntrinsic type,
                                         const type::Type* template_arg,
                                         utils::VectorRef<const type::Type*> args,
                                         sem::EvaluationStage earliest_eval_stage,
@@ -1431,12 +1454,12 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
 
     // Generates an error when no overloads match the provided arguments
     auto on_no_match = [&](utils::VectorRef<Candidate> candidates) {
-        std::stringstream ss;
-        ss << "no matching initializer for " << CallSignature(builder, name, args, template_arg)
+        utils::StringStream ss;
+        ss << "no matching constructor for " << CallSignature(builder, name, args, template_arg)
            << std::endl;
         Candidates ctor, conv;
         for (auto candidate : candidates) {
-            if (candidate.overload->flags.Contains(OverloadFlag::kIsInitializer)) {
+            if (candidate.overload->flags.Contains(OverloadFlag::kIsConstructor)) {
                 ctor.Push(candidate);
             } else {
                 conv.Push(candidate);
@@ -1444,7 +1467,7 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
         }
         if (!ctor.IsEmpty()) {
             ss << std::endl
-               << ctor.Length() << " candidate initializer" << (ctor.Length() > 1 ? "s:" : ":")
+               << ctor.Length() << " candidate constructor" << (ctor.Length() > 1 ? "s:" : ":")
                << std::endl;
             PrintCandidates(ss, ctor, name);
         }
@@ -1464,14 +1487,14 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
     }
 
     // Resolve the intrinsic overload
-    auto match = MatchIntrinsic(kInitializersAndConverters[static_cast<size_t>(type)], name, args,
+    auto match = MatchIntrinsic(kConstructorsAndConverters[static_cast<size_t>(type)], name, args,
                                 earliest_eval_stage, templates, on_no_match);
     if (!match.overload) {
         return {};
     }
 
-    // Was this overload a initializer or conversion?
-    if (match.overload->flags.Contains(OverloadFlag::kIsInitializer)) {
+    // Was this overload a constructor or conversion?
+    if (match.overload->flags.Contains(OverloadFlag::kIsConstructor)) {
         utils::Vector<const sem::Parameter*, 8> params;
         params.Reserve(match.parameters.Length());
         for (auto& p : match.parameters) {
@@ -1481,11 +1504,11 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
         }
         auto eval_stage = match.overload->const_eval_fn ? sem::EvaluationStage::kConstant
                                                         : sem::EvaluationStage::kRuntime;
-        auto* target = initializers.GetOrCreate(match, [&]() {
-            return builder.create<sem::TypeInitializer>(match.return_type, std::move(params),
-                                                        eval_stage);
+        auto* target = constructors.GetOrCreate(match, [&]() {
+            return builder.create<sem::ValueConstructor>(match.return_type, std::move(params),
+                                                         eval_stage);
         });
-        return InitOrConv{target, match.overload->const_eval_fn};
+        return CtorOrConv{target, match.overload->const_eval_fn};
     }
 
     // Conversion.
@@ -1495,9 +1518,9 @@ IntrinsicTable::InitOrConv Impl::Lookup(InitConvIntrinsic type,
             builtin::Access::kUndefined, match.parameters[0].usage);
         auto eval_stage = match.overload->const_eval_fn ? sem::EvaluationStage::kConstant
                                                         : sem::EvaluationStage::kRuntime;
-        return builder.create<sem::TypeConversion>(match.return_type, param, eval_stage);
+        return builder.create<sem::ValueConversion>(match.return_type, param, eval_stage);
     });
-    return InitOrConv{target, match.overload->const_eval_fn};
+    return CtorOrConv{target, match.overload->const_eval_fn};
 }
 
 IntrinsicPrototype Impl::MatchIntrinsic(const IntrinsicInfo& intrinsic,
@@ -1733,7 +1756,7 @@ MatchState Impl::Match(TemplateState& templates,
     return MatchState(builder, templates, matchers, overload, matcher_indices, earliest_eval_stage);
 }
 
-void Impl::PrintOverload(std::ostream& ss,
+void Impl::PrintOverload(utils::StringStream& ss,
                          const OverloadInfo* overload,
                          const char* intrinsic_name) const {
     TemplateState templates;
@@ -1750,8 +1773,8 @@ void Impl::PrintOverload(std::ostream& ss,
             // e.g. vec3<T>(vec3<U>) -> vec3<f32>
             print_template_type = true;
         } else if ((overload->num_parameters == 0) &&
-                   overload->flags.Contains(OverloadFlag::kIsInitializer)) {
-            // Print for initializers with no params
+                   overload->flags.Contains(OverloadFlag::kIsConstructor)) {
+            // Print for constructors with no params
             // e.g. vec2<T>() -> vec2<T>
             print_template_type = true;
         }
@@ -1805,7 +1828,7 @@ void Impl::PrintOverload(std::ostream& ss,
     }
 }
 
-void Impl::PrintCandidates(std::ostream& ss,
+void Impl::PrintCandidates(utils::StringStream& ss,
                            utils::VectorRef<Candidate> candidates,
                            const char* intrinsic_name) const {
     for (auto& candidate : candidates) {
@@ -1843,7 +1866,7 @@ void Impl::ErrAmbiguousOverload(const char* intrinsic_name,
                                 utils::VectorRef<const type::Type*> args,
                                 TemplateState templates,
                                 utils::VectorRef<Candidate> candidates) const {
-    std::stringstream ss;
+    utils::StringStream ss;
     ss << "ambiguous overload while attempting to match " << intrinsic_name;
     for (size_t i = 0; i < std::numeric_limits<size_t>::max(); i++) {
         if (auto* ty = templates.Type(i)) {

@@ -395,21 +395,18 @@ MaybeError ValidateCompatibilityOfSingleBindingWithLayout(const DeviceBase* devi
     BindingIndex bindingIndex(bindingIt->second);
     const BindingInfo& layoutInfo = layout->GetBindingInfo(bindingIndex);
 
-    // TODO(dawn:563): Provide info about the binding types.
-    DAWN_INVALID_IF(
-        layoutInfo.bindingType != shaderInfo.bindingType,
-        "Binding type (buffer vs. texture vs. sampler vs. external) doesn't match the type "
-        "in the layout.");
+    DAWN_INVALID_IF(layoutInfo.bindingType != shaderInfo.bindingType,
+                    "Binding type in the shader (%s) doesn't match the type in the layout (%s).",
+                    shaderInfo.bindingType, layoutInfo.bindingType);
 
     ExternalTextureBindingExpansionMap expansions = layout->GetExternalTextureBindingExpansionMap();
     DAWN_INVALID_IF(expansions.find(bindingNumber) != expansions.end(),
                     "Binding type (buffer vs. texture vs. sampler vs. external) doesn't "
                     "match the type in the layout.");
 
-    // TODO(dawn:563): Provide info about the visibility.
     DAWN_INVALID_IF((layoutInfo.visibility & StageBit(entryPointStage)) == 0,
-                    "Entry point's stage is not in the binding visibility in the layout (%s)",
-                    layoutInfo.visibility);
+                    "Entry point's stage (%s) is not in the binding visibility in the layout (%s).",
+                    StageBit(entryPointStage), layoutInfo.visibility);
 
     switch (layoutInfo.bindingType) {
         case BindingInfoType::Texture: {
@@ -567,7 +564,7 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
     const uint32_t maxInterStageShaderComponents = limits.v1.maxInterStageShaderComponents;
     if (metadata->stage == SingleShaderStage::Vertex) {
         for (const auto& inputVar : entryPoint.input_variables) {
-            uint32_t unsanitizedLocation = inputVar.location_decoration;
+            uint32_t unsanitizedLocation = inputVar.location_attribute;
             if (DelayedInvalidIf(unsanitizedLocation >= maxVertexAttributes,
                                  "Vertex input variable \"%s\" has a location (%u) that "
                                  "exceeds the maximum (%u)",
@@ -595,7 +592,7 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
                                 outputVar.interpolation_sampling));
             totalInterStageShaderComponents += variable.componentCount;
 
-            uint32_t location = outputVar.location_decoration;
+            uint32_t location = outputVar.location_attribute;
             if (DelayedInvalidIf(location >= maxInterStageShaderVariables,
                                  "Vertex output variable \"%s\" has a location (%u) that "
                                  "is greater than or equal to (%u).",
@@ -628,7 +625,7 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
                                 inputVar.interpolation_sampling));
             totalInterStageShaderComponents += variable.componentCount;
 
-            uint32_t location = inputVar.location_decoration;
+            uint32_t location = inputVar.location_attribute;
             if (DelayedInvalidIf(location >= maxInterStageShaderVariables,
                                  "Fragment input variable \"%s\" has a location (%u) that "
                                  "is greater than or equal to (%u).",
@@ -666,7 +663,7 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
                                                          outputVar.composition_type));
             ASSERT(variable.componentCount <= 4);
 
-            uint32_t unsanitizedAttachment = outputVar.location_decoration;
+            uint32_t unsanitizedAttachment = outputVar.location_attribute;
             if (DelayedInvalidIf(unsanitizedAttachment >= maxColorAttachments,
                                  "Fragment output variable \"%s\" has a location (%u) that "
                                  "exceeds the maximum (%u).",
@@ -1108,11 +1105,6 @@ ShaderModuleBase::ShaderModuleBase(DeviceBase* device,
 
 ShaderModuleBase::ShaderModuleBase(DeviceBase* device, const ShaderModuleDescriptor* descriptor)
     : ShaderModuleBase(device, descriptor, kUntrackedByDevice) {
-    GetObjectTrackingList()->Track(this);
-}
-
-ShaderModuleBase::ShaderModuleBase(DeviceBase* device)
-    : ApiObjectBase(device, kLabelNotImplemented) {
     GetObjectTrackingList()->Track(this);
 }
 

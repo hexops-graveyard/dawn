@@ -1714,7 +1714,7 @@ std::vector<const char*> ConstructableTypes() {
     for (auto* ty : builtin::kBuiltinStrings) {
         std::string_view type(ty);
         if (type != "ptr" && type != "atomic" && !utils::HasPrefix(type, "sampler") &&
-            !utils::HasPrefix(type, "texture")) {
+            !utils::HasPrefix(type, "texture") && !utils::HasPrefix(type, "__")) {
             out.push_back(ty);
         }
     }
@@ -1792,7 +1792,7 @@ fn tint_symbol() {
 
 TEST_P(RenamerBuiltinTypeTest, PreserveTypeConversion) {
     if (std::string_view(GetParam()) == "array") {
-        return;  // Cannot type convert arrays.
+        return;  // Cannot value convert arrays.
     }
 
     auto expand = [&](const char* source) {
@@ -1856,7 +1856,7 @@ TEST_P(RenamerBuiltinTypeTest, RenameShadowedByAlias) {
     };
 
     auto src = expand(R"(
-type $name = $other_type;
+alias $name = $other_type;
 
 @fragment
 fn f() {
@@ -1924,7 +1924,9 @@ INSTANTIATE_TEST_SUITE_P(RenamerBuiltinTypeTest,
 std::vector<const char*> Identifiers() {
     std::vector<const char*> out;
     for (auto* ident : builtin::kBuiltinStrings) {
-        out.push_back(ident);
+        if (!utils::HasPrefix(ident, "__")) {
+            out.push_back(ident);
+        }
     }
     for (auto* ident : builtin::kAddressSpaceStrings) {
         if (!utils::HasPrefix(ident, "_")) {

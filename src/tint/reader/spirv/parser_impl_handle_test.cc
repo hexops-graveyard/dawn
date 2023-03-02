@@ -18,6 +18,7 @@
 #include "src/tint/reader/spirv/function.h"
 #include "src/tint/reader/spirv/parser_impl_test_helper.h"
 #include "src/tint/reader/spirv/spirv_tools_helpers_test.h"
+#include "src/tint/utils/string_stream.h"
 
 namespace tint::reader::spirv {
 namespace {
@@ -235,7 +236,7 @@ std::string CommonTypes() {
 }
 
 std::string Bindings(std::vector<uint32_t> ids) {
-    std::ostringstream os;
+    utils::StringStream os;
     int binding = 0;
     for (auto id : ids) {
         os << "  OpDecorate %" << id << " DescriptorSet 0\n"
@@ -2937,7 +2938,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     // When SPIR-V wants the result type to be unsigned, we have to
-    // insert a type initializer or bitcast for WGSL to do the type
+    // insert a value constructor or bitcast for WGSL to do the type
     // coercion. But the algorithm already does that as a matter
     // of course.
     ImageQuerySizeLod_NonArrayed_UnsignedResult_SignedLevel,
@@ -3002,8 +3003,7 @@ INSTANTIATE_TEST_SUITE_P(ImageQueryLevels_SignedResult,
                               R"(let x_99 : i32 = i32(textureNumLevels(x_20));)"}}));
 
 INSTANTIATE_TEST_SUITE_P(
-    // Spot check that a type conversion is inserted when SPIR-V asks for
-    // an unsigned int result.
+    // Spot check that a value conversion is inserted when SPIR-V asks for an unsigned int result.
     ImageQueryLevels_UnsignedResult,
     SpvParserHandleTest_SampledImageAccessTest,
     ::testing::ValuesIn(std::vector<ImageAccessCase>{
@@ -3886,7 +3886,6 @@ TEST_F(SpvParserHandleTest, SamplerLoadedInEnclosingConstruct_DontGenerateVar) {
            OpFunctionEnd
   )";
     auto p = parser(test::Assemble(assembly));
-    std::cout << assembly;
     EXPECT_TRUE(p->BuildAndParseInternalModule()) << assembly;
     auto fe = p->function_emitter(100);
     EXPECT_TRUE(fe.EmitBody()) << p->error();

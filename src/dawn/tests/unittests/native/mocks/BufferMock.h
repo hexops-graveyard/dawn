@@ -15,16 +15,18 @@
 #ifndef SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_BUFFERMOCK_H_
 #define SRC_DAWN_TESTS_UNITTESTS_NATIVE_MOCKS_BUFFERMOCK_H_
 
+#include <memory>
+
 #include "gmock/gmock.h"
 
 #include "dawn/native/Buffer.h"
-#include "dawn/native/Device.h"
+#include "dawn/tests/unittests/native/mocks/DeviceMock.h"
 
 namespace dawn::native {
 
 class BufferMock : public BufferBase {
   public:
-    BufferMock(DeviceBase* device, BufferBase::BufferState state);
+    BufferMock(DeviceMock* device, const BufferDescriptor* descriptor);
     ~BufferMock() override;
 
     MOCK_METHOD(void, DestroyImpl, (), (override));
@@ -38,6 +40,9 @@ class BufferMock : public BufferBase {
     MOCK_METHOD(void*, GetMappedPointer, (), (override));
 
     MOCK_METHOD(bool, IsCPUWritableAtCreation, (), (const, override));
+
+  private:
+    std::unique_ptr<uint8_t[]> mBackingData;
 };
 
 }  // namespace dawn::native

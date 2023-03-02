@@ -132,56 +132,11 @@ alias B = A;)");
     ast::CheckIdentifier(program.Symbols(), alias->type, "A");
 }
 
-// TODO(crbug.com/tint/1812): DEPRECATED
-TEST_F(ParserImplTest, DEPRECATED_GlobalDecl_TypeAlias) {
-    auto p = parser("type A = i32;");
-    p->global_decl();
-    ASSERT_FALSE(p->has_error()) << p->error();
-
-    auto program = p->program();
-    ASSERT_EQ(program.AST().TypeDecls().Length(), 1u);
-    ASSERT_TRUE(program.AST().TypeDecls()[0]->Is<ast::Alias>());
-    ast::CheckIdentifier(program.Symbols(), program.AST().TypeDecls()[0]->As<ast::Alias>()->name,
-                         "A");
-}
-
-// TODO(crbug.com/tint/1812): DEPRECATED
-TEST_F(ParserImplTest, DEPRECATED_GlobalDecl_TypeAlias_StructIdent) {
-    auto p = parser(R"(struct A {
-  a : f32,
-}
-type B = A;)");
-    p->global_decl();
-    p->global_decl();
-    ASSERT_FALSE(p->has_error()) << p->error();
-
-    auto program = p->program();
-    ASSERT_EQ(program.AST().TypeDecls().Length(), 2u);
-    ASSERT_TRUE(program.AST().TypeDecls()[0]->Is<ast::Struct>());
-    auto* str = program.AST().TypeDecls()[0]->As<ast::Struct>();
-    EXPECT_EQ(str->name->symbol, program.Symbols().Get("A"));
-
-    ASSERT_TRUE(program.AST().TypeDecls()[1]->Is<ast::Alias>());
-    auto* alias = program.AST().TypeDecls()[1]->As<ast::Alias>();
-    EXPECT_EQ(alias->name->symbol, program.Symbols().Get("B"));
-    ast::CheckIdentifier(program.Symbols(), alias->type, "A");
-}
-
 TEST_F(ParserImplTest, GlobalDecl_TypeAlias_MissingSemicolon) {
     auto p = parser("alias A = i32");
     p->global_decl();
     ASSERT_TRUE(p->has_error());
     EXPECT_EQ(p->error(), "1:14: expected ';' for type alias");
-}
-
-// TODO(crbug.com/tint/1812): DEPRECATED
-TEST_F(ParserImplTest, DEPRECATED_GlobalDecl_TypeAlias_MissingSemicolon) {
-    auto p = parser("type A = i32");
-    p->global_decl();
-    ASSERT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(),
-              R"(1:1: use of deprecated language feature: 'type' has been renamed to 'alias'
-1:13: expected ';' for type alias)");
 }
 
 TEST_F(ParserImplTest, GlobalDecl_Function) {
@@ -296,50 +251,6 @@ TEST_F(ParserImplTest, GlobalDecl_ConstAssert_WithoutParen) {
     EXPECT_EQ(sa->condition->source.range.begin.column, 15u);
     EXPECT_EQ(sa->condition->source.range.end.line, 1u);
     EXPECT_EQ(sa->condition->source.range.end.column, 19u);
-}
-
-// TODO(crbug.com/tint/1807)
-TEST_F(ParserImplTest, DEPRECATED_GlobalDecl_StaticAssert_WithParen) {
-    auto p = parser("static_assert(true);");
-    p->global_decl();
-    ASSERT_FALSE(p->has_error()) << p->error();
-
-    auto program = p->program();
-    ASSERT_EQ(program.AST().ConstAsserts().Length(), 1u);
-    auto* sa = program.AST().ConstAsserts()[0];
-    EXPECT_EQ(sa->source.range.begin.line, 1u);
-    EXPECT_EQ(sa->source.range.begin.column, 1u);
-    EXPECT_EQ(sa->source.range.end.line, 1u);
-    EXPECT_EQ(sa->source.range.end.column, 20u);
-
-    EXPECT_TRUE(sa->condition->Is<ast::BoolLiteralExpression>());
-    EXPECT_EQ(sa->condition->source.range.begin.line, 1u);
-    EXPECT_EQ(sa->condition->source.range.begin.column, 15u);
-    EXPECT_EQ(sa->condition->source.range.end.line, 1u);
-    EXPECT_EQ(sa->condition->source.range.end.column, 19u);
-}
-
-// TODO(crbug.com/tint/1807)
-TEST_F(ParserImplTest, DEPRECATED_GlobalDecl_StaticAssert_WithoutParen) {
-    auto p = parser("static_assert  true;");
-    p->global_decl();
-    ASSERT_FALSE(p->has_error()) << p->error();
-
-    auto program = p->program();
-    ASSERT_EQ(program.AST().ConstAsserts().Length(), 1u);
-    auto* sa = program.AST().ConstAsserts()[0];
-    EXPECT_TRUE(sa->condition->Is<ast::BoolLiteralExpression>());
-
-    EXPECT_EQ(sa->source.range.begin.line, 1u);
-    EXPECT_EQ(sa->source.range.begin.column, 1u);
-    EXPECT_EQ(sa->source.range.end.line, 1u);
-    EXPECT_EQ(sa->source.range.end.column, 20u);
-
-    EXPECT_TRUE(sa->condition->Is<ast::BoolLiteralExpression>());
-    EXPECT_EQ(sa->condition->source.range.begin.line, 1u);
-    EXPECT_EQ(sa->condition->source.range.begin.column, 16u);
-    EXPECT_EQ(sa->condition->source.range.end.line, 1u);
-    EXPECT_EQ(sa->condition->source.range.end.column, 20u);
 }
 
 }  // namespace

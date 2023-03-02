@@ -20,11 +20,13 @@
 #include "src/tint/ast/assignment_statement.h"
 #include "src/tint/ast/bitcast_expression.h"
 #include "src/tint/ast/variable_decl_statement.h"
+#include "src/tint/builtin/builtin_value.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/math.h"
+#include "src/tint/utils/string_stream.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::transform::VertexPulling);
 TINT_INSTANTIATE_TYPEINFO(tint::transform::VertexPulling::Config);
@@ -58,7 +60,7 @@ enum class VertexDataType {
 /// @param out the std::ostream to write to
 /// @param format the VertexFormat to write
 /// @returns out so calls can be chained
-std::ostream& operator<<(std::ostream& out, VertexFormat format) {
+utils::StringStream& operator<<(utils::StringStream& out, VertexFormat format) {
     switch (format) {
         case VertexFormat::kUint8x2:
             return out << "uint8x2";
@@ -378,7 +380,7 @@ struct VertexPulling::State {
 
                 // Base types must match between the vertex stream and the WGSL variable
                 if (!IsTypeCompatible(var_dt, fmt_dt)) {
-                    std::stringstream err;
+                    utils::StringStream err;
                     err << "VertexAttributeDescriptor for location "
                         << std::to_string(attribute_desc.shader_location) << " has format "
                         << attribute_desc.format << " but shader expects "
@@ -773,17 +775,18 @@ struct VertexPulling::State {
             }
             location_info[sem->Location().value()] = info;
         } else {
-            auto* builtin = ast::GetAttribute<ast::BuiltinAttribute>(param->attributes);
-            if (TINT_UNLIKELY(!builtin)) {
+            auto* builtin_attr = ast::GetAttribute<ast::BuiltinAttribute>(param->attributes);
+            if (TINT_UNLIKELY(!builtin_attr)) {
                 TINT_ICE(Transform, b.Diagnostics()) << "Invalid entry point parameter";
                 return;
             }
+            auto builtin = src->Sem().Get(builtin_attr)->Value();
             // Check for existing vertex_index and instance_index builtins.
-            if (builtin->builtin == builtin::BuiltinValue::kVertexIndex) {
+            if (builtin == builtin::BuiltinValue::kVertexIndex) {
                 vertex_index_expr = [this, param]() {
                     return b.Expr(ctx.Clone(param->name->symbol));
                 };
-            } else if (builtin->builtin == builtin::BuiltinValue::kInstanceIndex) {
+            } else if (builtin == builtin::BuiltinValue::kInstanceIndex) {
                 instance_index_expr = [this, param]() {
                     return b.Expr(ctx.Clone(param->name->symbol));
                 };
@@ -826,15 +829,16 @@ struct VertexPulling::State {
                 location_info[sem->Location().value()] = info;
                 has_locations = true;
             } else {
-                auto* builtin = ast::GetAttribute<ast::BuiltinAttribute>(member->attributes);
-                if (TINT_UNLIKELY(!builtin)) {
+                auto* builtin_attr = ast::GetAttribute<ast::BuiltinAttribute>(member->attributes);
+                if (TINT_UNLIKELY(!builtin_attr)) {
                     TINT_ICE(Transform, b.Diagnostics()) << "Invalid entry point parameter";
                     return;
                 }
+                auto builtin = src->Sem().Get(builtin_attr)->Value();
                 // Check for existing vertex_index and instance_index builtins.
-                if (builtin->builtin == builtin::BuiltinValue::kVertexIndex) {
+                if (builtin == builtin::BuiltinValue::kVertexIndex) {
                     vertex_index_expr = member_expr;
-                } else if (builtin->builtin == builtin::BuiltinValue::kInstanceIndex) {
+                } else if (builtin == builtin::BuiltinValue::kInstanceIndex) {
                     instance_index_expr = member_expr;
                 }
                 members_to_clone.Push(member);

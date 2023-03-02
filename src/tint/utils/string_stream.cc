@@ -1,4 +1,4 @@
-// Copyright 2021 The Tint Authors.
+// Copyright 2023 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/ast/invariant_attribute.h"
+#include "src/tint/utils/string_stream.h"
 
-#include "src/tint/ast/test_helper.h"
+namespace tint::utils {
 
-namespace tint::ast {
-namespace {
+StringStream::StringStream() {
+    sstream_.flags(sstream_.flags() | std::ios_base::showpoint | std::ios_base::fixed);
+    sstream_.imbue(std::locale::classic());
+    sstream_.precision(9);
+}
 
-using InvariantAttributeTest = TestHelper;
+StringStream::~StringStream() = default;
 
-}  // namespace
-}  // namespace tint::ast
+}  // namespace tint::utils

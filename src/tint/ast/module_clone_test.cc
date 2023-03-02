@@ -42,8 +42,8 @@ struct S1 {
 const c0 : i32 = 10;
 const c1 : bool = true;
 
-type t0 = array<vec4<f32>>;
-type t1 = array<vec4<f32>>;
+alias t0 = array<vec4<f32>>;
+alias t1 = array<vec4<f32>>;
 
 var<private> g0 : u32 = 20u;
 var<private> g1 : f32 = 123.0;
@@ -111,11 +111,11 @@ fn main() {
 
 const declaration_order_check_0 : i32 = 1;
 
-type declaration_order_check_1 = f32;
+alias declaration_order_check_1 = f32;
 
 fn declaration_order_check_2() {}
 
-type declaration_order_check_3 = f32;
+alias declaration_order_check_3 = f32;
 
 const declaration_order_check_4 : i32 = 1;
 
@@ -135,7 +135,7 @@ const declaration_order_check_4 : i32 = 1;
     EXPECT_EQ(Program::printer(&src), Program::printer(&dst));
 
     // Check that none of the AST nodes or type pointers in dst are found in src
-    std::unordered_set<const ast::Node*> src_nodes;
+    std::unordered_set<const Node*> src_nodes;
     for (auto* src_node : src.ASTNodes().Objects()) {
         src_nodes.emplace(src_node);
     }

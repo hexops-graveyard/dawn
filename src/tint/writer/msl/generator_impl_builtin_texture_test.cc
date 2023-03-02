@@ -14,6 +14,7 @@
 
 #include "src/tint/ast/builtin_texture_helper_test.h"
 #include "src/tint/ast/call_statement.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/msl/test_helper.h"
 
 namespace tint::writer::msl {
@@ -277,14 +278,15 @@ TEST_P(MslGeneratorBuiltinTextureTest, Call) {
     param.BuildSamplerVariable(this);
 
     auto* call = Call(param.function, param.args(this));
-    auto* stmt = CallStmt(call);
+    auto* stmt = param.returns_value ? static_cast<const ast::Statement*>(Assign(Phony(), call))
+                                     : static_cast<const ast::Statement*>(CallStmt(call));
 
     Func("main", utils::Empty, ty.void_(), utils::Vector{stmt},
          utils::Vector{Stage(ast::PipelineStage::kFragment)});
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.error();
 
     auto expected = expected_texture_overload(param.overload);

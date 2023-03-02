@@ -90,12 +90,14 @@ enum class Toggle {
     UseBlitForBufferToDepthTextureCopy,
     UseBlitForBufferToStencilTextureCopy,
     UseBlitForDepthTextureToTextureCopyToNonzeroSubresource,
+    D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha,
     DisallowDeprecatedAPIs,
+    D3D12PolyfillReflectVec2F32,
 
     // Unresolved issues.
     NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
     NoWorkaroundIndirectBaseVertexNotApplied,
-    NoWorkaroundDstAlphaBlendDoesNotWork,
+    NoWorkaroundDstAlphaAsSrcBlendFactorForBothColorAndAlphaDoesNotWork,
 
     EnumCount,
     InvalidEnum = EnumCount,

@@ -21,6 +21,9 @@
 #include "src/tint/ast/module.h"
 #include "src/tint/builtin/access.h"
 #include "src/tint/builtin/builtin.h"
+#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/builtin/interpolation_sampling.h"
+#include "src/tint/builtin/interpolation_type.h"
 #include "src/tint/builtin/texel_format.h"
 #include "src/tint/diagnostic/diagnostic.h"
 #include "src/tint/sem/builtin_type.h"
@@ -29,8 +32,15 @@
 
 namespace tint::resolver {
 
+/// UnresolvedIdentifier is the variant value used by ResolvedIdentifier
+struct UnresolvedIdentifier {
+    /// Name of the unresolved identifier
+    std::string name;
+};
+
 /// ResolvedIdentifier holds the resolution of an ast::Identifier.
 /// Can hold one of:
+/// - UnresolvedIdentifier
 /// - const ast::TypeDecl*  (as const ast::Node*)
 /// - const ast::Variable*  (as const ast::Node*)
 /// - const ast::Function*  (as const ast::Node*)
@@ -38,18 +48,24 @@ namespace tint::resolver {
 /// - builtin::Access
 /// - builtin::AddressSpace
 /// - builtin::Builtin
+/// - builtin::BuiltinValue
+/// - builtin::InterpolationSampling
+/// - builtin::InterpolationType
 /// - builtin::TexelFormat
 class ResolvedIdentifier {
   public:
-    ResolvedIdentifier() = default;
-
     /// Constructor
     /// @param value the resolved identifier value
     template <typename T>
     ResolvedIdentifier(T value) : value_(value) {}  // NOLINT(runtime/explicit)
 
-    /// @return true if the ResolvedIdentifier holds a value (successfully resolved)
-    bool Resolved() const { return !std::holds_alternative<std::monostate>(value_); }
+    /// @return the UnresolvedIdentifier if the identifier was not resolved
+    const UnresolvedIdentifier* Unresolved() const {
+        if (auto n = std::get_if<UnresolvedIdentifier>(&value_)) {
+            return n;
+        }
+        return nullptr;
+    }
 
     /// @return the node pointer if the ResolvedIdentifier holds an AST node, otherwise nullptr
     const ast::Node* Node() const {
@@ -95,8 +111,35 @@ class ResolvedIdentifier {
         return builtin::Builtin::kUndefined;
     }
 
-    /// @return the texel format if the ResolvedIdentifier holds builtin::TexelFormat, otherwise
-    /// builtin::TexelFormat::kUndefined
+    /// @return the builtin value if the ResolvedIdentifier holds builtin::BuiltinValue, otherwise
+    /// builtin::BuiltinValue::kUndefined
+    builtin::BuiltinValue BuiltinValue() const {
+        if (auto n = std::get_if<builtin::BuiltinValue>(&value_)) {
+            return *n;
+        }
+        return builtin::BuiltinValue::kUndefined;
+    }
+
+    /// @return the texel format if the ResolvedIdentifier holds type::InterpolationSampling,
+    /// otherwise type::InterpolationSampling::kUndefined
+    builtin::InterpolationSampling InterpolationSampling() const {
+        if (auto n = std::get_if<builtin::InterpolationSampling>(&value_)) {
+            return *n;
+        }
+        return builtin::InterpolationSampling::kUndefined;
+    }
+
+    /// @return the texel format if the ResolvedIdentifier holds type::InterpolationType,
+    /// otherwise type::InterpolationType::kUndefined
+    builtin::InterpolationType InterpolationType() const {
+        if (auto n = std::get_if<builtin::InterpolationType>(&value_)) {
+            return *n;
+        }
+        return builtin::InterpolationType::kUndefined;
+    }
+
+    /// @return the texel format if the ResolvedIdentifier holds type::TexelFormat, otherwise
+    /// type::TexelFormat::kUndefined
     builtin::TexelFormat TexelFormat() const {
         if (auto n = std::get_if<builtin::TexelFormat>(&value_)) {
             return *n;
@@ -127,12 +170,15 @@ class ResolvedIdentifier {
     std::string String(const SymbolTable& symbols, diag::List& diagnostics) const;
 
   private:
-    std::variant<std::monostate,
+    std::variant<UnresolvedIdentifier,
                  const ast::Node*,
                  sem::BuiltinType,
                  builtin::Access,
                  builtin::AddressSpace,
                  builtin::Builtin,
+                 builtin::BuiltinValue,
+                 builtin::InterpolationSampling,
+                 builtin::InterpolationType,
                  builtin::TexelFormat>
         value_;
 };

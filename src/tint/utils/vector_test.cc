@@ -20,6 +20,7 @@
 #include "gmock/gmock.h"
 
 #include "src/tint/utils/bitcast.h"
+#include "src/tint/utils/string_stream.h"
 
 namespace tint::utils {
 namespace {
@@ -78,31 +79,6 @@ static_assert(std::is_same_v<VectorCommonType<C2a*, C2b*>, C1*>);
 static_assert(std::is_same_v<VectorCommonType<const C2a*, C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<C2a*, const C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<const C2a*, const C2b*>, const C1*>);
-
-static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, C0*>, "apply const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C0*, const C0*>, "remove const");
-static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, C0*, C1*>, "up cast");
-static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, const C1*>, "up cast");
-static_assert(CanReinterpretSlice<ReinterpretMode::kSafe, const C0*, C1*>, "up cast, apply const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C0*, const C1*>,
-              "up cast, remove const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, C0*>, "down cast");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, const C0*>, "down cast");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, C0*>,
-              "down cast, apply const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, const C0*>,
-              "down cast, remove const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C1*, C0*>,
-              "down cast, apply const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C1*, const C0*>,
-              "down cast, remove const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C2a*, C2b*>, "sideways cast");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C2a*, const C2b*>,
-              "sideways cast");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, const C2a*, C2b*>,
-              "sideways cast, apply const");
-static_assert(!CanReinterpretSlice<ReinterpretMode::kSafe, C2a*, const C2b*>,
-              "sideways cast, remove const");
 
 ////////////////////////////////////////////////////////////////////////////////
 // TintVectorTest
@@ -1813,7 +1789,7 @@ TEST(TintVectorTest, Equality) {
 }
 
 TEST(TintVectorTest, ostream) {
-    std::stringstream ss;
+    utils::StringStream ss;
     ss << Vector{1, 2, 3};
     EXPECT_EQ(ss.str(), "[1, 2, 3]");
 }
@@ -2090,7 +2066,7 @@ TEST(TintVectorRefTest, BeginEnd) {
 }
 
 TEST(TintVectorRefTest, ostream) {
-    std::stringstream ss;
+    utils::StringStream ss;
     Vector vec{1, 2, 3};
     const VectorRef<int> vec_ref(vec);
     ss << vec_ref;

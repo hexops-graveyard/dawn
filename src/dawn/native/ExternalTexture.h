@@ -57,21 +57,24 @@ class ExternalTextureBase : public ApiObjectBase {
     MaybeError ValidateCanUseInSubmitNow() const;
     static ExternalTextureBase* MakeError(DeviceBase* device);
 
+    void APIExpire();
     void APIDestroy();
+    void APIRefresh();
 
   protected:
-    // Constructor used only for mocking and testing.
-    explicit ExternalTextureBase(DeviceBase* device);
+    ExternalTextureBase(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
     void DestroyImpl() override;
+
+    MaybeError Initialize(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
 
     ~ExternalTextureBase() override;
 
   private:
-    ExternalTextureBase(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
-
-    enum class ExternalTextureState { Alive, Destroyed };
+    enum class ExternalTextureState { Active, Expired, Destroyed };
     ExternalTextureBase(DeviceBase* device, ObjectBase::ErrorTag tag);
-    MaybeError Initialize(DeviceBase* device, const ExternalTextureDescriptor* descriptor);
+
+    MaybeError ValidateRefresh();
+    MaybeError ValidateExpire();
 
     Ref<TextureBase> mPlaceholderTexture;
     Ref<BufferBase> mParamsBuffer;

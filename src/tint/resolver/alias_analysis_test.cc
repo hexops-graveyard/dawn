@@ -14,6 +14,7 @@
 
 #include "src/tint/resolver/resolver.h"
 #include "src/tint/resolver/resolver_test_helper.h"
+#include "src/tint/utils/string_stream.h"
 
 #include "gmock/gmock.h"
 
@@ -196,7 +197,7 @@ INSTANTIATE_TEST_SUITE_P(ResolverAliasAnalysisTest,
                                            TwoPointerConfig{builtin::AddressSpace::kPrivate, false},
                                            TwoPointerConfig{builtin::AddressSpace::kPrivate, true}),
                          [](const ::testing::TestParamInfo<TwoPointers::ParamType>& p) {
-                             std::stringstream ss;
+                             utils::StringStream ss;
                              ss << (p.param.aliased ? "Aliased" : "Unaliased") << "_"
                                 << p.param.address_space;
                              return ss.str();
@@ -558,7 +559,7 @@ TEST_P(Use, Read_UnaryMinus) {
 
 TEST_P(Use, Read_FunctionCallArg) {
     // abs(*p2);
-    Run(CallStmt(Call("abs", Deref("p2"))), R"(56:78 error: invalid aliased pointer argument
+    Run(Assign(Phony(), Call("abs", Deref("p2"))), R"(56:78 error: invalid aliased pointer argument
 12:34 note: aliases with another argument passed here)");
 }
 

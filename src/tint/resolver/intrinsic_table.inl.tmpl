@@ -104,7 +104,9 @@ constexpr OverloadInfo kOverloads[] = {
 {{-   range $i, $u := $o.CanBeUsedInStage.List -}}
         , OverloadFlag::kSupports{{Title $u}}Pipeline
 {{-   end }}
-{{-   if $o.IsDeprecated}}, OverloadFlag::kIsDeprecated{{end }}),
+{{-   if $o.MustUse}}, OverloadFlag::kMustUse{{end}}
+{{-   if $o.IsDeprecated}}, OverloadFlag::kIsDeprecated{{end -}}
+    ),
     /* const eval */
 {{-   if $o.ConstEvalFunction }} {{template "ConstEvalFn" $o}},
 {{-   else                    }} nullptr,
@@ -160,8 +162,8 @@ constexpr IntrinsicInfo kBinaryOperators[] = {
 constexpr uint8_t kBinaryOperator{{ template "ExpandName" $o.Name}} = {{$i}};
 {{- end }}
 
-constexpr IntrinsicInfo kInitializersAndConverters[] = {
-{{- range $i, $o := .InitializersAndConverters }}
+constexpr IntrinsicInfo kConstructorsAndConverters[] = {
+{{- range $i, $o := .ConstructorsAndConverters }}
   {
     /* [{{$i}}] */
 {{-   range $o.OverloadDescriptions }}
@@ -219,7 +221,7 @@ std::string {{$class}}::String(MatchState*{{if .TemplateParams}} state{{end}}) c
 {{- end  }}
 
 {{- if .DisplayName }}
-  std::stringstream ss;
+  utils::StringStream ss;
   ss{{range SplitDisplayName .DisplayName}} << {{.}}{{end}};
   return ss.str();
 {{- else if .TemplateParams }}
@@ -262,7 +264,7 @@ const type::Type* {{$class}}::Match(MatchState& state, const type::Type* ty) con
 }
 
 std::string {{$class}}::String(MatchState*) const {
-  std::stringstream ss;
+  utils::StringStream ss;
   // Note: We pass nullptr to the TypeMatcher::String() functions, as 'matcher's do not support
   // template arguments, nor can they match sub-types. As such, they have no use for the MatchState.
   ss

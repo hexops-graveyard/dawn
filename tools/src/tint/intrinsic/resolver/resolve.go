@@ -32,7 +32,7 @@ type resolver struct {
 	builtins                  map[string]*sem.Intrinsic
 	unaryOperators            map[string]*sem.Intrinsic
 	binaryOperators           map[string]*sem.Intrinsic
-	initializersAndConverters map[string]*sem.Intrinsic
+	constructorsAndConverters map[string]*sem.Intrinsic
 	enumEntryMatchers         map[*sem.EnumEntry]*sem.EnumMatcher
 }
 
@@ -45,7 +45,7 @@ func Resolve(a *ast.AST) (*sem.Sem, error) {
 		builtins:                  map[string]*sem.Intrinsic{},
 		unaryOperators:            map[string]*sem.Intrinsic{},
 		binaryOperators:           map[string]*sem.Intrinsic{},
-		initializersAndConverters: map[string]*sem.Intrinsic{},
+		constructorsAndConverters: map[string]*sem.Intrinsic{},
 		enumEntryMatchers:         map[*sem.EnumEntry]*sem.EnumMatcher{},
 	}
 	// Declare and resolve all the enumerators
@@ -88,9 +88,9 @@ func Resolve(a *ast.AST) (*sem.Sem, error) {
 		}
 	}
 
-	// Declare and resolve type initializers and converters
-	for _, c := range a.Initializers {
-		if err := r.intrinsic(c, r.initializersAndConverters, &r.s.InitializersAndConverters); err != nil {
+	// Declare and resolve value constructors and converters
+	for _, c := range a.Constructors {
+		if err := r.intrinsic(c, r.constructorsAndConverters, &r.s.ConstructorsAndConverters); err != nil {
 			return nil, err
 		}
 	}
@@ -98,7 +98,7 @@ func Resolve(a *ast.AST) (*sem.Sem, error) {
 		if len(c.Parameters) != 1 {
 			return nil, fmt.Errorf("%v conversions must have a single parameter", c.Source)
 		}
-		if err := r.intrinsic(c, r.initializersAndConverters, &r.s.InitializersAndConverters); err != nil {
+		if err := r.intrinsic(c, r.constructorsAndConverters, &r.s.ConstructorsAndConverters); err != nil {
 			return nil, err
 		}
 	}
@@ -345,14 +345,23 @@ func (r *resolver) intrinsic(
 			Compute:  true,
 		}
 	}
+	if mustUse := a.Attributes.Take("must_use"); mustUse != nil {
+		if len(mustUse.Values) > 0 {
+			return fmt.Errorf("%v @must_use does not accept any arguments", mustUse.Source)
+		}
+		if a.ReturnType == nil {
+			return fmt.Errorf("%v @must_use can only be used on a function with a return type", mustUse.Source)
+		}
+		overload.MustUse = true
+	}
 	if constEvalFn := a.Attributes.Take("const"); constEvalFn != nil {
 		switch len(constEvalFn.Values) {
 		case 0:
 			switch overload.Decl.Kind {
 			case ast.Builtin, ast.Operator:
 				overload.ConstEvalFunction = overload.Decl.Name
-			case ast.Initializer:
-				overload.ConstEvalFunction = "Init"
+			case ast.Constructor:
+				overload.ConstEvalFunction = "Ctor"
 			case ast.Converter:
 				overload.ConstEvalFunction = "Conv"
 			}
@@ -592,7 +601,7 @@ func (r *resolver) calculateUniqueParameterNames() []string {
 		r.s.Builtins,
 		r.s.UnaryOperators,
 		r.s.BinaryOperators,
-		r.s.InitializersAndConverters,
+		r.s.ConstructorsAndConverters,
 	} {
 		for _, i := range intrinsics {
 			for _, o := range i.Overloads {

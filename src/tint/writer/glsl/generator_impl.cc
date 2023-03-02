@@ -36,8 +36,8 @@
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/transform/add_block_attribute.h"
 #include "src/tint/transform/add_empty_entry_point.h"
@@ -75,6 +75,7 @@
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/utils/string.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/append_vector.h"
 #include "src/tint/writer/float_to_string.h"
 #include "src/tint/writer/generate_external_texture_bindings.h"
@@ -111,7 +112,7 @@ bool last_is_break(const ast::BlockStatement* stmts) {
     return IsAnyOf<ast::BreakStatement>(stmts->Last());
 }
 
-void PrintF32(std::ostream& out, float value) {
+void PrintF32(utils::StringStream& out, float value) {
     if (std::isinf(value)) {
         out << "0.0f " << (value >= 0 ? "/* inf */" : "/* -inf */");
     } else if (std::isnan(value)) {
@@ -121,7 +122,7 @@ void PrintF32(std::ostream& out, float value) {
     }
 }
 
-void PrintF16(std::ostream& out, float value) {
+void PrintF16(utils::StringStream& out, float value) {
     if (std::isinf(value)) {
         out << "0.0hf " << (value >= 0 ? "/* inf */" : "/* -inf */");
     } else if (std::isnan(value)) {
@@ -333,7 +334,8 @@ bool GeneratorImpl::RecordExtension(const ast::Enable* ext) {
     return true;
 }
 
-bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccessorExpression* expr) {
+bool GeneratorImpl::EmitIndexAccessor(utils::StringStream& out,
+                                      const ast::IndexAccessorExpression* expr) {
     if (!EmitExpression(out, expr->object)) {
         return false;
     }
@@ -347,7 +349,7 @@ bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccesso
     return true;
 }
 
-bool GeneratorImpl::EmitBitcast(std::ostream& out, const ast::BitcastExpression* expr) {
+bool GeneratorImpl::EmitBitcast(utils::StringStream& out, const ast::BitcastExpression* expr) {
     auto* src_type = TypeOf(expr->expr)->UnwrapRef();
     auto* dst_type = TypeOf(expr)->UnwrapRef();
 
@@ -399,7 +401,8 @@ bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitVectorRelational(std::ostream& out, const ast::BinaryExpression* expr) {
+bool GeneratorImpl::EmitVectorRelational(utils::StringStream& out,
+                                         const ast::BinaryExpression* expr) {
     switch (expr->op) {
         case ast::BinaryOp::kEqual:
             out << "equal";
@@ -433,7 +436,7 @@ bool GeneratorImpl::EmitVectorRelational(std::ostream& out, const ast::BinaryExp
     return true;
 }
 
-bool GeneratorImpl::EmitBitwiseBoolOp(std::ostream& out, const ast::BinaryExpression* expr) {
+bool GeneratorImpl::EmitBitwiseBoolOp(utils::StringStream& out, const ast::BinaryExpression* expr) {
     auto* bool_type = TypeOf(expr->lhs)->UnwrapRef();
     auto* uint_type = BoolTypeToUint(bool_type);
 
@@ -479,7 +482,7 @@ bool GeneratorImpl::EmitBitwiseBoolOp(std::ostream& out, const ast::BinaryExpres
     return true;
 }
 
-bool GeneratorImpl::EmitFloatModulo(std::ostream& out, const ast::BinaryExpression* expr) {
+bool GeneratorImpl::EmitFloatModulo(utils::StringStream& out, const ast::BinaryExpression* expr) {
     std::string fn;
     auto* ret_ty = TypeOf(expr)->UnwrapRef();
     auto* lhs_ty = TypeOf(expr->lhs)->UnwrapRef();
@@ -541,7 +544,7 @@ bool GeneratorImpl::EmitFloatModulo(std::ostream& out, const ast::BinaryExpressi
     return true;
 }
 
-bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* expr) {
+bool GeneratorImpl::EmitBinary(utils::StringStream& out, const ast::BinaryExpression* expr) {
     if (IsRelational(expr->op) && !TypeOf(expr->lhs)->UnwrapRef()->is_scalar()) {
         return EmitVectorRelational(out, expr);
     }
@@ -706,14 +709,14 @@ bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
     return true;
 }
 
-bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitCall(utils::StringStream& out, const ast::CallExpression* expr) {
     auto* call = builder_.Sem().Get<sem::Call>(expr);
     return Switch(
         call->Target(),  //
         [&](const sem::Function* fn) { return EmitFunctionCall(out, call, fn); },
         [&](const sem::Builtin* builtin) { return EmitBuiltinCall(out, call, builtin); },
-        [&](const sem::TypeConversion* conv) { return EmitTypeConversion(out, call, conv); },
-        [&](const sem::TypeInitializer* init) { return EmitTypeInitializer(out, call, init); },
+        [&](const sem::ValueConversion* conv) { return EmitValueConversion(out, call, conv); },
+        [&](const sem::ValueConstructor* ctor) { return EmitValueConstructor(out, call, ctor); },
         [&](Default) {
             TINT_ICE(Writer, diagnostics_)
                 << "unhandled call target: " << call->Target()->TypeInfo().name;
@@ -721,7 +724,7 @@ bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr)
         });
 }
 
-bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
+bool GeneratorImpl::EmitFunctionCall(utils::StringStream& out,
                                      const sem::Call* call,
                                      const sem::Function* fn) {
     const auto& args = call->Arguments();
@@ -745,7 +748,7 @@ bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitBuiltinCall(std::ostream& out,
+bool GeneratorImpl::EmitBuiltinCall(utils::StringStream& out,
                                     const sem::Call* call,
                                     const sem::Builtin* builtin) {
     auto* expr = call->Declaration();
@@ -827,9 +830,9 @@ bool GeneratorImpl::EmitBuiltinCall(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeConversion(std::ostream& out,
-                                       const sem::Call* call,
-                                       const sem::TypeConversion* conv) {
+bool GeneratorImpl::EmitValueConversion(utils::StringStream& out,
+                                        const sem::Call* call,
+                                        const sem::ValueConversion* conv) {
     if (!EmitType(out, conv->Target(), builtin::AddressSpace::kUndefined,
                   builtin::Access::kReadWrite, "")) {
         return false;
@@ -843,13 +846,13 @@ bool GeneratorImpl::EmitTypeConversion(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeInitializer(std::ostream& out,
-                                        const sem::Call* call,
-                                        const sem::TypeInitializer* ctor) {
+bool GeneratorImpl::EmitValueConstructor(utils::StringStream& out,
+                                         const sem::Call* call,
+                                         const sem::ValueConstructor* ctor) {
     auto* type = ctor->ReturnType();
 
-    // If the type initializer is empty then we need to construct with the zero
-    // value for all components.
+    // If the value constructor is empty then we need to construct with the zero value for all
+    // components.
     if (call->Arguments().IsEmpty()) {
         return EmitZeroValue(out, type);
     }
@@ -874,7 +877,7 @@ bool GeneratorImpl::EmitTypeInitializer(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitWorkgroupAtomicCall(std::ostream& out,
+bool GeneratorImpl::EmitWorkgroupAtomicCall(utils::StringStream& out,
                                             const ast::CallExpression* expr,
                                             const sem::Builtin* builtin) {
     auto call = [&](const char* name) {
@@ -995,7 +998,7 @@ bool GeneratorImpl::EmitWorkgroupAtomicCall(std::ostream& out,
     return false;
 }
 
-bool GeneratorImpl::EmitArrayLength(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitArrayLength(utils::StringStream& out, const ast::CallExpression* expr) {
     out << "uint(";
     if (!EmitExpression(out, expr->args[0])) {
         return false;
@@ -1004,7 +1007,7 @@ bool GeneratorImpl::EmitArrayLength(std::ostream& out, const ast::CallExpression
     return true;
 }
 
-bool GeneratorImpl::EmitExtractBits(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitExtractBits(utils::StringStream& out, const ast::CallExpression* expr) {
     out << "bitfieldExtract(";
     if (!EmitExpression(out, expr->args[0])) {
         return false;
@@ -1021,7 +1024,7 @@ bool GeneratorImpl::EmitExtractBits(std::ostream& out, const ast::CallExpression
     return true;
 }
 
-bool GeneratorImpl::EmitInsertBits(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitInsertBits(utils::StringStream& out, const ast::CallExpression* expr) {
     out << "bitfieldInsert(";
     if (!EmitExpression(out, expr->args[0])) {
         return false;
@@ -1042,7 +1045,7 @@ bool GeneratorImpl::EmitInsertBits(std::ostream& out, const ast::CallExpression*
     return true;
 }
 
-bool GeneratorImpl::EmitEmulatedFMA(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitEmulatedFMA(utils::StringStream& out, const ast::CallExpression* expr) {
     out << "((";
     if (!EmitExpression(out, expr->args[0])) {
         return false;
@@ -1059,7 +1062,8 @@ bool GeneratorImpl::EmitEmulatedFMA(std::ostream& out, const ast::CallExpression
     return true;
 }
 
-bool GeneratorImpl::EmitCountOneBitsCall(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitCountOneBitsCall(utils::StringStream& out,
+                                         const ast::CallExpression* expr) {
     // GLSL's bitCount returns an integer type, so cast it to the appropriate
     // unsigned type.
     if (!EmitType(out, TypeOf(expr)->UnwrapRef(), builtin::AddressSpace::kUndefined,
@@ -1075,7 +1079,7 @@ bool GeneratorImpl::EmitCountOneBitsCall(std::ostream& out, const ast::CallExpre
     return true;
 }
 
-bool GeneratorImpl::EmitSelectCall(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitSelectCall(utils::StringStream& out, const ast::CallExpression* expr) {
     auto* expr_false = expr->args[0];
     auto* expr_true = expr->args[1];
     auto* expr_cond = expr->args[2];
@@ -1117,7 +1121,7 @@ bool GeneratorImpl::EmitSelectCall(std::ostream& out, const ast::CallExpression*
     return true;
 }
 
-bool GeneratorImpl::EmitDotCall(std::ostream& out,
+bool GeneratorImpl::EmitDotCall(utils::StringStream& out,
                                 const ast::CallExpression* expr,
                                 const sem::Builtin* builtin) {
     auto* vec_ty = builtin->Parameters()[0]->Type()->As<type::Vector>();
@@ -1133,7 +1137,7 @@ bool GeneratorImpl::EmitDotCall(std::ostream& out,
 
             std::string v;
             {
-                std::stringstream s;
+                utils::StringStream s;
                 if (!EmitType(s, vec_ty->type(), builtin::AddressSpace::kUndefined,
                               builtin::Access::kRead, "")) {
                     return "";
@@ -1190,7 +1194,7 @@ bool GeneratorImpl::EmitDotCall(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitModfCall(std::ostream& out,
+bool GeneratorImpl::EmitModfCall(utils::StringStream& out,
                                  const ast::CallExpression* expr,
                                  const sem::Builtin* builtin) {
     TINT_ASSERT(Writer, expr->args.Length() == 1);
@@ -1216,7 +1220,7 @@ bool GeneratorImpl::EmitModfCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
+bool GeneratorImpl::EmitFrexpCall(utils::StringStream& out,
                                   const ast::CallExpression* expr,
                                   const sem::Builtin* builtin) {
     TINT_ASSERT(Writer, expr->args.Length() == 1);
@@ -1242,7 +1246,7 @@ bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitDegreesCall(std::ostream& out,
+bool GeneratorImpl::EmitDegreesCall(utils::StringStream& out,
                                     const ast::CallExpression* expr,
                                     const sem::Builtin* builtin) {
     auto* return_elem_type = type::Type::DeepestElementOf(builtin->ReturnType());
@@ -1255,7 +1259,7 @@ bool GeneratorImpl::EmitDegreesCall(std::ostream& out,
                              });
 }
 
-bool GeneratorImpl::EmitRadiansCall(std::ostream& out,
+bool GeneratorImpl::EmitRadiansCall(utils::StringStream& out,
                                     const ast::CallExpression* expr,
                                     const sem::Builtin* builtin) {
     auto* return_elem_type = type::Type::DeepestElementOf(builtin->ReturnType());
@@ -1268,7 +1272,7 @@ bool GeneratorImpl::EmitRadiansCall(std::ostream& out,
                              });
 }
 
-bool GeneratorImpl::EmitQuantizeToF16Call(std::ostream& out,
+bool GeneratorImpl::EmitQuantizeToF16Call(utils::StringStream& out,
                                           const ast::CallExpression* expr,
                                           const sem::Builtin* builtin) {
     // Emulate by casting to f16 and back again.
@@ -1300,7 +1304,7 @@ bool GeneratorImpl::EmitQuantizeToF16Call(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitBarrierCall(std::ostream& out, const sem::Builtin* builtin) {
+bool GeneratorImpl::EmitBarrierCall(utils::StringStream& out, const sem::Builtin* builtin) {
     // TODO(crbug.com/tint/661): Combine sequential barriers to a single
     // instruction.
     if (builtin->Type() == sem::BuiltinType::kWorkgroupBarrier) {
@@ -1325,7 +1329,7 @@ const ast::Expression* GeneratorImpl::CreateF32Zero(const sem::Statement* stmt) 
     return zero;
 }
 
-bool GeneratorImpl::EmitTextureCall(std::ostream& out,
+bool GeneratorImpl::EmitTextureCall(utils::StringStream& out,
                                     const sem::Call* call,
                                     const sem::Builtin* builtin) {
     using Usage = sem::ParameterUsage;
@@ -1818,7 +1822,7 @@ bool GeneratorImpl::EmitDiscard(const ast::DiscardStatement*) {
     return true;
 }
 
-bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* expr) {
+bool GeneratorImpl::EmitExpression(utils::StringStream& out, const ast::Expression* expr) {
     if (auto* sem = builder_.Sem().GetVal(expr)) {
         if (auto* constant = sem->ConstantValue()) {
             return EmitConstant(out, constant);
@@ -1841,7 +1845,8 @@ bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* exp
         });
 }
 
-bool GeneratorImpl::EmitIdentifier(std::ostream& out, const ast::IdentifierExpression* expr) {
+bool GeneratorImpl::EmitIdentifier(utils::StringStream& out,
+                                   const ast::IdentifierExpression* expr) {
     out << builder_.Symbols().NameFor(expr->identifier->symbol);
     return true;
 }
@@ -2155,9 +2160,10 @@ bool GeneratorImpl::EmitWorkgroupVariable(const sem::Variable* var) {
 bool GeneratorImpl::EmitIOVariable(const sem::GlobalVariable* var) {
     auto* decl = var->Declaration();
 
-    if (auto* b = ast::GetAttribute<ast::BuiltinAttribute>(decl->attributes)) {
+    if (auto* attr = ast::GetAttribute<ast::BuiltinAttribute>(decl->attributes)) {
+        auto builtin = program_->Sem().Get(attr)->Value();
         // Use of gl_SampleID requires the GL_OES_sample_variables extension
-        if (RequiresOESSampleVariables(b->builtin)) {
+        if (RequiresOESSampleVariables(builtin)) {
             requires_oes_sample_variables_ = true;
         }
         // Do not emit builtin (gl_) variables.
@@ -2186,11 +2192,15 @@ bool GeneratorImpl::EmitIOVariable(const sem::GlobalVariable* var) {
 }
 
 void GeneratorImpl::EmitInterpolationQualifiers(
-    std::ostream& out,
+    utils::StringStream& out,
     utils::VectorRef<const ast::Attribute*> attributes) {
     for (auto* attr : attributes) {
         if (auto* interpolate = attr->As<ast::InterpolateAttribute>()) {
-            switch (interpolate->type) {
+            auto& sem = program_->Sem();
+            auto i_type =
+                sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationType>>(interpolate->type)
+                    ->Value();
+            switch (i_type) {
                 case builtin::InterpolationType::kPerspective:
                 case builtin::InterpolationType::kLinear:
                 case builtin::InterpolationType::kUndefined:
@@ -2199,20 +2209,26 @@ void GeneratorImpl::EmitInterpolationQualifiers(
                     out << "flat ";
                     break;
             }
-            switch (interpolate->sampling) {
-                case builtin::InterpolationSampling::kCentroid:
-                    out << "centroid ";
-                    break;
-                case builtin::InterpolationSampling::kSample:
-                case builtin::InterpolationSampling::kCenter:
-                case builtin::InterpolationSampling::kUndefined:
-                    break;
+
+            if (interpolate->sampling) {
+                auto i_smpl = sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationSampling>>(
+                                     interpolate->sampling)
+                                  ->Value();
+                switch (i_smpl) {
+                    case builtin::InterpolationSampling::kCentroid:
+                        out << "centroid ";
+                        break;
+                    case builtin::InterpolationSampling::kSample:
+                    case builtin::InterpolationSampling::kCenter:
+                    case builtin::InterpolationSampling::kUndefined:
+                        break;
+                }
             }
         }
     }
 }
 
-bool GeneratorImpl::EmitAttributes(std::ostream& out,
+bool GeneratorImpl::EmitAttributes(utils::StringStream& out,
                                    const sem::GlobalVariable* var,
                                    utils::VectorRef<const ast::Attribute*> attributes) {
     if (attributes.IsEmpty()) {
@@ -2322,7 +2338,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
     return true;
 }
 
-bool GeneratorImpl::EmitConstant(std::ostream& out, const constant::Value* constant) {
+bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value* constant) {
     return Switch(
         constant->Type(),  //
         [&](const type::Bool*) {
@@ -2439,7 +2455,7 @@ bool GeneratorImpl::EmitConstant(std::ostream& out, const constant::Value* const
         });
 }
 
-bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression* lit) {
+bool GeneratorImpl::EmitLiteral(utils::StringStream& out, const ast::LiteralExpression* lit) {
     return Switch(
         lit,
         [&](const ast::BoolLiteralExpression* l) {
@@ -2467,7 +2483,7 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
         });
 }
 
-bool GeneratorImpl::EmitZeroValue(std::ostream& out, const type::Type* type) {
+bool GeneratorImpl::EmitZeroValue(utils::StringStream& out, const type::Type* type) {
     if (type->Is<type::Bool>()) {
         out << "false";
     } else if (type->Is<type::F32>()) {
@@ -2593,7 +2609,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
     }
 
     TextBuffer cond_pre;
-    std::stringstream cond_buf;
+    utils::StringStream cond_buf;
     if (auto* cond = stmt->condition) {
         TINT_SCOPED_ASSIGNMENT(current_buffer_, &cond_pre);
         if (!EmitExpression(cond_buf, cond)) {
@@ -2685,7 +2701,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
 
 bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
     TextBuffer cond_pre;
-    std::stringstream cond_buf;
+    utils::StringStream cond_buf;
     {
         auto* cond = stmt->condition;
         TINT_SCOPED_ASSIGNMENT(current_buffer_, &cond_pre);
@@ -2734,7 +2750,7 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitMemberAccessor(std::ostream& out,
+bool GeneratorImpl::EmitMemberAccessor(utils::StringStream& out,
                                        const ast::MemberAccessorExpression* expr) {
     if (!EmitExpression(out, expr->object)) {
         return false;
@@ -2846,7 +2862,7 @@ bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitType(std::ostream& out,
+bool GeneratorImpl::EmitType(utils::StringStream& out,
                              const type::Type* type,
                              builtin::AddressSpace address_space,
                              builtin::Access access,
@@ -3027,7 +3043,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeAndName(std::ostream& out,
+bool GeneratorImpl::EmitTypeAndName(utils::StringStream& out,
                                     const type::Type* type,
                                     builtin::AddressSpace address_space,
                                     builtin::Access access,
@@ -3075,7 +3091,7 @@ bool GeneratorImpl::EmitStructMembers(TextBuffer* b, const sem::Struct* str) {
     return true;
 }
 
-bool GeneratorImpl::EmitUnaryOp(std::ostream& out, const ast::UnaryOpExpression* expr) {
+bool GeneratorImpl::EmitUnaryOp(utils::StringStream& out, const ast::UnaryOpExpression* expr) {
     switch (expr->op) {
         case ast::UnaryOp::kIndirection:
         case ast::UnaryOp::kAddressOf:
@@ -3171,7 +3187,7 @@ bool GeneratorImpl::EmitProgramConstVariable(const ast::Variable* var) {
 }
 
 template <typename F>
-bool GeneratorImpl::CallBuiltinHelper(std::ostream& out,
+bool GeneratorImpl::CallBuiltinHelper(utils::StringStream& out,
                                       const ast::CallExpression* call,
                                       const sem::Builtin* builtin,
                                       F&& build) {

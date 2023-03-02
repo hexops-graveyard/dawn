@@ -49,8 +49,8 @@
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/sem/while_statement.h"
 #include "src/tint/type/abstract_numeric.h"
@@ -71,10 +71,14 @@
 #include "src/tint/utils/reverse.h"
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/utils/string.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/utils/transform.h"
 
 namespace tint::resolver {
 namespace {
+
+constexpr size_t kMaxFunctionParameters = 255;
+constexpr size_t kMaxSwitchCaseSelectors = 16383;
 
 bool IsValidStorageTextureDimension(type::TextureDimension dim) {
     switch (dim) {
@@ -114,15 +118,11 @@ bool IsValidStorageTextureTexelFormat(builtin::TexelFormat format) {
 }
 
 // Helper to stringify a pipeline IO attribute.
-std::string attr_to_str(const ast::Attribute* attr,
-                        std::optional<uint32_t> location = std::nullopt) {
-    std::stringstream str;
-    if (auto* builtin = attr->As<ast::BuiltinAttribute>()) {
-        str << "builtin(" << builtin->builtin << ")";
-    } else if (attr->Is<ast::LocationAttribute>()) {
-        str << "location(" << location.value() << ")";
-    }
-    return str.str();
+std::string AttrToStr(const ast::Attribute* attr) {
+    return Switch(
+        attr,  //
+        [&](const ast::BuiltinAttribute*) { return "@builtin"; },
+        [&](const ast::LocationAttribute*) { return "@location"; });
 }
 
 template <typename CALLBACK>
@@ -381,7 +381,7 @@ bool Validator::VariableInitializer(const ast::Variable* v,
 
     // Value type has to match storage type
     if (storage_ty != value_type) {
-        std::stringstream s;
+        utils::StringStream s;
         s << "cannot initialize " << v->Kind() << " of type '" << sem_.TypeNameOf(storage_ty)
           << "' with value of type '" << sem_.TypeNameOf(initializer_ty) << "'";
         AddError(s.str(), v->source);
@@ -471,7 +471,9 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
             }
 
             // Validate that member is at a valid byte offset
-            if (m->Offset() % required_align != 0) {
+            if (m->Offset() % required_align != 0 &&
+                !enabled_extensions_.Contains(
+                    builtin::Extension::kChromiumInternalRelaxedUniformLayout)) {
                 AddError("the offset of a struct member of type '" +
                              m->Type()->UnwrapRef()->FriendlyName(symbols_) +
                              "' in address space '" + utils::ToString(address_space) +
@@ -497,7 +499,9 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
             auto* const prev_member = (i == 0) ? nullptr : str->Members()[i - 1];
             if (prev_member && is_uniform_struct(prev_member->Type())) {
                 const uint32_t prev_to_curr_offset = m->Offset() - prev_member->Offset();
-                if (prev_to_curr_offset % 16 != 0) {
+                if (prev_to_curr_offset % 16 != 0 &&
+                    !enabled_extensions_.Contains(
+                        builtin::Extension::kChromiumInternalRelaxedUniformLayout)) {
                     AddError(
                         "uniform storage requires that the number of bytes between the "
                         "start of the previous member of type struct and the current "
@@ -530,7 +534,9 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
             return false;
         }
 
-        if (address_space == builtin::AddressSpace::kUniform) {
+        if (address_space == builtin::AddressSpace::kUniform &&
+            !enabled_extensions_.Contains(
+                builtin::Extension::kChromiumInternalRelaxedUniformLayout)) {
             // We already validated that this array member is itself aligned to 16 bytes above, so
             // we only need to validate that stride is a multiple of 16 bytes.
             if (arr->Stride() % 16 != 0) {
@@ -550,9 +556,10 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
                         "attribute.";
                 }
                 AddError(
-                    "uniform storage requires that array elements be aligned to 16 "
-                    "bytes, but array element alignment is currently " +
-                        std::to_string(arr->Stride()) + ". " + hint,
+                    "uniform storage requires that array elements are aligned to 16 bytes, but "
+                    "array element of type '" +
+                        arr->ElemType()->FriendlyName(symbols_) + "' has a stride of " +
+                        std::to_string(arr->Stride()) + " bytes. " + hint,
                     source);
                 return false;
             }
@@ -836,7 +843,7 @@ bool Validator::Parameter(const ast::Function* func, const sem::Variable* var) c
                     break;
             }
             if (!ok) {
-                std::stringstream ss;
+                utils::StringStream ss;
                 ss << "function parameter of pointer type cannot be in '" << sc
                    << "' address space";
                 AddError(ss.str(), decl->source);
@@ -864,11 +871,12 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                                  ast::PipelineStage stage,
                                  const bool is_input) const {
     auto* type = storage_ty->UnwrapRef();
-    std::stringstream stage_name;
+    utils::StringStream stage_name;
     stage_name << stage;
     bool is_stage_mismatch = false;
     bool is_output = !is_input;
-    switch (attr->builtin) {
+    auto builtin = sem_.Get(attr)->Value();
+    switch (builtin) {
         case builtin::BuiltinValue::kPosition:
             if (stage != ast::PipelineStage::kNone &&
                 !((is_input && stage == ast::PipelineStage::kFragment) ||
@@ -876,8 +884,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!(type->is_float_vector() && type->As<type::Vector>()->Width() == 4)) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'vec4<f32>'",
-                         attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'vec4<f32>'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -890,8 +899,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!(type->is_unsigned_integer_vector() && type->As<type::Vector>()->Width() == 3)) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'vec3<u32>'",
-                         attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'vec3<u32>'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -901,7 +911,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::F32>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'f32'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'f32'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -911,7 +923,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::Bool>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'bool'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'bool'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -921,7 +935,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::U32>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'u32'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'u32'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -932,7 +948,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::U32>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'u32'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'u32'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -941,7 +959,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::U32>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'u32'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'u32'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -951,7 +971,9 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
                 is_stage_mismatch = true;
             }
             if (!type->Is<type::U32>()) {
-                AddError("store type of " + attr_to_str(attr) + " must be 'u32'", attr->source);
+                utils::StringStream err;
+                err << "store type of @builtin(" << builtin << ") must be 'u32'";
+                AddError(err.str(), attr->source);
                 return false;
             }
             break;
@@ -960,9 +982,10 @@ bool Validator::BuiltinAttribute(const ast::BuiltinAttribute* attr,
     }
 
     if (is_stage_mismatch) {
-        AddError(attr_to_str(attr) + " cannot be used in " +
-                     (is_input ? "input of " : "output of ") + stage_name.str() + " pipeline stage",
-                 attr->source);
+        utils::StringStream err;
+        err << "@builtin(" << builtin << ") cannot be used in "
+            << (is_input ? "input of " : "output of ") << stage_name.str() << " pipeline stage";
+        AddError(err.str(), attr->source);
         return false;
     }
 
@@ -973,14 +996,19 @@ bool Validator::InterpolateAttribute(const ast::InterpolateAttribute* attr,
                                      const type::Type* storage_ty) const {
     auto* type = storage_ty->UnwrapRef();
 
-    if (type->is_integer_scalar_or_vector() && attr->type != builtin::InterpolationType::kFlat) {
+    auto i_type = sem_.AsInterpolationType(sem_.Get(attr->type));
+    if (TINT_UNLIKELY(!i_type)) {
+        return false;
+    }
+
+    if (type->is_integer_scalar_or_vector() &&
+        i_type->Value() != builtin::InterpolationType::kFlat) {
         AddError("interpolation type must be 'flat' for integral user-defined IO types",
                  attr->source);
         return false;
     }
 
-    if (attr->type == builtin::InterpolationType::kFlat &&
-        attr->sampling != builtin::InterpolationSampling::kUndefined) {
+    if (attr->sampling && i_type->Value() == builtin::InterpolationType::kFlat) {
         AddError("flat interpolation attribute must not have a sampling parameter", attr->source);
         return false;
     }
@@ -992,21 +1020,40 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
     auto* decl = func->Declaration();
 
     for (auto* attr : decl->attributes) {
-        if (attr->Is<ast::WorkgroupAttribute>()) {
-            if (decl->PipelineStage() != ast::PipelineStage::kCompute) {
-                AddError("the workgroup_size attribute is only valid for compute stages",
-                         attr->source);
-                return false;
-            }
-        } else if (!attr->IsAnyOf<ast::DiagnosticAttribute, ast::StageAttribute,
-                                  ast::InternalAttribute>()) {
-            AddError("attribute is not valid for functions", attr->source);
+        bool ok = Switch(
+            attr,  //
+            [&](const ast::WorkgroupAttribute*) {
+                if (decl->PipelineStage() != ast::PipelineStage::kCompute) {
+                    AddError("@workgroup_size is only valid for compute stages", attr->source);
+                    return false;
+                }
+                return true;
+            },
+            [&](const ast::MustUseAttribute*) {
+                if (func->ReturnType()->Is<type::Void>()) {
+                    AddError("@must_use can only be applied to functions that return a value",
+                             attr->source);
+                    return false;
+                }
+                return true;
+            },
+            [&](Default) {
+                if (!attr->IsAnyOf<ast::DiagnosticAttribute, ast::StageAttribute,
+                                   ast::InternalAttribute>()) {
+                    AddError("attribute is not valid for functions", attr->source);
+                    return false;
+                }
+                return true;
+            });
+        if (!ok) {
             return false;
         }
     }
 
-    if (decl->params.Length() > 255) {
-        AddError("functions may declare at most 255 parameters", decl->source);
+    if (decl->params.Length() > kMaxFunctionParameters) {
+        AddError("function declares " + std::to_string(decl->params.Length()) +
+                     " parameters, maximum is " + std::to_string(kMaxFunctionParameters),
+                 decl->source);
         return false;
     }
 
@@ -1098,32 +1145,34 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
         for (auto* attr : attrs) {
             auto is_invalid_compute_shader_attribute = false;
 
-            if (auto* builtin = attr->As<ast::BuiltinAttribute>()) {
+            if (auto* builtin_attr = attr->As<ast::BuiltinAttribute>()) {
+                auto builtin = sem_.Get(builtin_attr)->Value();
+
                 if (pipeline_io_attribute) {
                     AddError("multiple entry point IO attributes", attr->source);
-                    AddNote("previously consumed " + attr_to_str(pipeline_io_attribute, location),
+                    AddNote("previously consumed " + AttrToStr(pipeline_io_attribute),
                             pipeline_io_attribute->source);
                     return false;
                 }
                 pipeline_io_attribute = attr;
 
-                if (builtins.Contains(builtin->builtin)) {
-                    AddError(attr_to_str(builtin) +
-                                 " attribute appears multiple times as pipeline " +
-                                 (param_or_ret == ParamOrRetType::kParameter ? "input" : "output"),
-                             decl->source);
+                if (builtins.Contains(builtin)) {
+                    utils::StringStream err;
+                    err << "@builtin(" << builtin << ") appears multiple times as pipeline "
+                        << (param_or_ret == ParamOrRetType::kParameter ? "input" : "output");
+                    AddError(err.str(), decl->source);
                     return false;
                 }
 
-                if (!BuiltinAttribute(builtin, ty, stage,
+                if (!BuiltinAttribute(builtin_attr, ty, stage,
                                       /* is_input */ param_or_ret == ParamOrRetType::kParameter)) {
                     return false;
                 }
-                builtins.Add(builtin->builtin);
+                builtins.Add(builtin);
             } else if (auto* loc_attr = attr->As<ast::LocationAttribute>()) {
                 if (pipeline_io_attribute) {
                     AddError("multiple entry point IO attributes", attr->source);
-                    AddNote("previously consumed " + attr_to_str(pipeline_io_attribute),
+                    AddNote("previously consumed " + AttrToStr(pipeline_io_attribute),
                             pipeline_io_attribute->source);
                     return false;
                 }
@@ -1183,16 +1232,16 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
                     if (decl->PipelineStage() == ast::PipelineStage::kVertex &&
                         param_or_ret == ParamOrRetType::kReturnType) {
                         AddError(
-                            "integral user-defined vertex outputs must have a flat "
-                            "interpolation attribute",
+                            "integral user-defined vertex outputs must have a flat interpolation "
+                            "attribute",
                             source);
                         return false;
                     }
                     if (decl->PipelineStage() == ast::PipelineStage::kFragment &&
                         param_or_ret == ParamOrRetType::kParameter) {
                         AddError(
-                            "integral user-defined fragment inputs must have a flat "
-                            "interpolation attribute",
+                            "integral user-defined fragment inputs must have a flat interpolation "
+                            "attribute",
                             source);
                         return false;
                     }
@@ -1211,15 +1260,14 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
             if (invariant_attribute) {
                 bool has_position = false;
                 if (pipeline_io_attribute) {
-                    if (auto* builtin = pipeline_io_attribute->As<ast::BuiltinAttribute>()) {
-                        has_position = (builtin->builtin == builtin::BuiltinValue::kPosition);
+                    if (auto* builtin_attr = pipeline_io_attribute->As<ast::BuiltinAttribute>()) {
+                        auto builtin = sem_.Get(builtin_attr)->Value();
+                        has_position = (builtin == builtin::BuiltinValue::kPosition);
                     }
                 }
                 if (!has_position) {
-                    AddError(
-                        "invariant attribute must only be applied to a position "
-                        "builtin",
-                        invariant_attribute->source);
+                    AddError("invariant attribute must only be applied to a position builtin",
+                             invariant_attribute->source);
                     return false;
                 }
             }
@@ -1280,9 +1328,10 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
         // Check module-scope variables, as the SPIR-V sanitizer generates these.
         bool found = false;
         for (auto* global : func->TransitivelyReferencedGlobals()) {
-            if (auto* builtin =
+            if (auto* builtin_attr =
                     ast::GetAttribute<ast::BuiltinAttribute>(global->Declaration()->attributes)) {
-                if (builtin->builtin == builtin::BuiltinValue::kPosition) {
+                auto builtin = sem_.Get(builtin_attr)->Value();
+                if (builtin == builtin::BuiltinValue::kPosition) {
                     found = true;
                     break;
                 }
@@ -1448,22 +1497,39 @@ bool Validator::ContinueStatement(const sem::Statement* stmt,
 }
 
 bool Validator::Call(const sem::Call* call, sem::Statement* current_statement) const {
+    if (!call->Target()->MustUse()) {
+        return true;
+    }
+
     auto* expr = call->Declaration();
     bool is_call_stmt =
         current_statement && Is<ast::CallStatement>(current_statement->Declaration(),
                                                     [&](auto* stmt) { return stmt->expr == expr; });
     if (is_call_stmt) {
-        return Switch(
+        // Call target is annotated with @must_use, but was used as a call statement.
+        Switch(
             call->Target(),  //
-            [&](const sem::TypeConversion*) {
-                AddError("type conversion evaluated but not used", call->Declaration()->source);
-                return false;
+            [&](const sem::Function* fn) {
+                AddError("ignoring return value of function '" +
+                             symbols_.NameFor(fn->Declaration()->name->symbol) +
+                             "' annotated with @must_use",
+                         call->Declaration()->source);
+                sem_.NoteDeclarationSource(fn->Declaration());
             },
-            [&](const sem::TypeInitializer*) {
-                AddError("type initializer evaluated but not used", call->Declaration()->source);
-                return false;
+            [&](const sem::Builtin* b) {
+                AddError("ignoring return value of builtin '" + utils::ToString(b->Type()) + "'",
+                         call->Declaration()->source);
             },
-            [&](Default) { return true; });
+            [&](const sem::ValueConversion*) {
+                AddError("value conversion evaluated but not used", call->Declaration()->source);
+            },
+            [&](const sem::ValueConstructor*) {
+                AddError("value constructor evaluated but not used", call->Declaration()->source);
+            },
+            [&](Default) {
+                AddError("return value of call not used", call->Declaration()->source);
+            });
+        return false;
     }
 
     return true;
@@ -1772,14 +1838,14 @@ bool Validator::FunctionCall(const sem::Call* call, sem::Statement* current_stat
 bool Validator::StructureInitializer(const ast::CallExpression* ctor,
                                      const sem::Struct* struct_type) const {
     if (!struct_type->IsConstructible()) {
-        AddError("struct initializer has non-constructible type", ctor->source);
+        AddError("structure constructor has non-constructible type", ctor->source);
         return false;
     }
 
     if (ctor->args.Length() > 0) {
         if (ctor->args.Length() != struct_type->Members().Length()) {
             std::string fm = ctor->args.Length() < struct_type->Members().Length() ? "few" : "many";
-            AddError("struct initializer has too " + fm + " inputs: expected " +
+            AddError("structure constructor has too " + fm + " inputs: expected " +
                          std::to_string(struct_type->Members().Length()) + ", found " +
                          std::to_string(ctor->args.Length()),
                      ctor->source);
@@ -1790,7 +1856,7 @@ bool Validator::StructureInitializer(const ast::CallExpression* ctor,
             auto* value_ty = sem_.TypeOf(value);
             if (member->Type() != value_ty->UnwrapRef()) {
                 AddError(
-                    "type in struct initializer does not match struct member type: expected '" +
+                    "type in structure constructor does not match struct member type: expected '" +
                         sem_.TypeNameOf(member->Type()) + "', found '" + sem_.TypeNameOf(value_ty) +
                         "'",
                     value->source);
@@ -1801,7 +1867,7 @@ bool Validator::StructureInitializer(const ast::CallExpression* ctor,
     return true;
 }
 
-bool Validator::ArrayInitializer(const ast::CallExpression* ctor,
+bool Validator::ArrayConstructor(const ast::CallExpression* ctor,
                                  const type::Array* array_type) const {
     auto& values = ctor->args;
     auto* elem_ty = array_type->ElemType();
@@ -1828,7 +1894,7 @@ bool Validator::ArrayInitializer(const ast::CallExpression* ctor,
     }
 
     if (!elem_ty->IsConstructible()) {
-        AddError("array initializer has non-constructible element type", ctor->source);
+        AddError("array constructor has non-constructible element type", ctor->source);
         return false;
     }
 
@@ -1840,7 +1906,7 @@ bool Validator::ArrayInitializer(const ast::CallExpression* ctor,
     const auto count = c->As<type::ConstantArrayCount>()->value;
     if (!values.IsEmpty() && (values.Length() != count)) {
         std::string fm = values.Length() < count ? "few" : "many";
-        AddError("array initializer has too " + fm + " elements: expected " +
+        AddError("array constructor has too " + fm + " elements: expected " +
                      std::to_string(count) + ", found " + std::to_string(values.Length()),
                  ctor->source);
         return false;
@@ -1884,7 +1950,7 @@ bool Validator::PipelineStages(utils::VectorRef<sem::Function*> entry_points) co
         if (stage != ast::PipelineStage::kCompute) {
             for (auto* var : func->DirectlyReferencedGlobals()) {
                 if (var->AddressSpace() == builtin::AddressSpace::kWorkgroup) {
-                    std::stringstream stage_name;
+                    utils::StringStream stage_name;
                     stage_name << stage;
                     for (auto* user : var->Users()) {
                         if (func == user->Stmt()->Function()) {
@@ -1908,7 +1974,7 @@ bool Validator::PipelineStages(utils::VectorRef<sem::Function*> entry_points) co
         for (auto* builtin : func->DirectlyCalledBuiltins()) {
             if (!builtin->SupportedStages().Contains(stage)) {
                 auto* call = func->FindDirectCallTo(builtin);
-                std::stringstream err;
+                utils::StringStream err;
                 err << "built-in cannot be used by " << stage << " pipeline stage";
                 AddError(err.str(),
                          call ? call->Declaration()->source : func->Declaration()->source);
@@ -1922,7 +1988,7 @@ bool Validator::PipelineStages(utils::VectorRef<sem::Function*> entry_points) co
     auto check_no_discards = [&](const sem::Function* func, const sem::Function* entry_point) {
         if (auto* discard = func->DiscardStatement()) {
             auto stage = entry_point->Declaration()->PipelineStage();
-            std::stringstream err;
+            utils::StringStream err;
             err << "discard statement cannot be used in " << stage << " pipeline stage";
             AddError(err.str(), discard->Declaration()->source);
             backtrace(func, entry_point);
@@ -2120,12 +2186,13 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
                     }
                     return true;
                 },
-                [&](const ast::BuiltinAttribute* builtin) {
-                    if (!BuiltinAttribute(builtin, member->Type(), stage,
+                [&](const ast::BuiltinAttribute* builtin_attr) {
+                    if (!BuiltinAttribute(builtin_attr, member->Type(), stage,
                                           /* is_input */ false)) {
                         return false;
                     }
-                    if (builtin->builtin == builtin::BuiltinValue::kPosition) {
+                    auto builtin = sem_.Get(builtin_attr)->Value();
+                    if (builtin == builtin::BuiltinValue::kPosition) {
                         has_position = true;
                     }
                     return true;
@@ -2208,18 +2275,18 @@ bool Validator::LocationAttribute(const ast::LocationAttribute* loc_attr,
 
     if (!type->is_numeric_scalar_or_vector()) {
         std::string invalid_type = sem_.TypeNameOf(type);
-        AddError("cannot apply 'location' attribute to declaration of type '" + invalid_type + "'",
-                 source);
+        AddError("cannot apply @location to declaration of type '" + invalid_type + "'", source);
         AddNote(
-            "'location' attribute must only be applied to declarations of numeric scalar or "
-            "numeric vector type",
+            "@location must only be applied to declarations of numeric scalar or numeric vector "
+            "type",
             loc_attr->source);
         return false;
     }
 
     if (!locations.Add(location)) {
-        AddError(attr_to_str(loc_attr, location) + " attribute appears multiple times",
-                 loc_attr->source);
+        utils::StringStream err;
+        err << "@location(" << location << ") appears multiple times";
+        AddError(err.str(), loc_attr->source);
         return false;
     }
 
@@ -2250,6 +2317,13 @@ bool Validator::Return(const ast::ReturnStatement* ret,
 }
 
 bool Validator::SwitchStatement(const ast::SwitchStatement* s) {
+    if (s->body.Length() > kMaxSwitchCaseSelectors) {
+        AddError("switch statement has " + std::to_string(s->body.Length()) +
+                     " case selectors, max is " + std::to_string(kMaxSwitchCaseSelectors),
+                 s->source);
+        return false;
+    }
+
     auto* cond_ty = sem_.TypeOf(s->condition);
     if (!cond_ty->is_integer_scalar()) {
         AddError("switch statement selector expression must be of a scalar integer type",
@@ -2336,26 +2410,47 @@ bool Validator::Assignment(const ast::Statement* a, const type::Type* rhs_ty) co
     }
 
     // https://gpuweb.github.io/gpuweb/wgsl/#assignment-statement
-    auto const* lhs_ty = sem_.TypeOf(lhs);
-
-    if (auto* var_user = sem_.Get<sem::VariableUser>(lhs)) {
-        auto* v = var_user->Variable()->Declaration();
-        const char* err = Switch(
-            v,  //
-            [&](const ast::Parameter*) { return "cannot assign to function parameter"; },
-            [&](const ast::Let*) { return "cannot assign to 'let'"; },
-            [&](const ast::Override*) { return "cannot assign to 'override'"; });
-        if (err) {
-            AddError(err, lhs->source);
-            AddNote("'" + symbols_.NameFor(v->name->symbol) + "' is declared here:", v->source);
-            return false;
-        }
-    }
+    auto const* lhs_sem = sem_.GetVal(lhs);
+    auto const* lhs_ty = lhs_sem->Type();
 
     auto* lhs_ref = lhs_ty->As<type::Reference>();
     if (!lhs_ref) {
         // LHS is not a reference, so it has no storage.
-        AddError("cannot assign to value of type '" + sem_.TypeNameOf(lhs_ty) + "'", lhs->source);
+        AddError("cannot assign to " + sem_.Describe(lhs_sem), lhs->source);
+
+        auto* expr = lhs;
+        while (expr) {
+            expr = Switch(
+                expr,  //
+                [&](const ast::AccessorExpression* e) { return e->object; },
+                [&](const ast::IdentifierExpression* i) {
+                    if (auto user = sem_.Get<sem::VariableUser>(i)) {
+                        Switch(
+                            user->Variable()->Declaration(),  //
+                            [&](const ast::Let* v) {
+                                AddNote("'let' variables are immutable",
+                                        user->Declaration()->source);
+                                sem_.NoteDeclarationSource(v);
+                            },
+                            [&](const ast::Const* v) {
+                                AddNote("'const' variables are immutable",
+                                        user->Declaration()->source);
+                                sem_.NoteDeclarationSource(v);
+                            },
+                            [&](const ast::Override* v) {
+                                AddNote("'override' variables are immutable",
+                                        user->Declaration()->source);
+                                sem_.NoteDeclarationSource(v);
+                            },
+                            [&](const ast::Parameter* v) {
+                                AddNote("parameters are immutable", user->Declaration()->source);
+                                sem_.NoteDeclarationSource(v);
+                            });
+                    }
+                    return nullptr;
+                });
+        }
+
         return false;
     }
 
@@ -2449,12 +2544,12 @@ bool Validator::DiagnosticControls(utils::VectorRef<const ast::DiagnosticControl
         auto diag_added = diagnostics.Add(dc->rule_name->symbol, dc);
         if (!diag_added && (*diag_added.value)->severity != dc->severity) {
             {
-                std::ostringstream ss;
+                utils::StringStream ss;
                 ss << "conflicting diagnostic " << use;
                 AddError(ss.str(), dc->rule_name->source);
             }
             {
-                std::ostringstream ss;
+                utils::StringStream ss;
                 ss << "severity of '" << symbols_.NameFor(dc->rule_name->symbol) << "' set to '"
                    << dc->severity << "' here";
                 AddNote(ss.str(), (*diag_added.value)->rule_name->source);
@@ -2524,8 +2619,7 @@ bool Validator::CheckTypeAccessAddressSpace(
     }
 
     if (address_space == builtin::AddressSpace::kStorage && access == builtin::Access::kWrite) {
-        // The access mode for the storage address space can only be 'read' or
-        // 'read_write'.
+        // The access mode for the storage address space can only be 'read' or 'read_write'.
         AddError("access mode 'write' is not valid for the 'storage' address space", source);
         return false;
     }

@@ -322,11 +322,12 @@ void RecordNumWorkgroupsForDispatch(ID3D12GraphicsCommandList* commandList,
                                               0);
 }
 
-// Records the necessary barriers for a synchronization scope using the resource usage
-// data pre-computed in the frontend. Also performs lazy initialization if required.
-// Returns whether any UAV are used in the synchronization scope.
-bool TransitionAndClearForSyncScope(CommandRecordingContext* commandContext,
-                                    const SyncScopeResourceUsage& usages) {
+// Records the necessary barriers for a synchronization scope using the resource usage data
+// pre-computed in the frontend. Also performs lazy initialization if required. Returns whether any
+// UAV are used in the synchronization scope if `passHasUAV` is passed and no errors are hit.
+MaybeError TransitionAndClearForSyncScope(CommandRecordingContext* commandContext,
+                                          const SyncScopeResourceUsage& usages,
+                                          bool* passHasUAV = nullptr) {
     std::vector<D3D12_RESOURCE_BARRIER> barriers;
 
     ID3D12GraphicsCommandList* commandList = commandContext->GetCommandList();
@@ -336,9 +337,8 @@ bool TransitionAndClearForSyncScope(CommandRecordingContext* commandContext,
     for (size_t i = 0; i < usages.buffers.size(); ++i) {
         Buffer* buffer = ToBackend(usages.buffers[i]);
 
-        // TODO(crbug.com/dawn/852): clear storage buffers with
-        // ClearUnorderedAccessView*().
-        buffer->GetDevice()->ConsumedError(buffer->EnsureDataInitialized(commandContext));
+        // TODO(crbug.com/dawn/852): clear storage buffers with ClearUnorderedAccessView*().
+        DAWN_TRY(buffer->EnsureDataInitialized(commandContext));
 
         D3D12_RESOURCE_BARRIER barrier;
         if (buffer->TrackUsageAndGetResourceBarrier(commandContext, &barrier,
@@ -356,13 +356,14 @@ bool TransitionAndClearForSyncScope(CommandRecordingContext* commandContext,
         // Clear subresources that are not render attachments. Render attachments will be
         // cleared in RecordBeginRenderPass by setting the loadop to clear when the texture
         // subresource has not been initialized before the render pass.
-        usages.textureUsages[i].Iterate(
-            [&](const SubresourceRange& range, wgpu::TextureUsage usage) {
+        DAWN_TRY(usages.textureUsages[i].Iterate(
+            [&](const SubresourceRange& range, wgpu::TextureUsage usage) -> MaybeError {
                 if (usage & ~wgpu::TextureUsage::RenderAttachment) {
-                    texture->EnsureSubresourceContentInitialized(commandContext, range);
+                    DAWN_TRY(texture->EnsureSubresourceContentInitialized(commandContext, range));
                 }
                 textureUsages |= usage;
-            });
+                return {};
+            }));
 
         ToBackend(usages.textures[i])
             ->TrackUsageAndGetResourceBarrierForPass(commandContext, &barriers,
@@ -373,8 +374,11 @@ bool TransitionAndClearForSyncScope(CommandRecordingContext* commandContext,
         commandList->ResourceBarrier(barriers.size(), barriers.data());
     }
 
-    return (bufferUsages & wgpu::BufferUsage::Storage ||
-            textureUsages & wgpu::TextureUsage::StorageBinding);
+    if (passHasUAV) {
+        *passHasUAV = bufferUsages & wgpu::BufferUsage::Storage ||
+                      textureUsages & wgpu::TextureUsage::StorageBinding;
+    }
+    return {};
 }
 
 }  // anonymous namespace
@@ -442,7 +446,7 @@ class BindGroupStateTracker : public BindGroupTrackerBase<false, uint64_t> {
         for (BindGroupIndex index : IterateBitSet(mDirtyBindGroupsObjectChangedOrIsDynamic)) {
             BindGroup* group = ToBackend(mBindGroups[index]);
             ApplyBindGroup(commandList, ToBackend(mPipelineLayout), index, group,
-                           mDynamicOffsetCounts[index], mDynamicOffsets[index].data());
+                           mDynamicOffsets[index]);
         }
 
         AfterApply();
@@ -484,10 +488,7 @@ class BindGroupStateTracker : public BindGroupTrackerBase<false, uint64_t> {
                         const PipelineLayout* pipelineLayout,
                         BindGroupIndex index,
                         BindGroup* group,
-                        uint32_t dynamicOffsetCountIn,
-                        const uint64_t* dynamicOffsetsIn) {
-        ityp::span<BindingIndex, const uint64_t> dynamicOffsets(dynamicOffsetsIn,
-                                                                BindingIndex(dynamicOffsetCountIn));
+                        const ityp::vector<BindingIndex, uint64_t>& dynamicOffsets) {
         ASSERT(dynamicOffsets.size() == group->GetLayout()->GetDynamicBufferCount());
 
         // Usually, the application won't set the same offsets many times,
@@ -756,8 +757,10 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                 BeginRenderPassCmd* beginRenderPassCmd =
                     mCommands.NextCommand<BeginRenderPassCmd>();
 
-                const bool passHasUAV = TransitionAndClearForSyncScope(
-                    commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber]);
+                bool passHasUAV;
+                DAWN_TRY(TransitionAndClearForSyncScope(
+                    commandContext, GetResourceUsages().renderPasses[nextRenderPassNumber],
+                    &passHasUAV));
                 bindingTracker.SetInComputePass(false);
 
                 LazyClearRenderPassAttachments(beginRenderPassCmd);
@@ -811,7 +814,8 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                                                   copy->destination.mipLevel)) {
                     texture->SetIsSubresourceContentInitialized(true, subresources);
                 } else {
-                    texture->EnsureSubresourceContentInitialized(commandContext, subresources);
+                    DAWN_TRY(
+                        texture->EnsureSubresourceContentInitialized(commandContext, subresources));
                 }
 
                 buffer->TrackUsageAndTransitionNow(commandContext, wgpu::BufferUsage::CopySrc);
@@ -845,7 +849,8 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                 SubresourceRange subresources =
                     GetSubresourcesAffectedByCopy(copy->source, copy->copySize);
 
-                texture->EnsureSubresourceContentInitialized(commandContext, subresources);
+                DAWN_TRY(
+                    texture->EnsureSubresourceContentInitialized(commandContext, subresources));
 
                 texture->TrackUsageAndTransitionNow(commandContext, wgpu::TextureUsage::CopySrc,
                                                     subresources);
@@ -878,12 +883,13 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                 SubresourceRange dstRange =
                     GetSubresourcesAffectedByCopy(copy->destination, copy->copySize);
 
-                source->EnsureSubresourceContentInitialized(commandContext, srcRange);
+                DAWN_TRY(source->EnsureSubresourceContentInitialized(commandContext, srcRange));
                 if (IsCompleteSubresourceCopiedTo(destination, copy->copySize,
                                                   copy->destination.mipLevel)) {
                     destination->SetIsSubresourceContentInitialized(true, dstRange);
                 } else {
-                    destination->EnsureSubresourceContentInitialized(commandContext, dstRange);
+                    DAWN_TRY(
+                        destination->EnsureSubresourceContentInitialized(commandContext, dstRange));
                 }
 
                 if (copy->source.texture.Get() == copy->destination.texture.Get() &&
@@ -1148,8 +1154,8 @@ MaybeError CommandBuffer::RecordComputePass(CommandRecordingContext* commandCont
                     break;
                 }
 
-                TransitionAndClearForSyncScope(commandContext,
-                                               resourceUsages.dispatchUsages[currentDispatch]);
+                DAWN_TRY(TransitionAndClearForSyncScope(
+                    commandContext, resourceUsages.dispatchUsages[currentDispatch]));
                 DAWN_TRY(bindingTracker->Apply(commandContext));
 
                 RecordNumWorkgroupsForDispatch(commandList, lastPipeline, dispatch);
@@ -1161,8 +1167,8 @@ MaybeError CommandBuffer::RecordComputePass(CommandRecordingContext* commandCont
             case Command::DispatchIndirect: {
                 DispatchIndirectCmd* dispatch = mCommands.NextCommand<DispatchIndirectCmd>();
 
-                TransitionAndClearForSyncScope(commandContext,
-                                               resourceUsages.dispatchUsages[currentDispatch]);
+                DAWN_TRY(TransitionAndClearForSyncScope(
+                    commandContext, resourceUsages.dispatchUsages[currentDispatch]));
                 DAWN_TRY(bindingTracker->Apply(commandContext));
 
                 ComPtr<ID3D12CommandSignature> signature =

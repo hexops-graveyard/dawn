@@ -52,15 +52,11 @@ class QuerySetBase : public ApiObjectBase {
                  const QuerySetDescriptor* descriptor,
                  ObjectBase::ErrorTag tag);
 
-    // Constructor used only for mocking and testing.
-    explicit QuerySetBase(DeviceBase* device);
     void DestroyImpl() override;
 
     ~QuerySetBase() override;
 
   private:
-    MaybeError ValidateDestroy() const;
-
     wgpu::QueryType mQueryType;
     uint32_t mQueryCount;
     std::vector<wgpu::PipelineStatisticName> mPipelineStatistics;

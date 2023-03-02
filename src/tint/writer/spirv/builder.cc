@@ -33,8 +33,8 @@
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/transform/add_block_attribute.h"
 #include "src/tint/type/array.h"
@@ -49,6 +49,7 @@
 #include "src/tint/utils/compiler_macros.h"
 #include "src/tint/utils/defer.h"
 #include "src/tint/utils/map.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/append_vector.h"
 #include "src/tint/writer/check_supported_extensions.h"
 
@@ -548,8 +549,9 @@ bool Builder::GenerateExecutionModes(const ast::Function* func, uint32_t id) {
              Operand(wgsize[0].value()), Operand(wgsize[1].value()), Operand(wgsize[2].value())});
     }
 
-    for (auto builtin : func_sem->TransitivelyReferencedBuiltinVariables()) {
-        if (builtin.second->builtin == builtin::BuiltinValue::kFragDepth) {
+    for (auto it : func_sem->TransitivelyReferencedBuiltinVariables()) {
+        auto builtin = builder_.Sem().Get(it.second)->Value();
+        if (builtin == builtin::BuiltinValue::kFragDepth) {
             push_execution_mode(spv::Op::OpExecutionMode,
                                 {Operand(id), U32Operand(SpvExecutionModeDepthReplacing)});
         }
@@ -769,7 +771,7 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
 
     uint32_t init_id = 0;
     if (auto* ctor = v->initializer) {
-        init_id = GenerateInitializerExpression(v, ctor);
+        init_id = GenerateConstructorExpression(v, ctor);
         if (init_id == 0) {
             return false;
         }
@@ -837,10 +839,11 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
     for (auto* attr : v->attributes) {
         bool ok = Switch(
             attr,
-            [&](const ast::BuiltinAttribute* builtin) {
+            [&](const ast::BuiltinAttribute* builtin_attr) {
+                auto builtin = builder_.Sem().Get(builtin_attr)->Value();
                 push_annot(spv::Op::OpDecorate,
                            {Operand(var_id), U32Operand(SpvDecorationBuiltIn),
-                            U32Operand(ConvertBuiltin(builtin->builtin, sem->AddressSpace()))});
+                            U32Operand(ConvertBuiltin(builtin, sem->AddressSpace()))});
                 return true;
             },
             [&](const ast::LocationAttribute*) {
@@ -849,7 +852,19 @@ bool Builder::GenerateGlobalVariable(const ast::Variable* v) {
                 return true;
             },
             [&](const ast::InterpolateAttribute* interpolate) {
-                AddInterpolationDecorations(var_id, interpolate->type, interpolate->sampling);
+                auto& s = builder_.Sem();
+                auto i_type =
+                    s.Get<sem::BuiltinEnumExpression<builtin::InterpolationType>>(interpolate->type)
+                        ->Value();
+
+                auto i_smpl = builtin::InterpolationSampling::kUndefined;
+                if (interpolate->sampling) {
+                    i_smpl = s.Get<sem::BuiltinEnumExpression<builtin::InterpolationSampling>>(
+                                  interpolate->sampling)
+                                 ->Value();
+                }
+
+                AddInterpolationDecorations(var_id, i_type, i_smpl);
                 return true;
             },
             [&](const ast::InvariantAttribute*) {
@@ -1233,7 +1248,7 @@ uint32_t Builder::GetGLSLstd450Import() {
     return id;
 }
 
-uint32_t Builder::GenerateInitializerExpression(const ast::Variable* var,
+uint32_t Builder::GenerateConstructorExpression(const ast::Variable* var,
                                                 const ast::Expression* expr) {
     if (auto* sem = builder_.Sem().GetVal(expr)) {
         if (auto constant = sem->ConstantValue()) {
@@ -1241,15 +1256,15 @@ uint32_t Builder::GenerateInitializerExpression(const ast::Variable* var,
         }
     }
     if (auto* call = builder_.Sem().Get<sem::Call>(expr)) {
-        if (call->Target()->IsAnyOf<sem::TypeInitializer, sem::TypeConversion>()) {
-            return GenerateTypeInitializerOrConversion(call, var);
+        if (call->Target()->IsAnyOf<sem::ValueConstructor, sem::ValueConversion>()) {
+            return GenerateValueConstructorOrConversion(call, var);
         }
     }
-    error_ = "unknown initializer expression";
+    error_ = "unknown constructor expression";
     return 0;
 }
 
-bool Builder::IsInitializerConst(const ast::Expression* expr) {
+bool Builder::IsConstructorConst(const ast::Expression* expr) {
     bool is_const = true;
     ast::TraverseExpressions(expr, builder_.Diagnostics(), [&](const ast::Expression* e) {
         if (e->Is<ast::LiteralExpression>()) {
@@ -1263,7 +1278,7 @@ bool Builder::IsInitializerConst(const ast::Expression* expr) {
                 return ast::TraverseAction::Skip;
             }
             auto* call = sem->As<sem::Call>();
-            if (call->Target()->Is<sem::TypeInitializer>()) {
+            if (call->Target()->Is<sem::ValueConstructor>()) {
                 return ast::TraverseAction::Descend;
             }
         }
@@ -1274,19 +1289,19 @@ bool Builder::IsInitializerConst(const ast::Expression* expr) {
     return is_const;
 }
 
-uint32_t Builder::GenerateTypeInitializerOrConversion(const sem::Call* call,
-                                                      const ast::Variable* var) {
+uint32_t Builder::GenerateValueConstructorOrConversion(const sem::Call* call,
+                                                       const ast::Variable* var) {
     auto& args = call->Arguments();
     auto* global_var = builder_.Sem().Get<sem::GlobalVariable>(var);
     auto* result_type = call->Type();
 
-    // Generate the zero initializer if there are no values provided.
+    // Generate the zero constructor if there are no values provided.
     if (args.IsEmpty()) {
         return GenerateConstantNullIfNeeded(result_type->UnwrapRef());
     }
 
     result_type = result_type->UnwrapRef();
-    bool initializer_is_const = IsInitializerConst(call->Declaration());
+    bool constructor_is_const = IsConstructorConst(call->Declaration());
     if (has_error()) {
         return 0;
     }
@@ -1321,7 +1336,7 @@ uint32_t Builder::GenerateTypeInitializerOrConversion(const sem::Call* call,
         return 0;
     }
 
-    bool result_is_constant_composite = initializer_is_const;
+    bool result_is_constant_composite = constructor_is_const;
     bool result_is_spec_composite = false;
 
     if (auto* vec = result_type->As<type::Vector>()) {
@@ -2229,13 +2244,14 @@ uint32_t Builder::GenerateCallExpression(const ast::CallExpression* expr) {
     auto* call = builder_.Sem().Get<sem::Call>(expr);
     auto* target = call->Target();
     return Switch(
-        target, [&](const sem::Function* func) { return GenerateFunctionCall(call, func); },
+        target,  //
+        [&](const sem::Function* func) { return GenerateFunctionCall(call, func); },
         [&](const sem::Builtin* builtin) { return GenerateBuiltinCall(call, builtin); },
-        [&](const sem::TypeConversion*) {
-            return GenerateTypeInitializerOrConversion(call, nullptr);
+        [&](const sem::ValueConversion*) {
+            return GenerateValueConstructorOrConversion(call, nullptr);
         },
-        [&](const sem::TypeInitializer*) {
-            return GenerateTypeInitializerOrConversion(call, nullptr);
+        [&](const sem::ValueConstructor*) {
+            return GenerateValueConstructorOrConversion(call, nullptr);
         },
         [&](Default) {
             TINT_ICE(Writer, builder_.Diagnostics())
@@ -4123,7 +4139,7 @@ SpvImageFormat Builder::convert_texel_format_to_spv(const builtin::TexelFormat f
 
 bool Builder::push_function_inst(spv::Op op, const OperandList& operands) {
     if (functions_.empty()) {
-        std::ostringstream ss;
+        utils::StringStream ss;
         ss << "Internal error: trying to add SPIR-V instruction " << int(op)
            << " outside a function";
         error_ = ss.str();

@@ -1078,11 +1078,10 @@ INSTANTIATE_TEST_SUITE_P(LexerTest,
                                          TokenData{"loop", Token::Type::kLoop},
                                          TokenData{"override", Token::Type::kOverride},
                                          TokenData{"return", Token::Type::kReturn},
-                                         TokenData{"static_assert", Token::Type::kStaticAssert},
+                                         TokenData{"requires", Token::Type::kRequires},
                                          TokenData{"struct", Token::Type::kStruct},
                                          TokenData{"switch", Token::Type::kSwitch},
                                          TokenData{"true", Token::Type::kTrue},
-                                         TokenData{"type", Token::Type::kType},
                                          TokenData{"var", Token::Type::kVar},
                                          TokenData{"while", Token::Type::kWhile}));
 

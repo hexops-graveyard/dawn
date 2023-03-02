@@ -95,6 +95,7 @@ enum class Compiler { FXC, DXC };
     X(bool, disableSymbolRenaming)                                                          \
     X(bool, isRobustnessEnabled)                                                            \
     X(bool, disableWorkgroupInit)                                                           \
+    X(bool, polyfillReflectVec2F32)                                                         \
     X(bool, dumpShaders)
 
 #define D3D_BYTECODE_COMPILATION_REQUEST_MEMBERS(X) \
@@ -322,12 +323,6 @@ ResultOrError<std::string> TranslateToHLSL(
             r.firstIndexOffsetShaderRegister, r.firstIndexOffsetRegisterSpace);
     }
 
-    if (r.isRobustnessEnabled) {
-        transformManager.Add<tint::transform::Robustness>();
-    }
-
-    transformManager.Add<tint::transform::BindingRemapper>();
-
     if (r.substituteOverrideConfig) {
         // This needs to run after SingleEntryPoint transform which removes unused overrides for
         // current entry point.
@@ -335,6 +330,12 @@ ResultOrError<std::string> TranslateToHLSL(
         transformInputs.Add<tint::transform::SubstituteOverride::Config>(
             std::move(r.substituteOverrideConfig).value());
     }
+
+    if (r.isRobustnessEnabled) {
+        transformManager.Add<tint::transform::Robustness>();
+    }
+
+    transformManager.Add<tint::transform::BindingRemapper>();
 
     // D3D12 registers like `t3` and `c3` have the same bindingOffset number in
     // the remapping but should not be considered a collision because they have
@@ -400,6 +401,8 @@ ResultOrError<std::string> TranslateToHLSL(
         // outputs.
         options.interstage_locations = r.interstageLocations;
     }
+
+    options.polyfill_reflect_vec2_f32 = r.polyfillReflectVec2F32;
 
     TRACE_EVENT0(tracePlatform.UnsafeGetValue(), General, "tint::writer::hlsl::Generate");
     auto result = tint::writer::hlsl::Generate(&transformedProgram, options);
@@ -605,6 +608,8 @@ ResultOrError<CompiledShader> ShaderModule::Compile(
     req.hlsl.newBindingsMap = BuildExternalTextureTransformBindings(layout);
     req.hlsl.arrayLengthFromUniform = std::move(arrayLengthFromUniform);
     req.hlsl.substituteOverrideConfig = std::move(substituteOverrideConfig);
+
+    req.hlsl.polyfillReflectVec2F32 = device->IsToggleEnabled(Toggle::D3D12PolyfillReflectVec2F32);
 
     const CombinedLimits& limits = device->GetLimits();
     req.hlsl.limits = LimitsForCompilationRequest::Create(limits.v1);

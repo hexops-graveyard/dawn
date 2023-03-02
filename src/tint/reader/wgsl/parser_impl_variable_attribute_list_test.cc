@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "src/tint/ast/test_helper.h"
 #include "src/tint/reader/wgsl/parser_impl_test_helper.h"
 
 namespace tint::reader::wgsl {
@@ -38,7 +39,8 @@ TEST_F(ParserImplTest, AttributeList_Parses) {
     EXPECT_EQ(exp->value, 4u);
 
     ASSERT_TRUE(attr_1->Is<ast::BuiltinAttribute>());
-    EXPECT_EQ(attr_1->As<ast::BuiltinAttribute>()->builtin, builtin::BuiltinValue::kPosition);
+    ast::CheckIdentifier(p->builder().Symbols(), attr_1->As<ast::BuiltinAttribute>()->builtin,
+                         "position");
 }
 
 TEST_F(ParserImplTest, AttributeList_Invalid) {
@@ -48,30 +50,10 @@ TEST_F(ParserImplTest, AttributeList_Invalid) {
     EXPECT_TRUE(attrs.errored);
     EXPECT_FALSE(attrs.matched);
     EXPECT_TRUE(attrs.value.IsEmpty());
-    EXPECT_EQ(p->error(), R"(1:2: expected attribute)");
+    EXPECT_EQ(p->error(), R"(1:2: expected attribute
+Did you mean 'invariant'?
+Possible values: 'align', 'binding', 'builtin', 'compute', 'diagnostic', 'fragment', 'group', 'id', 'interpolate', 'invariant', 'location', 'must_use', 'size', 'vertex', 'workgroup_size')");
 }
 
-TEST_F(ParserImplTest, AttributeList_InvalidValue) {
-    auto p = parser("@builtin(invalid)");
-    auto attrs = p->attribute_list();
-    EXPECT_TRUE(p->has_error());
-    EXPECT_TRUE(attrs.errored);
-    EXPECT_FALSE(attrs.matched);
-    EXPECT_TRUE(attrs.value.IsEmpty());
-    EXPECT_EQ(p->error(), R"(1:10: expected builtin
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
-}
-
-TEST_F(ParserImplTest, AttributeList_InvalidValueSuggest) {
-    auto p = parser("@builtin(instanceindex)");
-    auto attrs = p->attribute_list();
-    EXPECT_TRUE(p->has_error());
-    EXPECT_TRUE(attrs.errored);
-    EXPECT_FALSE(attrs.matched);
-    EXPECT_TRUE(attrs.value.IsEmpty());
-    EXPECT_EQ(p->error(), R"(1:10: expected builtin
-Did you mean 'instance_index'?
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
-}
 }  // namespace
 }  // namespace tint::reader::wgsl

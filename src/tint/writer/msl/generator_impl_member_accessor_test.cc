@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/msl/test_helper.h"
 
 namespace tint::writer::msl {
@@ -27,7 +28,7 @@ TEST_F(MslGeneratorImplTest, EmitExpression_MemberAccessor) {
 
     GeneratorImpl& gen = Build();
 
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
     EXPECT_EQ(out.str(), "str.mem");
 }
@@ -39,9 +40,9 @@ TEST_F(MslGeneratorImplTest, EmitExpression_MemberAccessor_Swizzle_xyz) {
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "float4(my_vec).xyz");
+    EXPECT_EQ(out.str(), "my_vec.xyz");
 }
 
 TEST_F(MslGeneratorImplTest, EmitExpression_MemberAccessor_Swizzle_gbr) {
@@ -51,9 +52,9 @@ TEST_F(MslGeneratorImplTest, EmitExpression_MemberAccessor_Swizzle_gbr) {
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
-    std::stringstream out;
+    utils::StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
-    EXPECT_EQ(out.str(), "float4(my_vec).gbr");
+    EXPECT_EQ(out.str(), "my_vec.gbr");
 }
 
 }  // namespace

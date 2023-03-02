@@ -21,6 +21,7 @@
 #include "src/tint/program_builder.h"
 #include "src/tint/reader/wgsl/parser.h"
 #include "src/tint/resolver/uniformity.h"
+#include "src/tint/utils/string_stream.h"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -168,14 +169,14 @@ class BasicTest : public UniformityAnalysisTestBase,
     }
 
     /// Convert a function call to its string representation.
-    static std::string FunctionToStr(Function f) {
+    static std::string FunctionCallToStr(Function f) {
         switch (f) {
             case kUserNoRestriction:
                 return "user_no_restriction()";
             case kMin:
-                return "min(1, 1)";
+                return "_ = min(1, 1)";
             case kTextureSampleLevel:
-                return "textureSampleLevel(t, s, vec2(0.5, 0.5), 0.0)";
+                return "_ = textureSampleLevel(t, s, vec2(0.5, 0.5), 0.0)";
             case kUserRequiredToBeUniform:
                 return "user_required_to_be_uniform()";
             case kWorkgroupBarrier:
@@ -183,31 +184,31 @@ class BasicTest : public UniformityAnalysisTestBase,
             case kStorageBarrier:
                 return "storageBarrier()";
             case kWorkgroupUniformLoad:
-                return "workgroupUniformLoad(&w)";
+                return "_ = workgroupUniformLoad(&w)";
             case kTextureSample:
-                return "textureSample(t, s, vec2(0.5, 0.5))";
+                return "_ = textureSample(t, s, vec2(0.5, 0.5))";
             case kTextureSampleBias:
-                return "textureSampleBias(t, s, vec2(0.5, 0.5), 2.0)";
+                return "_ = textureSampleBias(t, s, vec2(0.5, 0.5), 2.0)";
             case kTextureSampleCompare:
-                return "textureSampleCompare(td, sc, vec2(0.5, 0.5), 0.5)";
+                return "_ = textureSampleCompare(td, sc, vec2(0.5, 0.5), 0.5)";
             case kDpdx:
-                return "dpdx(1.0)";
+                return "_ = dpdx(1.0)";
             case kDpdxCoarse:
-                return "dpdxCoarse(1.0)";
+                return "_ = dpdxCoarse(1.0)";
             case kDpdxFine:
-                return "dpdxFine(1.0)";
+                return "_ = dpdxFine(1.0)";
             case kDpdy:
-                return "dpdy(1.0)";
+                return "_ = dpdy(1.0)";
             case kDpdyCoarse:
-                return "dpdyCoarse(1.0)";
+                return "_ = dpdyCoarse(1.0)";
             case kDpdyFine:
-                return "dpdyFine(1.0)";
+                return "_ = dpdyFine(1.0)";
             case kFwidth:
-                return "fwidth(1.0)";
+                return "_ = fwidth(1.0)";
             case kFwidthCoarse:
-                return "fwidthCoarse(1.0)";
+                return "_ = fwidthCoarse(1.0)";
             case kFwidthFine:
-                return "fwidthFine(1.0)";
+                return "_ = fwidthFine(1.0)";
             case kEndOfFunctionRange:
                 return "<invalid>";
         }
@@ -314,7 +315,7 @@ fn foo() {
 
   if ()" + ConditionToStr(condition) +
                       R"() {
-    )" + FunctionToStr(function) +
+    )" + FunctionCallToStr(function) +
                       R"(;
   }
 }
@@ -610,7 +611,7 @@ TEST_P(FragmentBuiltin, AsParam) {
 fn main(@builtin()" + GetParam().name +
                       R"() b : )" + GetParam().type + R"() {
   if (u32(vec4(b).x) == 0u) {
-    dpdx(0.5);
+    _ = dpdx(0.5);
   }
 }
 )";
@@ -619,9 +620,9 @@ fn main(@builtin()" + GetParam().name +
     RunTest(src, should_pass);
     if (!should_pass) {
         EXPECT_EQ(error_,
-                  R"(test:5:5 error: 'dpdx' must only be called from uniform control flow
-    dpdx(0.5);
-    ^^^^
+                  R"(test:5:9 error: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(0.5);
+        ^^^^^^^^^
 
 test:4:3 note: control flow depends on possibly non-uniform value
   if (u32(vec4(b).x) == 0u) {
@@ -644,7 +645,7 @@ struct S {
 @fragment
 fn main(s : S) {
   if (u32(vec4(s.b).x) == 0u) {
-    dpdx(0.5);
+    _ = dpdx(0.5);
   }
 }
 )";
@@ -653,9 +654,9 @@ fn main(s : S) {
     RunTest(src, should_pass);
     if (!should_pass) {
         EXPECT_EQ(error_,
-                  R"(test:9:5 error: 'dpdx' must only be called from uniform control flow
-    dpdx(0.5);
-    ^^^^
+                  R"(test:9:9 error: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(0.5);
+        ^^^^^^^^^
 
 test:8:3 note: control flow depends on possibly non-uniform value
   if (u32(vec4(s.b).x) == 0u) {
@@ -683,16 +684,16 @@ TEST_F(UniformityAnalysisTest, FragmentLocation) {
 @fragment
 fn main(@location(0) l : f32) {
   if (l == 0.0) {
-    dpdx(0.5);
+    _ = dpdx(0.5);
   }
 }
 )";
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:5:5 error: 'dpdx' must only be called from uniform control flow
-    dpdx(0.5);
-    ^^^^
+              R"(test:5:9 error: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(0.5);
+        ^^^^^^^^^
 
 test:4:3 note: control flow depends on possibly non-uniform value
   if (l == 0.0) {
@@ -713,16 +714,16 @@ struct S {
 @fragment
 fn main(s : S) {
   if (s.l == 0.0) {
-    dpdx(0.5);
+    _ = dpdx(0.5);
   }
 }
 )";
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:9:5 error: 'dpdx' must only be called from uniform control flow
-    dpdx(0.5);
-    ^^^^
+              R"(test:9:9 error: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(0.5);
+        ^^^^^^^^^
 
 test:8:3 note: control flow depends on possibly non-uniform value
   if (s.l == 0.0) {
@@ -6374,6 +6375,43 @@ test:11:9 note: reading from read_write storage buffer 'rw' may result in a non-
 )");
 }
 
+TEST_F(UniformityAnalysisTest, StructMember_MemberBecomesUniformThroughPartialPointer) {
+    // For aggregate types, we conservatively consider them to be non-uniform once they
+    // become non-uniform. Test that after assigning a uniform value to a member, that member is
+    // still considered to be non-uniform.
+    std::string src = R"(
+struct S {
+  a : i32,
+  b : i32,
+}
+@group(0) @binding(0) var<storage, read_write> rw : i32;
+
+fn foo() {
+  var s : S;
+  s.a = rw;
+  *&s.a = 0;
+  if (s.a == 0) {
+    workgroupBarrier();
+  }
+}
+)";
+
+    RunTest(src, false);
+    EXPECT_EQ(error_,
+              R"(test:13:5 error: 'workgroupBarrier' must only be called from uniform control flow
+    workgroupBarrier();
+    ^^^^^^^^^^^^^^^^
+
+test:12:3 note: control flow depends on possibly non-uniform value
+  if (s.a == 0) {
+  ^^
+
+test:10:9 note: reading from read_write storage buffer 'rw' may result in a non-uniform value
+  s.a = rw;
+        ^^
+)");
+}
+
 TEST_F(UniformityAnalysisTest, StructMember_MemberBecomesUniformThroughCapturedPartialPointer) {
     // For aggregate types, we conservatively consider them to be non-uniform once they
     // become non-uniform. Test that after assigning a uniform value to a member, that member is
@@ -7890,7 +7928,7 @@ class UniformityAnalysisDiagnosticFilterTest
 
 TEST_P(UniformityAnalysisDiagnosticFilterTest, Directive) {
     auto& param = GetParam();
-    std::ostringstream ss;
+    utils::StringStream ss;
     ss << "diagnostic(" << param << ", derivative_uniformity);"
        << R"(
 @group(0) @binding(0) var<storage, read_write> non_uniform : i32;
@@ -7909,7 +7947,7 @@ fn foo() {
     if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
-        std::ostringstream err;
+        utils::StringStream err;
         err << ToStr(param) << ": 'textureSample' must only be called";
         EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
     }
@@ -7917,7 +7955,7 @@ fn foo() {
 
 TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
     auto& param = GetParam();
-    std::ostringstream ss;
+    utils::StringStream ss;
     ss << R"(
 @group(0) @binding(0) var<storage, read_write> non_uniform : i32;
 @group(0) @binding(1) var t : texture_2d<f32>;
@@ -7936,7 +7974,7 @@ TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
     if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
-        std::ostringstream err;
+        utils::StringStream err;
         err << ToStr(param) << ": 'textureSample' must only be called";
         EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
     }
@@ -7944,7 +7982,7 @@ TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction) {
 
 TEST_P(UniformityAnalysisDiagnosticFilterTest, AttributeOnBlock) {
     auto& param = GetParam();
-    std::ostringstream ss;
+    utils::StringStream ss;
     ss << R"(
 @group(0) @binding(0) var<storage, read_write> non_uniform : i32;
 @group(0) @binding(1) var t : texture_2d<f32>;
@@ -7962,7 +8000,7 @@ fn foo() {
     if (param == builtin::DiagnosticSeverity::kOff) {
         EXPECT_TRUE(error_.empty());
     } else {
-        std::ostringstream err;
+        utils::StringStream err;
         err << ToStr(param) << ": 'textureSample' must only be called";
         EXPECT_THAT(error_, ::testing::HasSubstr(err.str()));
     }
@@ -7981,7 +8019,7 @@ TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_CalledByAnoth
 
 @diagnostic(info, derivative_uniformity)
 fn bar() {
-  dpdx(1.0);
+  _ = dpdx(1.0);
 }
 
 fn foo() {
@@ -8002,7 +8040,7 @@ TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_RequirementOn
 @diagnostic(info, derivative_uniformity)
 fn bar(x : i32) {
   if (x == 0) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 
@@ -8022,7 +8060,7 @@ TEST_F(UniformityAnalysisDiagnosticFilterTest, AttributeOnFunction_BuiltinInChil
 @group(0) @binding(0) var<storage, read_write> non_uniform : i32;
 
 fn bar() {
-  dpdx(1.0);
+  _ = dpdx(1.0);
 }
 
 @diagnostic(off, derivative_uniformity)
@@ -8047,44 +8085,44 @@ diagnostic(info, derivative_uniformity);
 
 fn a() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 
 @diagnostic(off, derivative_uniformity)
 fn b() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 
 @diagnostic(info, derivative_uniformity)
 fn c() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 
 @diagnostic(warning, derivative_uniformity)
 fn d() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 
 @diagnostic(error, derivative_uniformity)
 fn e() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 )";
 
     RunTest(src, false);
     EXPECT_EQ(error_,
-              R"(test:8:5 note: 'dpdx' must only be called from uniform control flow
-    dpdx(1.0);
-    ^^^^
+              R"(test:8:9 note: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(1.0);
+        ^^^^^^^^^
 
 test:7:3 note: control flow depends on possibly non-uniform value
   if (non_uniform == 42) {
@@ -8094,9 +8132,9 @@ test:7:7 note: reading from read_write storage buffer 'non_uniform' may result i
   if (non_uniform == 42) {
       ^^^^^^^^^^^
 
-test:22:5 note: 'dpdx' must only be called from uniform control flow
-    dpdx(1.0);
-    ^^^^
+test:22:9 note: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(1.0);
+        ^^^^^^^^^
 
 test:21:3 note: control flow depends on possibly non-uniform value
   if (non_uniform == 42) {
@@ -8106,9 +8144,9 @@ test:21:7 note: reading from read_write storage buffer 'non_uniform' may result 
   if (non_uniform == 42) {
       ^^^^^^^^^^^
 
-test:29:5 warning: 'dpdx' must only be called from uniform control flow
-    dpdx(1.0);
-    ^^^^
+test:29:9 warning: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(1.0);
+        ^^^^^^^^^
 
 test:28:3 note: control flow depends on possibly non-uniform value
   if (non_uniform == 42) {
@@ -8118,9 +8156,9 @@ test:28:7 note: reading from read_write storage buffer 'non_uniform' may result 
   if (non_uniform == 42) {
       ^^^^^^^^^^^
 
-test:36:5 error: 'dpdx' must only be called from uniform control flow
-    dpdx(1.0);
-    ^^^^
+test:36:9 error: 'dpdx' must only be called from uniform control flow
+    _ = dpdx(1.0);
+        ^^^^^^^^^
 
 test:35:3 note: control flow depends on possibly non-uniform value
   if (non_uniform == 42) {
@@ -8215,7 +8253,7 @@ diagnostic(off, derivative_uniformity);
 
 fn foo() {
   if (non_uniform == 42) {
-    dpdx(1.0);
+    _ = dpdx(1.0);
   }
 }
 

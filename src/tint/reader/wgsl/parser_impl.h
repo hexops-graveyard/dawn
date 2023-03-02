@@ -381,6 +381,9 @@ class ParserImpl {
     /// Parses the `enable_directive` grammar element, erroring on parse failure.
     /// @return true on parse success, otherwise an error or no-match.
     Maybe<Void> enable_directive();
+    /// Parses the `requires_directive` grammar element, erroring on parse failure.
+    /// @return true on parse success, otherwise an error or no-match.
+    Maybe<Void> requires_directive();
     /// Parses the `global_decl` grammar element, erroring on parse failure.
     /// @return true on parse success, otherwise an error or no-match.
     Maybe<Void> global_decl();
@@ -454,18 +457,6 @@ class ParserImpl {
     /// not match a stage name.
     /// @returns the pipeline stage.
     Expect<ast::PipelineStage> expect_pipeline_stage();
-    /// Parses an interpolation sample name identifier, erroring if the next token does not match a
-    /// valid sample name.
-    /// @returns the parsed sample name.
-    Expect<builtin::InterpolationSampling> expect_interpolation_sample_name();
-    /// Parses an interpolation type name identifier, erroring if the next token does not match a
-    /// value type name.
-    /// @returns the parsed type name
-    Expect<builtin::InterpolationType> expect_interpolation_type_name();
-    /// Parses a builtin identifier, erroring if the next token does not match a
-    /// valid builtin name.
-    /// @returns the parsed builtin.
-    Expect<builtin::BuiltinValue> expect_builtin();
     /// Parses a `compound_statement` grammar element, erroring on parse failure.
     /// @param use a description of what was being parsed if an error was raised
     /// @returns the parsed statements
@@ -596,9 +587,6 @@ class ParserImpl {
     /// @returns the parsed expression or `lhs` if no match
     Expect<const ast::Expression*> expect_math_expression_post_unary_expression(
         const ast::Expression* lhs);
-    /// Parses an `element_count_expression` grammar element
-    /// @returns the parsed expression or nullptr
-    Maybe<const ast::Expression*> element_count_expression();
     /// Parses a `unary_expression shift.post.unary_expression`
     /// @returns the parsed expression or nullptr
     Maybe<const ast::Expression*> shift_expression();
@@ -850,7 +838,7 @@ class ParserImpl {
 
     /// Creates a new `ast::Node` owned by the Module. When the Module is
     /// destructed, the `ast::Node` will also be destructed.
-    /// @param args the arguments to pass to the type constructor
+    /// @param args the arguments to pass to the constructor
     /// @returns the node pointer
     template <typename T, typename... ARGS>
     T* create(ARGS&&... args) {

@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "src/tint/debug.h"
+#include "src/tint/utils/string_stream.h"
 
 namespace tint::reader::spirv {
 
@@ -26,32 +27,146 @@ namespace {
 
 const char* kWGSLReservedWords[] = {
     // Please keep this list sorted
-    "array",      "as",          "asm",
-    "bf16",       "binding",     "block",
-    "bool",       "break",       "builtin",
-    "case",       "cast",        "compute",
-    "const",      "continue",    "default",
-    "discard",    "do",          "else",
-    "elseif",     "entry_point", "enum",
-    "f16",        "f32",         "fallthrough",
-    "false",      "fn",          "for",
-    "fragment",   "i16",         "i32",
-    "i64",        "i8",          "if",
-    "image",      "import",      "in",
-    "let",        "location",    "loop",
-    "mat2x2",     "mat2x3",      "mat2x4",
-    "mat3x2",     "mat3x3",      "mat3x4",
-    "mat4x2",     "mat4x3",      "mat4x4",
-    "offset",     "out",         "override",
-    "premerge",   "private",     "ptr",
-    "regardless", "return",      "set",
-    "storage",    "struct",      "switch",
-    "true",       "type",        "typedef",
-    "u16",        "u32",         "u64",
-    "u8",         "uniform",     "uniform_constant",
-    "unless",     "using",       "var",
-    "vec2",       "vec3",        "vec4",
-    "vertex",     "void",        "while",
+    "array",
+    "as",
+    "asm",
+    "atomic",
+    "bf16",
+    "binding",
+    "block",
+    "bool",
+    "break",
+    "builtin",
+    "case",
+    "cast",
+    "compute",
+    "const",
+    "continue",
+    "default",
+    "discard",
+    "do",
+    "else",
+    "elseif",
+    "entry_point",
+    "enum",
+    "f16",
+    "f32",
+    "fallthrough",
+    "false",
+    "fn",
+    "for",
+    "frag_depth",
+    "fragment",
+    "front_facing",
+    "global_invocation_id",
+    "i16",
+    "i32",
+    "i64",
+    "i8",
+    "if",
+    "image",
+    "import",
+    "in",
+    "instance_index",
+    "let",
+    "local_invocation_id",
+    "local_invocation_index",
+    "location",
+    "loop",
+    "mat2x2",
+    "mat2x2f",
+    "mat2x2h",
+    "mat2x3",
+    "mat2x3f",
+    "mat2x3h",
+    "mat2x4",
+    "mat2x4f",
+    "mat2x4h",
+    "mat3x2",
+    "mat3x2f",
+    "mat3x2h",
+    "mat3x3",
+    "mat3x3f",
+    "mat3x3h",
+    "mat3x4",
+    "mat3x4f",
+    "mat3x4h",
+    "mat4x2",
+    "mat4x2f",
+    "mat4x2h",
+    "mat4x3",
+    "mat4x3f",
+    "mat4x3h",
+    "mat4x4",
+    "mat4x4f",
+    "mat4x4h",
+    "num_workgroups",
+    "offset",
+    "out",
+    "override",
+    "position",
+    "premerge",
+    "private",
+    "ptr",
+    "regardless",
+    "return",
+    "sample_index",
+    "sample_mask",
+    "sampler_comparison",
+    "sampler",
+    "set",
+    "storage",
+    "struct",
+    "switch",
+    "texture_1d",
+    "texture_2d_array",
+    "texture_2d",
+    "texture_3d",
+    "texture_cube_array",
+    "texture_cube",
+    "texture_depth_2d_array",
+    "texture_depth_2d",
+    "texture_depth_cube_array",
+    "texture_depth_cube",
+    "texture_depth_multisampled_2d",
+    "texture_external",
+    "texture_multisampled_2d",
+    "texture_storage_1d",
+    "texture_storage_2d_array",
+    "texture_storage_2d",
+    "texture_storage_3d",
+    "true",
+    "type",
+    "typedef",
+    "u16",
+    "u32",
+    "u64",
+    "u8",
+    "uniform_constant",
+    "uniform",
+    "unless",
+    "using",
+    "var",
+    "vec2",
+    "vec2f",
+    "vec2h",
+    "vec2i",
+    "vec2u",
+    "vec3",
+    "vec3f",
+    "vec3h",
+    "vec3i",
+    "vec3u",
+    "vec4",
+    "vec4f",
+    "vec4h",
+    "vec4i",
+    "vec4u",
+    "vertex_index",
+    "vertex",
+    "void",
+    "while",
+    "workgroup_id",
     "workgroup",
 };
 
@@ -105,7 +220,7 @@ std::string Namer::FindUnusedDerivedName(const std::string& base_name) {
     std::string derived_name;
     uint32_t& i = next_unusued_derived_name_id_[base_name];
     while (i != 0xffffffff) {
-        std::stringstream new_name_stream;
+        utils::StringStream new_name_stream;
         new_name_stream << base_name;
         if (i > 0) {
             new_name_stream << "_" << i;
@@ -191,7 +306,7 @@ void Namer::ResolveMemberNamesForStruct(uint32_t struct_id, uint32_t num_members
         uint32_t i = 1;
         std::string new_name;
         do {
-            std::stringstream new_name_stream;
+            utils::StringStream new_name_stream;
             new_name_stream << suggestion << "_" << i;
             new_name = new_name_stream.str();
             ++i;
@@ -217,7 +332,7 @@ void Namer::ResolveMemberNamesForStruct(uint32_t struct_id, uint32_t num_members
     uint32_t index = 0;
     for (auto& name : name_vector) {
         if (name.empty()) {
-            std::stringstream suggestion;
+            utils::StringStream suggestion;
             suggestion << "field" << index;
             // Again, modify the name-vector in-place.
             name = disambiguate_name(suggestion.str());

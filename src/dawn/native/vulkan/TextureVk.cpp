@@ -495,9 +495,10 @@ VkImageUsageFlags VulkanImageUsage(wgpu::TextureUsage usage, const Format& forma
             flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
     }
-    if (usage & kReadOnlyRenderAttachment) {
-        flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    }
+
+    // Choosing Vulkan image usages should not know about kReadOnlyRenderAttachment because that's
+    // a property of when the image is used, not of the creation.
+    ASSERT(!(usage & kReadOnlyRenderAttachment));
 
     return flags;
 }
@@ -1341,17 +1342,17 @@ MaybeError Texture::ClearTexture(CommandRecordingContext* recordingContext,
     return {};
 }
 
-void Texture::EnsureSubresourceContentInitialized(CommandRecordingContext* recordingContext,
-                                                  const SubresourceRange& range) {
+MaybeError Texture::EnsureSubresourceContentInitialized(CommandRecordingContext* recordingContext,
+                                                        const SubresourceRange& range) {
     if (!GetDevice()->IsToggleEnabled(Toggle::LazyClearResourceOnFirstUse)) {
-        return;
+        return {};
     }
     if (!IsSubresourceContentInitialized(range)) {
         // If subresource has not been initialized, clear it to black as it could contain dirty
         // bits from recycled memory
-        GetDevice()->ConsumedError(
-            ClearTexture(recordingContext, range, TextureBase::ClearValue::Zero));
+        DAWN_TRY(ClearTexture(recordingContext, range, TextureBase::ClearValue::Zero));
     }
+    return {};
 }
 
 void Texture::UpdateExternalSemaphoreHandle(ExternalSemaphoreHandle handle) {

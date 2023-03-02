@@ -37,8 +37,8 @@
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/type_conversion.h"
-#include "src/tint/sem/type_initializer.h"
+#include "src/tint/sem/value_constructor.h"
+#include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/transform/add_empty_entry_point.h"
 #include "src/tint/transform/array_length_from_uniform.h"
@@ -75,6 +75,7 @@
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/utils/string.h"
+#include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/append_vector.h"
 #include "src/tint/writer/check_supported_extensions.h"
 #include "src/tint/writer/float_to_string.h"
@@ -114,7 +115,7 @@ const char* image_format_to_rwtexture_type(builtin::TexelFormat image_format) {
     }
 }
 
-void PrintF32(std::ostream& out, float value) {
+void PrintF32(utils::StringStream& out, float value) {
     if (std::isinf(value)) {
         out << "0.0f " << (value >= 0 ? "/* inf */" : "/* -inf */");
     } else if (std::isnan(value)) {
@@ -124,7 +125,7 @@ void PrintF32(std::ostream& out, float value) {
     }
 }
 
-void PrintF16(std::ostream& out, float value) {
+void PrintF16(utils::StringStream& out, float value) {
     if (std::isinf(value)) {
         out << "0.0h " << (value >= 0 ? "/* inf */" : "/* -inf */");
     } else if (std::isnan(value)) {
@@ -143,7 +144,7 @@ struct RegisterAndSpace {
     sem::BindingPoint const binding_point;
 };
 
-std::ostream& operator<<(std::ostream& s, const RegisterAndSpace& rs) {
+utils::StringStream& operator<<(utils::StringStream& s, const RegisterAndSpace& rs) {
     s << " : register(" << rs.reg << rs.binding_point.binding << ", space" << rs.binding_point.group
       << ")";
     return s;
@@ -181,6 +182,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         polyfills.insert_bits = transform::BuiltinPolyfill::Level::kFull;
         polyfills.int_div_mod = true;
         polyfills.precise_float_mod = true;
+        polyfills.reflect_vec2_f32 = options.polyfill_reflect_vec2_f32;
         polyfills.texture_sample_base_clamp_to_edge_2d_f32 = true;
         polyfills.workgroup_uniform_load = true;
         data.Add<transform::BuiltinPolyfill::Config>(polyfills);
@@ -376,7 +378,7 @@ bool GeneratorImpl::EmitDynamicVectorAssignment(const ast::AssignmentStatement* 
     auto name = utils::GetOrCreate(dynamic_vector_write_, vec, [&]() -> std::string {
         std::string fn;
         {
-            std::ostringstream ss;
+            utils::StringStream ss;
             if (!EmitType(ss, vec, tint::builtin::AddressSpace::kUndefined,
                           builtin::Access::kUndefined, "")) {
                 return "";
@@ -450,7 +452,7 @@ bool GeneratorImpl::EmitDynamicMatrixVectorAssignment(const ast::AssignmentState
     auto name = utils::GetOrCreate(dynamic_matrix_vector_write_, mat, [&]() -> std::string {
         std::string fn;
         {
-            std::ostringstream ss;
+            utils::StringStream ss;
             if (!EmitType(ss, mat, tint::builtin::AddressSpace::kUndefined,
                           builtin::Access::kUndefined, "")) {
                 return "";
@@ -519,7 +521,7 @@ bool GeneratorImpl::EmitDynamicMatrixScalarAssignment(const ast::AssignmentState
     auto name = utils::GetOrCreate(dynamic_matrix_scalar_write_, mat, [&]() -> std::string {
         std::string fn;
         {
-            std::ostringstream ss;
+            utils::StringStream ss;
             if (!EmitType(ss, mat, tint::builtin::AddressSpace::kUndefined,
                           builtin::Access::kUndefined, "")) {
                 return "";
@@ -615,7 +617,8 @@ bool GeneratorImpl::EmitDynamicMatrixScalarAssignment(const ast::AssignmentState
     return true;
 }
 
-bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccessorExpression* expr) {
+bool GeneratorImpl::EmitIndexAccessor(utils::StringStream& out,
+                                      const ast::IndexAccessorExpression* expr) {
     if (!EmitExpression(out, expr->object)) {
         return false;
     }
@@ -629,7 +632,7 @@ bool GeneratorImpl::EmitIndexAccessor(std::ostream& out, const ast::IndexAccesso
     return true;
 }
 
-bool GeneratorImpl::EmitBitcast(std::ostream& out, const ast::BitcastExpression* expr) {
+bool GeneratorImpl::EmitBitcast(utils::StringStream& out, const ast::BitcastExpression* expr) {
     auto* type = TypeOf(expr);
     if (auto* vec = type->UnwrapRef()->As<type::Vector>()) {
         type = vec->type();
@@ -697,7 +700,7 @@ bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitBinary(std::ostream& out, const ast::BinaryExpression* expr) {
+bool GeneratorImpl::EmitBinary(utils::StringStream& out, const ast::BinaryExpression* expr) {
     if (expr->op == ast::BinaryOp::kLogicalAnd || expr->op == ast::BinaryOp::kLogicalOr) {
         auto name = UniqueIdentifier(kTempNamePrefix);
 
@@ -872,21 +875,22 @@ bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
     return true;
 }
 
-bool GeneratorImpl::EmitCall(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitCall(utils::StringStream& out, const ast::CallExpression* expr) {
     auto* call = builder_.Sem().Get<sem::Call>(expr);
     auto* target = call->Target();
     return Switch(
-        target, [&](const sem::Function* func) { return EmitFunctionCall(out, call, func); },
+        target,  //
+        [&](const sem::Function* func) { return EmitFunctionCall(out, call, func); },
         [&](const sem::Builtin* builtin) { return EmitBuiltinCall(out, call, builtin); },
-        [&](const sem::TypeConversion* conv) { return EmitTypeConversion(out, call, conv); },
-        [&](const sem::TypeInitializer* ctor) { return EmitTypeInitializer(out, call, ctor); },
+        [&](const sem::ValueConversion* conv) { return EmitValueConversion(out, call, conv); },
+        [&](const sem::ValueConstructor* ctor) { return EmitValueConstructor(out, call, ctor); },
         [&](Default) {
             TINT_ICE(Writer, diagnostics_) << "unhandled call target: " << target->TypeInfo().name;
             return false;
         });
 }
 
-bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
+bool GeneratorImpl::EmitFunctionCall(utils::StringStream& out,
                                      const sem::Call* call,
                                      const sem::Function* func) {
     auto* expr = call->Declaration();
@@ -942,7 +946,7 @@ bool GeneratorImpl::EmitFunctionCall(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitBuiltinCall(std::ostream& out,
+bool GeneratorImpl::EmitBuiltinCall(utils::StringStream& out,
                                     const sem::Call* call,
                                     const sem::Builtin* builtin) {
     const auto type = builtin->Type();
@@ -1027,9 +1031,9 @@ bool GeneratorImpl::EmitBuiltinCall(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeConversion(std::ostream& out,
-                                       const sem::Call* call,
-                                       const sem::TypeConversion* conv) {
+bool GeneratorImpl::EmitValueConversion(utils::StringStream& out,
+                                        const sem::Call* call,
+                                        const sem::ValueConversion* conv) {
     if (!EmitType(out, conv->Target(), builtin::AddressSpace::kUndefined,
                   builtin::Access::kReadWrite, "")) {
         return false;
@@ -1044,13 +1048,13 @@ bool GeneratorImpl::EmitTypeConversion(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitTypeInitializer(std::ostream& out,
-                                        const sem::Call* call,
-                                        const sem::TypeInitializer* ctor) {
+bool GeneratorImpl::EmitValueConstructor(utils::StringStream& out,
+                                         const sem::Call* call,
+                                         const sem::ValueConstructor* ctor) {
     auto* type = call->Type();
 
-    // If the type initializer is empty then we need to construct with the zero
-    // value for all components.
+    // If the value constructor arguments are empty then we need to construct with the zero value
+    // for all components.
     if (call->Arguments().IsEmpty()) {
         return EmitZeroValue(out, type);
     }
@@ -1108,11 +1112,11 @@ bool GeneratorImpl::EmitTypeInitializer(std::ostream& out,
 }
 
 bool GeneratorImpl::EmitUniformBufferAccess(
-    std::ostream& out,
+    utils::StringStream& out,
     const ast::CallExpression* expr,
     const transform::DecomposeMemoryAccess::Intrinsic* intrinsic) {
-    const auto& args = expr->args;
-    auto* offset_arg = builder_.Sem().GetVal(args[1]);
+    auto const buffer = program_->Symbols().NameFor(intrinsic->buffer);
+    auto* const offset = expr->args[0];
 
     // offset in bytes
     uint32_t scalar_offset_bytes = 0;
@@ -1128,7 +1132,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
     // If true, use scalar_offset_index, otherwise use scalar_offset_index_expr
     bool scalar_offset_constant = false;
 
-    if (auto* val = offset_arg->ConstantValue()) {
+    if (auto* val = builder_.Sem().GetVal(offset)->ConstantValue()) {
         TINT_ASSERT(Writer, val->Type()->Is<type::U32>());
         scalar_offset_bytes = static_cast<uint32_t>(val->ValueAs<AInt>());
         scalar_offset_index = scalar_offset_bytes / 4;  // bytes -> scalar index
@@ -1150,7 +1154,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
             {
                 auto pre = line();
                 pre << "const uint " << scalar_offset_bytes_expr << " = (";
-                if (!EmitExpression(pre, args[1])) {  // offset
+                if (!EmitExpression(pre, offset)) {
                     return false;
                 }
                 pre << ");";
@@ -1161,7 +1165,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
             scalar_offset_index_unified_expr = UniqueIdentifier("scalar_offset");
             auto pre = line();
             pre << "const uint " << scalar_offset_index_unified_expr << " = (";
-            if (!EmitExpression(pre, args[1])) {  // offset
+            if (!EmitExpression(pre, offset)) {
                 return false;
             }
             pre << ") / 4;";
@@ -1180,10 +1184,8 @@ bool GeneratorImpl::EmitUniformBufferAccess(
                 out << ")";
                 return result;
             };
-            auto load_u32_to = [&](std::ostream& target) {
-                if (!EmitExpression(target, args[0])) {  // buffer
-                    return false;
-                }
+            auto load_u32_to = [&](utils::StringStream& target) {
+                target << buffer;
                 if (scalar_offset_constant) {
                     target << "[" << (scalar_offset_index / 4) << "]."
                            << swizzle[scalar_offset_index & 3];
@@ -1195,22 +1197,16 @@ bool GeneratorImpl::EmitUniformBufferAccess(
             };
             auto load_u32 = [&] { return load_u32_to(out); };
             // Has a minimum alignment of 8 bytes, so is either .xy or .zw
-            auto load_vec2_u32_to = [&](std::ostream& target) {
+            auto load_vec2_u32_to = [&](utils::StringStream& target) {
                 if (scalar_offset_constant) {
-                    if (!EmitExpression(target, args[0])) {  // buffer
-                        return false;
-                    }
-                    target << "[" << (scalar_offset_index / 4) << "]";
-                    target << ((scalar_offset_index & 2) == 0 ? ".xy" : ".zw");
+                    target << buffer << "[" << (scalar_offset_index / 4) << "]"
+                           << ((scalar_offset_index & 2) == 0 ? ".xy" : ".zw");
                 } else {
                     std::string ubo_load = UniqueIdentifier("ubo_load");
                     {
                         auto pre = line();
-                        pre << "uint4 " << ubo_load << " = ";
-                        if (!EmitExpression(pre, args[0])) {  // buffer
-                            return false;
-                        }
-                        pre << "[" << scalar_offset_index_unified_expr << " / 4];";
+                        pre << "uint4 " << ubo_load << " = " << buffer << "["
+                            << scalar_offset_index_unified_expr << " / 4];";
                     }
                     target << "((" << scalar_offset_index_unified_expr << " & 2) ? " << ubo_load
                            << ".zw : " << ubo_load << ".xy)";
@@ -1220,9 +1216,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
             auto load_vec2_u32 = [&] { return load_vec2_u32_to(out); };
             // vec4 has a minimum alignment of 16 bytes, easiest case
             auto load_vec4_u32 = [&] {
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
+                out << buffer;
                 if (scalar_offset_constant) {
                     out << "[" << (scalar_offset_index / 4) << "]";
                 } else {
@@ -1241,10 +1235,7 @@ bool GeneratorImpl::EmitUniformBufferAccess(
             auto load_scalar_f16 = [&] {
                 // offset bytes = 4k,   ((buffer[index].x) & 0xFFFF)
                 // offset bytes = 4k+2, ((buffer[index].x >> 16) & 0xFFFF)
-                out << "float16_t(f16tof32(((";
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
+                out << "float16_t(f16tof32(((" << buffer;
                 if (scalar_offset_constant) {
                     out << "[" << (scalar_offset_index / 4) << "]."
                         << swizzle[scalar_offset_index & 3];
@@ -1409,10 +1400,12 @@ bool GeneratorImpl::EmitUniformBufferAccess(
 }
 
 bool GeneratorImpl::EmitStorageBufferAccess(
-    std::ostream& out,
+    utils::StringStream& out,
     const ast::CallExpression* expr,
     const transform::DecomposeMemoryAccess::Intrinsic* intrinsic) {
-    const auto& args = expr->args;
+    auto const buffer = program_->Symbols().NameFor(intrinsic->buffer);
+    auto* const offset = expr->args[0];
+    auto* const value = expr->args[1];
 
     using Op = transform::DecomposeMemoryAccess::Intrinsic::Op;
     using DataType = transform::DecomposeMemoryAccess::Intrinsic::DataType;
@@ -1422,15 +1415,12 @@ bool GeneratorImpl::EmitStorageBufferAccess(
                 if (cast) {
                     out << cast << "(";
                 }
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
-                out << ".Load";
+                out << buffer << ".Load";
                 if (n > 1) {
                     out << n;
                 }
                 ScopedParen sp(out);
-                if (!EmitExpression(out, args[1])) {  // offset
+                if (!EmitExpression(out, offset)) {
                     return false;
                 }
                 if (cast) {
@@ -1442,12 +1432,9 @@ bool GeneratorImpl::EmitStorageBufferAccess(
             // Used by loading f16 types, e.g. for f16 type, set type parameter to "float16_t"
             // to emit `buffer.Load<float16_t>(offset)`.
             auto templated_load = [&](const char* type) {
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
-                out << ".Load<" << type << ">";  // templated load
+                out << buffer << ".Load<" << type << ">";  // templated load
                 ScopedParen sp(out);
-                if (!EmitExpression(out, args[1])) {  // offset
+                if (!EmitExpression(out, offset)) {
                     return false;
                 }
                 return true;
@@ -1494,20 +1481,17 @@ bool GeneratorImpl::EmitStorageBufferAccess(
 
         case Op::kStore: {
             auto store = [&](int n) {
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
-                out << ".Store";
+                out << buffer << ".Store";
                 if (n > 1) {
                     out << n;
                 }
                 ScopedParen sp1(out);
-                if (!EmitExpression(out, args[1])) {  // offset
+                if (!EmitExpression(out, offset)) {
                     return false;
                 }
                 out << ", asuint";
                 ScopedParen sp2(out);
-                if (!EmitExpression(out, args[2])) {  // value
+                if (!EmitExpression(out, value)) {
                     return false;
                 }
                 return true;
@@ -1516,16 +1500,13 @@ bool GeneratorImpl::EmitStorageBufferAccess(
             // Used by storing f16 types, e.g. for f16 type, set type parameter to "float16_t"
             // to emit `buffer.Store<float16_t>(offset)`.
             auto templated_store = [&](const char* type) {
-                if (!EmitExpression(out, args[0])) {  // buffer
-                    return false;
-                }
-                out << ".Store<" << type << ">";  // templated store
+                out << buffer << ".Store<" << type << ">";  // templated store
                 ScopedParen sp1(out);
-                if (!EmitExpression(out, args[1])) {  // offset
+                if (!EmitExpression(out, offset)) {
                     return false;
                 }
                 out << ", ";
-                if (!EmitExpression(out, args[2])) {  // value
+                if (!EmitExpression(out, value)) {
                     return false;
                 }
                 return true;
@@ -1570,7 +1551,7 @@ bool GeneratorImpl::EmitStorageBufferAccess(
             return false;
         }
         default:
-            // Break out to error case below/
+            // Break out to error case below
             // Note that atomic intrinsics are generated as functions.
             break;
     }
@@ -1587,9 +1568,10 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
 
     const sem::Function* sem_func = builder_.Sem().Get(func);
     auto* result_ty = sem_func->ReturnType();
-    const auto& params = sem_func->Parameters();
     const auto name = builder_.Symbols().NameFor(func->name->symbol);
     auto& buf = *current_buffer_;
+
+    auto const buffer = program_->Symbols().NameFor(intrinsic->buffer);
 
     auto rmw = [&](const char* hlsl) -> bool {
         {
@@ -1598,7 +1580,7 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
                                  builtin::Access::kUndefined, name)) {
                 return false;
             }
-            fn << "(RWByteAddressBuffer buffer, uint offset, ";
+            fn << "(uint offset, ";
             if (!EmitTypeAndName(fn, result_ty, builtin::AddressSpace::kUndefined,
                                  builtin::Access::kUndefined, "value")) {
                 return false;
@@ -1623,7 +1605,7 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
         }
         {
             auto l = line(&buf);
-            l << "buffer." << hlsl << "(offset, ";
+            l << buffer << "." << hlsl << "(offset, ";
             if (intrinsic->op == Op::kAtomicSub) {
                 l << "-";
             }
@@ -1668,7 +1650,7 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
                                      builtin::Access::kUndefined, name)) {
                     return false;
                 }
-                fn << "(RWByteAddressBuffer buffer, uint offset) {";
+                fn << "(uint offset) {";
             }
 
             buf.IncrementIndent();
@@ -1687,17 +1669,17 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
                 l << " = 0;";
             }
 
-            line(&buf) << "buffer.InterlockedOr(offset, 0, value);";
+            line(&buf) << buffer << ".InterlockedOr(offset, 0, value);";
             line(&buf) << "return value;";
             return true;
         }
         case Op::kAtomicStore: {
+            auto* const value_ty = sem_func->Parameters()[1]->Type()->UnwrapRef();
             // HLSL does not have an InterlockedStore, so we emulate it with
             // InterlockedExchange and discard the returned value
-            auto* value_ty = params[2]->Type()->UnwrapRef();
             {
                 auto fn = line(&buf);
-                fn << "void " << name << "(RWByteAddressBuffer buffer, uint offset, ";
+                fn << "void " << name << "(uint offset, ";
                 if (!EmitTypeAndName(fn, value_ty, builtin::AddressSpace::kUndefined,
                                      builtin::Access::kUndefined, "value")) {
                     return false;
@@ -1720,20 +1702,20 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
                 }
                 l << ";";
             }
-            line(&buf) << "buffer.InterlockedExchange(offset, value, ignored);";
+            line(&buf) << buffer << ".InterlockedExchange(offset, value, ignored);";
             return true;
         }
         case Op::kAtomicCompareExchangeWeak: {
+            auto* const value_ty = sem_func->Parameters()[1]->Type()->UnwrapRef();
             // NOTE: We don't need to emit the return type struct here as DecomposeMemoryAccess
             // already added it to the AST, and it should have already been emitted by now.
-            auto* value_ty = params[2]->Type()->UnwrapRef();
             {
                 auto fn = line(&buf);
                 if (!EmitTypeAndName(fn, result_ty, builtin::AddressSpace::kUndefined,
                                      builtin::Access::kUndefined, name)) {
                     return false;
                 }
-                fn << "(RWByteAddressBuffer buffer, uint offset, ";
+                fn << "(uint offset, ";
                 if (!EmitTypeAndName(fn, value_ty, builtin::AddressSpace::kUndefined,
                                      builtin::Access::kUndefined, "compare")) {
                     return false;
@@ -1766,8 +1748,8 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
                 l << ";";
             }
 
-            line(&buf) << "buffer.InterlockedCompareExchange(offset, compare, value, "
-                          "result.old_value);";
+            line(&buf) << buffer
+                       << ".InterlockedCompareExchange(offset, compare, value, result.old_value);";
             line(&buf) << "result.exchanged = result.old_value == compare;";
             line(&buf) << "return result;";
 
@@ -1783,7 +1765,7 @@ bool GeneratorImpl::EmitStorageAtomicIntrinsic(
     return false;
 }
 
-bool GeneratorImpl::EmitWorkgroupAtomicCall(std::ostream& out,
+bool GeneratorImpl::EmitWorkgroupAtomicCall(utils::StringStream& out,
                                             const ast::CallExpression* expr,
                                             const sem::Builtin* builtin) {
     std::string result = UniqueIdentifier("atomic_result");
@@ -1958,7 +1940,7 @@ bool GeneratorImpl::EmitWorkgroupAtomicCall(std::ostream& out,
     return false;
 }
 
-bool GeneratorImpl::EmitSelectCall(std::ostream& out, const ast::CallExpression* expr) {
+bool GeneratorImpl::EmitSelectCall(utils::StringStream& out, const ast::CallExpression* expr) {
     auto* expr_false = expr->args[0];
     auto* expr_true = expr->args[1];
     auto* expr_cond = expr->args[2];
@@ -1982,7 +1964,7 @@ bool GeneratorImpl::EmitSelectCall(std::ostream& out, const ast::CallExpression*
     return true;
 }
 
-bool GeneratorImpl::EmitModfCall(std::ostream& out,
+bool GeneratorImpl::EmitModfCall(utils::StringStream& out,
                                  const ast::CallExpression* expr,
                                  const sem::Builtin* builtin) {
     return CallBuiltinHelper(
@@ -2015,7 +1997,7 @@ bool GeneratorImpl::EmitModfCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
+bool GeneratorImpl::EmitFrexpCall(utils::StringStream& out,
                                   const ast::CallExpression* expr,
                                   const sem::Builtin* builtin) {
     return CallBuiltinHelper(
@@ -2056,7 +2038,7 @@ bool GeneratorImpl::EmitFrexpCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitDegreesCall(std::ostream& out,
+bool GeneratorImpl::EmitDegreesCall(utils::StringStream& out,
                                     const ast::CallExpression* expr,
                                     const sem::Builtin* builtin) {
     return CallBuiltinHelper(out, expr, builtin,
@@ -2067,7 +2049,7 @@ bool GeneratorImpl::EmitDegreesCall(std::ostream& out,
                              });
 }
 
-bool GeneratorImpl::EmitRadiansCall(std::ostream& out,
+bool GeneratorImpl::EmitRadiansCall(utils::StringStream& out,
                                     const ast::CallExpression* expr,
                                     const sem::Builtin* builtin) {
     return CallBuiltinHelper(out, expr, builtin,
@@ -2081,7 +2063,9 @@ bool GeneratorImpl::EmitRadiansCall(std::ostream& out,
 // The HLSL `sign` method always returns an `int` result (scalar or vector). In WGSL the result is
 // expected to be the same type as the argument. This injects a cast to the expected WGSL result
 // type after the call to `sign`.
-bool GeneratorImpl::EmitSignCall(std::ostream& out, const sem::Call* call, const sem::Builtin*) {
+bool GeneratorImpl::EmitSignCall(utils::StringStream& out,
+                                 const sem::Call* call,
+                                 const sem::Builtin*) {
     auto* arg = call->Arguments()[0];
     if (!EmitType(out, arg->Type(), builtin::AddressSpace::kUndefined, builtin::Access::kReadWrite,
                   "")) {
@@ -2095,7 +2079,7 @@ bool GeneratorImpl::EmitSignCall(std::ostream& out, const sem::Call* call, const
     return true;
 }
 
-bool GeneratorImpl::EmitQuantizeToF16Call(std::ostream& out,
+bool GeneratorImpl::EmitQuantizeToF16Call(utils::StringStream& out,
                                           const ast::CallExpression* expr,
                                           const sem::Builtin* builtin) {
     // Emulate by casting to min16float and back again.
@@ -2111,7 +2095,7 @@ bool GeneratorImpl::EmitQuantizeToF16Call(std::ostream& out,
     return true;
 }
 
-bool GeneratorImpl::EmitDataPackingCall(std::ostream& out,
+bool GeneratorImpl::EmitDataPackingCall(utils::StringStream& out,
                                         const ast::CallExpression* expr,
                                         const sem::Builtin* builtin) {
     return CallBuiltinHelper(
@@ -2174,7 +2158,7 @@ bool GeneratorImpl::EmitDataPackingCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitDataUnpackingCall(std::ostream& out,
+bool GeneratorImpl::EmitDataUnpackingCall(utils::StringStream& out,
                                           const ast::CallExpression* expr,
                                           const sem::Builtin* builtin) {
     return CallBuiltinHelper(
@@ -2241,7 +2225,7 @@ bool GeneratorImpl::EmitDataUnpackingCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitDP4aCall(std::ostream& out,
+bool GeneratorImpl::EmitDP4aCall(utils::StringStream& out,
                                  const ast::CallExpression* expr,
                                  const sem::Builtin* builtin) {
     // TODO(crbug.com/tint/1497): support the polyfill version of DP4a functions.
@@ -2269,7 +2253,7 @@ bool GeneratorImpl::EmitDP4aCall(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitBarrierCall(std::ostream& out, const sem::Builtin* builtin) {
+bool GeneratorImpl::EmitBarrierCall(utils::StringStream& out, const sem::Builtin* builtin) {
     // TODO(crbug.com/tint/661): Combine sequential barriers to a single
     // instruction.
     if (builtin->Type() == sem::BuiltinType::kWorkgroupBarrier) {
@@ -2284,7 +2268,7 @@ bool GeneratorImpl::EmitBarrierCall(std::ostream& out, const sem::Builtin* built
     return true;
 }
 
-bool GeneratorImpl::EmitTextureCall(std::ostream& out,
+bool GeneratorImpl::EmitTextureCall(utils::StringStream& out,
                                     const sem::Call* call,
                                     const sem::Builtin* builtin) {
     using Usage = sem::ParameterUsage;
@@ -2793,7 +2777,7 @@ bool GeneratorImpl::EmitDiscard(const ast::DiscardStatement*) {
     return true;
 }
 
-bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* expr) {
+bool GeneratorImpl::EmitExpression(utils::StringStream& out, const ast::Expression* expr) {
     if (auto* sem = builder_.Sem().GetVal(expr)) {
         if (auto* constant = sem->ConstantValue()) {
             bool is_variable_initializer = false;
@@ -2822,7 +2806,8 @@ bool GeneratorImpl::EmitExpression(std::ostream& out, const ast::Expression* exp
         });
 }
 
-bool GeneratorImpl::EmitIdentifier(std::ostream& out, const ast::IdentifierExpression* expr) {
+bool GeneratorImpl::EmitIdentifier(utils::StringStream& out,
+                                   const ast::IdentifierExpression* expr) {
     out << builder_.Symbols().NameFor(expr->identifier->symbol);
     return true;
 }
@@ -3296,7 +3281,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
     return true;
 }
 
-bool GeneratorImpl::EmitConstant(std::ostream& out,
+bool GeneratorImpl::EmitConstant(utils::StringStream& out,
                                  const constant::Value* constant,
                                  bool is_variable_initializer) {
     return Switch(
@@ -3416,7 +3401,7 @@ bool GeneratorImpl::EmitConstant(std::ostream& out,
                 return true;
             }
 
-            auto emit_member_values = [&](std::ostream& o) {
+            auto emit_member_values = [&](utils::StringStream& o) {
                 o << "{";
                 for (size_t i = 0; i < s->Members().Length(); i++) {
                     if (i > 0) {
@@ -3458,7 +3443,7 @@ bool GeneratorImpl::EmitConstant(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression* lit) {
+bool GeneratorImpl::EmitLiteral(utils::StringStream& out, const ast::LiteralExpression* lit) {
     return Switch(
         lit,
         [&](const ast::BoolLiteralExpression* l) {
@@ -3494,7 +3479,7 @@ bool GeneratorImpl::EmitLiteral(std::ostream& out, const ast::LiteralExpression*
         });
 }
 
-bool GeneratorImpl::EmitValue(std::ostream& out, const type::Type* type, int value) {
+bool GeneratorImpl::EmitValue(utils::StringStream& out, const type::Type* type, int value) {
     return Switch(
         type,
         [&](const type::Bool*) {
@@ -3569,7 +3554,7 @@ bool GeneratorImpl::EmitValue(std::ostream& out, const type::Type* type, int val
         });
 }
 
-bool GeneratorImpl::EmitZeroValue(std::ostream& out, const type::Type* type) {
+bool GeneratorImpl::EmitZeroValue(utils::StringStream& out, const type::Type* type) {
     return EmitValue(out, type, 0);
 }
 
@@ -3618,7 +3603,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
     }
 
     TextBuffer cond_pre;
-    std::stringstream cond_buf;
+    utils::StringStream cond_buf;
     if (auto* cond = stmt->condition) {
         TINT_SCOPED_ASSIGNMENT(current_buffer_, &cond_pre);
         if (!EmitExpression(cond_buf, cond)) {
@@ -3710,7 +3695,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
 
 bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
     TextBuffer cond_pre;
-    std::stringstream cond_buf;
+    utils::StringStream cond_buf;
     {
         auto* cond = stmt->condition;
         TINT_SCOPED_ASSIGNMENT(current_buffer_, &cond_pre);
@@ -3758,7 +3743,7 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitMemberAccessor(std::ostream& out,
+bool GeneratorImpl::EmitMemberAccessor(utils::StringStream& out,
                                        const ast::MemberAccessorExpression* expr) {
     if (!EmitExpression(out, expr->object)) {
         return false;
@@ -3931,7 +3916,7 @@ bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
     return true;
 }
 
-bool GeneratorImpl::EmitType(std::ostream& out,
+bool GeneratorImpl::EmitType(utils::StringStream& out,
                              const type::Type* type,
                              builtin::AddressSpace address_space,
                              builtin::Access access,
@@ -4158,7 +4143,7 @@ bool GeneratorImpl::EmitType(std::ostream& out,
         });
 }
 
-bool GeneratorImpl::EmitTypeAndName(std::ostream& out,
+bool GeneratorImpl::EmitTypeAndName(utils::StringStream& out,
                                     const type::Type* type,
                                     builtin::AddressSpace address_space,
                                     builtin::Access access,
@@ -4210,16 +4195,30 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
                         } else {
                             TINT_ICE(Writer, diagnostics_) << "invalid use of location attribute";
                         }
-                    } else if (auto* builtin = attr->As<ast::BuiltinAttribute>()) {
-                        auto name = builtin_to_attribute(builtin->builtin);
+                    } else if (auto* builtin_attr = attr->As<ast::BuiltinAttribute>()) {
+                        auto builtin = program_->Sem().Get(builtin_attr)->Value();
+                        auto name = builtin_to_attribute(builtin);
                         if (name.empty()) {
                             diagnostics_.add_error(diag::System::Writer, "unsupported builtin");
                             return false;
                         }
                         post += " : " + name;
                     } else if (auto* interpolate = attr->As<ast::InterpolateAttribute>()) {
-                        auto mod =
-                            interpolation_to_modifiers(interpolate->type, interpolate->sampling);
+                        auto& sem = program_->Sem();
+                        auto i_type =
+                            sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationType>>(
+                                   interpolate->type)
+                                ->Value();
+
+                        auto i_smpl = builtin::InterpolationSampling::kUndefined;
+                        if (interpolate->sampling) {
+                            i_smpl =
+                                sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationSampling>>(
+                                       interpolate->sampling)
+                                    ->Value();
+                        }
+
+                        auto mod = interpolation_to_modifiers(i_type, i_smpl);
                         if (mod.empty()) {
                             diagnostics_.add_error(diag::System::Writer,
                                                    "unsupported interpolation");
@@ -4255,7 +4254,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
     return true;
 }
 
-bool GeneratorImpl::EmitUnaryOp(std::ostream& out, const ast::UnaryOpExpression* expr) {
+bool GeneratorImpl::EmitUnaryOp(utils::StringStream& out, const ast::UnaryOpExpression* expr) {
     switch (expr->op) {
         case ast::UnaryOp::kIndirection:
         case ast::UnaryOp::kAddressOf:
@@ -4327,7 +4326,7 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
 }
 
 template <typename F>
-bool GeneratorImpl::CallBuiltinHelper(std::ostream& out,
+bool GeneratorImpl::CallBuiltinHelper(utils::StringStream& out,
                                       const ast::CallExpression* call,
                                       const sem::Builtin* builtin,
                                       F&& build) {
