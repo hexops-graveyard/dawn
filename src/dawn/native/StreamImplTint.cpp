@@ -15,7 +15,7 @@
 #include "dawn/native/stream/Stream.h"
 
 #include "dawn/native/TintUtils.h"
-#include "tint/writer/array_length_from_uniform_options.h"
+#include "tint/tint.h"
 
 namespace dawn::native {
 
@@ -44,8 +44,8 @@ void stream::Stream<tint::Program>::Write(stream::Sink* sink, const tint::Progra
 
 // static
 template <>
-void stream::Stream<tint::sem::BindingPoint>::Write(stream::Sink* sink,
-                                                    const tint::sem::BindingPoint& point) {
+void stream::Stream<tint::writer::BindingPoint>::Write(stream::Sink* sink,
+                                                       const tint::writer::BindingPoint& point) {
     StreamInTintObject(point, sink);
 }
 

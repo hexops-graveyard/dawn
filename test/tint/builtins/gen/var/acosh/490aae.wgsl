@@ -23,10 +23,9 @@
 
 // fn acosh(vec<4, fa>) -> vec<4, fa>
 fn acosh_490aae() {
-  const arg_0 = vec4(2.);
+  const arg_0 = vec4(1.5430806348);
   var res = acosh(arg_0);
 }
-
 @vertex
 fn vertex_main() -> @builtin(position) vec4<f32> {
   acosh_490aae();

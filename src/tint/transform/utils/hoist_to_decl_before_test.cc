@@ -82,8 +82,16 @@ TEST_F(HoistToDeclBeforeTest, ForLoopInit) {
 
     auto* expect = R"(
 fn f() {
-  var tint_symbol : i32 = 1i;
-  for(var a = tint_symbol; true; ) {
+  {
+    var tint_symbol : i32 = 1i;
+    var a = tint_symbol;
+    loop {
+      if (!(true)) {
+        break;
+      }
+      {
+      }
+    }
   }
 }
 )";
@@ -545,8 +553,16 @@ fn foo() {
 }
 
 fn f() {
-  foo();
-  for(var a = 1i; true; ) {
+  {
+    foo();
+    var a = 1i;
+    loop {
+      if (!(true)) {
+        break;
+      }
+      {
+      }
+    }
   }
 }
 )";
@@ -584,8 +600,16 @@ fn foo() {
 }
 
 fn f() {
-  foo();
-  for(var a = 1i; true; ) {
+  {
+    foo();
+    var a = 1i;
+    loop {
+      if (!(true)) {
+        break;
+      }
+      {
+      }
+    }
   }
 }
 )";
@@ -847,6 +871,265 @@ TEST_F(HoistToDeclBeforeTest, AbstractArray_ToVar) {
 fn f() {
   var tint_symbol : array<f32, 1u> = array(1);
   var a : array<f32, 1> = tint_symbol;
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_Block) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     var a = 1i;
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{var});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(var);
+    auto* new_stmt = ctx.dst->CallStmt(ctx.dst->Call("foo"));
+    hoistToDeclBefore.Replace(target_stmt, new_stmt);
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  foo();
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_Block_Function) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     var a = 1i;
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{var});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(var);
+    hoistToDeclBefore.Replace(target_stmt, [&] { return ctx.dst->CallStmt(ctx.dst->Call("foo")); });
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  foo();
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_ForLoopInit) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     for(var a = 1i; true;) {
+    //     }
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    auto* s = b.For(var, b.Expr(true), nullptr, b.Block());
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{s});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(var);
+    auto* new_stmt = ctx.dst->CallStmt(ctx.dst->Call("foo"));
+    hoistToDeclBefore.Replace(target_stmt, new_stmt);
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  {
+    foo();
+    loop {
+      if (!(true)) {
+        break;
+      }
+      {
+      }
+    }
+  }
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_ForLoopInit_Function) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     for(var a = 1i; true;) {
+    //     }
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    auto* s = b.For(var, b.Expr(true), nullptr, b.Block());
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{s});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(var);
+    hoistToDeclBefore.Replace(target_stmt, [&] { return ctx.dst->CallStmt(ctx.dst->Call("foo")); });
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  {
+    foo();
+    loop {
+      if (!(true)) {
+        break;
+      }
+      {
+      }
+    }
+  }
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_ForLoopCont) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     var a = 1i;
+    //     for(; true; a+=1i) {
+    //     }
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    auto* cont = b.CompoundAssign("a", b.Expr(1_i), ast::BinaryOp::kAdd);
+    auto* s = b.For(nullptr, b.Expr(true), cont, b.Block());
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{var, s});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(cont->As<ast::Statement>());
+    auto* new_stmt = ctx.dst->CallStmt(ctx.dst->Call("foo"));
+    hoistToDeclBefore.Replace(target_stmt, new_stmt);
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  var a = 1i;
+  loop {
+    if (!(true)) {
+      break;
+    }
+    {
+    }
+
+    continuing {
+      foo();
+    }
+  }
+}
+)";
+
+    EXPECT_EQ(expect, str(cloned));
+}
+
+TEST_F(HoistToDeclBeforeTest, Replace_ForLoopCont_Function) {
+    // fn foo() {
+    // }
+    // fn f() {
+    //     var a = 1i;
+    //     for(; true; a+=1i) {
+    //     }
+    // }
+    ProgramBuilder b;
+    b.Func("foo", utils::Empty, b.ty.void_(), utils::Empty);
+    auto* var = b.Decl(b.Var("a", b.Expr(1_i)));
+    auto* cont = b.CompoundAssign("a", b.Expr(1_i), ast::BinaryOp::kAdd);
+    auto* s = b.For(nullptr, b.Expr(true), cont, b.Block());
+    b.Func("f", utils::Empty, b.ty.void_(), utils::Vector{var, s});
+
+    Program original(std::move(b));
+    ProgramBuilder cloned_b;
+    CloneContext ctx(&cloned_b, &original);
+
+    HoistToDeclBefore hoistToDeclBefore(ctx);
+    auto* target_stmt = ctx.src->Sem().Get(cont->As<ast::Statement>());
+    hoistToDeclBefore.Replace(target_stmt, [&] { return ctx.dst->CallStmt(ctx.dst->Call("foo")); });
+
+    ctx.Clone();
+    Program cloned(std::move(cloned_b));
+
+    auto* expect = R"(
+fn foo() {
+}
+
+fn f() {
+  var a = 1i;
+  loop {
+    if (!(true)) {
+      break;
+    }
+    {
+    }
+
+    continuing {
+      foo();
+    }
+  }
 }
 )";
 

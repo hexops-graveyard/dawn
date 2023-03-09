@@ -1,15 +1,20 @@
 #version 310 es
 
-shared uint arg_0;
-uint tint_workgroupUniformLoad_arg_0() {
+uint tint_workgroupUniformLoad(inout uint p) {
   barrier();
-  uint result = arg_0;
+  uint result = p;
   barrier();
   return result;
 }
 
+shared uint arg_0;
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uint inner;
+} prevent_dce;
+
 void workgroupUniformLoad_37307c() {
-  uint res = tint_workgroupUniformLoad_arg_0();
+  uint res = tint_workgroupUniformLoad(arg_0);
+  prevent_dce.inner = res;
 }
 
 void compute_main(uint local_invocation_index) {

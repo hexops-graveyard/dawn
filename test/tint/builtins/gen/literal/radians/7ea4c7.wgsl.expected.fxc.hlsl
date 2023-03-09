@@ -1,11 +1,10 @@
 SKIP: FAILED
 
-vector<float16_t, 3> tint_radians(vector<float16_t, 3> param_0) {
-  return param_0 * 0.017453292519943295474;
-}
+RWByteAddressBuffer prevent_dce : register(u0, space2);
 
 void radians_7ea4c7() {
-  vector<float16_t, 3> res = tint_radians((float16_t(0.0h)).xxx);
+  vector<float16_t, 3> res = (float16_t(0.0174407958984375h)).xxx;
+  prevent_dce.Store<vector<float16_t, 3> >(0u, res);
 }
 
 struct tint_symbol {

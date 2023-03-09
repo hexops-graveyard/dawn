@@ -14,16 +14,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -31,6 +37,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -38,8 +46,13 @@ layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
 } ext_tex_params;
 
 uniform highp sampler2D arg_0_1;
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void textureDimensions_cdc6c9() {
   uvec2 res = uvec2(textureSize(arg_0_1, 0));
+  prevent_dce.inner = res;
 }
 
 vec4 vertex_main() {
@@ -72,16 +85,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -89,6 +108,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -96,8 +117,13 @@ layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
 } ext_tex_params;
 
 uniform highp sampler2D arg_0_1;
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void textureDimensions_cdc6c9() {
   uvec2 res = uvec2(textureSize(arg_0_1, 0));
+  prevent_dce.inner = res;
 }
 
 void fragment_main() {
@@ -124,16 +150,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -141,6 +173,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -148,8 +182,13 @@ layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
 } ext_tex_params;
 
 uniform highp sampler2D arg_0_1;
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void textureDimensions_cdc6c9() {
   uvec2 res = uvec2(textureSize(arg_0_1, 0));
+  prevent_dce.inner = res;
 }
 
 void compute_main() {

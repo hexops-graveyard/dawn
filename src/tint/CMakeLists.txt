@@ -539,6 +539,7 @@ list(APPEND TINT_LIB_SRCS
   writer/append_vector.h
   writer/array_length_from_uniform_options.cc
   writer/array_length_from_uniform_options.h
+  writer/binding_point.h
   writer/check_supported_extensions.cc
   writer/check_supported_extensions.h
   writer/flatten_bindings.cc
@@ -563,12 +564,12 @@ tint_generated(builtin/builtin_value BENCH TEST)
 tint_generated(builtin/diagnostic_rule BENCH TEST)
 tint_generated(builtin/diagnostic_severity BENCH TEST)
 tint_generated(builtin/extension BENCH TEST)
+tint_generated(builtin/function)
 tint_generated(builtin/interpolation_sampling BENCH TEST)
 tint_generated(builtin/interpolation_type BENCH TEST)
 tint_generated(builtin/texel_format BENCH TEST)
 
 tint_generated(resolver/ctor_conv_intrinsic)
-tint_generated(sem/builtin_type)
 tint_generated(sem/parameter_usage)
 
 if(UNIX)
@@ -677,6 +678,15 @@ if(${TINT_BUILD_HLSL_WRITER})
   )
 endif()
 
+if(${TINT_BUILD_SYNTAX_TREE_WRITER})
+    list(APPEND TINT_LIB_SRCS
+      writer/syntax_tree/generator.cc
+      writer/syntax_tree/generator.h
+      writer/syntax_tree/generator_impl.cc
+      writer/syntax_tree/generator_impl.h
+    )
+endif()
+
 if(${TINT_BUILD_IR})
   list(APPEND TINT_LIB_SRCS
     ir/binary.cc
@@ -689,8 +699,14 @@ if(${TINT_BUILD_IR})
     ir/builder.h
     ir/builder_impl.cc
     ir/builder_impl.h
+    ir/call.cc
+    ir/call.h
     ir/constant.cc
     ir/constant.h
+    ir/construct.cc
+    ir/construct.h
+    ir/convert.cc
+    ir/convert.h
     ir/debug.cc
     ir/debug.h
     ir/disassembler.cc
@@ -713,6 +729,8 @@ if(${TINT_BUILD_IR})
     ir/temp.h
     ir/terminator.cc
     ir/terminator.h
+    ir/user_call.cc
+    ir/user_call.h
     ir/value.cc
     ir/value.h
   )
@@ -760,7 +778,7 @@ target_link_libraries(tint_val tint_utils_io)
 ## Tint library
 add_library(libtint ${TINT_LIB_SRCS})
 tint_default_compile_options(libtint)
-target_link_libraries(libtint tint_diagnostic_utils)
+target_link_libraries(libtint tint_diagnostic_utils absl_strings)
 if (${TINT_SYMBOL_STORE_DEBUG_NAME})
     target_compile_definitions(libtint PUBLIC "TINT_SYMBOL_STORE_DEBUG_NAME=1")
 endif()
@@ -770,7 +788,7 @@ if (${TINT_BUILD_FUZZERS})
   # Tint library with fuzzer instrumentation
   add_library(libtint-fuzz ${TINT_LIB_SRCS})
   tint_default_compile_options(libtint-fuzz)
-  target_link_libraries(libtint-fuzz tint_diagnostic_utils)
+  target_link_libraries(libtint-fuzz tint_diagnostic_utils absl_strings)
   if (${COMPILER_IS_LIKE_GNU})
     target_compile_options(libtint-fuzz PRIVATE -fvisibility=hidden)
   endif()

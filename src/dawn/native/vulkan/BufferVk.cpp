@@ -314,8 +314,8 @@ bool Buffer::TrackUsageAndGetResourceBarrier(CommandRecordingContext* recordingC
     barrier->pNext = nullptr;
     barrier->srcAccessMask = VulkanAccessFlags(mLastUsage);
     barrier->dstAccessMask = VulkanAccessFlags(usage);
-    barrier->srcQueueFamilyIndex = 0;
-    barrier->dstQueueFamilyIndex = 0;
+    barrier->srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier->dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier->buffer = mHandle;
     barrier->offset = 0;
     // VK_WHOLE_SIZE doesn't work on old Windows Intel Vulkan drivers, so we don't use it.
@@ -416,9 +416,8 @@ bool Buffer::EnsureDataInitializedAsDestination(CommandRecordingContext* recordi
 // static
 void Buffer::TransitionMappableBuffersEagerly(const VulkanFunctions& fn,
                                               CommandRecordingContext* recordingContext,
-                                              std::set<Buffer*> buffers) {
+                                              const std::set<Ref<Buffer>>& buffers) {
     ASSERT(!buffers.empty());
-    ASSERT(recordingContext->mappableBuffersForEagerTransition.empty());
 
     VkPipelineStageFlags srcStages = 0;
     VkPipelineStageFlags dstStages = 0;
@@ -426,7 +425,8 @@ void Buffer::TransitionMappableBuffersEagerly(const VulkanFunctions& fn,
     std::vector<VkBufferMemoryBarrier> barriers;
     barriers.reserve(buffers.size());
 
-    for (Buffer* buffer : buffers) {
+    size_t originalBufferCount = buffers.size();
+    for (const Ref<Buffer>& buffer : buffers) {
         wgpu::BufferUsage mapUsage = buffer->GetUsage() & kMapUsages;
         ASSERT(mapUsage == wgpu::BufferUsage::MapRead || mapUsage == wgpu::BufferUsage::MapWrite);
         VkBufferMemoryBarrier barrier;
@@ -435,9 +435,9 @@ void Buffer::TransitionMappableBuffersEagerly(const VulkanFunctions& fn,
                                                     &srcStages, &dstStages)) {
             barriers.push_back(barrier);
         }
-        // TrackUsageAndGetResourceBarrier() should not modify recordingContext for map usages.
-        ASSERT(recordingContext->mappableBuffersForEagerTransition.empty());
     }
+    // TrackUsageAndGetResourceBarrier() should not modify recordingContext for map usages.
+    ASSERT(buffers.size() == originalBufferCount);
 
     if (barriers.empty()) {
         return;

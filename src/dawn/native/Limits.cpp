@@ -68,13 +68,13 @@
     X(Alignment,           minUniformBufferOffsetAlignment,       256,        256) \
     X(Alignment,           minStorageBufferOffsetAlignment,       256,        256) \
     X(Maximum,                            maxVertexBuffers,         8,          8) \
-    X(Maximum,                               maxBufferSize, 268435456,  268435456) \
     X(Maximum,                         maxVertexAttributes,        16,         16) \
     X(Maximum,                  maxVertexBufferArrayStride,      2048,       2048) \
     X(Maximum,               maxInterStageShaderComponents,        60,         60) \
     X(Maximum,               maxInterStageShaderVariables,         16,         16) \
     X(Maximum,                         maxColorAttachments,         8,          8) \
-    X(Maximum,            maxColorAttachmentBytesPerSample,        32,         32)
+    X(Maximum,            maxColorAttachmentBytesPerSample,        32,         32) \
+    X(Maximum,          maxFragmentCombinedOutputResources,         8,          8)
 // clang-format on
 
 #define LIMITS_EACH_GROUP(X)              \

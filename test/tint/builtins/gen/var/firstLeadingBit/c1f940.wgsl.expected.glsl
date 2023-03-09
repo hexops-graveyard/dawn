@@ -1,23 +1,33 @@
 #version 310 es
 
+uvec4 tint_select(uvec4 param_0, uvec4 param_1, bvec4 param_2) {
+    return uvec4(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2], param_2[3] ? param_1[3] : param_0[3]);
+}
+
+
 ivec4 tint_first_leading_bit(ivec4 v) {
-  uvec4 x = mix(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
-  uvec4 b16 = mix(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
+  uvec4 x = tint_select(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
+  uvec4 b16 = tint_select(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
   x = (x >> b16);
-  uvec4 b8 = mix(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
+  uvec4 b8 = tint_select(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
   x = (x >> b8);
-  uvec4 b4 = mix(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
+  uvec4 b4 = tint_select(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
   x = (x >> b4);
-  uvec4 b2 = mix(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
+  uvec4 b2 = tint_select(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
   x = (x >> b2);
-  uvec4 b1 = mix(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
-  uvec4 is_zero = mix(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
+  uvec4 b1 = tint_select(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
+  uvec4 is_zero = tint_select(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
   return ivec4((((((b16 | b8) | b4) | b2) | b1) | is_zero));
 }
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  ivec4 inner;
+} prevent_dce;
 
 void firstLeadingBit_c1f940() {
   ivec4 arg_0 = ivec4(1);
   ivec4 res = tint_first_leading_bit(arg_0);
+  prevent_dce.inner = res;
 }
 
 vec4 vertex_main() {
@@ -36,24 +46,34 @@ void main() {
 #version 310 es
 precision mediump float;
 
+uvec4 tint_select(uvec4 param_0, uvec4 param_1, bvec4 param_2) {
+    return uvec4(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2], param_2[3] ? param_1[3] : param_0[3]);
+}
+
+
 ivec4 tint_first_leading_bit(ivec4 v) {
-  uvec4 x = mix(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
-  uvec4 b16 = mix(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
+  uvec4 x = tint_select(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
+  uvec4 b16 = tint_select(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
   x = (x >> b16);
-  uvec4 b8 = mix(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
+  uvec4 b8 = tint_select(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
   x = (x >> b8);
-  uvec4 b4 = mix(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
+  uvec4 b4 = tint_select(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
   x = (x >> b4);
-  uvec4 b2 = mix(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
+  uvec4 b2 = tint_select(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
   x = (x >> b2);
-  uvec4 b1 = mix(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
-  uvec4 is_zero = mix(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
+  uvec4 b1 = tint_select(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
+  uvec4 is_zero = tint_select(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
   return ivec4((((((b16 | b8) | b4) | b2) | b1) | is_zero));
 }
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  ivec4 inner;
+} prevent_dce;
 
 void firstLeadingBit_c1f940() {
   ivec4 arg_0 = ivec4(1);
   ivec4 res = tint_first_leading_bit(arg_0);
+  prevent_dce.inner = res;
 }
 
 void fragment_main() {
@@ -66,24 +86,34 @@ void main() {
 }
 #version 310 es
 
+uvec4 tint_select(uvec4 param_0, uvec4 param_1, bvec4 param_2) {
+    return uvec4(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2], param_2[3] ? param_1[3] : param_0[3]);
+}
+
+
 ivec4 tint_first_leading_bit(ivec4 v) {
-  uvec4 x = mix(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
-  uvec4 b16 = mix(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
+  uvec4 x = tint_select(uvec4(v), uvec4(~(v)), lessThan(v, ivec4(0)));
+  uvec4 b16 = tint_select(uvec4(0u), uvec4(16u), bvec4((x & uvec4(4294901760u))));
   x = (x >> b16);
-  uvec4 b8 = mix(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
+  uvec4 b8 = tint_select(uvec4(0u), uvec4(8u), bvec4((x & uvec4(65280u))));
   x = (x >> b8);
-  uvec4 b4 = mix(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
+  uvec4 b4 = tint_select(uvec4(0u), uvec4(4u), bvec4((x & uvec4(240u))));
   x = (x >> b4);
-  uvec4 b2 = mix(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
+  uvec4 b2 = tint_select(uvec4(0u), uvec4(2u), bvec4((x & uvec4(12u))));
   x = (x >> b2);
-  uvec4 b1 = mix(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
-  uvec4 is_zero = mix(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
+  uvec4 b1 = tint_select(uvec4(0u), uvec4(1u), bvec4((x & uvec4(2u))));
+  uvec4 is_zero = tint_select(uvec4(0u), uvec4(4294967295u), equal(x, uvec4(0u)));
   return ivec4((((((b16 | b8) | b4) | b2) | b1) | is_zero));
 }
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  ivec4 inner;
+} prevent_dce;
 
 void firstLeadingBit_c1f940() {
   ivec4 arg_0 = ivec4(1);
   ivec4 res = tint_first_leading_bit(arg_0);
+  prevent_dce.inner = res;
 }
 
 void compute_main() {

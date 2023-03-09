@@ -1,5 +1,10 @@
 #version 310 es
 
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
+}
+
+
 struct GammaTransferParams {
   float G;
   float A;
@@ -14,16 +19,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -31,6 +42,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -41,7 +54,7 @@ vec3 gammaCorrection(vec3 v, GammaTransferParams params) {
   bvec3 cond = lessThan(abs(v), vec3(params.D));
   vec3 t = (sign(v) * ((params.C * abs(v)) + params.F));
   vec3 f = (sign(v) * (pow(((params.A * abs(v)) + params.B), vec3(params.G)) + params.E));
-  return mix(f, t, cond);
+  return tint_select(f, t, cond);
 }
 
 vec4 textureLoadExternal(highp sampler2D plane0_1, highp sampler2D plane1_1, ivec2 coord, ExternalTextureParams params) {
@@ -67,7 +80,7 @@ vec4 textureLoad2d(highp sampler2D tint_symbol_1, highp sampler2D ext_tex_plane_
 uniform highp sampler2D arg_0_1;
 uniform highp sampler2D ext_tex_plane_1_2;
 ExternalTextureParams conv_ExternalTextureParams(ExternalTextureParams_std140 val) {
-  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2));
+  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.pad, val.pad_1, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2), val.pad_2, val.pad_3);
 }
 
 void doTextureLoad() {
@@ -90,6 +103,11 @@ void main() {
 #version 310 es
 precision mediump float;
 
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
+}
+
+
 struct GammaTransferParams {
   float G;
   float A;
@@ -104,16 +122,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -121,6 +145,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -131,7 +157,7 @@ vec3 gammaCorrection(vec3 v, GammaTransferParams params) {
   bvec3 cond = lessThan(abs(v), vec3(params.D));
   vec3 t = (sign(v) * ((params.C * abs(v)) + params.F));
   vec3 f = (sign(v) * (pow(((params.A * abs(v)) + params.B), vec3(params.G)) + params.E));
-  return mix(f, t, cond);
+  return tint_select(f, t, cond);
 }
 
 vec4 textureLoadExternal(highp sampler2D plane0_1, highp sampler2D plane1_1, ivec2 coord, ExternalTextureParams params) {
@@ -157,7 +183,7 @@ vec4 textureLoad2d(highp sampler2D tint_symbol_1, highp sampler2D ext_tex_plane_
 uniform highp sampler2D arg_0_1;
 uniform highp sampler2D ext_tex_plane_1_2;
 ExternalTextureParams conv_ExternalTextureParams(ExternalTextureParams_std140 val) {
-  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2));
+  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.pad, val.pad_1, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2), val.pad_2, val.pad_3);
 }
 
 void doTextureLoad() {
@@ -174,6 +200,11 @@ void main() {
 }
 #version 310 es
 
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
+}
+
+
 struct GammaTransferParams {
   float G;
   float A;
@@ -188,16 +219,22 @@ struct GammaTransferParams {
 struct ExternalTextureParams {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
   mat3 gamutConversionMatrix;
   mat3x2 coordTransformationMatrix;
+  uint pad_2;
+  uint pad_3;
 };
 
 struct ExternalTextureParams_std140 {
   uint numPlanes;
   uint doYuvToRgbConversionOnly;
+  uint pad;
+  uint pad_1;
   mat3x4 yuvToRgbConversionMatrix;
   GammaTransferParams gammaDecodeParams;
   GammaTransferParams gammaEncodeParams;
@@ -205,6 +242,8 @@ struct ExternalTextureParams_std140 {
   vec2 coordTransformationMatrix_0;
   vec2 coordTransformationMatrix_1;
   vec2 coordTransformationMatrix_2;
+  uint pad_2;
+  uint pad_3;
 };
 
 layout(binding = 2, std140) uniform ext_tex_params_block_std140_ubo {
@@ -215,7 +254,7 @@ vec3 gammaCorrection(vec3 v, GammaTransferParams params) {
   bvec3 cond = lessThan(abs(v), vec3(params.D));
   vec3 t = (sign(v) * ((params.C * abs(v)) + params.F));
   vec3 f = (sign(v) * (pow(((params.A * abs(v)) + params.B), vec3(params.G)) + params.E));
-  return mix(f, t, cond);
+  return tint_select(f, t, cond);
 }
 
 vec4 textureLoadExternal(highp sampler2D plane0_1, highp sampler2D plane1_1, ivec2 coord, ExternalTextureParams params) {
@@ -241,7 +280,7 @@ vec4 textureLoad2d(highp sampler2D tint_symbol_1, highp sampler2D ext_tex_plane_
 uniform highp sampler2D arg_0_1;
 uniform highp sampler2D ext_tex_plane_1_2;
 ExternalTextureParams conv_ExternalTextureParams(ExternalTextureParams_std140 val) {
-  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2));
+  return ExternalTextureParams(val.numPlanes, val.doYuvToRgbConversionOnly, val.pad, val.pad_1, val.yuvToRgbConversionMatrix, val.gammaDecodeParams, val.gammaEncodeParams, val.gamutConversionMatrix, mat3x2(val.coordTransformationMatrix_0, val.coordTransformationMatrix_1, val.coordTransformationMatrix_2), val.pad_2, val.pad_3);
 }
 
 void doTextureLoad() {

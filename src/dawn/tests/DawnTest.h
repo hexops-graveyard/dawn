@@ -109,6 +109,7 @@
     EXPECT_CALL(mDeviceErrorCallback,                                             \
                 Call(testing::Ne(WGPUErrorType_NoError), matcher, device.Get())); \
     statement;                                                                    \
+    device.Tick();                                                                \
     FlushWire();                                                                  \
     testing::Mock::VerifyAndClearExpectations(&mDeviceErrorCallback);             \
     do {                                                                          \
@@ -186,6 +187,10 @@ class DawnTestEnvironment : public testing::Environment {
     std::unique_ptr<dawn::native::Instance> CreateInstanceAndDiscoverAdapters();
     void SelectPreferredAdapterProperties(const dawn::native::Instance* instance);
     void PrintTestConfigurationAndAdapterInfo(dawn::native::Instance* instance) const;
+
+    /// @returns true if all the toggles are recognised, otherwise prints an error and returns
+    /// false.
+    bool ValidateToggles(dawn::native::Instance* instance) const;
 
     bool mUseWire = false;
     dawn::native::BackendValidationLevel mBackendValidationLevel =
@@ -564,6 +569,7 @@ class DawnTestBase {
 
     const wgpu::AdapterProperties& GetAdapterProperties() const;
 
+    wgpu::SupportedLimits GetAdapterLimits();
     wgpu::SupportedLimits GetSupportedLimits();
 
   private:

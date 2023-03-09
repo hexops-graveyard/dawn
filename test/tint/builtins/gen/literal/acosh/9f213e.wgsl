@@ -23,9 +23,8 @@
 
 // fn acosh(vec<3, fa>) -> vec<3, fa>
 fn acosh_9f213e() {
-  var res = acosh(vec3(2.));
+  var res = acosh(vec3(1.5430806348));
 }
-
 @vertex
 fn vertex_main() -> @builtin(position) vec4<f32> {
   acosh_9f213e();

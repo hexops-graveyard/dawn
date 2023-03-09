@@ -23,10 +23,9 @@
 
 // fn round(vec<2, fa>) -> vec<2, fa>
 fn round_8fdca3() {
-  const arg_0 = vec2(3.4);
+  const arg_0 = vec2(3.5);
   var res = round(arg_0);
 }
-
 @vertex
 fn vertex_main() -> @builtin(position) vec4<f32> {
   round_8fdca3();

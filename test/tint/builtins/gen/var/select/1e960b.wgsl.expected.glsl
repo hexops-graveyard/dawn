@@ -1,10 +1,20 @@
 #version 310 es
 
+uvec2 tint_select(uvec2 param_0, uvec2 param_1, bvec2 param_2) {
+    return uvec2(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1]);
+}
+
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void select_1e960b() {
   uvec2 arg_0 = uvec2(1u);
   uvec2 arg_1 = uvec2(1u);
   bvec2 arg_2 = bvec2(true);
-  uvec2 res = mix(arg_0, arg_1, arg_2);
+  uvec2 res = tint_select(arg_0, arg_1, arg_2);
+  prevent_dce.inner = res;
 }
 
 vec4 vertex_main() {
@@ -23,11 +33,21 @@ void main() {
 #version 310 es
 precision mediump float;
 
+uvec2 tint_select(uvec2 param_0, uvec2 param_1, bvec2 param_2) {
+    return uvec2(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1]);
+}
+
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void select_1e960b() {
   uvec2 arg_0 = uvec2(1u);
   uvec2 arg_1 = uvec2(1u);
   bvec2 arg_2 = bvec2(true);
-  uvec2 res = mix(arg_0, arg_1, arg_2);
+  uvec2 res = tint_select(arg_0, arg_1, arg_2);
+  prevent_dce.inner = res;
 }
 
 void fragment_main() {
@@ -40,11 +60,21 @@ void main() {
 }
 #version 310 es
 
+uvec2 tint_select(uvec2 param_0, uvec2 param_1, bvec2 param_2) {
+    return uvec2(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1]);
+}
+
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  uvec2 inner;
+} prevent_dce;
+
 void select_1e960b() {
   uvec2 arg_0 = uvec2(1u);
   uvec2 arg_1 = uvec2(1u);
   bvec2 arg_2 = bvec2(true);
-  uvec2 res = mix(arg_0, arg_1, arg_2);
+  uvec2 res = tint_select(arg_0, arg_1, arg_2);
+  prevent_dce.inner = res;
 }
 
 void compute_main() {

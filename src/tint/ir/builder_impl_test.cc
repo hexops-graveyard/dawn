@@ -1836,8 +1836,8 @@ TEST_F(IR_BuilderImplTest, EmitExpression_Binary_Compound) {
     EXPECT_EQ(d.AsString(), R"(%1 (u32) = 3 >> 4
 %2 (u32) = %1 (u32) + 9
 %3 (bool) = 1 < %2 (u32)
-%4 (f32) = 2.299999952 * 5.5
-%5 (f32) = 6.699999809 / %4 (f32)
+%4 (f32) = 2.29999995231628417969 * 5.5
+%5 (f32) = 6.69999980926513671875 / %4 (f32)
 %6 (bool) = 2.5 > %5 (f32)
 %7 (bool) = %3 (bool) && %6 (bool)
 )");
@@ -1855,6 +1855,91 @@ TEST_F(IR_BuilderImplTest, EmitExpression_Bitcast) {
     Disassembler d(b.builder.ir);
     d.EmitBlockInstructions(b.current_flow_block->As<ir::Block>());
     EXPECT_EQ(d.AsString(), R"(%1 (f32) = bitcast(3)
+)");
+}
+
+TEST_F(IR_BuilderImplTest, EmitStatement_UserFunction) {
+    Func("my_func", utils::Vector{Param("p", ty.f32())}, ty.void_(), utils::Empty);
+
+    auto* stmt = CallStmt(Call("my_func", Mul(2_f, 3_f)));
+    WrapInFunction(stmt);
+
+    auto& b = CreateBuilder();
+    InjectFlowBlock();
+    auto r = b.EmitStatement(stmt);
+    ASSERT_TRUE(r) << b.error();
+
+    Disassembler d(b.builder.ir);
+    d.EmitBlockInstructions(b.current_flow_block->As<ir::Block>());
+    EXPECT_EQ(d.AsString(), R"(%1 (f32) = 2.0 * 3.0
+%2 (void) = call(my_func, %1 (f32))
+)");
+}
+
+// TODO(dsinclair): This needs assignment in order to output correctly. The empty constructor ends
+// up materializing, so there is no expression to emit until there is a usage. When assigment is
+// implemented this can be enabled (and the output updated).
+TEST_F(IR_BuilderImplTest, DISABLED_EmitExpression_ConstructEmpty) {
+    auto* expr = vec3(ty.f32());
+    GlobalVar("i", builtin::AddressSpace::kPrivate, expr);
+
+    auto& b = CreateBuilder();
+    InjectFlowBlock();
+    auto r = b.EmitExpression(expr);
+    ASSERT_TRUE(r) << b.error();
+
+    Disassembler d(b.builder.ir);
+    d.EmitBlockInstructions(b.current_flow_block->As<ir::Block>());
+    EXPECT_EQ(d.AsString(), R"(%1 (vec3<f32>) = construct(vec3<f32>)
+)");
+}
+
+TEST_F(IR_BuilderImplTest, EmitExpression_Construct) {
+    auto i = GlobalVar("i", builtin::AddressSpace::kPrivate, Expr(1_f));
+    auto* expr = vec3(ty.f32(), 2_f, 3_f, i);
+    WrapInFunction(expr);
+
+    auto& b = CreateBuilder();
+    InjectFlowBlock();
+    auto r = b.EmitExpression(expr);
+    ASSERT_TRUE(r) << b.error();
+
+    Disassembler d(b.builder.ir);
+    d.EmitBlockInstructions(b.current_flow_block->As<ir::Block>());
+    EXPECT_EQ(d.AsString(), R"(%2 (vec3<f32>) = construct(vec3<f32>, 2.0, 3.0, %1 (void))
+)");
+}
+
+TEST_F(IR_BuilderImplTest, EmitExpression_Convert) {
+    auto i = GlobalVar("i", builtin::AddressSpace::kPrivate, Expr(1_i));
+    auto* expr = Call(ty.f32(), i);
+    WrapInFunction(expr);
+
+    auto& b = CreateBuilder();
+    InjectFlowBlock();
+    auto r = b.EmitExpression(expr);
+    ASSERT_TRUE(r) << b.error();
+
+    Disassembler d(b.builder.ir);
+    d.EmitBlockInstructions(b.current_flow_block->As<ir::Block>());
+    EXPECT_EQ(d.AsString(), R"(%2 (f32) = convert(f32, i32, %1 (void))
+)");
+}
+
+TEST_F(IR_BuilderImplTest, EmitExpression_MaterializedCall) {
+    auto* expr = Return(Call("trunc", 2.5_f));
+
+    Func("test_function", {}, ty.f32(), expr, utils::Empty);
+
+    auto r = Build();
+    ASSERT_TRUE(r) << Error();
+    auto m = r.Move();
+
+    EXPECT_EQ(Disassemble(m), R"(%bb0 = Function test_function
+  %bb1 = Block
+  Return (2.0)
+FunctionEnd
+
 )");
 }
 

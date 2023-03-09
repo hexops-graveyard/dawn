@@ -204,7 +204,7 @@ class Resolver {
     sem::Expression* Identifier(const ast::IdentifierExpression*);
     template <size_t N>
     sem::Call* BuiltinCall(const ast::CallExpression*,
-                           sem::BuiltinType,
+                           builtin::Function,
                            utils::Vector<const sem::ValueExpression*, N>& args);
     sem::ValueExpression* Literal(const ast::LiteralExpression*);
     sem::ValueExpression* MemberAccessor(const ast::MemberAccessorExpression*);
@@ -320,6 +320,10 @@ class Resolver {
     /// Resolves the `@interpolate` attribute @p attr
     /// @returns true on success, false on failure
     bool InterpolateAttribute(const ast::InterpolateAttribute* attr);
+
+    /// Resolves the internal attribute @p attr
+    /// @returns true on success, false on failure
+    bool InternalAttribute(const ast::InternalAttribute* attr);
 
     /// @param control the diagnostic control
     /// @returns true on success, false on failure

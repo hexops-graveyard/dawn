@@ -1,12 +1,22 @@
 #version 310 es
 
-vec3 tint_acosh(vec3 x) {
-  return mix(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
 }
 
+
+vec3 tint_acosh(vec3 x) {
+  return tint_select(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+}
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  vec3 inner;
+} prevent_dce;
+
 void acosh_e38f5c() {
-  vec3 arg_0 = vec3(2.0f);
+  vec3 arg_0 = vec3(1.54308068752288818359f);
   vec3 res = tint_acosh(arg_0);
+  prevent_dce.inner = res;
 }
 
 vec4 vertex_main() {
@@ -25,13 +35,23 @@ void main() {
 #version 310 es
 precision mediump float;
 
-vec3 tint_acosh(vec3 x) {
-  return mix(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
 }
 
+
+vec3 tint_acosh(vec3 x) {
+  return tint_select(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+}
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  vec3 inner;
+} prevent_dce;
+
 void acosh_e38f5c() {
-  vec3 arg_0 = vec3(2.0f);
+  vec3 arg_0 = vec3(1.54308068752288818359f);
   vec3 res = tint_acosh(arg_0);
+  prevent_dce.inner = res;
 }
 
 void fragment_main() {
@@ -44,13 +64,23 @@ void main() {
 }
 #version 310 es
 
-vec3 tint_acosh(vec3 x) {
-  return mix(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+vec3 tint_select(vec3 param_0, vec3 param_1, bvec3 param_2) {
+    return vec3(param_2[0] ? param_1[0] : param_0[0], param_2[1] ? param_1[1] : param_0[1], param_2[2] ? param_1[2] : param_0[2]);
 }
 
+
+vec3 tint_acosh(vec3 x) {
+  return tint_select(acosh(x), vec3(0.0f), lessThan(x, vec3(1.0f)));
+}
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  vec3 inner;
+} prevent_dce;
+
 void acosh_e38f5c() {
-  vec3 arg_0 = vec3(2.0f);
+  vec3 arg_0 = vec3(1.54308068752288818359f);
   vec3 res = tint_acosh(arg_0);
+  prevent_dce.inner = res;
 }
 
 void compute_main() {

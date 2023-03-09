@@ -5843,7 +5843,7 @@ constexpr ParameterInfo kParameters[] = {
   {
     /* [550] */
     /* usage */ ParameterUsage::kCoords,
-    /* matcher indices */ &kMatcherIndices[148],
+    /* matcher indices */ &kMatcherIndices[106],
   },
   {
     /* [551] */
@@ -9540,9 +9540,9 @@ constexpr OverloadInfo kOverloads[] = {
   {
     /* [94] */
     /* num parameters */ 3,
-    /* num template types */ 0,
+    /* num template types */ 1,
     /* num template numbers */ 0,
-    /* template types */ &kTemplateTypes[38],
+    /* template types */ &kTemplateTypes[1],
     /* template numbers */ &kTemplateNumbers[10],
     /* parameters */ &kParameters[549],
     /* return matcher indices */ nullptr,
@@ -14092,8 +14092,8 @@ constexpr IntrinsicInfo kBuiltins[] = {
   },
   {
     /* [2] */
-    /* fn acosh<T : fa_f32_f16>(@test_value(2) T) -> T */
-    /* fn acosh<N : num, T : fa_f32_f16>(@test_value(2) vec<N, T>) -> vec<N, T> */
+    /* fn acosh<T : fa_f32_f16>(@test_value(1.5430806348) T) -> T */
+    /* fn acosh<N : num, T : fa_f32_f16>(@test_value(1.5430806348) vec<N, T>) -> vec<N, T> */
     /* num overloads */ 2,
     /* overloads */ &kOverloads[287],
   },
@@ -14526,8 +14526,8 @@ constexpr IntrinsicInfo kBuiltins[] = {
   },
   {
     /* [66] */
-    /* fn round<T : fa_f32_f16>(@test_value(3.4) T) -> T */
-    /* fn round<N : num, T : fa_f32_f16>(@test_value(3.4) vec<N, T>) -> vec<N, T> */
+    /* fn round<T : fa_f32_f16>(@test_value(3.5) T) -> T */
+    /* fn round<N : num, T : fa_f32_f16>(@test_value(3.5) vec<N, T>) -> vec<N, T> */
     /* num overloads */ 2,
     /* overloads */ &kOverloads[383],
   },
@@ -14862,7 +14862,7 @@ constexpr IntrinsicInfo kBuiltins[] = {
     /* fn textureStore<C : iu32>(texture: texture_storage_1d<u32_texel_format, write>, coords: C, value: vec4<u32>) */
     /* fn textureStore<C : iu32>(texture: texture_storage_2d<u32_texel_format, write>, coords: vec2<C>, value: vec4<u32>) */
     /* fn textureStore<C : iu32, A : iu32>(texture: texture_storage_2d_array<u32_texel_format, write>, coords: vec2<C>, array_index: A, value: vec4<u32>) */
-    /* fn textureStore(texture: texture_storage_3d<u32_texel_format, write>, coords: vec3<i32>, value: vec4<u32>) */
+    /* fn textureStore<C : iu32>(texture: texture_storage_3d<u32_texel_format, write>, coords: vec3<C>, value: vec4<u32>) */
     /* num overloads */ 12,
     /* overloads */ &kOverloads[83],
   },

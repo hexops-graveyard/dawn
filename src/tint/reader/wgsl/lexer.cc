@@ -15,6 +15,7 @@
 #include "src/tint/reader/wgsl/lexer.h"
 
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstring>
 #include <functional>
@@ -24,6 +25,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "absl/strings/charconv.h"
 #include "src/tint/debug.h"
 #include "src/tint/number.h"
 #include "src/tint/text/unicode.h"
@@ -351,9 +353,11 @@ Token Lexer::try_float() {
 
     // Parse the exponent if one exists
     bool has_exponent = false;
+    bool negative_exponent = false;
     if (end < length() && (matches(end, 'e') || matches(end, 'E'))) {
         end++;
         if (end < length() && (matches(end, '+') || matches(end, '-'))) {
+            negative_exponent = matches(end, '-');
             end++;
         }
 
@@ -373,10 +377,8 @@ Token Lexer::try_float() {
     bool has_f_suffix = false;
     bool has_h_suffix = false;
     if (end < length() && matches(end, 'f')) {
-        end++;
         has_f_suffix = true;
     } else if (end < length() && matches(end, 'h')) {
-        end++;
         has_h_suffix = true;
     }
 
@@ -385,29 +387,51 @@ Token Lexer::try_float() {
         return {};
     }
 
-    advance(end - start);
-    end_source(source);
+    // Note, the `at` method will return a static `0` if the provided position is >= length. We
+    // actually need the end pointer to point to the correct memory location to use `from_chars`.
+    // So, handle the case where we point past the length specially.
+    auto* end_ptr = &at(end);
+    if (end >= length()) {
+        end_ptr = &at(length() - 1) + 1;
+    }
 
-    double value = std::strtod(&at(start), nullptr);
+    double value = 0;
+    auto ret = absl::from_chars(&at(start), end_ptr, value);
+    bool overflow = ret.ec != std::errc();
+
+    // The provided value did not fit in a double and has a negative exponent, so treat it as a 0.
+    if (negative_exponent && ret.ec == std::errc::result_out_of_range) {
+        overflow = false;
+        value = 0.0;
+    }
+
+    TINT_ASSERT(Reader, end_ptr == ret.ptr);
+    advance(end - start);
 
     if (has_f_suffix) {
-        if (auto f = CheckedConvert<f32>(AFloat(value))) {
+        auto f = CheckedConvert<f32>(AFloat(value));
+        if (!overflow && f) {
+            advance(1);
+            end_source(source);
             return {Token::Type::kFloatLiteral_F, source, static_cast<double>(f.Get())};
-        } else {
-            return {Token::Type::kError, source, "value cannot be represented as 'f32'"};
         }
+        return {Token::Type::kError, source, "value cannot be represented as 'f32'"};
     }
 
     if (has_h_suffix) {
-        if (auto f = CheckedConvert<f16>(AFloat(value))) {
+        auto f = CheckedConvert<f16>(AFloat(value));
+        if (!overflow && f) {
+            advance(1);
+            end_source(source);
             return {Token::Type::kFloatLiteral_H, source, static_cast<double>(f.Get())};
-        } else {
-            return {Token::Type::kError, source, "value cannot be represented as 'f16'"};
         }
+        return {Token::Type::kError, source, "value cannot be represented as 'f16'"};
     }
 
+    end_source(source);
+
     TINT_BEGIN_DISABLE_WARNING(FLOAT_EQUAL);
-    if (value == HUGE_VAL || -value == HUGE_VAL) {
+    if (overflow || value == HUGE_VAL || -value == HUGE_VAL) {
         return {Token::Type::kError, source, "value cannot be represented as 'abstract-float'"};
     } else {
         return {Token::Type::kFloatLiteral, source, value};
@@ -804,41 +828,48 @@ Token Lexer::try_hex_float() {
     return {Token::Type::kFloatLiteral, source, result_f64};
 }
 
-Token Lexer::build_token_from_int_if_possible(Source source, size_t start, int32_t base) {
+Token Lexer::build_token_from_int_if_possible(Source source,
+                                              size_t start,
+                                              size_t prefix_count,
+                                              int32_t base) {
     const char* start_ptr = &at(start);
-    char* end_ptr = nullptr;
+    // The call to `from_chars` will return the pointer to just after the last parsed character.
+    // We also need to tell it the maximum end character to parse. So, instead of walking all the
+    // characters to find the last possible and using that, we just provide the end of the string.
+    // We then calculate the count based off the provided end pointer and the start pointer. The
+    // extra `prefix_count` is to handle a `0x` which is not included in the `start` value.
+    const char* end_ptr = &at(length() - 1) + 1;
 
-    errno = 0;
-    int64_t res = strtoll(start_ptr, &end_ptr, base);
-    const bool overflow = errno == ERANGE;
-
-    if (end_ptr) {
-        advance(static_cast<size_t>(end_ptr - start_ptr));
-    }
+    int64_t value = 0;
+    auto res = std::from_chars(start_ptr, end_ptr, value, base);
+    const bool overflow = res.ec != std::errc();
+    advance(static_cast<size_t>(res.ptr - start_ptr) + prefix_count);
 
     if (matches(pos(), 'u')) {
-        if (!overflow && CheckedConvert<u32>(AInt(res))) {
+        if (!overflow && CheckedConvert<u32>(AInt(value))) {
             advance(1);
             end_source(source);
-            return {Token::Type::kIntLiteral_U, source, res};
+            return {Token::Type::kIntLiteral_U, source, value};
         }
         return {Token::Type::kError, source, "value cannot be represented as 'u32'"};
     }
 
     if (matches(pos(), 'i')) {
-        if (!overflow && CheckedConvert<i32>(AInt(res))) {
+        if (!overflow && CheckedConvert<i32>(AInt(value))) {
             advance(1);
             end_source(source);
-            return {Token::Type::kIntLiteral_I, source, res};
+            return {Token::Type::kIntLiteral_I, source, value};
         }
         return {Token::Type::kError, source, "value cannot be represented as 'i32'"};
     }
 
-    end_source(source);
+    // Check this last in order to get the more specific sized error messages
     if (overflow) {
         return {Token::Type::kError, source, "value cannot be represented as 'abstract-int'"};
     }
-    return {Token::Type::kIntLiteral, source, res};
+
+    end_source(source);
+    return {Token::Type::kIntLiteral, source, value};
 }
 
 Token Lexer::try_hex_integer() {
@@ -858,7 +889,7 @@ Token Lexer::try_hex_integer() {
                 "integer or float hex literal has no significant digits"};
     }
 
-    return build_token_from_int_if_possible(source, start, 16);
+    return build_token_from_int_if_possible(source, curr, curr - start, 16);
 }
 
 Token Lexer::try_integer() {
@@ -879,7 +910,7 @@ Token Lexer::try_integer() {
         }
     }
 
-    return build_token_from_int_if_possible(source, start, 10);
+    return build_token_from_int_if_possible(source, start, 0, 10);
 }
 
 Token Lexer::try_ident() {

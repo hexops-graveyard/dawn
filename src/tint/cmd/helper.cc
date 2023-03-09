@@ -14,8 +14,13 @@
 
 #include "src/tint/cmd/helper.h"
 
+#include <iostream>
 #include <utility>
 #include <vector>
+
+#if TINT_BUILD_SPV_WRITER
+#include "spirv-tools/libspirv.hpp"
+#endif
 
 namespace tint::cmd {
 namespace {

@@ -856,9 +856,9 @@ sem::Statement* Resolver::ConstAssert(const ast::ConstAssert* assertion) {
 sem::Function* Resolver::Function(const ast::Function* decl) {
     Mark(decl->name);
 
-    uint32_t parameter_index = 0;
-    utils::Hashmap<Symbol, Source, 8> parameter_names;
-    utils::Vector<sem::Parameter*, 8> parameters;
+    auto* func = builder_->create<sem::Function>(decl);
+    builder_->Sem().Add(decl, func);
+    TINT_SCOPED_ASSIGNMENT(current_function_, func);
 
     validator_.DiagnosticFilters().Push();
     TINT_DEFER(validator_.DiagnosticFilters().Pop());
@@ -872,6 +872,8 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
     }
 
     // Resolve all the parameters
+    uint32_t parameter_index = 0;
+    utils::Hashmap<Symbol, Source, 8> parameter_names;
     for (auto* param : decl->params) {
         Mark(param);
 
@@ -893,7 +895,7 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
             return nullptr;
         }
 
-        parameters.Push(p);
+        func->AddParameter(p);
 
         auto* p_ty = const_cast<type::Type*>(p->Type());
         if (auto* str = p_ty->As<sem::Struct>()) {
@@ -923,9 +925,9 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
     } else {
         return_type = builder_->create<type::Void>();
     }
+    func->SetReturnType(return_type);
 
     // Determine if the return type has a location
-    std::optional<uint32_t> return_location;
     for (auto* attr : decl->return_type_attributes) {
         if (!Attribute(attr)) {
             return nullptr;
@@ -936,7 +938,7 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
             if (!value) {
                 return nullptr;
             }
-            return_location = value.Get();
+            func->SetReturnLocation(value.Get());
         }
     }
 
@@ -963,12 +965,7 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
         }
     }
 
-    auto* func =
-        builder_->create<sem::Function>(decl, return_type, return_location, std::move(parameters));
     ApplyDiagnosticSeverities(func);
-    builder_->Sem().Add(decl, func);
-
-    TINT_SCOPED_ASSIGNMENT(current_function_, func);
 
     if (!WorkgroupSize(decl)) {
         return nullptr;
@@ -2089,7 +2086,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
                 auto* call_target = struct_ctors_.GetOrCreate(
                     StructConstructorSig{{str, args.Length(), args_stage}},
                     [&]() -> sem::ValueConstructor* {
-                        utils::Vector<const sem::Parameter*, 8> params;
+                        utils::Vector<sem::Parameter*, 8> params;
                         params.Resize(std::min(args.Length(), str->Members().Length()));
                         for (size_t i = 0, n = params.Length(); i < n; i++) {
                             params[i] = builder_->create<sem::Parameter>(
@@ -2170,7 +2167,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
                 });
         }
 
-        if (auto f = resolved->BuiltinFunction(); f != sem::BuiltinType::kNone) {
+        if (auto f = resolved->BuiltinFunction(); f != builtin::Function::kNone) {
             return BuiltinCall(expr, f, args);
         }
 
@@ -2242,7 +2239,7 @@ sem::Call* Resolver::Call(const ast::CallExpression* expr) {
 
 template <size_t N>
 sem::Call* Resolver::BuiltinCall(const ast::CallExpression* expr,
-                                 sem::BuiltinType builtin_type,
+                                 builtin::Function builtin_type,
                                  utils::Vector<const sem::ValueExpression*, N>& args) {
     auto arg_stage = sem::EvaluationStage::kConstant;
     for (auto* arg : args) {
@@ -2258,7 +2255,7 @@ sem::Call* Resolver::BuiltinCall(const ast::CallExpression* expr,
         }
     }
 
-    if (builtin_type == sem::BuiltinType::kTintMaterialize) {
+    if (builtin_type == builtin::Function::kTintMaterialize) {
         args[0] = Materialize(args[0]);
         if (!args[0]) {
             return nullptr;
@@ -2310,14 +2307,14 @@ sem::Call* Resolver::BuiltinCall(const ast::CallExpression* expr,
         return nullptr;
     }
 
-    if (IsTextureBuiltin(builtin_type)) {
+    if (sem::IsTextureBuiltin(builtin_type)) {
         if (!validator_.TextureBuiltinFunction(call)) {
             return nullptr;
         }
         CollectTextureSamplerPairs(builtin.sem, call->Arguments());
     }
 
-    if (builtin_type == sem::BuiltinType::kWorkgroupUniformLoad) {
+    if (builtin_type == builtin::Function::kWorkgroupUniformLoad) {
         if (!validator_.WorkgroupUniformLoad(call)) {
             return nullptr;
         }
@@ -3053,7 +3050,7 @@ sem::Expression* Resolver::Identifier(const ast::IdentifierExpression* expr) {
         return builder_->create<sem::TypeExpression>(expr, current_statement_, ty);
     }
 
-    if (resolved->BuiltinFunction() != sem::BuiltinType::kNone) {
+    if (resolved->BuiltinFunction() != builtin::Function::kNone) {
         AddError("missing '(' for builtin function call", expr->source.End());
         return nullptr;
     }
@@ -3436,6 +3433,7 @@ bool Resolver::Attribute(const ast::Attribute* attr) {
         [&](const ast::BuiltinAttribute* b) { return BuiltinAttribute(b); },
         [&](const ast::DiagnosticAttribute* d) { return DiagnosticControl(d->control); },
         [&](const ast::InterpolateAttribute* i) { return InterpolateAttribute(i); },
+        [&](const ast::InternalAttribute* i) { return InternalAttribute(i); },
         [&](Default) { return true; });
 }
 
@@ -3456,6 +3454,15 @@ bool Resolver::InterpolateAttribute(const ast::InterpolateAttribute* attr) {
     }
     if (attr->sampling && !InterpolationSampling(attr->sampling)) {
         return false;
+    }
+    return true;
+}
+
+bool Resolver::InternalAttribute(const ast::InternalAttribute* attr) {
+    for (auto* dep : attr->dependencies) {
+        if (!Expression(dep)) {
+            return false;
+        }
     }
     return true;
 }

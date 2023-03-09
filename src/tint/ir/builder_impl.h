@@ -39,6 +39,8 @@ class BitcastExpression;
 class BlockStatement;
 class BreakIfStatement;
 class BreakStatement;
+class CallExpression;
+class CallStatement;
 class ContinueStatement;
 class Expression;
 class ForLoopStatement;
@@ -61,6 +63,9 @@ class Loop;
 class Switch;
 class Terminator;
 }  // namespace tint::ir
+namespace tint::sem {
+class Builtin;
+}  // namespace tint::sem
 
 namespace tint::ir {
 
@@ -165,6 +170,16 @@ class BuilderImpl {
     /// @returns the value storing the result if successful, utils::Failure otherwise
     utils::Result<Value*> EmitBitcast(const ast::BitcastExpression* expr);
 
+    /// Emits a call expression
+    /// @param stmt the call statement
+    /// @returns the value storing the result if successful, utils::Failure otherwise
+    utils::Result<Value*> EmitCall(const ast::CallStatement* stmt);
+
+    /// Emits a call expression
+    /// @param expr the call expression
+    /// @returns the value storing the result if successful, utils::Failure otherwise
+    utils::Result<Value*> EmitCall(const ast::CallExpression* expr);
+
     /// Emits a literal expression
     /// @param lit the literal to emit
     /// @returns true if successful, false otherwise
@@ -206,6 +221,8 @@ class BuilderImpl {
     void BranchToIfNeeded(ir::FlowNode* node);
 
     FlowNode* FindEnclosingControl(ControlFlags flags);
+
+    void add_error(const Source& s, const std::string& err);
 
     const Program* program_ = nullptr;
 

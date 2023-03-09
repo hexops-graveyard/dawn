@@ -1,8 +1,11 @@
 SKIP: FAILED
 
+RWByteAddressBuffer prevent_dce : register(u0, space2);
+
 void ldexp_082c1f() {
   float16_t arg_0 = float16_t(1.0h);
   float16_t res = ldexp(arg_0, 1);
+  prevent_dce.Store<float16_t>(0u, res);
 }
 
 struct tint_symbol {
@@ -31,7 +34,3 @@ void compute_main() {
   ldexp_082c1f();
   return;
 }
-FXC validation failure:
-C:\src\dawn\test\tint\Shader@0x0000013446CBE820(2,3-11): error X3000: unrecognized identifier 'float16_t'
-C:\src\dawn\test\tint\Shader@0x0000013446CBE820(2,13-17): error X3000: unrecognized identifier 'arg_0'
-

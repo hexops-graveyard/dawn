@@ -1,14 +1,16 @@
-groupshared float arg_0;
-
-float tint_workgroupUniformLoad_arg_0() {
+float tint_workgroupUniformLoad(inout float p) {
   GroupMemoryBarrierWithGroupSync();
-  const float result = arg_0;
+  const float result = p;
   GroupMemoryBarrierWithGroupSync();
   return result;
 }
 
+groupshared float arg_0;
+RWByteAddressBuffer prevent_dce : register(u0, space2);
+
 void workgroupUniformLoad_7a857c() {
-  float res = tint_workgroupUniformLoad_arg_0();
+  float res = tint_workgroupUniformLoad(arg_0);
+  prevent_dce.Store(0u, asuint(res));
 }
 
 struct tint_symbol_1 {

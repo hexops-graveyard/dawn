@@ -2,13 +2,18 @@
 #extension GL_AMD_gpu_shader_half_float : require
 
 f16vec3 tint_degrees(f16vec3 param_0) {
-  return param_0 * 57.295779513082323hf;
+  return param_0 * 57.29577951308232286465hf;
 }
 
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  f16vec3 inner;
+} prevent_dce;
 
 void degrees_dfe8f4() {
   f16vec3 arg_0 = f16vec3(1.0hf);
   f16vec3 res = tint_degrees(arg_0);
+  prevent_dce.inner = res;
 }
 
 vec4 vertex_main() {
@@ -29,13 +34,18 @@ void main() {
 precision mediump float;
 
 f16vec3 tint_degrees(f16vec3 param_0) {
-  return param_0 * 57.295779513082323hf;
+  return param_0 * 57.29577951308232286465hf;
 }
 
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  f16vec3 inner;
+} prevent_dce;
 
 void degrees_dfe8f4() {
   f16vec3 arg_0 = f16vec3(1.0hf);
   f16vec3 res = tint_degrees(arg_0);
+  prevent_dce.inner = res;
 }
 
 void fragment_main() {
@@ -50,13 +60,18 @@ void main() {
 #extension GL_AMD_gpu_shader_half_float : require
 
 f16vec3 tint_degrees(f16vec3 param_0) {
-  return param_0 * 57.295779513082323hf;
+  return param_0 * 57.29577951308232286465hf;
 }
 
+
+layout(binding = 0, std430) buffer prevent_dce_block_ssbo {
+  f16vec3 inner;
+} prevent_dce;
 
 void degrees_dfe8f4() {
   f16vec3 arg_0 = f16vec3(1.0hf);
   f16vec3 res = tint_degrees(arg_0);
+  prevent_dce.inner = res;
 }
 
 void compute_main() {

@@ -113,8 +113,6 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
 
     // TODO(dawn:1549) Fails on Qualcomm-based Android devices.
     DAWN_SUPPRESS_TEST_IF(IsAndroid() && IsQualcomm());
-    // TODO(crbug.com/dawn/1683) Fails on MacBook Pro 2019
-    DAWN_SUPPRESS_TEST_IF(IsMacOS() && IsMetal() && IsAMD());
 
     for (wgpu::BufferUsage usage : {wgpu::BufferUsage::Storage, wgpu::BufferUsage::Uniform}) {
         uint64_t maxBufferBindingSize;
@@ -136,6 +134,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
                     maxBufferBindingSize =
                         std::min(maxBufferBindingSize, uint64_t(512) * 1024 * 1024);
                 }
+                maxBufferBindingSize = Align(maxBufferBindingSize - 3u, 4);
                 shader = R"(
                   struct Buf {
                       values : array<u32>
@@ -162,6 +161,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
                 // Clamp to not exceed the maximum i32 value for the WGSL @size(x) annotation.
                 maxBufferBindingSize = std::min(maxBufferBindingSize,
                                                 uint64_t(std::numeric_limits<int32_t>::max()) + 8);
+                maxBufferBindingSize = Align(maxBufferBindingSize - 3u, 4);
 
                 shader = R"(
                   struct Buf {
@@ -194,8 +194,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
         device.PushErrorScope(wgpu::ErrorFilter::OutOfMemory);
 
         wgpu::BufferDescriptor bufDesc;
-        uint64_t bufferSize = Align(maxBufferBindingSize - 3u, 4);
-        bufDesc.size = bufferSize;
+        bufDesc.size = maxBufferBindingSize;
         bufDesc.usage = usage | wgpu::BufferUsage::CopyDst;
         wgpu::Buffer buffer = device.CreateBuffer(&bufDesc);
 
@@ -203,6 +202,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
         device.PopErrorScope([](WGPUErrorType type, const char*,
                                 void* userdata) { *static_cast<WGPUErrorType*>(userdata) = type; },
                              &oomResult);
+        device.Tick();
         FlushWire();
         // Max buffer size is smaller than the max buffer binding size.
         DAWN_TEST_UNSUPPORTED_IF(oomResult == WGPUErrorType_OutOfMemory);
@@ -216,7 +216,7 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
         queue.WriteBuffer(buffer, 0, &value0, sizeof(value0));
 
         uint32_t value1 = 234;
-        uint64_t value1Offset = Align(bufferSize - sizeof(value1), 4);
+        uint64_t value1Offset = Align(maxBufferBindingSize - sizeof(value1), 4);
         queue.WriteBuffer(buffer, value1Offset, &value1, sizeof(value1));
 
         wgpu::ComputePipelineDescriptor csDesc;
@@ -237,9 +237,10 @@ TEST_P(MaxLimitTests, MaxBufferBindingSize) {
         queue.Submit(1, &commands);
 
         EXPECT_BUFFER_U32_EQ(value0, resultBuffer, 0)
-            << "maxBufferBindingSize=" << bufferSize << "; offset=" << 0 << "; usage=" << usage;
+            << "maxBufferBindingSize=" << maxBufferBindingSize << "; offset=" << 0
+            << "; usage=" << usage;
         EXPECT_BUFFER_U32_EQ(value1, resultBuffer, 4)
-            << "maxBufferBindingSize=" << bufferSize << "; offset=" << value1Offset
+            << "maxBufferBindingSize=" << maxBufferBindingSize << "; offset=" << value1Offset
             << "; usage=" << usage;
     }
 }
@@ -538,6 +539,192 @@ TEST_P(MaxLimitTests, ReallyLargeBindGroup) {
     queue.Submit(1, &commands);
 
     EXPECT_BUFFER_U32_EQ(1, result, 0);
+}
+
+// Verifies that devices can write to at least maxFragmentCombinedOutputResources of non color
+// attachment resources.
+TEST_P(MaxLimitTests, WriteToMaxFragmentCombinedOutputResources) {
+    // TODO(dawn:1692) Currently does not work on GL and GLES.
+    DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
+
+    // Compute the number of each resource type (storage buffers and storage textures) such that
+    // there is at least one color attachment, and as many of the buffer/textures as possible,
+    // splitting a shared remaining count between the two resources if they are not separately
+    // defined, or exceed the combined limit.
+    wgpu::Limits limits = GetSupportedLimits().limits;
+    uint32_t attachmentCount = 1;
+    uint32_t storageBuffers = limits.maxStorageBuffersPerShaderStage;
+    uint32_t storageTextures = limits.maxStorageTexturesPerShaderStage;
+    uint32_t maxCombinedResources = limits.maxFragmentCombinedOutputResources;
+    if (uint64_t(storageBuffers) + uint64_t(storageTextures) >= uint64_t(maxCombinedResources)) {
+        storageTextures = std::min(storageTextures, (maxCombinedResources - attachmentCount) / 2);
+        storageBuffers = maxCombinedResources - attachmentCount - storageTextures;
+    }
+    if (maxCombinedResources > attachmentCount + storageBuffers + storageTextures) {
+        // Increase the number of attachments if we still have bandwidth after maximizing the number
+        // of buffers and textures.
+        attachmentCount = std::min(limits.maxColorAttachments,
+                                   maxCombinedResources - storageBuffers - storageTextures);
+    }
+    ASSERT_LE(attachmentCount + storageBuffers + storageTextures, maxCombinedResources);
+
+    // Create a shader to write out to all the resources.
+    auto CreateShader = [&]() -> wgpu::ShaderModule {
+        // Header to declare storage buffer struct.
+        std::ostringstream bufferBindings;
+        std::ostringstream bufferOutputs;
+        for (uint32_t i = 0; i < storageBuffers; i++) {
+            bufferBindings << "@group(0) @binding(" << i << ") var<storage, read_write> b" << i
+                           << ": u32;\n";
+            bufferOutputs << "    b" << i << " = " << i << "u + 1u;\n";
+        }
+
+        std::ostringstream textureBindings;
+        std::ostringstream textureOutputs;
+        for (uint32_t i = 0; i < storageTextures; i++) {
+            textureBindings << "@group(1) @binding(" << i << ") var t" << i
+                            << ": texture_storage_2d<rgba8uint, write>;\n";
+            textureOutputs << "    textureStore(t" << i << ", vec2u(0, 0), vec4u(" << i
+                           << "u + 1u));\n";
+        }
+
+        std::ostringstream targetBindings;
+        std::ostringstream targetOutputs;
+        for (size_t i = 0; i < attachmentCount; i++) {
+            targetBindings << "@location(" << i << ") o" << i << " : u32, ";
+            targetOutputs << i << "u + 1u, ";
+        }
+
+        std::ostringstream fsShader;
+        fsShader << bufferBindings.str();
+        fsShader << textureBindings.str();
+        fsShader << "struct Outputs { " << targetBindings.str() << "}\n";
+        fsShader << "@fragment fn main() -> Outputs {\n";
+        fsShader << bufferOutputs.str();
+        fsShader << textureOutputs.str();
+        fsShader << "    return Outputs(" << targetOutputs.str() << ");\n";
+        fsShader << "}";
+        return utils::CreateShaderModule(device, fsShader.str().c_str());
+    };
+
+    // Constants used for the render pipeline.
+    wgpu::ColorTargetState kColorTargetState = {};
+    kColorTargetState.format = wgpu::TextureFormat::R8Uint;
+
+    // Create the render pipeline.
+    utils::ComboRenderPipelineDescriptor pipelineDesc;
+    pipelineDesc.vertex.module = utils::CreateShaderModule(device, R"(
+        @vertex fn main() -> @builtin(position) vec4f {
+            return vec4f(0.0, 0.0, 0.0, 1.0);
+        })");
+    pipelineDesc.vertex.entryPoint = "main";
+    pipelineDesc.primitive.topology = wgpu::PrimitiveTopology::PointList;
+    pipelineDesc.cFragment.module = CreateShader();
+    pipelineDesc.cFragment.entryPoint = "main";
+    pipelineDesc.cTargets.fill(kColorTargetState);
+    pipelineDesc.cFragment.targetCount = attachmentCount;
+    wgpu::RenderPipeline renderPipeline = device.CreateRenderPipeline(&pipelineDesc);
+
+    // Create all the resources and bindings for them.
+    std::vector<wgpu::Buffer> buffers;
+    std::vector<wgpu::BindGroupEntry> bufferEntries;
+    wgpu::BufferDescriptor bufferDesc = {};
+    bufferDesc.size = 4;
+    bufferDesc.usage = wgpu::BufferUsage::Storage | wgpu::BufferUsage::CopySrc;
+    for (uint32_t i = 0; i < storageBuffers; i++) {
+        buffers.push_back(device.CreateBuffer(&bufferDesc));
+        bufferEntries.push_back(utils::BindingInitializationHelper(i, buffers[i]).GetAsBinding());
+    }
+    wgpu::BindGroupDescriptor bufferBindGroupDesc = {};
+    bufferBindGroupDesc.layout = renderPipeline.GetBindGroupLayout(0);
+    bufferBindGroupDesc.entryCount = storageBuffers;
+    bufferBindGroupDesc.entries = bufferEntries.data();
+    wgpu::BindGroup bufferBindGroup = device.CreateBindGroup(&bufferBindGroupDesc);
+
+    std::vector<wgpu::Texture> textures;
+    std::vector<wgpu::BindGroupEntry> textureEntries;
+    wgpu::TextureDescriptor textureDesc = {};
+    textureDesc.size.width = 1;
+    textureDesc.size.height = 1;
+    textureDesc.format = wgpu::TextureFormat::RGBA8Uint;
+    textureDesc.usage = wgpu::TextureUsage::StorageBinding | wgpu::TextureUsage::CopySrc;
+    for (uint32_t i = 0; i < storageTextures; i++) {
+        textures.push_back(device.CreateTexture(&textureDesc));
+        textureEntries.push_back(
+            utils::BindingInitializationHelper(i, textures[i].CreateView()).GetAsBinding());
+    }
+    wgpu::BindGroupDescriptor textureBindGroupDesc = {};
+    textureBindGroupDesc.layout = renderPipeline.GetBindGroupLayout(1);
+    textureBindGroupDesc.entryCount = storageTextures;
+    textureBindGroupDesc.entries = textureEntries.data();
+    wgpu::BindGroup textureBindGroup = device.CreateBindGroup(&textureBindGroupDesc);
+
+    std::vector<wgpu::Texture> attachments;
+    std::vector<wgpu::TextureView> attachmentViews;
+    wgpu::TextureDescriptor attachmentDesc = {};
+    attachmentDesc.size = {1, 1};
+    attachmentDesc.format = wgpu::TextureFormat::R8Uint;
+    attachmentDesc.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
+    for (size_t i = 0; i < attachmentCount; i++) {
+        attachments.push_back(device.CreateTexture(&attachmentDesc));
+        attachmentViews.push_back(attachments[i].CreateView());
+    }
+
+    // Execute the pipeline.
+    utils::ComboRenderPassDescriptor passDesc(attachmentViews);
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&passDesc);
+    pass.SetBindGroup(0, bufferBindGroup);
+    pass.SetBindGroup(1, textureBindGroup);
+    pass.SetPipeline(renderPipeline);
+    pass.Draw(1);
+    pass.End();
+    wgpu::CommandBuffer commands = encoder.Finish();
+    queue.Submit(1, &commands);
+
+    // Verify the results.
+    for (uint32_t i = 0; i < storageBuffers; i++) {
+        EXPECT_BUFFER_U32_EQ(i + 1, buffers[i], 0);
+    }
+    for (uint32_t i = 0; i < storageTextures; i++) {
+        const uint32_t res = i + 1;
+        EXPECT_PIXEL_RGBA8_EQ(utils::RGBA8(res, res, res, res), textures[i], 0, 0);
+    }
+    for (uint32_t i = 0; i < attachmentCount; i++) {
+        EXPECT_PIXEL_RGBA8_EQ(utils::RGBA8(i + 1, 0, 0, 0), attachments[i], 0, 0);
+    }
+}
+
+// Verifies that supported buffer limits do not exceed maxBufferSize.
+TEST_P(MaxLimitTests, MaxBufferSizes) {
+    // Base limits without tiering.
+    wgpu::Limits baseLimits = GetAdapterLimits().limits;
+    EXPECT_LE(baseLimits.maxStorageBufferBindingSize, baseLimits.maxBufferSize);
+    EXPECT_LE(baseLimits.maxUniformBufferBindingSize, baseLimits.maxBufferSize);
+
+    // Base limits with tiering.
+    GetAdapter().SetUseTieredLimits(true);
+    wgpu::Limits tieredLimits = GetAdapterLimits().limits;
+    EXPECT_LE(tieredLimits.maxStorageBufferBindingSize, tieredLimits.maxBufferSize);
+    EXPECT_LE(tieredLimits.maxUniformBufferBindingSize, tieredLimits.maxBufferSize);
+
+    // Unset tiered limit usage to avoid affecting other tests.
+    GetAdapter().SetUseTieredLimits(false);
+}
+
+// Verifies that supported fragment combined output resource limits meet base requirements.
+TEST_P(MaxLimitTests, MaxFragmentCombinedOutputResources) {
+    // Base limits without tiering.
+    wgpu::Limits baseLimits = GetAdapterLimits().limits;
+    EXPECT_LE(baseLimits.maxColorAttachments, baseLimits.maxFragmentCombinedOutputResources);
+
+    // Base limits with tiering.
+    GetAdapter().SetUseTieredLimits(true);
+    wgpu::Limits tieredLimits = GetAdapterLimits().limits;
+    EXPECT_LE(tieredLimits.maxColorAttachments, tieredLimits.maxFragmentCombinedOutputResources);
+
+    // Unset tiered limit usage to avoid affecting other tests.
+    GetAdapter().SetUseTieredLimits(false);
 }
 
 DAWN_INSTANTIATE_TEST(MaxLimitTests,

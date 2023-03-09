@@ -29,6 +29,11 @@
 #include "glslang/Public/ShaderLang.h"
 #endif  // TINT_BUILD_GLSL_WRITER
 
+#if TINT_BUILD_SYNTAX_TREE_WRITER
+#include "src/tint/writer/syntax_tree/generator.h"  // nogncheck
+
+#endif  // TINT_BUILD_SYNTAX_TREE_WRITER
+
 #if TINT_BUILD_SPV_READER
 #include "spirv-tools/libspirv.hpp"
 #endif  // TINT_BUILD_SPV_READER
@@ -79,6 +84,7 @@ struct Options {
     bool print_hash = false;
     bool demangle = false;
     bool dump_inspector_bindings = false;
+    bool enable_robustness = false;
 
     std::unordered_set<uint32_t> skip_hash;
 
@@ -105,6 +111,10 @@ struct Options {
     bool dump_ir = false;
     bool dump_ir_graph = false;
 #endif  // TINT_BUILD_IR
+
+#if TINT_BUILD_SYNTAX_TREE_WRITER
+    bool dump_syntax_tree = false;
+#endif  // TINB_BUILD_SYNTAX_TREE_WRITER
 };
 
 const char kUsage[] = R"(Usage: tint [options] <input-file>
@@ -382,6 +392,10 @@ bool ParseArgs(const std::vector<std::string>& args, Options* opts) {
         } else if (arg == "--dump-ir-graph") {
             opts->dump_ir_graph = true;
 #endif  // TINT_BUILD_IR
+#if TINT_BUILD_SYNTAX_TREE_WRITER
+        } else if (arg == "--dump-ast") {
+            opts->dump_syntax_tree = true;
+#endif  // TINT_BUILD_SYNTAX_TREE_WRITER
         } else if (arg == "--xcrun") {
             ++i;
             if (i >= args.size()) {
@@ -533,6 +547,7 @@ bool GenerateSpirv(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_SPV_WRITER
     // TODO(jrprice): Provide a way for the user to set non-default options.
     tint::writer::spirv::Options gen_options;
+    gen_options.disable_robustness = !options.enable_robustness;
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.generate_external_texture_bindings = true;
     auto result = tint::writer::spirv::Generate(program, gen_options);
@@ -639,6 +654,7 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
 
     // TODO(jrprice): Provide a way for the user to set non-default options.
     tint::writer::msl::Options gen_options;
+    gen_options.disable_robustness = !options.enable_robustness;
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.generate_external_texture_bindings = true;
     auto result = tint::writer::msl::Generate(input_program, gen_options);
@@ -699,6 +715,7 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_HLSL_WRITER
     // TODO(jrprice): Provide a way for the user to set non-default options.
     tint::writer::hlsl::Options gen_options;
+    gen_options.disable_robustness = !options.enable_robustness;
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.generate_external_texture_bindings = true;
     gen_options.root_constant_binding_point = options.hlsl_root_constant_binding_point;
@@ -838,6 +855,7 @@ bool GenerateGlsl(const tint::Program* program, const Options& options) {
 
     auto generate = [&](const tint::Program* prg, const std::string entry_point_name) -> bool {
         tint::writer::glsl::Options gen_options;
+        gen_options.disable_robustness = !options.enable_robustness;
         gen_options.generate_external_texture_bindings = true;
         auto result = tint::writer::glsl::Generate(prg, gen_options, entry_point_name);
         if (!result.success) {
@@ -946,8 +964,9 @@ int main(int argc, const char** argv) {
              return true;
          }},
         {"robustness",
-         [](tint::inspector::Inspector&, tint::transform::Manager& m, tint::transform::DataMap&) {
-             m.Add<tint::transform::Robustness>();
+         [&](tint::inspector::Inspector&, tint::transform::Manager&,
+             tint::transform::DataMap&) {  // enabled via writer option
+             options.enable_robustness = true;
              return true;
          }},
         {"substitute_override",
@@ -997,7 +1016,7 @@ int main(int argc, const char** argv) {
              std::unordered_set<uint32_t> group0_bindings_in_use;
              auto allocate_binding = [&] {
                  for (uint32_t idx = 0;; idx++) {
-                     auto binding = tint::transform::BindingPoint{0u, idx};
+                     auto binding = tint::writer::BindingPoint{0u, idx};
                      if (group0_bindings_in_use.emplace(idx).second) {
                          return binding;
                      }
@@ -1015,7 +1034,7 @@ int main(int argc, const char** argv) {
              MET::BindingsMap met_bindings;
              for (auto ep : inspector.GetEntryPoints()) {
                  for (auto ext_tex : inspector.GetExternalTextureResourceBindings(ep.name)) {
-                     auto binding = tint::transform::BindingPoint{
+                     auto binding = tint::writer::BindingPoint{
                          ext_tex.bind_group,
                          ext_tex.binding,
                      };
@@ -1049,6 +1068,9 @@ int main(int argc, const char** argv) {
             "  --dump-ir                 -- Writes the IR to stdout\n"
             "  --dump-ir-graph           -- Writes the IR graph to 'tint.dot' as a dot graph\n";
 #endif  // TINT_BUILD_IR
+#if TINT_BUILD_SYNTAX_TREE_WRITER
+        usage += "  --dump-ast                -- Writes the AST to stdout\n";
+#endif  // TINT_BUILD_SYNTAX_TREE_WRITER
 
         std::cout << usage << std::endl;
         return 0;
@@ -1085,6 +1107,18 @@ int main(int argc, const char** argv) {
     if (options.parse_only) {
         return 1;
     }
+
+#if TINT_BUILD_SYNTAX_TREE_WRITER
+    if (options.dump_syntax_tree) {
+        tint::writer::syntax_tree::Options gen_options;
+        auto result = tint::writer::syntax_tree::Generate(program.get(), gen_options);
+        if (!result.success) {
+            std::cerr << "Failed to dump AST: " << result.error << std::endl;
+        } else {
+            std::cout << result.ast << std::endl;
+        }
+    }
+#endif  // TINT_BUILD_SYNTAX_TREE_WRITER
 
 #if TINT_BUILD_IR
     if (options.dump_ir || options.dump_ir_graph) {

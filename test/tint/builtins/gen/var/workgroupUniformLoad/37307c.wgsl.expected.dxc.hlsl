@@ -1,14 +1,16 @@
-groupshared uint arg_0;
-
-uint tint_workgroupUniformLoad_arg_0() {
+uint tint_workgroupUniformLoad(inout uint p) {
   GroupMemoryBarrierWithGroupSync();
-  const uint result = arg_0;
+  const uint result = p;
   GroupMemoryBarrierWithGroupSync();
   return result;
 }
 
+groupshared uint arg_0;
+RWByteAddressBuffer prevent_dce : register(u0, space2);
+
 void workgroupUniformLoad_37307c() {
-  uint res = tint_workgroupUniformLoad_arg_0();
+  uint res = tint_workgroupUniformLoad(arg_0);
+  prevent_dce.Store(0u, asuint(res));
 }
 
 struct tint_symbol_1 {

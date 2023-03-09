@@ -37,6 +37,7 @@
 #include "src/tint/ast/internal_attribute.h"
 #include "src/tint/ast/interpolate_attribute.h"
 #include "src/tint/ast/invariant_attribute.h"
+#include "src/tint/ast/let.h"
 #include "src/tint/ast/location_attribute.h"
 #include "src/tint/ast/loop_statement.h"
 #include "src/tint/ast/must_use_attribute.h"
@@ -413,12 +414,18 @@ class DependencyScanner {
                 TraverseExpression(wg->y);
                 TraverseExpression(wg->z);
                 return true;
+            },
+            [&](const ast::InternalAttribute* i) {
+                for (auto* dep : i->dependencies) {
+                    TraverseExpression(dep);
+                }
+                return true;
             });
         if (handled) {
             return;
         }
 
-        if (attr->IsAnyOf<ast::BuiltinAttribute, ast::DiagnosticAttribute, ast::InternalAttribute,
+        if (attr->IsAnyOf<ast::BuiltinAttribute, ast::DiagnosticAttribute,
                           ast::InterpolateAttribute, ast::InvariantAttribute, ast::MustUseAttribute,
                           ast::StageAttribute, ast::StrideAttribute,
                           ast::StructMemberOffsetAttribute>()) {
@@ -433,7 +440,8 @@ class DependencyScanner {
         auto* resolved = scope_stack_.Get(to);
         if (!resolved) {
             auto s = symbols_.NameFor(to);
-            if (auto builtin_fn = sem::ParseBuiltinType(s); builtin_fn != sem::BuiltinType::kNone) {
+            if (auto builtin_fn = builtin::ParseFunction(s);
+                builtin_fn != builtin::Function::kNone) {
                 graph_.resolved_identifiers.Add(from, ResolvedIdentifier(builtin_fn));
                 return;
             }
@@ -810,6 +818,9 @@ std::string ResolvedIdentifier::String(const SymbolTable& symbols, diag::List& d
             [&](const ast::Var* n) {  //
                 return "var '" + symbols.NameFor(n->name->symbol) + "'";
             },
+            [&](const ast::Let* n) {  //
+                return "let '" + symbols.NameFor(n->name->symbol) + "'";
+            },
             [&](const ast::Const* n) {  //
                 return "const '" + symbols.NameFor(n->name->symbol) + "'";
             },
@@ -828,7 +839,7 @@ std::string ResolvedIdentifier::String(const SymbolTable& symbols, diag::List& d
                 return "<unknown>";
             });
     }
-    if (auto builtin_fn = BuiltinFunction(); builtin_fn != sem::BuiltinType::kNone) {
+    if (auto builtin_fn = BuiltinFunction(); builtin_fn != builtin::Function::kNone) {
         return "builtin function '" + utils::ToString(builtin_fn) + "'";
     }
     if (auto builtin_ty = BuiltinType(); builtin_ty != builtin::Builtin::kUndefined) {

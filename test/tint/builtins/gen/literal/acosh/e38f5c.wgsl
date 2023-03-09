@@ -23,8 +23,10 @@
 
 // fn acosh(vec<3, f32>) -> vec<3, f32>
 fn acosh_e38f5c() {
-  var res: vec3<f32> = acosh(vec3<f32>(2.f));
+  var res: vec3<f32> = acosh(vec3<f32>(1.5430806348f));
+  prevent_dce = res;
 }
+@group(2) @binding(0) var<storage, read_write> prevent_dce : vec3<f32>;
 
 @vertex
 fn vertex_main() -> @builtin(position) vec4<f32> {

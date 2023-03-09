@@ -174,7 +174,7 @@
         "tags": ["dawn", "native"],
         "category": "structure",
         "chained": "in",
-        "chain roots": ["device descriptor"],
+        "chain roots": ["instance descriptor", "device descriptor"],
         "members": [
             {"name": "enabled toggles count", "type": "uint32_t", "default": 0},
             {"name": "enabled toggles", "type": "char", "annotation": "const*const*", "length": "enabled toggles count"},
@@ -1312,7 +1312,8 @@
             {"name": "max compute workgroup size x", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max compute workgroup size y", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
             {"name": "max compute workgroup size z", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
-            {"name": "max compute workgroups per dimension", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"}
+            {"name": "max compute workgroups per dimension", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"},
+            {"name": "max fragment combined output resources", "type": "uint32_t", "default": "WGPU_LIMIT_U32_UNDEFINED"}
         ]
     },
     "required limits": {

@@ -848,10 +848,15 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = 1;
-  let tint_symbol = a(0);
-  for(var r = (tint_symbol + b); ; ) {
-    var marker = 0;
-    break;
+  {
+    let tint_symbol = a(0);
+    var r = (tint_symbol + b);
+    loop {
+      {
+        var marker = 0;
+        break;
+      }
+    }
   }
 }
 )";
@@ -2169,13 +2174,18 @@ fn a(i : i32) -> bool {
 
 fn f() {
   var b = true;
-  var tint_symbol = a(0);
-  if (tint_symbol) {
-    tint_symbol = b;
-  }
-  for(var r = tint_symbol; ; ) {
-    var marker = 0;
-    break;
+  {
+    var tint_symbol = a(0);
+    if (tint_symbol) {
+      tint_symbol = b;
+    }
+    var r = tint_symbol;
+    loop {
+      {
+        var marker = 0;
+        break;
+      }
+    }
   }
 }
 )";
@@ -2820,9 +2830,8 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = array<i32, 10>();
-  let tint_symbol = a(1);
-  let tint_symbol_1 = a(0);
-  b[tint_symbol_1] = tint_symbol;
+  let tint_symbol = a(0);
+  b[tint_symbol] = a(1);
 }
 )";
 
@@ -2851,10 +2860,9 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = array<array<i32, 10>, 10>();
-  let tint_symbol = a(2);
-  let tint_symbol_1 = a(0);
-  let tint_symbol_2 = a(1);
-  b[tint_symbol_1][tint_symbol_2] = tint_symbol;
+  let tint_symbol = a(0);
+  let tint_symbol_1 = a(1);
+  b[tint_symbol][tint_symbol_1] = a(2);
 }
 )";
 
@@ -2883,11 +2891,10 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = array<array<array<i32, 10>, 10>, 10>();
-  let tint_symbol = a(3);
-  let tint_symbol_1 = a(0);
-  let tint_symbol_2 = a(1);
-  let tint_symbol_3 = a(2);
-  b[tint_symbol_1][tint_symbol_2][tint_symbol_3] = tint_symbol;
+  let tint_symbol = a(0);
+  let tint_symbol_1 = a(1);
+  let tint_symbol_2 = a(2);
+  b[tint_symbol][tint_symbol_1][tint_symbol_2] = a(3);
 }
 )";
 
@@ -2920,11 +2927,9 @@ fn f() {
   var b = array<i32, 3>();
   var d = array<array<i32, 3>, 3>();
   var a_1 = 0;
-  let tint_symbol = a(0);
-  let tint_symbol_1 = a_1;
-  let tint_symbol_2 = d[tint_symbol][tint_symbol_1];
-  let tint_symbol_3 = a(2);
-  b[tint_symbol_3] = tint_symbol_2;
+  let tint_symbol = a(2);
+  let tint_symbol_1 = a(0);
+  b[tint_symbol] = d[tint_symbol_1][a_1];
 }
 )";
 
@@ -2953,9 +2958,8 @@ fn a(i : i32) -> i32 {
 
 fn f() {
   var b = vec3<i32>();
-  let tint_symbol = a(1);
-  let tint_symbol_1 = a(0);
-  b[tint_symbol_1] = tint_symbol;
+  let tint_symbol = a(0);
+  b[tint_symbol] = a(1);
 }
 )";
 
@@ -2986,9 +2990,8 @@ fn a(i : i32) -> i32 {
 fn f() {
   var b = vec3<i32>();
   var c = 0;
-  let tint_symbol = c;
-  let tint_symbol_1 = a(0);
-  b[tint_symbol_1] = tint_symbol;
+  let tint_symbol = a(0);
+  b[tint_symbol] = c;
 }
 )";
 
@@ -3019,8 +3022,8 @@ fn a(i : i32) -> i32 {
 fn f() {
   var b = vec3<i32>();
   var c = 0;
-  let tint_symbol = a(0);
-  b[c] = tint_symbol;
+  let tint_symbol = c;
+  b[tint_symbol] = a(0);
 }
 )";
 

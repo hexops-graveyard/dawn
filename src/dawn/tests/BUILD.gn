@@ -132,6 +132,7 @@ if (build_with_chromium && is_win &&
   assert(defined(windows_sdk_path))
   assert(defined(windows_sdk_version))
   assert(windows_sdk_path != "")
+  assert(windows_sdk_version != "")
 
   # Declare a copy target to copy DXC binary from Windows SDK for running Dawn
   # end-to-end test in Chromium.
@@ -308,6 +309,7 @@ dawn_test("dawn_unittests") {
     "unittests/SubresourceStorageTests.cpp",
     "unittests/SystemUtilsTests.cpp",
     "unittests/ToBackendTests.cpp",
+    "unittests/ToggleTests.cpp",
     "unittests/TypedIntegerTests.cpp",
     "unittests/UnicodeTests.cpp",
     "unittests/native/AllowedErrorTests.cpp",
@@ -491,6 +493,7 @@ source_set("end2end_tests_sources") {
     "end2end/CompressedTextureFormatTests.cpp",
     "end2end/ComputeCopyStorageBufferTests.cpp",
     "end2end/ComputeDispatchTests.cpp",
+    "end2end/ComputeFlowControlTests.cpp",
     "end2end/ComputeLayoutMemoryBufferTests.cpp",
     "end2end/ComputeSharedMemoryTests.cpp",
     "end2end/ComputeStorageBufferBarrierTests.cpp",

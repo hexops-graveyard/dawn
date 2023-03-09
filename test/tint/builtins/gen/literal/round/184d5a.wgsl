@@ -23,9 +23,8 @@
 
 // fn round(vec<4, fa>) -> vec<4, fa>
 fn round_184d5a() {
-  var res = round(vec4(3.4));
+  var res = round(vec4(3.5));
 }
-
 @vertex
 fn vertex_main() -> @builtin(position) vec4<f32> {
   round_184d5a();
