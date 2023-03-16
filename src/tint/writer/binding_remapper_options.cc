@@ -1,4 +1,4 @@
-// Copyright 2022 The Tint Authors.
+// Copyright 2023 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SRC_TINT_WRITER_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_
-#define SRC_TINT_WRITER_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_
-
-#include "src/tint/transform/multiplanar_external_texture.h"
+#include "src/tint/writer/binding_remapper_options.h"
 
 namespace tint::writer {
 
-transform::MultiplanarExternalTexture::BindingsMap GenerateExternalTextureBindings(
-    const Program* program);
+BindingRemapperOptions::BindingRemapperOptions() = default;
+
+BindingRemapperOptions::~BindingRemapperOptions() = default;
+
+BindingRemapperOptions::BindingRemapperOptions(const BindingRemapperOptions&) = default;
+
+BindingRemapperOptions& BindingRemapperOptions::operator=(const BindingRemapperOptions&) = default;
+
+BindingRemapperOptions::BindingRemapperOptions(BindingRemapperOptions&&) = default;
 
 }  // namespace tint::writer
-
-#endif  // SRC_TINT_WRITER_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_

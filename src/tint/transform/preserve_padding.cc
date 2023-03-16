@@ -19,6 +19,7 @@
 
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/struct.h"
+#include "src/tint/switch.h"
 #include "src/tint/type/reference.h"
 #include "src/tint/utils/map.h"
 #include "src/tint/utils/vector.h"
@@ -66,8 +67,8 @@ struct PreservePadding::State {
                 },
                 [&](const ast::Enable* enable) {
                     // Check if the full pointer parameters extension is already enabled.
-                    if (enable->extension ==
-                        builtin::Extension::kChromiumExperimentalFullPtrParameters) {
+                    if (enable->HasExtension(
+                            builtin::Extension::kChromiumExperimentalFullPtrParameters)) {
                         ext_enabled = true;
                     }
                 });

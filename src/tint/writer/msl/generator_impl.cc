@@ -40,7 +40,9 @@
 #include "src/tint/sem/value_constructor.h"
 #include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
+#include "src/tint/switch.h"
 #include "src/tint/transform/array_length_from_uniform.h"
+#include "src/tint/transform/binding_remapper.h"
 #include "src/tint/transform/builtin_polyfill.h"
 #include "src/tint/transform/canonicalize_entry_point_io.h"
 #include "src/tint/transform/demote_to_helper.h"
@@ -48,6 +50,7 @@
 #include "src/tint/transform/expand_compound_assignment.h"
 #include "src/tint/transform/manager.h"
 #include "src/tint/transform/module_scope_var_to_entry_point_param.h"
+#include "src/tint/transform/multiplanar_external_texture.h"
 #include "src/tint/transform/packed_vec3.h"
 #include "src/tint/transform/preserve_padding.h"
 #include "src/tint/transform/promote_initializers_to_let.h"
@@ -82,7 +85,6 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/check_supported_extensions.h"
 #include "src/tint/writer/float_to_string.h"
-#include "src/tint/writer/generate_external_texture_bindings.h"
 
 namespace tint::writer::msl {
 namespace {
@@ -172,29 +174,6 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     // ExpandCompoundAssignment must come before BuiltinPolyfill
     manager.Add<transform::ExpandCompoundAssignment>();
 
-    // Build the config for the internal ArrayLengthFromUniform transform.
-    auto& array_length_from_uniform = options.array_length_from_uniform;
-    transform::ArrayLengthFromUniform::Config array_length_from_uniform_cfg(
-        array_length_from_uniform.ubo_binding);
-    if (!array_length_from_uniform.bindpoint_to_size_index.empty()) {
-        // If |array_length_from_uniform| bindings are provided, use that config.
-        array_length_from_uniform_cfg.bindpoint_to_size_index =
-            array_length_from_uniform.bindpoint_to_size_index;
-    } else {
-        // If the binding map is empty, use the deprecated |buffer_size_ubo_index|
-        // and automatically choose indices using the binding numbers.
-        array_length_from_uniform_cfg = transform::ArrayLengthFromUniform::Config(
-            sem::BindingPoint{0, options.buffer_size_ubo_index});
-        // Use the SSBO binding numbers as the indices for the buffer size lookups.
-        for (auto* var : in->AST().GlobalVariables()) {
-            auto* global = in->Sem().Get<sem::GlobalVariable>(var);
-            if (global && global->AddressSpace() == builtin::AddressSpace::kStorage) {
-                array_length_from_uniform_cfg.bindpoint_to_size_index.emplace(
-                    global->BindingPoint(), global->BindingPoint().binding);
-            }
-        }
-    }
-
     // Build the configs for the internal CanonicalizeEntryPointIO transform.
     auto entry_point_io_cfg = transform::CanonicalizeEntryPointIO::Config(
         transform::CanonicalizeEntryPointIO::ShaderStyle::kMsl, options.fixed_sample_mask,
@@ -209,6 +188,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     if (!options.disable_robustness) {
         // Robustness must come after PromoteSideEffectsToDecl
         // Robustness must come before BuiltinPolyfill and CanonicalizeEntryPointIO
+        // Robustness must come before ArrayLengthFromUniform
         manager.Add<transform::Robustness>();
     }
 
@@ -218,6 +198,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         polyfills.atanh = transform::BuiltinPolyfill::Level::kRangeCheck;
         polyfills.bitshift_modulo = true;  // crbug.com/tint/1543
         polyfills.clamp_int = true;
+        polyfills.conv_f32_to_iu32 = true;
         polyfills.extract_bits = transform::BuiltinPolyfill::Level::kClampParameters;
         polyfills.first_leading_bit = true;
         polyfills.first_trailing_bit = true;
@@ -230,12 +211,19 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
         manager.Add<transform::BuiltinPolyfill>();
     }
 
-    if (options.generate_external_texture_bindings) {
+    if (!options.external_texture_options.bindings_map.empty()) {
         // Note: it is more efficient for MultiplanarExternalTexture to come after Robustness
-        auto new_bindings_map = GenerateExternalTextureBindings(in);
-        data.Add<transform::MultiplanarExternalTexture::NewBindingPoints>(new_bindings_map);
+        data.Add<transform::MultiplanarExternalTexture::NewBindingPoints>(
+            options.external_texture_options.bindings_map);
         manager.Add<transform::MultiplanarExternalTexture>();
     }
+
+    // BindingRemapper must come after MultiplanarExternalTexture
+    manager.Add<transform::BindingRemapper>();
+    data.Add<transform::BindingRemapper::Remappings>(
+        options.binding_remapper_options.binding_points,
+        options.binding_remapper_options.access_controls,
+        options.binding_remapper_options.allow_collisions);
 
     if (!options.disable_workgroup_init) {
         // ZeroInitWorkgroupMemory must come before CanonicalizeEntryPointIO as
@@ -245,6 +233,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
 
     // CanonicalizeEntryPointIO must come after Robustness
     manager.Add<transform::CanonicalizeEntryPointIO>();
+    data.Add<transform::CanonicalizeEntryPointIO::Config>(std::move(entry_point_io_cfg));
 
     manager.Add<transform::PromoteInitializersToLet>();
 
@@ -255,14 +244,21 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     manager.Add<transform::VectorizeScalarMatrixInitializers>();
     manager.Add<transform::RemovePhonies>();
     manager.Add<transform::SimplifyPointers>();
+
     // ArrayLengthFromUniform must come after SimplifyPointers, as
     // it assumes that the form of the array length argument is &var.array.
     manager.Add<transform::ArrayLengthFromUniform>();
+
+    transform::ArrayLengthFromUniform::Config array_length_cfg(
+        std::move(options.array_length_from_uniform.ubo_binding));
+    array_length_cfg.bindpoint_to_size_index =
+        std::move(options.array_length_from_uniform.bindpoint_to_size_index);
+    data.Add<transform::ArrayLengthFromUniform::Config>(array_length_cfg);
+
     // PackedVec3 must come after ExpandCompoundAssignment.
     manager.Add<transform::PackedVec3>();
     manager.Add<transform::ModuleScopeVarToEntryPointParam>();
-    data.Add<transform::ArrayLengthFromUniform::Config>(std::move(array_length_from_uniform_cfg));
-    data.Add<transform::CanonicalizeEntryPointIO::Config>(std::move(entry_point_io_cfg));
+
     auto out = manager.Run(in, data);
 
     SanitizedResult result;
@@ -1707,8 +1703,8 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
 
             ScopedParen sp(out);
 
-            if (constant->AllEqual()) {
-                if (!EmitConstant(out, constant->Index(0))) {
+            if (auto* splat = constant->As<constant::Splat>()) {
+                if (!EmitConstant(out, splat->el)) {
                     return false;
                 }
                 return true;

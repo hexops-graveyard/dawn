@@ -29,13 +29,15 @@ class SwitchStatement final : public Castable<SwitchStatement, Statement> {
     /// @param src the source of this node
     /// @param condition the switch condition
     /// @param body the switch body
+    /// @param attributes the switch statement attributes
     SwitchStatement(ProgramID pid,
                     NodeID nid,
                     const Source& src,
                     const Expression* condition,
-                    utils::VectorRef<const CaseStatement*> body);
-    /// Move constructor
-    SwitchStatement(SwitchStatement&&);
+                    utils::VectorRef<const CaseStatement*> body,
+                    utils::VectorRef<const Attribute*> attributes);
+
+    /// Destructor
     ~SwitchStatement() override;
 
     /// Clones this node and all transitive child nodes using the `CloneContext`
@@ -50,6 +52,9 @@ class SwitchStatement final : public Castable<SwitchStatement, Statement> {
     /// The Switch body
     const utils::Vector<const CaseStatement*, 4> body;
     SwitchStatement(const SwitchStatement&) = delete;
+
+    /// The attribute list
+    const utils::Vector<const Attribute*, 1> attributes;
 };
 
 }  // namespace tint::ast

@@ -28,13 +28,14 @@ class LoopStatement final : public Castable<LoopStatement, Statement> {
     /// @param source the loop statement source
     /// @param body the body statements
     /// @param continuing the continuing statements
+    /// @param attributes the while statement attributes
     LoopStatement(ProgramID pid,
                   NodeID nid,
                   const Source& source,
                   const BlockStatement* body,
-                  const BlockStatement* continuing);
-    /// Move constructor
-    LoopStatement(LoopStatement&&);
+                  const BlockStatement* continuing,
+                  utils::VectorRef<const ast::Attribute*> attributes);
+    /// Destructor
     ~LoopStatement() override;
 
     /// Clones this node and all transitive child nodes using the `CloneContext`
@@ -48,6 +49,9 @@ class LoopStatement final : public Castable<LoopStatement, Statement> {
 
     /// The continuing statements
     const BlockStatement* const continuing;
+
+    /// The attribute list
+    const utils::Vector<const Attribute*, 1> attributes;
 };
 
 }  // namespace tint::ast

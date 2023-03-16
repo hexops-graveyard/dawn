@@ -29,9 +29,9 @@ class MockConstant : public constant::Value {
     ~MockConstant() override {}
     const type::Type* Type() const override { return type; }
     const constant::Value* Index(size_t) const override { return {}; }
+    size_t NumElements() const override { return 0; }
     bool AllZero() const override { return {}; }
     bool AnyZero() const override { return {}; }
-    bool AllEqual() const override { return {}; }
     size_t Hash() const override { return 0; }
     MockConstant* Clone(constant::CloneContext&) const override { return nullptr; }
 

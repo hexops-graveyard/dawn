@@ -17,11 +17,15 @@
 namespace tint::writer {
 
 ArrayLengthFromUniformOptions::ArrayLengthFromUniformOptions() = default;
+
 ArrayLengthFromUniformOptions::~ArrayLengthFromUniformOptions() = default;
+
 ArrayLengthFromUniformOptions::ArrayLengthFromUniformOptions(const ArrayLengthFromUniformOptions&) =
     default;
+
 ArrayLengthFromUniformOptions& ArrayLengthFromUniformOptions::operator=(
     const ArrayLengthFromUniformOptions&) = default;
+
 ArrayLengthFromUniformOptions::ArrayLengthFromUniformOptions(ArrayLengthFromUniformOptions&&) =
     default;
 

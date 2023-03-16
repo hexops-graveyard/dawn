@@ -34,6 +34,7 @@
 #include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/sem/struct.h"
 #include "src/tint/sem/switch_statement.h"
+#include "src/tint/switch.h"
 #include "src/tint/utils/math.h"
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/writer/float_to_string.h"
@@ -78,7 +79,15 @@ bool GeneratorImpl::EmitDiagnosticControl(const ast::DiagnosticControl& diagnost
 }
 
 bool GeneratorImpl::EmitEnable(const ast::Enable* enable) {
-    line() << "Enable [" << enable->extension << "]";
+    auto l = line();
+    l << "Enable [";
+    for (auto* ext : enable->extensions) {
+        if (ext != enable->extensions.Front()) {
+            l << ", ";
+        }
+        l << ext->name;
+    }
+    l << "]";
     return true;
 }
 

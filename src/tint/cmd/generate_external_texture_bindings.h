@@ -1,4 +1,4 @@
-// Copyright 2022 The Dawn Authors
+// Copyright 2022 The Tint Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dawn/native/Blob.h"
-#include "dawn/native/d3d12/d3d12_platform.h"
+#ifndef SRC_TINT_CMD_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_
+#define SRC_TINT_CMD_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_
 
-namespace dawn::native {
+#include "tint/tint.h"
 
-Blob CreateBlob(ComPtr<ID3DBlob> blob);
-Blob CreateBlob(ComPtr<IDxcBlob> blob);
+namespace tint::cmd {
 
-}  // namespace dawn::native
+writer::ExternalTextureOptions::BindingsMap GenerateExternalTextureBindings(const Program* program);
+
+}  // namespace tint::cmd
+
+#endif  // SRC_TINT_CMD_GENERATE_EXTERNAL_TEXTURE_BINDINGS_H_

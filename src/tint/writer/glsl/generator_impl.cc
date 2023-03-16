@@ -40,6 +40,7 @@
 #include "src/tint/sem/value_constructor.h"
 #include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
+#include "src/tint/switch.h"
 #include "src/tint/transform/add_block_attribute.h"
 #include "src/tint/transform/add_empty_entry_point.h"
 #include "src/tint/transform/binding_remapper.h"
@@ -52,6 +53,7 @@
 #include "src/tint/transform/disable_uniformity_analysis.h"
 #include "src/tint/transform/expand_compound_assignment.h"
 #include "src/tint/transform/manager.h"
+#include "src/tint/transform/multiplanar_external_texture.h"
 #include "src/tint/transform/pad_structs.h"
 #include "src/tint/transform/preserve_padding.h"
 #include "src/tint/transform/promote_initializers_to_let.h"
@@ -80,7 +82,6 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/append_vector.h"
 #include "src/tint/writer/float_to_string.h"
-#include "src/tint/writer/generate_external_texture_bindings.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -179,10 +180,10 @@ SanitizedResult Sanitize(const Program* in,
         manager.Add<transform::Robustness>();
     }
 
-    if (options.generate_external_texture_bindings) {
+    if (!options.external_texture_options.bindings_map.empty()) {
         // Note: it is more efficient for MultiplanarExternalTexture to come after Robustness
-        auto new_bindings_map = writer::GenerateExternalTextureBindings(in);
-        data.Add<transform::MultiplanarExternalTexture::NewBindingPoints>(new_bindings_map);
+        data.Add<transform::MultiplanarExternalTexture::NewBindingPoints>(
+            options.external_texture_options.bindings_map);
         manager.Add<transform::MultiplanarExternalTexture>();
     }
 
@@ -192,6 +193,7 @@ SanitizedResult Sanitize(const Program* in,
         polyfills.atanh = transform::BuiltinPolyfill::Level::kRangeCheck;
         polyfills.bgra8unorm = true;
         polyfills.bitshift_modulo = true;
+        polyfills.conv_f32_to_iu32 = true;
         polyfills.count_leading_zeros = true;
         polyfills.count_trailing_zeros = true;
         polyfills.extract_bits = transform::BuiltinPolyfill::Level::kClampParameters;
@@ -333,7 +335,7 @@ bool GeneratorImpl::Generate() {
     }
 
     if (version_.IsES() && requires_default_precision_qualifier_) {
-        current_buffer_->Insert("precision mediump float;", helpers_insertion_point++, indent);
+        current_buffer_->Insert("precision highp float;", helpers_insertion_point++, indent);
     }
 
     if (!helpers_.lines.empty()) {
@@ -345,10 +347,10 @@ bool GeneratorImpl::Generate() {
     return true;
 }
 
-bool GeneratorImpl::RecordExtension(const ast::Enable* ext) {
+bool GeneratorImpl::RecordExtension(const ast::Enable* enable) {
     // Deal with extension node here, recording it within the generator for later emition.
 
-    if (ext->extension == builtin::Extension::kF16) {
+    if (enable->HasExtension(builtin::Extension::kF16)) {
         requires_f16_extension_ = true;
     }
 
@@ -2402,8 +2404,8 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
 
             ScopedParen sp(out);
 
-            if (constant->AllEqual()) {
-                return EmitConstant(out, constant->Index(0));
+            if (auto* splat = constant->As<constant::Splat>()) {
+                return EmitConstant(out, splat->el);
             }
 
             for (size_t i = 0; i < v->Width(); i++) {

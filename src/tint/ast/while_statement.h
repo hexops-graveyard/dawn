@@ -30,13 +30,15 @@ class WhileStatement final : public Castable<WhileStatement, Statement> {
     /// @param source the for loop statement source
     /// @param condition the optional loop condition expression
     /// @param body the loop body
+    /// @param attributes the while statement attributes
     WhileStatement(ProgramID pid,
                    NodeID nid,
                    const Source& source,
                    const Expression* condition,
-                   const BlockStatement* body);
-    /// Move constructor
-    WhileStatement(WhileStatement&&);
+                   const BlockStatement* body,
+                   utils::VectorRef<const ast::Attribute*> attributes);
+
+    /// Destructor
     ~WhileStatement() override;
 
     /// Clones this node and all transitive child nodes using the `CloneContext`
@@ -50,6 +52,9 @@ class WhileStatement final : public Castable<WhileStatement, Statement> {
 
     /// The loop body block
     const BlockStatement* const body;
+
+    /// The attribute list
+    const utils::Vector<const Attribute*, 1> attributes;
 };
 
 }  // namespace tint::ast

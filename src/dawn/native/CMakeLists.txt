@@ -253,6 +253,24 @@ endif()
 
 if (DAWN_ENABLE_D3D12)
     target_sources(dawn_native PRIVATE
+        "d3d/AdapterD3D.cpp"
+        "d3d/AdapterD3D.h"
+        "d3d/BackendD3D.cpp"
+        "d3d/BackendD3D.h"
+        "d3d/BlobD3D.cpp"
+        "d3d/BlobD3D.h"
+        "d3d/D3DError.cpp"
+        "d3d/D3DError.h"
+        "d3d/PlatformFunctions.cpp"
+        "d3d/PlatformFunctions.h"
+        "d3d/UtilsD3D.cpp"
+        "d3d/UtilsD3D.h"
+        "d3d/d3d_platform.h"
+    )
+endif()
+
+if (DAWN_ENABLE_D3D12)
+    target_sources(dawn_native PRIVATE
         "${DAWN_INCLUDE_DIR}/dawn/native/D3D12Backend.h"
         "d3d12/AdapterD3D12.cpp"
         "d3d12/AdapterD3D12.h"
@@ -262,8 +280,6 @@ if (DAWN_ENABLE_D3D12)
         "d3d12/BindGroupD3D12.h"
         "d3d12/BindGroupLayoutD3D12.cpp"
         "d3d12/BindGroupLayoutD3D12.h"
-        "d3d12/BlobD3D12.cpp"
-        "d3d12/BlobD3D12.h"
         "d3d12/BufferD3D12.cpp"
         "d3d12/BufferD3D12.h"
         "d3d12/CPUDescriptorHeapAllocationD3D12.cpp"
@@ -278,8 +294,6 @@ if (DAWN_ENABLE_D3D12)
         "d3d12/ComputePipelineD3D12.h"
         "d3d12/D3D11on12Util.cpp"
         "d3d12/D3D11on12Util.h"
-        "d3d12/D3D12Error.cpp"
-        "d3d12/D3D12Error.h"
         "d3d12/D3D12Info.cpp"
         "d3d12/D3D12Info.h"
         "d3d12/DeviceD3D12.cpp"
@@ -302,8 +316,8 @@ if (DAWN_ENABLE_D3D12)
         "d3d12/PageableD3D12.h"
         "d3d12/PipelineLayoutD3D12.cpp"
         "d3d12/PipelineLayoutD3D12.h"
-        "d3d12/PlatformFunctions.cpp"
-        "d3d12/PlatformFunctions.h"
+        "d3d12/PlatformFunctionsD3D12.cpp"
+        "d3d12/PlatformFunctionsD3D12.h"
         "d3d12/QuerySetD3D12.cpp"
         "d3d12/QuerySetD3D12.h"
         "d3d12/QueueD3D12.cpp"
@@ -413,8 +427,6 @@ if (DAWN_ENABLE_OPENGL)
         PRINT_NAME "OpenGL function loader"
         ARGS "--gl-xml"
              "${Dawn_SOURCE_DIR}/third_party/khronos/gl.xml"
-             "--gl-angle-ext-xml"
-             "${Dawn_SOURCE_DIR}/third_party/angle/scripts/gl_angle_ext.xml"
              "--supported-extensions"
              "${Dawn_SOURCE_DIR}/src/dawn/native/opengl/supported_extensions.json"
         RESULT_VARIABLE "DAWN_NATIVE_OPENGL_AUTOGEN_SOURCES"

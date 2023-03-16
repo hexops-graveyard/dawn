@@ -32,14 +32,16 @@ class IfStatement final : public Castable<IfStatement, Statement> {
     /// @param condition the if condition
     /// @param body the if body
     /// @param else_stmt the else statement, or nullptr
+    /// @param attributes the if statement attributes
     IfStatement(ProgramID pid,
                 NodeID nid,
                 const Source& src,
                 const Expression* condition,
                 const BlockStatement* body,
-                const Statement* else_stmt);
-    /// Move constructor
-    IfStatement(IfStatement&&);
+                const Statement* else_stmt,
+                utils::VectorRef<const Attribute*> attributes);
+
+    /// Destructor
     ~IfStatement() override;
 
     /// Clones this node and all transitive child nodes using the `CloneContext`
@@ -56,6 +58,9 @@ class IfStatement final : public Castable<IfStatement, Statement> {
 
     /// The optional else statement, or nullptr
     const Statement* const else_statement;
+
+    /// The attribute list
+    const utils::Vector<const Attribute*, 1> attributes;
 };
 
 }  // namespace tint::ast

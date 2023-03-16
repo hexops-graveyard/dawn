@@ -2048,20 +2048,22 @@ class ProgramBuilder {
     }
 
     /// Adds the extension to the list of enable directives at the top of the module.
-    /// @param ext the extension to enable
+    /// @param extension the extension to enable
     /// @return an `ast::Enable` enabling the given extension.
-    const ast::Enable* Enable(builtin::Extension ext) {
-        auto* enable = create<ast::Enable>(ext);
+    const ast::Enable* Enable(builtin::Extension extension) {
+        auto* ext = create<ast::Extension>(extension);
+        auto* enable = create<ast::Enable>(utils::Vector{ext});
         AST().AddEnable(enable);
         return enable;
     }
 
     /// Adds the extension to the list of enable directives at the top of the module.
     /// @param source the enable source
-    /// @param ext the extension to enable
+    /// @param extension the extension to enable
     /// @return an `ast::Enable` enabling the given extension.
-    const ast::Enable* Enable(const Source& source, builtin::Extension ext) {
-        auto* enable = create<ast::Enable>(source, ext);
+    const ast::Enable* Enable(const Source& source, builtin::Extension extension) {
+        auto* ext = create<ast::Extension>(source, extension);
+        auto* enable = create<ast::Enable>(source, utils::Vector{ext});
         AST().AddEnable(enable);
         return enable;
     }
@@ -3130,14 +3132,16 @@ class ProgramBuilder {
     /// @param condition the if statement condition expression
     /// @param body the if statement body
     /// @param else_stmt optional else statement
+    /// @param attributes optional attributes
     /// @returns the if statement pointer
     template <typename CONDITION>
     const ast::IfStatement* If(const Source& source,
                                CONDITION&& condition,
                                const ast::BlockStatement* body,
-                               const ElseStmt else_stmt = ElseStmt()) {
+                               const ElseStmt else_stmt = ElseStmt(),
+                               utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
         return create<ast::IfStatement>(source, Expr(std::forward<CONDITION>(condition)), body,
-                                        else_stmt.stmt);
+                                        else_stmt.stmt, std::move(attributes));
     }
 
     /// Creates a ast::IfStatement with input condition, body, and optional
@@ -3145,13 +3149,15 @@ class ProgramBuilder {
     /// @param condition the if statement condition expression
     /// @param body the if statement body
     /// @param else_stmt optional else statement
+    /// @param attributes optional attributes
     /// @returns the if statement pointer
     template <typename CONDITION>
     const ast::IfStatement* If(CONDITION&& condition,
                                const ast::BlockStatement* body,
-                               const ElseStmt else_stmt = ElseStmt()) {
+                               const ElseStmt else_stmt = ElseStmt(),
+                               utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
         return create<ast::IfStatement>(Expr(std::forward<CONDITION>(condition)), body,
-                                        else_stmt.stmt);
+                                        else_stmt.stmt, std::move(attributes));
     }
 
     /// Creates an Else object.
@@ -3258,74 +3264,96 @@ class ProgramBuilder {
     /// @param source the source information
     /// @param body the loop body
     /// @param continuing the optional continuing block
+    /// @param attributes optional attributes
     /// @returns the loop statement pointer
-    const ast::LoopStatement* Loop(const Source& source,
-                                   const ast::BlockStatement* body,
-                                   const ast::BlockStatement* continuing = nullptr) {
-        return create<ast::LoopStatement>(source, body, continuing);
+    const ast::LoopStatement* Loop(
+        const Source& source,
+        const ast::BlockStatement* body,
+        const ast::BlockStatement* continuing = nullptr,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::LoopStatement>(source, body, continuing, std::move(attributes));
     }
 
     /// Creates a ast::LoopStatement with input body and optional continuing
     /// @param body the loop body
     /// @param continuing the optional continuing block
+    /// @param attributes optional attributes
     /// @returns the loop statement pointer
-    const ast::LoopStatement* Loop(const ast::BlockStatement* body,
-                                   const ast::BlockStatement* continuing = nullptr) {
-        return create<ast::LoopStatement>(body, continuing);
+    const ast::LoopStatement* Loop(
+        const ast::BlockStatement* body,
+        const ast::BlockStatement* continuing = nullptr,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::LoopStatement>(body, continuing, std::move(attributes));
     }
 
-    /// Creates a ast::ForLoopStatement with input body and optional initializer,
-    /// condition and continuing.
+    /// Creates a ast::ForLoopStatement with input body and optional initializer, condition,
+    /// continuing, and attributes.
     /// @param source the source information
     /// @param init the optional loop initializer
     /// @param cond the optional loop condition
     /// @param cont the optional loop continuing
     /// @param body the loop body
+    /// @param attributes optional attributes
     /// @returns the for loop statement pointer
     template <typename COND>
-    const ast::ForLoopStatement* For(const Source& source,
-                                     const ast::Statement* init,
-                                     COND&& cond,
-                                     const ast::Statement* cont,
-                                     const ast::BlockStatement* body) {
+    const ast::ForLoopStatement* For(
+        const Source& source,
+        const ast::Statement* init,
+        COND&& cond,
+        const ast::Statement* cont,
+        const ast::BlockStatement* body,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
         return create<ast::ForLoopStatement>(source, init, Expr(std::forward<COND>(cond)), cont,
-                                             body);
+                                             body, std::move(attributes));
     }
 
-    /// Creates a ast::ForLoopStatement with input body and optional initializer,
-    /// condition and continuing.
+    /// Creates a ast::ForLoopStatement with input body and optional initializer, condition,
+    /// continuing, and attributes.
     /// @param init the optional loop initializer
     /// @param cond the optional loop condition
     /// @param cont the optional loop continuing
     /// @param body the loop body
+    /// @param attributes optional attributes
     /// @returns the for loop statement pointer
     template <typename COND>
-    const ast::ForLoopStatement* For(const ast::Statement* init,
-                                     COND&& cond,
-                                     const ast::Statement* cont,
-                                     const ast::BlockStatement* body) {
-        return create<ast::ForLoopStatement>(init, Expr(std::forward<COND>(cond)), cont, body);
+    const ast::ForLoopStatement* For(
+        const ast::Statement* init,
+        COND&& cond,
+        const ast::Statement* cont,
+        const ast::BlockStatement* body,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::ForLoopStatement>(init, Expr(std::forward<COND>(cond)), cont, body,
+                                             std::move(attributes));
     }
 
-    /// Creates a ast::WhileStatement with input body and condition.
+    /// Creates a ast::WhileStatement with input body, condition, and optional attributes.
     /// @param source the source information
     /// @param cond the loop condition
     /// @param body the loop body
+    /// @param attributes optional attributes
     /// @returns the while statement pointer
     template <typename COND>
-    const ast::WhileStatement* While(const Source& source,
-                                     COND&& cond,
-                                     const ast::BlockStatement* body) {
-        return create<ast::WhileStatement>(source, Expr(std::forward<COND>(cond)), body);
+    const ast::WhileStatement* While(
+        const Source& source,
+        COND&& cond,
+        const ast::BlockStatement* body,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::WhileStatement>(source, Expr(std::forward<COND>(cond)), body,
+                                           std::move(attributes));
     }
 
-    /// Creates a ast::WhileStatement with given condition and body.
+    /// Creates a ast::WhileStatement with input body, condition, and optional attributes.
     /// @param cond the condition
     /// @param body the loop body
+    /// @param attributes optional attributes
     /// @returns the while loop statement pointer
     template <typename COND>
-    const ast::WhileStatement* While(COND&& cond, const ast::BlockStatement* body) {
-        return create<ast::WhileStatement>(Expr(std::forward<COND>(cond)), body);
+    const ast::WhileStatement* While(
+        COND&& cond,
+        const ast::BlockStatement* body,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::WhileStatement>(Expr(std::forward<COND>(cond)), body,
+                                           std::move(attributes));
     }
 
     /// Creates a ast::VariableDeclStatement for the input variable
@@ -3348,14 +3376,15 @@ class ProgramBuilder {
     /// @param condition the condition expression initializer
     /// @param cases case statements
     /// @returns the switch statement pointer
-    template <typename ExpressionInit, typename... Cases>
+    template <typename ExpressionInit, typename... Cases, typename = DisableIfVectorLike<Cases...>>
     const ast::SwitchStatement* Switch(const Source& source,
                                        ExpressionInit&& condition,
                                        Cases&&... cases) {
         return create<ast::SwitchStatement>(
             source, Expr(std::forward<ExpressionInit>(condition)),
             utils::Vector<const ast::CaseStatement*, sizeof...(cases)>{
-                std::forward<Cases>(cases)...});
+                std::forward<Cases>(cases)...},
+            utils::Empty);
     }
 
     /// Creates a ast::SwitchStatement with input expression and cases
@@ -3364,12 +3393,44 @@ class ProgramBuilder {
     /// @returns the switch statement pointer
     template <typename ExpressionInit,
               typename... Cases,
-              typename = DisableIfSource<ExpressionInit>>
+              typename = DisableIfSource<ExpressionInit>,
+              typename = DisableIfVectorLike<Cases...>>
     const ast::SwitchStatement* Switch(ExpressionInit&& condition, Cases&&... cases) {
         return create<ast::SwitchStatement>(
             Expr(std::forward<ExpressionInit>(condition)),
             utils::Vector<const ast::CaseStatement*, sizeof...(cases)>{
-                std::forward<Cases>(cases)...});
+                std::forward<Cases>(cases)...},
+            utils::Empty);
+    }
+
+    /// Creates a ast::SwitchStatement with input expression, cases, and optional attributes
+    /// @param source the source information
+    /// @param condition the condition expression initializer
+    /// @param cases case statements
+    /// @param attributes optional attributes
+    /// @returns the switch statement pointer
+    template <typename ExpressionInit>
+    const ast::SwitchStatement* Switch(
+        const Source& source,
+        ExpressionInit&& condition,
+        utils::VectorRef<const ast::CaseStatement*> cases,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::SwitchStatement>(source, Expr(std::forward<ExpressionInit>(condition)),
+                                            cases, std::move(attributes));
+    }
+
+    /// Creates a ast::SwitchStatement with input expression, cases, and optional attributes
+    /// @param condition the condition expression initializer
+    /// @param cases case statements
+    /// @param attributes optional attributes
+    /// @returns the switch statement pointer
+    template <typename ExpressionInit, typename = DisableIfSource<ExpressionInit>>
+    const ast::SwitchStatement* Switch(
+        ExpressionInit&& condition,
+        utils::VectorRef<const ast::CaseStatement*> cases,
+        utils::VectorRef<const ast::Attribute*> attributes = utils::Empty) {
+        return create<ast::SwitchStatement>(Expr(std::forward<ExpressionInit>(condition)), cases,
+                                            std::move(attributes));
     }
 
     /// Creates a ast::CaseStatement with input list of selectors, and body

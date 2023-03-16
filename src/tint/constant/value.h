@@ -37,6 +37,7 @@ class Value : public Castable<Value, Node> {
     /// @returns the type of the value
     virtual const type::Type* Type() const = 0;
 
+    /// @param i the index of the element
     /// @returns the child element with the given index, or nullptr if there are no children, or
     /// the index is out of bounds.
     ///
@@ -44,16 +45,16 @@ class Value : public Castable<Value, Node> {
     /// For vectors, this returns the i'th element of the vector.
     /// For matrices, this returns the i'th column vector of the matrix.
     /// For structures, this returns the i'th member field of the structure.
-    virtual const Value* Index(size_t) const = 0;
+    virtual const Value* Index(size_t i) const = 0;
+
+    /// @return the number of elements held by this Value
+    virtual size_t NumElements() const = 0;
 
     /// @returns true if child elements are positive-zero valued.
     virtual bool AllZero() const = 0;
 
     /// @returns true if any child elements are positive-zero valued.
     virtual bool AnyZero() const = 0;
-
-    /// @returns true if all child elements have the same value and type.
-    virtual bool AllEqual() const = 0;
 
     /// @returns a hash of the value.
     virtual size_t Hash() const = 0;
@@ -74,7 +75,7 @@ class Value : public Castable<Value, Node> {
 
     /// @param b the value to compare too
     /// @returns true if this value is equal to @p b
-    bool Equal(const constant::Value* b) const;
+    bool Equal(const Value* b) const;
 
     /// Clones the constant into the provided context
     /// @param ctx the clone context

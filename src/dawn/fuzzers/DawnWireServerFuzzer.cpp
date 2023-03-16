@@ -133,6 +133,11 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
     wireServer->InjectInstance(sInstance->Get(), 1, 0);
     wireServer->HandleCommands(reinterpret_cast<const char*>(data), size);
 
+    // Flush remaining callbacks to avoid memory leaks.
+    // TODO(crbug.com/dawn/1712): DeviceNull's APITick() will always return true so cannot
+    // do a polling loop here.
+    sInstance->ProcessEvents();
+
     // Note: Deleting the server will release all created objects.
     // Deleted devices will wait for idle on destruction.
     wireServer = nullptr;
