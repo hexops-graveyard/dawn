@@ -12,4 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define INSTANCE_OBJECT_ID 1
+#ifndef SRC_DAWN_NATIVE_D3D_FORWARD_H_
+#define SRC_DAWN_NATIVE_D3D_FORWARD_H_
+
+#include "dawn/native/ToBackend.h"
+
+namespace dawn::native::d3d {
+
+class Adapter;
+class Device;
+
+struct D3DBackendTraits {
+    using AdapterType = Adapter;
+    using DeviceType = Device;
+};
+
+template <typename T>
+auto ToBackend(T&& common) -> decltype(ToBackendBase<D3DBackendTraits>(common)) {
+    return ToBackendBase<D3DBackendTraits>(common);
+}
+
+}  // namespace dawn::native::d3d
+
+#endif  // SRC_DAWN_NATIVE_D3D_FORWARD_H_

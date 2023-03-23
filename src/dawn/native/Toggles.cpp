@@ -329,11 +329,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "default on Qualcomm GPUs, which have been observed experiencing a driver crash in this "
       "situation.",
       "https://crbug.com/dawn/1564", ToggleStage::Device}},
-    {Toggle::D3D12Allocate2DTextureWithCopyDstOrRenderAttachmentAsCommittedResource,
-     {"d3d12_allocate_2d_texture_with_copy_dst_or_render_attachment_as_committed_resource",
-      "Allocate each 2D texture with CopyDst or RenderAttachment usage as committed resources "
-      "instead of placed resources. This toggle is enabled by default on D3D12 backends using "
-      "Intel Gen9.5 and Gen11 GPUs due to a driver issue on Intel D3D12 driver.",
+    {Toggle::DisableSubAllocationFor2DTextureWithCopyDstOrRenderAttachment,
+     {"disable_sub_allocation_for_2d_texture_with_copy_dst_or_render_attachment",
+      "Disable resource sub-allocation for the 2D texture with CopyDst or RenderAttachment usage. "
+      "This toggle is enabled by default on D3D12 backends using Intel Gen9.5 and Gen11 GPUs and "
+      "on Vulkan backends using Intel Gen12 GPUs due to Intel Mesa Vulkan and D3D12 driver issues.",
       "https://crbug.com/1237175", ToggleStage::Device}},
     {Toggle::MetalUseCombinedDepthStencilFormatForStencil8,
      {"metal_use_combined_depth_stencil_format_for_stencil8",
@@ -358,6 +358,12 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "subresource are completely initialized, and StoreOp::Discard is always translated as a "
       "Store.",
       "https://crbug.com/dawn/838", ToggleStage::Device}},
+    {Toggle::MetalFillEmptyOcclusionQueriesWithZero,
+     {"metal_fill_empty_occlusion_queries_with_zero",
+      "Apple GPUs leave stale results in the visibility result buffer instead of writing zero if "
+      "an occlusion query is empty. Workaround this by explicitly filling it with zero if there "
+      "are no draw calls.",
+      "https://crbug.com/dawn/1707", ToggleStage::Device}},
     {Toggle::UseBlitForBufferToDepthTextureCopy,
      {"use_blit_for_buffer_to_depth_texture_copy",
       "Use a blit instead of a copy command to copy buffer data to the depth aspect of a "
@@ -392,6 +398,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Polyfill the reflect builtin for vec2<f32> for D3D12. This toggle is enabled by default on "
       "D3D12 backends using FXC on Intel GPUs due to a driver issue on Intel D3D12 driver.",
       "https://crbug.com/tint/1798", ToggleStage::Device}},
+    {Toggle::VulkanClearGen12TextureWithCCSAmbiguateOnCreation,
+     {"vulkan_clear_gen12_texture_with_ccs_ambiguate_on_creation",
+      "Clears some R8-like textures to full 0 bits as soon as they are created. This Toggle is "
+      "enabled on Intel Gen12 GPUs due to a mesa driver issue.",
+      "https://crbug.com/chromium/1361662", ToggleStage::Device}},
     {Toggle::NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
      {"no_workaround_sample_mask_becomes_zero_for_all_but_last_color_target",
       "MacOS 12.0+ Intel has a bug where the sample mask is only applied for the last color "
