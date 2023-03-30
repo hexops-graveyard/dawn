@@ -267,6 +267,8 @@ if (DAWN_ENABLE_D3D12)
         "d3d/Forward.h"
         "d3d/PlatformFunctions.cpp"
         "d3d/PlatformFunctions.h"
+        "d3d/ShaderUtils.cpp"
+        "d3d/ShaderUtils.h"
         "d3d/UtilsD3D.cpp"
         "d3d/UtilsD3D.h"
         "d3d/d3d_platform.h"
@@ -567,12 +569,15 @@ if (DAWN_ENABLE_VULKAN)
         "vulkan/VulkanFunctions.h"
         "vulkan/VulkanInfo.cpp"
         "vulkan/VulkanInfo.h"
+        "vulkan/external_memory/MemoryImportParams.h"
         "vulkan/external_memory/MemoryService.cpp"
         "vulkan/external_memory/MemoryService.h"
+        "vulkan/external_memory/MemoryServiceImplementation.cpp"
+        "vulkan/external_memory/MemoryServiceImplementation.h"
         "vulkan/external_semaphore/SemaphoreService.cpp"
         "vulkan/external_semaphore/SemaphoreService.h"
-        "vulkan/external_semaphore/ServiceImplementation.cpp"
-        "vulkan/external_semaphore/ServiceImplementation.h"
+        "vulkan/external_semaphore/SemaphoreServiceImplementation.cpp"
+        "vulkan/external_semaphore/SemaphoreServiceImplementation.h"
     )
 
     target_link_libraries(dawn_native PUBLIC Vulkan-Headers)
@@ -580,9 +585,9 @@ if (DAWN_ENABLE_VULKAN)
 
     if (UNIX AND NOT APPLE)
         target_sources(dawn_native PRIVATE
-            "vulkan/external_memory/MemoryServiceOpaqueFD.cpp"
-            "vulkan/external_semaphore/ServiceImplementationFD.cpp"
-            "vulkan/external_semaphore/ServiceImplementationFD.h"
+            "vulkan/external_memory/MemoryServiceImplementationOpaqueFD.cpp"
+            "vulkan/external_semaphore/SemaphoreServiceImplementationFD.cpp"
+            "vulkan/external_semaphore/SemaphoreServiceImplementationFD.h"
         )
     else()
         target_sources(dawn_native PRIVATE
