@@ -166,6 +166,7 @@ class DawnTestEnvironment : public testing::Environment {
     void TearDown() override;
 
     bool UsesWire() const;
+    bool IsImplicitDeviceSyncEnabled() const;
     dawn::native::BackendValidationLevel GetBackendValidationLevel() const;
     dawn::native::Instance* GetInstance() const;
     bool HasVendorIdFilter() const;
@@ -193,6 +194,7 @@ class DawnTestEnvironment : public testing::Environment {
     bool ValidateToggles(dawn::native::Instance* instance) const;
 
     bool mUseWire = false;
+    bool mEnableImplicitDeviceSync = false;
     dawn::native::BackendValidationLevel mBackendValidationLevel =
         dawn::native::BackendValidationLevel::Disabled;
     std::string mANGLEBackend;
@@ -222,6 +224,7 @@ class DawnTestBase {
     void SetUp();
     void TearDown();
 
+    bool IsD3D11() const;
     bool IsD3D12() const;
     bool IsMetal() const;
     bool IsNull() const;
@@ -249,6 +252,7 @@ class DawnTestBase {
     bool IsAndroid() const;
 
     bool UsesWire() const;
+    bool IsImplicitDeviceSyncEnabled() const;
     bool IsBackendValidationEnabled() const;
     bool IsFullBackendValidationEnabled() const;
     bool RunSuppressedTests() const;

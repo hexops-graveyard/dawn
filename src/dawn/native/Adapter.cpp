@@ -42,6 +42,7 @@ MaybeError AdapterBase::Initialize() {
 
     EnableFeature(Feature::DawnNative);
     EnableFeature(Feature::DawnInternalUsages);
+    EnableFeature(Feature::ImplicitDeviceSynchronization);
     InitializeSupportedFeaturesImpl();
 
     DAWN_TRY_CONTEXT(
@@ -86,7 +87,7 @@ MaybeError AdapterBase::Initialize() {
 InstanceBase* AdapterBase::APIGetInstance() const {
     auto instance = GetInstance();
     ASSERT(instance != nullptr);
-    instance->Reference();
+    instance->APIReference();
     return instance;
 }
 

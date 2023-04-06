@@ -201,6 +201,11 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             continue;
         }
 
+        if (strcmp("-s", argv[i]) == 0 || strcmp("--enable-implicit-device-sync", argv[i]) == 0) {
+            mEnableImplicitDeviceSync = true;
+            continue;
+        }
+
         if (strcmp("--run-suppressed-tests", argv[i]) == 0) {
             mRunSuppressedTests = true;
             continue;
@@ -294,7 +299,9 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
         argLen = sizeof(kBackendArg) - 1;
         if (strncmp(argv[i], kBackendArg, argLen) == 0) {
             const char* param = argv[i] + argLen;
-            if (strcmp("d3d12", param) == 0) {
+            if (strcmp("d3d11", param) == 0) {
+                mBackendTypeFilter = wgpu::BackendType::D3D11;
+            } else if (strcmp("d3d12", param) == 0) {
                 mBackendTypeFilter = wgpu::BackendType::D3D12;
             } else if (strcmp("metal", param) == 0) {
                 mBackendTypeFilter = wgpu::BackendType::Metal;
@@ -325,6 +332,8 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
                    "[--enable-backend-validation[=full,partial,disabled]]\n"
                    "    [--exclusive-device-type-preference=integrated,cpu,discrete]\n\n"
                    "  -w, --use-wire: Run the tests through the wire (defaults to no wire)\n"
+                   "  -s, --enable-implicit-device-sync: Run the tests with implicit device "
+                   "synchronization feature (defaults to false)\n"
                    "  -c, --begin-capture-on-startup: Begin debug capture on startup "
                    "(defaults to no capture)\n"
                    "  --enable-backend-validation: Enables backend validation. Defaults to \n"
@@ -353,6 +362,13 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
         }
 
         dawn::WarningLog() << " Unused argument: " << argv[i];
+    }
+
+    // TODO(crbug.com/dawn/1678): DawnWire doesn't support thread safe API yet.
+    if (mUseWire && mEnableImplicitDeviceSync) {
+        dawn::ErrorLog()
+            << "--use-wire and --enable-implicit-device-sync cannot be used at the same time";
+        UNREACHABLE();
     }
 }
 
@@ -506,6 +522,9 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
            "UseWire: "
         << (mUseWire ? "true" : "false")
         << "\n"
+           "Implicit device synchronization: "
+        << (mEnableImplicitDeviceSync ? "enabled" : "disabled")
+        << "\n"
            "Run suppressed tests: "
         << (mRunSuppressedTests ? "true" : "false")
         << "\n"
@@ -588,6 +607,10 @@ void DawnTestEnvironment::TearDown() {
 
 bool DawnTestEnvironment::UsesWire() const {
     return mUseWire;
+}
+
+bool DawnTestEnvironment::IsImplicitDeviceSyncEnabled() const {
+    return mEnableImplicitDeviceSync;
 }
 
 bool DawnTestEnvironment::RunSuppressedTests() const {
@@ -699,9 +722,9 @@ DawnTestBase::~DawnTestBase() {
     mAdapter = nullptr;
     mInstance = nullptr;
 
-    // D3D12's GPU-based validation will accumulate objects over time if the backend device is not
-    // destroyed and recreated, so we reset it here.
-    if (IsD3D12() && IsBackendValidationEnabled()) {
+    // D3D11 and D3D12's GPU-based validation will accumulate objects over time if the backend
+    // device is not destroyed and recreated, so we reset it here.
+    if ((IsD3D11() || IsD3D12()) && IsBackendValidationEnabled()) {
         mBackendAdapter.ResetInternalDeviceForTesting();
     }
     mWireHelper.reset();
@@ -710,6 +733,10 @@ DawnTestBase::~DawnTestBase() {
     EXPECT_EQ(gTestEnv->GetInstance()->GetDeviceCountForTesting(), 0u);
 
     gCurrentTest = nullptr;
+}
+
+bool DawnTestBase::IsD3D11() const {
+    return mParam.adapterProperties.backendType == wgpu::BackendType::D3D11;
 }
 
 bool DawnTestBase::IsD3D12() const {
@@ -832,6 +859,10 @@ bool DawnTestBase::UsesWire() const {
     return gTestEnv->UsesWire();
 }
 
+bool DawnTestBase::IsImplicitDeviceSyncEnabled() const {
+    return gTestEnv->IsImplicitDeviceSyncEnabled();
+}
+
 bool DawnTestBase::IsBackendValidationEnabled() const {
     return gTestEnv->GetBackendValidationLevel() != dawn::native::BackendValidationLevel::Disabled;
 }
@@ -936,6 +967,9 @@ bool DawnTestBase::SupportsFeatures(const std::vector<wgpu::FeatureName>& featur
 WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey) {
     // Create the device from the adapter
     std::vector<wgpu::FeatureName> requiredFeatures = GetRequiredFeatures();
+    if (IsImplicitDeviceSyncEnabled()) {
+        requiredFeatures.push_back(wgpu::FeatureName::ImplicitDeviceSynchronization);
+    }
 
     wgpu::SupportedLimits supportedLimits;
     mBackendAdapter.GetLimits(reinterpret_cast<WGPUSupportedLimits*>(&supportedLimits));
@@ -1532,7 +1566,7 @@ void DawnTestBase::SlotMapCallback(WGPUBufferMapAsyncStatus status, void* userda
 
 void DawnTestBase::ResolveExpectations() {
     for (const auto& expectation : mDeferredExpectations) {
-        DAWN_ASSERT(mReadbackSlots[expectation.readbackSlot].mappedData != nullptr);
+        EXPECT_TRUE(mReadbackSlots[expectation.readbackSlot].mappedData != nullptr);
 
         // Get a pointer to the mapped copy of the data for the expectation.
         const char* data =

@@ -23,8 +23,7 @@
 #include <memory>
 #include <vector>
 
-#include "dawn/dawn_wsi.h"
-#include "dawn/native/DawnNative.h"
+#include "dawn/native/D3DBackend.h"
 
 struct ID3D12Device;
 struct ID3D12Resource;
@@ -36,10 +35,6 @@ class Device;
 class ExternalImageDXGIImpl;
 
 DAWN_NATIVE_EXPORT Microsoft::WRL::ComPtr<ID3D12Device> GetD3D12Device(WGPUDevice device);
-DAWN_NATIVE_EXPORT DawnSwapChainImplementation CreateNativeSwapChainImpl(WGPUDevice device,
-                                                                         HWND window);
-DAWN_NATIVE_EXPORT WGPUTextureFormat
-GetNativeSwapChainPreferredFormat(const DawnSwapChainImplementation* swapChain);
 
 enum MemorySegment {
     Local,
@@ -126,11 +121,9 @@ class DAWN_NATIVE_EXPORT ExternalImageDXGI {
     std::unique_ptr<ExternalImageDXGIImpl> mImpl;
 };
 
-struct DAWN_NATIVE_EXPORT AdapterDiscoveryOptions : public AdapterDiscoveryOptionsBase {
+struct DAWN_NATIVE_EXPORT AdapterDiscoveryOptions : public d3d::AdapterDiscoveryOptions {
     AdapterDiscoveryOptions();
     explicit AdapterDiscoveryOptions(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter);
-
-    Microsoft::WRL::ComPtr<IDXGIAdapter> dxgiAdapter;
 };
 
 }  // namespace dawn::native::d3d12

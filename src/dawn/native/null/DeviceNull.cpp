@@ -173,10 +173,6 @@ ResultOrError<Ref<ShaderModuleBase>> Device::CreateShaderModuleImpl(
     DAWN_TRY(module->Initialize(parseResult, compilationMessages));
     return module;
 }
-ResultOrError<Ref<SwapChainBase>> Device::CreateSwapChainImpl(
-    const SwapChainDescriptor* descriptor) {
-    return AcquireRef(new OldSwapChain(this, descriptor));
-}
 ResultOrError<Ref<NewSwapChainBase>> Device::CreateSwapChainImpl(
     Surface* surface,
     NewSwapChainBase* previousSwapChain,
@@ -474,47 +470,6 @@ void SwapChain::DetachFromSurfaceImpl() {
 MaybeError ShaderModule::Initialize(ShaderModuleParseResult* parseResult,
                                     OwnedCompilationMessages* compilationMessages) {
     return InitializeBase(parseResult, compilationMessages);
-}
-
-// OldSwapChain
-
-OldSwapChain::OldSwapChain(Device* device, const SwapChainDescriptor* descriptor)
-    : OldSwapChainBase(device, descriptor) {
-    const auto& im = GetImplementation();
-    im.Init(im.userData, nullptr);
-}
-
-OldSwapChain::~OldSwapChain() {}
-
-TextureBase* OldSwapChain::GetNextTextureImpl(const TextureDescriptor* descriptor) {
-    return GetDevice()->APICreateTexture(descriptor);
-}
-
-MaybeError OldSwapChain::OnBeforePresent(TextureViewBase*) {
-    return {};
-}
-
-// NativeSwapChainImpl
-
-void NativeSwapChainImpl::Init(WSIContext* context) {}
-
-DawnSwapChainError NativeSwapChainImpl::Configure(WGPUTextureFormat format,
-                                                  WGPUTextureUsage,
-                                                  uint32_t width,
-                                                  uint32_t height) {
-    return DAWN_SWAP_CHAIN_NO_ERROR;
-}
-
-DawnSwapChainError NativeSwapChainImpl::GetNextTexture(DawnSwapChainNextTexture* nextTexture) {
-    return DAWN_SWAP_CHAIN_NO_ERROR;
-}
-
-DawnSwapChainError NativeSwapChainImpl::Present() {
-    return DAWN_SWAP_CHAIN_NO_ERROR;
-}
-
-wgpu::TextureFormat NativeSwapChainImpl::GetPreferredFormat() const {
-    return wgpu::TextureFormat::RGBA8Unorm;
 }
 
 uint32_t Device::GetOptimalBytesPerRowAlignment() const {

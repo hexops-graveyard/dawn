@@ -23,6 +23,7 @@
 #include "dawn/dawn_wsi.h"
 #include "dawn/native/Surface.h"
 #include "dawn/native/d3d/D3DError.h"
+#include "dawn/native/d3d/UtilsD3D.h"
 #include "dawn/native/d3d12/DeviceD3D12.h"
 #include "dawn/native/d3d12/TextureD3D12.h"
 
@@ -75,64 +76,6 @@ DXGI_USAGE ToDXGIUsage(wgpu::TextureUsage usage) {
 
 }  // namespace
 
-// OldSwapChain
-
-// static
-Ref<OldSwapChain> OldSwapChain::Create(Device* device, const SwapChainDescriptor* descriptor) {
-    return AcquireRef(new OldSwapChain(device, descriptor));
-}
-
-OldSwapChain::OldSwapChain(Device* device, const SwapChainDescriptor* descriptor)
-    : OldSwapChainBase(device, descriptor) {
-    const auto& im = GetImplementation();
-    DawnWSIContextD3D12 wsiContext = {};
-    wsiContext.device = ToAPI(GetDevice());
-    im.Init(im.userData, &wsiContext);
-
-    ASSERT(im.textureUsage != WGPUTextureUsage_None);
-    mTextureUsage = static_cast<wgpu::TextureUsage>(im.textureUsage);
-}
-
-OldSwapChain::~OldSwapChain() = default;
-
-TextureBase* OldSwapChain::GetNextTextureImpl(const TextureDescriptor* descriptor) {
-    DeviceBase* device = GetDevice();
-    const auto& im = GetImplementation();
-    DawnSwapChainNextTexture next = {};
-    DawnSwapChainError error = im.GetNextTexture(im.userData, &next);
-    if (error) {
-        device->HandleError(DAWN_INTERNAL_ERROR(error));
-        return nullptr;
-    }
-
-    ComPtr<ID3D12Resource> d3d12Texture = static_cast<ID3D12Resource*>(next.texture.ptr);
-    Ref<Texture> dawnTexture;
-    if (device->ConsumedError(
-            Texture::Create(ToBackend(GetDevice()), descriptor, std::move(d3d12Texture)),
-            &dawnTexture)) {
-        return nullptr;
-    }
-
-    return dawnTexture.Detach();
-}
-
-MaybeError OldSwapChain::OnBeforePresent(TextureViewBase* view) {
-    Device* device = ToBackend(GetDevice());
-
-    CommandRecordingContext* commandContext;
-    DAWN_TRY_ASSIGN(commandContext, device->GetPendingCommandContext());
-
-    // Perform the necessary transition for the texture to be presented.
-    ToBackend(view->GetTexture())
-        ->TrackUsageAndTransitionNow(commandContext, mTextureUsage, view->GetSubresourceRange());
-
-    DAWN_TRY(device->ExecutePendingCommandContext());
-
-    return {};
-}
-
-// SwapChain
-
 // static
 ResultOrError<Ref<SwapChain>> SwapChain::Create(Device* device,
                                                 Surface* surface,
@@ -158,7 +101,7 @@ MaybeError SwapChain::Initialize(NewSwapChainBase* previousSwapChain) {
 
     // Precompute the configuration parameters we want for the DXGI swapchain.
     mConfig.bufferCount = PresentModeToBufferCount(GetPresentMode());
-    mConfig.format = D3D12TextureFormat(GetFormat());
+    mConfig.format = d3d::DXGITextureFormat(GetFormat());
     mConfig.swapChainFlags = PresentModeToSwapChainFlags(GetPresentMode());
     mConfig.usage = ToDXGIUsage(GetUsage());
 

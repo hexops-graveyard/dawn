@@ -34,10 +34,9 @@ class Backend final : public d3d::Backend {
 
     const PlatformFunctions* GetFunctions() const;
 
-    std::vector<Ref<AdapterBase>> DiscoverDefaultAdapters(
-        const TogglesState& adapterToggles) override;
-    ResultOrError<std::vector<Ref<AdapterBase>>> DiscoverAdapters(
-        const AdapterDiscoveryOptionsBase* optionsBase,
+  protected:
+    ResultOrError<Ref<AdapterBase>> CreateAdapterFromIDXGIAdapter(
+        ComPtr<IDXGIAdapter> dxgiAdapter,
         const TogglesState& adapterToggles) override;
 
   private:
