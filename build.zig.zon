@@ -1,0 +1,11 @@
+.{
+    .name = "dawn",
+    .version = "0.0.0",
+
+    .dependencies = .{
+        .system_sdk = .{
+            .url = "https://github.com/slimsag/system-sdk/archive/9f160d97fb5c2e193c9f5f793ed78edd3a444fec.tar.gz",
+            .hash = "1220a3a9688b49c1feeae618056267c4f9123e86e7e3eb52764a3b48efb4a81af52a",
+        },
+    },
+}

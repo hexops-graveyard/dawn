@@ -129,3 +129,6 @@ lcov.info
 all_findings.json
 
 tint.dot
+
+# Zig stuff
+/zig-*
