@@ -66,7 +66,7 @@ pub fn build(b: *std.Build) !void {
     try buildLibTint(b, lib, opt);
     //if (options.d3d12.?) try buildLibDxcompiler(b, lib_dawn, options);
 
-    lib.install();
+    b.installArtifact(lib);
 }
 
 pub const Options = struct {
@@ -155,7 +155,7 @@ fn buildLibDawnCommon(
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -205,7 +205,7 @@ fn buildLibDawnPlatform(b: *Build, step: *std.build.CompileStep, options: Option
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -273,7 +273,7 @@ fn buildLibDawnNative(b: *Build, step: *std.build.CompileStep, options: Options)
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -490,7 +490,7 @@ fn buildLibTint(b: *Build, step: *std.build.CompileStep, options: Options) !void
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -644,7 +644,7 @@ fn buildLibSPIRVTools(b: *Build, step: *std.build.CompileStep, options: Options)
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -712,7 +712,7 @@ fn buildLibAbseilCpp(b: *Build, step: *std.build.CompileStep, options: Options) 
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -774,7 +774,7 @@ fn buildLibDawnWire(b: *Build, step: *std.build.CompileStep, options: Options) !
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -811,7 +811,7 @@ fn buildLibDawnUtils(b: *Build, step: *std.build.CompileStep, options: Options) 
             .optimize = if (options.debug) .Debug else .ReleaseFast,
         });
         separate_lib.linkLibCpp();
-        separate_lib.install();
+        b.installArtifact(separate_lib);
         step.linkLibrary(separate_lib);
         break :blk separate_lib;
     };
@@ -863,7 +863,7 @@ fn buildLibDawnUtils(b: *Build, step: *std.build.CompileStep, options: Options) 
 //            .optimize = if (options.debug) .Debug else .ReleaseFast,
 //        });
 //        separate_lib.linkLibCpp();
-//            separate_lib.install();
+//            b.installArtifact(separate_lib);
 //        break :blk separate_lib;
 //    };
 //    system_sdk.include(b, lib, .{});
