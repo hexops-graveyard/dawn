@@ -54,6 +54,8 @@ pub fn build(b: *std.Build) !void {
     lib.addIncludePath("include");
     //lib.addIncludePath("mingw_hacks");
 
+    lib.installHeadersDirectory("include", ".");
+
     try buildLibDawnCommon(b, lib, opt);
     try buildLibDawnPlatform(b, lib, opt);
     try buildLibAbseilCpp(b, lib, opt);
