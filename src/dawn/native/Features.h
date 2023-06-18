@@ -40,12 +40,15 @@ enum class Feature {
     ShaderF16,
     RG11B10UfloatRenderable,
     BGRA8UnormStorage,
+    Float32Filterable,
 
     // Dawn-specific
     DawnInternalUsages,
     MultiPlanarFormats,
     DawnNative,
     ImplicitDeviceSynchronization,
+    SurfaceCapabilities,
+    TransientAttachments,
 
     EnumCount,
     InvalidEnum = EnumCount,

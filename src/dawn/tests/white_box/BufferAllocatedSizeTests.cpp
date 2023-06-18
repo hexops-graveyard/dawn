@@ -19,6 +19,9 @@
 #include "dawn/common/Math.h"
 #include "dawn/native/DawnNative.h"
 
+namespace dawn {
+namespace {
+
 class BufferAllocatedSizeTests : public DawnTest {
   protected:
     wgpu::Buffer CreateBuffer(wgpu::BufferUsage usage, uint64_t size) {
@@ -36,17 +39,12 @@ class BufferAllocatedSizeTests : public DawnTest {
 
 // Test expected allocated size for buffers with uniform usage
 TEST_P(BufferAllocatedSizeTests, UniformUsage) {
-    // D3D11 backend doesn't support buffer with both uniform and storage usage.
-    DAWN_SUPPRESS_TEST_IF(IsD3D11());
-
     // Some backends have a minimum buffer size, so make sure
     // we allocate above that.
     constexpr uint32_t kMinBufferSize = 4u;
 
     uint32_t requiredBufferAlignment = 1u;
-    if (IsD3D11()) {
-        requiredBufferAlignment = 256u;
-    } else if (IsD3D12()) {
+    if (IsD3D12()) {
         requiredBufferAlignment = 256u;
     } else if (IsMetal()) {
         requiredBufferAlignment = 16u;
@@ -58,7 +56,7 @@ TEST_P(BufferAllocatedSizeTests, UniformUsage) {
     {
         const uint32_t bufferSize = kMinBufferSize;
         wgpu::Buffer buffer = CreateBuffer(wgpu::BufferUsage::Uniform, bufferSize);
-        EXPECT_EQ(dawn::native::GetAllocatedSizeForTesting(buffer.Get()),
+        EXPECT_EQ(native::GetAllocatedSizeForTesting(buffer.Get()),
                   Align(bufferSize, requiredBufferAlignment));
     }
 
@@ -68,7 +66,7 @@ TEST_P(BufferAllocatedSizeTests, UniformUsage) {
         const uint32_t bufferSize = std::max(1u + requiredBufferAlignment, kMinBufferSize);
         wgpu::Buffer buffer =
             CreateBuffer(wgpu::BufferUsage::Uniform | wgpu::BufferUsage::Storage, bufferSize);
-        EXPECT_EQ(dawn::native::GetAllocatedSizeForTesting(buffer.Get()),
+        EXPECT_EQ(native::GetAllocatedSizeForTesting(buffer.Get()),
                   Align(bufferSize, requiredBufferAlignment));
     }
 
@@ -77,15 +75,17 @@ TEST_P(BufferAllocatedSizeTests, UniformUsage) {
         const uint32_t bufferSize = kMinBufferSize;
         wgpu::Buffer buffer =
             CreateBuffer(wgpu::BufferUsage::Uniform | wgpu::BufferUsage::Storage, bufferSize);
-        EXPECT_EQ(dawn::native::GetAllocatedSizeForTesting(buffer.Get()),
+        EXPECT_EQ(native::GetAllocatedSizeForTesting(buffer.Get()),
                   Align(bufferSize, requiredBufferAlignment));
     }
 }
 
 DAWN_INSTANTIATE_TEST(BufferAllocatedSizeTests,
-                      D3D11Backend(),
                       D3D12Backend(),
                       MetalBackend(),
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

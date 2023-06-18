@@ -15,6 +15,9 @@
 #include "dawn/native/ShaderModule.h"
 #include "dawn/tests/unittests/validation/ValidationTest.h"
 
+namespace dawn {
+namespace {
+
 class CountUTF16CodeUnitsFromUTF8StringTest : public ValidationTest {};
 
 TEST_F(CountUTF16CodeUnitsFromUTF8StringTest, ValidUnicodeString) {
@@ -23,7 +26,7 @@ TEST_F(CountUTF16CodeUnitsFromUTF8StringTest, ValidUnicodeString) {
         uint64_t lengthInUTF16;
     };
 
-    // Referenced from src/tint/text/unicode_test.cc
+    // Referenced from src/tint/utils/unicode_test.cc
     constexpr std::array<TestCase, 12> kTestCases = {{
         {"", 0},
         {"abc", 3},
@@ -40,15 +43,15 @@ TEST_F(CountUTF16CodeUnitsFromUTF8StringTest, ValidUnicodeString) {
     }};
 
     for (const TestCase& testCase : kTestCases) {
-        dawn::native::ResultOrError<uint64_t> resultOrError =
-            dawn::native::CountUTF16CodeUnitsFromUTF8String(std::string_view(testCase.u8String));
+        native::ResultOrError<uint64_t> resultOrError =
+            native::CountUTF16CodeUnitsFromUTF8String(std::string_view(testCase.u8String));
         ASSERT_TRUE(resultOrError.IsSuccess());
         ASSERT_EQ(testCase.lengthInUTF16, resultOrError.AcquireSuccess());
     }
 }
 
 TEST_F(CountUTF16CodeUnitsFromUTF8StringTest, InvalidUnicodeString) {
-    // Referenced from src/tint/text/unicode_test.cc
+    // Referenced from src/tint/utils/unicode_test.cc
     constexpr std::array<const char*, 12> kTestCases = {{
         "\xed\xa0\x80",  // CodePoint == 0xD7FF + 1
         "\xed\xbf\xbf",  // CodePoint == 0xE000 - 1
@@ -65,9 +68,12 @@ TEST_F(CountUTF16CodeUnitsFromUTF8StringTest, InvalidUnicodeString) {
     }};
 
     for (const char* testCase : kTestCases) {
-        dawn::native::ResultOrError<uint64_t> resultOrError =
-            dawn::native::CountUTF16CodeUnitsFromUTF8String(std::string_view(testCase));
+        native::ResultOrError<uint64_t> resultOrError =
+            native::CountUTF16CodeUnitsFromUTF8String(std::string_view(testCase));
         ASSERT_TRUE(resultOrError.IsError());
         std::ignore = resultOrError.AcquireError();
     }
 }
+
+}  // anonymous namespace
+}  // namespace dawn

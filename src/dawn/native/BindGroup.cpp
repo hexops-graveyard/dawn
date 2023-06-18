@@ -253,6 +253,16 @@ MaybeError ValidateExternalTextureBinding(
     return {};
 }
 
+template <typename F>
+void ForEachUnverifiedBufferBindingIndexImpl(const BindGroupLayoutBase* bgl, F&& f) {
+    uint32_t packedIndex = 0;
+    for (BindingIndex bindingIndex{0}; bindingIndex < bgl->GetBufferCount(); ++bindingIndex) {
+        if (bgl->GetBindingInfo(bindingIndex).buffer.minBindingSize == 0) {
+            f(bindingIndex, packedIndex++);
+        }
+    }
+}
+
 }  // anonymous namespace
 
 MaybeError ValidateBindGroupDescriptor(DeviceBase* device,
@@ -351,7 +361,7 @@ MaybeError ValidateBindGroupDescriptor(DeviceBase* device,
     ASSERT(bindingsSet.count() == descriptor->layout->GetUnexpandedBindingCount());
 
     return {};
-}  // anonymous namespace
+}
 
 // BindGroup
 
@@ -443,15 +453,11 @@ BindGroupBase::BindGroupBase(DeviceBase* device,
         }
     }
 
-    uint32_t packedIdx = 0;
-    for (BindingIndex bindingIndex{0}; bindingIndex < descriptor->layout->GetBufferCount();
-         ++bindingIndex) {
-        if (descriptor->layout->GetBindingInfo(bindingIndex).buffer.minBindingSize == 0) {
-            mBindingData.unverifiedBufferSizes[packedIdx] =
-                mBindingData.bufferData[bindingIndex].size;
-            ++packedIdx;
-        }
-    }
+    ForEachUnverifiedBufferBindingIndexImpl(mLayout.Get(),
+                                            [&](BindingIndex bindingIndex, uint32_t packedIndex) {
+                                                mBindingData.unverifiedBufferSizes[packedIndex] =
+                                                    mBindingData.bufferData[bindingIndex].size;
+                                            });
 
     GetObjectTrackingList()->Track(this);
 }
@@ -475,12 +481,12 @@ void BindGroupBase::DeleteThis() {
     ApiObjectBase::DeleteThis();
 }
 
-BindGroupBase::BindGroupBase(DeviceBase* device, ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag), mBindingData() {}
+BindGroupBase::BindGroupBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label)
+    : ApiObjectBase(device, tag, label), mBindingData() {}
 
 // static
-BindGroupBase* BindGroupBase::MakeError(DeviceBase* device) {
-    return new BindGroupBase(device, ObjectBase::kError);
+BindGroupBase* BindGroupBase::MakeError(DeviceBase* device, const char* label) {
+    return new BindGroupBase(device, ObjectBase::kError, label);
 }
 
 ObjectType BindGroupBase::GetType() const {
@@ -528,6 +534,11 @@ TextureViewBase* BindGroupBase::GetBindingAsTextureView(BindingIndex bindingInde
 
 const std::vector<Ref<ExternalTextureBase>>& BindGroupBase::GetBoundExternalTextures() const {
     return mBoundExternalTextures;
+}
+
+void BindGroupBase::ForEachUnverifiedBufferBindingIndex(
+    std::function<void(BindingIndex, uint32_t)> fn) const {
+    ForEachUnverifiedBufferBindingIndexImpl(mLayout.Get(), fn);
 }
 
 }  // namespace dawn::native

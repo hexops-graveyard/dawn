@@ -25,13 +25,12 @@
 namespace tint::type {
 
 /// An array count
-class ArrayCount : public Castable<ArrayCount, UniqueNode> {
+class ArrayCount : public utils::Castable<ArrayCount, UniqueNode> {
   public:
     ~ArrayCount() override;
 
-    /// @param symbols the symbol table
     /// @returns the friendly name for this array count
-    virtual std::string FriendlyName(const SymbolTable& symbols) const = 0;
+    virtual std::string FriendlyName() const = 0;
 
     /// @param ctx the clone context
     /// @returns a clone of this type
@@ -49,7 +48,7 @@ class ArrayCount : public Castable<ArrayCount, UniqueNode> {
 /// const N = 123;
 /// type arr = array<i32, N>
 /// ```
-class ConstantArrayCount final : public Castable<ConstantArrayCount, ArrayCount> {
+class ConstantArrayCount final : public utils::Castable<ConstantArrayCount, ArrayCount> {
   public:
     /// Constructor
     /// @param val the constant-expression value
@@ -60,9 +59,8 @@ class ConstantArrayCount final : public Castable<ConstantArrayCount, ArrayCount>
     /// @returns true if this array count is equal to other
     bool Equals(const UniqueNode& other) const override;
 
-    /// @param symbols the symbol table
     /// @returns the friendly name for this array count
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type
@@ -77,7 +75,7 @@ class ConstantArrayCount final : public Castable<ConstantArrayCount, ArrayCount>
 /// ```
 /// type arr = array<i32>
 /// ```
-class RuntimeArrayCount final : public Castable<RuntimeArrayCount, ArrayCount> {
+class RuntimeArrayCount final : public utils::Castable<RuntimeArrayCount, ArrayCount> {
   public:
     /// Constructor
     RuntimeArrayCount();
@@ -87,9 +85,8 @@ class RuntimeArrayCount final : public Castable<RuntimeArrayCount, ArrayCount> {
     /// @returns true if this array count is equal to other
     bool Equals(const UniqueNode& other) const override;
 
-    /// @param symbols the symbol table
     /// @returns the friendly name for this array count
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

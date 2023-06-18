@@ -20,59 +20,54 @@ namespace tint {
 
 SymbolTable::SymbolTable(tint::ProgramID program_id) : program_id_(program_id) {}
 
-SymbolTable::SymbolTable(const SymbolTable&) = default;
-
 SymbolTable::SymbolTable(SymbolTable&&) = default;
 
 SymbolTable::~SymbolTable() = default;
 
-SymbolTable& SymbolTable::operator=(const SymbolTable& other) = default;
-
 SymbolTable& SymbolTable::operator=(SymbolTable&&) = default;
 
-Symbol SymbolTable::Register(const std::string& name) {
+Symbol SymbolTable::Register(std::string_view name) {
     TINT_ASSERT(Symbol, !name.empty());
 
     auto it = name_to_symbol_.Find(name);
     if (it) {
         return *it;
     }
+    return RegisterInternal(name);
+}
 
-#if TINT_SYMBOL_STORE_DEBUG_NAME
-    Symbol sym(next_symbol_, program_id_, name);
-#else
-    Symbol sym(next_symbol_, program_id_);
-#endif
+Symbol SymbolTable::RegisterInternal(std::string_view name) {
+    char* name_mem = name_allocator_.Allocate(name.length() + 1);
+    if (name_mem == nullptr) {
+        return Symbol();
+    }
+
+    memcpy(name_mem, name.data(), name.length() + 1);
+    std::string_view nv(name_mem, name.length());
+
+    Symbol sym(next_symbol_, program_id_, nv);
     ++next_symbol_;
-
-    name_to_symbol_.Add(name, sym);
-    symbol_to_name_.Add(sym, name);
+    name_to_symbol_.Add(sym.NameView(), sym);
 
     return sym;
 }
 
-Symbol SymbolTable::Get(const std::string& name) const {
+Symbol SymbolTable::Get(std::string_view name) const {
     auto it = name_to_symbol_.Find(name);
     return it ? *it : Symbol();
 }
 
-std::string SymbolTable::NameFor(const Symbol symbol) const {
-    TINT_ASSERT_PROGRAM_IDS_EQUAL(Symbol, program_id_, symbol);
-    auto it = symbol_to_name_.Find(symbol);
-    if (!it) {
-        return symbol.to_str();
-    }
-
-    return *it;
-}
-
-Symbol SymbolTable::New(std::string prefix /* = "" */) {
-    if (prefix.empty()) {
+Symbol SymbolTable::New(std::string_view prefix_view /* = "" */) {
+    std::string prefix;
+    if (prefix_view.empty()) {
         prefix = "tint_symbol";
+    } else {
+        prefix = std::string(prefix_view);
     }
+
     auto it = name_to_symbol_.Find(prefix);
     if (!it) {
-        return Register(prefix);
+        return RegisterInternal(prefix);
     }
 
     size_t i = 0;
@@ -87,13 +82,13 @@ Symbol SymbolTable::New(std::string prefix /* = "" */) {
         name = prefix + "_" + std::to_string(i);
     } while (name_to_symbol_.Contains(name));
 
+    auto sym = RegisterInternal(name);
     if (last_prefix) {
         *last_prefix = i;
     } else {
         last_prefix_to_index_.Add(prefix, i);
     }
-
-    return Register(name);
+    return sym;
 }
 
 }  // namespace tint

@@ -24,12 +24,11 @@ namespace {
 
 using DiagnosticControlTest = TestHelper;
 
-TEST_F(DiagnosticControlTest, Assert_RuleNotTemplated) {
+TEST_F(DiagnosticControlTest, Assert_RuleNotNull) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b;
-            DiagnosticControl control(builtin::DiagnosticSeverity::kWarning,
-                                      b.Ident("name", "a", "b", "c"));
+            DiagnosticControl control(builtin::DiagnosticSeverity::kWarning, nullptr);
         },
         "internal compiler error");
 }

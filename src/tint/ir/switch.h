@@ -15,21 +15,44 @@
 #ifndef SRC_TINT_IR_SWITCH_H_
 #define SRC_TINT_IR_SWITCH_H_
 
-#include "src/tint/ir/block.h"
-#include "src/tint/ir/branch.h"
-#include "src/tint/ir/constant.h"
-#include "src/tint/ir/flow_node.h"
-#include "src/tint/ir/value.h"
+#include "src/tint/ir/control_instruction.h"
+
+// Forward declarations
+namespace tint::ir {
+class Constant;
+class MultiInBlock;
+}  // namespace tint::ir
 
 namespace tint::ir {
-
-/// Flow node representing a switch statement
-class Switch : public Castable<Switch, FlowNode> {
+/// Switch instruction.
+///
+/// ```
+///                           in
+///                            ┃
+///     ╌╌╌╌╌╌╌╌┲━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━┱╌╌╌╌╌╌╌╌
+///             ▼              ▼              ▼
+///        ┌────────┐     ┌────────┐     ┌────────┐
+///        │ Case A │     │ Case B │     │ Case C │
+///        └────────┘     └────────┘     └────────┘
+///  ExitSwitch ┃   ExitSwitch ┃   ExitSwitch ┃
+///             ┃              ▼              ┃
+///             ┃       ┌────────────┐        ┃
+///     ╌╌╌╌╌╌╌╌┺━━━━━━▶│ Merge      │◀━━━━━━━┹╌╌╌╌╌╌╌╌
+///                     │ (optional) │
+///                     └────────────┘
+///                            ┃
+///                            ▼
+///                           out
+/// ```
+class Switch : public utils::Castable<Switch, ControlInstruction> {
   public:
+    /// The offset in Operands() for the condition
+    static constexpr size_t kConditionOperandOffset = 0;
+
     /// A case selector
     struct CaseSelector {
         /// @returns true if this is a default selector
-        bool IsDefault() const { return val == nullptr; }
+        bool IsDefault() { return val == nullptr; }
 
         /// The selector value, or nullptr if this is the default selector
         Constant* val = nullptr;
@@ -40,21 +63,33 @@ class Switch : public Castable<Switch, FlowNode> {
         /// The case selector for this node
         utils::Vector<CaseSelector, 4> selectors;
         /// The start block for the case block.
-        Branch start = {};
+        ir::Block* start = nullptr;
+
+        /// @returns the case start target
+        ir::Block* Start() { return start; }
     };
 
     /// Constructor
-    Switch();
+    /// @param cond the condition
+    /// @param m the merge block
+    explicit Switch(Value* cond, ir::MultiInBlock* m);
     ~Switch() override;
 
-    /// The switch merge target
-    Branch merge = {};
+    /// @returns the switch merge branch
+    ir::MultiInBlock* Merge() { return merge_; }
 
-    /// The switch case statements
-    utils::Vector<Case, 4> cases;
+    /// @returns the switch cases
+    utils::Vector<Case, 4>& Cases() { return cases_; }
 
-    /// Value holding the condition result
-    const Value* condition = nullptr;
+    /// @returns the branch arguments
+    utils::Slice<Value* const> Args() override { return {}; }
+
+    /// @returns the condition
+    Value* Condition() { return operands_[kConditionOperandOffset]; }
+
+  private:
+    ir::MultiInBlock* merge_ = nullptr;
+    utils::Vector<Case, 4> cases_;
 };
 
 }  // namespace tint::ir

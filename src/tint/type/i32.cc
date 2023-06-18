@@ -21,7 +21,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::I32);
 namespace tint::type {
 
 I32::I32()
-    : Base(static_cast<size_t>(TypeInfo::Of<I32>().full_hashcode),
+    : Base(static_cast<size_t>(utils::TypeInfo::Of<I32>().full_hashcode),
            type::Flags{
                Flag::kConstructable,
                Flag::kCreationFixedFootprint,
@@ -30,11 +30,7 @@ I32::I32()
 
 I32::~I32() = default;
 
-bool I32::Equals(const UniqueNode& other) const {
-    return other.Is<I32>();
-}
-
-std::string I32::FriendlyName(const SymbolTable&) const {
+std::string I32::FriendlyName() const {
     return "i32";
 }
 

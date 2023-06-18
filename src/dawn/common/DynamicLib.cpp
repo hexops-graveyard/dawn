@@ -29,6 +29,8 @@
 #error "Unsupported platform for DynamicLib"
 #endif
 
+namespace dawn {
+
 DynamicLib::~DynamicLib() {
     Close();
 }
@@ -106,3 +108,5 @@ void* DynamicLib::GetProc(const std::string& procName, std::string* error) const
 
     return proc;
 }
+
+}  // namespace dawn

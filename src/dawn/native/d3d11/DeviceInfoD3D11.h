@@ -21,7 +21,7 @@
 
 namespace dawn::native::d3d11 {
 
-class Adapter;
+class PhysicalDevice;
 
 struct DeviceInfo {
     bool isUMA;
@@ -30,9 +30,10 @@ struct DeviceInfo {
     // indicates that current driver supports the maximum shader model is shader model 6.2.
     uint32_t shaderModel;
     PerStage<std::wstring> shaderProfiles;
+    bool supportsSharedResourceCapabilityTier2;
 };
 
-ResultOrError<DeviceInfo> GatherDeviceInfo(const Adapter& adapter);
+ResultOrError<DeviceInfo> GatherDeviceInfo(const ComPtr<ID3D11Device>& device);
 }  // namespace dawn::native::d3d11
 
 #endif  // SRC_DAWN_NATIVE_D3D11_DEVICEINFOD3D11_H_

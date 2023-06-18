@@ -20,7 +20,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
+
 wgpu::Texture Create2DTexture(
     wgpu::Device device,
     uint32_t width,
@@ -70,8 +72,6 @@ wgpu::ExternalTexture CreateExternalTexture(wgpu::Device device, uint32_t width,
     return device.CreateExternalTexture(&externalDesc);
 }
 
-}  // namespace
-
 class CopyTextureForBrowserTest : public ValidationTest {
   protected:
     void TestCopyTextureForBrowser(utils::Expectation expectation,
@@ -101,8 +101,8 @@ class CopyTextureForBrowserTest : public ValidationTest {
 
 class CopyTextureForBrowserInternalUsageTest : public CopyTextureForBrowserTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName feature = wgpu::FeatureName::DawnInternalUsages;
         descriptor.requiredFeatures = &feature;
         descriptor.requiredFeaturesCount = 1;
@@ -142,8 +142,8 @@ class CopyExternalTextureForBrowserTest : public ValidationTest {
 
 class CopyExternalTextureForBrowserInternalUsageTest : public CopyExternalTextureForBrowserTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName feature = wgpu::FeatureName::DawnInternalUsages;
         descriptor.requiredFeatures = &feature;
         descriptor.requiredFeaturesCount = 1;
@@ -954,3 +954,6 @@ TEST_F(CopyExternalTextureForBrowserInternalUsageTest, InternalUsage) {
                                       destination, 0, {0, 0, 0}, {16, 16, 1},
                                       wgpu::TextureAspect::All, options);
 }
+
+}  // anonymous namespace
+}  // namespace dawn

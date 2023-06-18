@@ -446,10 +446,9 @@ class ParserImpl : Reader {
 
     /// Creates an AST 'let' node for a SPIR-V ID, including any attached decorations,.
     /// @param id the SPIR-V result ID
-    /// @param type the type of the variable
     /// @param initializer the variable initializer
     /// @returns the AST 'let' node
-    const ast::Let* MakeLet(uint32_t id, const Type* type, const ast::Expression* initializer);
+    const ast::Let* MakeLet(uint32_t id, const ast::Expression* initializer);
 
     /// Creates an AST 'override' node for a SPIR-V ID, including any attached decorations.
     /// @param id the SPIR-V result ID
@@ -586,7 +585,7 @@ class ParserImpl : Reader {
         uint32_t position_member_index = 0;
         /// The member index for the PointSize builtin within the struct.
         uint32_t pointsize_member_index = 0;
-        /// The ID for the member type, which should map to vec4<f32>.
+        /// The ID for the member type, which should map to vec4f.
         uint32_t position_member_type_id = 0;
         /// The ID of the type of a pointer to the struct in the Output storage
         /// class class.
@@ -863,7 +862,7 @@ class ParserImpl : Reader {
     // Bookkeeping for the gl_Position builtin.
     // In Vulkan SPIR-V, it's the 0 member of the gl_PerVertex structure.
     // But in WGSL we make a module-scope variable:
-    //    [[position]] var<in> gl_Position : vec4<f32>;
+    //    [[position]] var<in> gl_Position : vec4f;
     // The builtin variable was detected if and only if the struct_id is non-zero.
     BuiltInPositionInfo builtin_position_;
 
@@ -879,6 +878,9 @@ class ParserImpl : Reader {
 
     // The ast::Struct type names with only read-only members.
     std::unordered_set<Symbol> read_only_struct_types_;
+
+    // Maps from OpConstantComposite IDs to identifiers of module-scope const declarations.
+    std::unordered_map<uint32_t, Symbol> declared_constant_composites_;
 
     // The IDs of scalar spec constants
     std::unordered_set<uint32_t> scalar_spec_constants_;

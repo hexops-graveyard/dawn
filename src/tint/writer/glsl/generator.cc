@@ -14,8 +14,8 @@
 
 #include "src/tint/writer/glsl/generator.h"
 
-#include "src/tint/transform/binding_remapper.h"
-#include "src/tint/transform/combine_samplers.h"
+#include "src/tint/ast/transform/binding_remapper.h"
+#include "src/tint/ast/transform/combine_samplers.h"
 #include "src/tint/writer/glsl/generator_impl.h"
 
 namespace tint::writer::glsl {
@@ -45,14 +45,15 @@ Result Generate(const Program* program, const Options& options, const std::strin
 
     // Generate the GLSL code.
     auto impl = std::make_unique<GeneratorImpl>(&sanitized_result.program, options.version);
-    result.success = impl->Generate();
-    result.error = impl->error();
+    impl->Generate();
+    result.success = impl->Diagnostics().empty();
+    result.error = impl->Diagnostics().str();
     result.glsl = impl->result();
 
     // Collect the list of entry points in the sanitized program.
     for (auto* func : sanitized_result.program.AST().Functions()) {
         if (func->IsEntryPoint()) {
-            auto name = sanitized_result.program.Symbols().NameFor(func->name->symbol);
+            auto name = func->name->symbol.Name();
             result.entry_points.push_back({name, func->PipelineStage()});
         }
     }

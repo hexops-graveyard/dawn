@@ -21,9 +21,12 @@
 #include "dawn/utils/SystemUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class DeviceInitializationTest : public testing::Test {
   protected:
-    void SetUp() override { dawnProcSetProcs(&dawn::native::GetProcs()); }
+    void SetUp() override { dawnProcSetProcs(&native::GetProcs()); }
 
     void TearDown() override { dawnProcSetProcs(nullptr); }
 
@@ -73,16 +76,17 @@ TEST_F(DeviceInitializationTest, DeviceOutlivesInstance) {
     // We want to create a device on a fresh instance and adapter each time.
     std::vector<wgpu::AdapterProperties> availableAdapterProperties;
     {
-        auto instance = std::make_unique<dawn::native::Instance>();
+        auto instance = std::make_unique<native::Instance>();
         instance->EnableAdapterBlocklist(false);
-        instance->DiscoverDefaultAdapters();
-        for (const dawn::native::Adapter& adapter : instance->GetAdapters()) {
+        instance->DiscoverDefaultPhysicalDevices();
+        for (const native::Adapter& adapter : instance->GetAdapters()) {
             wgpu::AdapterProperties properties;
             adapter.GetProperties(&properties);
 
             if (properties.backendType == wgpu::BackendType::Null) {
                 continue;
             }
+
             availableAdapterProperties.push_back(properties);
         }
     }
@@ -90,10 +94,10 @@ TEST_F(DeviceInitializationTest, DeviceOutlivesInstance) {
     for (const wgpu::AdapterProperties& desiredProperties : availableAdapterProperties) {
         wgpu::Device device;
 
-        auto instance = std::make_unique<dawn::native::Instance>();
+        auto instance = std::make_unique<native::Instance>();
         instance->EnableAdapterBlocklist(false);
-        instance->DiscoverDefaultAdapters();
-        for (dawn::native::Adapter& adapter : instance->GetAdapters()) {
+        instance->DiscoverDefaultPhysicalDevices();
+        for (native::Adapter& adapter : instance->GetAdapters()) {
             wgpu::AdapterProperties properties;
             adapter.GetProperties(&properties);
 
@@ -121,14 +125,18 @@ TEST_F(DeviceInitializationTest, AdapterOutlivesInstance) {
     // We want to create a device on a fresh instance and adapter each time.
     std::vector<wgpu::AdapterProperties> availableAdapterProperties;
     {
-        auto instance = std::make_unique<dawn::native::Instance>();
+        auto instance = std::make_unique<native::Instance>();
         instance->EnableAdapterBlocklist(false);
-        instance->DiscoverDefaultAdapters();
-        for (const dawn::native::Adapter& adapter : instance->GetAdapters()) {
+        instance->DiscoverDefaultPhysicalDevices();
+        for (const native::Adapter& adapter : instance->GetAdapters()) {
             wgpu::AdapterProperties properties;
             adapter.GetProperties(&properties);
 
             if (properties.backendType == wgpu::BackendType::Null) {
+                continue;
+            }
+            // TODO(dawn:1705): Remove this once D3D11 backend is fully implemented.
+            if (properties.backendType == wgpu::BackendType::D3D11) {
                 continue;
             }
             availableAdapterProperties.push_back(properties);
@@ -138,14 +146,14 @@ TEST_F(DeviceInitializationTest, AdapterOutlivesInstance) {
     for (const wgpu::AdapterProperties& desiredProperties : availableAdapterProperties) {
         wgpu::Adapter adapter;
 
-        auto instance = std::make_unique<dawn::native::Instance>();
+        auto instance = std::make_unique<native::Instance>();
         instance->EnableAdapterBlocklist(false);
         // Save a pointer to the instance.
         // It will only be valid as long as the instance is alive.
         WGPUInstance unsafeInstancePtr = instance->Get();
 
-        instance->DiscoverDefaultAdapters();
-        for (dawn::native::Adapter& nativeAdapter : instance->GetAdapters()) {
+        instance->DiscoverDefaultPhysicalDevices();
+        for (native::Adapter& nativeAdapter : instance->GetAdapters()) {
             wgpu::AdapterProperties properties;
             nativeAdapter.GetProperties(&properties);
 
@@ -159,9 +167,9 @@ TEST_F(DeviceInitializationTest, AdapterOutlivesInstance) {
                 // holding onto the instance. The instance should have cleared all internal
                 // references to adapters when the last external ref is dropped.
                 adapter = wgpu::Adapter(nativeAdapter.Get());
-                EXPECT_GT(dawn::native::GetAdapterCountForTesting(unsafeInstancePtr), 0u);
+                EXPECT_GT(native::GetAdapterCountForTesting(unsafeInstancePtr), 0u);
                 instance.reset();
-                EXPECT_EQ(dawn::native::GetAdapterCountForTesting(unsafeInstancePtr), 0u);
+                EXPECT_EQ(native::GetAdapterCountForTesting(unsafeInstancePtr), 0u);
                 break;
             }
         }
@@ -171,3 +179,6 @@ TEST_F(DeviceInitializationTest, AdapterOutlivesInstance) {
         }
     }
 }
+
+}  // anonymous namespace
+}  // namespace dawn

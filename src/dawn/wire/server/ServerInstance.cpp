@@ -20,31 +20,22 @@
 
 namespace dawn::wire::server {
 
-bool Server::DoInstanceRequestAdapter(ObjectId instanceId,
-                                      uint64_t requestSerial,
-                                      ObjectHandle adapterHandle,
-                                      const WGPURequestAdapterOptions* options) {
-    auto* instance = InstanceObjects().Get(instanceId);
-    if (instance == nullptr) {
-        return false;
-    }
-
-    auto* resultData = AdapterObjects().Allocate(adapterHandle, AllocationState::Reserved);
-    if (resultData == nullptr) {
-        return false;
-    }
-
-    resultData->generation = adapterHandle.generation;
+WireResult Server::DoInstanceRequestAdapter(Known<WGPUInstance> instance,
+                                            uint64_t requestSerial,
+                                            ObjectHandle adapterHandle,
+                                            const WGPURequestAdapterOptions* options) {
+    Known<WGPUAdapter> adapter;
+    WIRE_TRY(AdapterObjects().Allocate(&adapter, adapterHandle, AllocationState::Reserved));
 
     auto userdata = MakeUserdata<RequestAdapterUserdata>();
-    userdata->instance = ObjectHandle{instanceId, instance->generation};
+    userdata->instance = instance.AsHandle();
     userdata->requestSerial = requestSerial;
-    userdata->adapterObjectId = adapterHandle.id;
+    userdata->adapterObjectId = adapter.id;
 
     mProcs.instanceRequestAdapter(instance->handle, options,
                                   ForwardToServer<&Server::OnRequestAdapterCallback>,
                                   userdata.release());
-    return true;
+    return WireResult::Success;
 }
 
 void Server::OnRequestAdapterCallback(RequestAdapterUserdata* data,
@@ -70,8 +61,7 @@ void Server::OnRequestAdapterCallback(RequestAdapterUserdata* data,
     std::vector<WGPUFeatureName> features;
 
     // Assign the handle and allocated status if the adapter is created successfully.
-    auto* adapterObject = AdapterObjects().FillReservation(data->adapterObjectId, adapter);
-    ASSERT(adapterObject != nullptr);
+    AdapterObjects().FillReservation(data->adapterObjectId, adapter);
 
     size_t featuresCount = mProcs.adapterEnumerateFeatures(adapter, nullptr);
     features.resize(featuresCount);

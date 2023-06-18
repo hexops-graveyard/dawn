@@ -19,7 +19,6 @@
 #include "dawn/samples/SampleUtils.h"
 
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
-#include "dawn/utils/ScopedAutoreleasePool.h"
 #include "dawn/utils/SystemUtils.h"
 #include "dawn/utils/Timer.h"
 #include "dawn/utils/WGPUHelpers.h"
@@ -57,7 +56,7 @@ void init() {
     queue = device.GetQueue();
     swapchain = GetSwapChain();
 
-    wgpu::ShaderModule vsModule = utils::CreateShaderModule(device, R"(
+    wgpu::ShaderModule vsModule = dawn::utils::CreateShaderModule(device, R"(
         struct Constants {
             scale : f32,
             time : f32,
@@ -112,16 +111,16 @@ void init() {
             return output;
         })");
 
-    wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, R"(
+    wgpu::ShaderModule fsModule = dawn::utils::CreateShaderModule(device, R"(
         @fragment fn main(@location(0) v_color : vec4f) -> @location(0) vec4f {
             return v_color;
         })");
 
-    wgpu::BindGroupLayout bgl = utils::MakeBindGroupLayout(
+    wgpu::BindGroupLayout bgl = dawn::utils::MakeBindGroupLayout(
         device, {{0, wgpu::ShaderStage::Vertex, wgpu::BufferBindingType::Uniform, true}});
 
-    utils::ComboRenderPipelineDescriptor descriptor;
-    descriptor.layout = utils::MakeBasicPipelineLayout(device, &bgl);
+    dawn::utils::ComboRenderPipelineDescriptor descriptor;
+    descriptor.layout = dawn::utils::MakeBasicPipelineLayout(device, &bgl);
     descriptor.vertex.module = vsModule;
     descriptor.cFragment.module = fsModule;
     descriptor.cTargets[0].format = GetPreferredSwapChainTextureFormat();
@@ -143,7 +142,7 @@ void init() {
     bufferDesc.usage = wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::Uniform;
     ubo = device.CreateBuffer(&bufferDesc);
 
-    bindGroup = utils::MakeBindGroup(device, bgl, {{0, ubo, 0, sizeof(ShaderData)}});
+    bindGroup = dawn::utils::MakeBindGroup(device, bgl, {{0, ubo, 0, sizeof(ShaderData)}});
 }
 
 int frameCount = 0;
@@ -155,7 +154,7 @@ void frame() {
     }
     queue.WriteBuffer(ubo, 0, shaderData.data(), kNumTriangles * sizeof(ShaderData));
 
-    utils::ComboRenderPassDescriptor renderPass({backbufferView});
+    dawn::utils::ComboRenderPassDescriptor renderPass({backbufferView});
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
     {
         wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPass);
@@ -182,14 +181,15 @@ int main(int argc, const char* argv[]) {
     }
     init();
 
-    utils::Timer* timer = utils::CreateTimer();
+    dawn::utils::Timer* timer = dawn::utils::CreateTimer();
     timer->Start();
     while (!ShouldQuit()) {
-        utils::ScopedAutoreleasePool pool;
+        ProcessEvents();
         frameCount++;
         frame();
         if (frameCount % 60 == 0) {
-            printf("FPS: %lf\n", static_cast<double>(frameCount) / timer->GetElapsedTime());
+            printf("FPS: %lf\n", 60.0 / timer->GetElapsedTime());
+            timer->Start();
         }
     }
 }

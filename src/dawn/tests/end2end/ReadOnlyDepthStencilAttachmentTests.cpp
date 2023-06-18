@@ -19,12 +19,13 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 constexpr static uint32_t kSize = 4;
 
-namespace {
 using TextureFormat = wgpu::TextureFormat;
 DAWN_TEST_PARAM_STRUCT(ReadOnlyDepthStencilAttachmentTestsParams, TextureFormat);
-}  // namespace
 
 class ReadOnlyDepthStencilAttachmentTests
     : public DawnTestWithParams<ReadOnlyDepthStencilAttachmentTestsParams> {
@@ -296,6 +297,9 @@ class ReadOnlyStencilAttachmentTests : public ReadOnlyDepthStencilAttachmentTest
 };
 
 TEST_P(ReadOnlyStencilAttachmentTests, SampleFromAttachment) {
+    // TODO(dawn:1827): sampling from stencil attachment fails on D3D11.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11());
+
     wgpu::Texture colorTexture =
         CreateTexture(wgpu::TextureFormat::RGBA8Unorm,
                       wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc);
@@ -355,3 +359,6 @@ DAWN_INSTANTIATE_TEST_P(ReadOnlyStencilAttachmentTests,
                          VulkanBackend()},
                         std::vector<wgpu::TextureFormat>(utils::kStencilFormats.begin(),
                                                          utils::kStencilFormats.end()));
+
+}  // anonymous namespace
+}  // namespace dawn

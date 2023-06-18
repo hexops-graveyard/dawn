@@ -88,11 +88,14 @@ interop::Promise<void> GPUBuffer::mapAsync(Napi::Env env,
                     c->promise.Resolve();
                     c->state = State::Mapped;
                     break;
-                case WGPUBufferMapAsyncStatus_Error:
+                case WGPUBufferMapAsyncStatus_ValidationError:
                     c->promise.Reject(Errors::OperationError(c->env));
                     break;
                 case WGPUBufferMapAsyncStatus_UnmappedBeforeCallback:
                 case WGPUBufferMapAsyncStatus_DestroyedBeforeCallback:
+                case WGPUBufferMapAsyncStatus_MappingAlreadyPending:
+                case WGPUBufferMapAsyncStatus_OffsetOutOfRange:
+                case WGPUBufferMapAsyncStatus_SizeOutOfRange:
                     c->promise.Reject(Errors::AbortError(c->env));
                     break;
                 case WGPUBufferMapAsyncStatus_Unknown:
@@ -162,22 +165,31 @@ void GPUBuffer::destroy(Napi::Env) {
     state_ = State::Destroyed;
 }
 
-interop::GPUSize64 GPUBuffer::getSize(Napi::Env) {
+interop::GPUSize64Out GPUBuffer::getSize(Napi::Env) {
     return buffer_.GetSize();
 }
 
-interop::GPUBufferMapState GPUBuffer::getMapState(Napi::Env) {
-    UNIMPLEMENTED();
+interop::GPUBufferMapState GPUBuffer::getMapState(Napi::Env env) {
+    interop::GPUBufferMapState result;
+
+    Converter conv(env);
+    if (!conv(result, buffer_.GetMapState())) {
+        Napi::Error::New(env, "Couldn't convert usage to a JavaScript value.")
+            .ThrowAsJavaScriptException();
+        return interop::GPUBufferMapState::kUnmapped;
+    }
+
+    return result;
 }
 
-interop::GPUBufferUsageFlags GPUBuffer::getUsage(Napi::Env env) {
+interop::GPUFlagsConstant GPUBuffer::getUsage(Napi::Env env) {
     interop::GPUBufferUsageFlags result;
 
     Converter conv(env);
     if (!conv(result, buffer_.GetUsage())) {
         Napi::Error::New(env, "Couldn't convert usage to a JavaScript value.")
             .ThrowAsJavaScriptException();
-        return {0u};  // Doesn't get used.
+        return 0u;  // Doesn't get used.
     }
 
     return result;

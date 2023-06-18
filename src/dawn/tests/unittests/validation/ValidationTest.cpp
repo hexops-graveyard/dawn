@@ -18,6 +18,7 @@
 #include "dawn/common/Assert.h"
 #include "dawn/common/SystemUtils.h"
 #include "dawn/dawn_proc.h"
+#include "dawn/native/Adapter.h"
 #include "dawn/native/NullBackend.h"
 #include "dawn/tests/ToggleParser.h"
 #include "dawn/tests/unittests/validation/ValidationTest.h"
@@ -94,14 +95,16 @@ ValidationTest::ValidationTest() {
 
         std::vector<dawn::native::Adapter> adapters = gCurrentTest->mDawnInstance->GetAdapters();
         // Validation tests run against the null backend, find the corresponding adapter
-        for (auto& adapter : adapters) {
+        for (auto& candidate : adapters) {
             wgpu::AdapterProperties adapterProperties;
-            adapter.GetProperties(&adapterProperties);
+            candidate.GetProperties(&adapterProperties);
 
-            if (adapterProperties.backendType == wgpu::BackendType::Null) {
-                gCurrentTest->mBackendAdapter = adapter;
-                WGPUAdapter cAdapter = adapter.Get();
+            if (adapterProperties.backendType == wgpu::BackendType::Null &&
+                adapterProperties.compatibilityMode == gCurrentTest->UseCompatibilityMode()) {
+                gCurrentTest->mBackendAdapter = candidate;
+                WGPUAdapter cAdapter = candidate.Get();
                 ASSERT(cAdapter);
+
                 dawn::native::GetProcs().adapterReference(cAdapter);
                 callback(WGPURequestAdapterStatus_Success, cAdapter, nullptr, userdata);
                 return;
@@ -110,36 +113,38 @@ ValidationTest::ValidationTest() {
         UNREACHABLE();
     };
 
-    procs.adapterRequestDevice = [](WGPUAdapter adapter, const WGPUDeviceDescriptor*,
+    procs.adapterRequestDevice = [](WGPUAdapter self, const WGPUDeviceDescriptor* descriptor,
                                     WGPURequestDeviceCallback callback, void* userdata) {
         ASSERT(gCurrentTest);
+        wgpu::DeviceDescriptor deviceDesc =
+            *(reinterpret_cast<const wgpu::DeviceDescriptor*>(descriptor));
         WGPUDevice cDevice = gCurrentTest->CreateTestDevice(
-            dawn::native::Adapter(reinterpret_cast<dawn::native::AdapterBase*>(adapter)));
+            dawn::native::Adapter(reinterpret_cast<dawn::native::AdapterBase*>(self)), deviceDesc);
         ASSERT(cDevice != nullptr);
         gCurrentTest->mLastCreatedBackendDevice = cDevice;
         callback(WGPURequestDeviceStatus_Success, cDevice, nullptr, userdata);
     };
 
-    mWireHelper = utils::CreateWireHelper(procs, gUseWire, gWireTraceDir.c_str());
+    mWireHelper = dawn::utils::CreateWireHelper(procs, gUseWire, gWireTraceDir.c_str());
 }
 
 void ValidationTest::SetUp() {
-    // Create an instance with toggle DisallowUnsafeApis disabled, which would be inherited to
+    // Create an instance with toggle AllowUnsafeAPIs enabled, which would be inherited to
     // adapter and device toggles and allow us to test unsafe apis (including experimental
-    // features). To test device of DisallowUnsafeApis enabled, require it in device toggles
+    // features). To test device with AllowUnsafeAPIs disabled, require it in device toggles
     // descriptor to override the inheritance.
-    const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
+    const char* allowUnsafeApisToggle = "allow_unsafe_apis";
     WGPUDawnTogglesDescriptor instanceToggles = {};
     instanceToggles.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
-    instanceToggles.disabledTogglesCount = 1;
-    instanceToggles.disabledToggles = &disallowUnsafeApisToggle;
+    instanceToggles.enabledTogglesCount = 1;
+    instanceToggles.enabledToggles = &allowUnsafeApisToggle;
 
     WGPUInstanceDescriptor instanceDesc = {};
     instanceDesc.nextInChain = &instanceToggles.chain;
 
     mDawnInstance = std::make_unique<dawn::native::Instance>(&instanceDesc);
 
-    mDawnInstance->DiscoverDefaultAdapters();
+    mDawnInstance->DiscoverDefaultPhysicalDevices();
     mInstance = mWireHelper->RegisterInstance(mDawnInstance->Get());
 
     std::string traceName =
@@ -149,9 +154,8 @@ void ValidationTest::SetUp() {
 
     // RequestAdapter is overriden to ignore RequestAdapterOptions and always select the null
     // adapter.
-    wgpu::RequestAdapterOptions options = {};
     mInstance.RequestAdapter(
-        &options,
+        nullptr,
         [](WGPURequestAdapterStatus, WGPUAdapter cAdapter, const char*, void* userdata) {
             *static_cast<wgpu::Adapter*>(userdata) = wgpu::Adapter::Acquire(cAdapter);
         },
@@ -159,11 +163,14 @@ void ValidationTest::SetUp() {
     FlushWire();
     ASSERT(adapter);
 
-    device = RequestDeviceSync(wgpu::DeviceDescriptor{});
+    wgpu::DeviceDescriptor deviceDescriptor = {};
+    deviceDescriptor.deviceLostCallback = ValidationTest::OnDeviceLost;
+    deviceDescriptor.deviceLostUserdata = this;
+
+    device = RequestDeviceSync(deviceDescriptor);
     backendDevice = mLastCreatedBackendDevice;
 
     device.SetUncapturedErrorCallback(ValidationTest::OnDeviceError, this);
-    device.SetDeviceLostCallback(ValidationTest::OnDeviceLost, this);
 }
 
 ValidationTest::~ValidationTest() {
@@ -225,21 +232,21 @@ void ValidationTest::FlushWire() {
     EXPECT_TRUE(mWireHelper->FlushServer());
 }
 
-void ValidationTest::WaitForAllOperations(const wgpu::Device& device) {
+void ValidationTest::WaitForAllOperations(const wgpu::Device& waitDevice) {
     bool done = false;
-    device.GetQueue().OnSubmittedWorkDone(
+    waitDevice.GetQueue().OnSubmittedWorkDone(
         0u, [](WGPUQueueWorkDoneStatus, void* userdata) { *static_cast<bool*>(userdata) = true; },
         &done);
 
     // Force the currently submitted operations to completed.
     while (!done) {
-        device.Tick();
+        waitDevice.Tick();
         FlushWire();
     }
 
     // TODO(cwallez@chromium.org): It's not clear why we need this additional tick. Investigate it
     // once WebGPU has defined the ordering of callbacks firing.
-    device.Tick();
+    waitDevice.Tick();
     FlushWire();
 }
 
@@ -280,7 +287,8 @@ dawn::native::Adapter& ValidationTest::GetBackendAdapter() {
     return mBackendAdapter;
 }
 
-WGPUDevice ValidationTest::CreateTestDevice(dawn::native::Adapter dawnAdapter) {
+WGPUDevice ValidationTest::CreateTestDevice(dawn::native::Adapter dawnAdapter,
+                                            wgpu::DeviceDescriptor deviceDescriptor) {
     std::vector<const char*> enabledToggles;
     std::vector<const char*> disabledToggles;
 
@@ -292,7 +300,6 @@ WGPUDevice ValidationTest::CreateTestDevice(dawn::native::Adapter dawnAdapter) {
         disabledToggles.push_back(toggle.c_str());
     }
 
-    wgpu::DeviceDescriptor deviceDescriptor;
     wgpu::DawnTogglesDescriptor deviceTogglesDesc;
     deviceDescriptor.nextInChain = &deviceTogglesDesc;
 
@@ -302,6 +309,10 @@ WGPUDevice ValidationTest::CreateTestDevice(dawn::native::Adapter dawnAdapter) {
     deviceTogglesDesc.disabledTogglesCount = disabledToggles.size();
 
     return dawnAdapter.CreateDevice(&deviceDescriptor);
+}
+
+bool ValidationTest::UseCompatibilityMode() const {
+    return false;
 }
 
 // static

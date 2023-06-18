@@ -1,6 +1,9 @@
 {
   "Test": {
-    "Prefix": "ninja://chrome/test:telemetry_gpu_integration_test/gpu_tests.webgpu_cts_integration_test.WebGpuCtsIntegrationTest.",
+    "Prefixes": [
+      "ninja://chrome/test:telemetry_gpu_integration_test/gpu_tests.webgpu_cts_integration_test.WebGpuCtsIntegrationTest.",
+      "ninja://chrome/test:telemetry_gpu_integration_test_android_chrome/gpu_tests.webgpu_cts_integration_test.WebGpuCtsIntegrationTest."
+    ],
     "SlowThreshold": 45000000000 // 45 seconds
   },
   "Gerrit": {
@@ -18,6 +21,16 @@
     }
   },
   "Builders": {
+    "Android-Arm": {
+      "Project": "chromium",
+      "Bucket": "try",
+      "Builder": "android-dawn-arm-rel"
+    },
+    "Android-Arm64": {
+      "Project": "chromium",
+      "Bucket": "try",
+      "Builder": "android-dawn-arm64-rel"
+    },
     "Win": {
       "Project": "chromium",
       "Bucket": "try",
@@ -33,11 +46,10 @@
       "Bucket": "try",
       "Builder": "mac-dawn-rel"
     },
-    // crbug.com/1382149 Remove MacExp when mac-dawn-rel migrates to new config
-    "MacExp": {
+    "Mac-Arm64": {
       "Project": "chromium",
       "Bucket": "try",
-      "Builder": "dawn-try-mac-amd-exp"
+      "Builder": "dawn-try-mac-arm64-rel"
     },
     "Linux": {
       "Project": "chromium",

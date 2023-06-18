@@ -128,15 +128,18 @@ Ref<ComputePassEncoder> ComputePassEncoder::Create(DeviceBase* device,
 ComputePassEncoder::ComputePassEncoder(DeviceBase* device,
                                        CommandEncoder* commandEncoder,
                                        EncodingContext* encodingContext,
-                                       ErrorTag errorTag)
-    : ProgrammableEncoder(device, encodingContext, errorTag), mCommandEncoder(commandEncoder) {}
+                                       ErrorTag errorTag,
+                                       const char* label)
+    : ProgrammableEncoder(device, encodingContext, errorTag, label),
+      mCommandEncoder(commandEncoder) {}
 
 // static
 Ref<ComputePassEncoder> ComputePassEncoder::MakeError(DeviceBase* device,
                                                       CommandEncoder* commandEncoder,
-                                                      EncodingContext* encodingContext) {
+                                                      EncodingContext* encodingContext,
+                                                      const char* label) {
     return AcquireRef(
-        new ComputePassEncoder(device, commandEncoder, encodingContext, ObjectBase::kError));
+        new ComputePassEncoder(device, commandEncoder, encodingContext, ObjectBase::kError, label));
 }
 
 void ComputePassEncoder::DestroyImpl() {
@@ -173,24 +176,6 @@ void ComputePassEncoder::APIEnd() {
     }
 }
 
-void ComputePassEncoder::APIEndPass() {
-    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
-            GetDevice(), "endPass() has been deprecated. Use end() instead."))) {
-        return;
-    }
-    APIEnd();
-}
-
-void ComputePassEncoder::APIDispatch(uint32_t workgroupCountX,
-                                     uint32_t workgroupCountY,
-                                     uint32_t workgroupCountZ) {
-    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
-            GetDevice(), "dispatch() has been deprecated. Use dispatchWorkgroups() instead."))) {
-        return;
-    }
-    APIDispatchWorkgroups(workgroupCountX, workgroupCountY, workgroupCountZ);
-}
-
 void ComputePassEncoder::APIDispatchWorkgroups(uint32_t workgroupCountX,
                                                uint32_t workgroupCountY,
                                                uint32_t workgroupCountZ) {
@@ -198,6 +183,12 @@ void ComputePassEncoder::APIDispatchWorkgroups(uint32_t workgroupCountX,
         this,
         [&](CommandAllocator* allocator) -> MaybeError {
             if (IsValidationEnabled()) {
+                if (workgroupCountX == 0 || workgroupCountY == 0 || workgroupCountZ == 0) {
+                    GetDevice()->EmitWarningOnce(absl::StrFormat(
+                        "Calling %s.DispatchWorkgroups with a workgroup count of 0 is unusual.",
+                        this));
+                }
+
                 DAWN_TRY(mCommandBufferState.ValidateCanDispatch());
 
                 uint32_t workgroupsPerDimension =
@@ -217,6 +208,10 @@ void ComputePassEncoder::APIDispatchWorkgroups(uint32_t workgroupCountX,
                                 "Dispatch workgroup count Z (%u) exceeds max compute "
                                 "workgroups per dimension (%u).",
                                 workgroupCountZ, workgroupsPerDimension);
+
+                if (GetDevice()->IsCompatibilityMode()) {
+                    DAWN_TRY(mCommandBufferState.ValidateNoDifferentTextureViewsOnSameTexture());
+                }
             }
 
             // Record the synchronization scope for Dispatch, which is just the current
@@ -328,15 +323,6 @@ ComputePassEncoder::TransformIndirectDispatchBuffer(Ref<BufferBase> indirectBuff
     return std::make_pair(std::move(validatedIndirectBuffer), uint64_t(0));
 }
 
-void ComputePassEncoder::APIDispatchIndirect(BufferBase* indirectBuffer, uint64_t indirectOffset) {
-    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
-            GetDevice(),
-            "dispatchIndirect() has been deprecated. Use dispatchWorkgroupsIndirect() instead."))) {
-        return;
-    }
-    APIDispatchWorkgroupsIndirect(indirectBuffer, indirectOffset);
-}
-
 void ComputePassEncoder::APIDispatchWorkgroupsIndirect(BufferBase* indirectBuffer,
                                                        uint64_t indirectOffset) {
     mEncodingContext->TryEncode(
@@ -356,6 +342,10 @@ void ComputePassEncoder::APIDispatchWorkgroupsIndirect(BufferBase* indirectBuffe
                     "Indirect offset (%u) and dispatch size (%u) exceeds the indirect buffer "
                     "size (%u).",
                     indirectOffset, kDispatchIndirectSize, indirectBuffer->GetSize());
+
+                if (GetDevice()->IsCompatibilityMode()) {
+                    DAWN_TRY(mCommandBufferState.ValidateNoDifferentTextureViewsOnSameTexture());
+                }
             }
 
             SyncScopeUsageTracker scope;
@@ -437,9 +427,15 @@ void ComputePassEncoder::APISetBindGroup(uint32_t groupIndexIn,
                     ValidateSetBindGroup(groupIndex, group, dynamicOffsetCount, dynamicOffsets));
             }
 
-            mUsageTracker.AddResourcesReferencedByBindGroup(group);
-            RecordSetBindGroup(allocator, groupIndex, group, dynamicOffsetCount, dynamicOffsets);
-            mCommandBufferState.SetBindGroup(groupIndex, group, dynamicOffsetCount, dynamicOffsets);
+            if (group == nullptr) {
+                mCommandBufferState.UnsetBindGroup(groupIndex);
+            } else {
+                mUsageTracker.AddResourcesReferencedByBindGroup(group);
+                RecordSetBindGroup(allocator, groupIndex, group, dynamicOffsetCount,
+                                   dynamicOffsets);
+                mCommandBufferState.SetBindGroup(groupIndex, group, dynamicOffsetCount,
+                                                 dynamicOffsets);
+            }
 
             return {};
         },

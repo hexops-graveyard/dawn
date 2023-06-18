@@ -57,7 +57,7 @@ using FindFirstParentReturnType = typename FindFirstParentReturn<TYPES...>::type
 }  // namespace detail
 
 /// Statement holds the semantic information for a statement.
-class Statement : public Castable<Statement, Node> {
+class Statement : public utils::Castable<Statement, Node> {
   public:
     /// Constructor
     /// @param declaration the AST node for this statement
@@ -88,7 +88,7 @@ class Statement : public Castable<Statement, Node> {
     /// pointer to that template argument type, otherwise a CompoundStatement
     /// pointer is returned.
     template <typename... TYPES>
-    const detail::FindFirstParentReturnType<TYPES...>* FindFirstParent() const;
+    const sem::detail::FindFirstParentReturnType<TYPES...>* FindFirstParent() const;
 
     /// @return the closest enclosing block for this statement
     const BlockStatement* Block() const;
@@ -133,7 +133,7 @@ class Statement : public Castable<Statement, Node> {
 
 /// CompoundStatement is the base class of statements that can hold other
 /// statements.
-class CompoundStatement : public Castable<Statement, Statement> {
+class CompoundStatement : public utils::Castable<CompoundStatement, Statement> {
   public:
     /// Constructor
     /// @param declaration the AST node for this statement
@@ -181,8 +181,8 @@ const CompoundStatement* Statement::FindFirstParent(Pred&& pred) const {
 }
 
 template <typename... TYPES>
-const detail::FindFirstParentReturnType<TYPES...>* Statement::FindFirstParent() const {
-    using ReturnType = detail::FindFirstParentReturnType<TYPES...>;
+const sem::detail::FindFirstParentReturnType<TYPES...>* Statement::FindFirstParent() const {
+    using ReturnType = sem::detail::FindFirstParentReturnType<TYPES...>;
     if (sizeof...(TYPES) == 1) {
         if (auto* p = As<ReturnType>()) {
             return p;

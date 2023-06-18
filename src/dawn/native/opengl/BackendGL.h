@@ -26,14 +26,12 @@ class Backend : public BackendConnection {
   public:
     Backend(InstanceBase* instance, wgpu::BackendType backendType);
 
-    std::vector<Ref<AdapterBase>> DiscoverDefaultAdapters(
-        const TogglesState& adapterToggles) override;
-    ResultOrError<std::vector<Ref<AdapterBase>>> DiscoverAdapters(
-        const AdapterDiscoveryOptionsBase* option,
-        const TogglesState& adapterToggless) override;
+    std::vector<Ref<PhysicalDeviceBase>> DiscoverDefaultPhysicalDevices() override;
+    ResultOrError<std::vector<Ref<PhysicalDeviceBase>>> DiscoverPhysicalDevices(
+        const PhysicalDeviceDiscoveryOptionsBase* option) override;
 
   private:
-    bool mCreatedAdapter = false;
+    bool mCreatedPhysicalDevice = false;
     DynamicLib mLibEGL;
 };
 

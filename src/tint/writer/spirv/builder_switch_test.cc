@@ -32,13 +32,13 @@ TEST_F(BuilderTest, Switch_Empty) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
+    b.PushFunctionForTesting();
 
-    EXPECT_TRUE(b.GenerateSwitchStatement(expr)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeInt 32 1
+    EXPECT_TRUE(b.GenerateSwitchStatement(expr)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeInt 32 1
 %3 = OpConstant %2 1
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.CurrentFunction().instructions()),
               R"(OpSelectionMerge %1 None
 OpSwitch %3 %4
 %4 = OpLabel
@@ -69,9 +69,9 @@ TEST_F(BuilderTest, Switch_WithCase) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -126,9 +126,9 @@ TEST_F(BuilderTest, Switch_WithCase_Unsigned) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -181,9 +181,9 @@ TEST_F(BuilderTest, Switch_WithDefault) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -235,9 +235,9 @@ TEST_F(BuilderTest, Switch_WithCaseAndDefault) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -294,9 +294,9 @@ TEST_F(BuilderTest, Switch_WithCaseAndMixedDefault) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -352,9 +352,9 @@ TEST_F(BuilderTest, Switch_WithNestedBreak) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "v"
 OpName %5 "a"
@@ -413,7 +413,7 @@ TEST_F(BuilderTest, Switch_AllReturn) {
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateFunction(fn)) << b.error();
+    EXPECT_TRUE(b.GenerateFunction(fn)) << b.Diagnostics();
     EXPECT_EQ(DumpBuilder(b), R"(OpName %3 "f"
 %2 = OpTypeInt 32 1
 %1 = OpTypeFunction %2

@@ -20,19 +20,20 @@
 #include "dawn/tests/DawnTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
 
 void EncodeConvertTimestampsToNanoseconds(wgpu::CommandEncoder encoder,
                                           wgpu::Buffer timestamps,
                                           wgpu::Buffer availability,
                                           wgpu::Buffer params) {
-    ASSERT_TRUE(dawn::native::EncodeConvertTimestampsToNanoseconds(
-                    dawn::native::FromAPI(encoder.Get()), dawn::native::FromAPI(timestamps.Get()),
-                    dawn::native::FromAPI(availability.Get()), dawn::native::FromAPI(params.Get()))
+    ASSERT_TRUE(native::EncodeConvertTimestampsToNanoseconds(
+                    native::FromAPI(encoder.Get()), native::FromAPI(timestamps.Get()),
+                    native::FromAPI(availability.Get()), native::FromAPI(params.Get()))
                     .IsSuccess());
 }
 
-class InternalShaderExpectation : public detail::Expectation {
+class InternalShaderExpectation : public ::dawn::detail::Expectation {
   public:
     ~InternalShaderExpectation() override = default;
 
@@ -78,8 +79,6 @@ class InternalShaderExpectation : public detail::Expectation {
     std::vector<uint64_t> mExpected;
 };
 
-}  // anonymous namespace
-
 constexpr static uint64_t kSentinelValue = ~uint64_t(0u);
 
 class QueryInternalShaderTests : public DawnTest {
@@ -89,6 +88,12 @@ class QueryInternalShaderTests : public DawnTest {
 
         DAWN_TEST_UNSUPPORTED_IF(UsesWire());
         DAWN_TEST_UNSUPPORTED_IF(HasToggleEnabled("disable_timestamp_query_conversion"));
+
+        // If implicit device synchronization is turned on, EncodeConvertTimestampsToNanoseconds
+        // will expect the device to be locked. But we are calling it directly without going through
+        // wgpu API, hence the device won't be locked on this route. This would lead to assertion
+        // failure. So disable the test if this feature is turned on.
+        DAWN_TEST_UNSUPPORTED_IF(IsImplicitDeviceSyncEnabled());
     }
 
     // Original timestamp values in query set for testing
@@ -161,7 +166,7 @@ class QueryInternalShaderTests : public DawnTest {
                                         kQueryCount * sizeof(uint32_t), wgpu::BufferUsage::Storage);
 
         // The params uniform buffer
-        dawn::native::TimestampParams params(firstQuery, queryCount, destinationOffset, period);
+        native::TimestampParams params(firstQuery, queryCount, destinationOffset, period);
         wgpu::Buffer paramsBuffer = utils::CreateBufferFromData(device, &params, sizeof(params),
                                                                 wgpu::BufferUsage::Uniform);
 
@@ -224,8 +229,7 @@ TEST_P(QueryInternalShaderTests, TimestampComputeShader) {
     }
 }
 
-DAWN_INSTANTIATE_TEST(QueryInternalShaderTests,
-                      D3D11Backend(),
-                      D3D12Backend(),
-                      MetalBackend(),
-                      VulkanBackend());
+DAWN_INSTANTIATE_TEST(QueryInternalShaderTests, D3D12Backend(), MetalBackend(), VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

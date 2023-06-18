@@ -26,7 +26,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::Matrix);
 namespace tint::type {
 
 Matrix::Matrix(const Vector* column_type, uint32_t columns)
-    : Base(utils::Hash(TypeInfo::Of<Vector>().full_hashcode, columns, column_type),
+    : Base(utils::Hash(utils::TypeInfo::Of<Vector>().full_hashcode, columns, column_type),
            type::Flags{
                Flag::kConstructable,
                Flag::kCreationFixedFootprint,
@@ -51,9 +51,9 @@ bool Matrix::Equals(const UniqueNode& other) const {
     return false;
 }
 
-std::string Matrix::FriendlyName(const SymbolTable& symbols) const {
+std::string Matrix::FriendlyName() const {
     utils::StringStream out;
-    out << "mat" << columns_ << "x" << rows_ << "<" << subtype_->FriendlyName(symbols) << ">";
+    out << "mat" << columns_ << "x" << rows_ << "<" << subtype_->FriendlyName() << ">";
     return out.str();
 }
 
@@ -67,6 +67,15 @@ uint32_t Matrix::Align() const {
 
 uint32_t Matrix::ColumnStride() const {
     return column_type_->Align();
+}
+
+TypeAndCount Matrix::Elements(const Type* /* type_if_invalid = nullptr */,
+                              uint32_t /* count_if_invalid = 0 */) const {
+    return {column_type_, columns_};
+}
+
+const Vector* Matrix::Element(uint32_t index) const {
+    return index < columns_ ? column_type_ : nullptr;
 }
 
 Matrix* Matrix::Clone(CloneContext& ctx) const {

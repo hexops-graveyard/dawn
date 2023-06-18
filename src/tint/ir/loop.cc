@@ -14,12 +14,39 @@
 
 #include "src/tint/ir/loop.h"
 
+#include <utility>
+
+#include "src/tint/ir/multi_in_block.h"
+
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Loop);
 
 namespace tint::ir {
 
-Loop::Loop() : Base() {}
+Loop::Loop(ir::Block* i, ir::MultiInBlock* b, ir::MultiInBlock* c, ir::MultiInBlock* m)
+    : initializer_(i), body_(b), continuing_(c), merge_(m) {
+    TINT_ASSERT(IR, initializer_);
+    TINT_ASSERT(IR, body_);
+    TINT_ASSERT(IR, continuing_);
+    TINT_ASSERT(IR, merge_);
+
+    if (initializer_) {
+        initializer_->SetParent(this);
+    }
+    if (body_) {
+        body_->SetParent(this);
+    }
+    if (continuing_) {
+        continuing_->SetParent(this);
+    }
+    if (merge_) {
+        merge_->SetParent(this);
+    }
+}
 
 Loop::~Loop() = default;
+
+bool Loop::HasInitializer() {
+    return initializer_->HasBranchTarget();
+}
 
 }  // namespace tint::ir

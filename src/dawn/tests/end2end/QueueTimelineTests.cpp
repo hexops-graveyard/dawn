@@ -17,6 +17,9 @@
 #include "dawn/tests/DawnTest.h"
 #include "gmock/gmock.h"
 
+namespace dawn {
+namespace {
+
 using testing::InSequence;
 
 class MockMapCallback {
@@ -40,6 +43,11 @@ static void ToMockQueueWorkDone(WGPUQueueWorkDoneStatus status, void* userdata) 
     mockQueueWorkDoneCallback->Call(status, userdata);
 }
 
+static std::unique_ptr<MockQueueWorkDoneCallback> mockQueueWorkDoneCallback1;
+static void ToMockQueueWorkDone1(WGPUQueueWorkDoneStatus status, void* userdata) {
+    mockQueueWorkDoneCallback1->Call(status, userdata);
+}
+
 class QueueTimelineTests : public DawnTest {
   protected:
     void SetUp() override {
@@ -47,6 +55,7 @@ class QueueTimelineTests : public DawnTest {
 
         mockMapCallback = std::make_unique<MockMapCallback>();
         mockQueueWorkDoneCallback = std::make_unique<MockQueueWorkDoneCallback>();
+        mockQueueWorkDoneCallback1 = std::make_unique<MockQueueWorkDoneCallback>();
 
         wgpu::BufferDescriptor descriptor;
         descriptor.size = 4;
@@ -57,6 +66,7 @@ class QueueTimelineTests : public DawnTest {
     void TearDown() override {
         mockMapCallback = nullptr;
         mockQueueWorkDoneCallback = nullptr;
+        mockQueueWorkDoneCallback1 = nullptr;
         DawnTest::TearDown();
     }
 
@@ -79,20 +89,16 @@ TEST_P(QueueTimelineTests, MapRead_OnWorkDone) {
     mMapReadBuffer.Unmap();
 }
 
-// Test that queue.OnWorkDone callback happens before mMapReadBuffer.MapAsync callback when
-// queue.Signal is called before mMapReadBuffer.MapAsync. The callback order should
-// happen in the order the functions are called.
-TEST_P(QueueTimelineTests, OnWorkDone_MapRead) {
+// Test that the OnSubmittedWorkDone callbacks should happen in the order the functions are called.
+TEST_P(QueueTimelineTests, OnWorkDone_OnWorkDone) {
     InSequence sequence;
     EXPECT_CALL(*mockQueueWorkDoneCallback, Call(WGPUQueueWorkDoneStatus_Success, this)).Times(1);
-    EXPECT_CALL(*mockMapCallback, Call(WGPUBufferMapAsyncStatus_Success, this)).Times(1);
+    EXPECT_CALL(*mockQueueWorkDoneCallback1, Call(WGPUQueueWorkDoneStatus_Success, this)).Times(1);
 
     queue.OnSubmittedWorkDone(0u, ToMockQueueWorkDone, this);
-
-    mMapReadBuffer.MapAsync(wgpu::MapMode::Read, 0, wgpu::kWholeMapSize, ToMockMapCallback, this);
+    queue.OnSubmittedWorkDone(0u, ToMockQueueWorkDone1, this);
 
     WaitForAllOperations();
-    mMapReadBuffer.Unmap();
 }
 
 DAWN_INSTANTIATE_TEST(QueueTimelineTests,
@@ -102,3 +108,6 @@ DAWN_INSTANTIATE_TEST(QueueTimelineTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

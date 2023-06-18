@@ -20,10 +20,11 @@
 
 #include "gmock/gmock.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 class AppendVectorTest : public ::testing::Test, public ProgramBuilder {};
 
@@ -32,7 +33,7 @@ TEST_F(AppendVectorTest, Vec2i32_i32) {
     auto* scalar_1 = Expr(1_i);
     auto* scalar_2 = Expr(2_i);
     auto* scalar_3 = Expr(3_i);
-    auto* vec_12 = vec2<i32>(scalar_1, scalar_2);
+    auto* vec_12 = Call<vec2<i32>>(scalar_1, scalar_2);
     WrapInFunction(vec_12, scalar_3);
 
     resolver::Resolver resolver(this);
@@ -73,7 +74,7 @@ TEST_F(AppendVectorTest, Vec2i32_u32) {
     auto* scalar_1 = Expr(1_i);
     auto* scalar_2 = Expr(2_i);
     auto* scalar_3 = Expr(3_u);
-    auto* vec_12 = vec2<i32>(scalar_1, scalar_2);
+    auto* vec_12 = Call<vec2<i32>>(scalar_1, scalar_2);
     WrapInFunction(vec_12, scalar_3);
 
     resolver::Resolver resolver(this);
@@ -89,7 +90,7 @@ TEST_F(AppendVectorTest, Vec2i32_u32) {
     EXPECT_EQ(vec_123->args[1], scalar_2);
     auto* u32_to_i32 = vec_123->args[2]->As<ast::CallExpression>();
     ASSERT_NE(u32_to_i32, nullptr);
-    ast::CheckIdentifier(Symbols(), u32_to_i32->target, "i32");
+    ast::CheckIdentifier(u32_to_i32->target, "i32");
 
     ASSERT_EQ(u32_to_i32->args.Length(), 1u);
     EXPECT_EQ(u32_to_i32->args[0], scalar_3);
@@ -120,8 +121,8 @@ TEST_F(AppendVectorTest, Vec2i32FromVec2u32_u32) {
     auto* scalar_1 = Expr(1_u);
     auto* scalar_2 = Expr(2_u);
     auto* scalar_3 = Expr(3_u);
-    auto* uvec_12 = vec2<u32>(scalar_1, scalar_2);
-    auto* vec_12 = vec2<i32>(uvec_12);
+    auto* uvec_12 = Call<vec2<u32>>(scalar_1, scalar_2);
+    auto* vec_12 = Call<vec2<i32>>(uvec_12);
     WrapInFunction(vec_12, scalar_3);
 
     resolver::Resolver resolver(this);
@@ -136,13 +137,13 @@ TEST_F(AppendVectorTest, Vec2i32FromVec2u32_u32) {
     auto* v2u32_to_v2i32 = vec_123->args[0]->As<ast::CallExpression>();
     ASSERT_NE(v2u32_to_v2i32, nullptr);
 
-    ast::CheckIdentifier(Symbols(), v2u32_to_v2i32->target, ast::Template("vec2", "i32"));
+    ast::CheckIdentifier(v2u32_to_v2i32->target, ast::Template("vec2", "i32"));
     EXPECT_EQ(v2u32_to_v2i32->args.Length(), 1u);
     EXPECT_EQ(v2u32_to_v2i32->args[0], uvec_12);
 
     auto* u32_to_i32 = vec_123->args[1]->As<ast::CallExpression>();
     ASSERT_NE(u32_to_i32, nullptr);
-    ast::CheckIdentifier(Symbols(), u32_to_i32->target, "i32");
+    ast::CheckIdentifier(u32_to_i32->target, "i32");
     ASSERT_EQ(u32_to_i32->args.Length(), 1u);
     EXPECT_EQ(u32_to_i32->args[0], scalar_3);
 
@@ -170,7 +171,7 @@ TEST_F(AppendVectorTest, Vec2i32_f32) {
     auto* scalar_1 = Expr(1_i);
     auto* scalar_2 = Expr(2_i);
     auto* scalar_3 = Expr(3_f);
-    auto* vec_12 = vec2<i32>(scalar_1, scalar_2);
+    auto* vec_12 = Call<vec2<i32>>(scalar_1, scalar_2);
     WrapInFunction(vec_12, scalar_3);
 
     resolver::Resolver resolver(this);
@@ -186,7 +187,7 @@ TEST_F(AppendVectorTest, Vec2i32_f32) {
     EXPECT_EQ(vec_123->args[1], scalar_2);
     auto* f32_to_i32 = vec_123->args[2]->As<ast::CallExpression>();
     ASSERT_NE(f32_to_i32, nullptr);
-    ast::CheckIdentifier(Symbols(), f32_to_i32->target, "i32");
+    ast::CheckIdentifier(f32_to_i32->target, "i32");
     ASSERT_EQ(f32_to_i32->args.Length(), 1u);
     EXPECT_EQ(f32_to_i32->args[0], scalar_3);
 
@@ -216,7 +217,7 @@ TEST_F(AppendVectorTest, Vec3i32_i32) {
     auto* scalar_2 = Expr(2_i);
     auto* scalar_3 = Expr(3_i);
     auto* scalar_4 = Expr(4_i);
-    auto* vec_123 = vec3<i32>(scalar_1, scalar_2, scalar_3);
+    auto* vec_123 = Call<vec3<i32>>(scalar_1, scalar_2, scalar_3);
     WrapInFunction(vec_123, scalar_4);
 
     resolver::Resolver resolver(this);
@@ -298,7 +299,7 @@ TEST_F(AppendVectorTest, Vec2i32_i32Var) {
     auto* scalar_1 = Expr(1_i);
     auto* scalar_2 = Expr(2_i);
     auto* scalar_3 = Expr("scalar_3");
-    auto* vec_12 = vec2<i32>(scalar_1, scalar_2);
+    auto* vec_12 = Call<vec2<i32>>(scalar_1, scalar_2);
     WrapInFunction(vec_12, scalar_3);
 
     resolver::Resolver resolver(this);
@@ -392,7 +393,7 @@ TEST_F(AppendVectorTest, Vec2i32Var_f32Var) {
     EXPECT_EQ(vec_123->args[0], vec_12);
     auto* f32_to_i32 = vec_123->args[1]->As<ast::CallExpression>();
     ASSERT_NE(f32_to_i32, nullptr);
-    ast::CheckIdentifier(Symbols(), f32_to_i32->target, "i32");
+    ast::CheckIdentifier(f32_to_i32->target, "i32");
     ASSERT_EQ(f32_to_i32->args.Length(), 1u);
     EXPECT_EQ(f32_to_i32->args[0], scalar_3);
 
@@ -455,7 +456,7 @@ TEST_F(AppendVectorTest, Vec2boolVar_boolVar) {
 // AppendVector(vec3<i32>(), 4) -> vec3<bool>(0, 0, 0, 4)
 TEST_F(AppendVectorTest, ZeroVec3i32_i32) {
     auto* scalar = Expr(4_i);
-    auto* vec000 = vec3<i32>();
+    auto* vec000 = Call<vec3<i32>>();
     WrapInFunction(vec000, scalar);
 
     resolver::Resolver resolver(this);

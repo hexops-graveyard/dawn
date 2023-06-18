@@ -15,10 +15,13 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/glsl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
+#include "gmock/gmock.h"
 
 namespace tint::writer::glsl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using GlslGeneratorImplTest_Import = TestHelper;
 
@@ -41,7 +44,8 @@ TEST_P(GlslImportData_SingleParamTest, FloatScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1.0f)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -80,7 +84,8 @@ TEST_P(GlslImportData_SingleIntParamTest, IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -91,13 +96,14 @@ using GlslImportData_SingleVectorParamTest = TestParamHelper<GlslImportData>;
 TEST_P(GlslImportData_SingleVectorParamTest, FloatVector) {
     auto param = GetParam();
 
-    auto* expr = Call(param.name, vec3<f32>(0.1_f, 0.2_f, 0.3_f));
+    auto* expr = Call(param.name, Call<vec3<f32>>(0.1_f, 0.2_f, 0.3_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(
         out.str(),
         std::string(param.glsl_name) +
@@ -140,7 +146,8 @@ TEST_P(GlslImportData_DualParam_ScalarTest, Float) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1.0f, 2.0f)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -156,13 +163,14 @@ using GlslImportData_DualParam_VectorTest = TestParamHelper<GlslImportData>;
 TEST_P(GlslImportData_DualParam_VectorTest, Float) {
     auto param = GetParam();
 
-    auto* expr = Call(param.name, vec3<f32>(1_f, 2_f, 3_f), vec3<f32>(4_f, 5_f, 6_f));
+    auto* expr = Call(param.name, Call<vec3<f32>>(1_f, 2_f, 3_f), Call<vec3<f32>>(4_f, 5_f, 6_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(),
               std::string(param.glsl_name) + "(vec3(1.0f, 2.0f, 3.0f), vec3(4.0f, 5.0f, 6.0f))");
 }
@@ -187,7 +195,8 @@ TEST_P(GlslImportData_DualParam_Int_Test, IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1, 2)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -205,7 +214,8 @@ TEST_P(GlslImportData_TripleParam_ScalarTest, Float) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1.0f, 2.0f, 3.0f)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -218,14 +228,15 @@ using GlslImportData_TripleParam_VectorTest = TestParamHelper<GlslImportData>;
 TEST_P(GlslImportData_TripleParam_VectorTest, Float) {
     auto param = GetParam();
 
-    auto* expr = Call(param.name, vec3<f32>(1_f, 2_f, 3_f), vec3<f32>(4_f, 5_f, 6_f),
-                      vec3<f32>(7_f, 8_f, 9_f));
+    auto* expr = Call(param.name, Call<vec3<f32>>(1_f, 2_f, 3_f), Call<vec3<f32>>(4_f, 5_f, 6_f),
+                      Call<vec3<f32>>(7_f, 8_f, 9_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(),
               std::string(param.glsl_name) +
                   R"((vec3(1.0f, 2.0f, 3.0f), vec3(4.0f, 5.0f, 6.0f), vec3(7.0f, 8.0f, 9.0f)))");
@@ -246,7 +257,8 @@ TEST_P(GlslImportData_TripleParam_Int_Test, IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string(param.glsl_name) + "(1, 2, 3)");
 }
 INSTANTIATE_TEST_SUITE_P(GlslGeneratorImplTest_Import,
@@ -262,7 +274,8 @@ TEST_F(GlslGeneratorImplTest_Import, GlslImportData_Determinant) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    gen.EmitCall(out, expr);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), std::string("determinant(var)"));
 }
 

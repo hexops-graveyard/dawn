@@ -29,7 +29,15 @@
 
 namespace dawn::native {
 
-MaybeError ValidateTextureDescriptor(const DeviceBase* device, const TextureDescriptor* descriptor);
+enum class AllowMultiPlanarTextureFormat {
+    No,
+    Yes,
+};
+
+MaybeError ValidateTextureDescriptor(
+    const DeviceBase* device,
+    const TextureDescriptor* descriptor,
+    AllowMultiPlanarTextureFormat allowMultiPlanar = AllowMultiPlanarTextureFormat::No);
 MaybeError ValidateTextureViewDescriptor(const DeviceBase* device,
                                          const TextureBase* texture,
                                          const TextureViewDescriptor* descriptor);
@@ -78,6 +86,9 @@ class TextureBase : public ApiObjectBase {
     MaybeError ValidateCanUseInSubmitNow() const;
 
     bool IsMultisampledTexture() const;
+
+    // Returns true if the size covers the whole subresource.
+    bool CoverFullSubresource(uint32_t mipLevel, const Extent3D& size) const;
 
     // For a texture with non-block-compressed texture format, its physical size is always equal
     // to its virtual size. For a texture with block compressed texture format, the physical
@@ -140,9 +151,10 @@ class TextureViewBase : public ApiObjectBase {
     TextureViewBase(TextureBase* texture, const TextureViewDescriptor* descriptor);
     ~TextureViewBase() override;
 
-    static TextureViewBase* MakeError(DeviceBase* device);
+    static TextureViewBase* MakeError(DeviceBase* device, const char* label = nullptr);
 
     ObjectType GetType() const override;
+    void FormatLabel(absl::FormatSink* s) const override;
 
     const TextureBase* GetTexture() const;
     TextureBase* GetTexture();
@@ -160,7 +172,7 @@ class TextureViewBase : public ApiObjectBase {
     void DestroyImpl() override;
 
   private:
-    TextureViewBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+    TextureViewBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label);
 
     ApiObjectList* GetObjectTrackingList() override;
 

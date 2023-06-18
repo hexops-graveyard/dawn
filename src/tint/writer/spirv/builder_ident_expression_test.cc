@@ -12,32 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "gtest/gtest-spi.h"
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
-
-using namespace tint::number_suffixes;  // NOLINT
 
 namespace tint::writer::spirv {
 namespace {
 
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
+
 using BuilderTest = TestHelper;
 
 TEST_F(BuilderTest, IdentifierExpression_GlobalConst) {
-    auto* init = vec3<f32>(1_f, 1_f, 3_f);
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder pb;
 
-    auto* v = GlobalConst("c", ty.vec3<f32>(), init);
+            auto* init = pb.Call<vec3<f32>>(1_f, 1_f, 3_f);
 
-    auto* expr = Expr("c");
-    WrapInFunction(expr);
+            auto* v = pb.GlobalConst("c", pb.ty.vec3<f32>(), init);
 
-    spirv::Builder& b = Build();
+            auto* expr = pb.Expr("c");
+            pb.WrapInFunction(expr);
 
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_FALSE(b.has_error()) << b.error();
+            auto program = std::make_unique<Program>(std::move(pb));
+            auto b = std::make_unique<spirv::Builder>(program.get());
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"()");
-
-    EXPECT_EQ(b.GenerateIdentifierExpression(expr), 0u);
+            b->GenerateGlobalVariable(v);
+            b->GenerateIdentifierExpression(expr);
+        },
+        "internal compiler error: unable to find ID for variable: c");
 }
 
 TEST_F(BuilderTest, IdentifierExpression_GlobalVar) {
@@ -48,11 +53,11 @@ TEST_F(BuilderTest, IdentifierExpression_GlobalVar) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %1 "var"
+    b.PushFunctionForTesting();
+    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %1 "var"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%3 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%3 = OpTypeFloat 32
 %2 = OpTypePointer Private %3
 %4 = OpConstantNull %3
 %1 = OpVariable %2 Private %4
@@ -62,7 +67,7 @@ TEST_F(BuilderTest, IdentifierExpression_GlobalVar) {
 }
 
 TEST_F(BuilderTest, IdentifierExpression_FunctionConst) {
-    auto* init = vec3<f32>(1_f, 1_f, 3_f);
+    auto* init = Call<vec3<f32>>(1_f, 1_f, 3_f);
 
     auto* v = Let("var", ty.vec3<f32>(), init);
 
@@ -71,10 +76,10 @@ TEST_F(BuilderTest, IdentifierExpression_FunctionConst) {
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateFunctionVariable(v)) << b.error();
-    ASSERT_FALSE(b.has_error()) << b.error();
+    EXPECT_TRUE(b.GenerateFunctionVariable(v)) << b.Diagnostics();
+    ASSERT_FALSE(b.has_error()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 32
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 3
@@ -91,16 +96,16 @@ TEST_F(BuilderTest, IdentifierExpression_FunctionVar) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
-    EXPECT_TRUE(b.GenerateFunctionVariable(v)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %1 "var"
+    b.PushFunctionForTesting();
+    EXPECT_TRUE(b.GenerateFunctionVariable(v)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %1 "var"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%3 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%3 = OpTypeFloat 32
 %2 = OpTypePointer Function %3
 %4 = OpConstantNull %3
 )");
 
-    const auto& func = b.functions()[0];
+    const auto& func = b.CurrentFunction();
     EXPECT_EQ(DumpInstructions(func.variables()),
               R"(%1 = OpVariable %2 Function %4
 )");
@@ -115,16 +120,16 @@ TEST_F(BuilderTest, IdentifierExpression_Load) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
-    ASSERT_TRUE(b.GenerateGlobalVariable(var)) << b.error();
+    b.PushFunctionForTesting();
+    ASSERT_TRUE(b.GenerateGlobalVariable(var)) << b.Diagnostics();
 
-    EXPECT_EQ(b.GenerateBinaryExpression(expr->As<ast::BinaryExpression>()), 7u) << b.error();
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%3 = OpTypeInt 32 1
+    EXPECT_EQ(b.GenerateBinaryExpression(expr->As<ast::BinaryExpression>()), 7u) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%3 = OpTypeInt 32 1
 %2 = OpTypePointer Private %3
 %4 = OpConstantNull %3
 %1 = OpVariable %2 Private %4
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.CurrentFunction().instructions()),
               R"(%5 = OpLoad %3 %1
 %6 = OpLoad %3 %1
 %7 = OpIAdd %3 %5 %6
@@ -138,14 +143,14 @@ TEST_F(BuilderTest, IdentifierExpression_NoLoadConst) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
-    ASSERT_TRUE(b.GenerateFunctionVariable(let)) << b.error();
+    b.PushFunctionForTesting();
+    ASSERT_TRUE(b.GenerateFunctionVariable(let)) << b.Diagnostics();
 
-    EXPECT_EQ(b.GenerateBinaryExpression(expr->As<ast::BinaryExpression>()), 3u) << b.error();
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%1 = OpTypeInt 32 1
+    EXPECT_EQ(b.GenerateBinaryExpression(expr->As<ast::BinaryExpression>()), 3u) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%1 = OpTypeInt 32 1
 %2 = OpConstant %1 2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.CurrentFunction().instructions()),
               R"(%3 = OpIAdd %1 %2 %2
 )");
 }

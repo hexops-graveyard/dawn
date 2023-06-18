@@ -19,6 +19,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class ObjectCachingTest : public DawnTest {};
 
 // Test that BindGroupLayouts are correctly deduplicated.
@@ -416,7 +419,7 @@ TEST_P(ObjectCachingTest, SamplerDeduplication) {
     wgpu::Sampler otherSamplerMinFilter = device.CreateSampler(&otherSamplerDescMinFilter);
 
     wgpu::SamplerDescriptor otherSamplerDescMipmapFilter;
-    otherSamplerDescMipmapFilter.mipmapFilter = wgpu::FilterMode::Linear;
+    otherSamplerDescMipmapFilter.mipmapFilter = wgpu::MipmapFilterMode::Linear;
     wgpu::Sampler otherSamplerMipmapFilter = device.CreateSampler(&otherSamplerDescMipmapFilter);
 
     wgpu::SamplerDescriptor otherSamplerDescLodMinClamp;
@@ -451,3 +454,6 @@ DAWN_INSTANTIATE_TEST(ObjectCachingTest,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

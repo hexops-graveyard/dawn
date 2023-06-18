@@ -213,7 +213,7 @@ NSRef<MTLRenderPassDescriptor> CreateMTLRenderPassDescriptor(
             switch (attachmentInfo.storeOp) {
                 case wgpu::StoreOp::Store:
                     descriptor.colorAttachments[i].storeAction =
-                        kMTLStoreActionStoreAndMultisampleResolve;
+                        MTLStoreActionStoreAndMultisampleResolve;
                     break;
                 case wgpu::StoreOp::Discard:
                     descriptor.colorAttachments[i].storeAction = MTLStoreActionMultisampleResolve;
@@ -1227,6 +1227,7 @@ MaybeError CommandBuffer::EncodeComputePass(CommandRecordingContext* commandCont
             }
         }
     }
+    SetDebugName(GetDevice(), encoder, "Dawn_ComputePassEncoder", computePassCmd->label);
 
     Command type;
     while (mCommands.NextCommandId(&type)) {
@@ -1388,6 +1389,7 @@ MaybeError CommandBuffer::EncodeRenderPass(id<MTLRenderCommandEncoder> encoder,
                                 withBarrier:YES];
         }
     }
+    SetDebugName(GetDevice(), encoder, "Dawn_RenderPassEncoder", renderPassCmd->label);
 
     auto EncodeRenderBundleCommand = [&](CommandIterator* iter, Command type) {
         switch (type) {

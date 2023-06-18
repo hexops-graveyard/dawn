@@ -19,7 +19,6 @@
 
 namespace dawn::native::opengl {
 
-class Adapter;
 class BindGroup;
 class BindGroupLayout;
 class Buffer;
@@ -27,6 +26,7 @@ class CommandBuffer;
 class ComputePipeline;
 class Device;
 class PersistentPipelineState;
+class PhysicalDevice;
 class PipelineLayout;
 class QuerySet;
 class Queue;
@@ -38,13 +38,13 @@ class Texture;
 class TextureView;
 
 struct OpenGLBackendTraits {
-    using AdapterType = Adapter;
     using BindGroupType = BindGroup;
     using BindGroupLayoutType = BindGroupLayout;
     using BufferType = Buffer;
     using CommandBufferType = CommandBuffer;
     using ComputePipelineType = ComputePipeline;
     using DeviceType = Device;
+    using PhysicalDeviceType = PhysicalDevice;
     using PipelineLayoutType = PipelineLayout;
     using QuerySetType = QuerySet;
     using QueueType = Queue;

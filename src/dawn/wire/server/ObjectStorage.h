@@ -39,7 +39,7 @@ template <typename T>
 struct ObjectDataBase {
     // The backend-provided handle and generation to this object.
     T handle;
-    uint32_t generation = 0;
+    ObjectGeneration generation = 0;
 
     AllocationState state;
 };
@@ -73,6 +73,27 @@ struct ObjectData<WGPUDevice> : public ObjectDataBase<WGPUDevice> {
     std::unique_ptr<DeviceInfo> info = std::make_unique<DeviceInfo>();
 };
 
+// Information of both an ID and an object data for use as a shorthand in doers.
+template <typename T>
+struct Known {
+    ObjectId id;
+    ObjectData<T>* data;
+
+    const ObjectData<T>* operator->() const {
+        ASSERT(data != nullptr);
+        return data;
+    }
+    ObjectData<T>* operator->() {
+        ASSERT(data != nullptr);
+        return data;
+    }
+
+    ObjectHandle AsHandle() const {
+        ASSERT(data != nullptr);
+        return {id, data->generation};
+    }
+};
+
 // Keeps track of the mapping between client IDs and backend objects.
 template <typename T>
 class KnownObjectsBase {
@@ -90,45 +111,52 @@ class KnownObjectsBase {
     }
 
     // Get a backend objects for a given client ID.
-    // Returns nullptr if the ID hasn't previously been allocated.
-    const Data* Get(uint32_t id) const {
+    // Returns an error if the object wasn't previously allocated.
+    WireResult GetNativeHandle(ObjectId id, T* handle) const {
         if (id >= mKnown.size()) {
-            return nullptr;
+            return WireResult::FatalError;
         }
 
         const Data* data = &mKnown[id];
         if (data->state != AllocationState::Allocated) {
-            return nullptr;
+            return WireResult::FatalError;
         }
-        return data;
+        *handle = data->handle;
+
+        return WireResult::Success;
     }
-    Data* Get(uint32_t id) {
+
+    WireResult Get(ObjectId id, Known<T>* result) {
         if (id >= mKnown.size()) {
-            return nullptr;
+            return WireResult::FatalError;
         }
 
         Data* data = &mKnown[id];
         if (data->state != AllocationState::Allocated) {
-            return nullptr;
+            return WireResult::FatalError;
         }
-        return data;
+
+        *result = Known<T>{id, data};
+        return WireResult::Success;
     }
 
-    Data* FillReservation(uint32_t id, T handle) {
+    Known<T> FillReservation(ObjectId id, T handle) {
         ASSERT(id < mKnown.size());
         Data* data = &mKnown[id];
         ASSERT(data->state == AllocationState::Reserved);
         data->handle = handle;
         data->state = AllocationState::Allocated;
-        return data;
+        return {id, data};
     }
 
-    // Allocates the data for a given ID and returns it.
-    // Returns nullptr if the ID is already allocated, or too far ahead, or if ID is 0 (ID 0 is
+    // Allocates the data for a given ID and returns it in result.
+    // Returns false if the ID is already allocated, or too far ahead, or if ID is 0 (ID 0 is
     // reserved for nullptr). Invalidates all the Data*
-    Data* Allocate(ObjectHandle handle, AllocationState state = AllocationState::Allocated) {
+    WireResult Allocate(Known<T>* result,
+                        ObjectHandle handle,
+                        AllocationState state = AllocationState::Allocated) {
         if (handle.id == 0 || handle.id > mKnown.size()) {
-            return nullptr;
+            return WireResult::FatalError;
         }
 
         Data data;
@@ -137,26 +165,29 @@ class KnownObjectsBase {
 
         if (handle.id >= mKnown.size()) {
             mKnown.push_back(std::move(data));
-            return &mKnown.back();
+            *result = {handle.id, &mKnown.back()};
+            return WireResult::Success;
         }
 
         if (mKnown[handle.id].state != AllocationState::Free) {
-            return nullptr;
+            return WireResult::FatalError;
         }
 
         // The generation should be strictly increasing.
         if (handle.generation <= mKnown[handle.id].generation) {
-            return nullptr;
+            return WireResult::FatalError;
         }
         // update the generation in the slot
         data.generation = handle.generation;
 
         mKnown[handle.id] = std::move(data);
-        return &mKnown[handle.id];
+
+        *result = {handle.id, &mKnown[handle.id]};
+        return WireResult::Success;
     }
 
     // Marks an ID as deallocated
-    void Free(uint32_t id) {
+    void Free(ObjectId id) {
         ASSERT(id < mKnown.size());
         mKnown[id].state = AllocationState::Free;
     }
@@ -200,19 +231,21 @@ class KnownObjects<WGPUDevice> : public KnownObjectsBase<WGPUDevice> {
   public:
     KnownObjects() = default;
 
-    Data* Allocate(ObjectHandle handle, AllocationState state = AllocationState::Allocated) {
-        Data* data = KnownObjectsBase<WGPUDevice>::Allocate(handle, state);
-        AddToKnownSet(data);
-        return data;
+    WireResult Allocate(Known<WGPUDevice>* result,
+                        ObjectHandle handle,
+                        AllocationState state = AllocationState::Allocated) {
+        WIRE_TRY(KnownObjectsBase<WGPUDevice>::Allocate(result, handle, state));
+        AddToKnownSet(*result);
+        return WireResult::Success;
     }
 
-    Data* FillReservation(uint32_t id, WGPUDevice handle) {
-        Data* data = KnownObjectsBase<WGPUDevice>::FillReservation(id, handle);
-        AddToKnownSet(data);
-        return data;
+    Known<WGPUDevice> FillReservation(ObjectId id, WGPUDevice handle) {
+        Known<WGPUDevice> result = KnownObjectsBase<WGPUDevice>::FillReservation(id, handle);
+        AddToKnownSet(result);
+        return result;
     }
 
-    void Free(uint32_t id) {
+    void Free(ObjectId id) {
         mKnownSet.erase(mKnown[id].handle);
         KnownObjectsBase<WGPUDevice>::Free(id);
     }
@@ -220,10 +253,9 @@ class KnownObjects<WGPUDevice> : public KnownObjectsBase<WGPUDevice> {
     bool IsKnown(WGPUDevice device) const { return mKnownSet.count(device) != 0; }
 
   private:
-    void AddToKnownSet(Data* data) {
-        if (data != nullptr && data->state == AllocationState::Allocated &&
-            data->handle != nullptr) {
-            mKnownSet.insert(data->handle);
+    void AddToKnownSet(Known<WGPUDevice> device) {
+        if (device->state == AllocationState::Allocated && device->handle != nullptr) {
+            mKnownSet.insert(device->handle);
         }
     }
     std::unordered_set<WGPUDevice> mKnownSet;

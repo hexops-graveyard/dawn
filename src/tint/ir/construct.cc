@@ -13,25 +13,21 @@
 // limitations under the License.
 
 #include "src/tint/ir/construct.h"
+
+#include <utility>
+
 #include "src/tint/debug.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Construct);
 
 namespace tint::ir {
 
-Construct::Construct(Value* result, utils::VectorRef<Value*> args) : Base(result, args) {}
+Construct::Construct(const type::Type* ty, utils::VectorRef<Value*> arguments) : Base(ty) {
+    AddOperands(Construct::kArgsOperandOffset, std::move(arguments));
+
+    AddResult(this);
+}
 
 Construct::~Construct() = default;
-
-utils::StringStream& Construct::ToString(utils::StringStream& out, const SymbolTable& st) const {
-    Result()->ToString(out, st);
-    out << " = construct(" << Result()->Type()->FriendlyName(st);
-    if (!Args().IsEmpty()) {
-        out << ", ";
-        EmitArgs(out, st);
-    }
-    out << ")";
-    return out;
-}
 
 }  // namespace tint::ir

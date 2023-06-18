@@ -22,6 +22,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class CopyCommandTest : public ValidationTest {
   protected:
     wgpu::Buffer CreateBuffer(uint64_t size, wgpu::BufferUsage usage) {
@@ -420,8 +423,8 @@ TEST_F(CopyCommandTest_B2B, CopyWithinSameBuffer) {
 
 class CopyCommandTest_B2T : public CopyCommandTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::Depth32FloatStencil8};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -951,45 +954,45 @@ TEST_F(CopyCommandTest_B2T, CopyToStencilAspect) {
         // Non-zero mip: A copy fails when using a depth/stencil texture, and the entire subresource
         // isn't copied
         {
-            uint64_t bufferSize = BufferSizeForTextureCopy(8, 8, 1, wgpu::TextureFormat::R8Uint);
-            wgpu::Buffer source = CreateBuffer(bufferSize, wgpu::BufferUsage::CopySrc);
+            uint64_t mipBufferSize = BufferSizeForTextureCopy(8, 8, 1, wgpu::TextureFormat::R8Uint);
+            wgpu::Buffer mipSource = CreateBuffer(mipBufferSize, wgpu::BufferUsage::CopySrc);
 
             wgpu::Texture destination =
                 Create2DTexture(16, 16, 2, 1, format,
                                 wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::RenderAttachment);
 
             // Whole mip is success
-            TestB2TCopy(utils::Expectation::Success, source, 0, 256, 8, destination, 1, {0, 0, 0},
-                        {8, 8, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Success, mipSource, 0, 256, 8, destination, 1,
+                        {0, 0, 0}, {8, 8, 1}, wgpu::TextureAspect::StencilOnly);
 
             // Partial mip fails
-            TestB2TCopy(utils::Expectation::Failure, source, 0, 256, 7, destination, 1, {0, 0, 0},
-                        {7, 7, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Failure, mipSource, 0, 256, 7, destination, 1,
+                        {0, 0, 0}, {7, 7, 1}, wgpu::TextureAspect::StencilOnly);
 
-            TestB2TCopy(utils::Expectation::Failure, source, 0, 256, 1, destination, 1, {0, 0, 0},
-                        {1, 1, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Failure, mipSource, 0, 256, 1, destination, 1,
+                        {0, 0, 0}, {1, 1, 1}, wgpu::TextureAspect::StencilOnly);
         }
 
         // Non-zero mip, non-pow-2: A copy fails when using a depth/stencil texture, and the entire
         // subresource isn't copied
         {
-            uint64_t bufferSize = BufferSizeForTextureCopy(8, 8, 1, wgpu::TextureFormat::R8Uint);
-            wgpu::Buffer source = CreateBuffer(bufferSize, wgpu::BufferUsage::CopySrc);
+            uint64_t mipBufferSize = BufferSizeForTextureCopy(8, 8, 1, wgpu::TextureFormat::R8Uint);
+            wgpu::Buffer mipSource = CreateBuffer(mipBufferSize, wgpu::BufferUsage::CopySrc);
 
             wgpu::Texture destination =
                 Create2DTexture(17, 17, 2, 1, format,
                                 wgpu::TextureUsage::CopyDst | wgpu::TextureUsage::RenderAttachment);
 
             // Whole mip is success
-            TestB2TCopy(utils::Expectation::Success, source, 0, 256, 8, destination, 1, {0, 0, 0},
-                        {8, 8, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Success, mipSource, 0, 256, 8, destination, 1,
+                        {0, 0, 0}, {8, 8, 1}, wgpu::TextureAspect::StencilOnly);
 
             // Partial mip fails
-            TestB2TCopy(utils::Expectation::Failure, source, 0, 256, 7, destination, 1, {0, 0, 0},
-                        {7, 7, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Failure, mipSource, 0, 256, 7, destination, 1,
+                        {0, 0, 0}, {7, 7, 1}, wgpu::TextureAspect::StencilOnly);
 
-            TestB2TCopy(utils::Expectation::Failure, source, 0, 256, 1, destination, 1, {0, 0, 0},
-                        {1, 1, 1}, wgpu::TextureAspect::StencilOnly);
+            TestB2TCopy(utils::Expectation::Failure, mipSource, 0, 256, 1, destination, 1,
+                        {0, 0, 0}, {1, 1, 1}, wgpu::TextureAspect::StencilOnly);
         }
     }
 
@@ -1028,8 +1031,8 @@ TEST_F(CopyCommandTest_B2T, RequiredBytesInCopyOverflow) {
 
 class CopyCommandTest_T2B : public CopyCommandTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::Depth32FloatStencil8};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -1665,8 +1668,8 @@ TEST_F(CopyCommandTest_T2B, RequiredBytesInCopyOverflow) {
 
 class CopyCommandTest_T2T : public CopyCommandTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::Depth32FloatStencil8};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -2144,8 +2147,8 @@ TEST_F(CopyCommandTest_T2T, CopyWithinSameTexture) {
 
 class CopyCommandTest_CompressedTextureFormats : public CopyCommandTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[3] = {wgpu::FeatureName::TextureCompressionBC,
                                                  wgpu::FeatureName::TextureCompressionETC2,
                                                  wgpu::FeatureName::TextureCompressionASTC};
@@ -2652,3 +2655,6 @@ TEST_F(CopyCommandTest_ClearBuffer, BuffersInErrorState) {
     encoder.ClearBuffer(errorBuffer, 0, 4);
     ASSERT_DEVICE_ERROR(encoder.Finish());
 }
+
+}  // anonymous namespace
+}  // namespace dawn

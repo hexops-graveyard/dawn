@@ -21,7 +21,6 @@
 
 #include "dawn/common/Log.h"
 #include "dawn/common/Version_autogen.h"
-#include "dawn/native/Adapter.h"
 #include "dawn/native/AsyncTask.h"
 #include "dawn/native/AttachmentState.h"
 #include "dawn/native/BindGroup.h"
@@ -42,6 +41,7 @@
 #include "dawn/native/Instance.h"
 #include "dawn/native/InternalPipelineStore.h"
 #include "dawn/native/ObjectType_autogen.h"
+#include "dawn/native/PhysicalDevice.h"
 #include "dawn/native/PipelineCache.h"
 #include "dawn/native/QuerySet.h"
 #include "dawn/native/Queue.h"
@@ -92,10 +92,6 @@ struct DeviceBase::DeprecationWarnings {
 };
 
 namespace {
-bool IsMutexLockedByCurrentThreadIfNeeded(const Ref<Mutex>& mutex) {
-    return mutex == nullptr || mutex->IsLockedByCurrentThread();
-}
-
 struct LoggingCallbackTask : CallbackTask {
   public:
     LoggingCallbackTask() = delete;
@@ -180,6 +176,9 @@ DeviceBase::DeviceBase(AdapterBase* adapter,
     : mAdapter(adapter), mToggles(deviceToggles), mNextPipelineCompatibilityToken(1) {
     ASSERT(descriptor != nullptr);
 
+    mDeviceLostCallback = descriptor->deviceLostCallback;
+    mDeviceLostUserdata = descriptor->deviceLostUserdata;
+
     AdapterProperties adapterProperties;
     adapter->APIGetProperties(&adapterProperties);
 
@@ -238,15 +237,17 @@ MaybeError DeviceBase::Initialize(Ref<QueueBase> defaultQueue) {
         }
     };
 
-    mDeviceLostCallback = [](WGPUDeviceLostReason, char const*, void*) {
-        static bool calledOnce = false;
-        if (!calledOnce) {
-            calledOnce = true;
-            dawn::WarningLog() << "No Dawn device lost callback was set. This is probably not "
-                                  "intended. If you really want to ignore device lost "
-                                  "and suppress this message, set the callback to null.";
-        }
-    };
+    if (!mDeviceLostCallback) {
+        mDeviceLostCallback = [](WGPUDeviceLostReason, char const*, void*) {
+            static bool calledOnce = false;
+            if (!calledOnce) {
+                calledOnce = true;
+                dawn::WarningLog() << "No Dawn device lost callback was set. This is probably not "
+                                      "intended. If you really want to ignore device lost "
+                                      "and suppress this message, set the callback to null.";
+            }
+        };
+    }
 #endif  // DAWN_ENABLE_ASSERTS
 
     mCaches = std::make_unique<DeviceBase::Caches>();
@@ -265,6 +266,7 @@ MaybeError DeviceBase::Initialize(Ref<QueueBase> defaultQueue) {
     mState = State::Alive;
 
     DAWN_TRY_ASSIGN(mEmptyBindGroupLayout, CreateEmptyBindGroupLayout());
+    DAWN_TRY_ASSIGN(mEmptyPipelineLayout, CreateEmptyPipelineLayout());
 
     // If placeholder fragment shader module is needed, initialize it
     if (IsToggleEnabled(Toggle::UsePlaceholderFragmentInVertexOnlyPipeline)) {
@@ -274,7 +276,7 @@ MaybeError DeviceBase::Initialize(Ref<QueueBase> defaultQueue) {
             )";
         ShaderModuleDescriptor descriptor;
         ShaderModuleWGSLDescriptor wgslDesc;
-        wgslDesc.source = kEmptyFragmentShader;
+        wgslDesc.code = kEmptyFragmentShader;
         descriptor.nextInChain = &wgslDesc;
 
         DAWN_TRY_ASSIGN(mInternalPipelineStore->placeholderFragmentShader,
@@ -290,7 +292,7 @@ MaybeError DeviceBase::Initialize(Ref<QueueBase> defaultQueue) {
     // mAdapter is not set for mock test devices.
     // TODO(crbug.com/dawn/1702): using a mock adapter could avoid the null checking.
     if (mAdapter != nullptr) {
-        mAdapter->GetInstance()->AddDevice(this);
+        mAdapter->GetPhysicalDevice()->GetInstance()->AddDevice(this);
     }
 
     return {};
@@ -348,11 +350,12 @@ void DeviceBase::WillDropLastExternalRef() {
     // mAdapter is not set for mock test devices.
     // TODO(crbug.com/dawn/1702): using a mock adapter could avoid the null checking.
     if (mAdapter != nullptr) {
-        mAdapter->GetInstance()->RemoveDevice(this);
+        mAdapter->GetPhysicalDevice()->GetInstance()->RemoveDevice(this);
 
         // Once last external ref dropped, all callbacks should be forwarded to Instance's callback
         // queue instead.
-        mCallbackTaskManager = mAdapter->GetInstance()->GetCallbackTaskManager();
+        mCallbackTaskManager =
+            mAdapter->GetPhysicalDevice()->GetInstance()->GetCallbackTaskManager();
     }
 }
 
@@ -479,6 +482,7 @@ void DeviceBase::Destroy() {
     // Destroy() via APIGetQueue.
     mDynamicUploader = nullptr;
     mEmptyBindGroupLayout = nullptr;
+    mEmptyPipelineLayout = nullptr;
     mInternalPipelineStore = nullptr;
     mExternalTexturePlaceholderView = nullptr;
 
@@ -614,6 +618,8 @@ void DeviceBase::APISetUncapturedErrorCallback(wgpu::ErrorCallback callback, voi
 }
 
 void DeviceBase::APISetDeviceLostCallback(wgpu::DeviceLostCallback callback, void* userdata) {
+    // TODO(chromium:1234617): Add a deprecation warning.
+
     // The registered callback function and userdata pointer are stored and used by deferred
     // callback tasks, and after setting a different callback (especially in the case of
     // resetting) the resources pointed by such pointer may be freed. Flush all deferred
@@ -635,9 +641,7 @@ void DeviceBase::APIPushErrorScope(wgpu::ErrorFilter filter) {
     mErrorScopeStack->Push(filter);
 }
 
-bool DeviceBase::APIPopErrorScope(wgpu::ErrorCallback callback, void* userdata) {
-    // TODO(crbug.com/dawn/1324) Remove return and make function void when users are updated.
-    bool returnValue = true;
+void DeviceBase::APIPopErrorScope(wgpu::ErrorCallback callback, void* userdata) {
     if (callback == nullptr) {
         static wgpu::ErrorCallback defaultCallback = [](WGPUErrorType, char const*, void*) {};
         callback = defaultCallback;
@@ -646,20 +650,18 @@ bool DeviceBase::APIPopErrorScope(wgpu::ErrorCallback callback, void* userdata) 
     if (IsLost()) {
         mCallbackTaskManager->AddCallbackTask(
             std::bind(callback, WGPUErrorType_DeviceLost, "GPU device disconnected", userdata));
-        return returnValue;
+        return;
     }
     if (mErrorScopeStack->Empty()) {
         mCallbackTaskManager->AddCallbackTask(
             std::bind(callback, WGPUErrorType_Unknown, "No error scopes to pop", userdata));
-        return returnValue;
+        return;
     }
     ErrorScope scope = mErrorScopeStack->Pop();
     mCallbackTaskManager->AddCallbackTask(
         [callback, errorType = static_cast<WGPUErrorType>(scope.GetErrorType()),
          message = scope.GetErrorMessage(),
          userdata] { callback(errorType, message.c_str(), userdata); });
-
-    return returnValue;
 }
 
 BlobCache* DeviceBase::GetBlobCache() {
@@ -667,9 +669,10 @@ BlobCache* DeviceBase::GetBlobCache() {
     // TODO(crbug.com/dawn/1481): Shader caching currently has a dependency on the WGSL writer to
     // generate cache keys. We can lift the dependency once we also cache frontend parsing,
     // transformations, and reflection.
-    return mAdapter->GetInstance()->GetBlobCache(!IsToggleEnabled(Toggle::DisableBlobCache));
+    return mAdapter->GetPhysicalDevice()->GetInstance()->GetBlobCache(
+        !IsToggleEnabled(Toggle::DisableBlobCache));
 #else
-    return mAdapter->GetInstance()->GetBlobCache(false);
+    return mAdapter->GetPhysicalDevice()->GetInstance()->GetBlobCache(false);
 #endif
 }
 
@@ -727,8 +730,12 @@ AdapterBase* DeviceBase::GetAdapter() const {
     return mAdapter.Get();
 }
 
+PhysicalDeviceBase* DeviceBase::GetPhysicalDevice() const {
+    return mAdapter->GetPhysicalDevice();
+}
+
 dawn::platform::Platform* DeviceBase::GetPlatform() const {
-    return GetAdapter()->GetInstance()->GetPlatform();
+    return GetPhysicalDevice()->GetInstance()->GetPlatform();
 }
 
 ExecutionSerial DeviceBase::GetCompletedCommandSerial() const {
@@ -789,7 +796,8 @@ ResultOrError<const Format*> DeviceBase::GetInternalFormat(wgpu::TextureFormat f
     DAWN_INVALID_IF(index >= mFormatTable.size(), "Unknown texture format %s.", format);
 
     const Format* internalFormat = &mFormatTable[index];
-    DAWN_INVALID_IF(!internalFormat->isSupported, "Unsupported texture format %s.", format);
+    DAWN_INVALID_IF(!internalFormat->IsSupported(), "Unsupported texture format %s, reason: %s.",
+                    format, internalFormat->unsupportedReason);
 
     return internalFormat;
 }
@@ -797,13 +805,13 @@ ResultOrError<const Format*> DeviceBase::GetInternalFormat(wgpu::TextureFormat f
 const Format& DeviceBase::GetValidInternalFormat(wgpu::TextureFormat format) const {
     FormatIndex index = ComputeFormatIndex(format);
     ASSERT(index < mFormatTable.size());
-    ASSERT(mFormatTable[index].isSupported);
+    ASSERT(mFormatTable[index].IsSupported());
     return mFormatTable[index];
 }
 
 const Format& DeviceBase::GetValidInternalFormat(FormatIndex index) const {
     ASSERT(index < mFormatTable.size());
-    ASSERT(mFormatTable[index].isSupported);
+    ASSERT(mFormatTable[index].IsSupported());
     return mFormatTable[index];
 }
 
@@ -845,9 +853,22 @@ ResultOrError<Ref<BindGroupLayoutBase>> DeviceBase::CreateEmptyBindGroupLayout()
     return GetOrCreateBindGroupLayout(&desc);
 }
 
+ResultOrError<Ref<PipelineLayoutBase>> DeviceBase::CreateEmptyPipelineLayout() {
+    PipelineLayoutDescriptor desc = {};
+    desc.bindGroupLayoutCount = 0;
+    desc.bindGroupLayouts = nullptr;
+
+    return GetOrCreatePipelineLayout(&desc);
+}
+
 BindGroupLayoutBase* DeviceBase::GetEmptyBindGroupLayout() {
     ASSERT(mEmptyBindGroupLayout != nullptr);
     return mEmptyBindGroupLayout.Get();
+}
+
+PipelineLayoutBase* DeviceBase::GetEmptyPipelineLayout() {
+    ASSERT(mEmptyPipelineLayout != nullptr);
+    return mEmptyPipelineLayout.Get();
 }
 
 Ref<ComputePipelineBase> DeviceBase::GetCachedComputePipeline(
@@ -873,7 +894,7 @@ Ref<RenderPipelineBase> DeviceBase::GetCachedRenderPipeline(
 
 Ref<ComputePipelineBase> DeviceBase::AddOrGetCachedComputePipeline(
     Ref<ComputePipelineBase> computePipeline) {
-    ASSERT(IsMutexLockedByCurrentThreadIfNeeded(mMutex));
+    ASSERT(IsLockedByCurrentThreadIfNeeded());
     auto [cachedPipeline, inserted] = mCaches->computePipelines.insert(computePipeline.Get());
     if (inserted) {
         computePipeline->SetIsCachedReference();
@@ -885,7 +906,7 @@ Ref<ComputePipelineBase> DeviceBase::AddOrGetCachedComputePipeline(
 
 Ref<RenderPipelineBase> DeviceBase::AddOrGetCachedRenderPipeline(
     Ref<RenderPipelineBase> renderPipeline) {
-    ASSERT(IsMutexLockedByCurrentThreadIfNeeded(mMutex));
+    ASSERT(IsLockedByCurrentThreadIfNeeded());
     auto [cachedPipeline, inserted] = mCaches->renderPipelines.insert(renderPipeline.Get());
     if (inserted) {
         renderPipeline->SetIsCachedReference();
@@ -1077,7 +1098,7 @@ BindGroupBase* DeviceBase::APICreateBindGroup(const BindGroupDescriptor* descrip
     Ref<BindGroupBase> result;
     if (ConsumedError(CreateBindGroup(descriptor), &result, "calling %s.CreateBindGroup(%s).", this,
                       descriptor)) {
-        return BindGroupBase::MakeError(this);
+        return BindGroupBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1086,7 +1107,7 @@ BindGroupLayoutBase* DeviceBase::APICreateBindGroupLayout(
     Ref<BindGroupLayoutBase> result;
     if (ConsumedError(CreateBindGroupLayout(descriptor), &result,
                       "calling %s.CreateBindGroupLayout(%s).", this, descriptor)) {
-        return BindGroupLayoutBase::MakeError(this);
+        return BindGroupLayoutBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1103,7 +1124,7 @@ CommandEncoder* DeviceBase::APICreateCommandEncoder(const CommandEncoderDescript
     Ref<CommandEncoder> result;
     if (ConsumedError(CreateCommandEncoder(descriptor), &result,
                       "calling %s.CreateCommandEncoder(%s).", this, descriptor)) {
-        return CommandEncoder::MakeError(this);
+        return CommandEncoder::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1113,9 +1134,9 @@ ComputePipelineBase* DeviceBase::APICreateComputePipeline(
                  utils::GetLabelForTrace(descriptor->label));
 
     Ref<ComputePipelineBase> result;
-    if (ConsumedError(CreateComputePipeline(descriptor), &result,
+    if (ConsumedError(CreateComputePipeline(descriptor), &result, InternalErrorType::Internal,
                       "calling %s.CreateComputePipeline(%s).", this, descriptor)) {
-        return ComputePipelineBase::MakeError(this);
+        return ComputePipelineBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1146,7 +1167,7 @@ PipelineLayoutBase* DeviceBase::APICreatePipelineLayout(
     Ref<PipelineLayoutBase> result;
     if (ConsumedError(CreatePipelineLayout(descriptor), &result,
                       "calling %s.CreatePipelineLayout(%s).", this, descriptor)) {
-        return PipelineLayoutBase::MakeError(this);
+        return PipelineLayoutBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1162,7 +1183,7 @@ SamplerBase* DeviceBase::APICreateSampler(const SamplerDescriptor* descriptor) {
     Ref<SamplerBase> result;
     if (ConsumedError(CreateSampler(descriptor), &result, "calling %s.CreateSampler(%s).", this,
                       descriptor)) {
-        return SamplerBase::MakeError(this);
+        return SamplerBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1193,7 +1214,7 @@ RenderBundleEncoder* DeviceBase::APICreateRenderBundleEncoder(
     Ref<RenderBundleEncoder> result;
     if (ConsumedError(CreateRenderBundleEncoder(descriptor), &result,
                       "calling %s.CreateRenderBundleEncoder(%s).", this, descriptor)) {
-        return RenderBundleEncoder::MakeError(this);
+        return RenderBundleEncoder::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1203,9 +1224,9 @@ RenderPipelineBase* DeviceBase::APICreateRenderPipeline(
                  utils::GetLabelForTrace(descriptor->label));
 
     Ref<RenderPipelineBase> result;
-    if (ConsumedError(CreateRenderPipeline(descriptor), &result,
+    if (ConsumedError(CreateRenderPipeline(descriptor), &result, InternalErrorType::Internal,
                       "calling %s.CreateRenderPipeline(%s).", this, descriptor)) {
-        return RenderPipelineBase::MakeError(this);
+        return RenderPipelineBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     return result.Detach();
 }
@@ -1219,7 +1240,7 @@ ShaderModuleBase* DeviceBase::APICreateShaderModule(const ShaderModuleDescriptor
     if (ConsumedError(CreateShaderModule(descriptor, compilationMessages.get()), &result,
                       "calling %s.CreateShaderModule(%s).", this, descriptor)) {
         DAWN_ASSERT(result == nullptr);
-        result = ShaderModuleBase::MakeError(this);
+        result = ShaderModuleBase::MakeError(this, descriptor ? descriptor->label : nullptr);
     }
     // Move compilation messages into ShaderModuleBase and emit tint errors and warnings
     // after all other operations are finished, even if any of them is failed and result
@@ -1228,12 +1249,27 @@ ShaderModuleBase* DeviceBase::APICreateShaderModule(const ShaderModuleDescriptor
 
     return result.Detach();
 }
+ShaderModuleBase* DeviceBase::APICreateErrorShaderModule(const ShaderModuleDescriptor* descriptor,
+                                                         const char* errorMessage) {
+    Ref<ShaderModuleBase> result =
+        ShaderModuleBase::MakeError(this, descriptor ? descriptor->label : nullptr);
+    std::unique_ptr<OwnedCompilationMessages> compilationMessages(
+        std::make_unique<OwnedCompilationMessages>());
+    compilationMessages->AddMessage(errorMessage, wgpu::CompilationMessageType::Error);
+    result->InjectCompilationMessages(std::move(compilationMessages));
+
+    std::unique_ptr<ErrorData> errorData =
+        DAWN_VALIDATION_ERROR("Error in calling %s.CreateShaderModule(%s).", this, descriptor);
+    ConsumeError(std::move(errorData));
+
+    return result.Detach();
+}
 SwapChainBase* DeviceBase::APICreateSwapChain(Surface* surface,
                                               const SwapChainDescriptor* descriptor) {
     Ref<SwapChainBase> result;
     if (ConsumedError(CreateSwapChain(surface, descriptor), &result,
                       "calling %s.CreateSwapChain(%s).", this, descriptor)) {
-        return SwapChainBase::MakeError(this);
+        return SwapChainBase::MakeError(this, descriptor);
     }
     return result.Detach();
 }
@@ -1244,6 +1280,15 @@ TextureBase* DeviceBase::APICreateTexture(const TextureDescriptor* descriptor) {
         return TextureBase::MakeError(this, descriptor);
     }
     return result.Detach();
+}
+
+wgpu::TextureUsage DeviceBase::APIGetSupportedSurfaceUsage(Surface* surface) {
+    wgpu::TextureUsage result;
+    if (ConsumedError(GetSupportedSurfaceUsage(surface), &result,
+                      "calling %s.GetSupportedSurfaceUsage().", this)) {
+        return wgpu::TextureUsage::None;
+    }
+    return result;
 }
 
 // For Dawn Wire
@@ -1367,7 +1412,7 @@ ExternalTextureBase* DeviceBase::APICreateExternalTexture(
 
 void DeviceBase::ApplyFeatures(const DeviceDescriptor* deviceDescriptor) {
     ASSERT(deviceDescriptor);
-    ASSERT(GetAdapter()->SupportsAllRequiredFeatures(
+    ASSERT(GetPhysicalDevice()->SupportsAllRequiredFeatures(
         {deviceDescriptor->requiredFeatures, deviceDescriptor->requiredFeaturesCount}));
 
     for (uint32_t i = 0; i < deviceDescriptor->requiredFeaturesCount; ++i) {
@@ -1388,7 +1433,7 @@ void DeviceBase::SetWGSLExtensionAllowList() {
     if (mEnabledFeatures.IsEnabled(Feature::ShaderF16)) {
         mWGSLExtensionAllowList.insert("f16");
     }
-    if (!IsToggleEnabled(Toggle::DisallowUnsafeAPIs)) {
+    if (IsToggleEnabled(Toggle::AllowUnsafeAPIs)) {
         mWGSLExtensionAllowList.insert("chromium_disable_uniformity_analysis");
     }
 }
@@ -1403,6 +1448,10 @@ bool DeviceBase::IsValidationEnabled() const {
 
 bool DeviceBase::IsRobustnessEnabled() const {
     return !IsToggleEnabled(Toggle::DisableRobustness);
+}
+
+bool DeviceBase::IsCompatibilityMode() const {
+    return mAdapter != nullptr && mAdapter->GetFeatureLevel() == FeatureLevel::Compatibility;
 }
 
 size_t DeviceBase::GetLazyClearCountForTesting() {
@@ -1421,6 +1470,12 @@ void DeviceBase::EmitDeprecationWarning(const std::string& message) {
     mDeprecationWarnings->count++;
     if (mDeprecationWarnings->emitted.insert(message).second) {
         dawn::WarningLog() << message;
+    }
+}
+
+void DeviceBase::EmitWarningOnce(const std::string& message) {
+    if (mWarnings.insert(message).second) {
+        this->EmitLog(WGPULoggingType_Warning, message.c_str());
     }
 }
 
@@ -1778,15 +1833,15 @@ ResultOrError<Ref<SwapChainBase>> DeviceBase::CreateSwapChain(
                          descriptor);
     }
 
-    NewSwapChainBase* previousSwapChain = surface->GetAttachedSwapChain();
-    ResultOrError<Ref<NewSwapChainBase>> maybeNewSwapChain =
+    SwapChainBase* previousSwapChain = surface->GetAttachedSwapChain();
+    ResultOrError<Ref<SwapChainBase>> maybeNewSwapChain =
         CreateSwapChainImpl(surface, previousSwapChain, descriptor);
 
     if (previousSwapChain != nullptr) {
         previousSwapChain->DetachFromSurface();
     }
 
-    Ref<NewSwapChainBase> newSwapChain;
+    Ref<SwapChainBase> newSwapChain;
     DAWN_TRY_ASSIGN(newSwapChain, std::move(maybeNewSwapChain));
 
     newSwapChain->SetIsAttached();
@@ -1816,6 +1871,18 @@ ResultOrError<Ref<TextureViewBase>> DeviceBase::CreateTextureView(
                          "validating %s against %s.", &desc, texture);
     }
     return CreateTextureViewImpl(texture, &desc);
+}
+
+ResultOrError<wgpu::TextureUsage> DeviceBase::GetSupportedSurfaceUsage(
+    const Surface* surface) const {
+    DAWN_TRY(ValidateIsAlive());
+
+    if (IsValidationEnabled()) {
+        DAWN_INVALID_IF(!HasFeature(Feature::SurfaceCapabilities), "%s is not enabled.",
+                        wgpu::FeatureName::SurfaceCapabilities);
+    }
+
+    return GetSupportedSurfaceUsageImpl(surface);
 }
 
 // Other implementation details
@@ -2046,6 +2113,10 @@ Mutex::AutoLockAndHoldRef DeviceBase::GetScopedLockSafeForDelete() {
 
 Mutex::AutoLock DeviceBase::GetScopedLock() {
     return Mutex::AutoLock(mMutex.Get());
+}
+
+bool DeviceBase::IsLockedByCurrentThreadIfNeeded() const {
+    return mMutex == nullptr || mMutex->IsLockedByCurrentThread();
 }
 
 IgnoreLazyClearCountScope::IgnoreLazyClearCountScope(DeviceBase* device)

@@ -1,6 +1,6 @@
 struct S {
   /* @offset(0) */
-  a : vec4<f32>,
+  a : vec4f,
   /* @offset(16) */
   b : i32,
 }
@@ -15,7 +15,7 @@ struct sb_block {
 @group(0) @binding(0) var<storage, read_write> sb : sb_block;
 
 fn main_1() {
-  let x_18 : S = sb.inner[1i];
+  let x_18 = sb.inner[1i];
   return;
 }
 

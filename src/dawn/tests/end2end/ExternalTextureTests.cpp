@@ -16,6 +16,7 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
 
 wgpu::Texture Create2DTexture(wgpu::Device device,
@@ -107,7 +108,6 @@ class ExternalTextureTests : public DawnTest {
     wgpu::ShaderModule vsModule;
     wgpu::ShaderModule fsSampleExternalTextureModule;
 };
-}  // anonymous namespace
 
 TEST_P(ExternalTextureTests, CreateExternalTextureSuccess) {
     wgpu::Texture texture = Create2DTexture(device, kWidth, kHeight, kFormat, kSampledUsage);
@@ -996,8 +996,13 @@ TEST_P(ExternalTextureTests, CropMultiplanar) {
 }
 
 DAWN_INSTANTIATE_TEST(ExternalTextureTests,
+                      D3D11Backend(),
                       D3D12Backend(),
+                      D3D12Backend({}, {"d3d12_use_root_signature_version_1_1"}),
                       MetalBackend(),
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

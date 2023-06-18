@@ -22,15 +22,15 @@
 namespace tint::ast {
 class MemberAccessorExpression;
 }  // namespace tint::ast
-namespace tint::sem {
+namespace tint::type {
 class StructMember;
-}  // namespace tint::sem
+}  // namespace tint::type
 
 namespace tint::sem {
 
 /// MemberAccessorExpression holds the semantic information for a
 /// ast::MemberAccessorExpression node.
-class MemberAccessorExpression : public Castable<MemberAccessorExpression, ValueExpression> {
+class MemberAccessorExpression : public utils::Castable<MemberAccessorExpression, ValueExpression> {
   public:
     /// Destructor
     ~MemberAccessorExpression() override;
@@ -64,7 +64,8 @@ class MemberAccessorExpression : public Castable<MemberAccessorExpression, Value
 /// StructMemberAccess holds the semantic information for a
 /// ast::MemberAccessorExpression node that represents an access to a structure
 /// member.
-class StructMemberAccess final : public Castable<StructMemberAccess, MemberAccessorExpression> {
+class StructMemberAccess final
+    : public utils::Castable<StructMemberAccess, MemberAccessorExpression> {
   public:
     /// Constructor
     /// @param declaration the AST node
@@ -80,7 +81,7 @@ class StructMemberAccess final : public Castable<StructMemberAccess, MemberAcces
                        const Statement* statement,
                        const constant::Value* constant,
                        const ValueExpression* object,
-                       const StructMember* member,
+                       const type::StructMember* member,
                        bool has_side_effects,
                        const Variable* root_ident = nullptr);
 
@@ -88,15 +89,15 @@ class StructMemberAccess final : public Castable<StructMemberAccess, MemberAcces
     ~StructMemberAccess() override;
 
     /// @returns the structure member
-    StructMember const* Member() const { return member_; }
+    type::StructMember const* Member() const { return member_; }
 
   private:
-    StructMember const* const member_;
+    type::StructMember const* const member_;
 };
 
 /// Swizzle holds the semantic information for a ast::MemberAccessorExpression
 /// node that represents a vector swizzle.
-class Swizzle final : public Castable<Swizzle, MemberAccessorExpression> {
+class Swizzle final : public utils::Castable<Swizzle, MemberAccessorExpression> {
   public:
     /// Constructor
     /// @param declaration the AST node

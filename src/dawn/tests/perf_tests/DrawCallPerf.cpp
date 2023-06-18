@@ -22,6 +22,7 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
 
 constexpr unsigned int kNumDraws = 2000;
@@ -195,8 +196,6 @@ std::ostream& operator<<(std::ostream& ostream, const DrawCallParamForTest& test
     return ostream;
 }
 
-}  // anonymous namespace
-
 // DrawCallPerf is an uber-benchmark with supports many parameterizations.
 // The specific parameterizations we care about are explicitly instantiated at the bottom
 // of this test file.
@@ -369,18 +368,18 @@ void DrawCallPerf::SetUp() {
                         {0, wgpu::ShaderStage::Fragment, wgpu::BufferBindingType::Uniform, false},
                     });
 
-        // Create the pipeline layout.
+        // Create the pipeline layout for the second pipeline.
         wgpu::BindGroupLayout bindGroupLayouts[2] = {
             mConstantBindGroupLayout,
             mUniformBindGroupLayout,
         };
         pipelineLayoutDesc.bindGroupLayouts = bindGroupLayouts,
         pipelineLayoutDesc.bindGroupLayoutCount = 2;
-        wgpu::PipelineLayout pipelineLayout = device.CreatePipelineLayout(&pipelineLayoutDesc);
+        pipelineLayout = device.CreatePipelineLayout(&pipelineLayoutDesc);
 
         // Create the fragment shader module. This shader matches the pipeline layout described
         // above.
-        wgpu::ShaderModule fsModule = utils::CreateShaderModule(device, kFragmentShaderB);
+        fsModule = utils::CreateShaderModule(device, kFragmentShaderB);
 
         // Create the pipeline.
         renderPipelineDesc.layout = pipelineLayout;
@@ -597,7 +596,7 @@ TEST_P(DrawCallPerf, Run) {
 
 DAWN_INSTANTIATE_TEST_P(
     DrawCallPerf,
-    {D3D11Backend(), D3D12Backend(), MetalBackend(), OpenGLBackend(), VulkanBackend(),
+    {D3D12Backend(), MetalBackend(), OpenGLBackend(), VulkanBackend(),
      VulkanBackend({"skip_validation"})},
     {
         // Baseline
@@ -650,3 +649,6 @@ DAWN_INSTANTIATE_TEST_P(
         MakeParam(BindGroup::Dynamic,
                   UniformData::Dynamic),  // Update per-draw data: Dynamic bind groups
     });
+
+}  // anonymous namespace
+}  // namespace dawn

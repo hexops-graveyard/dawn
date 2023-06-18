@@ -23,7 +23,8 @@
 #include <string>
 #include <utility>
 
-#include "src/tint/text/unicode.h"
+#include "src/tint/utils/unicode.h"
+#include "src/tint/utils/vector.h"
 
 namespace tint::utils {
 
@@ -176,6 +177,9 @@ class StringStream {
         return *this;
     }
 
+    /// @returns the current location in the output stream
+    uint32_t tellp() { return static_cast<uint32_t>(sstream_.tellp()); }
+
     /// @returns the string contents of the stream
     std::string str() const { return sstream_.str(); }
 
@@ -183,16 +187,50 @@ class StringStream {
     std::stringstream sstream_;
 };
 
-}  // namespace tint::utils
-
-namespace tint::text {
-
 /// Writes the CodePoint to the stream.
 /// @param out the stream to write to
 /// @param codepoint the CodePoint to write
 /// @returns out so calls can be chained
 utils::StringStream& operator<<(utils::StringStream& out, CodePoint codepoint);
 
-}  // namespace tint::text
+/// Prints the vector @p vec to @p o
+/// @param o the stream to write to
+/// @param vec the vector
+/// @return the stream so calls can be chained
+template <typename T, size_t N>
+inline utils::StringStream& operator<<(utils::StringStream& o, const utils::Vector<T, N>& vec) {
+    o << "[";
+    bool first = true;
+    for (auto& el : vec) {
+        if (!first) {
+            o << ", ";
+        }
+        first = false;
+        o << el;
+    }
+    o << "]";
+    return o;
+}
+
+/// Prints the vector @p vec to @p o
+/// @param o the stream to write to
+/// @param vec the vector reference
+/// @return the stream so calls can be chained
+template <typename T>
+inline utils::StringStream& operator<<(utils::StringStream& o, utils::VectorRef<T> vec) {
+    o << "[";
+    bool first = true;
+    for (auto& el : vec) {
+        if (!first) {
+            o << ", ";
+        }
+        first = false;
+        o << el;
+    }
+    o << "]";
+    return o;
+}
+
+}  // namespace tint::utils
 
 #endif  // SRC_TINT_UTILS_STRING_STREAM_H_

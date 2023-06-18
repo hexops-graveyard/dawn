@@ -16,11 +16,12 @@
 #define SRC_DAWN_UTILS_COMBORENDERPIPELINEDESCRIPTOR_H_
 
 #include <array>
+#include <vector>
 
 #include "dawn/common/Constants.h"
 #include "dawn/webgpu_cpp.h"
 
-namespace utils {
+namespace dawn::utils {
 
 // Primarily used by tests to easily set up the vertex buffer state portion of a RenderPipeline.
 class ComboVertexState {
@@ -32,9 +33,11 @@ class ComboVertexState {
     ComboVertexState(ComboVertexState&&) = delete;
     ComboVertexState& operator=(ComboVertexState&&) = delete;
 
-    uint32_t vertexBufferCount;
-    std::array<wgpu::VertexBufferLayout, kMaxVertexBuffers> cVertexBuffers;
-    std::array<wgpu::VertexAttribute, kMaxVertexAttributes> cAttributes;
+    size_t vertexBufferCount = 0;
+    std::vector<wgpu::VertexBufferLayout> cVertexBuffers =
+        std::vector<wgpu::VertexBufferLayout>(kMaxVertexBuffers);
+    std::vector<wgpu::VertexAttribute> cAttributes =
+        std::vector<wgpu::VertexAttribute>(kMaxVertexAttributes);
 };
 
 class ComboRenderPipelineDescriptor : public wgpu::RenderPipelineDescriptor {
@@ -59,6 +62,6 @@ class ComboRenderPipelineDescriptor : public wgpu::RenderPipelineDescriptor {
     wgpu::DepthStencilState cDepthStencil;
 };
 
-}  // namespace utils
+}  // namespace dawn::utils
 
 #endif  // SRC_DAWN_UTILS_COMBORENDERPIPELINEDESCRIPTOR_H_

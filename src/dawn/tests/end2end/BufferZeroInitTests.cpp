@@ -20,19 +20,20 @@
 #include "dawn/utils/TestUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
-#define EXPECT_LAZY_CLEAR(N, statement)                                                        \
-    do {                                                                                       \
-        if (UsesWire()) {                                                                      \
-            statement;                                                                         \
-        } else {                                                                               \
-            size_t lazyClearsBefore = dawn::native::GetLazyClearCountForTesting(device.Get()); \
-            statement;                                                                         \
-            size_t lazyClearsAfter = dawn::native::GetLazyClearCountForTesting(device.Get());  \
-            EXPECT_EQ(N, lazyClearsAfter - lazyClearsBefore);                                  \
-        }                                                                                      \
-    } while (0)
-
+namespace dawn {
 namespace {
+
+#define EXPECT_LAZY_CLEAR(N, statement)                                                  \
+    do {                                                                                 \
+        if (UsesWire()) {                                                                \
+            statement;                                                                   \
+        } else {                                                                         \
+            size_t lazyClearsBefore = native::GetLazyClearCountForTesting(device.Get()); \
+            statement;                                                                   \
+            size_t lazyClearsAfter = native::GetLazyClearCountForTesting(device.Get());  \
+            EXPECT_EQ(N, lazyClearsAfter - lazyClearsBefore);                            \
+        }                                                                                \
+    } while (0)
 
 struct BufferZeroInitInCopyT2BSpec {
     wgpu::Extent3D textureSize;
@@ -42,8 +43,6 @@ struct BufferZeroInitInCopyT2BSpec {
     uint32_t rowsPerImage;
     uint32_t lazyClearCount;
 };
-
-}  // anonymous namespace
 
 class BufferZeroInitTest : public DawnTest {
   protected:
@@ -1382,8 +1381,12 @@ TEST_P(BufferZeroInitTest, ResolveQuerySet) {
 }
 
 DAWN_INSTANTIATE_TEST(BufferZeroInitTest,
+                      D3D11Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       D3D12Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       MetalBackend({"nonzero_clear_resources_on_creation_for_testing"}),
                       OpenGLBackend({"nonzero_clear_resources_on_creation_for_testing"}),
                       OpenGLESBackend({"nonzero_clear_resources_on_creation_for_testing"}),
                       VulkanBackend({"nonzero_clear_resources_on_creation_for_testing"}));
+
+}  // anonymous namespace
+}  // namespace dawn

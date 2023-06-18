@@ -17,6 +17,9 @@
 #include "dawn/tests/DawnTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class ComputeStorageBufferBarrierTests : public DawnTest {
   protected:
     static constexpr uint32_t kNumValues = 100;
@@ -320,9 +323,9 @@ TEST_P(ComputeStorageBufferBarrierTests, UniformToStorageAddPingPongInOnePass) {
 
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
     wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
-    for (uint32_t i = 0, b = 0; i < kIterations; ++i, b = 1 - b) {
+    for (uint32_t i = 0; i < kIterations; ++i) {
         pass.SetPipeline(pipeline);
-        pass.SetBindGroup(0, bindGroups[b]);
+        pass.SetBindGroup(0, bindGroups[i % 2]);
         pass.DispatchWorkgroups(kNumValues / 4);
     }
     pass.End();
@@ -415,3 +418,6 @@ DAWN_INSTANTIATE_TEST(ComputeStorageBufferBarrierTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

@@ -14,9 +14,11 @@
 
 #include "dawn/native/Limits.h"
 
+#include <algorithm>
 #include <array>
 
 #include "dawn/common/Assert.h"
+#include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
 
 // clang-format off
@@ -35,12 +37,13 @@
     X(Maximum,                    maxComputeWorkgroupSizeZ,        64,         64) \
     X(Maximum,            maxComputeWorkgroupsPerDimension,     65535,      65535)
 
+// Tiers are 128MB, 1GB, 2GB-4, 4GB-4.
 #define LIMITS_STORAGE_BUFFER_BINDING_SIZE(X)                                             \
-    X(Maximum, maxStorageBufferBindingSize, 134217728, 1073741824, 2147483647, 4294967295)
+    X(Maximum, maxStorageBufferBindingSize, 134217728, 1073741824, 2147483644, 4294967292)
 
-// Tiers are 256Mb, 1Gb, 2Gb.
+// Tiers are 256MB, 1GB, 2GB, 4GB.
 #define LIMITS_MAX_BUFFER_SIZE(X)                                             \
-    X(Maximum, maxBufferSize, 0x10000000, 0x40000000, 0x80000000)
+    X(Maximum, maxBufferSize, 0x10000000, 0x40000000, 0x80000000, 0x100000000)
 
 // Tiers for limits related to resource bindings.
 // TODO(crbug.com/dawn/685): Define these better. For now, use two tiers where one
@@ -63,7 +66,7 @@
     X(Maximum,                       maxTextureDimension3D,      2048,       2048) \
     X(Maximum,                       maxTextureArrayLayers,       256,        256) \
     X(Maximum,                               maxBindGroups,         4,          4) \
-    X(Maximum,                     maxBindingsPerBindGroup,       640,        640) \
+    X(Maximum,                     maxBindingsPerBindGroup,      1000,       1000) \
     X(Maximum,                 maxUniformBufferBindingSize,     65536,      65536) \
     X(Alignment,           minUniformBufferOffsetAlignment,       256,        256) \
     X(Alignment,           minStorageBufferOffsetAlignment,       256,        256) \
@@ -73,8 +76,7 @@
     X(Maximum,               maxInterStageShaderComponents,        60,         60) \
     X(Maximum,               maxInterStageShaderVariables,         16,         16) \
     X(Maximum,                         maxColorAttachments,         8,          8) \
-    X(Maximum,            maxColorAttachmentBytesPerSample,        32,         32) \
-    X(Maximum,          maxFragmentCombinedOutputResources,         8,          8)
+    X(Maximum,            maxColorAttachmentBytesPerSample,        32,         32)
 // clang-format on
 
 #define LIMITS_EACH_GROUP(X)              \
@@ -231,7 +233,18 @@ Limits ApplyLimitTiers(Limits limits) {
     }
 
     LIMITS_EACH_GROUP(X_EACH_GROUP)
-#undef X_CHECK_BETTER
+
+    // After tiering all limit values, enforce additional restriction by calling NormalizeLimits.
+    // Since maxStorageBufferBindingSize and maxBufferSize tiers are not exactly aligned, it is
+    // possible that tiered maxStorageBufferBindingSize is larger than tiered maxBufferSize. For
+    // example, on a hypothetical device with both maxStorageBufferBindingSize and maxBufferSize
+    // being 4GB-1, the tiered maxStorageBufferBindingSize would be 4GB-4 while the tiered
+    // maxBufferSize being 2GB. NormalizeLimits will clamp the maxStorageBufferBindingSize to
+    // maxBufferSize in such cases, although the result may or may not be one of predefined
+    // maxStorageBufferBindingSize tiers.
+    NormalizeLimits(&limits);
+
+#undef X_CHECK_BETTER_AND_CLAMP
 #undef X_EACH_GROUP
 #undef GET_TIER_COUNT
 #undef X_TIER_COUNT
@@ -254,6 +267,37 @@ template <>
 void stream::Stream<LimitsForCompilationRequest>::Write(Sink* s,
                                                         const LimitsForCompilationRequest& t) {
     t.VisitAll([&](const auto&... members) { StreamIn(s, members...); });
+}
+
+void NormalizeLimits(Limits* limits) {
+    // Enforce internal Dawn constants for some limits to ensure they don't go over fixed-size
+    // arrays in Dawn's internal code.
+    limits->maxVertexBufferArrayStride =
+        std::min(limits->maxVertexBufferArrayStride, kMaxVertexBufferArrayStride);
+    limits->maxColorAttachments =
+        std::min(limits->maxColorAttachments, uint32_t(kMaxColorAttachments));
+    limits->maxBindGroups = std::min(limits->maxBindGroups, kMaxBindGroups);
+    limits->maxVertexAttributes =
+        std::min(limits->maxVertexAttributes, uint32_t(kMaxVertexAttributes));
+    limits->maxVertexBuffers = std::min(limits->maxVertexBuffers, uint32_t(kMaxVertexBuffers));
+    limits->maxInterStageShaderComponents =
+        std::min(limits->maxInterStageShaderComponents, kMaxInterStageShaderComponents);
+    limits->maxSampledTexturesPerShaderStage =
+        std::min(limits->maxSampledTexturesPerShaderStage, kMaxSampledTexturesPerShaderStage);
+    limits->maxSamplersPerShaderStage =
+        std::min(limits->maxSamplersPerShaderStage, kMaxSamplersPerShaderStage);
+    limits->maxStorageBuffersPerShaderStage =
+        std::min(limits->maxStorageBuffersPerShaderStage, kMaxStorageBuffersPerShaderStage);
+    limits->maxStorageTexturesPerShaderStage =
+        std::min(limits->maxStorageTexturesPerShaderStage, kMaxStorageTexturesPerShaderStage);
+    limits->maxUniformBuffersPerShaderStage =
+        std::min(limits->maxUniformBuffersPerShaderStage, kMaxUniformBuffersPerShaderStage);
+
+    // Additional enforcement for dependent limits.
+    limits->maxStorageBufferBindingSize =
+        std::min(limits->maxStorageBufferBindingSize, limits->maxBufferSize);
+    limits->maxUniformBufferBindingSize =
+        std::min(limits->maxUniformBufferBindingSize, limits->maxBufferSize);
 }
 
 }  // namespace dawn::native

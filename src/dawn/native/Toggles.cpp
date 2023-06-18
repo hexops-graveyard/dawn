@@ -172,9 +172,9 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
     {Toggle::MetalEnableVertexPulling,
      {"metal_enable_vertex_pulling", "Uses vertex pulling to protect out-of-bounds reads on Metal",
       "https://crbug.com/dawn/480", ToggleStage::Device}},
-    {Toggle::DisallowUnsafeAPIs,
-     {"disallow_unsafe_apis",
-      "Produces validation errors on API entry points or parameter combinations that aren't "
+    {Toggle::AllowUnsafeAPIs,
+     {"allow_unsafe_apis",
+      "Suppresses validation errors on API entry points or parameter combinations that aren't "
       "considered secure yet.",
       "http://crbug.com/1138528", ToggleStage::Instance}},
     {Toggle::FlushBeforeClientWaitSync,
@@ -246,6 +246,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
      {"disable_timestamp_query_conversion",
       "Resolve timestamp queries into ticks instead of nanoseconds.", "https://crbug.com/dawn/1305",
       ToggleStage::Device}},
+    {Toggle::ClearBufferBeforeResolveQueries,
+     {"clear_buffer_before_resolve_queries",
+      "clear destination buffer to zero before resolving queries. This toggle is enabled on Intel "
+      "Gen12 GPUs due to driver issue.",
+      "https://crbug.com/dawn/1823", ToggleStage::Device}},
     {Toggle::VulkanUseZeroInitializeWorkgroupMemoryExtension,
      {"use_vulkan_zero_initialize_workgroup_memory_extension",
       "Initialize workgroup memory with OpConstantNull on Vulkan when the Vulkan extension "
@@ -381,18 +386,27 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Use a blit to copy from a depth texture to the nonzero subresource of a depth texture. "
       "Works around an issue where nonzero layers are not written.",
       "https://crbug.com/dawn/1083", ToggleStage::Device}},
+    {Toggle::UseBlitForDepth16UnormTextureToBufferCopy,
+     {"use_blit_for_depth16unorm_texture_to_buffer_copy",
+      "Use a blit instead of a copy command to copy depth aspect of a texture to a buffer."
+      "Workaround for OpenGL and OpenGLES.",
+      "https://crbug.com/dawn/1782", ToggleStage::Device}},
+    {Toggle::UseBlitForDepth32FloatTextureToBufferCopy,
+     {"use_blit_for_depth32float_texture_to_buffer_copy",
+      "Use a blit instead of a copy command to copy depth aspect of a texture to a buffer."
+      "Workaround for OpenGLES.",
+      "https://crbug.com/dawn/1782", ToggleStage::Device}},
+    {Toggle::UseBlitForStencilTextureToBufferCopy,
+     {"use_blit_for_stencil_texture_to_buffer_copy",
+      "Use a blit instead of a copy command to copy stencil aspect of a texture to a buffer."
+      "Workaround for OpenGLES.",
+      "https://crbug.com/dawn/1782", ToggleStage::Device}},
     {Toggle::D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha,
      {"d3d12_replace_add_with_minus_when_dst_factor_is_zero_and_src_factor_is_dst_alpha",
       "Replace the blending operation 'Add' with 'Minus' when dstBlendFactor is 'Zero' and "
       "srcBlendFactor is 'DstAlpha'. Works around an Intel D3D12 driver issue about alpha "
       "blending.",
       "https://crbug.com/dawn/1579", ToggleStage::Device}},
-    {Toggle::AllowDeprecatedAPIs,
-     {"allow_deprecated_apis",
-      "Allows deprecated paths by changing the validation errors to deprecation warnings. This "
-      "toggle is off by default and is expected to get removed when WebGPU V1 ships and stays "
-      "stable.",
-      "https://crbug.com/dawn/1563", ToggleStage::Device}},
     {Toggle::D3D12PolyfillReflectVec2F32,
      {"d3d12_polyfill_reflect_vec2_f32",
       "Polyfill the reflect builtin for vec2<f32> for D3D12. This toggle is enabled by default on "
@@ -403,6 +417,12 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Clears some R8-like textures to full 0 bits as soon as they are created. This Toggle is "
       "enabled on Intel Gen12 GPUs due to a mesa driver issue.",
       "https://crbug.com/chromium/1361662", ToggleStage::Device}},
+    {Toggle::D3D12UseRootSignatureVersion1_1,
+     {"d3d12_use_root_signature_version_1_1",
+      "Use D3D12 Root Signature Version 1.1 to make additional guarantees about the descriptors in "
+      "a descriptor heap and the data pointed to by the descriptors so that the drivers can make "
+      "better optimizations on them.",
+      "https://crbug.com/tint/1890", ToggleStage::Device}},
     {Toggle::NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
      {"no_workaround_sample_mask_becomes_zero_for_all_but_last_color_target",
       "MacOS 12.0+ Intel has a bug where the sample mask is only applied for the last color "

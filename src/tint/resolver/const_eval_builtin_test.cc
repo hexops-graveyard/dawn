@@ -166,7 +166,7 @@ TEST_P(ResolverConstEvalBuiltinTest, Test) {
         ASSERT_NE(value, nullptr);
         EXPECT_TYPE(value->Type(), sem->Type());
 
-        if (value->Type()->Is<sem::Struct>()) {
+        if (value->Type()->Is<type::Struct>()) {
             // The result type of the constant-evaluated expression is a structure.
             // Compare each of the fields individually.
             for (size_t i = 0; i < expected_case.values.Length(); i++) {
@@ -2288,6 +2288,14 @@ std::vector<Case> RefractCases() {
             // Overflow the k^2 operation
             E({down_right, pos_y, Val(T::Highest())}, error_msg(T::Highest(), "*", T::Highest())),
         });
+    ConcatIntoIf<std::is_same_v<T, f32>>(  //
+        r, std::vector<Case>{
+               // Overflow the final multiply by e2 operation
+               // From https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=58526
+               E({Vec(T(-2.22218755e-15), T(0)), Vec(T(-198225753253481323832809619456.0), T(0)),
+                  Val(T(40.0313720703125))},
+                 error_msg(T(35267222007971840.0), "*", T(-198225753253481323832809619456.0))),
+           });
 
     return r;
 }

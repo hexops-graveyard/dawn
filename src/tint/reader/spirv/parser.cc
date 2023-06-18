@@ -16,14 +16,14 @@
 
 #include <utility>
 
+#include "src/tint/ast/transform/decompose_strided_array.h"
+#include "src/tint/ast/transform/decompose_strided_matrix.h"
+#include "src/tint/ast/transform/remove_unreachable_statements.h"
+#include "src/tint/ast/transform/simplify_pointers.h"
+#include "src/tint/ast/transform/spirv_atomic.h"
+#include "src/tint/ast/transform/unshadow.h"
 #include "src/tint/reader/spirv/parser_impl.h"
-#include "src/tint/transform/decompose_strided_array.h"
-#include "src/tint/transform/decompose_strided_matrix.h"
 #include "src/tint/transform/manager.h"
-#include "src/tint/transform/remove_unreachable_statements.h"
-#include "src/tint/transform/simplify_pointers.h"
-#include "src/tint/transform/spirv_atomic.h"
-#include "src/tint/transform/unshadow.h"
 
 namespace tint::reader::spirv {
 
@@ -57,13 +57,14 @@ Program Parse(const std::vector<uint32_t>& input, const Options& options) {
     }
 
     transform::Manager manager;
-    manager.Add<transform::Unshadow>();
-    manager.Add<transform::SimplifyPointers>();
-    manager.Add<transform::DecomposeStridedMatrix>();
-    manager.Add<transform::DecomposeStridedArray>();
-    manager.Add<transform::RemoveUnreachableStatements>();
-    manager.Add<transform::SpirvAtomic>();
-    return manager.Run(&program).program;
+    transform::DataMap outputs;
+    manager.Add<ast::transform::Unshadow>();
+    manager.Add<ast::transform::SimplifyPointers>();
+    manager.Add<ast::transform::DecomposeStridedMatrix>();
+    manager.Add<ast::transform::DecomposeStridedArray>();
+    manager.Add<ast::transform::RemoveUnreachableStatements>();
+    manager.Add<ast::transform::SpirvAtomic>();
+    return manager.Run(&program, {}, outputs);
 }
 
 }  // namespace tint::reader::spirv

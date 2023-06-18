@@ -22,7 +22,7 @@
 namespace tint::type {
 
 /// A vector type.
-class Vector : public Castable<Vector, Type> {
+class Vector : public utils::Castable<Vector, Type> {
   public:
     /// Constructor
     /// @param subtype the vector element type
@@ -40,10 +40,9 @@ class Vector : public Castable<Vector, Type> {
     /// @returns the type of the vector elements
     const Type* type() const { return subtype_; }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @returns the number of elements in the vector
     uint32_t Width() const { return width_; }
@@ -64,6 +63,13 @@ class Vector : public Castable<Vector, Type> {
     /// @param width the width of the vector
     /// @returns the alignment in bytes of a vector of the given width.
     static uint32_t AlignOf(uint32_t width);
+
+    /// @copydoc Type::Elements
+    TypeAndCount Elements(const Type* type_if_invalid = nullptr,
+                          uint32_t count_if_invalid = 0) const override;
+
+    /// @copydoc Type::Element
+    const Type* Element(uint32_t index) const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

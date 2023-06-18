@@ -17,6 +17,9 @@
 #include "dawn/tests/DawnTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class DeviceLifetimeTests : public DawnTest {};
 
 // Test that the device can be dropped before its queue.
@@ -207,6 +210,47 @@ TEST_P(DeviceLifetimeTests, DroppedThenMapBuffer) {
         &done);
 
     while (!done) {
+        WaitABit();
+    }
+}
+
+// Test that the device can be dropped before a buffer created from it, then mapping the buffer
+// twice (one inside callback) will both fail.
+TEST_P(DeviceLifetimeTests, Dropped_ThenMapBuffer_ThenMapBufferInCallback) {
+    wgpu::BufferDescriptor desc = {};
+    desc.size = 4;
+    desc.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst;
+    wgpu::Buffer buffer = device.CreateBuffer(&desc);
+
+    device = nullptr;
+
+    struct UserData {
+        wgpu::Buffer buffer;
+        bool done = false;
+    };
+
+    UserData userData;
+    userData.buffer = buffer;
+
+    // First mapping.
+    buffer.MapAsync(
+        wgpu::MapMode::Read, 0, wgpu::kWholeMapSize,
+        [](WGPUBufferMapAsyncStatus status, void* userdataPtr) {
+            EXPECT_EQ(status, WGPUBufferMapAsyncStatus_DeviceLost);
+            auto userdata = static_cast<UserData*>(userdataPtr);
+
+            // Second mapping.
+            userdata->buffer.MapAsync(
+                wgpu::MapMode::Read, 0, wgpu::kWholeMapSize,
+                [](WGPUBufferMapAsyncStatus status, void* userdataPtr) {
+                    EXPECT_EQ(status, WGPUBufferMapAsyncStatus_DeviceLost);
+                    *static_cast<bool*>(userdataPtr) = true;
+                },
+                &userdata->done);
+        },
+        &userData);
+
+    while (!userData.done) {
         WaitABit();
     }
 }
@@ -516,3 +560,6 @@ DAWN_INSTANTIATE_TEST(DeviceLifetimeTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

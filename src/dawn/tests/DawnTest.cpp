@@ -15,11 +15,13 @@
 #include "dawn/tests/DawnTest.h"
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <iomanip>
 #include <regex>
 #include <set>
 #include <sstream>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -48,6 +50,7 @@
 #include "dawn/native/OpenGLBackend.h"
 #endif  // DAWN_ENABLE_BACKEND_OPENGL
 
+namespace dawn {
 namespace {
 
 struct MapReadUserdata {
@@ -80,9 +83,9 @@ struct ParamTogglesHelper {
     wgpu::DawnTogglesDescriptor togglesDesc;
 
     // Create toggles descriptor for a given stage from test param and global test env
-    ParamTogglesHelper(const AdapterTestParam& testParam, dawn::native::ToggleStage requiredStage) {
+    ParamTogglesHelper(const AdapterTestParam& testParam, native::ToggleStage requiredStage) {
         for (const char* requireEnabledWorkaround : testParam.forceEnabledWorkarounds) {
-            const dawn::native::ToggleInfo* info =
+            const native::ToggleInfo* info =
                 gTestEnv->GetInstance()->GetToggleInfo(requireEnabledWorkaround);
             ASSERT(info != nullptr);
             if (info->stage == requiredStage) {
@@ -90,7 +93,7 @@ struct ParamTogglesHelper {
             }
         }
         for (const char* requireDisabledWorkaround : testParam.forceDisabledWorkarounds) {
-            const dawn::native::ToggleInfo* info =
+            const native::ToggleInfo* info =
                 gTestEnv->GetInstance()->GetToggleInfo(requireDisabledWorkaround);
             ASSERT(info != nullptr);
             if (info->stage == requiredStage) {
@@ -99,8 +102,7 @@ struct ParamTogglesHelper {
         }
 
         for (const std::string& toggle : gTestEnv->GetEnabledToggles()) {
-            const dawn::native::ToggleInfo* info =
-                gTestEnv->GetInstance()->GetToggleInfo(toggle.c_str());
+            const native::ToggleInfo* info = gTestEnv->GetInstance()->GetToggleInfo(toggle.c_str());
             ASSERT(info != nullptr);
             if (info->stage == requiredStage) {
                 enabledToggles.push_back(info->name);
@@ -108,8 +110,7 @@ struct ParamTogglesHelper {
         }
 
         for (const std::string& toggle : gTestEnv->GetDisabledToggles()) {
-            const dawn::native::ToggleInfo* info =
-                gTestEnv->GetInstance()->GetToggleInfo(toggle.c_str());
+            const native::ToggleInfo* info = gTestEnv->GetInstance()->GetToggleInfo(toggle.c_str());
             ASSERT(info != nullptr);
             if (info->stage == requiredStage) {
                 disabledToggles.push_back(info->name);
@@ -127,10 +128,13 @@ struct ParamTogglesHelper {
 
 DawnTestBase::PrintToStringParamName::PrintToStringParamName(const char* test) : mTest(test) {}
 
-std::string DawnTestBase::PrintToStringParamName::SanitizeParamName(std::string paramName,
-                                                                    size_t index) const {
+std::string DawnTestBase::PrintToStringParamName::SanitizeParamName(
+    std::string paramName,
+    const wgpu::AdapterProperties& properties,
+    size_t index) const {
     // Sanitize the adapter name for GoogleTest
-    std::string sanitizedName = std::regex_replace(paramName, std::regex("[^a-zA-Z0-9]+"), "_");
+    std::string sanitizedName = std::regex_replace(paramName, std::regex("[^a-zA-Z0-9]+"), "_") +
+                                (properties.compatibilityMode ? "_compat" : "");
 
     // Strip trailing underscores, if any.
     while (sanitizedName.back() == '_') {
@@ -154,12 +158,16 @@ std::string DawnTestBase::PrintToStringParamName::SanitizeParamName(std::string 
     return sanitizedName;
 }
 
-// Implementation of DawnTestEnvironment
+}  // namespace dawn
 
 void InitDawnEnd2EndTestEnvironment(int argc, char** argv) {
-    gTestEnv = new DawnTestEnvironment(argc, argv);
-    testing::AddGlobalTestEnvironment(gTestEnv);
+    dawn::gTestEnv = new dawn::DawnTestEnvironment(argc, argv);
+    testing::AddGlobalTestEnvironment(dawn::gTestEnv);
 }
+
+namespace dawn {
+
+// Implementation of DawnTestEnvironment
 
 // static
 void DawnTestEnvironment::SetEnvironment(DawnTestEnvironment* env) {
@@ -169,7 +177,7 @@ void DawnTestEnvironment::SetEnvironment(DawnTestEnvironment* env) {
 DawnTestEnvironment::DawnTestEnvironment(int argc, char** argv) {
     ParseArgs(argc, argv);
 
-    if (mBackendValidationLevel != dawn::native::BackendValidationLevel::Disabled) {
+    if (mBackendValidationLevel != native::BackendValidationLevel::Disabled) {
         mPlatformDebugLogger =
             std::unique_ptr<utils::PlatformDebugLogger>(utils::CreatePlatformDebugLogger());
     }
@@ -180,7 +188,7 @@ DawnTestEnvironment::DawnTestEnvironment(int argc, char** argv) {
     // because the Vulkan validation layers use static global mutexes which behave badly when
     // Chromium's test launcher forks the test process. The instance will be recreated on test
     // environment setup.
-    std::unique_ptr<dawn::native::Instance> instance = CreateInstanceAndDiscoverAdapters();
+    std::unique_ptr<native::Instance> instance = CreateInstanceAndDiscoverPhysicalDevices();
     ASSERT(instance);
 
     if (!ValidateToggles(instance.get())) {
@@ -217,17 +225,17 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             const char* level = argv[i] + argLen;
             if (level[0] != '\0') {
                 if (strcmp(level, "=full") == 0) {
-                    mBackendValidationLevel = dawn::native::BackendValidationLevel::Full;
+                    mBackendValidationLevel = native::BackendValidationLevel::Full;
                 } else if (strcmp(level, "=partial") == 0) {
-                    mBackendValidationLevel = dawn::native::BackendValidationLevel::Partial;
+                    mBackendValidationLevel = native::BackendValidationLevel::Partial;
                 } else if (strcmp(level, "=disabled") == 0) {
-                    mBackendValidationLevel = dawn::native::BackendValidationLevel::Disabled;
+                    mBackendValidationLevel = native::BackendValidationLevel::Disabled;
                 } else {
-                    dawn::ErrorLog() << "Invalid backend validation level" << level;
+                    ErrorLog() << "Invalid backend validation level" << level;
                     UNREACHABLE();
                 }
             } else {
-                mBackendValidationLevel = dawn::native::BackendValidationLevel::Partial;
+                mBackendValidationLevel = native::BackendValidationLevel::Partial;
             }
             continue;
         }
@@ -280,7 +288,7 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
                     } else if (strcmp(type.c_str(), "cpu") == 0) {
                         mDevicePreferences.push_back(wgpu::AdapterType::CPU);
                     } else {
-                        dawn::ErrorLog() << "Invalid device type preference: " << type;
+                        ErrorLog() << "Invalid device type preference: " << type;
                         UNREACHABLE();
                     }
                 }
@@ -314,7 +322,7 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             } else if (strcmp("vulkan", param) == 0) {
                 mBackendTypeFilter = wgpu::BackendType::Vulkan;
             } else {
-                dawn::ErrorLog()
+                ErrorLog()
                     << "Invalid backend \"" << param
                     << "\". Valid backends are: d3d12, metal, null, opengl, opengles, vulkan.";
                 UNREACHABLE();
@@ -323,7 +331,7 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             continue;
         }
         if (strcmp("-h", argv[i]) == 0 || strcmp("--help", argv[i]) == 0) {
-            dawn::InfoLog()
+            InfoLog()
                 << "\n\nUsage: " << argv[0]
                 << " [GTEST_FLAGS...] [-w] [-c]\n"
                    "    [--enable-toggles=toggles] [--disable-toggles=toggles]\n"
@@ -361,62 +369,67 @@ void DawnTestEnvironment::ParseArgs(int argc, char** argv) {
             continue;
         }
 
-        dawn::WarningLog() << " Unused argument: " << argv[i];
+        WarningLog() << " Unused argument: " << argv[i];
     }
 
     // TODO(crbug.com/dawn/1678): DawnWire doesn't support thread safe API yet.
     if (mUseWire && mEnableImplicitDeviceSync) {
-        dawn::ErrorLog()
+        ErrorLog()
             << "--use-wire and --enable-implicit-device-sync cannot be used at the same time";
         UNREACHABLE();
     }
 }
 
-std::unique_ptr<dawn::native::Instance> DawnTestEnvironment::CreateInstanceAndDiscoverAdapters() {
-    // Create an instance with toggle DisallowUnsafeApis disabled, which would be inherited to
+std::unique_ptr<native::Instance> DawnTestEnvironment::CreateInstanceAndDiscoverPhysicalDevices(
+    platform::Platform* platform) {
+    // Create an instance with toggle AllowUnsafeAPIs enabled, which would be inherited to
     // adapter and device toggles and allow us to test unsafe apis (including experimental
     // features).
-    const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
-    WGPUDawnTogglesDescriptor instanceToggles = {};
-    instanceToggles.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
-    instanceToggles.disabledTogglesCount = 1;
-    instanceToggles.disabledToggles = &disallowUnsafeApisToggle;
+    const char* allowUnsafeApisToggle = "allow_unsafe_apis";
+    wgpu::DawnTogglesDescriptor instanceToggles;
+    instanceToggles.enabledTogglesCount = 1;
+    instanceToggles.enabledToggles = &allowUnsafeApisToggle;
 
-    WGPUInstanceDescriptor instanceDesc = {};
-    instanceDesc.nextInChain = &instanceToggles.chain;
+    wgpu::DawnInstanceDescriptor dawnInstanceDesc;
+    dawnInstanceDesc.platform = platform;
+    dawnInstanceDesc.nextInChain = &instanceToggles;
 
-    auto instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
+    wgpu::InstanceDescriptor instanceDesc;
+    instanceDesc.nextInChain = &dawnInstanceDesc;
+
+    auto instance = std::make_unique<native::Instance>(
+        reinterpret_cast<const WGPUInstanceDescriptor*>(&instanceDesc));
     instance->EnableBeginCaptureOnStartup(mBeginCaptureOnStartup);
     instance->SetBackendValidationLevel(mBackendValidationLevel);
     instance->EnableAdapterBlocklist(false);
 
 #ifdef DAWN_ENABLE_BACKEND_OPENGLES
     if (GetEnvironmentVar("ANGLE_DEFAULT_PLATFORM").first.empty()) {
-        const char* platform;
+        const char* anglePlatform;
         if (!mANGLEBackend.empty()) {
-            platform = mANGLEBackend.c_str();
+            anglePlatform = mANGLEBackend.c_str();
         } else {
 #if DAWN_PLATFORM_IS(WINDOWS)
-            platform = "d3d11";
+            anglePlatform = "d3d11";
 #else
-            platform = "swiftshader";
+            anglePlatform = "swiftshader";
 #endif
         }
-        SetEnvironmentVar("ANGLE_DEFAULT_PLATFORM", platform);
+        SetEnvironmentVar("ANGLE_DEFAULT_PLATFORM", anglePlatform);
     }
 #endif  // DAWN_ENABLE_BACKEND_OPENGLES
 
-    instance->DiscoverDefaultAdapters();
+    instance->DiscoverDefaultPhysicalDevices();
 
     return instance;
 }
 
-void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::Instance* instance) {
+void DawnTestEnvironment::SelectPreferredAdapterProperties(const native::Instance* instance) {
     // Get the first available preferred device type.
     wgpu::AdapterType preferredDeviceType = static_cast<wgpu::AdapterType>(-1);
     bool hasDevicePreference = false;
     for (wgpu::AdapterType devicePreference : mDevicePreferences) {
-        for (const dawn::native::Adapter& adapter : instance->GetAdapters()) {
+        for (const native::Adapter& adapter : instance->GetAdapters()) {
             wgpu::AdapterProperties properties;
             adapter.GetProperties(&properties);
 
@@ -431,13 +444,29 @@ void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::I
         }
     }
 
-    std::set<std::pair<wgpu::BackendType, std::string>> adapterNameSet;
-    for (const dawn::native::Adapter& adapter : instance->GetAdapters()) {
+    std::set<std::tuple<wgpu::BackendType, std::string, bool>> adapterNameSet;
+    for (const native::Adapter& adapter : instance->GetAdapters()) {
         wgpu::AdapterProperties properties;
         adapter.GetProperties(&properties);
 
+        // Skip non-OpenGLES compat adapters. Metal/Vulkan/D3D12 support
+        // core WebGPU.
+        // D3D11 is in an experimental state where it may support core.
+        // See crbug.com/dawn/1820 for determining d3d11 capabilities.
+        if (properties.compatibilityMode && properties.backendType != wgpu::BackendType::OpenGLES) {
+            continue;
+        }
+
         // All adapters are selected by default.
         bool selected = true;
+
+        // TODO(chromium:1448982, dawn:1847): Suspect causing undefined behavior due to
+        // incorrect API usage. Re-enable after fixing.
+        if (properties.backendType == wgpu::BackendType::D3D11 &&
+            gpu_info::IsNvidia(properties.vendorID)) {
+            selected = false;
+        }
+
         // The adapter is deselected if:
         if (mHasBackendTypeFilter) {
             // It doesn't match the backend type, if present.
@@ -448,7 +477,7 @@ void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::I
             selected &= mVendorIdFilter == properties.vendorID;
 
             if (!mDevicePreferences.empty()) {
-                dawn::WarningLog() << "Vendor ID filter provided. Ignoring device type preference.";
+                WarningLog() << "Vendor ID filter provided. Ignoring device type preference.";
             }
         }
         if (hasDevicePreference) {
@@ -473,8 +502,8 @@ void DawnTestEnvironment::SelectPreferredAdapterProperties(const dawn::native::I
         // In Windows Remote Desktop sessions we may be able to discover multiple adapters that
         // have the same name and backend type. We will just choose one adapter from them in our
         // tests.
-        const auto adapterTypeAndName =
-            std::make_pair(properties.backendType, std::string(properties.name));
+        const auto adapterTypeAndName = std::tuple(
+            properties.backendType, std::string(properties.name), properties.compatibilityMode);
         if (adapterNameSet.find(adapterTypeAndName) == adapterNameSet.end()) {
             adapterNameSet.insert(adapterTypeAndName);
             mAdapterProperties.emplace_back(properties, selected);
@@ -487,18 +516,19 @@ std::vector<AdapterTestParam> DawnTestEnvironment::GetAvailableAdapterTestParams
     size_t numParams) {
     std::vector<AdapterTestParam> testParams;
     for (size_t i = 0; i < numParams; ++i) {
+        const auto& backendTestParams = params[i];
         for (const auto& adapterProperties : mAdapterProperties) {
-            if (params[i].backendType == adapterProperties.backendType &&
+            if (backendTestParams.backendType == adapterProperties.backendType &&
                 adapterProperties.selected) {
-                testParams.push_back(AdapterTestParam(params[i], adapterProperties));
+                testParams.push_back(AdapterTestParam(backendTestParams, adapterProperties));
             }
         }
     }
     return testParams;
 }
 
-bool DawnTestEnvironment::ValidateToggles(dawn::native::Instance* instance) const {
-    dawn::LogMessage err = dawn::ErrorLog();
+bool DawnTestEnvironment::ValidateToggles(native::Instance* instance) const {
+    LogMessage err = ErrorLog();
     for (const std::string& toggle : GetEnabledToggles()) {
         if (!instance->GetToggleInfo(toggle.c_str())) {
             err << "unrecognized toggle: '" << toggle << "'\n";
@@ -514,9 +544,8 @@ bool DawnTestEnvironment::ValidateToggles(dawn::native::Instance* instance) cons
     return true;
 }
 
-void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
-    dawn::native::Instance* instance) const {
-    dawn::LogMessage log = dawn::InfoLog();
+void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(native::Instance* instance) const {
+    LogMessage log = InfoLog();
     log << "Testing configuration\n"
            "---------------------\n"
            "UseWire: "
@@ -531,13 +560,13 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
            "BackendValidation: ";
 
     switch (mBackendValidationLevel) {
-        case dawn::native::BackendValidationLevel::Full:
+        case native::BackendValidationLevel::Full:
             log << "full";
             break;
-        case dawn::native::BackendValidationLevel::Partial:
+        case native::BackendValidationLevel::Partial:
             log << "partial";
             break;
-        case dawn::native::BackendValidationLevel::Disabled:
+        case native::BackendValidationLevel::Disabled:
             log << "disabled";
             break;
         default:
@@ -548,7 +577,7 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
         log << "\n"
                "Enabled Toggles\n";
         for (const std::string& toggle : GetEnabledToggles()) {
-            const dawn::native::ToggleInfo* info = instance->GetToggleInfo(toggle.c_str());
+            const native::ToggleInfo* info = instance->GetToggleInfo(toggle.c_str());
             ASSERT(info != nullptr);
             log << " - " << info->name << ": " << info->description << "\n";
         }
@@ -558,7 +587,7 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
         log << "\n"
                "Disabled Toggles\n";
         for (const std::string& toggle : GetDisabledToggles()) {
-            const dawn::native::ToggleInfo* info = instance->GetToggleInfo(toggle.c_str());
+            const native::ToggleInfo* info = instance->GetToggleInfo(toggle.c_str());
             ASSERT(info != nullptr);
             log << " - " << info->name << ": " << info->description << "\n";
         }
@@ -584,7 +613,8 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
             << properties.adapterName << "\" - \"" << properties.driverDescription
             << (properties.selected ? " [Selected]" : "") << "\"\n"
             << "   type: " << properties.AdapterTypeName()
-            << ", backend: " << properties.ParamName() << "\n"
+            << ", backend: " << properties.ParamName()
+            << ", compatibilityMode: " << (properties.compatibilityMode ? "true" : "false") << "\n"
             << "   vendorId: 0x" << vendorId.str() << ", deviceId: 0x" << deviceId.str() << "\n";
 
         if (strlen(properties.vendorName) || strlen(properties.architecture)) {
@@ -595,7 +625,7 @@ void DawnTestEnvironment::PrintTestConfigurationAndAdapterInfo(
 }
 
 void DawnTestEnvironment::SetUp() {
-    mInstance = CreateInstanceAndDiscoverAdapters();
+    mInstance = CreateInstanceAndDiscoverPhysicalDevices();
     ASSERT(mInstance);
 }
 
@@ -617,11 +647,11 @@ bool DawnTestEnvironment::RunSuppressedTests() const {
     return mRunSuppressedTests;
 }
 
-dawn::native::BackendValidationLevel DawnTestEnvironment::GetBackendValidationLevel() const {
+native::BackendValidationLevel DawnTestEnvironment::GetBackendValidationLevel() const {
     return mBackendValidationLevel;
 }
 
-dawn::native::Instance* DawnTestEnvironment::GetInstance() const {
+native::Instance* DawnTestEnvironment::GetInstance() const {
     return mInstance.get();
 }
 
@@ -661,7 +691,7 @@ const std::vector<std::string>& DawnTestEnvironment::GetDisabledToggles() const 
 DawnTestBase::DawnTestBase(const AdapterTestParam& param) : mParam(param) {
     gCurrentTest = this;
 
-    DawnProcTable procs = dawn::native::GetProcs();
+    DawnProcTable procs = native::GetProcs();
     // Override procs to provide harness-specific behavior to always select the adapter required in
     // testing parameter, and to allow fixture-specific overriding of the test device with
     // CreateDeviceImpl.
@@ -671,13 +701,14 @@ DawnTestBase::DawnTestBase(const AdapterTestParam& param) : mParam(param) {
 
         // Find the adapter that exactly matches our adapter properties.
         const auto& adapters = gTestEnv->GetInstance()->GetAdapters();
-        const auto& it = std::find_if(
-            adapters.begin(), adapters.end(), [&](const dawn::native::Adapter& adapter) {
+        const auto& it =
+            std::find_if(adapters.begin(), adapters.end(), [&](const native::Adapter& adapter) {
                 wgpu::AdapterProperties properties;
                 adapter.GetProperties(&properties);
 
                 const auto& param = gCurrentTest->mParam;
                 return (param.adapterProperties.selected &&
+                        properties.compatibilityMode == param.adapterProperties.compatibilityMode &&
                         properties.deviceID == param.adapterProperties.deviceID &&
                         properties.vendorID == param.adapterProperties.vendorID &&
                         properties.adapterType == param.adapterProperties.adapterType &&
@@ -689,11 +720,11 @@ DawnTestBase::DawnTestBase(const AdapterTestParam& param) : mParam(param) {
 
         WGPUAdapter cAdapter = it->Get();
         ASSERT(cAdapter);
-        dawn::native::GetProcs().adapterReference(cAdapter);
+        native::GetProcs().adapterReference(cAdapter);
         callback(WGPURequestAdapterStatus_Success, cAdapter, nullptr, userdata);
     };
 
-    procs.adapterRequestDevice = [](WGPUAdapter adapter, const WGPUDeviceDescriptor*,
+    procs.adapterRequestDevice = [](WGPUAdapter adapter, const WGPUDeviceDescriptor* descriptor,
                                     WGPURequestDeviceCallback callback, void* userdata) {
         ASSERT(gCurrentTest);
 
@@ -705,7 +736,7 @@ DawnTestBase::DawnTestBase(const AdapterTestParam& param) : mParam(param) {
             isolationKey = std::move(gCurrentTest->mNextIsolationKeyQueue.front());
             gCurrentTest->mNextIsolationKeyQueue.pop();
         }
-        WGPUDevice cDevice = gCurrentTest->CreateDeviceImpl(std::move(isolationKey));
+        WGPUDevice cDevice = gCurrentTest->CreateDeviceImpl(std::move(isolationKey), descriptor);
         ASSERT(cDevice != nullptr);
 
         gCurrentTest->mLastCreatedBackendDevice = cDevice;
@@ -731,6 +762,9 @@ DawnTestBase::~DawnTestBase() {
 
     // Check that all devices were destructed.
     EXPECT_EQ(gTestEnv->GetInstance()->GetDeviceCountForTesting(), 0u);
+
+    // Unsets the platform since we are cleaning the per-test platform up with the test case.
+    native::FromAPI(gTestEnv->GetInstance()->Get())->SetPlatformForTesting(nullptr);
 
     gCurrentTest = nullptr;
 }
@@ -864,11 +898,15 @@ bool DawnTestBase::IsImplicitDeviceSyncEnabled() const {
 }
 
 bool DawnTestBase::IsBackendValidationEnabled() const {
-    return gTestEnv->GetBackendValidationLevel() != dawn::native::BackendValidationLevel::Disabled;
+    return gTestEnv->GetBackendValidationLevel() != native::BackendValidationLevel::Disabled;
 }
 
 bool DawnTestBase::IsFullBackendValidationEnabled() const {
-    return gTestEnv->GetBackendValidationLevel() == dawn::native::BackendValidationLevel::Full;
+    return gTestEnv->GetBackendValidationLevel() == native::BackendValidationLevel::Full;
+}
+
+bool DawnTestBase::IsCompatibilityMode() const {
+    return mParam.adapterProperties.compatibilityMode;
 }
 
 bool DawnTestBase::RunSuppressedTests() const {
@@ -887,8 +925,16 @@ bool DawnTestBase::IsAsan() const {
 #endif
 }
 
+bool DawnTestBase::IsTsan() const {
+#if defined(THREAD_SANITIZER)
+    return true;
+#else
+    return false;
+#endif
+}
+
 bool DawnTestBase::HasToggleEnabled(const char* toggle) const {
-    auto toggles = dawn::native::GetTogglesUsed(backendDevice);
+    auto toggles = native::GetTogglesUsed(backendDevice);
     return std::find_if(toggles.begin(), toggles.end(), [toggle](const char* name) {
                return strcmp(toggle, name) == 0;
            }) != toggles.end();
@@ -914,7 +960,7 @@ wgpu::Instance DawnTestBase::GetInstance() const {
     return gTestEnv->GetInstance()->Get();
 }
 
-dawn::native::Adapter DawnTestBase::GetAdapter() const {
+native::Adapter DawnTestBase::GetAdapter() const {
     return mBackendAdapter;
 }
 
@@ -945,10 +991,9 @@ wgpu::SupportedLimits DawnTestBase::GetSupportedLimits() {
 bool DawnTestBase::SupportsFeatures(const std::vector<wgpu::FeatureName>& features) {
     ASSERT(mBackendAdapter);
     std::vector<wgpu::FeatureName> supportedFeatures;
-    uint32_t count =
-        dawn::native::GetProcs().adapterEnumerateFeatures(mBackendAdapter.Get(), nullptr);
+    uint32_t count = native::GetProcs().adapterEnumerateFeatures(mBackendAdapter.Get(), nullptr);
     supportedFeatures.resize(count);
-    dawn::native::GetProcs().adapterEnumerateFeatures(
+    native::GetProcs().adapterEnumerateFeatures(
         mBackendAdapter.Get(), reinterpret_cast<WGPUFeatureName*>(&supportedFeatures[0]));
 
     std::unordered_set<wgpu::FeatureName> supportedSet;
@@ -964,7 +1009,12 @@ bool DawnTestBase::SupportsFeatures(const std::vector<wgpu::FeatureName>& featur
     return true;
 }
 
-WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey) {
+void* DawnTestBase::GetUniqueUserdata() {
+    return reinterpret_cast<void*>(++mNextUniqueUserdata);
+}
+
+WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey,
+                                          const WGPUDeviceDescriptor* descriptor) {
     // Create the device from the adapter
     std::vector<wgpu::FeatureName> requiredFeatures = GetRequiredFeatures();
     if (IsImplicitDeviceSyncEnabled()) {
@@ -975,7 +1025,8 @@ WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey) {
     mBackendAdapter.GetLimits(reinterpret_cast<WGPUSupportedLimits*>(&supportedLimits));
     wgpu::RequiredLimits requiredLimits = GetRequiredLimits(supportedLimits);
 
-    wgpu::DeviceDescriptor deviceDescriptor = {};
+    wgpu::DeviceDescriptor deviceDescriptor =
+        *reinterpret_cast<const wgpu::DeviceDescriptor*>(descriptor);
     deviceDescriptor.requiredLimits = &requiredLimits;
     deviceDescriptor.requiredFeatures = requiredFeatures.data();
     deviceDescriptor.requiredFeaturesCount = requiredFeatures.size();
@@ -984,9 +1035,9 @@ WGPUDevice DawnTestBase::CreateDeviceImpl(std::string isolationKey) {
     deviceDescriptor.nextInChain = &cacheDesc;
     cacheDesc.isolationKey = isolationKey.c_str();
 
-    // Note that DisallowUnsafeApis is disabled when creating testing instance and would be
+    // Note that AllowUnsafeAPIs is enabled when creating testing instance and would be
     // inherited to all adapters' toggles set.
-    ParamTogglesHelper deviceTogglesHelper(mParam, dawn::native::ToggleStage::Device);
+    ParamTogglesHelper deviceTogglesHelper(mParam, native::ToggleStage::Device);
     cacheDesc.nextInChain = &deviceTogglesHelper.togglesDesc;
 
     return mBackendAdapter.CreateDevice(&deviceDescriptor);
@@ -999,10 +1050,16 @@ wgpu::Device DawnTestBase::CreateDevice(std::string isolationKey) {
     // to CreateDeviceImpl.
     mNextIsolationKeyQueue.push(std::move(isolationKey));
 
-    // RequestDevice is overriden by CreateDeviceImpl and device descriptor is ignored by it. Give
-    // an empty descriptor.
+    // RequestDevice is overriden by CreateDeviceImpl and device descriptor is ignored by it.
+    // Give an empty descriptor.
     // TODO(dawn:1684): Replace empty DeviceDescriptor with nullptr after Dawn wire support it.
     wgpu::DeviceDescriptor deviceDesc = {};
+
+    // Set up the mocks for device loss.
+    void* deviceUserdata = GetUniqueUserdata();
+    deviceDesc.deviceLostCallback = mDeviceLostCallback.Callback();
+    deviceDesc.deviceLostUserdata = mDeviceLostCallback.MakeUserdata(deviceUserdata);
+
     mAdapter.RequestDevice(
         &deviceDesc,
         [](WGPURequestDeviceStatus, WGPUDevice cDevice, const char*, void* userdata) {
@@ -1012,30 +1069,29 @@ wgpu::Device DawnTestBase::CreateDevice(std::string isolationKey) {
     FlushWire();
     ASSERT(apiDevice);
 
-    // Set up the mocks for uncaptured errors and device loss. The loss of the device is expected
-    // to happen at the end of the test so at it directly.
+    // Set up the mocks for uncaptured errors.
     apiDevice.SetUncapturedErrorCallback(mDeviceErrorCallback.Callback(),
                                          mDeviceErrorCallback.MakeUserdata(apiDevice.Get()));
-    apiDevice.SetDeviceLostCallback(mDeviceLostCallback.Callback(),
-                                    mDeviceLostCallback.MakeUserdata(apiDevice.Get()));
+
+    // The loss of the device is expected to happen at the end of the test so at it directly.
     EXPECT_CALL(mDeviceLostCallback,
-                Call(WGPUDeviceLostReason_Destroyed, testing::_, apiDevice.Get()))
+                Call(WGPUDeviceLostReason_Destroyed, testing::_, deviceUserdata))
         .Times(testing::AtMost(1));
 
     apiDevice.SetLoggingCallback(
         [](WGPULoggingType type, char const* message, void*) {
             switch (type) {
                 case WGPULoggingType_Verbose:
-                    dawn::DebugLog() << message;
+                    DebugLog() << message;
                     break;
                 case WGPULoggingType_Warning:
-                    dawn::WarningLog() << message;
+                    WarningLog() << message;
                     break;
                 case WGPULoggingType_Error:
-                    dawn::ErrorLog() << message;
+                    ErrorLog() << message;
                     break;
                 default:
-                    dawn::InfoLog() << message;
+                    InfoLog() << message;
                     break;
             }
         },
@@ -1045,11 +1101,10 @@ wgpu::Device DawnTestBase::CreateDevice(std::string isolationKey) {
 }
 
 void DawnTestBase::SetUp() {
-    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform. This is
-    // NOT a thread-safe operation and is allowed here for testing only.
+    // Setup the per-test platform. Tests can provide one by overloading CreateTestPlatform.
+    // This is NOT a thread-safe operation and is allowed here for testing only.
     mTestPlatform = CreateTestPlatform();
-    dawn::native::FromAPI(gTestEnv->GetInstance()->Get())
-        ->SetPlatformForTesting(mTestPlatform.get());
+    native::FromAPI(gTestEnv->GetInstance()->Get())->SetPlatformForTesting(mTestPlatform.get());
 
     mInstance = mWireHelper->RegisterInstance(gTestEnv->GetInstance()->Get());
 
@@ -1058,9 +1113,10 @@ void DawnTestBase::SetUp() {
         "_" + ::testing::UnitTest::GetInstance()->current_test_info()->name();
     mWireHelper->BeginWireTrace(traceName.c_str());
 
-    // RequestAdapter is overriden to ignore RequestAdapterOptions, but dawn_wire requires a valid
-    // pointer, so give a empty option.
-    // TODO(dawn:1684): Replace empty RequestAdapterOptions with nullptr after Dawn wire support it.
+    // RequestAdapter is overriden to ignore RequestAdapterOptions, but dawn_wire requires a
+    // valid pointer, so give a empty option.
+    // TODO(dawn:1684): Replace empty RequestAdapterOptions with nullptr after Dawn wire support
+    // it.
     wgpu::RequestAdapterOptions options = {};
     mInstance.RequestAdapter(
         &options,
@@ -1083,30 +1139,28 @@ void DawnTestBase::TearDown() {
     ResolveDeferredExpectationsNow();
 
     if (!UsesWire() && device) {
-        EXPECT_EQ(mLastWarningCount,
-                  dawn::native::GetDeprecationWarningCountForTesting(device.Get()));
+        EXPECT_EQ(mLastWarningCount, native::GetDeprecationWarningCountForTesting(device.Get()));
     }
 }
 
-void DawnTestBase::DestroyDevice(wgpu::Device device) {
-    wgpu::Device resolvedDevice = device;
+void DawnTestBase::DestroyDevice(wgpu::Device deviceToDestroy) {
+    wgpu::Device resolvedDevice = deviceToDestroy;
     if (resolvedDevice == nullptr) {
-        resolvedDevice = this->device;
+        resolvedDevice = device;
     }
 
-    // No expectation is added because the expectations for this kind of destruction is set up as
-    // soon as the device is created.
+    // No expectation is added because the expectations for this kind of destruction is set up
+    // as soon as the device is created.
     resolvedDevice.Destroy();
 }
 
-void DawnTestBase::LoseDeviceForTesting(wgpu::Device device) {
-    wgpu::Device resolvedDevice = device;
+void DawnTestBase::LoseDeviceForTesting(wgpu::Device deviceToLose) {
+    wgpu::Device resolvedDevice = deviceToLose;
     if (resolvedDevice == nullptr) {
-        resolvedDevice = this->device;
+        resolvedDevice = device;
     }
 
-    EXPECT_CALL(mDeviceLostCallback,
-                Call(WGPUDeviceLostReason_Undefined, testing::_, resolvedDevice.Get()))
+    EXPECT_CALL(mDeviceLostCallback, Call(WGPUDeviceLostReason_Undefined, testing::_, testing::_))
         .Times(1);
     resolvedDevice.ForceLoss(wgpu::DeviceLostReason::Undefined, "Device lost for testing");
     resolvedDevice.Tick();
@@ -1136,6 +1190,9 @@ std::ostringstream& DawnTestBase::AddBufferExpectation(const char* file,
     deferred.readbackOffset = readback.offset;
     deferred.size = size;
     deferred.expectation.reset(expectation);
+
+    // This expectation might be called from multiple threads
+    Mutex::AutoLock lg(&mMutex);
 
     mDeferredExpectations.push_back(std::move(deferred));
     mDeferredExpectations.back().message = std::make_unique<std::ostringstream>();
@@ -1190,6 +1247,9 @@ std::ostringstream& DawnTestBase::AddTextureExpectationImpl(const char* file,
     deferred.rowBytes = extent.width * dataSize;
     deferred.bytesPerRow = bytesPerRow;
     deferred.expectation.reset(expectation);
+
+    // This expectation might be called from multiple threads
+    Mutex::AutoLock lg(&mMutex);
 
     mDeferredExpectations.push_back(std::move(deferred));
     mDeferredExpectations.back().message = std::make_unique<std::ostringstream>();
@@ -1495,11 +1555,16 @@ void DawnTestBase::FlushWire() {
 }
 
 void DawnTestBase::WaitForAllOperations() {
-    bool done = false;
+    // Callback might be invoked on another thread that calls the same WaitABit() method, not
+    // necessarily the current thread. So we need to use atomic here.
+    std::atomic<bool> done(false);
     device.GetQueue().OnSubmittedWorkDone(
-        0u, [](WGPUQueueWorkDoneStatus, void* userdata) { *static_cast<bool*>(userdata) = true; },
+        0u,
+        [](WGPUQueueWorkDoneStatus, void* userdata) {
+            *static_cast<std::atomic<bool>*>(userdata) = true;
+        },
         &done);
-    while (!done) {
+    while (!done.load()) {
         WaitABit();
     }
 }
@@ -1516,6 +1581,9 @@ DawnTestBase::ReadbackReservation DawnTestBase::ReserveReadback(wgpu::Device tar
     slot.buffer =
         utils::CreateBufferFromData(targetDevice, initialBufferData.data(), readbackSize,
                                     wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst);
+
+    // This readback might be called from multiple threads
+    Mutex::AutoLock lg(&mMutex);
 
     ReadbackReservation reservation;
     reservation.device = targetDevice;
@@ -1542,7 +1610,7 @@ void DawnTestBase::MapSlotsSynchronously() {
     }
 
     // Busy wait until all map operations are done.
-    while (mNumPendingMapOperations != 0) {
+    while (mNumPendingMapOperations.load(std::memory_order_acquire) != 0) {
         WaitABit();
     }
 }
@@ -1553,7 +1621,8 @@ void DawnTestBase::SlotMapCallback(WGPUBufferMapAsyncStatus status, void* userda
                 status == WGPUBufferMapAsyncStatus_DeviceLost);
     std::unique_ptr<MapReadUserdata> userdata(static_cast<MapReadUserdata*>(userdata_));
     DawnTestBase* test = userdata->test;
-    test->mNumPendingMapOperations--;
+
+    Mutex::AutoLock lg(&test->mMutex);
 
     ReadbackSlot* slot = &test->mReadbackSlots[userdata->slot];
     if (status == WGPUBufferMapAsyncStatus_Success) {
@@ -1562,6 +1631,8 @@ void DawnTestBase::SlotMapCallback(WGPUBufferMapAsyncStatus status, void* userda
     } else {
         slot->mappedData = nullptr;
     }
+
+    test->mNumPendingMapOperations.fetch_sub(1, std::memory_order_release);
 }
 
 void DawnTestBase::ResolveExpectations() {
@@ -1574,7 +1645,7 @@ void DawnTestBase::ResolveExpectations() {
 
         // Handle the case where the device was lost so the expected data couldn't be read back.
         if (data == nullptr) {
-            dawn::InfoLog() << "Skipping deferred expectation because the device was lost";
+            InfoLog() << "Skipping deferred expectation because the device was lost";
             continue;
         }
 
@@ -1612,7 +1683,7 @@ void DawnTestBase::ResolveExpectations() {
     }
 }
 
-std::unique_ptr<dawn::platform::Platform> DawnTestBase::CreateTestPlatform() {
+std::unique_ptr<platform::Platform> DawnTestBase::CreateTestPlatform() {
     return nullptr;
 }
 
@@ -1620,6 +1691,8 @@ void DawnTestBase::ResolveDeferredExpectationsNow() {
     FlushWire();
 
     MapSlotsSynchronously();
+
+    Mutex::AutoLock lg(&mMutex);
     ResolveExpectations();
 
     mDeferredExpectations.clear();
@@ -1847,3 +1920,4 @@ testing::AssertionResult ExpectBetweenColors<T>::Check(const void* data, size_t 
 
 template class ExpectBetweenColors<utils::RGBA8>;
 }  // namespace detail
+}  // namespace dawn

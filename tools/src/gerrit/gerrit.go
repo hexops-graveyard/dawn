@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 
+	"dawn.googlesource.com/dawn/tools/src/container"
 	"github.com/andygrunwald/go-gerrit"
 )
 
@@ -55,8 +56,8 @@ type Patchset struct {
 // ChangeInfo is an alias to gerrit.ChangeInfo
 type ChangeInfo = gerrit.ChangeInfo
 
-// LatestPatchest returns the latest Patchset from the ChangeInfo
-func LatestPatchest(change *ChangeInfo) Patchset {
+// LatestPatchset returns the latest Patchset from the ChangeInfo
+func LatestPatchset(change *ChangeInfo) Patchset {
 	u, _ := url.Parse(change.URL)
 	ps := Patchset{
 		Host:     u.Host,
@@ -121,15 +122,43 @@ func New(url string, cred Credentials) (*Gerrit, error) {
 	return &Gerrit{client, cred.Username != ""}, nil
 }
 
+// QueryExtraData holds extra data to query for with QueryChangesWith()
+type QueryExtraData struct {
+	Labels           bool
+	Messages         bool
+	CurrentRevision  bool
+	DetailedAccounts bool
+	Submittable      bool
+}
+
 // QueryChanges returns the changes that match the given query strings.
 // See: https://gerrit-review.googlesource.com/Documentation/user-search.html#search-operators
-func (g *Gerrit) QueryChanges(querys ...string) (changes []gerrit.ChangeInfo, query string, err error) {
+func (g *Gerrit) QueryChangesWith(extras QueryExtraData, queries ...string) (changes []gerrit.ChangeInfo, query string, err error) {
 	changes = []gerrit.ChangeInfo{}
-	query = strings.Join(querys, "+")
+	query = strings.Join(queries, "+")
+
+	changeOpts := gerrit.ChangeOptions{}
+	if extras.Labels {
+		changeOpts.AdditionalFields = append(changeOpts.AdditionalFields, "LABELS")
+	}
+	if extras.Messages {
+		changeOpts.AdditionalFields = append(changeOpts.AdditionalFields, "MESSAGES")
+	}
+	if extras.CurrentRevision {
+		changeOpts.AdditionalFields = append(changeOpts.AdditionalFields, "CURRENT_REVISION")
+	}
+	if extras.DetailedAccounts {
+		changeOpts.AdditionalFields = append(changeOpts.AdditionalFields, "DETAILED_ACCOUNTS")
+	}
+	if extras.Submittable {
+		changeOpts.AdditionalFields = append(changeOpts.AdditionalFields, "SUBMITTABLE")
+	}
+
 	for {
 		batch, _, err := g.client.Changes.QueryChanges(&gerrit.QueryChangeOptions{
-			QueryOptions: gerrit.QueryOptions{Query: []string{query}},
-			Skip:         len(changes),
+			QueryOptions:  gerrit.QueryOptions{Query: []string{query}},
+			Skip:          len(changes),
+			ChangeOptions: changeOpts,
 		})
 		if err != nil {
 			return nil, "", g.maybeWrapError(err)
@@ -141,6 +170,33 @@ func (g *Gerrit) QueryChanges(querys ...string) (changes []gerrit.ChangeInfo, qu
 		}
 	}
 	return changes, query, nil
+}
+
+// QueryChanges returns the changes that match the given query strings.
+// See: https://gerrit-review.googlesource.com/Documentation/user-search.html#search-operators
+func (g *Gerrit) QueryChanges(queries ...string) (changes []gerrit.ChangeInfo, query string, err error) {
+	return g.QueryChangesWith(QueryExtraData{}, queries...)
+}
+
+// ChangesSubmittedTogether returns the changes that want to be submitted together
+// See: https://gerrit-review.googlesource.com/Documentation/rest-api-changes.html#submitted-together
+func (g *Gerrit) ChangesSubmittedTogether(changeID string) (changes []gerrit.ChangeInfo, err error) {
+	info, _, err := g.client.Changes.ChangesSubmittedTogether(changeID)
+	if err != nil {
+		return nil, g.maybeWrapError(err)
+	}
+	return *info, nil
+}
+
+func (g *Gerrit) AddLabel(changeID, revisionID, message, label string, value int) error {
+	_, _, err := g.client.Changes.SetReview(changeID, revisionID, &gerrit.ReviewInput{
+		Message: message,
+		Labels:  map[string]string{label: fmt.Sprint(value)},
+	})
+	if err != nil {
+		return g.maybeWrapError(err)
+	}
+	return nil
 }
 
 // Abandon abandons the change with the given changeID.
@@ -198,11 +254,11 @@ func (g *Gerrit) EditFiles(changeID, newCommitMsg string, files map[string]strin
 		return Patchset{}, g.maybeWrapError(err)
 	}
 
-	return g.LatestPatchest(changeID)
+	return g.LatestPatchset(changeID)
 }
 
-// LatestPatchest returns the latest patchset for the change.
-func (g *Gerrit) LatestPatchest(changeID string) (Patchset, error) {
+// LatestPatchset returns the latest patchset for the change.
+func (g *Gerrit) LatestPatchset(changeID string) (Patchset, error) {
 	change, _, err := g.client.Changes.GetChange(changeID, &gerrit.ChangeOptions{
 		AdditionalFields: []string{"CURRENT_REVISION"},
 	})
@@ -216,6 +272,17 @@ func (g *Gerrit) LatestPatchest(changeID string) (Patchset, error) {
 		Patchset: change.Revisions[change.CurrentRevision].Number,
 	}
 	return ps, nil
+}
+
+// AddHashtags adds the given hashtags to the change
+func (g *Gerrit) AddHashtags(changeID string, tags container.Set[string]) error {
+	_, resp, err := g.client.Changes.SetHashtags(changeID, &gerrit.HashtagsInput{
+		Add: tags.List(),
+	})
+	if err != nil && resp.StatusCode != 409 { // 409: already ready
+		return g.maybeWrapError(err)
+	}
+	return nil
 }
 
 // CommentSide is an enumerator for specifying which side code-comments should

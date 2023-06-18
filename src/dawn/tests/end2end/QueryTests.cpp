@@ -18,6 +18,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 // Clear the content of the result buffer into 0xFFFFFFFF.
 constexpr static uint64_t kSentinelValue = ~uint64_t(0u);
 constexpr static uint64_t kZero = 0u;
@@ -507,18 +510,22 @@ TEST_P(OcclusionQueryTests, ResolveToBufferWithOffset) {
 
     wgpu::QuerySet querySet = CreateOcclusionQuerySet(kQueryCount);
 
-    utils::BasicRenderPass renderPass = utils::CreateBasicRenderPass(device, kRTSize, kRTSize);
-    renderPass.renderPassInfo.occlusionQuerySet = querySet;
+    // Fill the occlusion query with some data.
+    {
+        wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
 
-    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
-    wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPass.renderPassInfo);
-    pass.SetPipeline(pipeline);
-    pass.BeginOcclusionQuery(0);
-    pass.Draw(3);
-    pass.EndOcclusionQuery();
-    pass.End();
-    wgpu::CommandBuffer commands = encoder.Finish();
-    queue.Submit(1, &commands);
+        utils::BasicRenderPass renderPass = utils::CreateBasicRenderPass(device, kRTSize, kRTSize);
+        renderPass.renderPassInfo.occlusionQuerySet = querySet;
+        wgpu::RenderPassEncoder pass = encoder.BeginRenderPass(&renderPass.renderPassInfo);
+        pass.SetPipeline(pipeline);
+        pass.BeginOcclusionQuery(0);
+        pass.Draw(3);
+        pass.EndOcclusionQuery();
+        pass.End();
+
+        wgpu::CommandBuffer commands = encoder.Finish();
+        queue.Submit(1, &commands);
+    }
 
     constexpr uint64_t kBufferSize = kQueryCount * sizeof(uint64_t) + kMinDestinationOffset;
     constexpr uint64_t kCount = kQueryCount + kMinCount;
@@ -864,35 +871,12 @@ TEST_P(TimestampQueryTests, TimestampWritesQuerySetOnComputePass) {
 
 // Test timestampWrites with query index in compute pass descriptor
 TEST_P(TimestampQueryTests, TimestampWritesQueryIndexOnComputePass) {
-    constexpr uint32_t kQueryCount = 2;
+    // Set timestampWrites with different query indexes and locations, not need test write same
+    // query index due to it's not allowed on compute pass.
+    wgpu::QuerySet querySet = CreateQuerySetForTimestamp(2);
 
-    // Set timestampWrites with different query indexes on same compute pass
-    {
-        wgpu::QuerySet querySet = CreateQuerySetForTimestamp(kQueryCount);
-
-        TestTimestampWritesOnComputePass(
-            {{querySet, 0, wgpu::ComputePassTimestampLocation::Beginning},
-             {querySet, 1, wgpu::ComputePassTimestampLocation::End}});
-    }
-
-    // Set timestampWrites with same query index on same compute pass
-    {
-        wgpu::QuerySet querySet = CreateQuerySetForTimestamp(kQueryCount);
-
-        TestTimestampWritesOnComputePass(
-            {{querySet, 0, wgpu::ComputePassTimestampLocation::Beginning},
-             {querySet, 0, wgpu::ComputePassTimestampLocation::End}});
-    }
-
-    // Set timestampWrites with same query indexes on different compute pass
-    {
-        wgpu::QuerySet querySet0 = CreateQuerySetForTimestamp(kQueryCount);
-        wgpu::QuerySet querySet1 = CreateQuerySetForTimestamp(kQueryCount);
-
-        TestTimestampWritesOnComputePass(
-            {{querySet0, 0, wgpu::ComputePassTimestampLocation::Beginning}},
-            {{querySet1, 0, wgpu::ComputePassTimestampLocation::End}});
-    }
+    TestTimestampWritesOnComputePass({{querySet, 0, wgpu::ComputePassTimestampLocation::Beginning},
+                                      {querySet, 1, wgpu::ComputePassTimestampLocation::End}});
 }
 
 // Test timestampWrites with timestamp location in compute pass descriptor
@@ -1111,10 +1095,6 @@ TEST_P(TimestampQueryTests, ResolveToBufferWithOffset) {
 // Test resolving a query set twice into the same destination buffer with potentially overlapping
 // ranges
 TEST_P(TimestampQueryTests, ResolveTwiceToSameBuffer) {
-    // TODO(dawn:1546): Intel D3D driver regression on Gen12 GPUs. The compute shader in two
-    // ResolveQuerySet execute wrong.
-    DAWN_SUPPRESS_TEST_IF(IsD3D12() && IsIntelGen12());
-
     constexpr uint32_t kQueryCount = kMinCount + 2;
 
     wgpu::QuerySet querySet = CreateQuerySetForTimestamp(kQueryCount);
@@ -1135,6 +1115,9 @@ TEST_P(TimestampQueryTests, ResolveTwiceToSameBuffer) {
 // Test calling WriteTimestamp many times into separate query sets.
 // Regression test for crbug.com/dawn/1603.
 TEST_P(TimestampQueryTests, ManyWriteTimestampDistinctQuerySets) {
+    // TODO(crbug.com/dawn/1829): Avoid OOM on Apple GPUs.
+    DAWN_SUPPRESS_TEST_IF(IsApple());
+
     constexpr uint32_t kQueryCount = 100;
     // Write timestamp with a different query sets many times
     for (uint32_t i = 0; i < kQueryCount; ++i) {
@@ -1222,6 +1205,9 @@ TEST_P(TimestampQueryInsidePassesTests, FromOnRenderPass) {
 
 // Test calling timestamp query from compute pass encoder
 TEST_P(TimestampQueryInsidePassesTests, FromComputePass) {
+    // TODO(crbug.com/dawn/1852): Flaky negative timestamps on Mac AMD.
+    DAWN_SUPPRESS_TEST_IF(IsMacOS() && IsMetal() && IsAMD());
+
     constexpr uint32_t kQueryCount = 2;
 
     // Write timestamp with different query indexes
@@ -1310,3 +1296,6 @@ DAWN_INSTANTIATE_TEST(TimestampQueryInsidePassesTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

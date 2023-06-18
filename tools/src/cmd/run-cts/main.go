@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -42,6 +41,7 @@ import (
 	"dawn.googlesource.com/dawn/tools/src/cov"
 	"dawn.googlesource.com/dawn/tools/src/fileutils"
 	"dawn.googlesource.com/dawn/tools/src/git"
+	"dawn.googlesource.com/dawn/tools/src/progressbar"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 )
@@ -98,6 +98,31 @@ func (f *dawnNodeFlags) Set(value string) error {
 	// -flag=a=b -dawn_node_flag=c=d
 	*f = append(*f, value)
 	return nil
+}
+
+// Consolidates all the delimiter separated flags with a given prefix into a single flag.
+// Example:
+// Given the flags: ["foo=a", "bar", "foo=b,c"]
+// GlobListFlags("foo=", ",") will transform the flags to: ["bar", "foo=a,b,c"]
+func (f *dawnNodeFlags) GlobListFlags(prefix string, delimiter string) {
+	list := []string{}
+	i := 0
+	for _, flag := range *f {
+		if strings.HasPrefix(flag, prefix) {
+			// Trim the prefix.
+			value := flag[len(prefix):]
+			// Extract the deliminated values.
+			list = append(list, strings.Split(value, delimiter)...)
+		} else {
+			(*f)[i] = flag
+			i++
+		}
+	}
+	(*f) = (*f)[:i]
+	if len(list) > 0 {
+		// Append back the consolidated flags.
+		f.Set(prefix + strings.Join(list, delimiter))
+	}
 }
 
 func makeCtx() context.Context {
@@ -223,20 +248,12 @@ func run() error {
 	}
 
 	// While running the CTS, always allow unsafe APIs so they can be tested.
-	disableDawnFeaturesFound := false
-	for i, flag := range flags {
-		if strings.HasPrefix(flag, "disable-dawn-features=") {
-			flags[i] = flag + ",disallow_unsafe_apis"
-			disableDawnFeaturesFound = true
-		}
-	}
-	if !disableDawnFeaturesFound {
-		flags = append(flags, "disable-dawn-features=disallow_unsafe_apis")
-	}
+	flags.Set("enable-dawn-features=allow_unsafe_apis")
 	if dumpShaders {
-		flags = append(flags, "enable-dawn-features=dump_shaders,disable_symbol_renaming")
 		verbose = true
+		flags.Set("enable-dawn-features=dump_shaders,disable_symbol_renaming")
 	}
+	flags.GlobListFlags("enable-dawn-features=", ",")
 
 	r := runner{
 		query:                query,
@@ -894,7 +911,7 @@ func (r *runner) streamResults(ctx context.Context, wg *sync.WaitGroup, results 
 	// Helper function for printing a progress bar.
 	lastStatusUpdate, animFrame := time.Now(), 0
 	updateProgress := func() {
-		fmt.Fprint(r.stdout, ansiProgressBar(animFrame, numTests, numByExpectedStatus))
+		drawProgressBar(r.stdout, animFrame, numTests, numByExpectedStatus)
 		animFrame++
 		lastStatusUpdate = time.Now()
 	}
@@ -954,7 +971,7 @@ func (r *runner) streamResults(ctx context.Context, wg *sync.WaitGroup, results 
 			covTree.Add(SplitCTSQuery(res.testcase), res.coverage)
 		}
 	}
-	fmt.Fprint(r.stdout, ansiProgressBar(animFrame, numTests, numByExpectedStatus))
+	drawProgressBar(r.stdout, animFrame, numTests, numByExpectedStatus)
 
 	// All done. Print final stats.
 	fmt.Fprintf(r.stdout, "\nCompleted in %v\n", timeTaken)
@@ -1082,6 +1099,14 @@ var statusColor = map[status]string{
 	skip:    cyan,
 	timeout: yellow,
 	fail:    red,
+}
+
+var pbStatusColor = map[status]progressbar.Color{
+	pass:    progressbar.Green,
+	warn:    progressbar.Yellow,
+	skip:    progressbar.Cyan,
+	timeout: progressbar.Yellow,
+	fail:    progressbar.Red,
 }
 
 // expectedStatus is a test status, along with a boolean to indicate whether the
@@ -1257,69 +1282,26 @@ func alignRight(val interface{}, width int) string {
 	return strings.Repeat(" ", padding) + s
 }
 
-// ansiProgressBar returns a string with an ANSI-colored progress bar, providing
-// realtime information about the status of the CTS run.
+// drawProgressBar draws an ANSI-colored progress bar, providing realtime
+// information about the status of the CTS run.
 // Note: We'll want to skip this if !isatty or if we're running on windows.
-func ansiProgressBar(animFrame int, numTests int, numByExpectedStatus map[expectedStatus]int) string {
-	const barWidth = 50
-
-	animSymbols := []rune{'⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'}
-	blockSymbols := []rune{'▏', '▎', '▍', '▌', '▋', '▊', '▉'}
-
-	numBlocksPrinted := 0
-
-	buf := &strings.Builder{}
-	fmt.Fprint(buf, string(animSymbols[animFrame%len(animSymbols)]), " [")
-	animFrame++
-
-	numFinished := 0
-
+func drawProgressBar(out io.Writer, animFrame int, numTests int, numByExpectedStatus map[expectedStatus]int) {
+	bar := progressbar.Status{Total: numTests}
 	for _, status := range statuses {
 		for _, expected := range []bool{true, false} {
-			color := statusColor[status]
-			if expected {
-				color += bold
+			if num := numByExpectedStatus[expectedStatus{status, expected}]; num > 0 {
+				bar.Segments = append(bar.Segments,
+					progressbar.Segment{
+						Count:       num,
+						Color:       pbStatusColor[status],
+						Bold:        expected,
+						Transparent: expected,
+					})
 			}
-
-			num := numByExpectedStatus[expectedStatus{status, expected}]
-			numFinished += num
-			statusFrac := float64(num) / float64(numTests)
-			fNumBlocks := barWidth * statusFrac
-			fmt.Fprint(buf, color)
-			numBlocks := int(math.Ceil(fNumBlocks))
-			if expected {
-				if numBlocks > 1 {
-					fmt.Fprint(buf, strings.Repeat(string("░"), numBlocks))
-				}
-			} else {
-				if numBlocks > 1 {
-					fmt.Fprint(buf, strings.Repeat(string("▉"), numBlocks))
-				}
-				if numBlocks > 0 {
-					frac := fNumBlocks - math.Floor(fNumBlocks)
-					symbol := blockSymbols[int(math.Round(frac*float64(len(blockSymbols)-1)))]
-					fmt.Fprint(buf, string(symbol))
-				}
-			}
-			numBlocksPrinted += numBlocks
 		}
 	}
-
-	if barWidth > numBlocksPrinted {
-		fmt.Fprint(buf, strings.Repeat(string(" "), barWidth-numBlocksPrinted))
-	}
-	fmt.Fprint(buf, ansiReset)
-	fmt.Fprint(buf, "] ", percentage(numFinished, numTests))
-
-	if colors {
-		// move cursor to start of line so the bar is overridden
-		fmt.Fprint(buf, positionLeft)
-	} else {
-		// cannot move cursor, so newline
-		fmt.Fprintln(buf)
-	}
-
-	return buf.String()
+	const width = 50
+	bar.Draw(out, width, colors, animFrame)
 }
 
 // testcaseStatus is a pair of testcase name and result status

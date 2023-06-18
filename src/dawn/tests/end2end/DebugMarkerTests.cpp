@@ -16,6 +16,9 @@
 
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class DebugMarkerTests : public DawnTest {};
 
 // Make sure that calling a marker API without a debugging tool attached doesn't cause a failure.
@@ -46,8 +49,12 @@ TEST_P(DebugMarkerTests, NoFailureWithoutDebugToolAttached) {
 }
 
 DAWN_INSTANTIATE_TEST(DebugMarkerTests,
+                      D3D11Backend(),
                       D3D12Backend(),
                       MetalBackend(),
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

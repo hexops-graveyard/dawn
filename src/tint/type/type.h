@@ -28,6 +28,9 @@ namespace tint {
 class ProgramBuilder;
 class SymbolTable;
 }  // namespace tint
+namespace tint::type {
+class Type;
+}  // namespace tint::type
 
 namespace tint::type {
 
@@ -46,16 +49,31 @@ enum Flag {
 /// An alias to utils::EnumSet<Flag>
 using Flags = utils::EnumSet<Flag>;
 
+/// TypeAndCount holds a type and count
+struct TypeAndCount {
+    /// The type
+    const Type* type = nullptr;
+    /// The count
+    uint32_t count = 0;
+};
+
+/// Equality operator.
+/// @param lhs the LHS TypeAndCount
+/// @param rhs the RHS TypeAndCount
+/// @returns true if the two TypeAndCounts have the same type and count
+inline bool operator==(TypeAndCount lhs, TypeAndCount rhs) {
+    return lhs.type == rhs.type && lhs.count == rhs.count;
+}
+
 /// Base class for a type in the system
-class Type : public Castable<Type, UniqueNode> {
+class Type : public utils::Castable<Type, UniqueNode> {
   public:
     /// Destructor
     ~Type() override;
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    virtual std::string FriendlyName(const SymbolTable& symbols) const = 0;
+    virtual std::string FriendlyName() const = 0;
 
     /// @returns the inner most pointee type if this is a pointer, `this`
     /// otherwise
@@ -94,10 +112,6 @@ class Type : public Castable<Type, UniqueNode> {
     /// @see https://www.w3.org/TR/WGSL/#fixed-footprint-types
     inline bool HasFixedFootprint() const { return flags_.Contains(Flag::kFixedFootprint); }
 
-    /// @returns true if this type is a scalar
-    bool is_scalar() const;
-    /// @returns true if this type is a numeric scalar
-    bool is_numeric_scalar() const;
     /// @returns true if this type is a float scalar
     bool is_float_scalar() const;
     /// @returns true if this type is a float matrix
@@ -164,24 +178,44 @@ class Type : public Castable<Type, UniqueNode> {
     /// @see https://www.w3.org/TR/WGSL/#conversion-rank
     static uint32_t ConversionRank(const Type* from, const Type* to);
 
-    /// @param ty the type to obtain the element type from
-    /// @param count if not null, then this is assigned the number of child elements in the type.
-    /// For example, the count of an `array<vec3<f32>, 5>` type would be 5.
-    /// @returns
-    ///   * the element type if `ty` is a vector or array
-    ///   * the column type if `ty` is a matrix
-    ///   * `ty` if `ty` is none of the above
-    static const Type* ElementOf(const Type* ty, uint32_t* count = nullptr);
+    /// @param type_if_invalid the type to return if this type has no child elements.
+    /// @param count_if_invalid the count to return if this type has no child elements, or the
+    /// number is unbounded.
+    /// @returns The child element type and the the number of child elements held by this type.
+    /// If this type has no child element types, then @p invalid is returned.
+    /// If this type can hold a mix of different elements types (like a Struct), then
+    /// `[type_if_invalid, N]` is returned, where `N` is the number of elements.
+    /// If this type is unbounded in size (e.g. runtime sized arrays), then the returned count will
+    /// equal `count_if_invalid`.
+    ///
+    /// Examples:
+    ///  * Elements() of `array<vec3<f32>, 5>` returns `[vec3<f32>, 5]`.
+    ///  * Elements() of `array<f32>` returns `[f32, count_if_invalid]`.
+    ///  * Elements() of `struct S { a : f32, b : i32 }` returns `[count_if_invalid, 2]`.
+    ///  * Elements() of `struct S { a : i32, b : i32 }` also returns `[count_if_invalid, 2]`.
+    virtual TypeAndCount Elements(const Type* type_if_invalid = nullptr,
+                                  uint32_t count_if_invalid = 0) const;
 
-    /// @param ty the type to obtain the deepest element type from
-    /// @param count if not null, then this is assigned the full number of most deeply nested
-    /// elements in the type. For example, the count of an `array<vec3<f32>, 5>` type would be 15.
-    /// @returns
-    ///   * the element type if `ty` is a vector
-    ///   * the matrix element type if `ty` is a matrix
-    ///   * the deepest element type if `ty` is an array
-    ///   * `ty` if `ty` is none of the above
-    static const Type* DeepestElementOf(const Type* ty, uint32_t* count = nullptr);
+    /// @param index the i'th element index to return
+    /// @returns The child element with the given index, or nullptr if the element does not exist.
+    ///
+    /// Examples:
+    ///  * Element(1) of `mat3x2<f32>` returns `vec2<f32>`.
+    ///  * Element(1) of `array<vec3<f32>, 5>` returns `vec3<f32>`.
+    ///  * Element(0) of `struct S { a : f32, b : i32 }` returns `f32`.
+    ///  * Element(0) of `f32` returns `nullptr`.
+    ///  * Element(3) of `vec3<f32>` returns `nullptr`.
+    ///  * Element(3) of `struct S { a : f32, b : i32 }` returns `nullptr`.
+    virtual const Type* Element(uint32_t index) const;
+
+    /// @returns the most deeply nested element of the type. For non-composite types,
+    /// DeepestElement() will return this type. Examples:
+    ///  * Element() of `f32` returns `f32`.
+    ///  * Element() of `vec3<f32>` returns `f32`.
+    ///  * Element() of `mat3x2<f32>` returns `f32`.
+    ///  * Element() of `array<vec3<f32>, 5>` returns `f32`.
+    ///  * Element() of `struct S { a : f32, b : i32 }` returns `S`.
+    const Type* DeepestElement() const;
 
     /// @param types the list of types
     /// @returns the lowest-ranking type that all types in `types` can be implicitly converted to,

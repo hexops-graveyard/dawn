@@ -25,6 +25,7 @@ bool IsFeatureSupported(WGPUFeatureName feature) {
         case WGPUFeatureName_DawnNative:
         case WGPUFeatureName_DawnShaderFloat16:  // Deprecated
         case WGPUFeatureName_ImplicitDeviceSynchronization:
+        case WGPUFeatureName_SurfaceCapabilities:
             return false;
         case WGPUFeatureName_Depth32FloatStencil8:
         case WGPUFeatureName_TimestampQuery:
@@ -41,6 +42,8 @@ bool IsFeatureSupported(WGPUFeatureName feature) {
         case WGPUFeatureName_ShaderF16:
         case WGPUFeatureName_RG11B10UfloatRenderable:
         case WGPUFeatureName_BGRA8UnormStorage:
+        case WGPUFeatureName_TransientAttachments:
+        case WGPUFeatureName_Float32Filterable:
             return true;
     }
 

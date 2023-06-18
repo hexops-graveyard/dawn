@@ -28,14 +28,11 @@
 
 namespace dawn::native::null {
 
-// Implementation of pre-Device objects: the null adapter, null backend connection and Connect()
+// Implementation of pre-Device objects: the null physical device, null backend connection and
+// Connect()
 
-Adapter::Adapter(InstanceBase* instance)
-    : Adapter(instance,
-              TogglesState(ToggleStage::Adapter).InheritFrom(instance->GetTogglesState())) {}
-
-Adapter::Adapter(InstanceBase* instance, const TogglesState& adapterToggles)
-    : AdapterBase(instance, wgpu::BackendType::Null, adapterToggles) {
+PhysicalDevice::PhysicalDevice(InstanceBase* instance)
+    : PhysicalDeviceBase(instance, wgpu::BackendType::Null) {
     mVendorId = 0;
     mDeviceId = 0;
     mName = "Null backend";
@@ -44,37 +41,43 @@ Adapter::Adapter(InstanceBase* instance, const TogglesState& adapterToggles)
     ASSERT(err.IsSuccess());
 }
 
-Adapter::~Adapter() = default;
+PhysicalDevice::~PhysicalDevice() = default;
 
-bool Adapter::SupportsExternalImages() const {
+bool PhysicalDevice::SupportsExternalImages() const {
     return false;
 }
 
-MaybeError Adapter::InitializeImpl() {
+bool PhysicalDevice::SupportsFeatureLevel(FeatureLevel) const {
+    return true;
+}
+
+MaybeError PhysicalDevice::InitializeImpl() {
     return {};
 }
 
-void Adapter::InitializeSupportedFeaturesImpl() {
+void PhysicalDevice::InitializeSupportedFeaturesImpl() {
     // Enable all features by default for the convenience of tests.
     for (uint32_t i = 0; i < static_cast<uint32_t>(Feature::EnumCount); i++) {
         EnableFeature(static_cast<Feature>(i));
     }
 }
 
-MaybeError Adapter::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
+MaybeError PhysicalDevice::InitializeSupportedLimitsImpl(CombinedLimits* limits) {
     GetDefaultLimits(&limits->v1);
     return {};
 }
 
-void Adapter::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {}
+void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {}
 
-ResultOrError<Ref<DeviceBase>> Adapter::CreateDeviceImpl(const DeviceDescriptor* descriptor,
-                                                         const TogglesState& deviceToggles) {
-    return Device::Create(this, descriptor, deviceToggles);
+ResultOrError<Ref<DeviceBase>> PhysicalDevice::CreateDeviceImpl(AdapterBase* adapter,
+                                                                const DeviceDescriptor* descriptor,
+                                                                const TogglesState& deviceToggles) {
+    return Device::Create(adapter, descriptor, deviceToggles);
 }
 
-MaybeError Adapter::ValidateFeatureSupportedWithTogglesImpl(wgpu::FeatureName feature,
-                                                            const TogglesState& toggles) const {
+MaybeError PhysicalDevice::ValidateFeatureSupportedWithTogglesImpl(
+    wgpu::FeatureName feature,
+    const TogglesState& toggles) const {
     return {};
 }
 
@@ -83,14 +86,13 @@ class Backend : public BackendConnection {
     explicit Backend(InstanceBase* instance)
         : BackendConnection(instance, wgpu::BackendType::Null) {}
 
-    std::vector<Ref<AdapterBase>> DiscoverDefaultAdapters(
-        const TogglesState& adapterToggles) override {
+    std::vector<Ref<PhysicalDeviceBase>> DiscoverDefaultPhysicalDevices() override {
         // There is always a single Null adapter because it is purely CPU based and doesn't
         // depend on the system.
-        std::vector<Ref<AdapterBase>> adapters;
-        Ref<Adapter> adapter = AcquireRef(new Adapter(GetInstance(), adapterToggles));
-        adapters.push_back(std::move(adapter));
-        return adapters;
+        std::vector<Ref<PhysicalDeviceBase>> physicalDevices;
+        Ref<PhysicalDevice> physicalDevice = AcquireRef(new PhysicalDevice(GetInstance()));
+        physicalDevices.push_back(std::move(physicalDevice));
+        return physicalDevices;
     }
 };
 
@@ -113,7 +115,7 @@ struct CopyFromStagingToBufferOperation : PendingOperation {
 // Device
 
 // static
-ResultOrError<Ref<Device>> Device::Create(Adapter* adapter,
+ResultOrError<Ref<Device>> Device::Create(AdapterBase* adapter,
                                           const DeviceDescriptor* descriptor,
                                           const TogglesState& deviceToggles) {
     Ref<Device> device = AcquireRef(new Device(adapter, descriptor, deviceToggles));
@@ -173,9 +175,9 @@ ResultOrError<Ref<ShaderModuleBase>> Device::CreateShaderModuleImpl(
     DAWN_TRY(module->Initialize(parseResult, compilationMessages));
     return module;
 }
-ResultOrError<Ref<NewSwapChainBase>> Device::CreateSwapChainImpl(
+ResultOrError<Ref<SwapChainBase>> Device::CreateSwapChainImpl(
     Surface* surface,
-    NewSwapChainBase* previousSwapChain,
+    SwapChainBase* previousSwapChain,
     const SwapChainDescriptor* descriptor) {
     return SwapChain::Create(this, surface, previousSwapChain, descriptor);
 }
@@ -186,6 +188,11 @@ ResultOrError<Ref<TextureViewBase>> Device::CreateTextureViewImpl(
     TextureBase* texture,
     const TextureViewDescriptor* descriptor) {
     return AcquireRef(new TextureView(texture, descriptor));
+}
+
+ResultOrError<wgpu::TextureUsage> Device::GetSupportedSurfaceUsageImpl(
+    const Surface* surface) const {
+    return wgpu::TextureUsage::RenderAttachment;
 }
 
 void Device::DestroyImpl() {
@@ -387,14 +394,14 @@ MaybeError ComputePipeline::Initialize() {
     tint::transform::DataMap transformInputs;
 
     if (!computeStage.metadata->overrides.empty()) {
-        transformManager.Add<tint::transform::SingleEntryPoint>();
-        transformInputs.Add<tint::transform::SingleEntryPoint::Config>(
+        transformManager.Add<tint::ast::transform::SingleEntryPoint>();
+        transformInputs.Add<tint::ast::transform::SingleEntryPoint::Config>(
             computeStage.entryPoint.c_str());
 
         // This needs to run after SingleEntryPoint transform which removes unused overrides for
         // current entry point.
-        transformManager.Add<tint::transform::SubstituteOverride>();
-        transformInputs.Add<tint::transform::SubstituteOverride::Config>(
+        transformManager.Add<tint::ast::transform::SubstituteOverride>();
+        transformInputs.Add<tint::ast::transform::SubstituteOverride::Config>(
             BuildSubstituteOverridesTransformConfig(computeStage));
     }
 
@@ -424,14 +431,14 @@ MaybeError RenderPipeline::Initialize() {
 // static
 ResultOrError<Ref<SwapChain>> SwapChain::Create(Device* device,
                                                 Surface* surface,
-                                                NewSwapChainBase* previousSwapChain,
+                                                SwapChainBase* previousSwapChain,
                                                 const SwapChainDescriptor* descriptor) {
     Ref<SwapChain> swapchain = AcquireRef(new SwapChain(device, surface, descriptor));
     DAWN_TRY(swapchain->Initialize(previousSwapChain));
     return swapchain;
 }
 
-MaybeError SwapChain::Initialize(NewSwapChainBase* previousSwapChain) {
+MaybeError SwapChain::Initialize(SwapChainBase* previousSwapChain) {
     if (previousSwapChain != nullptr) {
         // TODO(crbug.com/dawn/269): figure out what should happen when surfaces are used by
         // multiple backends one after the other. It probably needs to block until the backend
@@ -451,11 +458,11 @@ MaybeError SwapChain::PresentImpl() {
     return {};
 }
 
-ResultOrError<Ref<TextureViewBase>> SwapChain::GetCurrentTextureViewImpl() {
+ResultOrError<Ref<TextureBase>> SwapChain::GetCurrentTextureImpl() {
     TextureDescriptor textureDesc = GetSwapChainBaseTextureDescriptor(this);
     mTexture = AcquireRef(
         new Texture(GetDevice(), &textureDesc, TextureBase::TextureState::OwnedInternal));
-    return mTexture->CreateView();
+    return mTexture;
 }
 
 void SwapChain::DetachFromSurfaceImpl() {

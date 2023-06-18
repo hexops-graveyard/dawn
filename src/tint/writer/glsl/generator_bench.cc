@@ -31,7 +31,7 @@ void GenerateGLSL(benchmark::State& state, std::string input_name) {
     std::vector<std::string> entry_points;
     for (auto& fn : program.AST().Functions()) {
         if (fn->IsEntryPoint()) {
-            entry_points.emplace_back(program.Symbols().NameFor(fn->name->symbol));
+            entry_points.emplace_back(fn->name->symbol.Name());
         }
     }
 
@@ -45,7 +45,7 @@ void GenerateGLSL(benchmark::State& state, std::string input_name) {
     }
 }
 
-TINT_BENCHMARK_WGSL_PROGRAMS(GenerateGLSL);
+TINT_BENCHMARK_PROGRAMS(GenerateGLSL);
 
 }  // namespace
 }  // namespace tint::writer::glsl

@@ -102,15 +102,18 @@ Ref<RenderPassEncoder> RenderPassEncoder::Create(DeviceBase* device,
 RenderPassEncoder::RenderPassEncoder(DeviceBase* device,
                                      CommandEncoder* commandEncoder,
                                      EncodingContext* encodingContext,
-                                     ErrorTag errorTag)
-    : RenderEncoderBase(device, encodingContext, errorTag), mCommandEncoder(commandEncoder) {}
+                                     ErrorTag errorTag,
+                                     const char* label)
+    : RenderEncoderBase(device, encodingContext, errorTag, label),
+      mCommandEncoder(commandEncoder) {}
 
 // static
 Ref<RenderPassEncoder> RenderPassEncoder::MakeError(DeviceBase* device,
                                                     CommandEncoder* commandEncoder,
-                                                    EncodingContext* encodingContext) {
+                                                    EncodingContext* encodingContext,
+                                                    const char* label) {
     return AcquireRef(
-        new RenderPassEncoder(device, commandEncoder, encodingContext, ObjectBase::kError));
+        new RenderPassEncoder(device, commandEncoder, encodingContext, ObjectBase::kError, label));
 }
 
 void RenderPassEncoder::DestroyImpl() {
@@ -136,6 +139,14 @@ void RenderPassEncoder::TrackQueryAvailability(QuerySetBase* querySet, uint32_t 
 }
 
 void RenderPassEncoder::APIEnd() {
+    // The encoding context might create additional resources, so we need to lock the device.
+    auto deviceLock(GetDevice()->GetScopedLock());
+    End();
+}
+
+void RenderPassEncoder::End() {
+    ASSERT(GetDevice()->IsLockedByCurrentThreadIfNeeded());
+
     if (mEnded && IsValidationEnabled()) {
         GetDevice()->HandleError(DAWN_VALIDATION_ERROR("%s was already ended.", this));
         return;
@@ -171,14 +182,6 @@ void RenderPassEncoder::APIEnd() {
     if (mEndCallback) {
         mEndCallback();
     }
-}
-
-void RenderPassEncoder::APIEndPass() {
-    if (GetDevice()->ConsumedError(DAWN_MAKE_DEPRECATION_ERROR(
-            GetDevice(), "endPass() has been deprecated. Use end() instead."))) {
-        return;
-    }
-    APIEnd();
 }
 
 void RenderPassEncoder::APISetStencilReference(uint32_t reference) {
@@ -329,13 +332,13 @@ void RenderPassEncoder::APIExecuteBundles(uint32_t count, RenderBundleBase* cons
                 bundles[i] = renderBundles[i];
 
                 const RenderPassResourceUsage& usages = bundles[i]->GetResourceUsage();
-                for (uint32_t i = 0; i < usages.buffers.size(); ++i) {
-                    mUsageTracker.BufferUsedAs(usages.buffers[i], usages.bufferUsages[i]);
+                for (uint32_t j = 0; j < usages.buffers.size(); ++j) {
+                    mUsageTracker.BufferUsedAs(usages.buffers[j], usages.bufferUsages[j]);
                 }
 
-                for (uint32_t i = 0; i < usages.textures.size(); ++i) {
-                    mUsageTracker.AddRenderBundleTextureUsage(usages.textures[i],
-                                                              usages.textureUsages[i]);
+                for (uint32_t j = 0; j < usages.textures.size(); ++j) {
+                    mUsageTracker.AddRenderBundleTextureUsage(usages.textures[j],
+                                                              usages.textureUsages[j]);
                 }
 
                 if (IsValidationEnabled()) {

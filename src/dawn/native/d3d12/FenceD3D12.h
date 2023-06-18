@@ -18,26 +18,26 @@
 #include "dawn/common/RefCounted.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/native/Error.h"
+#include "dawn/native/d3d/Fence.h"
 #include "dawn/native/d3d12/d3d12_platform.h"
 
 namespace dawn::native::d3d12 {
 
-class Fence : public RefCounted {
+class Fence : public d3d::Fence {
   public:
     static ResultOrError<Ref<Fence>> CreateFromHandle(ID3D12Device* device,
                                                       HANDLE unownedHandle,
                                                       UINT64 fenceValue);
 
     ID3D12Fence* GetD3D12Fence() const;
-    UINT64 GetFenceValue() const;
 
   private:
+    using Base = d3d::Fence;
+
     Fence(ComPtr<ID3D12Fence> d3d12Fence, UINT64 fenceValue, HANDLE sharedHandle);
     ~Fence() override;
 
     ComPtr<ID3D12Fence> mD3D12Fence;
-    const UINT64 mFenceValue;
-    const HANDLE mSharedHandle;
 };
 
 }  // namespace dawn::native::d3d12

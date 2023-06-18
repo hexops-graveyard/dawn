@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "dawn/common/Assert.h"
+#include "dawn/common/DynamicLib.h"
 #include "dawn/common/Log.h"
 #include "dawn/common/SystemUtils.h"
 #include "dawn/dawn_proc.h"
@@ -48,17 +49,10 @@ class DevNull : public dawn::wire::CommandSerializer {
 };
 
 std::unique_ptr<dawn::native::Instance> sInstance;
-WGPUProcDeviceCreateSwapChain sOriginalDeviceCreateSwapChain = nullptr;
 static bool (*sAdapterSupported)(const dawn::native::Adapter&) = nullptr;
-
-WGPUSwapChain ErrorDeviceCreateSwapChain(WGPUDevice device,
-                                         WGPUSurface surface,
-                                         const WGPUSwapChainDescriptor*) {
-    WGPUSwapChainDescriptor desc = {};
-    // A 0 implementation will trigger a swapchain creation error.
-    desc.implementation = 0;
-    return sOriginalDeviceCreateSwapChain(device, surface, &desc);
-}
+#if DAWN_PLATFORM_IS(WINDOWS) && defined(ADDRESS_SANITIZER)
+static dawn::DynamicLib sVulkanLoader;
+#endif
 
 }  // namespace
 
@@ -67,7 +61,16 @@ int DawnWireServerFuzzer::Initialize(int* argc, char*** argv) {
     // Swiftshader crashes libFuzzer. When this is fixed, move this into Run so that error injection
     // for adapter discovery can be fuzzed.
     sInstance = std::make_unique<dawn::native::Instance>();
-    sInstance->DiscoverDefaultAdapters();
+
+    // TODO(crbug.com/1038952): Although we keep a static instance, when discovering default Vulkan
+    // adapters, if no adapter is found, the vulkan loader DLL will be loaded and then unloaded,
+    // resulting in ASAN false positives. We work around this by explicitly loading the loader
+    // without unloading it here.
+#if DAWN_PLATFORM_IS(WINDOWS) && defined(ADDRESS_SANITIZER)
+    sVulkanLoader.Open(dawn::GetExecutableDirectory().value_or("") + "vulkan-1.dll");
+#endif
+
+    sInstance->DiscoverDefaultPhysicalDevices();
 
     return 0;
 }
@@ -98,13 +101,6 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
     sAdapterSupported = AdapterSupported;
 
     DawnProcTable procs = dawn::native::GetProcs();
-
-    // Swapchains receive a pointer to an implementation. The fuzzer will pass garbage in so we
-    // intercept calls to create swapchains and make sure they always return error swapchains.
-    // This is ok for fuzzing because embedders of dawn_wire would always define their own
-    // swapchain handling.
-    sOriginalDeviceCreateSwapChain = procs.deviceCreateSwapChain;
-    procs.deviceCreateSwapChain = ErrorDeviceCreateSwapChain;
 
     // Override requestAdapter to find an adapter that the fuzzer supports.
     procs.instanceRequestAdapter = [](WGPUInstance cInstance,

@@ -25,6 +25,10 @@
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/vector.h"
 
+#ifndef NDEBUG
+#define TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+#endif
+
 namespace tint::utils {
 
 /// Action taken by a map mutation
@@ -106,7 +110,7 @@ template <typename KEY,
           typename VALUE,
           size_t N,
           typename HASH = Hasher<KEY>,
-          typename EQUAL = std::equal_to<KEY>>
+          typename EQUAL = EqualTo<KEY>>
 class HashmapBase {
     static constexpr bool ValueIsVoid = std::is_same_v<VALUE, void>;
 
@@ -157,8 +161,9 @@ class HashmapBase {
     /// A slot can either be empty or filled with a value. If the slot is empty, #hash and #distance
     /// will be zero.
     struct Slot {
-        bool Equals(size_t key_hash, const Key& key) const {
-            return key_hash == hash && EQUAL()(key, KeyOf(*entry));
+        template <typename K>
+        bool Equals(size_t key_hash, K&& key) const {
+            return key_hash == hash && EQUAL()(std::forward<K>(key), KeyOf(*entry));
         }
 
         /// The slot value. If this does not contain a value, then the slot is vacant.
@@ -189,10 +194,20 @@ class HashmapBase {
     class IteratorT {
       public:
         /// @returns the value pointed to by this iterator
-        EntryRef<IS_CONST> operator->() const { return *this; }
+        EntryRef<IS_CONST> operator->() const {
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+            TINT_ASSERT(Utils, map.Generation() == initial_generation &&
+                                   "iterator invalidated by container modification");
+#endif
+            return *this;
+        }
 
         /// @returns a reference to the value at the iterator
         EntryRef<IS_CONST> operator*() const {
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+            TINT_ASSERT(Utils, map.Generation() == initial_generation &&
+                                   "iterator invalidated by container modification");
+#endif
             auto& ref = current->entry.value();
             if constexpr (ValueIsVoid) {
                 return ref;
@@ -204,6 +219,10 @@ class HashmapBase {
         /// Increments the iterator
         /// @returns this iterator
         IteratorT& operator++() {
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+            TINT_ASSERT(Utils, map.Generation() == initial_generation &&
+                                   "iterator invalidated by container modification");
+#endif
             if (current == end) {
                 return *this;
             }
@@ -215,12 +234,24 @@ class HashmapBase {
         /// Equality operator
         /// @param other the other iterator to compare this iterator to
         /// @returns true if this iterator is equal to other
-        bool operator==(const IteratorT& other) const { return current == other.current; }
+        bool operator==(const IteratorT& other) const {
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+            TINT_ASSERT(Utils, map.Generation() == initial_generation &&
+                                   "iterator invalidated by container modification");
+#endif
+            return current == other.current;
+        }
 
         /// Inequality operator
         /// @param other the other iterator to compare this iterator to
         /// @returns true if this iterator is not equal to other
-        bool operator!=(const IteratorT& other) const { return current != other.current; }
+        bool operator!=(const IteratorT& other) const {
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+            TINT_ASSERT(Utils, map.Generation() == initial_generation &&
+                                   "iterator invalidated by container modification");
+#endif
+            return current != other.current;
+        }
 
       private:
         /// Friend class
@@ -228,7 +259,17 @@ class HashmapBase {
 
         using SLOT = std::conditional_t<IS_CONST, const Slot, Slot>;
 
-        IteratorT(SLOT* c, SLOT* e) : current(c), end(e) { SkipToNextValue(); }
+        IteratorT(SLOT* c, SLOT* e, [[maybe_unused]] const HashmapBase& m)
+            : current(c),
+              end(e)
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+              ,
+              map(m),
+              initial_generation(m.Generation())
+#endif
+        {
+            SkipToNextValue();
+        }
 
         /// Moves the iterator forward, stopping at the next slot that is not empty.
         void SkipToNextValue() {
@@ -239,6 +280,11 @@ class HashmapBase {
 
         SLOT* current;  /// The slot the iterator is pointing to
         SLOT* end;      /// One past the last slot in the map
+
+#ifdef TINT_ASSERT_ITERATORS_NOT_INVALIDATED
+        const HashmapBase& map;     /// The hashmap that is being iterated over.
+        size_t initial_generation;  /// The generation ID when the iterator was created.
+#endif
     };
 
     /// An immutable key and mutable value iterator
@@ -372,16 +418,16 @@ class HashmapBase {
     size_t Generation() const { return generation_; }
 
     /// @returns an immutable iterator to the start of the map.
-    ConstIterator begin() const { return ConstIterator{slots_.begin(), slots_.end()}; }
+    ConstIterator begin() const { return ConstIterator{slots_.begin(), slots_.end(), *this}; }
 
     /// @returns an immutable iterator to the end of the map.
-    ConstIterator end() const { return ConstIterator{slots_.end(), slots_.end()}; }
+    ConstIterator end() const { return ConstIterator{slots_.end(), slots_.end(), *this}; }
 
     /// @returns an iterator to the start of the map.
-    Iterator begin() { return Iterator{slots_.begin(), slots_.end()}; }
+    Iterator begin() { return Iterator{slots_.begin(), slots_.end(), *this}; }
 
     /// @returns an iterator to the end of the map.
-    Iterator end() { return Iterator{slots_.end(), slots_.end()}; }
+    Iterator end() { return Iterator{slots_.end(), slots_.end(), *this}; }
 
     /// A debug function for checking that the map is in good health.
     /// Asserts if the map is corrupted.
@@ -502,8 +548,9 @@ class HashmapBase {
     /// @param key the key to hash
     /// @returns a tuple holding the target slot index for the given value, and the hash of the
     /// value, respectively.
-    HashResult Hash(const Key& key) const {
-        size_t hash = HASH()(key);
+    template <typename K>
+    HashResult Hash(K&& key) const {
+        size_t hash = HASH()(std::forward<K>(key));
         size_t index = Wrap(hash);
         return {index, hash};
     }
@@ -512,7 +559,8 @@ class HashmapBase {
     /// @param key the key to search for.
     /// @returns a tuple holding a boolean representing whether the key was found in the map, and
     /// if found, the index of the slot that holds the key.
-    std::tuple<bool, size_t> IndexOf(const Key& key) const {
+    template <typename K>
+    std::tuple<bool, size_t> IndexOf(K&& key) const {
         const auto hash = Hash(key);
         const auto count = slots_.Length();
         for (size_t distance = 0, index = hash.scan_start; distance < count; distance++) {

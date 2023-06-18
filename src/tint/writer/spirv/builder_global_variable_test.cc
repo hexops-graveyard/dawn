@@ -18,10 +18,11 @@
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::spirv {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using BuilderTest = TestHelper;
 
@@ -30,10 +31,10 @@ TEST_F(BuilderTest, GlobalVar_WithAddressSpace) {
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %1 "var"
+    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %1 "var"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%3 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%3 = OpTypeFloat 32
 %2 = OpTypePointer Private %3
 %4 = OpConstantNull %3
 %1 = OpVariable %2 Private %4
@@ -41,18 +42,18 @@ TEST_F(BuilderTest, GlobalVar_WithAddressSpace) {
 }
 
 TEST_F(BuilderTest, GlobalVar_WithInitializer) {
-    auto* init = vec3<f32>(1_f, 1_f, 3_f);
+    auto* init = Call<vec3<f32>>(1_f, 1_f, 3_f);
 
     auto* v = GlobalVar("var", ty.vec3<f32>(), builtin::AddressSpace::kPrivate, init);
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    ASSERT_FALSE(b.has_error()) << b.error();
+    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    ASSERT_FALSE(b.has_error()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %6 "var"
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %6 "var"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 32
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 3
@@ -71,17 +72,17 @@ TEST_F(BuilderTest, GlobalConst) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%1 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%1 = OpTypeInt 32 1
 %2 = OpConstant %1 42
 %4 = OpTypePointer Private %1
 %3 = OpVariable %4 Private %2
 %6 = OpTypeVoid
 %5 = OpTypeFunction %6
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -91,14 +92,14 @@ TEST_F(BuilderTest, GlobalConst_Vec_Initializer) {
     // const c = vec3<f32>(1f, 2f, 3f);
     // var v = c;
 
-    auto* c = GlobalConst("c", vec3<f32>(1_f, 2_f, 3_f));
+    auto* c = GlobalConst("c", Call<vec3<f32>>(1_f, 2_f, 3_f));
     GlobalVar("v", builtin::AddressSpace::kPrivate, Expr(c));
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 32
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 2
@@ -109,8 +110,8 @@ TEST_F(BuilderTest, GlobalConst_Vec_Initializer) {
 %10 = OpTypeVoid
 %9 = OpTypeFunction %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -121,14 +122,14 @@ TEST_F(BuilderTest, GlobalConst_Vec_F16_Initializer) {
     // var v = c;
     Enable(builtin::Extension::kF16);
 
-    auto* c = GlobalConst("c", vec3<f16>(1_h, 2_h, 3_h));
+    auto* c = GlobalConst("c", Call<vec3<f16>>(1_h, 2_h, 3_h));
     GlobalVar("v", builtin::AddressSpace::kPrivate, Expr(c));
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 16
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 16
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 0x1p+0
 %4 = OpConstant %2 0x1p+1
@@ -139,8 +140,8 @@ TEST_F(BuilderTest, GlobalConst_Vec_F16_Initializer) {
 %10 = OpTypeVoid
 %9 = OpTypeFunction %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -150,14 +151,14 @@ TEST_F(BuilderTest, GlobalConst_Vec_AInt_Initializer) {
     // const c = vec3(1, 2, 3);
     // var v = c;
 
-    auto* c = GlobalConst("c", Call(ty.vec3<Infer>(), 1_a, 2_a, 3_a));
+    auto* c = GlobalConst("c", Call<vec3<Infer>>(1_a, 2_a, 3_a));
     GlobalVar("v", builtin::AddressSpace::kPrivate, Expr(c));
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeInt 32 1
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 2
@@ -168,8 +169,8 @@ TEST_F(BuilderTest, GlobalConst_Vec_AInt_Initializer) {
 %10 = OpTypeVoid
 %9 = OpTypeFunction %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -179,14 +180,14 @@ TEST_F(BuilderTest, GlobalConst_Vec_AFloat_Initializer) {
     // const c = vec3(1.0, 2.0, 3.0);
     // var v = c;
 
-    auto* c = GlobalConst("c", Call(ty.vec3<Infer>(), 1._a, 2._a, 3._a));
+    auto* c = GlobalConst("c", Call<vec3<Infer>>(1._a, 2._a, 3._a));
     GlobalVar("v", builtin::AddressSpace::kPrivate, Expr(c));
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 32
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 2
@@ -197,8 +198,8 @@ TEST_F(BuilderTest, GlobalConst_Vec_AFloat_Initializer) {
 %10 = OpTypeVoid
 %9 = OpTypeFunction %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -208,14 +209,14 @@ TEST_F(BuilderTest, GlobalConst_Nested_Vec_Initializer) {
     // const c = vec3<f32>(vec2<f32>(1f, 2f), 3f));
     // var v = c;
 
-    auto* c = GlobalConst("c", vec3<f32>(vec2<f32>(1_f, 2_f), 3_f));
+    auto* c = GlobalConst("c", Call<vec3<f32>>(Call<vec2<f32>>(1_f, 2_f), 3_f));
     GlobalVar("v", builtin::AddressSpace::kPrivate, Expr(c));
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeFloat 32
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeFloat 32
 %1 = OpTypeVector %2 3
 %3 = OpConstant %2 1
 %4 = OpConstant %2 2
@@ -226,8 +227,8 @@ TEST_F(BuilderTest, GlobalConst_Nested_Vec_Initializer) {
 %10 = OpTypeVoid
 %9 = OpTypeFunction %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 
     Validate(b);
@@ -238,13 +239,13 @@ TEST_F(BuilderTest, GlobalVar_WithBindingAndGroup) {
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %1 "var"
+    EXPECT_TRUE(b.GenerateGlobalVariable(v)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %1 "var"
 )");
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %1 Binding 2
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %1 Binding 2
 OpDecorate %1 DescriptorSet 3
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%3 = OpTypeSampler
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%3 = OpTypeSampler
 %2 = OpTypePointer UniformConstant %3
 %1 = OpVariable %2 UniformConstant
 )");
@@ -324,7 +325,7 @@ TEST_F(BuilderTest, GlobalVar_DeclReadOnly) {
 
     ASSERT_TRUE(b.Build());
 
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %3 Block
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %3 Block
 OpMemberDecorate %3 0 Offset 0
 OpMemberDecorate %4 0 Offset 0
 OpMemberDecorate %4 1 Offset 4
@@ -332,7 +333,7 @@ OpDecorate %1 NonWritable
 OpDecorate %1 Binding 0
 OpDecorate %1 DescriptorSet 0
 )");
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %3 "b_block"
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %3 "b_block"
 OpMemberName %3 0 "inner"
 OpName %4 "A"
 OpMemberName %4 0 "a"
@@ -340,7 +341,7 @@ OpMemberName %4 1 "b"
 OpName %1 "b"
 OpName %8 "unused_entry_point"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%5 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%5 = OpTypeInt 32 1
 %4 = OpTypeStruct %5 %5
 %3 = OpTypeStruct %4
 %2 = OpTypePointer StorageBuffer %3
@@ -366,21 +367,21 @@ TEST_F(BuilderTest, GlobalVar_TypeAliasDeclReadOnly) {
 
     ASSERT_TRUE(b.Build());
 
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %3 Block
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %3 Block
 OpMemberDecorate %3 0 Offset 0
 OpMemberDecorate %4 0 Offset 0
 OpDecorate %1 NonWritable
 OpDecorate %1 Binding 0
 OpDecorate %1 DescriptorSet 0
 )");
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %3 "b_block"
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %3 "b_block"
 OpMemberName %3 0 "inner"
 OpName %4 "A"
 OpMemberName %4 0 "a"
 OpName %1 "b"
 OpName %8 "unused_entry_point"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%5 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%5 = OpTypeInt 32 1
 %4 = OpTypeStruct %5
 %3 = OpTypeStruct %4
 %2 = OpTypePointer StorageBuffer %3
@@ -406,21 +407,21 @@ TEST_F(BuilderTest, GlobalVar_TypeAliasAssignReadOnly) {
 
     ASSERT_TRUE(b.Build());
 
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %3 Block
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %3 Block
 OpMemberDecorate %3 0 Offset 0
 OpMemberDecorate %4 0 Offset 0
 OpDecorate %1 NonWritable
 OpDecorate %1 Binding 0
 OpDecorate %1 DescriptorSet 0
 )");
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %3 "b_block"
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %3 "b_block"
 OpMemberName %3 0 "inner"
 OpName %4 "A"
 OpMemberName %4 0 "a"
 OpName %1 "b"
 OpName %8 "unused_entry_point"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%5 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%5 = OpTypeInt 32 1
 %4 = OpTypeStruct %5
 %3 = OpTypeStruct %4
 %2 = OpTypePointer StorageBuffer %3
@@ -447,7 +448,7 @@ TEST_F(BuilderTest, GlobalVar_TwoVarDeclReadOnly) {
 
     ASSERT_TRUE(b.Build());
 
-    EXPECT_EQ(DumpInstructions(b.annots()),
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()),
               R"(OpDecorate %3 Block
 OpMemberDecorate %3 0 Offset 0
 OpMemberDecorate %4 0 Offset 0
@@ -457,7 +458,7 @@ OpDecorate %1 Binding 0
 OpDecorate %6 DescriptorSet 1
 OpDecorate %6 Binding 0
 )");
-    EXPECT_EQ(DumpInstructions(b.debug()), R"(OpName %3 "b_block"
+    EXPECT_EQ(DumpInstructions(b.Module().Debug()), R"(OpName %3 "b_block"
 OpMemberName %3 0 "inner"
 OpName %4 "A"
 OpMemberName %4 0 "a"
@@ -465,7 +466,7 @@ OpName %1 "b"
 OpName %6 "c"
 OpName %9 "unused_entry_point"
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%5 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%5 = OpTypeInt 32 1
 %4 = OpTypeStruct %5
 %3 = OpTypeStruct %4
 %2 = OpTypePointer StorageBuffer %3
@@ -486,13 +487,13 @@ TEST_F(BuilderTest, GlobalVar_TextureStorageWriteOnly) {
 
     spirv::Builder& b = Build();
 
-    EXPECT_TRUE(b.GenerateGlobalVariable(var_a)) << b.error();
+    EXPECT_TRUE(b.GenerateGlobalVariable(var_a)) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %1 NonReadable
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %1 NonReadable
 OpDecorate %1 Binding 0
 OpDecorate %1 DescriptorSet 0
 )");
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%4 = OpTypeInt 32 0
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%4 = OpTypeInt 32 0
 %3 = OpTypeImage %4 2D 0 0 0 2 R32ui
 %2 = OpTypePointer UniformConstant %3
 %1 = OpVariable %2 UniformConstant
@@ -518,12 +519,12 @@ TEST_F(BuilderTest, GlobalVar_WorkgroupWithZeroInit) {
     std::unique_ptr<spirv::Builder> b =
         std::make_unique<spirv::Builder>(program.get(), kZeroInitializeWorkgroupMemory);
 
-    EXPECT_TRUE(b->GenerateGlobalVariable(var_scalar)) << b->error();
-    EXPECT_TRUE(b->GenerateGlobalVariable(var_array)) << b->error();
-    EXPECT_TRUE(b->GenerateGlobalVariable(var_struct)) << b->error();
-    ASSERT_FALSE(b->has_error()) << b->error();
+    EXPECT_TRUE(b->GenerateGlobalVariable(var_scalar)) << b->Diagnostics();
+    EXPECT_TRUE(b->GenerateGlobalVariable(var_array)) << b->Diagnostics();
+    EXPECT_TRUE(b->GenerateGlobalVariable(var_struct)) << b->Diagnostics();
+    ASSERT_FALSE(b->has_error()) << b->Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b->types()), R"(%3 = OpTypeInt 32 1
+    EXPECT_EQ(DumpInstructions(b->Module().Types()), R"(%3 = OpTypeInt 32 1
 %2 = OpTypePointer Workgroup %3
 %4 = OpConstantNull %3
 %1 = OpVariable %2 Workgroup %4

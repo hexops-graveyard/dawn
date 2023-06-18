@@ -25,7 +25,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::Vector);
 namespace tint::type {
 
 Vector::Vector(Type const* subtype, uint32_t width, bool packed /* = false */)
-    : Base(utils::Hash(TypeInfo::Of<Vector>().full_hashcode, width, subtype, packed),
+    : Base(utils::Hash(utils::TypeInfo::Of<Vector>().full_hashcode, width, subtype, packed),
            type::Flags{
                Flag::kConstructable,
                Flag::kCreationFixedFootprint,
@@ -47,12 +47,12 @@ bool Vector::Equals(const UniqueNode& other) const {
     return false;
 }
 
-std::string Vector::FriendlyName(const SymbolTable& symbols) const {
+std::string Vector::FriendlyName() const {
     utils::StringStream out;
     if (packed_) {
         out << "__packed_";
     }
-    out << "vec" << width_ << "<" << subtype_->FriendlyName(symbols) << ">";
+    out << "vec" << width_ << "<" << subtype_->FriendlyName() << ">";
     return out.str();
 }
 
@@ -75,6 +75,15 @@ uint32_t Vector::Align() const {
 Vector* Vector::Clone(CloneContext& ctx) const {
     auto* subtype = subtype_->Clone(ctx);
     return ctx.dst.mgr->Get<Vector>(subtype, width_, packed_);
+}
+
+TypeAndCount Vector::Elements(const Type* /* type_if_invalid = nullptr */,
+                              uint32_t /* count_if_invalid = 0 */) const {
+    return {subtype_, width_};
+}
+
+const Type* Vector::Element(uint32_t index) const {
+    return index < width_ ? subtype_ : nullptr;
 }
 
 }  // namespace tint::type

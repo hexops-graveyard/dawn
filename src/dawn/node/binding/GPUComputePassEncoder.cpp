@@ -56,13 +56,13 @@ void GPUComputePassEncoder::end(Napi::Env) {
 void GPUComputePassEncoder::setBindGroup(
     Napi::Env env,
     interop::GPUIndex32 index,
-    interop::Interface<interop::GPUBindGroup> bindGroup,
+    std::optional<interop::Interface<interop::GPUBindGroup>> bindGroup,
     std::vector<interop::GPUBufferDynamicOffset> dynamicOffsets) {
     Converter conv(env);
 
     wgpu::BindGroup bg{};
     uint32_t* offsets = nullptr;
-    uint32_t num_offsets = 0;
+    size_t num_offsets = 0;
     if (!conv(bg, bindGroup) || !conv(offsets, num_offsets, dynamicOffsets)) {
         return;
     }
@@ -70,12 +70,13 @@ void GPUComputePassEncoder::setBindGroup(
     enc_.SetBindGroup(index, bg, num_offsets, offsets);
 }
 
-void GPUComputePassEncoder::setBindGroup(Napi::Env env,
-                                         interop::GPUIndex32 index,
-                                         interop::Interface<interop::GPUBindGroup> bindGroup,
-                                         interop::Uint32Array dynamicOffsetsData,
-                                         interop::GPUSize64 dynamicOffsetsDataStart,
-                                         interop::GPUSize32 dynamicOffsetsDataLength) {
+void GPUComputePassEncoder::setBindGroup(
+    Napi::Env env,
+    interop::GPUIndex32 index,
+    std::optional<interop::Interface<interop::GPUBindGroup>> bindGroup,
+    interop::Uint32Array dynamicOffsetsData,
+    interop::GPUSize64 dynamicOffsetsDataStart,
+    interop::GPUSize32 dynamicOffsetsDataLength) {
     Converter conv(env);
 
     wgpu::BindGroup bg{};

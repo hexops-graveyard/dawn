@@ -17,6 +17,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 struct SubresourceTrackingParams : AdapterTestParam {
     SubresourceTrackingParams(const AdapterTestParam& param,
                               uint32_t arrayLayerCountIn,
@@ -144,7 +147,9 @@ TEST_P(SubresourceTrackingPerf, Run) {
 }
 
 DAWN_INSTANTIATE_TEST_P(SubresourceTrackingPerf,
-                        {D3D11Backend(), D3D12Backend(), MetalBackend(), OpenGLBackend(),
-                         VulkanBackend()},
+                        {D3D12Backend(), MetalBackend(), OpenGLBackend(), VulkanBackend()},
                         {1, 4, 16, 256},
                         {2, 3, 8});
+
+}  // anonymous namespace
+}  // namespace dawn

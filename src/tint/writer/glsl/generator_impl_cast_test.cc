@@ -15,10 +15,13 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/glsl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
+#include "gmock/gmock.h"
 
 namespace tint::writer::glsl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using GlslGeneratorImplTest_Cast = TestHelper;
 
@@ -29,18 +32,20 @@ TEST_F(GlslGeneratorImplTest_Cast, EmitExpression_Cast_Scalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "1.0f");
 }
 
 TEST_F(GlslGeneratorImplTest_Cast, EmitExpression_Cast_Vector) {
-    auto* cast = vec3<f32>(vec3<i32>(1_i, 2_i, 3_i));
+    auto* cast = Call<vec3<f32>>(Call<vec3<i32>>(1_i, 2_i, 3_i));
     WrapInFunction(cast);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "vec3(1.0f, 2.0f, 3.0f)");
 }
 

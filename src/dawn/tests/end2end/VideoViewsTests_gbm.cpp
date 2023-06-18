@@ -24,6 +24,9 @@
 #include "dawn/common/Assert.h"
 #include "dawn/native/VulkanBackend.h"
 
+namespace dawn {
+namespace {
+
 // "linux-chromeos-rel"'s gbm.h is too old to compile, missing this change at least:
 // https://chromium-review.googlesource.com/c/chromiumos/platform/minigbm/+/1963001/10/gbm.h#244
 #ifndef MINIGBM
@@ -178,10 +181,10 @@ class VideoViewsTestBackendGbm : public VideoViewsTestBackend {
         internalDesc.internalUsage = wgpu::TextureUsage::CopySrc;
         textureDesc.nextInChain = &internalDesc;
 
-        dawn::native::vulkan::ExternalImageDescriptorDmaBuf descriptor = {};
+        native::vulkan::ExternalImageDescriptorDmaBuf descriptor = {};
         descriptor.cTextureDescriptor =
             reinterpret_cast<const WGPUTextureDescriptor*>(&textureDesc);
-        descriptor.isInitialized = true;
+        descriptor.isInitialized = initialized;
 
         descriptor.memoryFD = gbm_bo_get_fd(gbmBo);
         for (int plane = 0; plane < gbm_bo_get_plane_count(gbmBo); ++plane) {
@@ -191,20 +194,16 @@ class VideoViewsTestBackendGbm : public VideoViewsTestBackend {
         descriptor.drmModifier = gbm_bo_get_modifier(gbmBo);
         descriptor.waitFDs = {};
 
-        WGPUTexture texture = dawn::native::vulkan::WrapVulkanImage(mWGPUDevice, &descriptor);
-        if (texture != nullptr) {
-            return std::make_unique<PlatformTextureGbm>(wgpu::Texture::Acquire(texture), gbmBo);
-        } else {
-            return nullptr;
-        }
+        return std::make_unique<PlatformTextureGbm>(
+            native::vulkan::WrapVulkanImage(mWGPUDevice, &descriptor), gbmBo);
     }
 
     void DestroyVideoTextureForTest(
         std::unique_ptr<VideoViewsTestBackend::PlatformTexture>&& platformTexture) override {
         // Exports the signal and ignores it.
-        dawn::native::vulkan::ExternalImageExportInfoDmaBuf exportInfo;
-        dawn::native::vulkan::ExportVulkanImage(platformTexture->wgpuTexture.Get(),
-                                                VK_IMAGE_LAYOUT_UNDEFINED, &exportInfo);
+        native::vulkan::ExternalImageExportInfoDmaBuf exportInfo;
+        native::vulkan::ExportVulkanImage(platformTexture->wgpuTexture.Get(),
+                                          VK_IMAGE_LAYOUT_UNDEFINED, &exportInfo);
         for (int fd : exportInfo.semaphoreHandles) {
             ASSERT_NE(fd, -1);
             close(fd);
@@ -218,12 +217,16 @@ class VideoViewsTestBackendGbm : public VideoViewsTestBackend {
     gbm_device* mGbmDevice = nullptr;
 };
 
+}  // anonymous namespace
+
 // static
-BackendTestConfig VideoViewsTestBackend::Backend() {
-    return VulkanBackend();
+std::vector<BackendTestConfig> VideoViewsTestBackend::Backends() {
+    return {VulkanBackend()};
 }
 
 // static
 std::unique_ptr<VideoViewsTestBackend> VideoViewsTestBackend::Create() {
     return std::make_unique<VideoViewsTestBackendGbm>();
 }
+
+}  // namespace dawn

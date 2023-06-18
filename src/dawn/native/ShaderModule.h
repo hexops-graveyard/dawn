@@ -44,11 +44,14 @@ namespace tint {
 
 class Program;
 
+namespace ast::transform {
+class Transform;
+class VertexPulling;
+}  // namespace ast::transform
+
 namespace transform {
 class DataMap;
 class Manager;
-class Transform;
-class VertexPulling;
 }  // namespace transform
 
 }  // namespace tint
@@ -118,7 +121,7 @@ ResultOrError<Extent3D> ValidateComputeStageWorkgroupSize(
 
 RequiredBufferSizes ComputeRequiredBufferSizesForLayout(const EntryPointMetadata& entryPoint,
                                                         const PipelineLayoutBase* layout);
-ResultOrError<tint::Program> RunTransforms(tint::transform::Transform* transform,
+ResultOrError<tint::Program> RunTransforms(tint::transform::Manager* transformManager,
                                            const tint::Program* program,
                                            const tint::transform::DataMap& inputs,
                                            tint::transform::DataMap* outputs,
@@ -194,7 +197,7 @@ struct EntryPointMetadata {
 
     // An array to record the basic types (float, int and uint) of the fragment shader outputs.
     struct FragmentOutputVariableInfo {
-        wgpu::TextureComponentType baseType;
+        TextureComponentType baseType;
         uint8_t componentCount;
     };
     ityp::array<ColorAttachmentIndex, FragmentOutputVariableInfo, kMaxColorAttachments>
@@ -258,7 +261,7 @@ class ShaderModuleBase : public ApiObjectBase, public CachedObject {
     ShaderModuleBase(DeviceBase* device, const ShaderModuleDescriptor* descriptor);
     ~ShaderModuleBase() override;
 
-    static Ref<ShaderModuleBase> MakeError(DeviceBase* device);
+    static Ref<ShaderModuleBase> MakeError(DeviceBase* device, const char* label);
 
     ObjectType GetType() const override;
 
@@ -292,7 +295,7 @@ class ShaderModuleBase : public ApiObjectBase, public CachedObject {
                               OwnedCompilationMessages* compilationMessages);
 
   private:
-    ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+    ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label);
 
     // The original data in the descriptor for caching.
     enum class Type { Undefined, Spirv, Wgsl };

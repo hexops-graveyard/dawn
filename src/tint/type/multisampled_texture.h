@@ -23,7 +23,7 @@
 namespace tint::type {
 
 /// A multisampled texture type.
-class MultisampledTexture final : public Castable<MultisampledTexture, Texture> {
+class MultisampledTexture final : public utils::Castable<MultisampledTexture, Texture> {
   public:
     /// Constructor
     /// @param dim the dimensionality of the texture
@@ -40,10 +40,9 @@ class MultisampledTexture final : public Castable<MultisampledTexture, Texture> 
     /// @returns the subtype of the sampled texture
     const Type* type() const { return type_; }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

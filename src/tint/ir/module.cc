@@ -14,25 +14,9 @@
 
 #include "src/tint/ir/module.h"
 
-#include "src/tint/ir/builder_impl.h"
-#include "src/tint/program.h"
+#include <limits>
 
 namespace tint::ir {
-
-// static
-Module::Result Module::FromProgram(const Program* program) {
-    if (!program->IsValid()) {
-        return Result{std::string("input program is not valid")};
-    }
-
-    BuilderImpl b(program);
-    auto r = b.Build();
-    if (!r) {
-        return b.error();
-    }
-
-    return Result{r.Move()};
-}
 
 Module::Module() = default;
 
@@ -42,8 +26,33 @@ Module::~Module() = default;
 
 Module& Module::operator=(Module&&) = default;
 
-const Program* Module::ToProgram() const {
-    return nullptr;
+Symbol Module::NameOf(Value* value) {
+    return value_to_id_.Get(value).value_or(Symbol{});
+}
+
+Symbol Module::SetName(Value* value, std::string_view name) {
+    TINT_ASSERT(IR, !name.empty());
+
+    if (auto old = value_to_id_.Get(value)) {
+        value_to_id_.Remove(value);
+        id_to_value_.Remove(old.value());
+    }
+
+    auto sym = symbols.Register(name);
+    if (id_to_value_.Add(sym, value)) {
+        value_to_id_.Add(value, sym);
+        return sym;
+    }
+    auto prefix = std::string(name) + "_";
+    for (uint64_t suffix = 1; suffix != std::numeric_limits<uint64_t>::max(); suffix++) {
+        sym = symbols.Register(prefix + std::to_string(suffix));
+        if (id_to_value_.Add(sym, value)) {
+            value_to_id_.Add(value, sym);
+            return sym;
+        }
+    }
+    TINT_ASSERT(IR, false);  // !
+    return Symbol{};
 }
 
 }  // namespace tint::ir

@@ -70,8 +70,8 @@ TEST_F(BuilderTest, Function_Terminator_ReturnValue) {
     auto* var_a = program->AST().GlobalVariables()[0];
     auto* func = program->AST().Functions()[0];
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(var_a)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateGlobalVariable(var_a)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
     EXPECT_EQ(DumpBuilder(b), R"(OpName %1 "a"
 OpName %6 "a_func"
 %3 = OpTypeFloat 32
@@ -161,7 +161,7 @@ TEST_F(BuilderTest, FunctionType) {
 
     auto* func = program->AST().Functions()[0];
     ASSERT_TRUE(b.GenerateFunction(func));
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 )");
 }
@@ -174,7 +174,7 @@ TEST_F(BuilderTest, FunctionType_DeDuplicate) {
 
     ASSERT_TRUE(b.GenerateFunction(func1));
     ASSERT_TRUE(b.GenerateFunction(func2));
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 )");
 }

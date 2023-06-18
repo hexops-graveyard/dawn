@@ -63,7 +63,6 @@
 #include "dawn/dawn_proc.h"
 #include "dawn/native/DawnNative.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
-#include "dawn/utils/ScopedAutoreleasePool.h"
 #include "dawn/utils/WGPUHelpers.h"
 #include "dawn/webgpu_cpp.h"
 #include "webgpu/webgpu_glfw.h"
@@ -136,7 +135,7 @@ void DoRender(WindowData* data) {
     wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
 
     if (data->renderTriangle) {
-        utils::ComboRenderPassDescriptor desc({view});
+        dawn::utils::ComboRenderPassDescriptor desc({view});
         // Use Load to check the swapchain is lazy cleared (we shouldn't see garbage from previous
         // frames).
         desc.cColorAttachments[0].loadOp = wgpu::LoadOp::Load;
@@ -151,7 +150,7 @@ void DoRender(WindowData* data) {
             data->clearCycle = 1.0f;
         }
 
-        utils::ComboRenderPassDescriptor desc({view});
+        dawn::utils::ComboRenderPassDescriptor desc({view});
         desc.cColorAttachments[0].loadOp = wgpu::LoadOp::Clear;
         desc.cColorAttachments[0].clearValue = {data->clearCycle, 1.0f - data->clearCycle, 0.0f,
                                                 1.0f};
@@ -272,7 +271,7 @@ int main(int argc, const char* argv[]) {
     dawnProcSetProcs(&procs);
 
     instance = std::make_unique<dawn::native::Instance>();
-    instance->DiscoverDefaultAdapters();
+    instance->DiscoverDefaultPhysicalDevices();
 
     std::vector<dawn::native::Adapter> adapters = instance->GetAdapters();
     dawn::native::Adapter chosenAdapter;
@@ -314,8 +313,8 @@ int main(int argc, const char* argv[]) {
     queue = device.GetQueue();
 
     // The hacky pipeline to render a triangle.
-    utils::ComboRenderPipelineDescriptor pipelineDesc;
-    pipelineDesc.vertex.module = utils::CreateShaderModule(device, R"(
+    dawn::utils::ComboRenderPipelineDescriptor pipelineDesc;
+    pipelineDesc.vertex.module = dawn::utils::CreateShaderModule(device, R"(
         @vertex fn main(@builtin(vertex_index) VertexIndex : u32)
                             -> @builtin(position) vec4f {
             var pos = array(
@@ -325,7 +324,7 @@ int main(int argc, const char* argv[]) {
             );
             return vec4f(pos[VertexIndex], 0.0, 1.0);
         })");
-    pipelineDesc.cFragment.module = utils::CreateShaderModule(device, R"(
+    pipelineDesc.cFragment.module = dawn::utils::CreateShaderModule(device, R"(
         @fragment fn main() -> @location(0) vec4f {
             return vec4f(1.0, 0.0, 0.0, 1.0);
         })");
@@ -337,8 +336,8 @@ int main(int argc, const char* argv[]) {
     AddWindow();
 
     while (windows.size() != 0) {
-        utils::ScopedAutoreleasePool pool;
         glfwPollEvents();
+        wgpuInstanceProcessEvents(instance->Get());
 
         for (auto it = windows.begin(); it != windows.end();) {
             GLFWwindow* window = it->first;

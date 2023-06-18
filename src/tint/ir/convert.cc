@@ -13,24 +13,21 @@
 // limitations under the License.
 
 #include "src/tint/ir/convert.h"
+
+#include <utility>
+
 #include "src/tint/debug.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Convert);
 
 namespace tint::ir {
 
-Convert::Convert(Value* result, const type::Type* from, utils::VectorRef<Value*> args)
-    : Base(result, args), from_(from) {}
+Convert::Convert(const type::Type* to_type, Value* value) : Base(to_type) {
+    AddOperand(Convert::kValueOperandOffset, value);
+
+    AddResult(this);
+}
 
 Convert::~Convert() = default;
-
-utils::StringStream& Convert::ToString(utils::StringStream& out, const SymbolTable& st) const {
-    Result()->ToString(out, st);
-    out << " = convert(" << Result()->Type()->FriendlyName(st) << ", " << from_->FriendlyName(st)
-        << ", ";
-    EmitArgs(out, st);
-    out << ")";
-    return out;
-}
 
 }  // namespace tint::ir

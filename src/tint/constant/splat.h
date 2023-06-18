@@ -15,9 +15,9 @@
 #ifndef SRC_TINT_CONSTANT_SPLAT_H_
 #define SRC_TINT_CONSTANT_SPLAT_H_
 
-#include "src/tint/castable.h"
 #include "src/tint/constant/composite.h"
 #include "src/tint/type/type.h"
+#include "src/tint/utils/castable.h"
 #include "src/tint/utils/vector.h"
 
 namespace tint::constant {
@@ -26,7 +26,7 @@ namespace tint::constant {
 ///
 /// Splat is used for zero-initializers, 'splat' initializers, or initializers where each element is
 /// identical. Splat may be of a vector, matrix, array or structure type.
-class Splat : public Castable<Splat, Value> {
+class Splat : public utils::Castable<Splat, Value> {
   public:
     /// Constructor
     /// @param t the splat type
@@ -57,7 +57,7 @@ class Splat : public Castable<Splat, Value> {
     /// Clones the constant into the provided context
     /// @param ctx the clone context
     /// @returns the cloned node
-    Splat* Clone(CloneContext& ctx) const override;
+    const Splat* Clone(CloneContext& ctx) const override;
 
     /// The type of the splat element
     type::Type const* const type;

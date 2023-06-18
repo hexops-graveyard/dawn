@@ -29,11 +29,11 @@ MTLSamplerMinMagFilter FilterModeToMinMagFilter(wgpu::FilterMode mode) {
     }
 }
 
-MTLSamplerMipFilter FilterModeToMipFilter(wgpu::FilterMode mode) {
+MTLSamplerMipFilter FilterModeToMipFilter(wgpu::MipmapFilterMode mode) {
     switch (mode) {
-        case wgpu::FilterMode::Nearest:
+        case wgpu::MipmapFilterMode::Nearest:
             return MTLSamplerMipFilterNearest;
-        case wgpu::FilterMode::Linear:
+        case wgpu::MipmapFilterMode::Linear:
             return MTLSamplerMipFilterLinear;
     }
 }
@@ -71,6 +71,9 @@ Sampler::~Sampler() = default;
 MaybeError Sampler::Initialize(const SamplerDescriptor* descriptor) {
     NSRef<MTLSamplerDescriptor> mtlDescRef = AcquireNSRef([MTLSamplerDescriptor new]);
     MTLSamplerDescriptor* mtlDesc = mtlDescRef.Get();
+
+    NSRef<NSString> label = MakeDebugName(GetDevice(), "Dawn_Sampler", GetLabel());
+    mtlDesc.label = label.Get();
 
     mtlDesc.minFilter = FilterModeToMinMagFilter(descriptor->minFilter);
     mtlDesc.magFilter = FilterModeToMinMagFilter(descriptor->magFilter);

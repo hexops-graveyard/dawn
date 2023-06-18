@@ -18,20 +18,16 @@
 
 namespace dawn::wire::server {
 
-bool Server::DoShaderModuleGetCompilationInfo(ObjectId shaderModuleId, uint64_t requestSerial) {
-    auto* shaderModule = ShaderModuleObjects().Get(shaderModuleId);
-    if (shaderModule == nullptr) {
-        return false;
-    }
-
+WireResult Server::DoShaderModuleGetCompilationInfo(Known<WGPUShaderModule> shaderModule,
+                                                    uint64_t requestSerial) {
     auto userdata = MakeUserdata<ShaderModuleGetCompilationInfoUserdata>();
-    userdata->shaderModule = ObjectHandle{shaderModuleId, shaderModule->generation};
+    userdata->shaderModule = shaderModule.AsHandle();
     userdata->requestSerial = requestSerial;
 
     mProcs.shaderModuleGetCompilationInfo(
         shaderModule->handle, ForwardToServer<&Server::OnShaderModuleGetCompilationInfo>,
         userdata.release());
-    return true;
+    return WireResult::Success;
 }
 
 void Server::OnShaderModuleGetCompilationInfo(ShaderModuleGetCompilationInfoUserdata* data,

@@ -16,6 +16,7 @@
 
 #include "dawn/common/GPUInfo.h"
 #include "dawn/common/Platform.h"
+#include "dawn/native/Adapter.h"
 #include "dawn/native/BackendConnection.h"
 #include "dawn/native/BindGroupLayout.h"
 #include "dawn/native/Commands.h"
@@ -108,10 +109,12 @@ ResultOrError<Ref<Device>> Device::Create(AdapterBase* adapter,
                                           NSPRef<id<MTLDevice>> mtlDevice,
                                           const DeviceDescriptor* descriptor,
                                           const TogglesState& deviceToggles) {
-    Ref<Device> device =
-        AcquireRef(new Device(adapter, std::move(mtlDevice), descriptor, deviceToggles));
-    DAWN_TRY(device->Initialize(descriptor));
-    return device;
+    @autoreleasepool {
+        Ref<Device> device =
+            AcquireRef(new Device(adapter, std::move(mtlDevice), descriptor, deviceToggles));
+        DAWN_TRY(device->Initialize(descriptor));
+        return device;
+    }
 }
 
 Device::Device(AdapterBase* adapter,
@@ -155,7 +158,7 @@ MaybeError Device::Initialize(const DeviceDescriptor* descriptor) {
     if (mIsTimestampQueryEnabled && !IsToggleEnabled(Toggle::DisableTimestampQueryConversion)) {
         // Make a best guess of timestamp period based on device vendor info, and converge it to
         // an accurate value by the following calculations.
-        mTimestampPeriod = gpu_info::IsIntel(GetAdapter()->GetVendorId()) ? 83.333f : 1.0f;
+        mTimestampPeriod = gpu_info::IsIntel(GetPhysicalDevice()->GetVendorId()) ? 83.333f : 1.0f;
 
         // Initialize kalman filter parameters
         mKalmanInfo = std::make_unique<KalmanInfo>();
@@ -215,9 +218,9 @@ ResultOrError<Ref<ShaderModuleBase>> Device::CreateShaderModuleImpl(
     OwnedCompilationMessages* compilationMessages) {
     return ShaderModule::Create(this, descriptor, parseResult, compilationMessages);
 }
-ResultOrError<Ref<NewSwapChainBase>> Device::CreateSwapChainImpl(
+ResultOrError<Ref<SwapChainBase>> Device::CreateSwapChainImpl(
     Surface* surface,
-    NewSwapChainBase* previousSwapChain,
+    SwapChainBase* previousSwapChain,
     const SwapChainDescriptor* descriptor) {
     return SwapChain::Create(this, surface, previousSwapChain, descriptor);
 }
@@ -238,6 +241,14 @@ void Device::InitializeRenderPipelineAsyncImpl(Ref<RenderPipelineBase> renderPip
                                                WGPUCreateRenderPipelineAsyncCallback callback,
                                                void* userdata) {
     RenderPipeline::InitializeAsync(std::move(renderPipeline), callback, userdata);
+}
+
+ResultOrError<wgpu::TextureUsage> Device::GetSupportedSurfaceUsageImpl(
+    const Surface* surface) const {
+    wgpu::TextureUsage usages = wgpu::TextureUsage::RenderAttachment |
+                                wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc |
+                                wgpu::TextureUsage::CopyDst;
+    return usages;
 }
 
 ResultOrError<ExecutionSerial> Device::CheckAndUpdateCompletedSerials() {
@@ -353,6 +364,12 @@ MaybeError Device::SubmitPendingCommandBuffer() {
 }
 
 void Device::ExportLastSignaledEvent(ExternalImageMTLSharedEventDescriptor* desc) {
+    // Ensure commands are submitted before getting the last submited serial.
+    // Ignore the error since we still want to export the serial of the last successful
+    // submission - that was the last serial that was actually signaled.
+    ForceEventualFlushOfCommands();
+    DAWN_UNUSED(ConsumedError(SubmitPendingCommandBuffer()));
+
     desc->sharedEvent = *mMtlSharedEvent;
     desc->signaledValue = static_cast<uint64_t>(GetLastSubmittedCommandSerial());
 }
@@ -409,10 +426,18 @@ Ref<Texture> Device::CreateTextureWrappingIOSurface(
     if (ConsumedError(ValidateIsAlive())) {
         return nullptr;
     }
-    if (ConsumedError(ValidateTextureDescriptor(this, textureDescriptor))) {
+    if (ConsumedError(ValidateTextureDescriptor(this, textureDescriptor,
+                                                AllowMultiPlanarTextureFormat::Yes))) {
         return nullptr;
     }
     if (ConsumedError(ValidateIOSurfaceCanBeWrapped(this, textureDescriptor, ioSurface))) {
+        return nullptr;
+    }
+    if (GetValidInternalFormat(textureDescriptor->format).IsMultiPlanar() &&
+        !descriptor->isInitialized) {
+        bool consumed = ConsumedError(DAWN_VALIDATION_ERROR(
+            "External textures with multiplanar formats must be initialized."));
+        DAWN_UNUSED(consumed);
         return nullptr;
     }
 

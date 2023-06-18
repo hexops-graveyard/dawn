@@ -156,16 +156,16 @@ SampleTypeBit TintSampledKindToSampleTypeBit(tint::inspector::ResourceBinding::S
     UNREACHABLE();
 }
 
-ResultOrError<wgpu::TextureComponentType> TintComponentTypeToTextureComponentType(
+ResultOrError<TextureComponentType> TintComponentTypeToTextureComponentType(
     tint::inspector::ComponentType type) {
     switch (type) {
         case tint::inspector::ComponentType::kF32:
         case tint::inspector::ComponentType::kF16:
-            return wgpu::TextureComponentType::Float;
+            return TextureComponentType::Float;
         case tint::inspector::ComponentType::kI32:
-            return wgpu::TextureComponentType::Sint;
+            return TextureComponentType::Sint;
         case tint::inspector::ComponentType::kU32:
-            return wgpu::TextureComponentType::Uint;
+            return TextureComponentType::Uint;
         case tint::inspector::ComponentType::kUnknown:
             return DAWN_VALIDATION_ERROR("Attempted to convert 'Unknown' component type from Tint");
     }
@@ -955,7 +955,7 @@ MaybeError ValidateAndParseShaderModule(DeviceBase* device,
         DAWN_INVALID_IF(!result.success, "Tint WGSL failure: Generator: %s", result.error);
 
         newWgslCode = std::move(result.wgsl);
-        newWgslDesc.source = newWgslCode.c_str();
+        newWgslDesc.code = newWgslCode.c_str();
 
         spirvDesc = nullptr;
         wgslDesc = &newWgslDesc;
@@ -980,11 +980,11 @@ MaybeError ValidateAndParseShaderModule(DeviceBase* device,
 
     ASSERT(wgslDesc != nullptr);
 
-    auto tintSource = std::make_unique<TintSource>("", wgslDesc->source);
+    auto tintSource = std::make_unique<TintSource>("", wgslDesc->code);
 
     if (device->IsToggleEnabled(Toggle::DumpShaders)) {
         std::ostringstream dumpedMsg;
-        dumpedMsg << "// Dumped WGSL:" << std::endl << wgslDesc->source;
+        dumpedMsg << "// Dumped WGSL:" << std::endl << wgslDesc->code;
         device->EmitLog(WGPULoggingType_Info, dumpedMsg.str().c_str());
     }
 
@@ -1007,21 +1007,21 @@ RequiredBufferSizes ComputeRequiredBufferSizesForLayout(const EntryPointMetadata
     return bufferSizes;
 }
 
-ResultOrError<tint::Program> RunTransforms(tint::transform::Transform* transform,
+ResultOrError<tint::Program> RunTransforms(tint::transform::Manager* transformManager,
                                            const tint::Program* program,
                                            const tint::transform::DataMap& inputs,
                                            tint::transform::DataMap* outputs,
                                            OwnedCompilationMessages* outMessages) {
-    tint::transform::Output output = transform->Run(program, inputs);
+    tint::transform::DataMap transform_outputs;
+    tint::Program result = transformManager->Run(program, inputs, transform_outputs);
     if (outMessages != nullptr) {
-        DAWN_TRY(outMessages->AddMessages(output.program.Diagnostics()));
+        DAWN_TRY(outMessages->AddMessages(result.Diagnostics()));
     }
-    DAWN_INVALID_IF(!output.program.IsValid(), "Tint program failure: %s\n",
-                    output.program.Diagnostics().str());
+    DAWN_INVALID_IF(!result.IsValid(), "Tint program failure: %s\n", result.Diagnostics().str());
     if (outputs != nullptr) {
-        *outputs = std::move(output.data);
+        *outputs = std::move(transform_outputs);
     }
-    return std::move(output.program);
+    return std::move(result);
 }
 
 MaybeError ValidateCompatibilityWithPipelineLayout(DeviceBase* device,
@@ -1101,7 +1101,7 @@ ShaderModuleBase::ShaderModuleBase(DeviceBase* device,
         mOriginalSpirv.assign(spirvDesc->code, spirvDesc->code + spirvDesc->codeSize);
     } else if (wgslDesc) {
         mType = Type::Wgsl;
-        mWgsl = std::string(wgslDesc->source);
+        mWgsl = std::string(wgslDesc->code);
     }
 }
 
@@ -1110,8 +1110,8 @@ ShaderModuleBase::ShaderModuleBase(DeviceBase* device, const ShaderModuleDescrip
     GetObjectTrackingList()->Track(this);
 }
 
-ShaderModuleBase::ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag), mType(Type::Undefined) {}
+ShaderModuleBase::ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label)
+    : ApiObjectBase(device, tag, label), mType(Type::Undefined) {}
 
 ShaderModuleBase::~ShaderModuleBase() = default;
 
@@ -1123,8 +1123,8 @@ void ShaderModuleBase::DestroyImpl() {
 }
 
 // static
-Ref<ShaderModuleBase> ShaderModuleBase::MakeError(DeviceBase* device) {
-    return AcquireRef(new ShaderModuleBase(device, ObjectBase::kError));
+Ref<ShaderModuleBase> ShaderModuleBase::MakeError(DeviceBase* device, const char* label) {
+    return AcquireRef(new ShaderModuleBase(device, ObjectBase::kError, label));
 }
 
 ObjectType ShaderModuleBase::GetType() const {

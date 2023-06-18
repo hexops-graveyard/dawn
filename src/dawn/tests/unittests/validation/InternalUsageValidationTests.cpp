@@ -16,6 +16,9 @@
 
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class InternalUsageValidationDisabledTest : public ValidationTest {};
 
 // Test that using DawnTextureInternalUsageDescriptor is an error if DawnInternalUsages is not
@@ -64,8 +67,8 @@ TEST_F(InternalUsageValidationDisabledTest, CommandEncoderDescriptorRequiresFeat
 }
 
 class TextureInternalUsageValidationTest : public ValidationTest {
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::DawnInternalUsages};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -271,9 +274,9 @@ TEST_F(TextureInternalUsageValidationTest, CommandValidation) {
         wgpu::Extent3D extent3D = {1, 1};
 
         wgpu::CommandEncoderDescriptor encoderDesc = {};
-        wgpu::DawnEncoderInternalUsageDescriptor internalDesc = {};
-        internalDesc.useInternalUsages = false;
-        encoderDesc.nextInChain = &internalDesc;
+        wgpu::DawnEncoderInternalUsageDescriptor encoderInternalDesc = {};
+        encoderInternalDesc.useInternalUsages = false;
+        encoderDesc.nextInChain = &encoderInternalDesc;
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder(&encoderDesc);
 
         encoder.CopyTextureToTexture(&srcImageCopyTexture, &dstImageCopyTexture, &extent3D);
@@ -287,9 +290,9 @@ TEST_F(TextureInternalUsageValidationTest, CommandValidation) {
         wgpu::Extent3D extent3D = {1, 1};
 
         wgpu::CommandEncoderDescriptor encoderDesc = {};
-        wgpu::DawnEncoderInternalUsageDescriptor internalDesc = {};
-        internalDesc.useInternalUsages = true;
-        encoderDesc.nextInChain = &internalDesc;
+        wgpu::DawnEncoderInternalUsageDescriptor encoderInternalDesc = {};
+        encoderInternalDesc.useInternalUsages = true;
+        encoderDesc.nextInChain = &encoderInternalDesc;
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder(&encoderDesc);
 
         encoder.CopyTextureToTexture(&srcImageCopyTexture, &dstImageCopyTexture, &extent3D);
@@ -304,12 +307,15 @@ TEST_F(TextureInternalUsageValidationTest, CommandValidation) {
         wgpu::Extent3D extent3D = {1, 1};
 
         wgpu::CommandEncoderDescriptor encoderDesc = {};
-        wgpu::DawnEncoderInternalUsageDescriptor internalDesc = {};
-        internalDesc.useInternalUsages = true;
-        encoderDesc.nextInChain = &internalDesc;
+        wgpu::DawnEncoderInternalUsageDescriptor encoderInternalDesc = {};
+        encoderInternalDesc.useInternalUsages = true;
+        encoderDesc.nextInChain = &encoderInternalDesc;
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder(&encoderDesc);
 
         encoder.CopyTextureToTexture(&srcImageCopyTexture, &dstImageCopyTexture, &extent3D);
         encoder.Finish();
     }
 }
+
+}  // anonymous namespace
+}  // namespace dawn

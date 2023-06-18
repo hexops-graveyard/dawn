@@ -21,7 +21,7 @@
 
 namespace dawn::native::d3d12 {
 
-class Adapter;
+class PhysicalDevice;
 
 struct D3D12DeviceInfo {
     bool isUMA;
@@ -36,9 +36,10 @@ struct D3D12DeviceInfo {
     bool supportsDP4a;
     bool supportsCastingFullyTypedFormat;
     uint32_t programmableSamplePositionsTier;
+    bool supportsRootSignatureVersion1_1;
 };
 
-ResultOrError<D3D12DeviceInfo> GatherDeviceInfo(const Adapter& adapter);
+ResultOrError<D3D12DeviceInfo> GatherDeviceInfo(const PhysicalDevice& physicalDevice);
 }  // namespace dawn::native::d3d12
 
 #endif  // SRC_DAWN_NATIVE_D3D12_D3D12INFO_H_

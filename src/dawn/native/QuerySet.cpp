@@ -54,8 +54,8 @@ MaybeError ValidateQuerySetDescriptor(DeviceBase* device, const QuerySetDescript
 
         case wgpu::QueryType::PipelineStatistics: {
             // TODO(crbug.com/1177506): Pipeline statistics query is not fully implemented.
-            // Disallow it as unsafe until the implementaion is completed.
-            DAWN_INVALID_IF(device->IsToggleEnabled(Toggle::DisallowUnsafeAPIs),
+            // Allow it only as unsafe until the implementaion is completed.
+            DAWN_INVALID_IF(!device->IsToggleEnabled(Toggle::AllowUnsafeAPIs),
                             "Pipeline statistics queries are disallowed because they are not "
                             "fully implemented");
 
@@ -78,7 +78,7 @@ MaybeError ValidateQuerySetDescriptor(DeviceBase* device, const QuerySetDescript
         } break;
 
         case wgpu::QueryType::Timestamp:
-            DAWN_INVALID_IF(device->IsToggleEnabled(Toggle::DisallowUnsafeAPIs),
+            DAWN_INVALID_IF(!device->IsToggleEnabled(Toggle::AllowUnsafeAPIs),
                             "Timestamp queries are disallowed because they may expose precise "
                             "timing information.");
 
@@ -114,7 +114,9 @@ QuerySetBase::QuerySetBase(DeviceBase* device, const QuerySetDescriptor* descrip
 QuerySetBase::QuerySetBase(DeviceBase* device,
                            const QuerySetDescriptor* descriptor,
                            ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag), mQueryType(descriptor->type), mQueryCount(descriptor->count) {}
+    : ApiObjectBase(device, tag, descriptor->label),
+      mQueryType(descriptor->type),
+      mQueryCount(descriptor->count) {}
 
 QuerySetBase::~QuerySetBase() {
     // Uninitialized or already destroyed

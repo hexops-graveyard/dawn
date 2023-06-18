@@ -44,7 +44,7 @@ struct BufferBinding {
 
 class BindGroupBase : public ApiObjectBase {
   public:
-    static BindGroupBase* MakeError(DeviceBase* device);
+    static BindGroupBase* MakeError(DeviceBase* device, const char* label);
 
     ObjectType GetType() const override;
 
@@ -55,6 +55,8 @@ class BindGroupBase : public ApiObjectBase {
     TextureViewBase* GetBindingAsTextureView(BindingIndex bindingIndex);
     const ityp::span<uint32_t, uint64_t>& GetUnverifiedBufferSizes() const;
     const std::vector<Ref<ExternalTextureBase>>& GetBoundExternalTextures() const;
+
+    void ForEachUnverifiedBufferBindingIndex(std::function<void(BindingIndex, uint32_t)> fn) const;
 
   protected:
     // To save memory, the size of a bind group is dynamically determined and the bind group is
@@ -81,7 +83,7 @@ class BindGroupBase : public ApiObjectBase {
     ~BindGroupBase() override;
 
   private:
-    BindGroupBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+    BindGroupBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label);
     void DeleteThis() override;
 
     Ref<BindGroupLayoutBase> mLayout;

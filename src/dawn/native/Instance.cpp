@@ -132,10 +132,9 @@ Ref<InstanceBase> InstanceBase::Create(const InstanceDescriptor* descriptor) {
     // Set up the instance toggle state from toggles descriptor
     TogglesState instanceToggles =
         TogglesState::CreateFromTogglesDescriptor(instanceTogglesDesc, ToggleStage::Instance);
-    // By default enable the DisallowUnsafeAPIs instance toggle, it will be inherited to adapters
+    // By default disable the AllowUnsafeAPIs instance toggle, it will be inherited to adapters
     // and devices created by this instance if not overriden.
-    // TODO(dawn:1685): Rename DisallowUnsafeAPIs to AllowUnsafeAPIs, and change relating logic.
-    instanceToggles.Default(Toggle::DisallowUnsafeAPIs, true);
+    instanceToggles.Default(Toggle::AllowUnsafeAPIs, false);
 
     Ref<InstanceBase> instance = AcquireRef(new InstanceBase(instanceToggles));
     if (instance->ConsumedError(instance->Initialize(descriptor))) {
@@ -156,7 +155,7 @@ void InstanceBase::WillDropLastExternalRef() {
     // In order to break this cycle and prevent leaks, when the application drops the last external
     // ref and WillDropLastExternalRef is called, the instance clears out any member refs to
     // adapters that hold back-refs to the instance - thus breaking any reference cycles.
-    mAdapters.clear();
+    mPhysicalDevices.clear();
 }
 
 // TODO(crbug.com/dawn/832): make the platform an initialization parameter of the instance.
@@ -185,7 +184,7 @@ MaybeError InstanceBase::Initialize(const InstanceDescriptor* descriptor) {
 
     // Initialize the platform to the default for now.
     mDefaultPlatform = std::make_unique<dawn::platform::Platform>();
-    SetPlatform(mDefaultPlatform.get());
+    SetPlatform(dawnDesc != nullptr ? dawnDesc->platform : mDefaultPlatform.get());
 
     return {};
 }
@@ -216,10 +215,10 @@ ResultOrError<Ref<AdapterBase>> InstanceBase::RequestAdapterInternal(
     if (options->forceFallbackAdapter) {
 #if defined(DAWN_ENABLE_BACKEND_VULKAN)
         if (GetEnabledBackends()[wgpu::BackendType::Vulkan]) {
-            dawn_native::vulkan::AdapterDiscoveryOptions vulkanOptions;
+            dawn_native::vulkan::PhysicalDeviceDiscoveryOptions vulkanOptions;
             vulkanOptions.forceSwiftShader = true;
 
-            MaybeError result = DiscoverAdaptersInternal(&vulkanOptions);
+            MaybeError result = DiscoverPhysicalDevicesInternal(&vulkanOptions);
             if (result.IsError()) {
                 dawn::WarningLog() << absl::StrFormat(
                     "Skipping Vulkan Swiftshader adapter because initialization failed: %s",
@@ -231,7 +230,7 @@ ResultOrError<Ref<AdapterBase>> InstanceBase::RequestAdapterInternal(
         return Ref<AdapterBase>(nullptr);
 #endif  // defined(DAWN_ENABLE_BACKEND_VULKAN)
     } else {
-        DiscoverDefaultAdapters();
+        DiscoverDefaultPhysicalDevices();
     }
 
     wgpu::AdapterType preferredType;
@@ -250,20 +249,27 @@ ResultOrError<Ref<AdapterBase>> InstanceBase::RequestAdapterInternal(
     std::optional<size_t> cpuAdapterIndex;
     std::optional<size_t> unknownAdapterIndex;
 
-    for (size_t i = 0; i < mAdapters.size(); ++i) {
-        AdapterProperties properties;
-        mAdapters[i]->APIGetProperties(&properties);
+    Ref<PhysicalDeviceBase> selectedPhysicalDevice;
+    FeatureLevel featureLevel =
+        options->compatibilityMode ? FeatureLevel::Compatibility : FeatureLevel::Core;
+    for (size_t i = 0; i < mPhysicalDevices.size(); ++i) {
+        if (!mPhysicalDevices[i]->SupportsFeatureLevel(featureLevel)) {
+            continue;
+        }
 
         if (options->forceFallbackAdapter) {
-            if (!gpu_info::IsGoogleSwiftshader(properties.vendorID, properties.deviceID)) {
+            if (!gpu_info::IsGoogleSwiftshader(mPhysicalDevices[i]->GetVendorId(),
+                                               mPhysicalDevices[i]->GetDeviceId())) {
                 continue;
             }
-            return mAdapters[i];
+            selectedPhysicalDevice = mPhysicalDevices[i];
+            break;
         }
-        if (properties.adapterType == preferredType) {
-            return mAdapters[i];
+        if (mPhysicalDevices[i]->GetAdapterType() == preferredType) {
+            selectedPhysicalDevice = mPhysicalDevices[i];
+            break;
         }
-        switch (properties.adapterType) {
+        switch (mPhysicalDevices[i]->GetAdapterType()) {
             case wgpu::AdapterType::DiscreteGPU:
                 discreteGPUAdapterIndex = i;
                 break;
@@ -280,23 +286,33 @@ ResultOrError<Ref<AdapterBase>> InstanceBase::RequestAdapterInternal(
     }
 
     // For now, we always prefer the discrete GPU
-    if (discreteGPUAdapterIndex) {
-        return mAdapters[*discreteGPUAdapterIndex];
-    }
-    if (integratedGPUAdapterIndex) {
-        return mAdapters[*integratedGPUAdapterIndex];
-    }
-    if (cpuAdapterIndex) {
-        return mAdapters[*cpuAdapterIndex];
-    }
-    if (unknownAdapterIndex) {
-        return mAdapters[*unknownAdapterIndex];
+    if (selectedPhysicalDevice == nullptr) {
+        if (discreteGPUAdapterIndex) {
+            selectedPhysicalDevice = mPhysicalDevices[*discreteGPUAdapterIndex];
+        } else if (integratedGPUAdapterIndex) {
+            selectedPhysicalDevice = mPhysicalDevices[*integratedGPUAdapterIndex];
+        } else if (cpuAdapterIndex) {
+            selectedPhysicalDevice = mPhysicalDevices[*cpuAdapterIndex];
+        } else if (unknownAdapterIndex) {
+            selectedPhysicalDevice = mPhysicalDevices[*unknownAdapterIndex];
+        }
     }
 
-    return Ref<AdapterBase>(nullptr);
+    if (selectedPhysicalDevice == nullptr) {
+        return Ref<AdapterBase>(nullptr);
+    }
+
+    // Set up toggles state for default adapters, currently adapter don't have a toggles
+    // descriptor so just inherit from instance toggles.
+    // TODO(dawn:1495): Handle the adapter toggles descriptor after implemented.
+    TogglesState adapterToggles = TogglesState(ToggleStage::Adapter);
+    adapterToggles.InheritFrom(mToggles);
+
+    return AcquireRef(
+        new AdapterBase(std::move(selectedPhysicalDevice), featureLevel, adapterToggles));
 }
 
-void InstanceBase::DiscoverDefaultAdapters() {
+void InstanceBase::DiscoverDefaultPhysicalDevices() {
     for (wgpu::BackendType b : IterateBitSet(GetEnabledBackends())) {
         EnsureBackendConnection(b);
     }
@@ -307,19 +323,13 @@ void InstanceBase::DiscoverDefaultAdapters() {
 
     // Query and merge all default adapters for all backends
     for (std::unique_ptr<BackendConnection>& backend : mBackends) {
-        // Set up toggles state for default adapters, currently adapter don't have a toggles
-        // descriptor so just inherit from instance toggles.
-        // TODO(dawn:1495): Handle the adapter toggles descriptor after implemented.
-        TogglesState adapterToggles = TogglesState(ToggleStage::Adapter);
-        adapterToggles.InheritFrom(mToggles);
+        std::vector<Ref<PhysicalDeviceBase>> physicalDevices =
+            backend->DiscoverDefaultPhysicalDevices();
 
-        std::vector<Ref<AdapterBase>> backendAdapters =
-            backend->DiscoverDefaultAdapters(adapterToggles);
-
-        for (Ref<AdapterBase>& adapter : backendAdapters) {
-            ASSERT(adapter->GetBackendType() == backend->GetType());
-            ASSERT(adapter->GetInstance() == this);
-            mAdapters.push_back(std::move(adapter));
+        for (Ref<PhysicalDeviceBase>& physicalDevice : physicalDevices) {
+            ASSERT(physicalDevice->GetBackendType() == backend->GetType());
+            ASSERT(physicalDevice->GetInstance() == this);
+            mPhysicalDevices.push_back(std::move(physicalDevice));
         }
     }
 
@@ -327,8 +337,8 @@ void InstanceBase::DiscoverDefaultAdapters() {
 }
 
 // This is just a wrapper around the real logic that uses Error.h error handling.
-bool InstanceBase::DiscoverAdapters(const AdapterDiscoveryOptionsBase* options) {
-    MaybeError result = DiscoverAdaptersInternal(options);
+bool InstanceBase::DiscoverPhysicalDevices(const PhysicalDeviceDiscoveryOptionsBase* options) {
+    MaybeError result = DiscoverPhysicalDevicesInternal(options);
 
     if (result.IsError()) {
         dawn::WarningLog() << absl::StrFormat(
@@ -356,8 +366,23 @@ const FeatureInfo* InstanceBase::GetFeatureInfo(wgpu::FeatureName feature) {
     return mFeaturesInfo.GetFeatureInfo(feature);
 }
 
-const std::vector<Ref<AdapterBase>>& InstanceBase::GetAdapters() const {
-    return mAdapters;
+std::vector<Ref<AdapterBase>> InstanceBase::GetAdapters() const {
+    // Set up toggles state for default adapters, currently adapter don't have a toggles
+    // descriptor so just inherit from instance toggles.
+    // TODO(dawn:1495): Handle the adapter toggles descriptor after implemented.
+    TogglesState adapterToggles = TogglesState(ToggleStage::Adapter);
+    adapterToggles.InheritFrom(mToggles);
+
+    std::vector<Ref<AdapterBase>> adapters;
+    for (const auto& physicalDevice : mPhysicalDevices) {
+        for (FeatureLevel featureLevel : {FeatureLevel::Compatibility, FeatureLevel::Core}) {
+            if (physicalDevice->SupportsFeatureLevel(featureLevel)) {
+                adapters.push_back(
+                    AcquireRef(new AdapterBase(physicalDevice, featureLevel, adapterToggles)));
+            }
+        }
+    }
+    return adapters;
 }
 
 void InstanceBase::EnsureBackendConnection(wgpu::BackendType backendType) {
@@ -424,7 +449,8 @@ void InstanceBase::EnsureBackendConnection(wgpu::BackendType backendType) {
     mBackendsConnected.set(backendType);
 }
 
-MaybeError InstanceBase::DiscoverAdaptersInternal(const AdapterDiscoveryOptionsBase* options) {
+MaybeError InstanceBase::DiscoverPhysicalDevicesInternal(
+    const PhysicalDeviceDiscoveryOptionsBase* options) {
     wgpu::BackendType backendType = static_cast<wgpu::BackendType>(options->backendType);
     DAWN_TRY(ValidateBackendType(backendType));
 
@@ -441,19 +467,13 @@ MaybeError InstanceBase::DiscoverAdaptersInternal(const AdapterDiscoveryOptionsB
         }
         foundBackend = true;
 
-        // Set up toggles state for default adapters, currently adapter don't have a toggles
-        // descriptor so just inherit from instance toggles.
-        // TODO(dawn:1495): Handle the adapter toggles descriptor after implemented.
-        TogglesState adapterToggles = TogglesState(ToggleStage::Adapter);
-        adapterToggles.InheritFrom(mToggles);
+        std::vector<Ref<PhysicalDeviceBase>> newPhysicalDevices;
+        DAWN_TRY_ASSIGN(newPhysicalDevices, backend->DiscoverPhysicalDevices(options));
 
-        std::vector<Ref<AdapterBase>> newAdapters;
-        DAWN_TRY_ASSIGN(newAdapters, backend->DiscoverAdapters(options, adapterToggles));
-
-        for (Ref<AdapterBase>& adapter : newAdapters) {
-            ASSERT(adapter->GetBackendType() == backend->GetType());
-            ASSERT(adapter->GetInstance() == this);
-            mAdapters.push_back(std::move(adapter));
+        for (Ref<PhysicalDeviceBase>& physicalDevice : newPhysicalDevices) {
+            ASSERT(physicalDevice->GetBackendType() == backend->GetType());
+            ASSERT(physicalDevice->GetInstance() == this);
+            mPhysicalDevices.push_back(std::move(physicalDevice));
         }
     }
 

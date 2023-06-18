@@ -19,6 +19,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class OpArrayLengthTest : public DawnTest {
   protected:
     void SetUp() override {
@@ -281,3 +284,6 @@ DAWN_INSTANTIATE_TEST(OpArrayLengthTest,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

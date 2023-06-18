@@ -19,6 +19,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 constexpr uint32_t kRTSize = 16;
 constexpr wgpu::TextureFormat kFormat = wgpu::TextureFormat::RGBA8Unorm;
 
@@ -241,6 +244,9 @@ TEST_P(RenderPassTest_RegressionDawn1389, ClearMultisubresourceAfterWriteDepth16
     // TODO(crbug.com/dawn/1492): Support copying to Depth16Unorm on GL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
 
+    // TODO(dawn:1705): fix this test for Intel D3D11.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11() && IsIntel());
+
     // Test all combinatons of multi-mip, multi-layer
     for (uint32_t mipLevelCount : {1, 5}) {
         for (uint32_t arrayLayerCount : {1, 7}) {
@@ -368,3 +374,6 @@ DAWN_INSTANTIATE_TEST(RenderPassTest_RegressionDawn1389,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

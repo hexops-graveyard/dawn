@@ -55,6 +55,11 @@ TEST_F(ParserImplTest, SingularExpression_Array_ExpressionIndex) {
     EXPECT_EQ(ident_expr->identifier->symbol, p->builder().Symbols().Get("a"));
 
     ASSERT_TRUE(idx->index->Is<ast::BinaryExpression>());
+
+    EXPECT_EQ(e->source.range.begin.line, 1u);
+    EXPECT_EQ(e->source.range.begin.column, 1u);
+    EXPECT_EQ(e->source.range.end.line, 1u);
+    EXPECT_EQ(e->source.range.end.column, 13u);
 }
 
 TEST_F(ParserImplTest, SingularExpression_Array_MissingIndex) {
@@ -98,7 +103,7 @@ TEST_F(ParserImplTest, SingularExpression_Call_Empty) {
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* c = e->As<ast::CallExpression>();
 
-    ast::CheckIdentifier(p->builder().Symbols(), c->target, "a");
+    ast::CheckIdentifier(c->target, "a");
 
     EXPECT_EQ(c->args.Length(), 0u);
 }
@@ -114,7 +119,7 @@ TEST_F(ParserImplTest, SingularExpression_Call_WithArgs) {
     ASSERT_TRUE(e->Is<ast::CallExpression>());
     auto* c = e->As<ast::CallExpression>();
 
-    ast::CheckIdentifier(p->builder().Symbols(), c->target, "test");
+    ast::CheckIdentifier(c->target, "test");
 
     EXPECT_EQ(c->args.Length(), 3u);
     EXPECT_TRUE(c->args[0]->Is<ast::IntLiteralExpression>());
@@ -141,7 +146,7 @@ TEST_F(ParserImplTest, SingularExpression_Call_InvalidArg) {
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:3: expected ')' for function call");
+    EXPECT_EQ(p->error(), "1:3: expected expression for function call");
 }
 
 TEST_F(ParserImplTest, SingularExpression_Call_MissingRightParen) {
@@ -151,7 +156,7 @@ TEST_F(ParserImplTest, SingularExpression_Call_MissingRightParen) {
     EXPECT_TRUE(e.errored);
     EXPECT_EQ(e.value, nullptr);
     EXPECT_TRUE(p->has_error());
-    EXPECT_EQ(p->error(), "1:3: expected ')' for function call");
+    EXPECT_EQ(p->error(), "1:3: expected expression for function call");
 }
 
 TEST_F(ParserImplTest, SingularExpression_MemberAccessor) {
@@ -169,6 +174,11 @@ TEST_F(ParserImplTest, SingularExpression_MemberAccessor) {
               p->builder().Symbols().Get("a"));
 
     EXPECT_EQ(m->member->symbol, p->builder().Symbols().Get("b"));
+
+    EXPECT_EQ(e->source.range.begin.line, 1u);
+    EXPECT_EQ(e->source.range.begin.column, 1u);
+    EXPECT_EQ(e->source.range.end.line, 1u);
+    EXPECT_EQ(e->source.range.end.column, 4u);
 }
 
 TEST_F(ParserImplTest, SingularExpression_MemberAccesssor_InvalidIdent) {
@@ -212,20 +222,45 @@ TEST_F(ParserImplTest, SingularExpression_Array_NestedIndexAccessor) {
     const auto* outer_accessor = e->As<ast::IndexAccessorExpression>();
     ASSERT_TRUE(outer_accessor);
 
+    EXPECT_EQ(outer_accessor->source.range.begin.line, 1u);
+    EXPECT_EQ(outer_accessor->source.range.begin.column, 1u);
+    EXPECT_EQ(outer_accessor->source.range.end.line, 1u);
+    EXPECT_EQ(outer_accessor->source.range.end.column, 8u);
+
     const auto* outer_object = outer_accessor->object->As<ast::IdentifierExpression>();
     ASSERT_TRUE(outer_object);
     EXPECT_EQ(outer_object->identifier->symbol, p->builder().Symbols().Get("a"));
 
+    EXPECT_EQ(outer_object->source.range.begin.line, 1u);
+    EXPECT_EQ(outer_object->source.range.begin.column, 1u);
+    EXPECT_EQ(outer_object->source.range.end.line, 1u);
+    EXPECT_EQ(outer_object->source.range.end.column, 2u);
+
     const auto* inner_accessor = outer_accessor->index->As<ast::IndexAccessorExpression>();
     ASSERT_TRUE(inner_accessor);
+
+    EXPECT_EQ(inner_accessor->source.range.begin.line, 1u);
+    EXPECT_EQ(inner_accessor->source.range.begin.column, 3u);
+    EXPECT_EQ(inner_accessor->source.range.end.line, 1u);
+    EXPECT_EQ(inner_accessor->source.range.end.column, 7u);
 
     const auto* inner_object = inner_accessor->object->As<ast::IdentifierExpression>();
     ASSERT_TRUE(inner_object);
     EXPECT_EQ(inner_object->identifier->symbol, p->builder().Symbols().Get("b"));
 
+    EXPECT_EQ(inner_object->source.range.begin.line, 1u);
+    EXPECT_EQ(inner_object->source.range.begin.column, 3u);
+    EXPECT_EQ(inner_object->source.range.end.line, 1u);
+    EXPECT_EQ(inner_object->source.range.end.column, 4u);
+
     const auto* index_expr = inner_accessor->index->As<ast::IdentifierExpression>();
     ASSERT_TRUE(index_expr);
     EXPECT_EQ(index_expr->identifier->symbol, p->builder().Symbols().Get("c"));
+
+    EXPECT_EQ(index_expr->source.range.begin.line, 1u);
+    EXPECT_EQ(index_expr->source.range.begin.column, 5u);
+    EXPECT_EQ(index_expr->source.range.end.line, 1u);
+    EXPECT_EQ(index_expr->source.range.end.column, 6u);
 }
 
 }  // namespace

@@ -24,7 +24,7 @@ using TypeStructTest = TestHelper;
 
 TEST_F(TypeStructTest, Creation) {
     auto name = Sym("S");
-    auto* s = create<Struct>(Source{}, name, utils::Empty, 4u /* align */, 8u /* size */,
+    auto* s = create<Struct>(name, utils::Empty, 4u /* align */, 8u /* size */,
                              16u /* size_no_padding */);
     EXPECT_EQ(s->Align(), 4u);
     EXPECT_EQ(s->Size(), 8u);
@@ -32,9 +32,9 @@ TEST_F(TypeStructTest, Creation) {
 }
 
 TEST_F(TypeStructTest, Equals) {
-    auto* a = create<Struct>(Source{}, Sym("a"), utils::Empty, 4u /* align */, 4u /* size */,
+    auto* a = create<Struct>(Sym("a"), utils::Empty, 4u /* align */, 4u /* size */,
                              4u /* size_no_padding */);
-    auto* b = create<Struct>(Source{}, Sym("b"), utils::Empty, 4u /* align */, 4u /* size */,
+    auto* b = create<Struct>(Sym("b"), utils::Empty, 4u /* align */, 4u /* size */,
                              4u /* size_no_padding */);
 
     EXPECT_TRUE(a->Equals(*a));
@@ -44,9 +44,9 @@ TEST_F(TypeStructTest, Equals) {
 
 TEST_F(TypeStructTest, FriendlyName) {
     auto name = Sym("my_struct");
-    auto* s = create<Struct>(Source{}, name, utils::Empty, 4u /* align */, 4u /* size */,
-                             4u /* size_no_padding */);
-    EXPECT_EQ(s->FriendlyName(Symbols()), "my_struct");
+    auto* s =
+        create<Struct>(name, utils::Empty, 4u /* align */, 4u /* size */, 4u /* size_no_padding */);
+    EXPECT_EQ(s->FriendlyName(), "my_struct");
 }
 
 TEST_F(TypeStructTest, Layout) {
@@ -70,7 +70,7 @@ TEST_F(TypeStructTest, Layout) {
     auto* sem_inner_st = p.Sem().Get(inner_st);
     auto* sem_outer_st = p.Sem().Get(outer_st);
 
-    EXPECT_EQ(sem_inner_st->Layout(p.Symbols()),
+    EXPECT_EQ(sem_inner_st->Layout(),
               R"(/*            align(16) size(64) */ struct Inner {
 /* offset( 0) align( 4) size( 4) */   a : i32;
 /* offset( 4) align( 4) size( 4) */   b : u32;
@@ -81,7 +81,7 @@ TEST_F(TypeStructTest, Layout) {
 /* offset(32) align( 8) size(32) */   e : mat4x2<f32>;
 /*                               */ };)");
 
-    EXPECT_EQ(sem_outer_st->Layout(p.Symbols()),
+    EXPECT_EQ(sem_outer_st->Layout(),
               R"(/*            align(16) size(80) */ struct Outer {
 /* offset( 0) align(16) size(64) */   inner : Inner;
 /* offset(64) align( 4) size( 4) */   a : i32;
@@ -101,10 +101,8 @@ TEST_F(TypeStructTest, Location) {
     auto* sem = p.Sem().Get(st);
     ASSERT_EQ(2u, sem->Members().Length());
 
-    EXPECT_TRUE(sem->Members()[0]->Location().has_value());
-    EXPECT_EQ(sem->Members()[0]->Location().value(), 1u);
-
-    EXPECT_FALSE(sem->Members()[1]->Location().has_value());
+    EXPECT_EQ(sem->Members()[0]->Attributes().location, 1u);
+    EXPECT_FALSE(sem->Members()[1]->Attributes().location.has_value());
 }
 
 TEST_F(TypeStructTest, IsConstructable) {
@@ -207,12 +205,15 @@ TEST_F(TypeStructTest, HasFixedFootprint) {
 }
 
 TEST_F(TypeStructTest, Clone) {
+    type::StructMemberAttributes attrs_location_2;
+    attrs_location_2.location = 2;
+
     auto* s = create<Struct>(
-        Source{}, Sym("my_struct"),
-        utils::Vector{create<StructMember>(Source{}, Sym("b"), create<Vector>(create<F32>(), 3u),
-                                           0u, 0u, 16u, 12u, std::optional<uint32_t>{2}),
-                      create<StructMember>(Source{}, Sym("a"), create<I32>(), 1u, 16u, 4u, 4u,
-                                           std::optional<uint32_t>())},
+        Sym("my_struct"),
+        utils::Vector{create<StructMember>(Sym("b"), create<Vector>(create<F32>(), 3u), 0u, 0u, 16u,
+                                           12u, attrs_location_2),
+                      create<StructMember>(Sym("a"), create<I32>(), 1u, 16u, 4u, 4u,
+                                           type::StructMemberAttributes{})},
         4u /* align */, 8u /* size */, 16u /* size_no_padding */);
 
     ProgramID id;
@@ -224,7 +225,7 @@ TEST_F(TypeStructTest, Clone) {
     auto* st = s->Clone(ctx);
 
     EXPECT_TRUE(new_st.Get("my_struct").IsValid());
-    EXPECT_EQ(new_st.NameFor(st->Name()), "my_struct");
+    EXPECT_EQ(st->Name().Name(), "my_struct");
 
     EXPECT_EQ(st->Align(), 4u);
     EXPECT_EQ(st->Size(), 8u);
@@ -233,14 +234,14 @@ TEST_F(TypeStructTest, Clone) {
     auto members = st->Members();
     ASSERT_EQ(members.Length(), 2u);
 
-    EXPECT_EQ(new_st.NameFor(members[0]->Name()), "b");
+    EXPECT_EQ(members[0]->Name().Name(), "b");
     EXPECT_TRUE(members[0]->Type()->Is<Vector>());
     EXPECT_EQ(members[0]->Index(), 0u);
     EXPECT_EQ(members[0]->Offset(), 0u);
     EXPECT_EQ(members[0]->Align(), 16u);
     EXPECT_EQ(members[0]->Size(), 12u);
 
-    EXPECT_EQ(new_st.NameFor(members[1]->Name()), "a");
+    EXPECT_EQ(members[1]->Name().Name(), "a");
     EXPECT_TRUE(members[1]->Type()->Is<I32>());
     EXPECT_EQ(members[1]->Index(), 1u);
     EXPECT_EQ(members[1]->Offset(), 16u);

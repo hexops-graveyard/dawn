@@ -15,40 +15,35 @@
 #ifndef SRC_TINT_IR_USER_CALL_H_
 #define SRC_TINT_IR_USER_CALL_H_
 
-#include "src/tint/castable.h"
 #include "src/tint/ir/call.h"
-#include "src/tint/symbol_table.h"
-#include "src/tint/type/type.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/ir/function.h"
+#include "src/tint/utils/castable.h"
 
 namespace tint::ir {
 
 /// A user call instruction in the IR.
-class UserCall : public Castable<UserCall, Call> {
+class UserCall : public utils::Castable<UserCall, Call> {
   public:
+    /// The offset in Operands() for the function being called
+    static constexpr size_t kFunctionOperandOffset = 0;
+
+    /// The base offset in Operands() for the call arguments
+    static constexpr size_t kArgsOperandOffset = 1;
+
     /// Constructor
-    /// @param result the result value
-    /// @param name the function name
+    /// @param type the result type
+    /// @param func the function being called
     /// @param args the function arguments
-    UserCall(Value* result, Symbol name, utils::VectorRef<Value*> args);
-    UserCall(const UserCall& instr) = delete;
-    UserCall(UserCall&& instr) = delete;
+    UserCall(const type::Type* type, Function* func, utils::VectorRef<Value*> args);
     ~UserCall() override;
 
-    UserCall& operator=(const UserCall& instr) = delete;
-    UserCall& operator=(UserCall&& instr) = delete;
+    /// @returns the call arguments
+    utils::Slice<Value* const> Args() override {
+        return operands_.Slice().Offset(kArgsOperandOffset);
+    }
 
-    /// @returns the function name
-    Symbol Name() const { return name_; }
-
-    /// Write the instruction to the given stream
-    /// @param out the stream to write to
-    /// @param st the symbol table
-    /// @returns the stream
-    utils::StringStream& ToString(utils::StringStream& out, const SymbolTable& st) const override;
-
-  private:
-    Symbol name_{};
+    /// @returns the called function name
+    Function* Func() { return operands_[kFunctionOperandOffset]->As<ir::Function>(); }
 };
 
 }  // namespace tint::ir

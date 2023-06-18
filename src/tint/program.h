@@ -19,7 +19,7 @@
 #include <unordered_set>
 
 #include "src/tint/ast/function.h"
-#include "src/tint/constant/value.h"
+#include "src/tint/constant/manager.h"
 #include "src/tint/program_id.h"
 #include "src/tint/sem/info.h"
 #include "src/tint/symbol_table.h"
@@ -43,9 +43,6 @@ class Program {
 
     /// SemNodeAllocator is an alias to BlockAllocator<sem::Node>
     using SemNodeAllocator = utils::BlockAllocator<sem::Node>;
-
-    /// ConstantAllocator is an alias to BlockAllocator<constant::Value>
-    using ConstantAllocator = utils::BlockAllocator<constant::Value>;
 
     /// Constructor
     Program();
@@ -72,10 +69,16 @@ class Program {
     /// @returns the last allocated (numerically highest) AST node identifier.
     ast::NodeID HighestASTNodeID() const { return highest_node_id_; }
 
+    /// @returns a reference to the program's constants
+    const constant::Manager& Constants() const {
+        AssertNotMoved();
+        return constants_;
+    }
+
     /// @returns a reference to the program's types
     const type::Manager& Types() const {
         AssertNotMoved();
-        return types_;
+        return constants_.types;
     }
 
     /// @returns a reference to the program's AST nodes storage
@@ -151,19 +154,6 @@ class Program {
     /// the type declaration has no resolved type.
     const type::Type* TypeOf(const ast::TypeDecl* type_decl) const;
 
-    /// @param type a type
-    /// @returns the name for `type` that closely resembles how it would be declared in WGSL.
-    std::string FriendlyName(ast::Type type) const;
-
-    /// @param type a type
-    /// @returns the name for `type` that closely resembles how it would be declared in WGSL.
-    std::string FriendlyName(const type::Type* type) const;
-
-    /// Overload of FriendlyName, which removes an ambiguity when passing nullptr.
-    /// Simplifies test code.
-    /// @returns "<null>"
-    std::string FriendlyName(std::nullptr_t) const;
-
     /// A function that can be used to print a program
     using Printer = std::string (*)(const Program*);
 
@@ -178,10 +168,9 @@ class Program {
 
     ProgramID id_;
     ast::NodeID highest_node_id_;
-    type::Manager types_;
+    constant::Manager constants_;
     ASTNodeAllocator ast_nodes_;
     SemNodeAllocator sem_nodes_;
-    ConstantAllocator constant_nodes_;
     ast::Module* ast_ = nullptr;
     sem::Info sem_;
     SymbolTable symbols_{id_};

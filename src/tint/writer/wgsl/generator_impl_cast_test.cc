@@ -15,10 +15,13 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/wgsl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
+#include "gmock/gmock.h"
 
 namespace tint::writer::wgsl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using WgslGeneratorImplTest = TestHelper;
 
@@ -29,7 +32,8 @@ TEST_F(WgslGeneratorImplTest, EmitExpression_Cast_Scalar_F32_From_I32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "f32(1i)");
 }
 
@@ -42,31 +46,34 @@ TEST_F(WgslGeneratorImplTest, EmitExpression_Cast_Scalar_F16_From_I32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "f16(1i)");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitExpression_Cast_Vector_F32_From_I32) {
-    auto* cast = vec3<f32>(vec3<i32>(1_i, 2_i, 3_i));
+    auto* cast = Call<vec3<f32>>(Call<vec3<i32>>(1_i, 2_i, 3_i));
     WrapInFunction(cast);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "vec3<f32>(vec3<i32>(1i, 2i, 3i))");
 }
 
 TEST_F(WgslGeneratorImplTest, EmitExpression_Cast_Vector_F16_From_I32) {
     Enable(builtin::Extension::kF16);
 
-    auto* cast = vec3<f16>(vec3<i32>(1_i, 2_i, 3_i));
+    auto* cast = Call<vec3<f16>>(Call<vec3<i32>>(1_i, 2_i, 3_i));
     WrapInFunction(cast);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    gen.EmitExpression(out, cast);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "vec3<f16>(vec3<i32>(1i, 2i, 3i))");
 }
 

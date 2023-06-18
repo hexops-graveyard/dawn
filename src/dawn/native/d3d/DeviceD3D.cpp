@@ -14,9 +14,10 @@
 
 #include "dawn/native/d3d/DeviceD3D.h"
 
-#include "dawn/native/d3d/AdapterD3D.h"
 #include "dawn/native/d3d/BackendD3D.h"
+#include "dawn/native/d3d/ExternalImageDXGIImpl.h"
 #include "dawn/native/d3d/Forward.h"
+#include "dawn/native/d3d/PhysicalDeviceD3D.h"
 
 namespace dawn::native::d3d {
 
@@ -25,26 +26,66 @@ Device::Device(AdapterBase* adapter,
                const TogglesState& deviceToggles)
     : DeviceBase(adapter, descriptor, deviceToggles) {}
 
-Device::~Device() = default;
+Device::~Device() {
+    Destroy();
+
+    // Close the handle here instead of in DestroyImpl. The handle is returned from
+    // ExternalImageDXGI, so it needs to live as long as the Device ref does, even if the device
+    // state is destroyed.
+    if (mFenceHandle != nullptr) {
+        ::CloseHandle(mFenceHandle);
+        mFenceHandle = nullptr;
+    }
+}
+
+void Device::DestroyImpl() {
+    while (!mExternalImageList.empty()) {
+        d3d::ExternalImageDXGIImpl* externalImage = mExternalImageList.head()->value();
+        // ExternalImageDXGIImpl::DestroyInternal() calls RemoveFromList().
+        externalImage->DestroyInternal();
+    }
+}
+
+ResultOrError<wgpu::TextureUsage> Device::GetSupportedSurfaceUsageImpl(
+    const Surface* surface) const {
+    wgpu::TextureUsage usages = wgpu::TextureUsage::RenderAttachment |
+                                wgpu::TextureUsage::TextureBinding | wgpu::TextureUsage::CopySrc |
+                                wgpu::TextureUsage::CopyDst;
+    return usages;
+}
 
 const PlatformFunctions* Device::GetFunctions() const {
-    return ToBackend(GetAdapter())->GetBackend()->GetFunctions();
+    return ToBackend(GetPhysicalDevice())->GetBackend()->GetFunctions();
 }
 
 ComPtr<IDXGIFactory4> Device::GetFactory() const {
-    return ToBackend(GetAdapter())->GetBackend()->GetFactory();
+    return ToBackend(GetPhysicalDevice())->GetBackend()->GetFactory();
 }
 
 ComPtr<IDxcLibrary> Device::GetDxcLibrary() const {
-    return ToBackend(GetAdapter())->GetBackend()->GetDxcLibrary();
+    return ToBackend(GetPhysicalDevice())->GetBackend()->GetDxcLibrary();
 }
 
 ComPtr<IDxcCompiler> Device::GetDxcCompiler() const {
-    return ToBackend(GetAdapter())->GetBackend()->GetDxcCompiler();
+    return ToBackend(GetPhysicalDevice())->GetBackend()->GetDxcCompiler();
 }
 
 ComPtr<IDxcValidator> Device::GetDxcValidator() const {
-    return ToBackend(GetAdapter())->GetBackend()->GetDxcValidator();
+    return ToBackend(GetPhysicalDevice())->GetBackend()->GetDxcValidator();
+}
+
+HANDLE Device::GetFenceHandle() const {
+    return mFenceHandle;
+}
+
+std::unique_ptr<ExternalImageDXGIImpl> Device::CreateExternalImageDXGIImpl(
+    const ExternalImageDescriptorDXGISharedHandle* descriptor) {
+    std::unique_ptr<ExternalImageDXGIImpl> externalImage;
+    if (!ConsumedError(CreateExternalImageDXGIImplImpl(descriptor), &externalImage)) {
+        mExternalImageList.Append(externalImage.get());
+        return externalImage;
+    }
+    return {};
 }
 
 }  // namespace dawn::native::d3d

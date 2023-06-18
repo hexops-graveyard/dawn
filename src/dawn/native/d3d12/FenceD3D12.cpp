@@ -42,20 +42,12 @@ ResultOrError<Ref<Fence>> Fence::CreateFromHandle(ID3D12Device* device,
 }
 
 Fence::Fence(ComPtr<ID3D12Fence> d3d12Fence, UINT64 fenceValue, HANDLE sharedHandle)
-    : mD3D12Fence(std::move(d3d12Fence)), mFenceValue(fenceValue), mSharedHandle(sharedHandle) {}
+    : Base(fenceValue, sharedHandle), mD3D12Fence(std::move(d3d12Fence)) {}
 
-Fence::~Fence() {
-    if (mSharedHandle != nullptr) {
-        ::CloseHandle(mSharedHandle);
-    }
-}
+Fence::~Fence() = default;
 
 ID3D12Fence* Fence::GetD3D12Fence() const {
     return mD3D12Fence.Get();
-}
-
-UINT64 Fence::GetFenceValue() const {
-    return mFenceValue;
 }
 
 }  // namespace dawn::native::d3d12

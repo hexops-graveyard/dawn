@@ -20,13 +20,14 @@
 
 #include "dawn/tests/DawnTest.h"
 
+void InitDawnPerfTestEnvironment(int argc, char** argv);
+
+namespace dawn {
 namespace utils {
 class Timer;
 }
 
 class DawnPerfTestPlatform;
-
-void InitDawnPerfTestEnvironment(int argc, char** argv);
 
 class DawnPerfTestEnvironment : public DawnTestEnvironment {
   public:
@@ -128,5 +129,7 @@ class DawnPerfTestWithParams : public DawnTestWithParams<Params>, public DawnPer
 };
 
 using DawnPerfTest = DawnPerfTestWithParams<>;
+
+}  // namespace dawn
 
 #endif  // SRC_DAWN_TESTS_PERF_TESTS_DAWNPERFTEST_H_

@@ -67,16 +67,8 @@ uint32_t Type::Align() const {
     return 0;
 }
 
-bool Type::is_scalar() const {
-    return IsAnyOf<F16, F32, U32, I32, AbstractNumeric, Bool>();
-}
-
-bool Type::is_numeric_scalar() const {
-    return IsAnyOf<F16, F32, U32, I32, AbstractNumeric>();
-}
-
 bool Type::is_float_scalar() const {
-    return IsAnyOf<F16, F32, AbstractNumeric>();
+    return IsAnyOf<F16, F32, AbstractFloat>();
 }
 
 bool Type::is_float_matrix() const {
@@ -157,15 +149,15 @@ bool Type::is_bool_scalar_or_vector() const {
 }
 
 bool Type::is_numeric_vector() const {
-    return Is([](const Vector* v) { return v->type()->is_numeric_scalar(); });
+    return Is([](const Vector* v) { return v->type()->Is<type::NumericScalar>(); });
 }
 
 bool Type::is_scalar_vector() const {
-    return Is([](const Vector* v) { return v->type()->is_scalar(); });
+    return Is([](const Vector* v) { return v->type()->Is<type::Scalar>(); });
 }
 
 bool Type::is_numeric_scalar_or_vector() const {
-    return is_numeric_scalar() || is_numeric_vector();
+    return Is<type::NumericScalar>() || is_numeric_vector();
 }
 
 bool Type::is_handle() const {
@@ -249,55 +241,24 @@ uint32_t Type::ConversionRank(const Type* from, const Type* to) {
         [&](Default) { return kNoConversion; });
 }
 
-const Type* Type::ElementOf(const Type* ty, uint32_t* count /* = nullptr */) {
-    if (ty->is_scalar()) {
-        if (count) {
-            *count = 1;
-        }
-        return ty;
-    }
-    return Switch(
-        ty,  //
-        [&](const Vector* v) {
-            if (count) {
-                *count = v->Width();
-            }
-            return v->type();
-        },
-        [&](const Matrix* m) {
-            if (count) {
-                *count = m->columns();
-            }
-            return m->ColumnType();
-        },
-        [&](const Array* a) {
-            if (count) {
-                if (auto* const_count = a->Count()->As<ConstantArrayCount>()) {
-                    *count = const_count->value;
-                }
-            }
-            return a->ElemType();
-        },
-        [&](Default) {
-            if (count) {
-                *count = 1;
-            }
-            return ty;
-        });
+TypeAndCount Type::Elements(const Type* type_if_invalid /* = nullptr */,
+                            uint32_t count_if_invalid /* = 0 */) const {
+    return {type_if_invalid, count_if_invalid};
 }
 
-const Type* Type::DeepestElementOf(const Type* ty, uint32_t* count /* = nullptr */) {
-    auto el_ty = ElementOf(ty, count);
-    while (el_ty && ty != el_ty) {
-        ty = el_ty;
+const Type* Type::Element(uint32_t /* index */) const {
+    return nullptr;
+}
 
-        uint32_t n = 0;
-        el_ty = ElementOf(ty, &n);
-        if (count) {
-            *count *= n;
+const Type* Type::DeepestElement() const {
+    const Type* ty = this;
+    while (true) {
+        auto [el, n] = ty->Elements();
+        if (!el) {
+            return ty;
         }
+        ty = el;
     }
-    return el_ty;
 }
 
 const Type* Type::Common(utils::VectorRef<const Type*> types) {

@@ -40,23 +40,23 @@
 #include "src/tint/type/sampled_texture.h"
 #include "src/tint/type/texture_dimension.h"
 
-using ::testing::ElementsAre;
-using ::testing::HasSubstr;
-
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::resolver {
 namespace {
 
+using ::testing::ElementsAre;
+using ::testing::HasSubstr;
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
+
 using ResolverValidationTest = ResolverTest;
 
-class FakeStmt final : public Castable<FakeStmt, ast::Statement> {
+class FakeStmt final : public utils::Castable<FakeStmt, ast::Statement> {
   public:
     FakeStmt(ProgramID pid, ast::NodeID nid, Source src) : Base(pid, nid, src) {}
     FakeStmt* Clone(CloneContext*) const override { return nullptr; }
 };
 
-class FakeExpr final : public Castable<FakeExpr, ast::Expression> {
+class FakeExpr final : public utils::Castable<FakeExpr, ast::Expression> {
   public:
     FakeExpr(ProgramID pid, ast::NodeID nid, Source src) : Base(pid, nid, src) {}
     FakeExpr* Clone(CloneContext*) const override { return nullptr; }
@@ -380,7 +380,7 @@ TEST_F(ResolverValidationTest, EXpr_MemberAccessor_FuncGoodParent) {
     //     let x: f32 = (*p).z;
     //     return x;
     // }
-    auto* p = Param("p", ty.pointer(ty.vec4<f32>(), builtin::AddressSpace::kFunction));
+    auto* p = Param("p", ty.ptr<function, vec4<f32>>());
     auto* star_p = Deref(p);
     auto* accessor_expr = MemberAccessor(star_p, "z");
     auto* x = Var("x", ty.f32(), accessor_expr);
@@ -397,7 +397,7 @@ TEST_F(ResolverValidationTest, EXpr_MemberAccessor_FuncBadParent) {
     //     let x: f32 = *p.z;
     //     return x;
     // }
-    auto* p = Param("p", ty.pointer(ty.vec4<f32>(), builtin::AddressSpace::kFunction));
+    auto* p = Param("p", ty.ptr<function, vec4<f32>>());
     auto* accessor_expr = MemberAccessor(p, Ident(Source{{12, 34}}, "z"));
     auto* star_p = Deref(accessor_expr);
     auto* x = Var("x", ty.f32(), star_p);
@@ -1234,9 +1234,8 @@ TEST_F(ResolverValidationTest, OffsetAndAlignAndSizeAttribute) {
 
 TEST_F(ResolverTest, Expr_Initializer_Cast_Pointer) {
     auto* vf = Var("vf", ty.f32());
-    auto* c =
-        Call(Source{{12, 34}}, ty.pointer<i32>(builtin::AddressSpace::kFunction), ExprList(vf));
-    auto* ip = Let("ip", ty.pointer<i32>(builtin::AddressSpace::kFunction), c);
+    auto* c = Call(Source{{12, 34}}, ty.ptr<function, i32>(), ExprList(vf));
+    auto* ip = Let("ip", ty.ptr<function, i32>(), c);
     WrapInFunction(Decl(vf), Decl(ip));
 
     EXPECT_FALSE(r()->Resolve());

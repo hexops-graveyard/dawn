@@ -24,13 +24,13 @@
 namespace tint::type {
 
 /// A reference type.
-class Reference final : public Castable<Reference, Type> {
+class Reference final : public utils::Castable<Reference, Type> {
   public:
     /// Constructor
-    /// @param subtype the pointee type
     /// @param address_space the address space of the reference
+    /// @param subtype the pointee type
     /// @param access the resolved access control of the reference
-    Reference(const Type* subtype, builtin::AddressSpace address_space, builtin::Access access);
+    Reference(builtin::AddressSpace address_space, const Type* subtype, builtin::Access access);
 
     /// Destructor
     ~Reference() override;
@@ -48,10 +48,9 @@ class Reference final : public Castable<Reference, Type> {
     /// @returns the resolved access control of the reference.
     builtin::Access Access() const { return access_; }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

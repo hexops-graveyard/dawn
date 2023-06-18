@@ -27,25 +27,16 @@ TextGenerator::TextGenerator(const Program* program)
 TextGenerator::~TextGenerator() = default;
 
 std::string TextGenerator::UniqueIdentifier(const std::string& prefix) {
-    return builder_.Symbols().NameFor(builder_.Symbols().New(prefix));
+    return builder_.Symbols().New(prefix).Name();
 }
 
-std::string TextGenerator::StructName(const sem::Struct* s) {
-    auto name = builder_.Symbols().NameFor(s->Name());
+std::string TextGenerator::StructName(const type::Struct* s) {
+    auto name = s->Name().Name();
     if (name.size() > 1 && name[0] == '_' && name[1] == '_') {
         name = utils::GetOrCreate(builtin_struct_names_, s,
                                   [&] { return UniqueIdentifier(name.substr(2)); });
     }
     return name;
-}
-
-std::string TextGenerator::TrimSuffix(std::string str, const std::string& suffix) {
-    if (str.size() >= suffix.size()) {
-        if (str.substr(str.size() - suffix.size(), suffix.size()) == suffix) {
-            return str.substr(0, str.size() - suffix.size());
-        }
-    }
-    return str;
 }
 
 TextGenerator::LineWriter::LineWriter(TextBuffer* buf) : buffer(buf) {}

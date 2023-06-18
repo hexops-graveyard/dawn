@@ -48,14 +48,15 @@ config("internal_config") {
     defines += [ "DAWN_ENABLE_ASSERTS" ]
   }
 
-  if (use_fuzzing_engine) {
-    defines += [
-      # Does a hard abort when an assertion fails so that fuzzers catch and parse the failure.
-      "DAWN_ABORT_ON_ASSERT",
+  if (build_with_chromium || use_fuzzing_engine) {
+    # Does a hard abort when an assertion fails so that fuzzers catch and parse the failure.
+    # Also call abort() so chrome can dump crash stach in console.
+    defines += [ "DAWN_ABORT_ON_ASSERT" ]
+  }
 
-      # Disable logging to make fuzzing more efficient.
-      "DAWN_DISABLE_LOGGING",
-    ]
+  if (use_fuzzing_engine) {
+    # Disable logging to make fuzzing more efficient.
+    defines += [ "DAWN_DISABLE_LOGGING" ]
   }
 
   if (dawn_enable_d3d11) {
@@ -109,9 +110,6 @@ config("internal_config") {
   ]
 
   cflags = []
-  if (is_clang) {
-    cflags += [ "-Wno-shadow" ]
-  }
 
   # Enable more warnings that were found when using Dawn in other projects.
   # Add them only when building in standalone because we control which clang
@@ -121,6 +119,7 @@ config("internal_config") {
     cflags += [
       "-Wconditional-uninitialized",
       "-Wcstring-format-directive",
+      "-Wctad-maybe-unsupported",
       "-Wc++11-narrowing",
       "-Wdeprecated-copy",
       "-Wdeprecated-copy-dtor",

@@ -25,7 +25,7 @@ namespace dawn::wire::server {
         {% set Suffix = command.name.CamelCase() %}
         {% if Suffix not in client_side_commands %}
             {% if is_method and Suffix not in server_handwritten_commands %}
-                bool Server::Do{{Suffix}}(
+                WireResult Server::Do{{Suffix}}(
                     {%- for member in command.members -%}
                         {%- if member.is_return_value -%}
                             {%- if member.handle_type -%}
@@ -58,47 +58,41 @@ namespace dawn::wire::server {
                         //* object creation functions.
                         ASSERT(*{{as_varName(ret[0].name)}} != nullptr);
                     {% endif %}
-                    return true;
+                    return WireResult::Success;
                 }
             {% endif %}
         {% endif %}
     {% endfor %}
 
-    bool Server::DoDestroyObject(ObjectType objectType, ObjectId objectId) {
-        //* ID 0 are reserved for nullptr and cannot be destroyed.
-        if (objectId == 0) {
-            return false;
-        }
-
+    WireResult Server::DoDestroyObject(ObjectType objectType, ObjectId objectId) {
         switch(objectType) {
             {% for type in by_category["object"] %}
                 case ObjectType::{{type.name.CamelCase()}}: {
-                    auto* data = {{type.name.CamelCase()}}Objects().Get(objectId);
-                    if (data == nullptr) {
-                        return false;
-                    }
-                    if (data->state == AllocationState::Allocated) {
-                        ASSERT(data->handle != nullptr);
+                    Known<WGPU{{type.name.CamelCase()}}> obj;
+                    WIRE_TRY({{type.name.CamelCase()}}Objects().Get(objectId, &obj));
+
+                    if (obj->state == AllocationState::Allocated) {
+                        ASSERT(obj->handle != nullptr);
                         {% if type.name.CamelCase() in server_reverse_lookup_objects %}
                             {{type.name.CamelCase()}}ObjectIdTable().Remove(data->handle);
                         {% endif %}
 
                         {% if type.name.get() == "device" %}
-                            if (data->handle != nullptr) {
+                            if (obj->handle != nullptr) {
                                 //* Deregisters uncaptured error and device lost callbacks since
                                 //* they should not be forwarded if the device no longer exists on the wire.
-                                ClearDeviceCallbacks(data->handle);
+                                ClearDeviceCallbacks(obj->handle);
                             }
                         {% endif %}
 
-                        mProcs.{{as_varName(type.name, Name("release"))}}(data->handle);
+                        mProcs.{{as_varName(type.name, Name("release"))}}(obj->handle);
                     }
                     {{type.name.CamelCase()}}Objects().Free(objectId);
-                    return true;
+                    return WireResult::Success;
                 }
             {% endfor %}
             default:
-                return false;
+                return WireResult::FatalError;
         }
     }
 

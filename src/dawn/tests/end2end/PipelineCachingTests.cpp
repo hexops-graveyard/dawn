@@ -20,6 +20,7 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
 
 using ::testing::NiceMock;
@@ -97,7 +98,7 @@ static constexpr std::string_view kFragmentShaderBindGroup01Uniform = R"(
 
 class PipelineCachingTests : public DawnTest {
   protected:
-    std::unique_ptr<dawn::platform::Platform> CreateTestPlatform() override {
+    std::unique_ptr<platform::Platform> CreateTestPlatform() override {
         return std::make_unique<DawnCachingMockPlatform>(&mMockCache);
     }
 
@@ -459,6 +460,9 @@ TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheShaderNegativeCases) {
 // Tests that pipeline creation wouldn't hit the cache if the pipelines are not exactly the same
 // (fragment color targets differences).
 TEST_P(SinglePipelineCachingTests, RenderPipelineBlobCacheNegativeCasesFragmentColorTargets) {
+    // In compat, all targets must have the same writeMask
+    DAWN_TEST_UNSUPPORTED_IF(IsCompatibilityMode());
+
     // First time should create and write out to the cache.
     {
         wgpu::Device device = CreateDevice();
@@ -647,4 +651,5 @@ DAWN_INSTANTIATE_TEST(SinglePipelineCachingTests,
                       OpenGLESBackend(),
                       VulkanBackend());
 
-}  // namespace
+}  // anonymous namespace
+}  // namespace dawn

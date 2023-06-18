@@ -20,6 +20,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class StorageTextureValidationTests : public ValidationTest {
   protected:
     void SetUp() override {
@@ -269,8 +272,8 @@ TEST_F(StorageTextureValidationTests, StorageTextureFormatInShaders) {
 
 class BGRA8UnormStorageTextureInShaderValidationTests : public StorageTextureValidationTests {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::BGRA8UnormStorage};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -427,8 +430,8 @@ TEST_F(StorageTextureValidationTests, StorageTextureFormatInBindGroupLayout) {
 
 class BGRA8UnormStorageBindGroupLayoutTest : public StorageTextureValidationTests {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::BGRA8UnormStorage};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -598,10 +601,10 @@ TEST_F(StorageTextureValidationTests, StorageTextureBindingTypeInBindGroup) {
 // created with the texture usage wgpu::TextureUsage::StorageBinding.
 TEST_F(StorageTextureValidationTests, StorageTextureUsageInBindGroup) {
     constexpr wgpu::TextureFormat kStorageTextureFormat = wgpu::TextureFormat::R32Float;
-    constexpr std::array<wgpu::TextureUsage, 6> kTextureUsages = {
-        wgpu::TextureUsage::CopySrc,          wgpu::TextureUsage::CopyDst,
-        wgpu::TextureUsage::TextureBinding,   wgpu::TextureUsage::StorageBinding,
-        wgpu::TextureUsage::RenderAttachment, wgpu::TextureUsage::Present};
+    constexpr std::array<wgpu::TextureUsage, 5> kTextureUsages = {
+        wgpu::TextureUsage::CopySrc, wgpu::TextureUsage::CopyDst,
+        wgpu::TextureUsage::TextureBinding, wgpu::TextureUsage::StorageBinding,
+        wgpu::TextureUsage::RenderAttachment};
 
     for (wgpu::StorageTextureAccess storageBindingType : kSupportedStorageTextureAccess) {
         // Create a bind group layout.
@@ -857,3 +860,6 @@ TEST_F(StorageTextureValidationTests, StorageTextureAndSampledTextureInOneComput
         encoder.Finish();
     }
 }
+
+}  // anonymous namespace
+}  // namespace dawn

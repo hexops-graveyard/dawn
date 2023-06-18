@@ -22,11 +22,11 @@
 #include <type_traits>
 #include <utility>
 
+#include "src/tint/builtin/number.h"
 #include "src/tint/constant/composite.h"
 #include "src/tint/constant/scalar.h"
 #include "src/tint/constant/splat.h"
 #include "src/tint/constant/value.h"
-#include "src/tint/number.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/sem/member_accessor_expression.h"
 #include "src/tint/sem/value_constructor.h"
@@ -242,18 +242,25 @@ std::make_unsigned_t<T> CountTrailingBits(T e, T bit_value_to_count) {
     return count;
 }
 
+/// Common data for constant conversion.
+struct ConvertContext {
+    ProgramBuilder& builder;
+    const Source& source;
+    bool use_runtime_semantics;
+};
+
+/// Converts the constant scalar value to the target type.
+/// @returns the converted scalar, or nullptr on error.
 template <typename T>
-ConstEval::Result ScalarConvert(const constant::Scalar<T>* scalar,
-                                ProgramBuilder& builder,
-                                const type::Type* target_ty,
-                                const Source& source,
-                                bool use_runtime_semantics) {
+const constant::ScalarBase* ScalarConvert(const constant::Scalar<T>* scalar,
+                                          const type::Type* target_ty,
+                                          ConvertContext& ctx) {
     TINT_BEGIN_DISABLE_WARNING(UNREACHABLE_CODE);
     if (target_ty == scalar->type) {
         // If the types are identical, then no conversion is needed.
         return scalar;
     }
-    return ZeroTypeDispatch(target_ty, [&](auto zero_to) -> ConstEval::Result {
+    return ZeroTypeDispatch(target_ty, [&](auto zero_to) -> const constant::ScalarBase* {
         // `value` is the source value.
         // `FROM` is the source type.
         // `TO` is the target type.
@@ -261,178 +268,219 @@ ConstEval::Result ScalarConvert(const constant::Scalar<T>* scalar,
         using FROM = T;
         if constexpr (std::is_same_v<TO, bool>) {
             // [x -> bool]
-            return builder.create<constant::Scalar<TO>>(target_ty, !scalar->IsPositiveZero());
+            return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                   !scalar->IsPositiveZero());
         } else if constexpr (std::is_same_v<FROM, bool>) {
             // [bool -> x]
-            return builder.create<constant::Scalar<TO>>(target_ty, TO(scalar->value ? 1 : 0));
+            return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                   TO(scalar->value ? 1 : 0));
         } else if (auto conv = CheckedConvert<TO>(scalar->value)) {
             // Conversion success
-            return builder.create<constant::Scalar<TO>>(target_ty, conv.Get());
+            return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty, conv.Get());
             // --- Below this point are the failure cases ---
         } else if constexpr (IsAbstract<FROM>) {
             // [abstract-numeric -> x] - materialization failure
-            auto msg = OverflowErrorMessage(scalar->value, builder.FriendlyName(target_ty));
-            if (use_runtime_semantics) {
-                builder.Diagnostics().add_warning(tint::diag::System::Resolver, msg, source);
+            auto msg = OverflowErrorMessage(scalar->value, target_ty->FriendlyName());
+            if (ctx.use_runtime_semantics) {
+                ctx.builder.Diagnostics().add_warning(tint::diag::System::Resolver, msg,
+                                                      ctx.source);
                 switch (conv.Failure()) {
                     case ConversionFailure::kExceedsNegativeLimit:
-                        return builder.create<constant::Scalar<TO>>(target_ty, TO::Lowest());
+                        return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                               TO::Lowest());
                     case ConversionFailure::kExceedsPositiveLimit:
-                        return builder.create<constant::Scalar<TO>>(target_ty, TO::Highest());
+                        return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                               TO::Highest());
                 }
             } else {
-                builder.Diagnostics().add_error(tint::diag::System::Resolver, msg, source);
-                return utils::Failure;
+                ctx.builder.Diagnostics().add_error(tint::diag::System::Resolver, msg, ctx.source);
+                return nullptr;
             }
         } else if constexpr (IsFloatingPoint<TO>) {
             // [x -> floating-point] - number not exactly representable
             // https://www.w3.org/TR/WGSL/#floating-point-conversion
-            auto msg = OverflowErrorMessage(scalar->value, builder.FriendlyName(target_ty));
-            if (use_runtime_semantics) {
-                builder.Diagnostics().add_warning(tint::diag::System::Resolver, msg, source);
+            auto msg = OverflowErrorMessage(scalar->value, target_ty->FriendlyName());
+            if (ctx.use_runtime_semantics) {
+                ctx.builder.Diagnostics().add_warning(tint::diag::System::Resolver, msg,
+                                                      ctx.source);
                 switch (conv.Failure()) {
                     case ConversionFailure::kExceedsNegativeLimit:
-                        return builder.create<constant::Scalar<TO>>(target_ty, TO::Lowest());
+                        return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                               TO::Lowest());
                     case ConversionFailure::kExceedsPositiveLimit:
-                        return builder.create<constant::Scalar<TO>>(target_ty, TO::Highest());
+                        return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                               TO::Highest());
                 }
             } else {
-                builder.Diagnostics().add_error(tint::diag::System::Resolver, msg, source);
-                return utils::Failure;
+                ctx.builder.Diagnostics().add_error(tint::diag::System::Resolver, msg, ctx.source);
+                return nullptr;
             }
         } else if constexpr (IsFloatingPoint<FROM>) {
             // [floating-point -> integer] - number not exactly representable
             // https://www.w3.org/TR/WGSL/#floating-point-conversion
             switch (conv.Failure()) {
                 case ConversionFailure::kExceedsNegativeLimit:
-                    return builder.create<constant::Scalar<TO>>(target_ty, TO::Lowest());
+                    return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty, TO::Lowest());
                 case ConversionFailure::kExceedsPositiveLimit:
-                    return builder.create<constant::Scalar<TO>>(target_ty, TO::Highest());
+                    return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                           TO::Highest());
             }
         } else if constexpr (IsIntegral<FROM>) {
             // [integer -> integer] - number not exactly representable
             // Static cast
-            return builder.create<constant::Scalar<TO>>(target_ty, static_cast<TO>(scalar->value));
+            return ctx.builder.constants.Get<constant::Scalar<TO>>(target_ty,
+                                                                   static_cast<TO>(scalar->value));
         }
-        return nullptr;  // Expression is not constant.
+        TINT_UNREACHABLE(Resolver, ctx.builder.Diagnostics()) << "Expression is not constant";
+        return nullptr;
     });
     TINT_END_DISABLE_WARNING(UNREACHABLE_CODE);
 }
 
-// Forward declare
-ConstEval::Result ConvertInternal(const constant::Value* c,
-                                  ProgramBuilder& builder,
-                                  const type::Type* target_ty,
-                                  const Source& source,
-                                  bool use_runtime_semantics);
+/// Converts the constant value to the target type.
+/// @returns the converted value, or nullptr on error.
+const constant::Value* ConvertInternal(const constant::Value* root_value,
+                                       const type::Type* root_target_ty,
+                                       ConvertContext& ctx) {
+    struct ActionConvert {
+        const constant::Value* value = nullptr;
+        const type::Type* target_ty = nullptr;
+    };
+    struct ActionBuildSplat {
+        size_t count = 0;
+        const type::Type* type = nullptr;
+    };
+    struct ActionBuildComposite {
+        size_t count = 0;
+        const type::Type* type = nullptr;
+    };
+    using Action = std::variant<ActionConvert, ActionBuildSplat, ActionBuildComposite>;
 
-ConstEval::Result CompositeConvert(const constant::Value* value,
-                                   ProgramBuilder& builder,
-                                   const type::Type* target_ty,
-                                   const Source& source,
-                                   bool use_runtime_semantics) {
-    const size_t el_count = value->NumElements();
+    utils::Vector<Action, 8> pending{
+        ActionConvert{root_value, root_target_ty},
+    };
 
-    // Convert each of the composite element types.
-    utils::Vector<const constant::Value*, 4> conv_els;
-    conv_els.Reserve(el_count);
+    utils::Vector<const constant::Value*, 32> value_stack;
 
-    std::function<const type::Type*(size_t idx)> target_el_ty;
-    if (auto* str = target_ty->As<type::Struct>()) {
-        if (TINT_UNLIKELY(str->Members().Length() != el_count)) {
-            TINT_ICE(Resolver, builder.Diagnostics())
-                << "const-eval conversion of structure has mismatched element counts";
-            return utils::Failure;
+    while (!pending.IsEmpty()) {
+        auto next = pending.Pop();
+
+        if (auto* build = std::get_if<ActionBuildSplat>(&next)) {
+            TINT_ASSERT(Resolver, value_stack.Length() >= 1);
+            auto* el = value_stack.Pop();
+            value_stack.Push(ctx.builder.constants.Splat(build->type, el, build->count));
+            continue;
         }
-        target_el_ty = [str](size_t idx) { return str->Members()[idx]->Type(); };
-    } else {
-        auto* el_ty = type::Type::ElementOf(target_ty);
-        target_el_ty = [el_ty](size_t) { return el_ty; };
-    }
 
-    for (size_t i = 0; i < el_count; i++) {
-        auto* el = value->Index(i);
-        auto conv_el = ConvertInternal(el, builder, target_el_ty(conv_els.Length()), source,
-                                       use_runtime_semantics);
-        if (!conv_el) {
-            return utils::Failure;
+        if (auto* build = std::get_if<ActionBuildComposite>(&next)) {
+            TINT_ASSERT(Resolver, value_stack.Length() >= build->count);
+            // Take build->count elements off the top of value_stack
+            // Note: The values are ordered with the first composite value at the top of the stack.
+            utils::Vector<const constant::Value*, 32> elements;
+            elements.Reserve(build->count);
+            for (size_t i = 0; i < build->count; i++) {
+                elements.Push(value_stack.Pop());
+            }
+            // Build the composite
+            value_stack.Push(ctx.builder.constants.Composite(build->type, std::move(elements)));
+            continue;
         }
-        if (!conv_el.Get()) {
+
+        auto* convert = std::get_if<ActionConvert>(&next);
+
+        bool ok = Switch(
+            convert->value,
+            [&](const constant::ScalarBase* scalar) {
+                auto* converted = Switch(
+                    scalar,
+                    [&](const constant::Scalar<tint::AFloat>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<tint::AInt>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<tint::u32>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<tint::i32>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<tint::f32>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<tint::f16>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    },
+                    [&](const constant::Scalar<bool>* val) {
+                        return ScalarConvert(val, convert->target_ty, ctx);
+                    });
+                if (!converted) {
+                    return false;
+                }
+                value_stack.Push(converted);
+                return true;
+            },
+            [&](const constant::Splat* splat) {
+                const type::Type* target_el_ty = nullptr;
+                if (auto* str = convert->target_ty->As<type::Struct>()) {
+                    // Structure conversion.
+                    auto members = str->Members();
+                    target_el_ty = members[0]->Type();
+
+                    // Structures can only be converted during materialization. The user cannot
+                    // declare the target structure type, so each member type must be the same
+                    // default materialization type.
+                    for (size_t i = 1; i < members.Length(); i++) {
+                        if (members[i]->Type() != target_el_ty) {
+                            TINT_ICE(Resolver, ctx.builder.Diagnostics())
+                                << "inconsistent target struct member types for SplatConvert";
+                            return false;
+                        }
+                    }
+                } else {
+                    target_el_ty = convert->target_ty->Elements(convert->target_ty).type;
+                }
+
+                // Convert the single splatted element type.
+                pending.Push(ActionBuildSplat{splat->count, convert->target_ty});
+                pending.Push(ActionConvert{splat->el, target_el_ty});
+                return true;
+            },
+            [&](const constant::Composite* composite) {
+                const size_t el_count = composite->NumElements();
+
+                // Build the new composite from the converted element types.
+                pending.Push(ActionBuildComposite{el_count, convert->target_ty});
+
+                if (auto* str = convert->target_ty->As<type::Struct>()) {
+                    if (TINT_UNLIKELY(str->Members().Length() != el_count)) {
+                        TINT_ICE(Resolver, ctx.builder.Diagnostics())
+                            << "const-eval conversion of structure has mismatched element counts";
+                        return false;
+                    }
+                    // Struct composites can have different types for each member.
+                    auto members = str->Members();
+                    for (size_t i = 0; i < el_count; i++) {
+                        pending.Push(ActionConvert{composite->Index(i), members[i]->Type()});
+                    }
+                } else {
+                    // Non-struct composites have the same type for all elements.
+                    auto* el_ty = convert->target_ty->Elements(convert->target_ty).type;
+                    for (size_t i = 0; i < el_count; i++) {
+                        auto* el = composite->Index(i);
+                        pending.Push(ActionConvert{el, el_ty});
+                    }
+                }
+
+                return true;
+            });
+        if (!ok) {
             return nullptr;
         }
-        conv_els.Push(conv_el.Get());
     }
-    return builder.create<constant::Composite>(target_ty, std::move(conv_els));
-}
 
-ConstEval::Result SplatConvert(const constant::Splat* splat,
-                               ProgramBuilder& builder,
-                               const type::Type* target_ty,
-                               const Source& source,
-                               bool use_runtime_semantics) {
-    const type::Type* target_el_ty = nullptr;
-    if (auto* str = target_ty->As<type::Struct>()) {
-        // Structure conversion.
-        auto members = str->Members();
-        target_el_ty = members[0]->Type();
-
-        // Structures can only be converted during materialization. The user cannot declare the
-        // target structure type, so each member type must be the same default materialization type.
-        for (size_t i = 1; i < members.Length(); i++) {
-            if (members[i]->Type() != target_el_ty) {
-                TINT_ICE(Resolver, builder.Diagnostics())
-                    << "inconsistent target struct member types for SplatConvert";
-                return utils::Failure;
-            }
-        }
-    } else {
-        target_el_ty = type::Type::ElementOf(target_ty);
-    }
-    // Convert the single splatted element type.
-    auto conv_el = ConvertInternal(splat->el, builder, target_el_ty, source, use_runtime_semantics);
-    if (!conv_el) {
-        return utils::Failure;
-    }
-    if (!conv_el.Get()) {
-        return nullptr;
-    }
-    return builder.create<constant::Splat>(target_ty, conv_el.Get(), splat->count);
-}
-
-ConstEval::Result ConvertInternal(const constant::Value* c,
-                                  ProgramBuilder& builder,
-                                  const type::Type* target_ty,
-                                  const Source& source,
-                                  bool use_runtime_semantics) {
-    return Switch(
-        c,
-        [&](const constant::Scalar<tint::AFloat>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<tint::AInt>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<tint::u32>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<tint::i32>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<tint::f32>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<tint::f16>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Scalar<bool>* val) {
-            return ScalarConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Splat* val) {
-            return SplatConvert(val, builder, target_ty, source, use_runtime_semantics);
-        },
-        [&](const constant::Composite* val) {
-            return CompositeConvert(val, builder, target_ty, source, use_runtime_semantics);
-        });
+    TINT_ASSERT(Resolver, value_stack.Length() == 1);
+    return value_stack.Pop();
 }
 
 namespace detail {
@@ -443,29 +491,31 @@ ConstEval::Result TransformElements(ProgramBuilder& builder,
                                     F&& f,
                                     size_t index,
                                     CONSTANTS&&... cs) {
-    uint32_t n = 0;
-    auto* ty = First(cs...)->Type();
-    auto* el_ty = type::Type::ElementOf(ty, &n);
-    if (el_ty == ty) {
-        constexpr bool kHasIndexParam = traits::IsType<size_t, traits::LastParameterType<F>>;
+    auto [el_ty, n] = First(cs...)->Type()->Elements();
+    if (!el_ty) {
+        constexpr bool kHasIndexParam =
+            utils::traits::IsType<size_t, utils::traits::LastParameterType<F>>;
         if constexpr (kHasIndexParam) {
             return f(cs..., index);
         } else {
             return f(cs...);
         }
     }
+
+    auto* composite_el_ty = composite_ty->Elements(composite_ty).type;
+
     utils::Vector<const constant::Value*, 8> els;
     els.Reserve(n);
     for (uint32_t i = 0; i < n; i++) {
-        if (auto el = detail::TransformElements(builder, type::Type::ElementOf(composite_ty),
-                                                std::forward<F>(f), index + i, cs->Index(i)...)) {
+        if (auto el = detail::TransformElements(builder, composite_el_ty, std::forward<F>(f),
+                                                index + i, cs->Index(i)...)) {
             els.Push(el.Get());
 
         } else {
             return el.Failure();
         }
     }
-    return builder.create<constant::Composite>(composite_ty, std::move(els));
+    return builder.constants.Composite(composite_ty, std::move(els));
 }
 }  // namespace detail
 
@@ -492,15 +542,15 @@ ConstEval::Result TransformBinaryElements(ProgramBuilder& builder,
                                           F&& f,
                                           const constant::Value* c0,
                                           const constant::Value* c1) {
-    uint32_t n0 = 0;
-    type::Type::ElementOf(c0->Type(), &n0);
-    uint32_t n1 = 0;
-    type::Type::ElementOf(c1->Type(), &n1);
+    uint32_t n0 = c0->Type()->Elements(nullptr, 1).count;
+    uint32_t n1 = c1->Type()->Elements(nullptr, 1).count;
     uint32_t max_n = std::max(n0, n1);
     // If arity of both constants is 1, invoke callback
     if (max_n == 1u) {
         return f(c0, c1);
     }
+
+    const auto* element_ty = composite_ty->Elements(composite_ty).type;
 
     utils::Vector<const constant::Value*, 8> els;
     els.Reserve(max_n);
@@ -511,15 +561,14 @@ ConstEval::Result TransformBinaryElements(ProgramBuilder& builder,
             }
             return c->Index(i);
         };
-        if (auto el = TransformBinaryElements(builder, type::Type::ElementOf(composite_ty),
-                                              std::forward<F>(f), nested_or_self(c0, n0),
-                                              nested_or_self(c1, n1))) {
+        if (auto el = TransformBinaryElements(builder, element_ty, std::forward<F>(f),
+                                              nested_or_self(c0, n0), nested_or_self(c1, n1))) {
             els.Push(el.Get());
         } else {
             return el.Failure();
         }
     }
-    return builder.create<constant::Composite>(composite_ty, std::move(els));
+    return builder.constants.Composite(composite_ty, std::move(els));
 }
 }  // namespace
 
@@ -529,11 +578,11 @@ ConstEval::ConstEval(ProgramBuilder& b, bool use_runtime_semantics /* = false */
 template <typename T>
 ConstEval::Result ConstEval::CreateScalar(const Source& source, const type::Type* t, T v) {
     static_assert(IsNumber<T> || std::is_same_v<T, bool>, "T must be a Number or bool");
-    TINT_ASSERT(Resolver, t->is_scalar());
+    TINT_ASSERT(Resolver, t->Is<type::Scalar>());
 
     if constexpr (IsFloatingPoint<T>) {
         if (!std::isfinite(v.value)) {
-            AddError(OverflowErrorMessage(v, builder.FriendlyName(t)), source);
+            AddError(OverflowErrorMessage(v, t->FriendlyName()), source);
             if (use_runtime_semantics_) {
                 return ZeroValue(t);
             } else {
@@ -541,7 +590,7 @@ ConstEval::Result ConstEval::CreateScalar(const Source& source, const type::Type
             }
         }
     }
-    return builder.create<constant::Scalar<T>>(t, v);
+    return builder.constants.Get<constant::Scalar<T>>(t, v);
 }
 
 const constant::Value* ConstEval::ZeroValue(const type::Type* type) {
@@ -549,16 +598,16 @@ const constant::Value* ConstEval::ZeroValue(const type::Type* type) {
         type,  //
         [&](const type::Vector* v) -> const constant::Value* {
             auto* zero_el = ZeroValue(v->type());
-            return builder.create<constant::Splat>(type, zero_el, v->Width());
+            return builder.constants.Splat(type, zero_el, v->Width());
         },
         [&](const type::Matrix* m) -> const constant::Value* {
             auto* zero_el = ZeroValue(m->ColumnType());
-            return builder.create<constant::Splat>(type, zero_el, m->columns());
+            return builder.constants.Splat(type, zero_el, m->columns());
         },
         [&](const type::Array* a) -> const constant::Value* {
             if (auto n = a->ConstantCount()) {
                 if (auto* zero_el = ZeroValue(a->ElemType())) {
-                    return builder.create<constant::Splat>(type, zero_el, n.value());
+                    return builder.constants.Splat(type, zero_el, n.value());
                 }
             }
             return nullptr;
@@ -577,9 +626,9 @@ const constant::Value* ConstEval::ZeroValue(const type::Type* type) {
             }
             if (zero_by_type.Count() == 1) {
                 // All members were of the same type, so the zero value is the same for all members.
-                return builder.create<constant::Splat>(type, zeros[0], s->Members().Length());
+                return builder.constants.Splat(type, zeros[0], s->Members().Length());
             }
-            return builder.create<constant::Composite>(s, std::move(zeros));
+            return builder.constants.Composite(s, std::move(zeros));
         },
         [&](Default) -> const constant::Value* {
             return ZeroTypeDispatch(type, [&](auto zero) -> const constant::Value* {
@@ -1259,14 +1308,13 @@ ConstEval::Result ConstEval::ArrayOrStructCtor(const type::Type* ty,
     }
 
     // Multiple arguments. Must be a value constructor.
-    return builder.create<constant::Composite>(ty, std::move(args));
+    return builder.constants.Composite(ty, std::move(args));
 }
 
 ConstEval::Result ConstEval::Conv(const type::Type* ty,
                                   utils::VectorRef<const constant::Value*> args,
                                   const Source& source) {
-    uint32_t el_count = 0;
-    auto* el_ty = type::Type::ElementOf(ty, &el_count);
+    auto* el_ty = ty->Elements(ty).type;
     if (!el_ty) {
         return nullptr;
     }
@@ -1294,8 +1342,7 @@ ConstEval::Result ConstEval::VecSplat(const type::Type* ty,
                                       utils::VectorRef<const constant::Value*> args,
                                       const Source&) {
     if (auto* arg = args[0]) {
-        return builder.create<constant::Splat>(ty, arg,
-                                               static_cast<const type::Vector*>(ty)->Width());
+        return builder.constants.Splat(ty, arg, static_cast<const type::Vector*>(ty)->Width());
     }
     return nullptr;
 }
@@ -1303,7 +1350,7 @@ ConstEval::Result ConstEval::VecSplat(const type::Type* ty,
 ConstEval::Result ConstEval::VecInitS(const type::Type* ty,
                                       utils::VectorRef<const constant::Value*> args,
                                       const Source&) {
-    return builder.create<constant::Composite>(ty, args);
+    return builder.constants.Composite(ty, args);
 }
 
 ConstEval::Result ConstEval::VecInitM(const type::Type* ty,
@@ -1329,7 +1376,7 @@ ConstEval::Result ConstEval::VecInitM(const type::Type* ty,
             els.Push(val);
         }
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::MatInitS(const type::Type* ty,
@@ -1344,15 +1391,15 @@ ConstEval::Result ConstEval::MatInitS(const type::Type* ty,
             auto i = r + c * m->rows();
             column.Push(args[i]);
         }
-        els.Push(builder.create<constant::Composite>(m->ColumnType(), std::move(column)));
+        els.Push(builder.constants.Composite(m->ColumnType(), std::move(column)));
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::MatInitV(const type::Type* ty,
                                       utils::VectorRef<const constant::Value*> args,
                                       const Source&) {
-    return builder.create<constant::Composite>(ty, args);
+    return builder.constants.Composite(ty, args);
 }
 
 ConstEval::Result ConstEval::Index(const type::Type* ty,
@@ -1363,8 +1410,7 @@ ConstEval::Result ConstEval::Index(const type::Type* ty,
         return nullptr;
     }
 
-    uint32_t el_count = 0;
-    type::Type::ElementOf(obj_expr->Type()->UnwrapRef(), &el_count);
+    uint32_t el_count = obj_expr->Type()->UnwrapRef()->Elements().count;
 
     AInt idx = idx_val->ValueAs<AInt>();
     if (idx < 0 || (el_count > 0 && idx >= el_count)) {
@@ -1410,13 +1456,13 @@ ConstEval::Result ConstEval::Swizzle(const type::Type* ty,
     }
     auto values = utils::Transform<4>(
         indices, [&](uint32_t i) { return vec_val->Index(static_cast<size_t>(i)); });
-    return builder.create<constant::Composite>(ty, std::move(values));
+    return builder.constants.Composite(ty, std::move(values));
 }
 
 ConstEval::Result ConstEval::Bitcast(const type::Type* ty,
                                      const constant::Value* value,
                                      const Source& source) {
-    auto* el_ty = type::Type::DeepestElementOf(ty);
+    auto* el_ty = ty->DeepestElement();
     auto transform = [&](const constant::Value* c0) {
         auto create = [&](auto e) {
             return Switch(
@@ -1556,7 +1602,7 @@ ConstEval::Result ConstEval::OpMultiplyMatVec(const type::Type* ty,
         }
         result.Push(r.Get());
     }
-    return builder.create<constant::Composite>(ty, result);
+    return builder.constants.Composite(ty, result);
 }
 ConstEval::Result ConstEval::OpMultiplyVecMat(const type::Type* ty,
                                               utils::VectorRef<const constant::Value*> args,
@@ -1606,7 +1652,7 @@ ConstEval::Result ConstEval::OpMultiplyVecMat(const type::Type* ty,
         }
         result.Push(r.Get());
     }
-    return builder.create<constant::Composite>(ty, result);
+    return builder.constants.Composite(ty, result);
 }
 
 ConstEval::Result ConstEval::OpMultiplyMatMat(const type::Type* ty,
@@ -1668,9 +1714,9 @@ ConstEval::Result ConstEval::OpMultiplyMatMat(const type::Type* ty,
 
         // Add column vector to matrix
         auto* col_vec_ty = ty->As<type::Matrix>()->ColumnType();
-        result_mat.Push(builder.create<constant::Composite>(col_vec_ty, col_vec));
+        result_mat.Push(builder.constants.Composite(col_vec_ty, col_vec));
     }
-    return builder.create<constant::Composite>(ty, result_mat);
+    return builder.constants.Composite(ty, result_mat);
 }
 
 ConstEval::Result ConstEval::OpDivide(const type::Type* ty,
@@ -1698,7 +1744,7 @@ ConstEval::Result ConstEval::OpEqual(const type::Type* ty,
                                      const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i == j);
+            return CreateScalar(source, ty->DeepestElement(), i == j);
         };
         return Dispatch_fia_fiu32_f16_bool(create, c0, c1);
     };
@@ -1711,7 +1757,7 @@ ConstEval::Result ConstEval::OpNotEqual(const type::Type* ty,
                                         const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i != j);
+            return CreateScalar(source, ty->DeepestElement(), i != j);
         };
         return Dispatch_fia_fiu32_f16_bool(create, c0, c1);
     };
@@ -1724,7 +1770,7 @@ ConstEval::Result ConstEval::OpLessThan(const type::Type* ty,
                                         const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i < j);
+            return CreateScalar(source, ty->DeepestElement(), i < j);
         };
         return Dispatch_fia_fiu32_f16(create, c0, c1);
     };
@@ -1737,7 +1783,7 @@ ConstEval::Result ConstEval::OpGreaterThan(const type::Type* ty,
                                            const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i > j);
+            return CreateScalar(source, ty->DeepestElement(), i > j);
         };
         return Dispatch_fia_fiu32_f16(create, c0, c1);
     };
@@ -1750,7 +1796,7 @@ ConstEval::Result ConstEval::OpLessThanEqual(const type::Type* ty,
                                              const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i <= j);
+            return CreateScalar(source, ty->DeepestElement(), i <= j);
         };
         return Dispatch_fia_fiu32_f16(create, c0, c1);
     };
@@ -1763,7 +1809,7 @@ ConstEval::Result ConstEval::OpGreaterThanEqual(const type::Type* ty,
                                                 const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), i >= j);
+            return CreateScalar(source, ty->DeepestElement(), i >= j);
         };
         return Dispatch_fia_fiu32_f16(create, c0, c1);
     };
@@ -1774,16 +1820,18 @@ ConstEval::Result ConstEval::OpGreaterThanEqual(const type::Type* ty,
 ConstEval::Result ConstEval::OpLogicalAnd(const type::Type* ty,
                                           utils::VectorRef<const constant::Value*> args,
                                           const Source& source) {
-    // Note: Due to short-circuiting, this function is only called if lhs is true, so we could
-    // technically only return the value of the rhs.
-    return CreateScalar(source, ty, args[0]->ValueAs<bool>() && args[1]->ValueAs<bool>());
+    // Due to short-circuiting, this function is only called if lhs is true, so we only return the
+    // value of the rhs.
+    TINT_ASSERT(Resolver, args[0]->ValueAs<bool>());
+    return CreateScalar(source, ty, args[1]->ValueAs<bool>());
 }
 
 ConstEval::Result ConstEval::OpLogicalOr(const type::Type* ty,
                                          utils::VectorRef<const constant::Value*> args,
                                          const Source& source) {
-    // Note: Due to short-circuiting, this function is only called if lhs is false, so we could
-    // technically only return the value of the rhs.
+    // Due to short-circuiting, this function is only called if lhs is false, so we only only return
+    // the value of the rhs.
+    TINT_ASSERT(Resolver, !args[0]->ValueAs<bool>());
     return CreateScalar(source, ty, args[1]->ValueAs<bool>());
 }
 
@@ -1799,7 +1847,7 @@ ConstEval::Result ConstEval::OpAnd(const type::Type* ty,
             } else {  // integral
                 result = i & j;
             }
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), result);
+            return CreateScalar(source, ty->DeepestElement(), result);
         };
         return Dispatch_ia_iu32_bool(create, c0, c1);
     };
@@ -1819,7 +1867,7 @@ ConstEval::Result ConstEval::OpOr(const type::Type* ty,
             } else {  // integral
                 result = i | j;
             }
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), result);
+            return CreateScalar(source, ty->DeepestElement(), result);
         };
         return Dispatch_ia_iu32_bool(create, c0, c1);
     };
@@ -1832,7 +1880,7 @@ ConstEval::Result ConstEval::OpXor(const type::Type* ty,
                                    const Source& source) {
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto i, auto j) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), decltype(i){i ^ j});
+            return CreateScalar(source, ty->DeepestElement(), decltype(i){i ^ j});
         };
         return Dispatch_ia_iu32(create, c0, c1);
     };
@@ -1924,12 +1972,12 @@ ConstEval::Result ConstEval::OpShiftLeft(const type::Type* ty,
 
             // Avoid UB by left shifting as unsigned value
             auto result = static_cast<T>(static_cast<UT>(e1) << e2u);
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), NumberT{result});
+            return CreateScalar(source, ty->DeepestElement(), NumberT{result});
         };
         return Dispatch_ia_iu32(create, c0, c1);
     };
 
-    if (TINT_UNLIKELY(!type::Type::DeepestElementOf(args[1]->Type())->Is<type::U32>())) {
+    if (TINT_UNLIKELY(!args[1]->Type()->DeepestElement()->Is<type::U32>())) {
         TINT_ICE(Resolver, builder.Diagnostics())
             << "Element type of rhs of ShiftLeft must be a u32";
         return utils::Failure;
@@ -1992,12 +2040,12 @@ ConstEval::Result ConstEval::OpShiftRight(const type::Type* ty,
                     result = e1 >> e2u;
                 }
             }
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), NumberT{result});
+            return CreateScalar(source, ty->DeepestElement(), NumberT{result});
         };
         return Dispatch_ia_iu32(create, c0, c1);
     };
 
-    if (TINT_UNLIKELY(!type::Type::DeepestElementOf(args[1]->Type())->Is<type::U32>())) {
+    if (TINT_UNLIKELY(!args[1]->Type()->DeepestElement()->Is<type::U32>())) {
         TINT_ICE(Resolver, builder.Diagnostics())
             << "Element type of rhs of ShiftLeft must be a u32";
         return utils::Failure;
@@ -2310,7 +2358,7 @@ ConstEval::Result ConstEval::cross(const type::Type* ty,
         return utils::Failure;
     }
 
-    return builder.create<constant::Composite>(
+    return builder.constants.Composite(
         ty, utils::Vector<const constant::Value*, 3>{x.Get(), y.Get(), z.Get()});
 }
 
@@ -2688,7 +2736,7 @@ ConstEval::Result ConstEval::frexp(const type::Type* ty,
             [&](Default) {
                 TINT_ICE(Resolver, builder.Diagnostics())
                     << "unhandled element type for frexp() const-eval: "
-                    << builder.FriendlyName(s->Type());
+                    << s->Type()->FriendlyName();
                 return FractExp{utils::Failure, utils::Failure};
             });
     };
@@ -2706,20 +2754,20 @@ ConstEval::Result ConstEval::frexp(const type::Type* ty,
         }
         auto fract_ty = builder.create<type::Vector>(fract_els[0]->Type(), vec->Width());
         auto exp_ty = builder.create<type::Vector>(exp_els[0]->Type(), vec->Width());
-        return builder.create<constant::Composite>(
+        return builder.constants.Composite(
             ty, utils::Vector<const constant::Value*, 2>{
-                    builder.create<constant::Composite>(fract_ty, std::move(fract_els)),
-                    builder.create<constant::Composite>(exp_ty, std::move(exp_els)),
+                    builder.constants.Composite(fract_ty, std::move(fract_els)),
+                    builder.constants.Composite(exp_ty, std::move(exp_els)),
                 });
     } else {
         auto fe = scalar(arg);
         if (!fe.fract || !fe.exp) {
             return utils::Failure;
         }
-        return builder.create<constant::Composite>(ty, utils::Vector<const constant::Value*, 2>{
-                                                           fe.fract.Get(),
-                                                           fe.exp.Get(),
-                                                       });
+        return builder.constants.Composite(ty, utils::Vector<const constant::Value*, 2>{
+                                                   fe.fract.Get(),
+                                                   fe.exp.Get(),
+                                               });
     }
 }
 
@@ -2853,7 +2901,7 @@ ConstEval::Result ConstEval::ldexp(const type::Type* ty,
                 }
             }
 
-            auto target_ty = type::Type::DeepestElementOf(ty);
+            auto target_ty = ty->DeepestElement();
 
             auto r = std::ldexp(e1, static_cast<int>(e2));
             return CreateScalar(source, target_ty, E1Type{r});
@@ -3013,13 +3061,13 @@ ConstEval::Result ConstEval::modf(const type::Type* ty,
         return utils::Failure;
     }
 
-    return builder.create<constant::Composite>(ty, std::move(fields));
+    return builder.constants.Composite(ty, std::move(fields));
 }
 
 ConstEval::Result ConstEval::normalize(const type::Type* ty,
                                        utils::VectorRef<const constant::Value*> args,
                                        const Source& source) {
-    auto* len_ty = type::Type::DeepestElementOf(ty);
+    auto* len_ty = ty->DeepestElement();
     auto len = Length(source, len_ty, args[0]);
     if (!len) {
         AddNote("when calculating normalize", source);
@@ -3317,7 +3365,7 @@ ConstEval::Result ConstEval::refract(const type::Type* ty,
             return utils::Failure;
         }
         auto e2_scaled = Mul(source, ty, e2_scale.Get(), e2);
-        if (!e1_scaled) {
+        if (!e2_scaled) {
             return utils::Failure;
         }
         return Sub(source, ty, e1_scaled.Get(), e2_scaled.Get());
@@ -3412,7 +3460,7 @@ ConstEval::Result ConstEval::select_bool(const type::Type* ty,
     auto cond = args[2]->ValueAs<bool>();
     auto transform = [&](const constant::Value* c0, const constant::Value* c1) {
         auto create = [&](auto f, auto t) -> ConstEval::Result {
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), cond ? t : f);
+            return CreateScalar(source, ty->DeepestElement(), cond ? t : f);
         };
         return Dispatch_fia_fiu32_f16_bool(create, c0, c1);
     };
@@ -3427,7 +3475,7 @@ ConstEval::Result ConstEval::select_boolvec(const type::Type* ty,
         auto create = [&](auto f, auto t) -> ConstEval::Result {
             // Get corresponding bool value at the current vector value index
             auto cond = args[2]->Index(index)->ValueAs<bool>();
-            return CreateScalar(source, type::Type::DeepestElementOf(ty), cond ? t : f);
+            return CreateScalar(source, ty->DeepestElement(), cond ? t : f);
         };
         return Dispatch_fia_fiu32_f16_bool(create, c0, c1);
     };
@@ -3599,10 +3647,9 @@ ConstEval::Result ConstEval::transpose(const type::Type* ty,
         for (size_t c = 0; c < mat_ty->columns(); ++c) {
             new_col_vec.Push(me(r, c));
         }
-        result_mat.Push(
-            builder.create<constant::Composite>(result_mat_ty->ColumnType(), new_col_vec));
+        result_mat.Push(builder.constants.Composite(result_mat_ty->ColumnType(), new_col_vec));
     }
-    return builder.create<constant::Composite>(ty, result_mat);
+    return builder.constants.Composite(ty, result_mat);
 }
 
 ConstEval::Result ConstEval::trunc(const type::Type* ty,
@@ -3620,7 +3667,7 @@ ConstEval::Result ConstEval::trunc(const type::Type* ty,
 ConstEval::Result ConstEval::unpack2x16float(const type::Type* ty,
                                              utils::VectorRef<const constant::Value*> args,
                                              const Source& source) {
-    auto* inner_ty = type::Type::DeepestElementOf(ty);
+    auto* inner_ty = ty->DeepestElement();
     auto e = args[0]->ValueAs<u32>().value;
 
     utils::Vector<const constant::Value*, 2> els;
@@ -3642,13 +3689,13 @@ ConstEval::Result ConstEval::unpack2x16float(const type::Type* ty,
         }
         els.Push(el.Get());
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::unpack2x16snorm(const type::Type* ty,
                                              utils::VectorRef<const constant::Value*> args,
                                              const Source& source) {
-    auto* inner_ty = type::Type::DeepestElementOf(ty);
+    auto* inner_ty = ty->DeepestElement();
     auto e = args[0]->ValueAs<u32>().value;
 
     utils::Vector<const constant::Value*, 2> els;
@@ -3662,13 +3709,13 @@ ConstEval::Result ConstEval::unpack2x16snorm(const type::Type* ty,
         }
         els.Push(el.Get());
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::unpack2x16unorm(const type::Type* ty,
                                              utils::VectorRef<const constant::Value*> args,
                                              const Source& source) {
-    auto* inner_ty = type::Type::DeepestElementOf(ty);
+    auto* inner_ty = ty->DeepestElement();
     auto e = args[0]->ValueAs<u32>().value;
 
     utils::Vector<const constant::Value*, 2> els;
@@ -3681,13 +3728,13 @@ ConstEval::Result ConstEval::unpack2x16unorm(const type::Type* ty,
         }
         els.Push(el.Get());
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::unpack4x8snorm(const type::Type* ty,
                                             utils::VectorRef<const constant::Value*> args,
                                             const Source& source) {
-    auto* inner_ty = type::Type::DeepestElementOf(ty);
+    auto* inner_ty = ty->DeepestElement();
     auto e = args[0]->ValueAs<u32>().value;
 
     utils::Vector<const constant::Value*, 4> els;
@@ -3701,13 +3748,13 @@ ConstEval::Result ConstEval::unpack4x8snorm(const type::Type* ty,
         }
         els.Push(el.Get());
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::unpack4x8unorm(const type::Type* ty,
                                             utils::VectorRef<const constant::Value*> args,
                                             const Source& source) {
-    auto* inner_ty = type::Type::DeepestElementOf(ty);
+    auto* inner_ty = ty->DeepestElement();
     auto e = args[0]->ValueAs<u32>().value;
 
     utils::Vector<const constant::Value*, 4> els;
@@ -3720,7 +3767,7 @@ ConstEval::Result ConstEval::unpack4x8unorm(const type::Type* ty,
         }
         els.Push(el.Get());
     }
-    return builder.create<constant::Composite>(ty, std::move(els));
+    return builder.constants.Composite(ty, std::move(els));
 }
 
 ConstEval::Result ConstEval::quantizeToF16(const type::Type* ty,
@@ -3748,7 +3795,9 @@ ConstEval::Result ConstEval::Convert(const type::Type* target_ty,
     if (value->Type() == target_ty) {
         return value;
     }
-    return ConvertInternal(value, builder, target_ty, source, use_runtime_semantics_);
+    ConvertContext ctx{builder, source, use_runtime_semantics_};
+    auto* converted = ConvertInternal(value, target_ty, ctx);
+    return converted ? Result(converted) : utils::Failure;
 }
 
 void ConstEval::AddError(const std::string& msg, const Source& source) const {

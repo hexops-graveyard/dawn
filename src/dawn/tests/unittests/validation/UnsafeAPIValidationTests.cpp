@@ -20,23 +20,24 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
+
 using testing::HasSubstr;
-}  // anonymous namespace
 
 class UnsafeAPIValidationTest : public ValidationTest {
   protected:
-    // UnsafeAPIValidationTest create the device with toggle DisallowUnsafeApis explicitly enabled,
-    // which overrides the inheritance.
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        // Enable the DisallowUnsafeAPIs toggles in device toggles descriptor to override the
+    // UnsafeAPIValidationTest create the device with the AllowUnsafeAPIs toggle explicitly
+    // disabled, which overrides the inheritance.
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
+        // Disable the AllowUnsafeAPIs toggles in device toggles descriptor to override the
         // inheritance and create a device disallowing unsafe apis.
-        wgpu::DeviceDescriptor descriptor;
         wgpu::DawnTogglesDescriptor deviceTogglesDesc;
         descriptor.nextInChain = &deviceTogglesDesc;
-        const char* toggle = "disallow_unsafe_apis";
-        deviceTogglesDesc.enabledToggles = &toggle;
-        deviceTogglesDesc.enabledTogglesCount = 1;
+        const char* toggle = "allow_unsafe_apis";
+        deviceTogglesDesc.disabledToggles = &toggle;
+        deviceTogglesDesc.disabledTogglesCount = 1;
         return dawnAdapter.CreateDevice(&descriptor);
     }
 };
@@ -55,3 +56,6 @@ TEST_F(UnsafeAPIValidationTest, chromium_disable_uniformity_analysis) {
         }
     )"));
 }
+
+}  // anonymous namespace
+}  // namespace dawn

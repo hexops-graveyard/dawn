@@ -19,6 +19,7 @@
 #include "dawn/native/CommandBuffer.h"
 #include "dawn/native/metal/CommandRecordingContext.h"
 #include "dawn/native/metal/DeviceMTL.h"
+#include "dawn/native/metal/UtilsMetal.h"
 
 #include <limits>
 
@@ -45,21 +46,12 @@ uint64_t Buffer::QueryMaxBufferLength(id<MTLDevice> mtlDevice) {
 #if DAWN_PLATFORM_IS(MACOS)
     // 10.12 and 10.13 have a 1Gb limit.
     if (@available(macOS 10.12, *)) {
-        // |maxBufferLength| isn't always available on older systems. If available, use
-        // |recommendedMaxWorkingSetSize| instead. We can probably allocate more than this,
-        // but don't have a way to discover a better limit. MoltenVK also uses this heuristic.
         return 1024 * 1024 * 1024;
     }
-    // 10.11 has a 256Mb limit
-    if (@available(macOS 10.11, *)) {
-        return 256 * 1024 * 1024;
-    }
-    // 256Mb for other platform if any. (Need to have a return for all branches).
-    return 256 * 1024 * 1024;
-#else
-    // macOS / tvOS: 256Mb limit in versions without [MTLDevice maxBufferLength]
-    return 256 * 1024 * 1024;
 #endif
+
+    // 256Mb limit in versions without based on the data in the feature set tables.
+    return 256 * 1024 * 1024;
 }
 
 Buffer::Buffer(DeviceBase* dev, const BufferDescriptor* desc) : BufferBase(dev, desc) {}
@@ -118,6 +110,7 @@ MaybeError Buffer::Initialize(bool mappedAtCreation) {
     if (mMtlBuffer == nullptr) {
         return DAWN_OUT_OF_MEMORY_ERROR("Buffer allocation failed");
     }
+    SetLabelImpl();
 
     // The buffers with mappedAtCreation == true will be initialized in
     // BufferBase::MapAtCreation().
@@ -242,6 +235,10 @@ void Buffer::ClearBuffer(CommandRecordingContext* commandContext,
     [commandContext->EnsureBlit() fillBuffer:mMtlBuffer.Get()
                                        range:NSMakeRange(offset, size)
                                        value:clearValue];
+}
+
+void Buffer::SetLabelImpl() {
+    SetDebugName(GetDevice(), mMtlBuffer.Get(), "Dawn_Buffer", GetLabel());
 }
 
 }  // namespace dawn::native::metal

@@ -41,11 +41,15 @@ enum builtin_value {
 }
 
 // https://gpuweb.github.io/gpuweb/wgsl/#filterable-triggering-rules
-enum diagnostic_rule {
+enum core_diagnostic_rule {
   // Rules defined in the spec.
   derivative_uniformity
+}
+
+// chromium-specific diagnostics
+enum chromium_diagnostic_rule {
   // Chromium specific rules not defined in the spec.
-  chromium_unreachable_code
+  unreachable_code
 }
 
 // https://gpuweb.github.io/gpuweb/wgsl/#syntax-severity_control_name
@@ -214,6 +218,32 @@ enum builtin_type {
 
   // Internal types.
   __packed_vec3
+  __atomic_compare_exchange_result_i32
+  __atomic_compare_exchange_result_u32
+  __frexp_result_abstract
+  __frexp_result_f16
+  __frexp_result_f32
+  __frexp_result_vec2_abstract
+  __frexp_result_vec2_f16
+  __frexp_result_vec2_f32
+  __frexp_result_vec3_abstract
+  __frexp_result_vec3_f16
+  __frexp_result_vec3_f32
+  __frexp_result_vec4_abstract
+  __frexp_result_vec4_f16
+  __frexp_result_vec4_f32
+  __modf_result_abstract
+  __modf_result_f16
+  __modf_result_f32
+  __modf_result_vec2_abstract
+  __modf_result_vec2_f16
+  __modf_result_vec2_f32
+  __modf_result_vec3_abstract
+  __modf_result_vec3_f16
+  __modf_result_vec3_f32
+  __modf_result_vec4_abstract
+  __modf_result_vec4_f16
+  __modf_result_vec4_f32
 }
 
 // https://gpuweb.github.io/gpuweb/wgsl/#attributes
@@ -858,6 +888,9 @@ fn textureStore<C: iu32>(texture: texture_storage_3d<u32_texel_format, write>, c
 @must_use @const("Zero") ctor f32() -> f32
 @must_use @const("Zero") ctor f16() -> f16
 @must_use @const("Zero") ctor bool() -> bool
+@must_use @const("Zero") ctor vec2() -> vec2<ia>
+@must_use @const("Zero") ctor vec3() -> vec3<ia>
+@must_use @const("Zero") ctor vec4() -> vec4<ia>
 @must_use @const("Zero") ctor vec2<T: concrete_scalar>() -> vec2<T>
 @must_use @const("Zero") ctor vec3<T: concrete_scalar>() -> vec3<T>
 @must_use @const("Zero") ctor vec4<T: concrete_scalar>() -> vec4<T>

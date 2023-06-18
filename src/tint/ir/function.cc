@@ -14,12 +14,57 @@
 
 #include "src/tint/ir/function.h"
 
+#include "src/tint/utils/predicates.h"
+
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Function);
 
 namespace tint::ir {
 
-Function::Function() : Base() {}
+Function::Function(const type::Type* rt,
+                   PipelineStage stage,
+                   std::optional<std::array<uint32_t, 3>> wg_size)
+    : pipeline_stage_(stage), workgroup_size_(wg_size) {
+    TINT_ASSERT(IR, rt != nullptr);
+
+    return_.type = rt;
+}
 
 Function::~Function() = default;
+
+void Function::SetParams(utils::VectorRef<FunctionParam*> params) {
+    params_ = std::move(params);
+    TINT_ASSERT(IR, !params_.Any(utils::IsNull));
+}
+
+void Function::SetParams(std::initializer_list<FunctionParam*> params) {
+    params_ = params;
+    TINT_ASSERT(IR, !params_.Any(utils::IsNull));
+}
+
+utils::StringStream& operator<<(utils::StringStream& out, Function::PipelineStage value) {
+    switch (value) {
+        case Function::PipelineStage::kVertex:
+            return out << "vertex";
+        case Function::PipelineStage::kFragment:
+            return out << "fragment";
+        case Function::PipelineStage::kCompute:
+            return out << "compute";
+        default:
+            break;
+    }
+    return out << "<unknown>";
+}
+
+utils::StringStream& operator<<(utils::StringStream& out, enum Function::ReturnBuiltin value) {
+    switch (value) {
+        case Function::ReturnBuiltin::kFragDepth:
+            return out << "frag_depth";
+        case Function::ReturnBuiltin::kSampleMask:
+            return out << "sample_mask";
+        case Function::ReturnBuiltin::kPosition:
+            return out << "position";
+    }
+    return out << "<unknown>";
+}
 
 }  // namespace tint::ir

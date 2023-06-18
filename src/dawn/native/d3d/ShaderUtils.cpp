@@ -135,11 +135,10 @@ ResultOrError<ComPtr<ID3DBlob>> CompileShaderFXC(const d3d::D3DBytecodeCompilati
     return std::move(compiledShader);
 }
 
-ResultOrError<std::string> TranslateToHLSL(
-    d3d::HlslCompilationRequest r,
-    CacheKey::UnsafeUnkeyedValue<dawn::platform::Platform*> tracePlatform,
-    std::string* remappedEntryPointName,
-    bool* usesVertexOrInstanceIndex) {
+MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
+                           CacheKey::UnsafeUnkeyedValue<dawn::platform::Platform*> tracePlatform,
+                           std::string* remappedEntryPointName,
+                           CompiledShader* compiledShader) {
     std::ostringstream errorStream;
     errorStream << "Tint HLSL failure:" << std::endl;
 
@@ -147,28 +146,28 @@ ResultOrError<std::string> TranslateToHLSL(
     tint::transform::DataMap transformInputs;
 
     // Run before the renamer so that the entry point name matches `entryPointName` still.
-    transformManager.Add<tint::transform::SingleEntryPoint>();
-    transformInputs.Add<tint::transform::SingleEntryPoint::Config>(r.entryPointName.data());
+    transformManager.Add<tint::ast::transform::SingleEntryPoint>();
+    transformInputs.Add<tint::ast::transform::SingleEntryPoint::Config>(r.entryPointName.data());
 
     // Needs to run before all other transforms so that they can use builtin names safely.
-    transformManager.Add<tint::transform::Renamer>();
+    transformManager.Add<tint::ast::transform::Renamer>();
     if (r.disableSymbolRenaming) {
         // We still need to rename HLSL reserved keywords
-        transformInputs.Add<tint::transform::Renamer::Config>(
-            tint::transform::Renamer::Target::kHlslKeywords);
+        transformInputs.Add<tint::ast::transform::Renamer::Config>(
+            tint::ast::transform::Renamer::Target::kHlslKeywords);
     }
 
     if (r.stage == SingleShaderStage::Vertex) {
-        transformManager.Add<tint::transform::FirstIndexOffset>();
-        transformInputs.Add<tint::transform::FirstIndexOffset::BindingPoint>(
+        transformManager.Add<tint::ast::transform::FirstIndexOffset>();
+        transformInputs.Add<tint::ast::transform::FirstIndexOffset::BindingPoint>(
             r.firstIndexOffsetShaderRegister, r.firstIndexOffsetRegisterSpace);
     }
 
     if (r.substituteOverrideConfig) {
         // This needs to run after SingleEntryPoint transform which removes unused overrides for
         // current entry point.
-        transformManager.Add<tint::transform::SubstituteOverride>();
-        transformInputs.Add<tint::transform::SubstituteOverride::Config>(
+        transformManager.Add<tint::ast::transform::SubstituteOverride>();
+        transformInputs.Add<tint::ast::transform::SubstituteOverride::Config>(
             std::move(r.substituteOverrideConfig).value());
     }
 
@@ -181,7 +180,7 @@ ResultOrError<std::string> TranslateToHLSL(
                                       &transformOutputs, nullptr));
     }
 
-    if (auto* data = transformOutputs.Get<tint::transform::Renamer::Data>()) {
+    if (auto* data = transformOutputs.Get<tint::ast::transform::Renamer::Data>()) {
         auto it = data->remappings.find(r.entryPointName.data());
         if (it != data->remappings.end()) {
             *remappedEntryPointName = it->second;
@@ -202,9 +201,12 @@ ResultOrError<std::string> TranslateToHLSL(
                                transformedProgram, remappedEntryPointName->data(), r.limits));
     }
 
+    bool usesVertexIndex = false;
+    bool usesInstanceIndex = false;
     if (r.stage == SingleShaderStage::Vertex) {
-        if (auto* data = transformOutputs.Get<tint::transform::FirstIndexOffset::Data>()) {
-            *usesVertexOrInstanceIndex = data->has_vertex_or_instance_index;
+        if (auto* data = transformOutputs.Get<tint::ast::transform::FirstIndexOffset::Data>()) {
+            usesVertexIndex = data->has_vertex_index;
+            usesInstanceIndex = data->has_instance_index;
         } else {
             return DAWN_VALIDATION_ERROR("Transform output missing first index offset data.");
         }
@@ -232,15 +234,22 @@ ResultOrError<std::string> TranslateToHLSL(
         // Pass in the actually used interstage locations for tint to potentially truncate unused
         // outputs.
         options.interstage_locations = r.interstageLocations;
+        options.truncate_interstage_variables = true;
     }
 
     options.polyfill_reflect_vec2_f32 = r.polyfillReflectVec2F32;
+
+    options.binding_points_ignored_in_robustness_transform =
+        std::move(r.bindingPointsIgnoredInRobustnessTransform);
 
     TRACE_EVENT0(tracePlatform.UnsafeGetValue(), General, "tint::writer::hlsl::Generate");
     auto result = tint::writer::hlsl::Generate(&transformedProgram, options);
     DAWN_INVALID_IF(!result.success, "An error occured while generating HLSL: %s", result.error);
 
-    return std::move(result.hlsl);
+    compiledShader->usesVertexIndex = usesVertexIndex;
+    compiledShader->usesInstanceIndex = usesInstanceIndex;
+    compiledShader->hlslSource = std::move(result.hlsl);
+    return {};
 }
 
 std::string CompileFlagsToStringFXC(uint32_t compileFlags) {
@@ -309,11 +318,11 @@ std::string CompileFlagsToStringFXC(uint32_t compileFlags) {
 
 ResultOrError<CompiledShader> CompileShader(d3d::D3DCompilationRequest r) {
     CompiledShader compiledShader;
+    bool shouldDumpShader = r.hlsl.dumpShaders;
     // Compile the source shader to HLSL.
     std::string remappedEntryPoint;
-    DAWN_TRY_ASSIGN(compiledShader.hlslSource,
-                    TranslateToHLSL(std::move(r.hlsl), r.tracePlatform, &remappedEntryPoint,
-                                    &compiledShader.usesVertexOrInstanceIndex));
+    DAWN_TRY(
+        TranslateToHLSL(std::move(r.hlsl), r.tracePlatform, &remappedEntryPoint, &compiledShader));
 
     switch (r.bytecode.compiler) {
         case d3d::Compiler::DXC: {
@@ -336,7 +345,7 @@ ResultOrError<CompiledShader> CompileShader(d3d::D3DCompilationRequest r) {
 
     // If dumpShaders is false, we don't need the HLSL for logging. Clear the contents so it
     // isn't stored into the cache.
-    if (!r.hlsl.dumpShaders) {
+    if (!shouldDumpShader) {
         compiledShader.hlslSource = "";
     }
     return compiledShader;
@@ -346,41 +355,52 @@ void DumpCompiledShader(Device* device,
                         const CompiledShader& compiledShader,
                         uint32_t compileFlags) {
     std::ostringstream dumpedMsg;
-    dumpedMsg << "/* Dumped generated HLSL */" << std::endl
-              << compiledShader.hlslSource << std::endl;
+    // The HLSL may be empty if compilation failed.
+    if (!compiledShader.hlslSource.empty()) {
+        dumpedMsg << "/* Dumped generated HLSL */" << std::endl
+                  << compiledShader.hlslSource << std::endl;
+    }
 
-    if (device->IsToggleEnabled(Toggle::UseDXC)) {
-        dumpedMsg << "/* Dumped disassembled DXIL */" << std::endl;
-        const Blob& shaderBlob = compiledShader.shaderBlob;
-        ComPtr<IDxcBlobEncoding> dxcBlob;
-        ComPtr<IDxcBlobEncoding> disassembly;
-        if (FAILED(device->GetDxcLibrary()->CreateBlobWithEncodingFromPinned(
-                shaderBlob.Data(), shaderBlob.Size(), 0, &dxcBlob)) ||
-            FAILED(device->GetDxcCompiler()->Disassemble(dxcBlob.Get(), &disassembly))) {
-            dumpedMsg << "DXC disassemble failed" << std::endl;
+    // The blob may be empty if FXC/DXC compilation failed.
+    const Blob& shaderBlob = compiledShader.shaderBlob;
+    if (!shaderBlob.Empty()) {
+        if (device->IsToggleEnabled(Toggle::UseDXC)) {
+            dumpedMsg << "/* Dumped disassembled DXIL */" << std::endl;
+            ComPtr<IDxcBlobEncoding> dxcBlob;
+            ComPtr<IDxcBlobEncoding> disassembly;
+            if (FAILED(device->GetDxcLibrary()->CreateBlobWithEncodingFromPinned(
+                    shaderBlob.Data(), shaderBlob.Size(), 0, &dxcBlob)) ||
+                FAILED(device->GetDxcCompiler()->Disassemble(dxcBlob.Get(), &disassembly))) {
+                dumpedMsg << "DXC disassemble failed" << std::endl;
+            } else {
+                dumpedMsg << std::string_view(
+                    static_cast<const char*>(disassembly->GetBufferPointer()),
+                    disassembly->GetBufferSize());
+            }
         } else {
-            dumpedMsg << std::string_view(static_cast<const char*>(disassembly->GetBufferPointer()),
-                                          disassembly->GetBufferSize());
-        }
-    } else {
-        dumpedMsg << "/* FXC compile flags */ " << std::endl
-                  << CompileFlagsToStringFXC(compileFlags) << std::endl;
-        dumpedMsg << "/* Dumped disassembled DXBC */" << std::endl;
-        ComPtr<ID3DBlob> disassembly;
-        const Blob& shaderBlob = compiledShader.shaderBlob;
-        UINT flags =
-            // Some literals are printed as floats with precision(6) which is not enough
-            // precision for values very close to 0, so always print literals as hex values.
-            D3D_DISASM_PRINT_HEX_LITERALS;
-        if (FAILED(device->GetFunctions()->d3dDisassemble(shaderBlob.Data(), shaderBlob.Size(),
-                                                          flags, nullptr, &disassembly))) {
-            dumpedMsg << "D3D disassemble failed" << std::endl;
-        } else {
-            dumpedMsg << std::string_view(static_cast<const char*>(disassembly->GetBufferPointer()),
-                                          disassembly->GetBufferSize());
+            dumpedMsg << "/* FXC compile flags */ " << std::endl
+                      << CompileFlagsToStringFXC(compileFlags) << std::endl;
+            dumpedMsg << "/* Dumped disassembled DXBC */" << std::endl;
+            ComPtr<ID3DBlob> disassembly;
+            UINT flags =
+                // Some literals are printed as floats with precision(6) which is not enough
+                // precision for values very close to 0, so always print literals as hex values.
+                D3D_DISASM_PRINT_HEX_LITERALS;
+            if (FAILED(device->GetFunctions()->d3dDisassemble(shaderBlob.Data(), shaderBlob.Size(),
+                                                              flags, nullptr, &disassembly))) {
+                dumpedMsg << "D3D disassemble failed" << std::endl;
+            } else {
+                dumpedMsg << std::string_view(
+                    static_cast<const char*>(disassembly->GetBufferPointer()),
+                    disassembly->GetBufferSize());
+            }
         }
     }
-    device->EmitLog(WGPULoggingType_Info, dumpedMsg.str().c_str());
+
+    std::string logMessage = dumpedMsg.str();
+    if (!logMessage.empty()) {
+        device->EmitLog(WGPULoggingType_Info, logMessage.c_str());
+    }
 }
 
 }  // namespace dawn::native::d3d

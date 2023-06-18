@@ -22,6 +22,10 @@
 #include "dawn/common/RefCounted.h"
 #include "dawn/native/Forward.h"
 
+namespace absl {
+class FormatSink;
+}
+
 namespace dawn::native {
 
 class ApiObjectBase;
@@ -79,11 +83,14 @@ class ApiObjectBase : public ObjectBase, public LinkNode<ApiObjectBase> {
 
     ApiObjectBase(DeviceBase* device, LabelNotImplementedTag tag);
     ApiObjectBase(DeviceBase* device, const char* label);
-    ApiObjectBase(DeviceBase* device, ErrorTag tag);
+    ApiObjectBase(DeviceBase* device, ErrorTag tag, const char* label = nullptr);
     ~ApiObjectBase() override;
 
     virtual ObjectType GetType() const = 0;
+    void SetLabel(std::string label);
     const std::string& GetLabel() const;
+
+    virtual void FormatLabel(absl::FormatSink* s) const;
 
     // The ApiObjectBase is considered alive if it is tracked in a respective linked list owned
     // by the owning device.
@@ -94,6 +101,7 @@ class ApiObjectBase : public ObjectBase, public LinkNode<ApiObjectBase> {
 
     // Dawn API
     void APISetLabel(const char* label);
+    void APIRelease();
 
   protected:
     // Overriding of the RefCounted's DeleteThis function ensures that instances of objects

@@ -29,10 +29,11 @@
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::spirv {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using BuilderTest = TestHelper;
 
@@ -215,7 +216,7 @@ TEST_F(BuilderTest, EntryPoint_SharedStruct) {
             Member("pos", ty.vec4<f32>(), utils::Vector{Builtin(builtin::BuiltinValue::kPosition)}),
         });
 
-    auto* vert_retval = Call(ty.Of(interface), 42_f, vec4<f32>());
+    auto* vert_retval = Call(ty.Of(interface), 42_f, Call<vec4<f32>>());
     Func("vert_main", utils::Empty, ty.Of(interface), utils::Vector{Return(vert_retval)},
          utils::Vector{
              Stage(ast::PipelineStage::kVertex),
@@ -233,7 +234,7 @@ TEST_F(BuilderTest, EntryPoint_SharedStruct) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
     EXPECT_EQ(DumpBuilder(b), R"(OpCapability Shader
 OpMemoryModel Logical GLSL450
@@ -330,14 +331,14 @@ TEST_F(BuilderTest, SampleIndex_SampleRateShadingCapability) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
     // Make sure we generate the SampleRateShading capability.
-    EXPECT_EQ(DumpInstructions(b.capabilities()),
+    EXPECT_EQ(DumpInstructions(b.Module().Capabilities()),
               R"(OpCapability Shader
 OpCapability SampleRateShading
 )");
-    EXPECT_EQ(DumpInstructions(b.annots()), R"(OpDecorate %1 BuiltIn SampleId
+    EXPECT_EQ(DumpInstructions(b.Module().Annots()), R"(OpDecorate %1 BuiltIn SampleId
 OpDecorate %1 Flat
 )");
 }

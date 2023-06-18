@@ -15,33 +15,66 @@
 #ifndef SRC_TINT_IR_IF_H_
 #define SRC_TINT_IR_IF_H_
 
-#include "src/tint/ir/branch.h"
-#include "src/tint/ir/flow_node.h"
-#include "src/tint/ir/value.h"
+#include "src/tint/ir/control_instruction.h"
 
 // Forward declarations
 namespace tint::ir {
-class Block;
+class MultiInBlock;
 }  // namespace tint::ir
 
 namespace tint::ir {
 
-/// A flow node representing an if statement.
-class If : public Castable<If, FlowNode> {
+/// If instruction.
+///
+/// ```
+///                   in
+///                    ┃
+///         ┏━━━━━━━━━━┻━━━━━━━━━━┓
+///         ▼                     ▼
+///    ┌────────────┐      ┌────────────┐
+///    │  True      │      │  False     │
+///    | (optional) |      | (optional) |
+///    └────────────┘      └────────────┘
+///  ExitIf ┃     ┌──────────┐     ┃ ExitIf
+///         ┗━━━━▶│  Merge   │◀━━━━┛
+///               │(optional)│
+///               └──────────┘
+///                    ┃
+///                    ▼
+///                   out
+/// ```
+class If : public utils::Castable<If, ControlInstruction> {
   public:
+    /// The index of the condition operand
+    static constexpr size_t kConditionOperandOffset = 0;
+
     /// Constructor
-    If();
+    /// @param cond the if condition
+    /// @param t the true block
+    /// @param f the false block
+    /// @param m the merge block
+    If(Value* cond, ir::Block* t, ir::Block* f, ir::MultiInBlock* m);
     ~If() override;
 
-    /// The true branch block
-    Branch true_ = {};
-    /// The false branch block
-    Branch false_ = {};
-    /// An block to converge the true/false branches. The block always exists, but there maybe no
-    /// branches into it. (e.g. if both branches `return`)
-    Branch merge = {};
-    /// Value holding the condition result
-    const Value* condition = nullptr;
+    /// @returns the branch arguments
+    utils::Slice<Value* const> Args() override { return utils::Slice<Value*>{}; }
+
+    /// @returns the if condition
+    Value* Condition() { return operands_[kConditionOperandOffset]; }
+
+    /// @returns the true branch block
+    ir::Block* True() { return true_; }
+
+    /// @returns the false branch block
+    ir::Block* False() { return false_; }
+
+    /// @returns the merge branch block
+    ir::MultiInBlock* Merge() { return merge_; }
+
+  private:
+    ir::Block* true_ = nullptr;
+    ir::Block* false_ = nullptr;
+    ir::MultiInBlock* merge_ = nullptr;
 };
 
 }  // namespace tint::ir

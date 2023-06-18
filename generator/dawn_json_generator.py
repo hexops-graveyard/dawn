@@ -158,7 +158,7 @@ class TypedefType(Type):
 class NativeType(Type):
     def __init__(self, is_enabled, name, json_data):
         Type.__init__(self, name, json_data, native=True)
-        self.is_wire_transparent = True
+        self.is_wire_transparent = json_data.get('wire transparent', True)
 
 
 # Methods and structures are both "records", so record members correspond to
@@ -181,12 +181,17 @@ class RecordMember:
         self.optional = optional
         self.is_return_value = is_return_value
         self.handle_type = None
+        self.id_type = None
         self.default_value = default_value
         self.skip_serialize = skip_serialize
 
     def set_handle_type(self, handle_type):
         assert self.type.dict_name == "ObjectHandle"
         self.handle_type = handle_type
+
+    def set_id_type(self, id_type):
+        assert self.type.dict_name == "ObjectId"
+        self.id_type = id_type
 
 
 Method = namedtuple(
@@ -308,6 +313,9 @@ def linked_record_members(json_data, types):
         handle_type = m.get('handle_type')
         if handle_type:
             member.set_handle_type(types[handle_type])
+        id_type = m.get('id_type')
+        if id_type:
+            member.set_id_type(types[id_type])
         members.append(member)
         members_by_name[member.name.canonical_case()] = member
 
@@ -330,6 +338,18 @@ def linked_record_members(json_data, types):
 
     return members
 
+
+def mark_lengths_non_serializable_lpm(record_members):
+    # Remove member length values from command metadata,
+    # these are set to the length of the protobuf array.
+    for record_member in record_members:
+        lengths = set()
+        for member in record_member.members:
+            lengths.add(member.length)
+
+        for member in record_member.members:
+            if member in lengths:
+                member.skip_serialize = True
 
 ############################################################
 # PARSE
@@ -375,7 +395,6 @@ def link_function(function, types):
     function.return_type = types[function.json_data.get('returns', 'void')]
     function.arguments = linked_record_members(function.json_data['args'],
                                                types)
-
 
 # Sort structures so that if struct A has struct B as a member, then B is
 # listed before A.
@@ -580,12 +599,12 @@ def compute_lpm_params(api_and_wire_params, lpm_json):
     # Start with all commands in dawn.json and dawn_wire.json
     lpm_params = api_and_wire_params.copy()
 
-    # Commands that are built through generation
-    proto_generated_commands = []
+    # Commands that are built through codegen
+    generated_commands = []
 
     # All commands, including hand written commands that we can't generate
     # through codegen
-    proto_all_commands = []
+    all_commands = []
 
     # Remove blocklisted commands from protobuf generation params
     blocklisted_cmds_proto = lpm_json.get('blocklisted_cmds')
@@ -594,13 +613,28 @@ def compute_lpm_params(api_and_wire_params, lpm_json):
         blocklisted = command.name.get() in blocklisted_cmds_proto
         custom = command.name.get() in custom_cmds_proto
 
-        if not blocklisted and not custom:
-            proto_generated_commands.append(command)
-        proto_all_commands.append(command)
+        if blocklisted:
+            continue
+
+        if not custom:
+            generated_commands.append(command)
+        all_commands.append(command)
+
+    # Set all fields that are marked as the "length" of another field to
+    # skip_serialize. The values passed by libprotobuf-mutator will cause
+    # an instant crash during serialization if these don't match the length
+    # of the data they are passing. These values aren't used in
+    # deserialization.
+    mark_lengths_non_serializable_lpm(
+        api_and_wire_params['cmd_records']['command'])
+    mark_lengths_non_serializable_lpm(
+        api_and_wire_params['by_category']['structure'])
 
     lpm_params['cmd_records'] = {
-        'proto_generated_commands': proto_generated_commands,
-        'proto_all_commands': proto_all_commands,
+        'proto_generated_commands': generated_commands,
+        'proto_all_commands': all_commands,
+        'cpp_generated_commands': generated_commands,
+        'lpm_info': lpm_json.get("lpm_info")
     }
 
     return lpm_params
@@ -632,15 +666,27 @@ def as_protobufTypeLPM(member):
     return member.type.name.CamelCase()
 
 
+# Helper that generates names for protobuf grammars from contents
+# of dawn*.json like files. example: membera
 def as_protobufNameLPM(*names):
-    # `descriptor` is a reserved keyword in lpm
+    # `descriptor` is a reserved keyword in lib-protobuf-mutator
     if (names[0].concatcase() == "descriptor"):
         return "desc"
     return as_varName(*names)
 
 
+# Helper to generate member accesses within C++ of protobuf objects
+# example: cmd.membera().memberb()
+def as_protobufMemberNameLPM(*names):
+    # `descriptor` is a reserved keyword in lib-protobuf-mutator
+    if (names[0].concatcase() == "descriptor"):
+        return "desc"
+    return ''.join([name.concatcase().lower() for name in names])
+
+
 def unreachable_code():
     assert False
+
 
 #############################################################
 # Generator
@@ -657,6 +703,13 @@ def as_cType(c_prefix, name):
         return name.concatcase()
     else:
         return c_prefix + name.CamelCase()
+
+
+def as_cReturnType(c_prefix, typ):
+    if typ.category != 'bitmask':
+        return as_cType(c_prefix, typ.name)
+    else:
+        return as_cType(c_prefix, typ.name) + 'Flags'
 
 
 def as_cppType(name):
@@ -773,15 +826,9 @@ def as_formatType(typ):
 
 def c_methods(params, typ):
     return typ.methods + [
-        x for x in [
-            Method(Name('reference'), params['types']['void'], [], False,
-                   {'tags': ['dawn', 'emscripten']}),
-            Method(Name('release'), params['types']['void'], [], False,
-                   {'tags': ['dawn', 'emscripten']}),
-        ] if item_is_enabled(params['enabled_tags'], x.json_data)
-        and not item_is_disabled(params['disabled_tags'], x.json_data)
+        Method(Name('reference'), params['types']['void'], [], False, {}),
+        Method(Name('release'), params['types']['void'], [], False, {}),
     ]
-
 
 def get_c_methods_sorted_by_name(api_params):
     unsorted = [(as_MethodSuffix(typ.name, method.name), typ, method) \
@@ -836,6 +883,7 @@ def make_base_render_params(metadata):
             'as_MethodSuffix': as_MethodSuffix,
             'as_cProc': as_cProc,
             'as_cType': lambda name: as_cType(c_prefix, name),
+            'as_cReturnType': lambda typ: as_cReturnType(c_prefix, typ),
             'as_cppType': as_cppType,
             'as_jsEnumValue': as_jsEnumValue,
             'convert_cType_to_cppType': convert_cType_to_cppType,
@@ -917,6 +965,11 @@ class MultiGeneratorFromDawnJSON(Generator):
             renders.append(
                 FileRender('api_cpp_print.h',
                            'include/dawn/' + api + '_cpp_print.h',
+                           [RENDER_PARAMS_BASE, params_dawn]))
+
+            renders.append(
+                FileRender('api_cpp_chained_struct.h',
+                           'include/dawn/' + api + '_cpp_chained_struct.h',
                            [RENDER_PARAMS_BASE, params_dawn]))
 
         if 'proc' in targets:
@@ -1132,6 +1185,12 @@ class MultiGeneratorFromDawnJSON(Generator):
                            'src/dawn/fuzzers/lpmfuzz/dawn_lpm_autogen.proto',
                            lpm_params))
 
+            renders.append(
+                FileRender(
+                    'dawn/fuzzers/lpmfuzz/dawn_object_types_lpm.proto',
+                    'src/dawn/fuzzers/lpmfuzz/dawn_object_types_lpm_autogen.proto',
+                    lpm_params))
+
         if 'dawn_lpmfuzz_cpp' in targets:
             params_dawn_wire = parse_json(loaded_json,
                                           enabled_tags=['dawn', 'deprecated'],
@@ -1139,8 +1198,13 @@ class MultiGeneratorFromDawnJSON(Generator):
             api_and_wire_params = compute_wire_params(params_dawn_wire,
                                                       wire_json)
 
+            fuzzer_params = compute_lpm_params(api_and_wire_params, lpm_json)
+
             lpm_params = [
-                RENDER_PARAMS_BASE, params_dawn_wire, {}, api_and_wire_params
+                RENDER_PARAMS_BASE, params_dawn_wire, {
+                    'as_protobufMemberName': as_protobufMemberNameLPM,
+                    'unreachable_code': unreachable_code
+                }, api_and_wire_params, fuzzer_params
             ]
 
             renders.append(

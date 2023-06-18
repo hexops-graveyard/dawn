@@ -1397,30 +1397,6 @@ bool Converter::Convert(wgpu::RenderPassDepthStencilAttachment& out,
            Convert(out.stencilReadOnly, in.stencilReadOnly);
 }
 
-bool Converter::Convert(wgpu::RenderPassTimestampWrite& out,
-                        const interop::GPURenderPassTimestampWrite& in) {
-    out = {};
-    return Convert(out.querySet, in.querySet) &&      //
-           Convert(out.queryIndex, in.queryIndex) &&  //
-           Convert(out.location, in.location);
-}
-
-bool Converter::Convert(wgpu::RenderPassTimestampLocation& out,
-                        const interop::GPURenderPassTimestampLocation& in) {
-    out = wgpu::RenderPassTimestampLocation::Beginning;
-    switch (in) {
-        case interop::GPURenderPassTimestampLocation::kBeginning:
-            out = wgpu::RenderPassTimestampLocation::Beginning;
-            return true;
-        case interop::GPURenderPassTimestampLocation::kEnd:
-            out = wgpu::RenderPassTimestampLocation::End;
-            return true;
-    }
-    Napi::Error::New(env, "invalid value for GPURenderPassTimestampLocation")
-        .ThrowAsJavaScriptException();
-    return false;
-}
-
 bool Converter::Convert(wgpu::LoadOp& out, const interop::GPULoadOp& in) {
     out = wgpu::LoadOp::Clear;
     switch (in) {
@@ -1446,30 +1422,6 @@ bool Converter::Convert(wgpu::StoreOp& out, const interop::GPUStoreOp& in) {
             return true;
     }
     Napi::Error::New(env, "invalid value for GPUStoreOp").ThrowAsJavaScriptException();
-    return false;
-}
-
-bool Converter::Convert(wgpu::ComputePassTimestampWrite& out,
-                        const interop::GPUComputePassTimestampWrite& in) {
-    out = {};
-    return Convert(out.querySet, in.querySet) &&      //
-           Convert(out.queryIndex, in.queryIndex) &&  //
-           Convert(out.location, in.location);
-}
-
-bool Converter::Convert(wgpu::ComputePassTimestampLocation& out,
-                        const interop::GPUComputePassTimestampLocation& in) {
-    out = wgpu::ComputePassTimestampLocation::Beginning;
-    switch (in) {
-        case interop::GPUComputePassTimestampLocation::kBeginning:
-            out = wgpu::ComputePassTimestampLocation::Beginning;
-            return true;
-        case interop::GPUComputePassTimestampLocation::kEnd:
-            out = wgpu::ComputePassTimestampLocation::End;
-            return true;
-    }
-    Napi::Error::New(env, "invalid value for GPUComputePassTimestampLocation")
-        .ThrowAsJavaScriptException();
     return false;
 }
 
@@ -1635,7 +1587,8 @@ bool Converter::Convert(wgpu::FeatureName& out, interop::GPUFeatureName in) {
             return true;
         case interop::GPUFeatureName::kTimestampQuery:
             out = wgpu::FeatureName::TimestampQuery;
-            return true;
+            // TODO(dawn:1800): Reenable once Dawn's interface is updated.
+            return false;
         case interop::GPUFeatureName::kDepth32FloatStencil8:
             out = wgpu::FeatureName::Depth32FloatStencil8;
             return true;
@@ -1655,8 +1608,8 @@ bool Converter::Convert(wgpu::FeatureName& out, interop::GPUFeatureName in) {
             out = wgpu::FeatureName::BGRA8UnormStorage;
             return true;
         case interop::GPUFeatureName::kFloat32Filterable:
-            UNIMPLEMENTED("TODO(crbug.com/dawn/1687)");
-            return false;
+            out = wgpu::FeatureName::Float32Filterable;
+            return true;
     }
     return false;
 }
@@ -1693,6 +1646,9 @@ bool Converter::Convert(interop::GPUFeatureName& out, wgpu::FeatureName in) {
         case wgpu::FeatureName::BGRA8UnormStorage:
             out = interop::GPUFeatureName::kBgra8UnormStorage;
             return true;
+        case wgpu::FeatureName::Float32Filterable:
+            out = interop::GPUFeatureName::kFloat32Filterable;
+            return true;
 
         case wgpu::FeatureName::PipelineStatisticsQuery:
         case wgpu::FeatureName::DawnShaderFloat16:
@@ -1701,6 +1657,9 @@ bool Converter::Convert(interop::GPUFeatureName& out, wgpu::FeatureName in) {
         case wgpu::FeatureName::DawnNative:
         case wgpu::FeatureName::ChromiumExperimentalDp4a:
         case wgpu::FeatureName::TimestampQueryInsidePasses:
+        case wgpu::FeatureName::ImplicitDeviceSynchronization:
+        case wgpu::FeatureName::SurfaceCapabilities:
+        case wgpu::FeatureName::TransientAttachments:
         case wgpu::FeatureName::Undefined:
             return false;
     }
@@ -1718,6 +1677,21 @@ bool Converter::Convert(interop::GPUQueryType& out, wgpu::QueryType in) {
         case wgpu::QueryType::PipelineStatistics:
             // TODO(dawn:1123): Add support for pipeline statistics if they are in WebGPU one day.
             return false;
+    }
+    return false;
+}
+
+bool Converter::Convert(interop::GPUBufferMapState& out, wgpu::BufferMapState in) {
+    switch (in) {
+        case wgpu::BufferMapState::Unmapped:
+            out = interop::GPUBufferMapState::kUnmapped;
+            return true;
+        case wgpu::BufferMapState::Pending:
+            out = interop::GPUBufferMapState::kPending;
+            return true;
+        case wgpu::BufferMapState::Mapped:
+            out = interop::GPUBufferMapState::kMapped;
+            return true;
     }
     return false;
 }
@@ -1753,17 +1727,17 @@ bool Converter::Convert(wgpu::FilterMode& out, const interop::GPUFilterMode& in)
     return false;
 }
 
-bool Converter::Convert(wgpu::FilterMode& out, const interop::GPUMipmapFilterMode& in) {
-    out = wgpu::FilterMode::Nearest;
+bool Converter::Convert(wgpu::MipmapFilterMode& out, const interop::GPUMipmapFilterMode& in) {
+    out = wgpu::MipmapFilterMode::Nearest;
     switch (in) {
         case interop::GPUMipmapFilterMode::kNearest:
-            out = wgpu::FilterMode::Nearest;
+            out = wgpu::MipmapFilterMode::Nearest;
             return true;
         case interop::GPUMipmapFilterMode::kLinear:
-            out = wgpu::FilterMode::Linear;
+            out = wgpu::MipmapFilterMode::Linear;
             return true;
     }
-    Napi::Error::New(env, "invalid value for GPUFilterMode").ThrowAsJavaScriptException();
+    Napi::Error::New(env, "invalid value for GPUMipmapFilterMode").ThrowAsJavaScriptException();
     return false;
 }
 

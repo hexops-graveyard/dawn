@@ -45,13 +45,13 @@ Result Generate(const Program* program, const Options& options) {
     // Generate the HLSL code.
     auto impl = std::make_unique<GeneratorImpl>(&sanitized_result.program);
     result.success = impl->Generate();
-    result.error = impl->error();
+    result.error = impl->Diagnostics().str();
     result.hlsl = impl->result();
 
     // Collect the list of entry points in the sanitized program.
     for (auto* func : sanitized_result.program.AST().Functions()) {
         if (func->IsEntryPoint()) {
-            auto name = sanitized_result.program.Symbols().NameFor(func->name->symbol);
+            auto name = func->name->symbol.Name();
             result.entry_points.push_back({name, func->PipelineStage()});
         }
     }

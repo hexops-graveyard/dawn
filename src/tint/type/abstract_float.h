@@ -23,7 +23,7 @@ namespace tint::type {
 
 /// An abstract-float type.
 /// @see https://www.w3.org/TR/WGSL/#abstractFloat
-class AbstractFloat final : public Castable<AbstractFloat, AbstractNumeric> {
+class AbstractFloat final : public utils::Castable<AbstractFloat, AbstractNumeric> {
   public:
     /// Constructor
     AbstractFloat();
@@ -31,13 +31,8 @@ class AbstractFloat final : public Castable<AbstractFloat, AbstractNumeric> {
     /// Destructor
     ~AbstractFloat() override;
 
-    /// @param other the other type to compare against
-    /// @returns true if this type is equal to the given type
-    bool Equals(const UniqueNode& other) const override;
-
-    /// @param symbols the program's symbol table
     /// @returns the name for this type when printed in diagnostics.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

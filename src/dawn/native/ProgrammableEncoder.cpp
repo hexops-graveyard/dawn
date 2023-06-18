@@ -37,8 +37,9 @@ ProgrammableEncoder::ProgrammableEncoder(DeviceBase* device,
 
 ProgrammableEncoder::ProgrammableEncoder(DeviceBase* device,
                                          EncodingContext* encodingContext,
-                                         ErrorTag errorTag)
-    : ApiObjectBase(device, errorTag),
+                                         ErrorTag errorTag,
+                                         const char* label)
+    : ApiObjectBase(device, errorTag, label),
       mEncodingContext(encodingContext),
       mValidationEnabled(device->IsValidationEnabled()) {}
 
@@ -109,13 +110,19 @@ MaybeError ProgrammableEncoder::ValidateSetBindGroup(BindGroupIndex index,
                                                      BindGroupBase* group,
                                                      uint32_t dynamicOffsetCountIn,
                                                      const uint32_t* dynamicOffsetsIn) const {
-    DAWN_TRY(GetDevice()->ValidateObject(group));
-
     DAWN_INVALID_IF(index >= kMaxBindGroupsTyped, "Bind group index (%u) exceeds the maximum (%u).",
                     static_cast<uint32_t>(index), kMaxBindGroups);
 
     ityp::span<BindingIndex, const uint32_t> dynamicOffsets(dynamicOffsetsIn,
                                                             BindingIndex(dynamicOffsetCountIn));
+
+    if (group == nullptr) {
+        uint32_t size = static_cast<uint32_t>(dynamicOffsets.size());
+        DAWN_INVALID_IF(size != 0, "The number of dynamic offsets (%u) is not zero", size);
+        return {};
+    }
+
+    DAWN_TRY(GetDevice()->ValidateObject(group));
 
     // Dynamic offsets count must match the number required by the layout perfectly.
     const BindGroupLayoutBase* layout = group->GetLayout();

@@ -8,12 +8,10 @@
 main.star: lucicfg configuration for Dawn's standalone builers.
 """
 
+load("//project.star", "ACTIVE_MILESTONES")
+
 # Use LUCI Scheduler BBv2 names and add Scheduler realms configs.
 lucicfg.enable_experiment("crbug.com/1182002")
-
-luci.builder.defaults.experiments.set({
-    "luci.recipes.use_python3": 100,
-})
 
 lucicfg.config(fail_on_warnings = True)
 
@@ -349,16 +347,69 @@ def dawn_standalone_builder(name, clang, debug, cpu, fuzzer = False):
             builder = "dawn:try/" + name,
         )
 
-def chromium_dawn_tryjob(os):
+        # These builders run fine unbranched on branch CLs, so add them to the
+        # branch groups as well.
+        for milestone in ACTIVE_MILESTONES.keys():
+            luci.cq_tryjob_verifier(
+                cq_group = "Dawn-CQ-" + milestone,
+                builder = "dawn:try/" + name,
+            )
+
+def _add_branch_verifiers(builder_name, os, min_milestone = None, includable_only = False):
+    for milestone, details in ACTIVE_MILESTONES.items():
+        if os not in details.platforms:
+            continue
+        if min_milestone != None and int(milestone[1:]) < min_milestone:
+            continue
+        luci.cq_tryjob_verifier(
+            cq_group = "Dawn-CQ-" + milestone,
+            builder = "{}:try/{}".format(details.chromium_project, builder_name),
+            includable_only = includable_only,
+        )
+
+# We use the DEPS version for branches because ToT builders do not make sense on
+# branches and the DEPS versions already exist.
+_os_arch_to_branch_builder = {
+    "linux": "dawn-linux-x64-deps-rel",
+    "mac": "dawn-mac-x64-deps-rel",
+    "win": "dawn-win10-x64-deps-rel",
+    "android-arm": "dawn-android-arm-deps-rel",
+    "android-arm64": "dawn-android-arm64-deps-rel",
+}
+
+# The earliest milestone that the builder is relevant for
+_os_arch_to_min_milestone = {
+    "linux": 112,
+    "mac": 112,
+    "win": 112,
+    "android-arm": 112,
+    "android-arm64": 115,
+}
+
+def chromium_dawn_tryjob(os, arch = None):
     """Adds a tryjob that tests against Chromium
 
     Args:
       os: string for the OS, should be one or linux|mac|win
+      arch: string for the arch, or None
     """
-    luci.cq_tryjob_verifier(
-        cq_group = "Dawn-CQ",
-        builder = "chromium:try/" + os + "-dawn-rel",
-    )
+
+    if arch:
+        luci.cq_tryjob_verifier(
+            cq_group = "Dawn-CQ",
+            builder = "chromium:try/{os}-dawn-{arch}-rel".format(os = os, arch = arch),
+        )
+        _add_branch_verifiers(
+            _os_arch_to_branch_builder["{os}-{arch}".format(os = os, arch = arch)],
+            os,
+            _os_arch_to_min_milestone["{os}-{arch}".format(os = os, arch = arch)],
+        )
+    else:
+        luci.cq_tryjob_verifier(
+            cq_group = "Dawn-CQ",
+            builder = "chromium:try/{}-dawn-rel".format(os),
+        )
+        _add_branch_verifiers(_os_arch_to_branch_builder[os], os)
 
 luci.gitiles_poller(
     name = "primary-poller",
@@ -411,12 +462,15 @@ dawn_standalone_builder("cron-linux-clang-rel-x64", True, False, "x64", True)
 chromium_dawn_tryjob("linux")
 chromium_dawn_tryjob("mac")
 chromium_dawn_tryjob("win")
+chromium_dawn_tryjob("android", "arm")
+chromium_dawn_tryjob("android", "arm64")
 
 luci.cq_tryjob_verifier(
     cq_group = "Dawn-CQ",
     builder = "chromium:try/dawn-try-win10-x86-rel",
     includable_only = True,
 )
+_add_branch_verifiers("dawn-win10-x86-deps-rel", "win", includable_only = True)
 
 # Views
 
@@ -444,33 +498,49 @@ luci.cq(
     submit_burst_delay = 480 * time.second,
 )
 
-luci.cq_group(
-    name = "Dawn-CQ",
-    watch = cq.refset(
-        "https://dawn.googlesource.com/dawn",
-        refs = ["refs/heads/.+"],
-    ),
-    acls = [
-        acl.entry(
-            acl.CQ_COMMITTER,
-            groups = "project-dawn-committers",
+def _create_dawn_cq_group(name, refs, refs_exclude = None):
+    luci.cq_group(
+        name = name,
+        watch = cq.refset(
+            "https://dawn.googlesource.com/dawn",
+            refs = refs,
+            refs_exclude = refs_exclude,
         ),
-        acl.entry(
-            acl.CQ_DRY_RUNNER,
-            groups = "project-dawn-tryjob-access",
+        acls = [
+            acl.entry(
+                acl.CQ_COMMITTER,
+                groups = "project-dawn-committers",
+            ),
+            acl.entry(
+                acl.CQ_DRY_RUNNER,
+                groups = "project-dawn-tryjob-access",
+            ),
+        ],
+        verifiers = [
+            luci.cq_tryjob_verifier(
+                builder = "dawn:try/presubmit",
+                disable_reuse = True,
+            ),
+        ],
+        retry_config = cq.retry_config(
+            single_quota = 1,
+            global_quota = 2,
+            failure_weight = 1,
+            transient_failure_weight = 1,
+            timeout_weight = 2,
         ),
-    ],
-    verifiers = [
-        luci.cq_tryjob_verifier(
-            builder = "dawn:try/presubmit",
-            disable_reuse = True,
-        ),
-    ],
-    retry_config = cq.retry_config(
-        single_quota = 1,
-        global_quota = 2,
-        failure_weight = 1,
-        transient_failure_weight = 1,
-        timeout_weight = 2,
-    ),
+    )
+
+def _create_branch_groups():
+    for milestone, details in ACTIVE_MILESTONES.items():
+        _create_dawn_cq_group(
+            "Dawn-CQ-" + milestone,
+            [details.ref],
+        )
+
+_create_dawn_cq_group(
+    "Dawn-CQ",
+    ["refs/heads/.+"],
+    [details.ref for details in ACTIVE_MILESTONES.values()],
 )
+_create_branch_groups()

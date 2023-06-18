@@ -74,8 +74,14 @@ struct Options {
     /// This is potentially used for truncating unused interstage outputs at current shader stage.
     std::bitset<16> interstage_locations;
 
+    /// Set to `true` to run the TruncateInterstageVariables transform.
+    bool truncate_interstage_variables = false;
+
     /// Set to `true` to generate polyfill for `reflect` builtin for vec2<f32>
     bool polyfill_reflect_vec2_f32 = false;
+
+    /// The binding points that will be ignored in the rebustness transform.
+    std::vector<sem::BindingPoint> binding_points_ignored_in_robustness_transform;
 
     /// Reflect the fields of this class so that it can be used by tint::ForeachField()
     TINT_REFLECT(disable_robustness,

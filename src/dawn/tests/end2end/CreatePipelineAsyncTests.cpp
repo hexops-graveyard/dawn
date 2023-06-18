@@ -18,14 +18,15 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
+
 struct CreatePipelineAsyncTask {
     wgpu::ComputePipeline computePipeline = nullptr;
     wgpu::RenderPipeline renderPipeline = nullptr;
     bool isCompleted = false;
     std::string message;
 };
-}  // anonymous namespace
 
 class CreatePipelineAsyncTest : public DawnTest {
   protected:
@@ -115,10 +116,11 @@ class CreatePipelineAsyncTest : public DawnTest {
                 EXPECT_EQ(WGPUCreatePipelineAsyncStatus::WGPUCreatePipelineAsyncStatus_Success,
                           status);
 
-                CreatePipelineAsyncTask* task = static_cast<CreatePipelineAsyncTask*>(userdata);
-                task->renderPipeline = wgpu::RenderPipeline::Acquire(returnPipeline);
-                task->isCompleted = true;
-                task->message = message;
+                CreatePipelineAsyncTask* currentTask =
+                    static_cast<CreatePipelineAsyncTask*>(userdata);
+                currentTask->renderPipeline = wgpu::RenderPipeline::Acquire(returnPipeline);
+                currentTask->isCompleted = true;
+                currentTask->message = message;
             },
             &task);
     }
@@ -961,3 +963,6 @@ DAWN_INSTANTIATE_TEST(CreatePipelineAsyncTest,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

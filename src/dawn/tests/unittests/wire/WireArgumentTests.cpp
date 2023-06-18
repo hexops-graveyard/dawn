@@ -19,6 +19,7 @@
 #include "dawn/tests/unittests/wire/WireTest.h"
 
 namespace dawn::wire {
+namespace {
 
 using testing::_;
 using testing::Return;
@@ -34,7 +35,7 @@ class WireArgumentTests : public WireTest {
 TEST_F(WireArgumentTests, ValueArgument) {
     WGPUCommandEncoder encoder = wgpuDeviceCreateCommandEncoder(device, nullptr);
     WGPUComputePassEncoder pass = wgpuCommandEncoderBeginComputePass(encoder, nullptr);
-    wgpuComputePassEncoderDispatch(pass, 1, 2, 3);
+    wgpuComputePassEncoderDispatchWorkgroups(pass, 1, 2, 3);
 
     WGPUCommandEncoder apiEncoder = api.GetNewCommandEncoder();
     EXPECT_CALL(api, DeviceCreateCommandEncoder(apiDevice, nullptr)).WillOnce(Return(apiEncoder));
@@ -42,7 +43,7 @@ TEST_F(WireArgumentTests, ValueArgument) {
     WGPUComputePassEncoder apiPass = api.GetNewComputePassEncoder();
     EXPECT_CALL(api, CommandEncoderBeginComputePass(apiEncoder, nullptr)).WillOnce(Return(apiPass));
 
-    EXPECT_CALL(api, ComputePassEncoderDispatch(apiPass, 1, 2, 3)).Times(1);
+    EXPECT_CALL(api, ComputePassEncoderDispatchWorkgroups(apiPass, 1, 2, 3)).Times(1);
 
     FlushClient();
 }
@@ -240,7 +241,7 @@ TEST_F(WireArgumentTests, StructureOfValuesArgument) {
     WGPUSamplerDescriptor descriptor = {};
     descriptor.magFilter = WGPUFilterMode_Linear;
     descriptor.minFilter = WGPUFilterMode_Nearest;
-    descriptor.mipmapFilter = WGPUFilterMode_Linear;
+    descriptor.mipmapFilter = WGPUMipmapFilterMode_Linear;
     descriptor.addressModeU = WGPUAddressMode_ClampToEdge;
     descriptor.addressModeV = WGPUAddressMode_Repeat;
     descriptor.addressModeW = WGPUAddressMode_MirrorRepeat;
@@ -256,7 +257,7 @@ TEST_F(WireArgumentTests, StructureOfValuesArgument) {
                              return desc->nextInChain == nullptr &&
                                     desc->magFilter == WGPUFilterMode_Linear &&
                                     desc->minFilter == WGPUFilterMode_Nearest &&
-                                    desc->mipmapFilter == WGPUFilterMode_Linear &&
+                                    desc->mipmapFilter == WGPUMipmapFilterMode_Linear &&
                                     desc->addressModeU == WGPUAddressMode_ClampToEdge &&
                                     desc->addressModeV == WGPUAddressMode_Repeat &&
                                     desc->addressModeW == WGPUAddressMode_MirrorRepeat &&
@@ -369,4 +370,5 @@ TEST_F(WireArgumentTests, DISABLED_NullptrInArray) {
     FlushClient();
 }
 
+}  // anonymous namespace
 }  // namespace dawn::wire

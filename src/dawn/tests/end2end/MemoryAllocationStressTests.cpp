@@ -14,6 +14,9 @@
 
 #include "dawn/tests/DawnTest.h"
 
+namespace dawn {
+namespace {
+
 class MemoryAllocationStressTests : public DawnTest {};
 
 // Test memory allocation is freed correctly when creating and destroying large buffers.
@@ -25,7 +28,7 @@ TEST_P(MemoryAllocationStressTests, LargeBuffer) {
     DAWN_TEST_UNSUPPORTED_IF(IsD3D12());
 
     // TODO(crbug.com/dawn/957): Check whether it can be reproduced on each backend.
-    DAWN_TEST_UNSUPPORTED_IF(IsMetal() || IsOpenGL() || IsOpenGLES() || IsVulkan());
+    DAWN_TEST_UNSUPPORTED_IF(IsD3D11() || IsMetal() || IsOpenGL() || IsOpenGLES() || IsVulkan());
 
     uint32_t count = 100;
     for (uint32_t i = 0; i < count; i++) {
@@ -44,3 +47,6 @@ DAWN_INSTANTIATE_TEST(MemoryAllocationStressTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

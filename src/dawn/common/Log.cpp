@@ -23,6 +23,9 @@
 #if DAWN_PLATFORM_IS(ANDROID)
 #include <android/log.h>
 #endif
+#if DAWN_PLATFORM_IS(WINDOWS)
+#include <windows.h>
+#endif
 
 namespace dawn {
 
@@ -93,11 +96,25 @@ LogMessage::~LogMessage() {
 #if DAWN_PLATFORM_IS(ANDROID)
     android_LogPriority androidPriority = AndroidLogPriority(mSeverity);
     __android_log_print(androidPriority, "Dawn", "%s: %s\n", severityName, fullMessage.c_str());
-#else   // DAWN_PLATFORM_IS(ANDROID)
+#else  // DAWN_PLATFORM_IS(ANDROID)
     FILE* outputStream = stdout;
     if (mSeverity == LogSeverity::Warning || mSeverity == LogSeverity::Error) {
         outputStream = stderr;
     }
+
+#if DAWN_PLATFORM_IS(WINDOWS) && defined(OFFICIAL_BUILD)
+    // If we are in a sandboxed process on an official build, the stdout/stderr
+    // handles are likely not set, so trying to log to them will crash.
+    HANDLE handle;
+    if (outputStream == stderr) {
+        handle = GetStdHandle(STD_ERROR_HANDLE);
+    } else {
+        handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    }
+    if (handle == INVALID_HANDLE_VALUE) {
+        return;
+    }
+#endif  // DAWN_PLATFORM_IS(WINDOWS) && defined(OFFICIAL_BUILD)
 
     // Note: we use fprintf because <iostream> includes static initializers.
     fprintf(outputStream, "%s: %s\n", severityName, fullMessage.c_str());

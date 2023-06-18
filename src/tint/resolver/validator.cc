@@ -159,9 +159,9 @@ Validator::Validator(
       atomic_composite_info_(atomic_composite_info),
       valid_type_storage_layouts_(valid_type_storage_layouts) {
     // Set default severities for filterable diagnostic rules.
-    diagnostic_filters_.Set(builtin::DiagnosticRule::kDerivativeUniformity,
+    diagnostic_filters_.Set(builtin::CoreDiagnosticRule::kDerivativeUniformity,
                             builtin::DiagnosticSeverity::kError);
-    diagnostic_filters_.Set(builtin::DiagnosticRule::kChromiumUnreachableCode,
+    diagnostic_filters_.Set(builtin::ChromiumDiagnosticRule::kUnreachableCode,
                             builtin::DiagnosticSeverity::kWarning);
 }
 
@@ -199,8 +199,8 @@ bool Validator::AddDiagnostic(builtin::DiagnosticRule rule,
 
 // https://gpuweb.github.io/gpuweb/wgsl/#plain-types-section
 bool Validator::IsPlain(const type::Type* type) const {
-    return type->is_scalar() ||
-           type->IsAnyOf<type::Atomic, type::Vector, type::Matrix, type::Array, sem::Struct>();
+    return type->IsAnyOf<type::Scalar, type::Atomic, type::Vector, type::Matrix, type::Array,
+                         type::Struct>();
 }
 
 // https://gpuweb.github.io/gpuweb/wgsl/#fixed-footprint-types
@@ -214,7 +214,7 @@ bool Validator::IsFixedFootprint(const type::Type* type) const {
             return !arr->Count()->Is<type::RuntimeArrayCount>() &&
                    IsFixedFootprint(arr->ElemType());
         },
-        [&](const sem::Struct* str) {
+        [&](const type::Struct* str) {
             for (auto* member : str->Members()) {
                 if (!IsFixedFootprint(member->Type())) {
                     return false;
@@ -222,7 +222,7 @@ bool Validator::IsFixedFootprint(const type::Type* type) const {
             }
             return true;
         },
-        [&](Default) { return type->is_scalar(); });
+        [&](Default) { return type->Is<type::Scalar>(); });
 }
 
 // https://gpuweb.github.io/gpuweb/wgsl.html#host-shareable-types
@@ -235,7 +235,7 @@ bool Validator::IsHostShareable(const type::Type* type) const {
         [&](const type::Vector* vec) { return IsHostShareable(vec->type()); },
         [&](const type::Matrix* mat) { return IsHostShareable(mat->type()); },
         [&](const type::Array* arr) { return IsHostShareable(arr->ElemType()); },
-        [&](const sem::Struct* str) {
+        [&](const type::Struct* str) {
             for (auto* member : str->Members()) {
                 if (!IsHostShareable(member->Type())) {
                     return false;
@@ -397,11 +397,11 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
 
     auto is_uniform_struct_or_array = [address_space](const type::Type* ty) {
         return address_space == builtin::AddressSpace::kUniform &&
-               ty->IsAnyOf<type::Array, sem::Struct>();
+               ty->IsAnyOf<type::Array, type::Struct>();
     };
 
     auto is_uniform_struct = [address_space](const type::Type* ty) {
-        return address_space == builtin::AddressSpace::kUniform && ty->Is<sem::Struct>();
+        return address_space == builtin::AddressSpace::kUniform && ty->Is<type::Struct>();
     };
 
     auto required_alignment_of = [&](const type::Type* ty) {
@@ -413,9 +413,7 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
         return required_align;
     };
 
-    auto member_name_of = [this](const sem::StructMember* sm) {
-        return symbols_.NameFor(sm->Name());
-    };
+    auto member_name_of = [](const type::StructMember* sm) { return sm->Name().Name(); };
 
     // Only validate the [type + address space] once
     if (!valid_type_storage_layouts_.Add(TypeAndAddressSpace{store_ty, address_space})) {
@@ -427,14 +425,14 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
     }
 
     auto note_usage = [&] {
-        AddNote("'" + store_ty->FriendlyName(symbols_) + "' used in address space '" +
+        AddNote("'" + store_ty->FriendlyName() + "' used in address space '" +
                     utils::ToString(address_space) + "' here",
                 source);
     };
 
     // Among three host-shareable address spaces, f16 is supported in "uniform" and
     // "storage" address space, but not "push_constant" address space yet.
-    if (Is<type::F16>(type::Type::DeepestElementOf(store_ty)) &&
+    if (Is<type::F16>(store_ty->DeepestElement()) &&
         address_space == builtin::AddressSpace::kPushConstant) {
         AddError("using f16 types in 'push_constant' address space is not implemented yet", source);
         return false;
@@ -447,7 +445,7 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
 
             // Recurse into the member type.
             if (!AddressSpaceLayout(m->Type(), address_space, m->Declaration()->type->source)) {
-                AddNote("see layout of struct:\n" + str->Layout(symbols_), str->Source());
+                AddNote("see layout of struct:\n" + str->Layout(), str->Declaration()->source);
                 note_usage();
                 return false;
             }
@@ -457,19 +455,19 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
                 !enabled_extensions_.Contains(
                     builtin::Extension::kChromiumInternalRelaxedUniformLayout)) {
                 AddError("the offset of a struct member of type '" +
-                             m->Type()->UnwrapRef()->FriendlyName(symbols_) +
-                             "' in address space '" + utils::ToString(address_space) +
-                             "' must be a multiple of " + std::to_string(required_align) +
-                             " bytes, but '" + member_name_of(m) + "' is currently at offset " +
-                             std::to_string(m->Offset()) + ". Consider setting @align(" +
-                             std::to_string(required_align) + ") on this member",
-                         m->Source());
+                             m->Type()->UnwrapRef()->FriendlyName() + "' in address space '" +
+                             utils::ToString(address_space) + "' must be a multiple of " +
+                             std::to_string(required_align) + " bytes, but '" + member_name_of(m) +
+                             "' is currently at offset " + std::to_string(m->Offset()) +
+                             ". Consider setting @align(" + std::to_string(required_align) +
+                             ") on this member",
+                         m->Declaration()->source);
 
-                AddNote("see layout of struct:\n" + str->Layout(symbols_), str->Source());
+                AddNote("see layout of struct:\n" + str->Layout(), str->Declaration()->source);
 
                 if (auto* member_str = m->Type()->As<sem::Struct>()) {
-                    AddNote("and layout of struct member:\n" + member_str->Layout(symbols_),
-                            member_str->Source());
+                    AddNote("and layout of struct member:\n" + member_str->Layout(),
+                            member_str->Declaration()->source);
                 }
 
                 note_usage();
@@ -485,20 +483,19 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
                     !enabled_extensions_.Contains(
                         builtin::Extension::kChromiumInternalRelaxedUniformLayout)) {
                     AddError(
-                        "uniform storage requires that the number of bytes between the "
-                        "start of the previous member of type struct and the current "
-                        "member be a multiple of 16 bytes, but there are currently " +
+                        "uniform storage requires that the number of bytes between the start of "
+                        "the previous member of type struct and the current member be a multiple "
+                        "of 16 bytes, but there are currently " +
                             std::to_string(prev_to_curr_offset) + " bytes between '" +
                             member_name_of(prev_member) + "' and '" + member_name_of(m) +
                             "'. Consider setting @align(16) on this member",
-                        m->Source());
+                        m->Declaration()->source);
 
-                    AddNote("see layout of struct:\n" + str->Layout(symbols_), str->Source());
+                    AddNote("see layout of struct:\n" + str->Layout(), str->Declaration()->source);
 
                     auto* prev_member_str = prev_member->Type()->As<sem::Struct>();
-                    AddNote("and layout of previous member struct:\n" +
-                                prev_member_str->Layout(symbols_),
-                            prev_member_str->Source());
+                    AddNote("and layout of previous member struct:\n" + prev_member_str->Layout(),
+                            prev_member_str->Declaration()->source);
                     note_usage();
                     return false;
                 }
@@ -525,7 +522,7 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
                 // Since WGSL has no stride attribute, try to provide a useful hint for how the
                 // shader author can resolve the issue.
                 std::string hint;
-                if (arr->ElemType()->is_scalar()) {
+                if (arr->ElemType()->Is<type::Scalar>()) {
                     hint = "Consider using a vector or struct as the element type instead.";
                 } else if (auto* vec = arr->ElemType()->As<type::Vector>();
                            vec && vec->type()->Size() == 4) {
@@ -540,7 +537,7 @@ bool Validator::AddressSpaceLayout(const type::Type* store_ty,
                 AddError(
                     "uniform storage requires that array elements are aligned to 16 bytes, but "
                     "array element of type '" +
-                        arr->ElemType()->FriendlyName(symbols_) + "' has a stride of " +
+                        arr->ElemType()->FriendlyName() + "' has a stride of " +
                         std::to_string(arr->Stride()) + " bytes. " + hint,
                     source);
                 return false;
@@ -609,32 +606,10 @@ bool Validator::GlobalVariable(
                 return false;
             }
 
-            for (auto* attr : decl->attributes) {
-                bool is_shader_io_attribute =
-                    attr->IsAnyOf<ast::BuiltinAttribute, ast::InterpolateAttribute,
-                                  ast::InvariantAttribute, ast::LocationAttribute>();
-                bool has_io_address_space = global->AddressSpace() == builtin::AddressSpace::kIn ||
-                                            global->AddressSpace() == builtin::AddressSpace::kOut;
-                if (!attr->IsAnyOf<ast::BindingAttribute, ast::GroupAttribute,
-                                   ast::InternalAttribute>() &&
-                    (!is_shader_io_attribute || !has_io_address_space)) {
-                    AddError("attribute '" + attr->Name() + "' is not valid for module-scope 'var'",
-                             attr->source);
-                    return false;
-                }
-            }
-
             return Var(global);
         },
         [&](const ast::Override*) { return Override(global, override_ids); },
-        [&](const ast::Const*) {
-            if (!decl->attributes.IsEmpty()) {
-                AddError("attribute is not valid for module-scope 'const' declaration",
-                         decl->attributes[0]->source);
-                return false;
-            }
-            return Const(global);
-        },
+        [&](const ast::Const*) { return Const(global); },
         [&](Default) {
             TINT_ICE(Resolver, diagnostics_)
                 << "Validator::GlobalVariable() called with a unknown variable type: "
@@ -776,13 +751,10 @@ bool Validator::Override(
                     ast::GetAttribute<ast::IdAttribute>((*var)->Declaration()->attributes)->source);
                 return false;
             }
-        } else {
-            AddError("attribute is not valid for 'override' declaration", attr->source);
-            return false;
         }
     }
 
-    if (!storage_ty->is_scalar()) {
+    if (!storage_ty->Is<type::Scalar>()) {
         AddError(sem_.TypeNameOf(storage_ty) + " cannot be used as the type of a 'override'",
                  decl->source);
         return false;
@@ -795,26 +767,11 @@ bool Validator::Const(const sem::Variable*) const {
     return true;
 }
 
-bool Validator::Parameter(const ast::Function* func, const sem::Variable* var) const {
+bool Validator::Parameter(const sem::Variable* var) const {
     auto* decl = var->Declaration();
 
     if (IsValidationDisabled(decl->attributes, ast::DisabledValidation::kFunctionParameter)) {
         return true;
-    }
-
-    for (auto* attr : decl->attributes) {
-        if (!func->IsEntryPoint() && !attr->Is<ast::InternalAttribute>()) {
-            AddError("attribute is not valid for non-entry point function parameters",
-                     attr->source);
-            return false;
-        }
-        if (!attr->IsAnyOf<ast::BuiltinAttribute, ast::InvariantAttribute, ast::LocationAttribute,
-                           ast::InterpolateAttribute, ast::InternalAttribute>() &&
-            (IsValidationEnabled(decl->attributes,
-                                 ast::DisabledValidation::kEntryPointParameter))) {
-            AddError("attribute is not valid for function parameters", attr->source);
-            return false;
-        }
     }
 
     if (auto* ref = var->Type()->As<type::Pointer>()) {
@@ -1031,14 +988,7 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
                 }
                 return true;
             },
-            [&](Default) {
-                if (!attr->IsAnyOf<ast::DiagnosticAttribute, ast::StageAttribute,
-                                   ast::InternalAttribute>()) {
-                    AddError("attribute is not valid for functions", attr->source);
-                    return false;
-                }
-                return true;
-            });
+            [&](Default) { return true; });
         if (!ok) {
             return false;
         }
@@ -1070,25 +1020,7 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
         } else if (TINT_UNLIKELY(IsValidationEnabled(
                        decl->attributes, ast::DisabledValidation::kFunctionHasNoBody))) {
             TINT_ICE(Resolver, diagnostics_)
-                << "Function " << symbols_.NameFor(decl->name->symbol) << " has no body";
-        }
-
-        for (auto* attr : decl->return_type_attributes) {
-            if (!decl->IsEntryPoint()) {
-                AddError("attribute is not valid for non-entry point function return types",
-                         attr->source);
-                return false;
-            }
-            if (!attr->IsAnyOf<ast::BuiltinAttribute, ast::InternalAttribute,
-                               ast::LocationAttribute, ast::InterpolateAttribute,
-                               ast::InvariantAttribute>() &&
-                (IsValidationEnabled(decl->attributes,
-                                     ast::DisabledValidation::kEntryPointParameter) &&
-                 IsValidationEnabled(decl->attributes,
-                                     ast::DisabledValidation::kFunctionParameter))) {
-                AddError("attribute is not valid for entry point return types", attr->source);
-                return false;
-            }
+                << "Function " << decl->name->symbol.Name() << " has no body";
         }
     }
 
@@ -1102,7 +1034,7 @@ bool Validator::Function(const sem::Function* func, ast::PipelineStage stage) co
     // a function behavior is always one of {}, or {Next}.
     if (TINT_UNLIKELY(func->Behaviors() != sem::Behaviors{} &&
                       func->Behaviors() != sem::Behavior::kNext)) {
-        auto name = symbols_.NameFor(decl->name->symbol);
+        auto name = decl->name->symbol.Name();
         TINT_ICE(Resolver, diagnostics_)
             << "function '" << name << "' behaviors are: " << func->Behaviors();
     }
@@ -1199,19 +1131,19 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
             if (is_invalid_compute_shader_attribute) {
                 std::string input_or_output =
                     param_or_ret == ParamOrRetType::kParameter ? "inputs" : "output";
-                AddError("attribute is not valid for compute shader " + input_or_output,
+                AddError("@" + attr->Name() + " is not valid for compute shader " + input_or_output,
                          attr->source);
                 return false;
             }
         }
 
         if (IsValidationEnabled(attrs, ast::DisabledValidation::kEntryPointParameter)) {
-            if (is_struct_member && ty->Is<sem::Struct>()) {
+            if (is_struct_member && ty->Is<type::Struct>()) {
                 AddError("nested structures cannot be used for entry point IO", source);
                 return false;
             }
 
-            if (!ty->Is<sem::Struct>() && !pipeline_io_attribute) {
+            if (!ty->Is<type::Struct>() && !pipeline_io_attribute) {
                 std::string err = "missing entry point IO attribute";
                 if (!is_struct_member) {
                     err += (param_or_ret == ParamOrRetType::kParameter ? " on parameter"
@@ -1281,11 +1213,10 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
             if (auto* str = ty->As<sem::Struct>()) {
                 for (auto* member : str->Members()) {
                     if (!validate_entry_point_attributes_inner(
-                            member->Declaration()->attributes, member->Type(), member->Source(),
-                            param_or_ret,
-                            /*is_struct_member*/ true, member->Location())) {
-                        AddNote("while analyzing entry point '" +
-                                    symbols_.NameFor(decl->name->symbol) + "'",
+                            member->Declaration()->attributes, member->Type(),
+                            member->Declaration()->source, param_or_ret,
+                            /*is_struct_member*/ true, member->Attributes().location)) {
+                        AddNote("while analyzing entry point '" + decl->name->symbol.Name() + "'",
                                 decl->source);
                         return false;
                     }
@@ -1350,11 +1281,14 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
     utils::Hashmap<sem::BindingPoint, const ast::Variable*, 8> binding_points;
     for (auto* global : func->TransitivelyReferencedGlobals()) {
         auto* var_decl = global->Declaration()->As<ast::Var>();
-        if (!var_decl || !var_decl->HasBindingPoint()) {
+        if (!var_decl) {
             continue;
         }
         auto bp = global->BindingPoint();
-        if (auto added = binding_points.Add(bp, var_decl);
+        if (!bp) {
+            continue;
+        }
+        if (auto added = binding_points.Add(*bp, var_decl);
             !added &&
             IsValidationEnabled(decl->attributes,
                                 ast::DisabledValidation::kBindingPointCollision) &&
@@ -1364,11 +1298,11 @@ bool Validator::EntryPoint(const sem::Function* func, ast::PipelineStage stage) 
             // Bindings must not alias within a shader stage: two different variables in the
             // resource interface of a given shader must not have the same group and binding values,
             // when considered as a pair of values.
-            auto func_name = symbols_.NameFor(decl->name->symbol);
+            auto func_name = decl->name->symbol.Name();
             AddError(
                 "entry point '" + func_name +
                     "' references multiple variables that use the same resource binding @group(" +
-                    std::to_string(bp.group) + "), @binding(" + std::to_string(bp.binding) + ")",
+                    std::to_string(bp->group) + "), @binding(" + std::to_string(bp->binding) + ")",
                 var_decl->source);
             AddNote("first resource binding usage declared here", (*added.value)->source);
             return false;
@@ -1418,7 +1352,7 @@ bool Validator::EvaluationStage(const sem::ValueExpression* expr,
 bool Validator::Statements(utils::VectorRef<const ast::Statement*> stmts) const {
     for (auto* stmt : stmts) {
         if (!sem_.Get(stmt)->IsReachable()) {
-            if (!AddDiagnostic(builtin::DiagnosticRule::kChromiumUnreachableCode,
+            if (!AddDiagnostic(builtin::ChromiumDiagnosticRule::kUnreachableCode,
                                "code is unreachable", stmt->source)) {
                 return false;
             }
@@ -1505,8 +1439,7 @@ bool Validator::Call(const sem::Call* call, sem::Statement* current_statement) c
             call->Target(),  //
             [&](const sem::Function* fn) {
                 AddError("ignoring return value of function '" +
-                             symbols_.NameFor(fn->Declaration()->name->symbol) +
-                             "' annotated with @must_use",
+                             fn->Declaration()->name->symbol.Name() + "' annotated with @must_use",
                          call->Declaration()->source);
                 sem_.NoteDeclarationSource(fn->Declaration());
             },
@@ -1741,7 +1674,7 @@ bool Validator::FunctionCall(const sem::Call* call, sem::Statement* current_stat
     auto* decl = call->Declaration();
     auto* target = call->Target()->As<sem::Function>();
     auto sym = target->Declaration()->name->symbol;
-    auto name = symbols_.NameFor(sym);
+    auto name = sym.Name();
 
     if (!current_statement) {  // Function call at module-scope.
         AddError("functions cannot be called at module-scope", decl->source);
@@ -1830,7 +1763,7 @@ bool Validator::FunctionCall(const sem::Call* call, sem::Statement* current_stat
 }
 
 bool Validator::StructureInitializer(const ast::CallExpression* ctor,
-                                     const sem::Struct* struct_type) const {
+                                     const type::Struct* struct_type) const {
     if (!struct_type->IsConstructible()) {
         AddError("structure constructor has non-constructible type", ctor->source);
         return false;
@@ -1909,7 +1842,7 @@ bool Validator::ArrayConstructor(const ast::CallExpression* ctor,
 }
 
 bool Validator::Vector(const type::Type* el_ty, const Source& source) const {
-    if (!el_ty->is_scalar()) {
+    if (!el_ty->Is<type::Scalar>()) {
         AddError("vector element type must be 'bool', 'f32', 'f16', 'i32' or 'u32'", source);
         return false;
     }
@@ -1928,13 +1861,12 @@ bool Validator::PipelineStages(utils::VectorRef<sem::Function*> entry_points) co
     auto backtrace = [&](const sem::Function* func, const sem::Function* entry_point) {
         if (func != entry_point) {
             TraverseCallChain(diagnostics_, entry_point, func, [&](const sem::Function* f) {
-                AddNote(
-                    "called by function '" + symbols_.NameFor(f->Declaration()->name->symbol) + "'",
-                    f->Declaration()->source);
+                AddNote("called by function '" + f->Declaration()->name->symbol.Name() + "'",
+                        f->Declaration()->source);
             });
-            AddNote("called by entry point '" +
-                        symbols_.NameFor(entry_point->Declaration()->name->symbol) + "'",
-                    entry_point->Declaration()->source);
+            AddNote(
+                "called by entry point '" + entry_point->Declaration()->name->symbol.Name() + "'",
+                entry_point->Declaration()->source);
         }
     };
 
@@ -2040,33 +1972,33 @@ bool Validator::PushConstants(utils::VectorRef<sem::Function*> entry_points) con
                     continue;
                 }
 
-                AddError("entry point '" + symbols_.NameFor(ep->Declaration()->name->symbol) +
+                AddError("entry point '" + ep->Declaration()->name->symbol.Name() +
                              "' uses two different 'push_constant' variables.",
                          ep->Declaration()->source);
                 AddNote("first 'push_constant' variable declaration is here",
                         var->Declaration()->source);
                 if (func != ep) {
                     TraverseCallChain(diagnostics_, ep, func, [&](const sem::Function* f) {
-                        AddNote("called by function '" +
-                                    symbols_.NameFor(f->Declaration()->name->symbol) + "'",
-                                f->Declaration()->source);
+                        AddNote(
+                            "called by function '" + f->Declaration()->name->symbol.Name() + "'",
+                            f->Declaration()->source);
                     });
-                    AddNote("called by entry point '" +
-                                symbols_.NameFor(ep->Declaration()->name->symbol) + "'",
-                            ep->Declaration()->source);
+                    AddNote(
+                        "called by entry point '" + ep->Declaration()->name->symbol.Name() + "'",
+                        ep->Declaration()->source);
                 }
                 AddNote("second 'push_constant' variable declaration is here",
                         push_constant_var->Declaration()->source);
                 if (push_constant_func != ep) {
-                    TraverseCallChain(
-                        diagnostics_, ep, push_constant_func, [&](const sem::Function* f) {
-                            AddNote("called by function '" +
-                                        symbols_.NameFor(f->Declaration()->name->symbol) + "'",
-                                    f->Declaration()->source);
-                        });
-                    AddNote("called by entry point '" +
-                                symbols_.NameFor(ep->Declaration()->name->symbol) + "'",
-                            ep->Declaration()->source);
+                    TraverseCallChain(diagnostics_, ep, push_constant_func,
+                                      [&](const sem::Function* f) {
+                                          AddNote("called by function '" +
+                                                      f->Declaration()->name->symbol.Name() + "'",
+                                                  f->Declaration()->source);
+                                      });
+                    AddNote(
+                        "called by entry point '" + ep->Declaration()->name->symbol.Name() + "'",
+                        ep->Declaration()->source);
                 }
                 return false;
             }
@@ -2134,7 +2066,7 @@ bool Validator::Alias(const ast::Alias*) const {
 
 bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) const {
     if (str->Members().IsEmpty()) {
-        AddError("structures must have at least one member", str->Source());
+        AddError("structures must have at least one member", str->Declaration()->source);
         return false;
     }
 
@@ -2144,7 +2076,7 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
             if (r->Count()->Is<type::RuntimeArrayCount>()) {
                 if (member != str->Members().Back()) {
                     AddError("runtime arrays may only appear as the last member of a struct",
-                             member->Source());
+                             member->Declaration()->source);
                     return false;
                 }
             }
@@ -2156,7 +2088,7 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
         } else if (!IsFixedFootprint(member->Type())) {
             AddError(
                 "a struct that contains a runtime array cannot be nested inside another struct",
-                member->Source());
+                member->Declaration()->source);
             return false;
         }
 
@@ -2173,9 +2105,10 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
                 },
                 [&](const ast::LocationAttribute* location) {
                     has_location = true;
-                    TINT_ASSERT(Resolver, member->Location().has_value());
-                    if (!LocationAttribute(location, member->Location().value(), member->Type(),
-                                           locations, stage, member->Source())) {
+                    TINT_ASSERT(Resolver, member->Attributes().location.has_value());
+                    if (!LocationAttribute(location, member->Attributes().location.value(),
+                                           member->Type(), locations, stage,
+                                           member->Declaration()->source)) {
                         return false;
                     }
                     return true;
@@ -2208,24 +2141,7 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
                     }
                     return true;
                 },
-                [&](Default) {
-                    if (!attr->IsAnyOf<ast::BuiltinAttribute,             //
-                                       ast::InternalAttribute,            //
-                                       ast::InterpolateAttribute,         //
-                                       ast::InvariantAttribute,           //
-                                       ast::LocationAttribute,            //
-                                       ast::StructMemberOffsetAttribute,  //
-                                       ast::StructMemberAlignAttribute>()) {
-                        if (attr->Is<ast::StrideAttribute>() &&
-                            IsValidationDisabled(member->Declaration()->attributes,
-                                                 ast::DisabledValidation::kIgnoreStrideAttribute)) {
-                            return true;
-                        }
-                        AddError("attribute is not valid for structure members", attr->source);
-                        return false;
-                    }
-                    return true;
-                });
+                [&](Default) { return true; });
             if (!ok) {
                 return false;
             }
@@ -2244,13 +2160,6 @@ bool Validator::Structure(const sem::Struct* str, ast::PipelineStage stage) cons
         }
     }
 
-    for (auto* attr : str->Declaration()->attributes) {
-        if (!(attr->IsAnyOf<ast::InternalAttribute>())) {
-            AddError("attribute is not valid for struct declarations", attr->source);
-            return false;
-        }
-    }
-
     return true;
 }
 
@@ -2263,7 +2172,8 @@ bool Validator::LocationAttribute(const ast::LocationAttribute* loc_attr,
                                   const bool is_input) const {
     std::string inputs_or_output = is_input ? "inputs" : "output";
     if (stage == ast::PipelineStage::kCompute) {
-        AddError("attribute is not valid for compute shader " + inputs_or_output, loc_attr->source);
+        AddError("@" + loc_attr->Name() + " is not valid for compute shader " + inputs_or_output,
+                 loc_attr->source);
         return false;
     }
 
@@ -2484,7 +2394,7 @@ bool Validator::IncrementDecrementStatement(const ast::IncrementDecrementStateme
             [&](const ast::Override*) { return "cannot modify 'override'"; });
         if (err) {
             AddError(err, lhs->source);
-            AddNote("'" + symbols_.NameFor(v->name->symbol) + "' is declared here:", v->source);
+            AddNote("'" + v->name->symbol.Name() + "' is declared here:", v->source);
             return false;
         }
     }
@@ -2511,7 +2421,7 @@ bool Validator::IncrementDecrementStatement(const ast::IncrementDecrementStateme
 }
 
 bool Validator::NoDuplicateAttributes(utils::VectorRef<const ast::Attribute*> attributes) const {
-    utils::Hashmap<const TypeInfo*, Source, 8> seen;
+    utils::Hashmap<const utils::TypeInfo*, Source, 8> seen;
     utils::Vector<const ast::DiagnosticControl*, 8> diagnostic_controls;
     for (auto* d : attributes) {
         if (auto* diag = d->As<ast::DiagnosticAttribute>()) {
@@ -2533,9 +2443,12 @@ bool Validator::DiagnosticControls(utils::VectorRef<const ast::DiagnosticControl
                                    const char* use) const {
     // Make sure that no two diagnostic controls conflict.
     // They conflict if the rule name is the same and the severity is different.
-    utils::Hashmap<Symbol, const ast::DiagnosticControl*, 8> diagnostics;
+    utils::Hashmap<std::pair<Symbol, Symbol>, const ast::DiagnosticControl*, 8> diagnostics;
     for (auto* dc : controls) {
-        auto diag_added = diagnostics.Add(dc->rule_name->symbol, dc);
+        auto category = dc->rule_name->category ? dc->rule_name->category->symbol : Symbol();
+        auto name = dc->rule_name->name->symbol;
+
+        auto diag_added = diagnostics.Add(std::make_pair(category, name), dc);
         if (!diag_added && (*diag_added.value)->severity != dc->severity) {
             {
                 utils::StringStream ss;
@@ -2544,8 +2457,8 @@ bool Validator::DiagnosticControls(utils::VectorRef<const ast::DiagnosticControl
             }
             {
                 utils::StringStream ss;
-                ss << "severity of '" << symbols_.NameFor(dc->rule_name->symbol) << "' set to '"
-                   << dc->severity << "' here";
+                ss << "severity of '" << dc->rule_name->String() << "' set to '" << dc->severity
+                   << "' here";
                 AddNote(ss.str(), (*diag_added.value)->rule_name->source);
             }
             return false;
@@ -2589,7 +2502,7 @@ void Validator::RaiseArrayWithOverrideCountError(const Source& source) const {
 
 std::string Validator::VectorPretty(uint32_t size, const type::Type* element_type) const {
     type::Vector vec_type(element_type, size);
-    return vec_type.FriendlyName(symbols_);
+    return vec_type.FriendlyName();
 }
 
 bool Validator::CheckTypeAccessAddressSpace(
@@ -2652,8 +2565,8 @@ bool Validator::CheckTypeAccessAddressSpace(
             }
             return true;
         },
-        [&](const sem::Struct*) { return check_sub_atomics(); },  //
-        [&](const type::Array*) { return check_sub_atomics(); },  //
+        [&](const type::Struct*) { return check_sub_atomics(); },  //
+        [&](const type::Array*) { return check_sub_atomics(); },   //
         [&](Default) { return true; });
 }
 

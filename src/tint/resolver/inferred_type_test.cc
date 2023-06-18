@@ -17,26 +17,15 @@
 
 #include "gmock/gmock.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::resolver {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 // Helpers and typedefs
 template <typename T>
 using DataType = builder::DataType<T>;
-template <typename T>
-using vec2 = builder::vec2<T>;
-template <typename T>
-using vec3 = builder::vec3<T>;
-template <typename T>
-using vec4 = builder::vec4<T>;
-template <typename T>
-using mat2x2 = builder::mat2x2<T>;
-template <typename T>
-using mat3x3 = builder::mat3x3<T>;
-template <typename T>
-using mat4x4 = builder::mat4x4<T>;
 template <typename T>
 using alias = builder::alias<T>;
 
@@ -151,9 +140,9 @@ TEST_F(ResolverInferredTypeTest, InferStruct_Pass) {
     auto* str = Structure("S", utils::Vector{member});
 
     auto* expected_type = create<sem::Struct>(
-        str, str->source, str->name->symbol,
-        utils::Vector{create<sem::StructMember>(member, member->source, member->name->symbol,
-                                                create<type::I32>(), 0u, 0u, 0u, 4u, std::nullopt)},
+        str, str->name->symbol,
+        utils::Vector{create<sem::StructMember>(member, member->name->symbol, create<type::I32>(),
+                                                0u, 0u, 0u, 4u, type::StructMemberAttributes{})},
         0u, 4u, 4u);
 
     auto* ctor_expr = Call(ty.Of(str));

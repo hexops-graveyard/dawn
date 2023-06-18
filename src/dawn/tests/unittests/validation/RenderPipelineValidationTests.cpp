@@ -18,15 +18,17 @@
 #include <vector>
 
 #include "dawn/common/Constants.h"
-#include "dawn/tests/unittests/validation/DeprecatedAPITests.h"
 #include "dawn/tests/unittests/validation/ValidationTest.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class RenderPipelineValidationTest : public ValidationTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::ShaderF16};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -58,13 +60,11 @@ class RenderPipelineValidationTest : public ValidationTest {
     wgpu::ShaderModule fsModuleUint;
 };
 
-namespace {
 bool BlendFactorContainsSrcAlpha(const wgpu::BlendFactor& blendFactor) {
     return blendFactor == wgpu::BlendFactor::SrcAlpha ||
            blendFactor == wgpu::BlendFactor::OneMinusSrcAlpha ||
            blendFactor == wgpu::BlendFactor::SrcAlphaSaturated;
 }
-}  // namespace
 
 // Test cases where creation should succeed
 TEST_F(RenderPipelineValidationTest, CreationSuccess) {
@@ -759,7 +759,6 @@ TEST_F(RenderPipelineValidationTest, VertexOnlyPipelineRequireDepthStencilAttach
     depthStencilTextureDescriptor.sampleCount = 1;
     depthStencilTextureDescriptor.format = kDepthStencilFormat;
     wgpu::Texture depthStencilTexture = device.CreateTexture(&depthStencilTextureDescriptor);
-    utils::ComboRenderPassDescriptor renderPassDescriptor({}, depthStencilTexture.CreateView());
 
     utils::ComboRenderPipelineDescriptor renderPipelineDescriptor;
     renderPipelineDescriptor.multisample.count = 1;
@@ -848,7 +847,7 @@ TEST_F(RenderPipelineValidationTest, AlphaToCoverageAndSampleCount) {
 }
 
 // Tests if the sample_mask builtin is a pipeline output of fragment shader,
-// then alphaToCoverageEnabled must be false
+// then alphaToCoverageEnabled must be false.
 TEST_F(RenderPipelineValidationTest, AlphaToCoverageAndSampleMaskOutput) {
     wgpu::ShaderModule fsModuleSampleMaskOutput = utils::CreateShaderModule(device, R"(
         struct Output {
@@ -894,6 +893,84 @@ TEST_F(RenderPipelineValidationTest, AlphaToCoverageAndSampleMaskOutput) {
         descriptor.multisample.alphaToCoverageEnabled = true;
 
         device.CreateRenderPipeline(&descriptor);
+    }
+}
+
+// Tests when alphaToCoverageEnabled is true, targets[0] must exist and have alpha channel.
+TEST_F(RenderPipelineValidationTest, AlphaToCoverageAndColorTargetAlpha) {
+    {
+        // Control case
+        utils::ComboRenderPipelineDescriptor descriptor;
+        descriptor.vertex.module = vsModule;
+        descriptor.cFragment.module = fsModule;
+        descriptor.cTargets[0].format = wgpu::TextureFormat::RGBA8Unorm;
+        descriptor.multisample.count = 4;
+        descriptor.multisample.alphaToCoverageEnabled = true;
+
+        device.CreateRenderPipeline(&descriptor);
+    }
+
+    {
+        // Fragment state must exist
+        utils::ComboRenderPipelineDescriptor descriptor;
+        descriptor.vertex.module = vsModule;
+        descriptor.fragment = nullptr;
+        descriptor.multisample.count = 4;
+        descriptor.multisample.alphaToCoverageEnabled = true;
+
+        ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
+    }
+
+    {
+        // Fragment targets[0] must exist
+        utils::ComboRenderPipelineDescriptor descriptor;
+        descriptor.vertex.module = vsModule;
+        descriptor.cFragment.module = fsModule;
+        descriptor.cFragment.targetCount = 0;
+        descriptor.cFragment.targets = nullptr;
+        descriptor.multisample.count = 4;
+        descriptor.multisample.alphaToCoverageEnabled = true;
+        descriptor.EnableDepthStencil(wgpu::TextureFormat::Depth32Float);
+
+        ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
+    }
+
+    {
+        // Fragment targets[0].format must have alpha channel (only 1 target)
+        utils::ComboRenderPipelineDescriptor descriptor;
+        descriptor.vertex.module = vsModule;
+        descriptor.cFragment.module = fsModule;
+        descriptor.cTargets[0].format = wgpu::TextureFormat::R8Unorm;
+        descriptor.multisample.count = 4;
+        descriptor.multisample.alphaToCoverageEnabled = true;
+
+        ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
+    }
+
+    wgpu::ShaderModule fsModule2 = utils::CreateShaderModule(device, R"(
+        struct FragmentOut {
+            @location(0) target0 : vec4f,
+            @location(1) target1 : vec4f,
+        }
+        @fragment fn main() -> FragmentOut {
+            var out: FragmentOut;
+            out.target0 = vec4f(0, 0, 0, 1);
+            out.target1 = vec4f(1, 0, 0, 0);
+            return out;
+        })");
+
+    {
+        // Fragment targets[0].format must have alpha channel (2 targets)
+        utils::ComboRenderPipelineDescriptor descriptor;
+        descriptor.vertex.module = vsModule;
+        descriptor.cFragment.module = fsModule2;
+        descriptor.cFragment.targetCount = 2;
+        descriptor.cTargets[0].format = wgpu::TextureFormat::R8Unorm;
+        descriptor.cTargets[1].format = wgpu::TextureFormat::RGBA8Unorm;
+        descriptor.multisample.count = 4;
+        descriptor.multisample.alphaToCoverageEnabled = true;
+
+        ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
     }
 }
 
@@ -1420,121 +1497,9 @@ TEST_F(RenderPipelineValidationTest, BindingsFromCorrectEntryPoint) {
     ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
 }
 
-// Test that total fragment output resource validations must be less than limit.
-TEST_F(RenderPipelineValidationTest, MaxFragmentCombinedOutputResources) {
-    static constexpr wgpu::TextureFormat kFormat = wgpu::TextureFormat::R8Unorm;
-    wgpu::ColorTargetState kEmptyColorTargetState = {};
-    kEmptyColorTargetState.format = wgpu::TextureFormat::Undefined;
-    wgpu::ColorTargetState kColorTargetState = {};
-    kColorTargetState.format = kFormat;
-
-    // Creates a shader with the given number of output resources.
-    auto CreateShader = [&](uint32_t numBuffers, uint32_t numTextures) -> wgpu::ShaderModule {
-        // Header to declare storage buffer struct.
-        static constexpr std::string_view kHeader = "struct Buf { data : array<u32> }\n";
-        std::ostringstream bufferBindings;
-        std::ostringstream bufferOutputs;
-        for (uint32_t i = 0; i < numBuffers; i++) {
-            bufferBindings << "@group(0) @binding(" << i << ") var<storage, read_write> b" << i
-                           << ": Buf;\n";
-            bufferOutputs << "    b" << i << ".data[i] = i;\n";
-        }
-
-        std::ostringstream textureBindings;
-        std::ostringstream textureOutputs;
-        for (uint32_t i = 0; i < numTextures; i++) {
-            textureBindings << "@group(1) @binding(" << i << ") var t" << i
-                            << ": texture_storage_1d<rgba8uint, write>;\n";
-            textureOutputs << "    textureStore(t" << i << ", i, vec4u(i));\n";
-        }
-
-        std::ostringstream targetBindings;
-        std::ostringstream targetOutputs;
-        for (size_t i = 0; i < kMaxColorAttachments; i++) {
-            targetBindings << "@location(" << i << ") o" << i << " : vec4f, ";
-            targetOutputs << "vec4f(1), ";
-        }
-
-        std::ostringstream fsShader;
-        fsShader << kHeader;
-        fsShader << bufferBindings.str();
-        fsShader << textureBindings.str();
-        fsShader << "struct Outputs { " << targetBindings.str() << "}\n";
-        fsShader << "@fragment fn main(@builtin(sample_index) i : u32) -> Outputs {\n";
-        fsShader << bufferOutputs.str();
-        fsShader << textureOutputs.str();
-        fsShader << "    return Outputs(" << targetOutputs.str() << ");\n";
-        fsShader << "}";
-        return utils::CreateShaderModule(device, fsShader.str().c_str());
-    };
-
-    utils::ComboRenderPipelineDescriptor descriptor;
-    descriptor.vertex.module = utils::CreateShaderModule(device, R"(
-        @vertex fn main() -> @builtin(position) vec4f {
-            return vec4f(0.0, 0.0, 0.0, 1.0);
-        })");
-    descriptor.vertex.entryPoint = "main";
-    descriptor.cFragment.targetCount = kMaxColorAttachments;
-    descriptor.cFragment.entryPoint = "main";
-
-    // Runs test using the given parameters.
-    auto DoTest = [&](uint32_t numBuffers, uint32_t numTextures,
-                      const std::vector<uint32_t>& attachmentIndices, bool useDepthStencil,
-                      bool shouldError) {
-        descriptor.cFragment.module = CreateShader(numBuffers, numTextures);
-        descriptor.cTargets.fill(kEmptyColorTargetState);
-        for (const uint32_t attachmentIndex : attachmentIndices) {
-            descriptor.cTargets[attachmentIndex] = kColorTargetState;
-        }
-
-        if (useDepthStencil) {
-            descriptor.EnableDepthStencil();
-        } else {
-            descriptor.DisableDepthStencil();
-        }
-
-        if (shouldError) {
-            ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
-        } else {
-            device.CreateRenderPipeline(&descriptor);
-        }
-    };
-
-    // All following tests assume we are using the default limits for the following:
-    //   - maxStorageBuffersPerShaderStage    = 8
-    //   - maxStorageTexturesPerShaderStage   = 4
-    //   - maxColorAttachments                = 8
-    //   - maxFragmentCombinedOutputResources = 8
-    // Note we use the defaults for the validation tests because otherwise it is hard to verify that
-    // we are hitting the maxFragmentCombinedOutputResources limit validations versus potentially
-    // hitting other validation errors from the other limits.
-
-    // One of each resource with and without depth-stencil should pass. (Control)
-    DoTest(1, 1, {0}, false, false);
-    DoTest(1, 1, {0}, true, false);
-
-    // Max number of any single resource within limits should pass. Note we turn on depth stencil in
-    // some of these cases because empty attachments are not allowed.
-    DoTest(8, 0, {}, true, false);
-    DoTest(4, 4, {}, true, false);
-    DoTest(0, 4, {0, 1, 2, 3}, false, false);
-    DoTest(0, 0, {0, 1, 2, 3, 4, 5, 6, 7}, false, false);
-    DoTest(0, 0, {0, 1, 2, 3, 4, 5, 6, 7}, true, false);
-
-    // Max number of resources with different combinations should also pass.
-    DoTest(3, 2, {0, 3, 5}, false, false);
-    DoTest(2, 3, {2, 4, 6}, true, false);
-    DoTest(3, 3, {1, 7}, true, false);
-
-    // Max number of resources + 1 should fail.
-    DoTest(3, 3, {0, 3, 5}, false, true);
-    DoTest(3, 3, {2, 4, 6}, true, true);
-    DoTest(3, 3, {1, 5, 7}, true, true);
-}
-
 // Tests validation for per-pixel accounting for render targets. The tests currently assume that the
 // default maxColorAttachmentBytesPerSample limit of 32 is used.
-TEST_P(DeprecationTests, RenderPipelineColorAttachmentBytesPerSample) {
+TEST_F(RenderPipelineValidationTest, RenderPipelineColorAttachmentBytesPerSample) {
     // Creates a fragment shader with maximum number of color attachments to enable testing.
     auto CreateShader = [&](const std::vector<wgpu::TextureFormat>& formats) -> wgpu::ShaderModule {
         // Default type to use when formats.size() < kMaxColorAttachments.
@@ -1612,10 +1577,7 @@ TEST_P(DeprecationTests, RenderPipelineColorAttachmentBytesPerSample) {
 
     for (const TestCase& testCase : kTestCases) {
         utils::ComboRenderPipelineDescriptor descriptor;
-        descriptor.vertex.module = utils::CreateShaderModule(device, R"(
-            @vertex fn main() -> @builtin(position) vec4f {
-                return vec4f(0.0, 0.0, 0.0, 1.0);
-            })");
+        descriptor.vertex.module = vsModule;
         descriptor.vertex.entryPoint = "main";
         descriptor.cFragment.module = CreateShader(testCase.formats);
         descriptor.cFragment.entryPoint = "main";
@@ -1626,15 +1588,15 @@ TEST_P(DeprecationTests, RenderPipelineColorAttachmentBytesPerSample) {
         if (testCase.success) {
             device.CreateRenderPipeline(&descriptor);
         } else {
-            EXPECT_DEPRECATION_ERROR_OR_WARNING(device.CreateRenderPipeline(&descriptor));
+            ASSERT_DEVICE_ERROR(device.CreateRenderPipeline(&descriptor));
         }
     }
 }
 
 class DepthClipControlValidationTest : public RenderPipelineValidationTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::DepthClipControl};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
@@ -1929,3 +1891,114 @@ TEST_F(InterStageVariableMatchingValidationTest, DifferentInterpolationAttribute
         }
     }
 }
+
+class RenderPipelineTransientAttachmentValidationTest : public RenderPipelineValidationTest {
+  protected:
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
+        wgpu::FeatureName requiredFeatures[2] = {wgpu::FeatureName::ShaderF16,
+                                                 wgpu::FeatureName::TransientAttachments};
+        descriptor.requiredFeatures = requiredFeatures;
+        descriptor.requiredFeaturesCount = 2;
+        return dawnAdapter.CreateDevice(&descriptor);
+    }
+};
+
+// Test case where creation should succeed.
+TEST_F(RenderPipelineTransientAttachmentValidationTest, CreationSuccess) {
+    constexpr wgpu::TextureFormat kColorFormat = wgpu::TextureFormat::RGBA8Unorm;
+
+    wgpu::TextureDescriptor textureDescriptor;
+    textureDescriptor.usage =
+        wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TransientAttachment;
+    textureDescriptor.format = kColorFormat;
+    textureDescriptor.size.width = 4;
+    textureDescriptor.size.height = 4;
+
+    wgpu::Texture transientTexture = device.CreateTexture(&textureDescriptor);
+    utils::ComboRenderPassDescriptor renderPassDescriptor({transientTexture.CreateView()});
+
+    // Set load and store ops to supported values with transient attachments.
+    renderPassDescriptor.cColorAttachments[0].storeOp = wgpu::StoreOp::Discard;
+    renderPassDescriptor.cColorAttachments[0].loadOp = wgpu::LoadOp::Clear;
+
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDescriptor);
+
+    utils::ComboRenderPipelineDescriptor pipelineDescriptor;
+    pipelineDescriptor.vertex.module = vsModule;
+    pipelineDescriptor.cFragment.module = fsModule;
+    wgpu::RenderPipeline pipeline = device.CreateRenderPipeline(&pipelineDescriptor);
+
+    renderPass.SetPipeline(pipeline);
+    renderPass.End();
+
+    encoder.Finish();
+}
+
+// Creation of a pipeline that stores into a transient attachment should cause
+// an error.
+TEST_F(RenderPipelineTransientAttachmentValidationTest, StoreCausesError) {
+    constexpr wgpu::TextureFormat kColorFormat = wgpu::TextureFormat::RGBA8Unorm;
+
+    wgpu::TextureDescriptor textureDescriptor;
+    textureDescriptor.usage =
+        wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TransientAttachment;
+    textureDescriptor.format = kColorFormat;
+    textureDescriptor.size.width = 4;
+    textureDescriptor.size.height = 4;
+
+    wgpu::Texture transientTexture = device.CreateTexture(&textureDescriptor);
+    utils::ComboRenderPassDescriptor renderPassDescriptor({transientTexture.CreateView()});
+
+    renderPassDescriptor.cColorAttachments[0].storeOp = wgpu::StoreOp::Store;
+    renderPassDescriptor.cColorAttachments[0].loadOp = wgpu::LoadOp::Clear;
+
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDescriptor);
+
+    utils::ComboRenderPipelineDescriptor pipelineDescriptor;
+    pipelineDescriptor.vertex.module = vsModule;
+    pipelineDescriptor.cFragment.module = fsModule;
+    wgpu::RenderPipeline pipeline = device.CreateRenderPipeline(&pipelineDescriptor);
+
+    renderPass.SetPipeline(pipeline);
+    renderPass.End();
+
+    ASSERT_DEVICE_ERROR(encoder.Finish());
+}
+
+// Creation of a pipeline that loads from a transient attachment should cause
+// an error.
+TEST_F(RenderPipelineTransientAttachmentValidationTest, LoadCausesError) {
+    constexpr wgpu::TextureFormat kColorFormat = wgpu::TextureFormat::RGBA8Unorm;
+
+    wgpu::TextureDescriptor textureDescriptor;
+    textureDescriptor.usage =
+        wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::TransientAttachment;
+    textureDescriptor.format = kColorFormat;
+    textureDescriptor.size.width = 4;
+    textureDescriptor.size.height = 4;
+
+    wgpu::Texture transientTexture = device.CreateTexture(&textureDescriptor);
+    utils::ComboRenderPassDescriptor renderPassDescriptor({transientTexture.CreateView()});
+
+    renderPassDescriptor.cColorAttachments[0].storeOp = wgpu::StoreOp::Discard;
+    renderPassDescriptor.cColorAttachments[0].loadOp = wgpu::LoadOp::Load;
+
+    wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+    wgpu::RenderPassEncoder renderPass = encoder.BeginRenderPass(&renderPassDescriptor);
+
+    utils::ComboRenderPipelineDescriptor pipelineDescriptor;
+    pipelineDescriptor.vertex.module = vsModule;
+    pipelineDescriptor.cFragment.module = fsModule;
+    wgpu::RenderPipeline pipeline = device.CreateRenderPipeline(&pipelineDescriptor);
+
+    renderPass.SetPipeline(pipeline);
+    renderPass.End();
+
+    ASSERT_DEVICE_ERROR(encoder.Finish());
+}
+
+}  // anonymous namespace
+}  // namespace dawn

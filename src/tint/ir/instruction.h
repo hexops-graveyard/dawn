@@ -15,41 +15,57 @@
 #ifndef SRC_TINT_IR_INSTRUCTION_H_
 #define SRC_TINT_IR_INSTRUCTION_H_
 
-#include "src/tint/castable.h"
 #include "src/tint/ir/value.h"
-#include "src/tint/symbol_table.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/utils/castable.h"
+
+// Forward declarations
+namespace tint::ir {
+class Block;
+}  // namespace tint::ir
 
 namespace tint::ir {
 
 /// An instruction in the IR.
-class Instruction : public Castable<Instruction> {
+class Instruction : public utils::Castable<Instruction, Value> {
   public:
-    Instruction(const Instruction& instr) = delete;
-    Instruction(Instruction&& instr) = delete;
     /// Destructor
     ~Instruction() override;
 
-    Instruction& operator=(const Instruction& instr) = delete;
-    Instruction& operator=(Instruction&& instr) = delete;
+    /// Sets the block that owns this instruction
+    /// @param block the new owner block
+    void SetBlock(ir::Block* block) { block_ = block; }
 
-    /// @returns the result value for the instruction
-    Value* Result() const { return result_; }
+    /// @returns the block that owns this instruction
+    ir::Block* Block() { return block_; }
 
-    /// Write the instruction to the given stream
-    /// @param out the stream to write to
-    /// @param st the symbol table
-    /// @returns the stream
-    virtual utils::StringStream& ToString(utils::StringStream& out,
-                                          const SymbolTable& st) const = 0;
+    /// Adds the new instruction before the given instruction in the owning block
+    /// @param before the instruction to insert before
+    void InsertBefore(Instruction* before);
+    /// Adds the new instruction after the given instruction in the owning block
+    /// @param after the instruction to insert after
+    void InsertAfter(Instruction* after);
+    /// Replaces this instruction with @p replacement in the owning block owning this instruction
+    /// @param replacement the instruction to replace with
+    void ReplaceWith(Instruction* replacement);
+    /// Removes this instruction from the owning block
+    void Remove();
+
+    /// Set an operand at a given index.
+    /// @param index the operand index
+    /// @param value the value to use
+    virtual void SetOperand(size_t index, ir::Value* value) = 0;
+
+    /// Pointer to the next instruction in the list
+    Instruction* next = nullptr;
+    /// Pointer to the previous instruction in the list
+    Instruction* prev = nullptr;
 
   protected:
     /// Constructor
-    /// @param result the result value
-    explicit Instruction(Value* result);
+    Instruction();
 
-  private:
-    Value* result_ = nullptr;
+    /// The block that owns this instruction
+    ir::Block* block_ = nullptr;
 };
 
 }  // namespace tint::ir

@@ -13,34 +13,23 @@
 // limitations under the License.
 
 #include "src/tint/ast/disable_validation_attribute.h"
+#include "src/tint/ast/transform/add_block_attribute.h"
 #include "src/tint/builtin/builtin_value.h"
 #include "src/tint/resolver/resolver.h"
 #include "src/tint/resolver/resolver_test_helper.h"
-#include "src/tint/transform/add_block_attribute.h"
 #include "src/tint/type/texture_dimension.h"
 #include "src/tint/utils/string_stream.h"
 
 #include "gmock/gmock.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::resolver {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 // Helpers and typedefs
 template <typename T>
 using DataType = builder::DataType<T>;
-template <typename T>
-using vec2 = builder::vec2<T>;
-template <typename T>
-using vec3 = builder::vec3<T>;
-template <typename T>
-using vec4 = builder::vec4<T>;
-template <typename T>
-using mat2x2 = builder::mat2x2<T>;
-template <typename T>
-using mat3x3 = builder::mat3x3<T>;
-template <typename T>
-using mat4x4 = builder::mat4x4<T>;
 template <typename T, int ID = 0>
 using alias = builder::alias<T, ID>;
 template <typename T>
@@ -101,7 +90,7 @@ static utils::Vector<const ast::Attribute*, 2> createAttributes(const Source& so
             return {builder.Builtin(source, builtin::BuiltinValue::kPosition)};
         case AttributeKind::kDiagnostic:
             return {builder.DiagnosticAttribute(source, builtin::DiagnosticSeverity::kInfo,
-                                                "chromium_unreachable_code")};
+                                                "chromium", "unreachable_code")};
         case AttributeKind::kGroup:
             return {builder.Group(source, 1_a)};
         case AttributeKind::kId:
@@ -131,6 +120,43 @@ static utils::Vector<const ast::Attribute*, 2> createAttributes(const Source& so
     return {};
 }
 
+static std::string name(AttributeKind kind) {
+    switch (kind) {
+        case AttributeKind::kAlign:
+            return "@align";
+        case AttributeKind::kBinding:
+            return "@binding";
+        case AttributeKind::kBuiltin:
+            return "@builtin";
+        case AttributeKind::kDiagnostic:
+            return "@diagnostic";
+        case AttributeKind::kGroup:
+            return "@group";
+        case AttributeKind::kId:
+            return "@id";
+        case AttributeKind::kInterpolate:
+            return "@interpolate";
+        case AttributeKind::kInvariant:
+            return "@invariant";
+        case AttributeKind::kLocation:
+            return "@location";
+        case AttributeKind::kOffset:
+            return "@offset";
+        case AttributeKind::kMustUse:
+            return "@must_use";
+        case AttributeKind::kSize:
+            return "@size";
+        case AttributeKind::kStage:
+            return "@stage";
+        case AttributeKind::kStride:
+            return "@stride";
+        case AttributeKind::kWorkgroup:
+            return "@workgroup_size";
+        case AttributeKind::kBindingAndGroup:
+            return "@binding";
+    }
+    return "<unknown>";
+}
 namespace FunctionInputAndOutputTests {
 using FunctionParameterAttributeTest = TestWithParams;
 TEST_P(FunctionParameterAttributeTest, IsValid) {
@@ -144,11 +170,16 @@ TEST_P(FunctionParameterAttributeTest, IsValid) {
 
     if (params.should_pass) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
+    } else if (params.kind == AttributeKind::kLocation || params.kind == AttributeKind::kBuiltin ||
+               params.kind == AttributeKind::kInvariant ||
+               params.kind == AttributeKind::kInterpolate) {
+        EXPECT_FALSE(r()->Resolve());
+        EXPECT_EQ(r()->error(), "error: " + name(params.kind) +
+                                    " is not valid for non-entry point function parameters");
     } else {
         EXPECT_FALSE(r()->Resolve());
         EXPECT_EQ(r()->error(),
-                  "error: attribute is not valid for non-entry point function "
-                  "parameters");
+                  "error: " + name(params.kind) + " is not valid for function parameters");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -184,9 +215,9 @@ TEST_P(FunctionReturnTypeAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(),
-                  "error: attribute is not valid for non-entry point function "
-                  "return types");
+        EXPECT_EQ(r()->error(), "error: " + name(params.kind) +
+                                    " is not valid for non-entry point function "
+                                    "return types");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -234,10 +265,11 @@ TEST_P(ComputeShaderParameterAttributeTest, IsValid) {
         } else if (params.kind == AttributeKind::kInterpolate ||
                    params.kind == AttributeKind::kLocation ||
                    params.kind == AttributeKind::kInvariant) {
-            EXPECT_EQ(r()->error(),
-                      "12:34 error: attribute is not valid for compute shader inputs");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for compute shader inputs");
         } else {
-            EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for function parameters");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for function parameters");
         }
     }
 }
@@ -277,7 +309,8 @@ TEST_P(FragmentShaderParameterAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for function parameters");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for function parameters");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -309,7 +342,7 @@ TEST_P(VertexShaderParameterAttributeTest, IsValid) {
     auto* p = Param("a", ty.vec4<f32>(), attrs);
     Func("vertex_main", utils::Vector{p}, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kVertex),
@@ -331,7 +364,8 @@ TEST_P(VertexShaderParameterAttributeTest, IsValid) {
                       "12:34 error: invariant attribute must only be applied to a "
                       "position builtin");
         } else {
-            EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for function parameters");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for function parameters");
         }
     }
 }
@@ -359,7 +393,7 @@ TEST_P(ComputeShaderReturnTypeAttributeTest, IsValid) {
     auto& params = GetParam();
     Func("main", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>(), 1_f)),
+             Return(Call<vec4<f32>>(1_f)),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kCompute),
@@ -378,12 +412,12 @@ TEST_P(ComputeShaderReturnTypeAttributeTest, IsValid) {
         } else if (params.kind == AttributeKind::kInterpolate ||
                    params.kind == AttributeKind::kLocation ||
                    params.kind == AttributeKind::kInvariant) {
-            EXPECT_EQ(r()->error(),
-                      "12:34 error: attribute is not valid for compute shader output");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for compute shader output");
         } else {
-            EXPECT_EQ(r()->error(),
-                      "12:34 error: attribute is not valid for entry point return "
-                      "types");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for entry point return "
+                                        "types");
         }
     }
 }
@@ -411,7 +445,7 @@ TEST_P(FragmentShaderReturnTypeAttributeTest, IsValid) {
     auto& params = GetParam();
     auto attrs = createAttributes(Source{{12, 34}}, *this, params.kind);
     attrs.Push(Location(Source{{34, 56}}, 2_a));
-    Func("frag_main", utils::Empty, ty.vec4<f32>(), utils::Vector{Return(Call(ty.vec4<f32>()))},
+    Func("frag_main", utils::Empty, ty.vec4<f32>(), utils::Vector{Return(Call<vec4<f32>>())},
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
          },
@@ -434,8 +468,8 @@ TEST_P(FragmentShaderReturnTypeAttributeTest, IsValid) {
                       R"(34:56 error: duplicate location attribute
 12:34 note: first attribute declared here)");
         } else {
-            EXPECT_EQ(r()->error(),
-                      R"(12:34 error: attribute is not valid for entry point return types)");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for entry point return types");
         }
     }
 }
@@ -468,7 +502,7 @@ TEST_P(VertexShaderReturnTypeAttributeTest, IsValid) {
     }
     Func("vertex_main", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kVertex),
@@ -484,8 +518,8 @@ TEST_P(VertexShaderReturnTypeAttributeTest, IsValid) {
                       R"(34:56 error: multiple entry point IO attributes
 12:34 note: previously consumed @location)");
         } else {
-            EXPECT_EQ(r()->error(),
-                      R"(12:34 error: attribute is not valid for entry point return types)");
+            EXPECT_EQ(r()->error(), "12:34 error: " + name(params.kind) +
+                                        " is not valid for entry point return types");
         }
     }
 }
@@ -580,7 +614,7 @@ TEST_F(EntryPointReturnTypeAttributeTest, DuplicateInternalAttribute) {
 
 namespace StructAndStructMemberTests {
 using StructAttributeTest = TestWithParams;
-using SpirvBlockAttribute = transform::AddBlockAttribute::BlockAttribute;
+using SpirvBlockAttribute = ast::transform::AddBlockAttribute::BlockAttribute;
 TEST_P(StructAttributeTest, IsValid) {
     auto& params = GetParam();
 
@@ -591,7 +625,8 @@ TEST_P(StructAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for struct declarations");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for struct declarations");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -628,7 +663,8 @@ TEST_P(StructMemberAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for structure members");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for struct members");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -871,7 +907,8 @@ TEST_P(ArrayAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for array types");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for array types");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -898,7 +935,6 @@ TEST_P(VariableAttributeTest, IsValid) {
     auto& params = GetParam();
 
     auto attrs = createAttributes(Source{{12, 34}}, *this, params.kind);
-    auto* attr = attrs[0];
     if (IsBindingAttribute(params.kind)) {
         GlobalVar("a", ty.sampler(type::SamplerKind::kSampler), attrs);
     } else {
@@ -910,8 +946,8 @@ TEST_P(VariableAttributeTest, IsValid) {
     } else {
         EXPECT_FALSE(r()->Resolve());
         if (!IsBindingAttribute(params.kind)) {
-            EXPECT_EQ(r()->error(), "12:34 error: attribute '" + attr->Name() +
-                                        "' is not valid for module-scope 'var'");
+            EXPECT_EQ(r()->error(),
+                      "12:34 error: " + name(params.kind) + " is not valid for module-scope 'var'");
         }
     }
 }
@@ -944,13 +980,22 @@ TEST_F(VariableAttributeTest, DuplicateAttribute) {
 12:34 note: first attribute declared here)");
 }
 
-TEST_F(VariableAttributeTest, LocalVariable) {
+TEST_F(VariableAttributeTest, LocalVar) {
     auto* v = Var("a", ty.f32(), utils::Vector{Binding(Source{{12, 34}}, 2_a)});
 
     WrapInFunction(v);
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(), "12:34 error: attributes are not valid on local variables");
+    EXPECT_EQ(r()->error(), "12:34 error: @binding is not valid for function-scope 'var'");
+}
+
+TEST_F(VariableAttributeTest, LocalLet) {
+    auto* v = Let("a", utils::Vector{Binding(Source{{12, 34}}, 2_a)}, Expr(1_a));
+
+    WrapInFunction(v);
+
+    EXPECT_FALSE(r()->Resolve());
+    EXPECT_EQ(r()->error(), "12:34 error: @binding is not valid for 'let' declaration");
 }
 
 using ConstantAttributeTest = TestWithParams;
@@ -965,7 +1010,7 @@ TEST_P(ConstantAttributeTest, IsValid) {
     } else {
         EXPECT_FALSE(r()->Resolve());
         EXPECT_EQ(r()->error(),
-                  "12:34 error: attribute is not valid for module-scope 'const' declaration");
+                  "12:34 error: " + name(params.kind) + " is not valid for 'const' declaration");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -987,17 +1032,14 @@ INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
                                          TestParams{AttributeKind::kWorkgroup, false},
                                          TestParams{AttributeKind::kBindingAndGroup, false}));
 
-TEST_F(ConstantAttributeTest, DuplicateAttribute) {
+TEST_F(ConstantAttributeTest, InvalidAttribute) {
     GlobalConst("a", ty.f32(), Expr(1.23_f),
                 utils::Vector{
                     Id(Source{{12, 34}}, 0_a),
-                    Id(Source{{56, 78}}, 1_a),
                 });
 
     EXPECT_FALSE(r()->Resolve());
-    EXPECT_EQ(r()->error(),
-              R"(56:78 error: duplicate id attribute
-12:34 note: first attribute declared here)");
+    EXPECT_EQ(r()->error(), "12:34 error: @id is not valid for 'const' declaration");
 }
 
 using OverrideAttributeTest = TestWithParams;
@@ -1010,7 +1052,8 @@ TEST_P(OverrideAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for 'override' declaration");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for 'override' declaration");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1056,7 +1099,8 @@ TEST_P(SwitchStatementAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for switch statements");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for switch statements");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1089,7 +1133,8 @@ TEST_P(SwitchBodyAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for switch body");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for switch body");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1122,7 +1167,8 @@ TEST_P(IfStatementAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for if statements");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for if statements");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1155,7 +1201,8 @@ TEST_P(ForStatementAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for for statements");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for for statements");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1188,7 +1235,8 @@ TEST_P(LoopStatementAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for loop statements");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for loop statements");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1221,7 +1269,8 @@ TEST_P(WhileStatementAttributeTest, IsValid) {
         EXPECT_TRUE(r()->Resolve()) << r()->error();
     } else {
         EXPECT_FALSE(r()->Resolve());
-        EXPECT_EQ(r()->error(), "12:34 error: attribute is not valid for while statements");
+        EXPECT_EQ(r()->error(),
+                  "12:34 error: " + name(params.kind) + " is not valid for while statements");
     }
 }
 INSTANTIATE_TEST_SUITE_P(ResolverAttributeValidationTest,
@@ -1251,7 +1300,8 @@ class BlockStatementTest : public TestWithParams {
             EXPECT_TRUE(r()->Resolve()) << r()->error();
         } else {
             EXPECT_FALSE(r()->Resolve());
-            EXPECT_EQ(r()->error(), "error: attribute is not valid for block statements");
+            EXPECT_EQ(r()->error(),
+                      "error: " + name(GetParam().kind) + " is not valid for block statements");
         }
     }
 };
@@ -1541,8 +1591,10 @@ TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByEntryPoint) {
 
     Func("F", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("a", ty.vec4<f32>(), Call("textureLoad", "A", vec2<i32>(1_i, 2_i), 0_i))),
-             Decl(Var("b", ty.vec4<f32>(), Call("textureLoad", "B", vec2<i32>(1_i, 2_i), 0_i))),
+             Decl(Var("a", ty.vec4<f32>(),
+                      Call("textureLoad", "A", Call<vec2<i32>>(1_i, 2_i), 0_i))),
+             Decl(Var("b", ty.vec4<f32>(),
+                      Call("textureLoad", "B", Call<vec2<i32>>(1_i, 2_i), 0_i))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -1563,14 +1615,16 @@ TEST_F(ResourceAttributeTest, BindingPointUsedTwiceByDifferentEntryPoints) {
 
     Func("F_A", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("a", ty.vec4<f32>(), Call("textureLoad", "A", vec2<i32>(1_i, 2_i), 0_i))),
+             Decl(Var("a", ty.vec4<f32>(),
+                      Call("textureLoad", "A", Call<vec2<i32>>(1_i, 2_i), 0_i))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
          });
     Func("F_B", utils::Empty, ty.void_(),
          utils::Vector{
-             Decl(Var("b", ty.vec4<f32>(), Call("textureLoad", "B", vec2<i32>(1_i, 2_i), 0_i))),
+             Decl(Var("b", ty.vec4<f32>(),
+                      Call("textureLoad", "B", Call<vec2<i32>>(1_i, 2_i), 0_i))),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -1602,7 +1656,7 @@ TEST_F(InvariantAttributeTests, InvariantWithPosition) {
                         });
     Func("main", utils::Vector{param}, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -1621,7 +1675,7 @@ TEST_F(InvariantAttributeTests, InvariantWithoutPosition) {
                         });
     Func("main", utils::Vector{param}, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kFragment),
@@ -1644,7 +1698,7 @@ using MustUseAttributeTests = ResolverTest;
 TEST_F(MustUseAttributeTests, MustUse) {
     Func("main", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              MustUse(Source{{12, 34}}),
@@ -1903,7 +1957,7 @@ TEST_F(InterpolateTest, MissingLocationAttribute_Parameter) {
 TEST_F(InterpolateTest, MissingLocationAttribute_ReturnType) {
     Func("main", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{
              Stage(ast::PipelineStage::kVertex),
@@ -2185,7 +2239,7 @@ TEST_F(MustUseAttributeTest, UsedOnFnWithNoReturnValue) {
 namespace InternalAttributeDeps {
 namespace {
 
-class TestAttribute : public Castable<TestAttribute, ast::InternalAttribute> {
+class TestAttribute : public utils::Castable<TestAttribute, ast::InternalAttribute> {
   public:
     TestAttribute(ProgramID pid, ast::NodeID nid, const ast::IdentifierExpression* dep)
         : Base(pid, nid, utils::Vector{dep}) {}

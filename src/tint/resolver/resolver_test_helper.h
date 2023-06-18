@@ -29,9 +29,9 @@
 #include "src/tint/sem/statement.h"
 #include "src/tint/sem/value_expression.h"
 #include "src/tint/sem/variable.h"
-#include "src/tint/traits.h"
 #include "src/tint/type/abstract_float.h"
 #include "src/tint/type/abstract_int.h"
+#include "src/tint/utils/traits.h"
 #include "src/tint/utils/vector.h"
 
 namespace tint::resolver {
@@ -97,11 +97,11 @@ class TestHelper : public ProgramBuilder {
     /// @return true if all users are as expected
     bool CheckVarUsers(const ast::Variable* var,
                        utils::VectorRef<const ast::Expression*> expected_users) {
-        auto& var_users = Sem().Get(var)->Users();
-        if (var_users.size() != expected_users.Length()) {
+        auto var_users = Sem().Get(var)->Users();
+        if (var_users.Length() != expected_users.Length()) {
             return false;
         }
-        for (size_t i = 0; i < var_users.size(); i++) {
+        for (size_t i = 0; i < var_users.Length(); i++) {
             if (var_users[i]->Declaration() != expected_users[i]) {
                 return false;
             }
@@ -112,12 +112,12 @@ class TestHelper : public ProgramBuilder {
     /// @param type a type
     /// @returns the name for `type` that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(ast::Type type) { return Symbols().NameFor(type->identifier->symbol); }
+    std::string FriendlyName(ast::Type type) { return type->identifier->symbol.Name(); }
 
     /// @param type a type
     /// @returns the name for `type` that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const type::Type* type) { return type->FriendlyName(Symbols()); }
+    std::string FriendlyName(const type::Type* type) { return type->FriendlyName(); }
 
   private:
     std::unique_ptr<Resolver> resolver_;
@@ -130,51 +130,6 @@ class ResolverTestWithParam : public TestHelper, public testing::TestWithParam<T
 
 namespace builder {
 
-template <uint32_t N, typename T>
-struct vec {};
-
-template <typename T>
-using vec2 = vec<2, T>;
-
-template <typename T>
-using vec3 = vec<3, T>;
-
-template <typename T>
-using vec4 = vec<4, T>;
-
-template <uint32_t N, uint32_t M, typename T>
-struct mat {};
-
-template <typename T>
-using mat2x2 = mat<2, 2, T>;
-
-template <typename T>
-using mat2x3 = mat<2, 3, T>;
-
-template <typename T>
-using mat2x4 = mat<2, 4, T>;
-
-template <typename T>
-using mat3x2 = mat<3, 2, T>;
-
-template <typename T>
-using mat3x3 = mat<3, 3, T>;
-
-template <typename T>
-using mat3x4 = mat<3, 4, T>;
-
-template <typename T>
-using mat4x2 = mat<4, 2, T>;
-
-template <typename T>
-using mat4x3 = mat<4, 3, T>;
-
-template <typename T>
-using mat4x4 = mat<4, 4, T>;
-
-template <uint32_t N, typename T>
-struct array {};
-
 template <typename TO, int ID = 0>
 struct alias {};
 
@@ -186,9 +141,6 @@ using alias2 = alias<TO, 2>;
 
 template <typename TO>
 using alias3 = alias<TO, 3>;
-
-template <typename TO>
-struct ptr {};
 
 /// A scalar value
 using Scalar = std::variant<i32, u32, f32, f16, AInt, AFloat, bool>;
@@ -446,7 +398,7 @@ struct DataType<AInt> {
 
 /// Helper for building vector types and expressions
 template <uint32_t N, typename T>
-struct DataType<vec<N, T>> {
+struct DataType<builtin::fluent_types::vec<N, T>> {
     /// The element type
     using ElementType = T;
 
@@ -457,7 +409,7 @@ struct DataType<vec<N, T>> {
     /// @return a new AST vector type
     static inline ast::Type AST(ProgramBuilder& b) {
         if (IsInferOrAbstract<T>) {
-            return b.ty.vec<Infer, N>();
+            return b.ty.vec<builtin::fluent_types::Infer, N>();
         } else {
             return b.ty.vec(DataType<T>::AST(b), N);
         }
@@ -498,7 +450,7 @@ struct DataType<vec<N, T>> {
 
 /// Helper for building matrix types and expressions
 template <uint32_t N, uint32_t M, typename T>
-struct DataType<mat<N, M, T>> {
+struct DataType<builtin::fluent_types::mat<N, M, T>> {
     /// The element type
     using ElementType = T;
 
@@ -509,7 +461,7 @@ struct DataType<mat<N, M, T>> {
     /// @return a new AST matrix type
     static inline ast::Type AST(ProgramBuilder& b) {
         if (IsInferOrAbstract<T>) {
-            return b.ty.mat<Infer, N, M>();
+            return b.ty.mat<builtin::fluent_types::Infer, N, M>();
         } else {
             return b.ty.mat(DataType<T>::AST(b), N, M);
         }
@@ -535,13 +487,14 @@ struct DataType<mat<N, M, T>> {
         utils::Vector<const ast::Expression*, N> r;
         for (uint32_t i = 0; i < N; ++i) {
             if (one_value) {
-                r.Push(DataType<vec<M, T>>::Expr(b, utils::Vector<Scalar, 1>{args[0]}));
+                r.Push(DataType<builtin::fluent_types::vec<M, T>>::Expr(
+                    b, utils::Vector<Scalar, 1>{args[0]}));
             } else {
                 utils::Vector<Scalar, M> v;
                 for (size_t j = 0; j < M; ++j) {
                     v.Push(args[next++]);
                 }
-                r.Push(DataType<vec<M, T>>::Expr(b, std::move(v)));
+                r.Push(DataType<builtin::fluent_types::vec<M, T>>::Expr(b, std::move(v)));
             }
         }
         return r;
@@ -587,7 +540,7 @@ struct DataType<alias<T, ID>> {
     /// @param args the value nested elements will be initialized with
     /// @return a new AST expression of the alias type
     template <bool IS_COMPOSITE = is_composite>
-    static inline traits::EnableIf<!IS_COMPOSITE, const ast::Expression*> Expr(
+    static inline utils::traits::EnableIf<!IS_COMPOSITE, const ast::Expression*> Expr(
         ProgramBuilder& b,
         utils::VectorRef<Scalar> args) {
         // Cast
@@ -598,7 +551,7 @@ struct DataType<alias<T, ID>> {
     /// @param args the value nested elements will be initialized with
     /// @return a new AST expression of the alias type
     template <bool IS_COMPOSITE = is_composite>
-    static inline traits::EnableIf<IS_COMPOSITE, const ast::Expression*> Expr(
+    static inline utils::traits::EnableIf<IS_COMPOSITE, const ast::Expression*> Expr(
         ProgramBuilder& b,
         utils::VectorRef<Scalar> args) {
         // Construct
@@ -618,7 +571,8 @@ struct DataType<alias<T, ID>> {
 
 /// Helper for building pointer types and expressions
 template <typename T>
-struct DataType<ptr<T>> {
+struct DataType<
+    builtin::fluent_types::ptr<builtin::AddressSpace::kPrivate, T, builtin::Access::kUndefined>> {
     /// The element type
     using ElementType = typename DataType<T>::ElementType;
 
@@ -628,13 +582,13 @@ struct DataType<ptr<T>> {
     /// @param b the ProgramBuilder
     /// @return a new AST alias type
     static inline ast::Type AST(ProgramBuilder& b) {
-        return b.ty.pointer(DataType<T>::AST(b), builtin::AddressSpace::kPrivate,
-                            builtin::Access::kUndefined);
+        return b.ty.ptr<builtin::AddressSpace::kPrivate, T>();
     }
+
     /// @param b the ProgramBuilder
     /// @return the semantic aliased type
     static inline const type::Type* Sem(ProgramBuilder& b) {
-        return b.create<type::Pointer>(DataType<T>::Sem(b), builtin::AddressSpace::kPrivate,
+        return b.create<type::Pointer>(builtin::AddressSpace::kPrivate, DataType<T>::Sem(b),
                                        builtin::Access::kReadWrite);
     }
 
@@ -659,8 +613,8 @@ struct DataType<ptr<T>> {
 };
 
 /// Helper for building array types and expressions
-template <uint32_t N, typename T>
-struct DataType<array<N, T>> {
+template <typename T, uint32_t N>
+struct DataType<builtin::fluent_types::array<T, N>> {
     /// The element type
     using ElementType = typename DataType<T>::ElementType;
 
@@ -673,7 +627,7 @@ struct DataType<array<N, T>> {
         if (auto ast = DataType<T>::AST(b)) {
             return b.ty.array(ast, u32(N));
         }
-        return b.ty.array<Infer>();
+        return b.ty.array<builtin::fluent_types::Infer>();
     }
     /// @param b the ProgramBuilder
     /// @return the semantic array type
@@ -819,7 +773,7 @@ constexpr bool IsValue = std::is_same_v<T, Value>;
 /// Creates a Value of DataType<T> from a scalar `v`
 template <typename T>
 Value Val(T v) {
-    static_assert(traits::IsTypeIn<T, Scalar>, "v must be a Number of bool");
+    static_assert(utils::traits::IsTypeIn<T, Scalar>, "v must be a Number of bool");
     return Value::Create<T>(utils::Vector<Scalar, 1>{v});
 }
 
@@ -832,7 +786,7 @@ Value Vec(Ts... args) {
                   "Vector args must all be the same type");
     constexpr size_t N = sizeof...(args);
     utils::Vector<Scalar, sizeof...(args)> v{args...};
-    return Value::Create<vec<N, FirstT>>(std::move(v));
+    return Value::Create<builtin::fluent_types::vec<N, FirstT>>(std::move(v));
 }
 
 /// Creates a Value of DataType<array<N, T>> from N scalar `args`
@@ -843,7 +797,7 @@ Value Array(Ts... args) {
                   "Array args must all be the same type");
     constexpr size_t N = sizeof...(args);
     utils::Vector<Scalar, sizeof...(args)> v{args...};
-    return Value::Create<array<N, FirstT>>(std::move(v));
+    return Value::Create<builtin::fluent_types::array<FirstT, N>>(std::move(v));
 }
 
 /// Creates a Value of DataType<mat<C,R,T> from C*R scalar `args`
@@ -855,7 +809,7 @@ Value Mat(const T (&m_in)[C][R]) {
             m.Push(m_in[i][j]);
         }
     }
-    return Value::Create<mat<C, R, T>>(std::move(m));
+    return Value::Create<builtin::fluent_types::mat<C, R, T>>(std::move(m));
 }
 
 /// Creates a Value of DataType<mat<2,R,T> from column vectors `c0` and `c1`
@@ -869,7 +823,7 @@ Value Mat(const T (&c0)[R], const T (&c1)[R]) {
     for (auto v : c1) {
         m.Push(v);
     }
-    return Value::Create<mat<C, R, T>>(std::move(m));
+    return Value::Create<builtin::fluent_types::mat<C, R, T>>(std::move(m));
 }
 
 /// Creates a Value of DataType<mat<3,R,T> from column vectors `c0`, `c1`, and `c2`
@@ -886,7 +840,7 @@ Value Mat(const T (&c0)[R], const T (&c1)[R], const T (&c2)[R]) {
     for (auto v : c2) {
         m.Push(v);
     }
-    return Value::Create<mat<C, R, T>>(std::move(m));
+    return Value::Create<builtin::fluent_types::mat<C, R, T>>(std::move(m));
 }
 
 /// Creates a Value of DataType<mat<4,R,T> from column vectors `c0`, `c1`, `c2`, and `c3`
@@ -906,7 +860,7 @@ Value Mat(const T (&c0)[R], const T (&c1)[R], const T (&c2)[R], const T (&c3)[R]
     for (auto v : c3) {
         m.Push(v);
     }
-    return Value::Create<mat<C, R, T>>(std::move(m));
+    return Value::Create<builtin::fluent_types::mat<C, R, T>>(std::move(m));
 }
 }  // namespace builder
 }  // namespace tint::resolver

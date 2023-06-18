@@ -89,9 +89,9 @@
     } while (0)
 #define EXPECT_DEPRECATION_WARNING(statement) EXPECT_DEPRECATION_WARNINGS(statement, 1)
 
-namespace utils {
+namespace dawn::utils {
 class WireHelper;
-}  // namespace utils
+}  // namespace dawn::utils
 
 void InitDawnValidationTestEnvironment(int argc, char** argv);
 
@@ -135,9 +135,12 @@ class ValidationTest : public testing::Test {
 
   protected:
     dawn::native::Adapter& GetBackendAdapter();
-    virtual WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter);
+    virtual WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter,
+                                        wgpu::DeviceDescriptor descriptor);
 
     wgpu::Device RequestDeviceSync(const wgpu::DeviceDescriptor& deviceDesc);
+
+    virtual bool UseCompatibilityMode() const;
 
     wgpu::Device device;
     wgpu::Adapter adapter;
@@ -149,7 +152,7 @@ class ValidationTest : public testing::Test {
     std::unique_ptr<dawn::native::Instance> mDawnInstance;
     wgpu::Instance mInstance;
     dawn::native::Adapter mBackendAdapter;
-    std::unique_ptr<utils::WireHelper> mWireHelper;
+    std::unique_ptr<dawn::utils::WireHelper> mWireHelper;
     WGPUDevice mLastCreatedBackendDevice;
 
     static void OnDeviceError(WGPUErrorType type, const char* message, void* userdata);

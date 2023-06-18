@@ -40,7 +40,7 @@ class CommandEncoder final : public ApiObjectBase {
   public:
     static Ref<CommandEncoder> Create(DeviceBase* device,
                                       const CommandEncoderDescriptor* descriptor);
-    static CommandEncoder* MakeError(DeviceBase* device);
+    static CommandEncoder* MakeError(DeviceBase* device, const char* label);
 
     ObjectType GetType() const override;
 
@@ -59,6 +59,11 @@ class CommandEncoder final : public ApiObjectBase {
                                BufferBase* destination,
                                uint64_t destinationOffset,
                                uint64_t size);
+    void InternalCopyBufferToBufferWithAllocatedSize(BufferBase* source,
+                                                     uint64_t sourceOffset,
+                                                     BufferBase* destination,
+                                                     uint64_t destinationOffset,
+                                                     uint64_t size);
     void APICopyBufferToTexture(const ImageCopyBuffer* source,
                                 const ImageCopyTexture* destination,
                                 const Extent3D* copySize);
@@ -119,7 +124,7 @@ class CommandEncoder final : public ApiObjectBase {
 
   private:
     CommandEncoder(DeviceBase* device, const CommandEncoderDescriptor* descriptor);
-    CommandEncoder(DeviceBase* device, ObjectBase::ErrorTag tag);
+    CommandEncoder(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label);
 
     void DestroyImpl() override;
 

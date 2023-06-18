@@ -93,8 +93,9 @@ ReservedTexture Client::ReserveTexture(WGPUDevice device, const WGPUTextureDescr
     return result;
 }
 
-ReservedSwapChain Client::ReserveSwapChain(WGPUDevice device) {
-    SwapChain* swapChain = Make<SwapChain>();
+ReservedSwapChain Client::ReserveSwapChain(WGPUDevice device,
+                                           const WGPUSwapChainDescriptor* descriptor) {
+    SwapChain* swapChain = Make<SwapChain>(nullptr, descriptor);
 
     ReservedSwapChain result;
     result.swapchain = ToAPI(swapChain);
@@ -106,7 +107,7 @@ ReservedSwapChain Client::ReserveSwapChain(WGPUDevice device) {
 }
 
 ReservedDevice Client::ReserveDevice() {
-    Device* device = Make<Device>();
+    Device* device = Make<Device>(nullptr);
 
     ReservedDevice result;
     result.device = ToAPI(device);

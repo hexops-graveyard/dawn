@@ -15,10 +15,11 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/msl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::msl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using MslGeneratorImplTest = TestHelper;
 
@@ -29,18 +30,18 @@ TEST_F(MslGeneratorImplTest, EmitExpression_Cast_Scalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "1.0f");
 }
 
 TEST_F(MslGeneratorImplTest, EmitExpression_Cast_Vector) {
-    auto* cast = vec3<f32>(vec3<i32>(1_i, 2_i, 3_i));
+    auto* cast = Call<vec3<f32>>(Call<vec3<i32>>(1_i, 2_i, 3_i));
     WrapInFunction(cast);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "float3(1.0f, 2.0f, 3.0f)");
 }
 
@@ -51,7 +52,7 @@ TEST_F(MslGeneratorImplTest, EmitExpression_Cast_IntMin) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "2147483648u");
 }
 

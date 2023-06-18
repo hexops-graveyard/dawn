@@ -15,39 +15,22 @@
 #ifndef SRC_TINT_IR_BITCAST_H_
 #define SRC_TINT_IR_BITCAST_H_
 
-#include "src/tint/castable.h"
-#include "src/tint/ir/instruction.h"
-#include "src/tint/symbol_table.h"
-#include "src/tint/type/type.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/ir/call.h"
+#include "src/tint/utils/castable.h"
 
 namespace tint::ir {
 
 /// A bitcast instruction in the IR.
-class Bitcast : public Castable<Bitcast, Instruction> {
+class Bitcast : public utils::Castable<Bitcast, Call> {
   public:
+    /// The offset in Operands() for the value
+    static constexpr size_t kValueOperandOffset = 0;
+
     /// Constructor
-    /// @param result the result value
+    /// @param type the result type
     /// @param val the value being bitcast
-    Bitcast(Value* result, Value* val);
-    Bitcast(const Bitcast& instr) = delete;
-    Bitcast(Bitcast&& instr) = delete;
+    Bitcast(const type::Type* type, Value* val);
     ~Bitcast() override;
-
-    Bitcast& operator=(const Bitcast& instr) = delete;
-    Bitcast& operator=(Bitcast&& instr) = delete;
-
-    /// @returns the left-hand-side value for the instruction
-    const Value* Val() const { return val_; }
-
-    /// Write the instruction to the given stream
-    /// @param out the stream to write to
-    /// @param st the symbol table
-    /// @returns the stream
-    utils::StringStream& ToString(utils::StringStream& out, const SymbolTable& st) const override;
-
-  private:
-    Value* val_ = nullptr;
 };
 
 }  // namespace tint::ir

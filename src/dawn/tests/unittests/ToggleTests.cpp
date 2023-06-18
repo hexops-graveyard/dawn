@@ -27,6 +27,7 @@
 #include "dawn/utils/WGPUHelpers.h"
 #include "gtest/gtest.h"
 
+namespace dawn {
 namespace {
 
 using testing::Contains;
@@ -37,18 +38,18 @@ using testing::StrEq;
 
 class InstanceToggleTest : public testing::Test {
   protected:
-    void SetUp() override { dawnProcSetProcs(&dawn::native::GetProcs()); }
+    void SetUp() override { dawnProcSetProcs(&native::GetProcs()); }
 
     void TearDown() override { dawnProcSetProcs(nullptr); }
 };
 
 // Test that instance toggles are set by requirement or default as expected.
 TEST_F(InstanceToggleTest, InstanceTogglesSet) {
-    auto validateInstanceToggles = [](const dawn::native::Instance* nativeInstance,
+    auto validateInstanceToggles = [](const native::Instance* nativeInstance,
                                       std::initializer_list<const char*> enableToggles,
                                       std::initializer_list<const char*> disableToggles) {
-        const dawn::native::InstanceBase* instance = dawn::native::FromAPI(nativeInstance->Get());
-        const dawn::native::TogglesState& instanceTogglesState = instance->GetTogglesState();
+        const native::InstanceBase* instance = native::FromAPI(nativeInstance->Get());
+        const native::TogglesState& instanceTogglesState = instance->GetTogglesState();
         std::vector<const char*> enabledToggles = instanceTogglesState.GetEnabledToggleNames();
         std::vector<const char*> disabledToggles = instanceTogglesState.GetDisabledToggleNames();
         EXPECT_EQ(disabledToggles.size(), disableToggles.size());
@@ -63,16 +64,16 @@ TEST_F(InstanceToggleTest, InstanceTogglesSet) {
 
     // Create instance with no toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
-        // Create an instance with default toggles, where DisallowUnsafeApis is enabled.
-        instance = std::make_unique<dawn::native::Instance>();
-        validateInstanceToggles(instance.get(), {"disallow_unsafe_apis"}, {});
+        // Create an instance with default toggles, where AllowUnsafeAPIs is disabled.
+        instance = std::make_unique<native::Instance>();
+        validateInstanceToggles(instance.get(), {}, {"allow_unsafe_apis"});
     }
 
     // Create instance with empty toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
         // Make an instance descriptor chaining an empty toggles descriptor
         WGPUDawnTogglesDescriptor instanceTogglesDesc = {};
@@ -81,62 +82,63 @@ TEST_F(InstanceToggleTest, InstanceTogglesSet) {
         WGPUInstanceDescriptor instanceDesc = {};
         instanceDesc.nextInChain = &instanceTogglesDesc.chain;
 
-        // Create an instance with default toggles, where DisallowUnsafeApis is enabled.
-        instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
-        validateInstanceToggles(instance.get(), {"disallow_unsafe_apis"}, {});
+        // Create an instance with default toggles, where AllowUnsafeAPIs is disabled and
+        // DisallowUnsafeAPIs is enabled.
+        instance = std::make_unique<native::Instance>(&instanceDesc);
+        validateInstanceToggles(instance.get(), {}, {"allow_unsafe_apis"});
     }
 
-    // Create instance with DisallowUnsafeAPIs explicitly enabled in toggles descriptor
+    // Create instance with AllowUnsafeAPIs explicitly enabled in toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
-        const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
+        const char* allowUnsafeApisToggle = "allow_unsafe_apis";
         WGPUDawnTogglesDescriptor instanceTogglesDesc = {};
         instanceTogglesDesc.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
         instanceTogglesDesc.enabledTogglesCount = 1;
-        instanceTogglesDesc.enabledToggles = &disallowUnsafeApisToggle;
+        instanceTogglesDesc.enabledToggles = &allowUnsafeApisToggle;
 
         WGPUInstanceDescriptor instanceDesc = {};
         instanceDesc.nextInChain = &instanceTogglesDesc.chain;
 
-        // Create an instance with DisallowUnsafeApis explicitly enabled.
-        instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
-        validateInstanceToggles(instance.get(), {disallowUnsafeApisToggle}, {});
+        // Create an instance with AllowUnsafeAPIs explicitly enabled.
+        instance = std::make_unique<native::Instance>(&instanceDesc);
+        validateInstanceToggles(instance.get(), {allowUnsafeApisToggle}, {});
     }
 
-    // Create instance with DisallowUnsafeAPIs explicitly disabled in toggles descriptor
+    // Create instance with AllowUnsafeAPIs explicitly disabled in toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
-        const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
+        const char* allowUnsafeApisToggle = "allow_unsafe_apis";
         WGPUDawnTogglesDescriptor instanceTogglesDesc = {};
         instanceTogglesDesc.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
         instanceTogglesDesc.disabledTogglesCount = 1;
-        instanceTogglesDesc.disabledToggles = &disallowUnsafeApisToggle;
+        instanceTogglesDesc.disabledToggles = &allowUnsafeApisToggle;
 
         WGPUInstanceDescriptor instanceDesc = {};
         instanceDesc.nextInChain = &instanceTogglesDesc.chain;
 
-        // Create an instance with DisallowUnsafeApis explicitly disabled.
-        instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
-        validateInstanceToggles(instance.get(), {}, {disallowUnsafeApisToggle});
+        // Create an instance with AllowUnsafeAPIs explicitly disabled.
+        instance = std::make_unique<native::Instance>(&instanceDesc);
+        validateInstanceToggles(instance.get(), {}, {allowUnsafeApisToggle});
     }
 }
 
 // Test that instance toggles are inherited to the adapters and devices it creates.
 TEST_F(InstanceToggleTest, InstanceTogglesInheritToAdapterAndDevice) {
-    auto validateInstanceTogglesInheritedToAdapter = [&](dawn::native::Instance* nativeInstance) {
-        dawn::native::InstanceBase* instance = dawn::native::FromAPI(nativeInstance->Get());
-        const dawn::native::TogglesState& instanceTogglesState = instance->GetTogglesState();
+    auto validateInstanceTogglesInheritedToAdapter = [&](native::Instance* nativeInstance) {
+        native::InstanceBase* instance = native::FromAPI(nativeInstance->Get());
+        const native::TogglesState& instanceTogglesState = instance->GetTogglesState();
 
-        // Discover adapters with default toggles.
-        instance->DiscoverDefaultAdapters();
+        // Discover physical devices.
+        instance->DiscoverDefaultPhysicalDevices();
 
-        // Get the adapter created by instance with default toggles.
-        dawn::native::AdapterBase* nullAdapter = nullptr;
+        // Get the adapters created by instance with default toggles.
+        Ref<native::AdapterBase> nullAdapter;
         for (auto& adapter : instance->GetAdapters()) {
-            if (adapter->GetBackendType() == wgpu::BackendType::Null) {
-                nullAdapter = adapter.Get();
+            if (adapter->GetPhysicalDevice()->GetBackendType() == wgpu::BackendType::Null) {
+                nullAdapter = adapter;
                 break;
             }
         }
@@ -144,14 +146,14 @@ TEST_F(InstanceToggleTest, InstanceTogglesInheritToAdapterAndDevice) {
         auto& adapterTogglesState = nullAdapter->GetTogglesState();
 
         // Creater a default device.
-        dawn::native::DeviceBase* nullDevice = nullAdapter->APICreateDevice();
+        native::DeviceBase* nullDevice = nullAdapter->APICreateDevice();
 
         // Check instance toggles are inherited by adapter and device.
-        dawn::native::TogglesInfo togglesInfo;
-        static_assert(std::is_same_v<std::underlying_type_t<dawn::native::Toggle>, int>);
-        for (int i = 0; i < static_cast<int>(dawn::native::Toggle::EnumCount); i++) {
-            dawn::native::Toggle toggle = static_cast<dawn::native::Toggle>(i);
-            if (togglesInfo.GetToggleInfo(toggle)->stage != dawn::native::ToggleStage::Instance) {
+        native::TogglesInfo togglesInfo;
+        static_assert(std::is_same_v<std::underlying_type_t<native::Toggle>, int>);
+        for (int i = 0; i < static_cast<int>(native::Toggle::EnumCount); i++) {
+            native::Toggle toggle = static_cast<native::Toggle>(i);
+            if (togglesInfo.GetToggleInfo(toggle)->stage != native::ToggleStage::Instance) {
                 continue;
             }
             EXPECT_EQ(instanceTogglesState.IsSet(toggle), adapterTogglesState.IsSet(toggle));
@@ -163,40 +165,42 @@ TEST_F(InstanceToggleTest, InstanceTogglesInheritToAdapterAndDevice) {
         nullDevice->Release();
     };
 
-    // Create instance with DisallowUnsafeAPIs explicitly enabled in toggles descriptor
+    // Create instance with AllowUnsafeAPIs explicitly enabled in toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
-        const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
+        const char* allowUnsafeApisToggle = "allow_unsafe_apis";
         WGPUDawnTogglesDescriptor instanceTogglesDesc = {};
         instanceTogglesDesc.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
         instanceTogglesDesc.enabledTogglesCount = 1;
-        instanceTogglesDesc.enabledToggles = &disallowUnsafeApisToggle;
+        instanceTogglesDesc.enabledToggles = &allowUnsafeApisToggle;
 
         WGPUInstanceDescriptor instanceDesc = {};
         instanceDesc.nextInChain = &instanceTogglesDesc.chain;
 
         // Create an instance with DisallowUnsafeApis explicitly enabled.
-        instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
+        instance = std::make_unique<native::Instance>(&instanceDesc);
         validateInstanceTogglesInheritedToAdapter(instance.get());
     }
 
-    // Create instance with DisallowUnsafeAPIs explicitly disabled in toggles descriptor
+    // Create instance with AllowUnsafeAPIs explicitly disabled in toggles descriptor
     {
-        std::unique_ptr<dawn::native::Instance> instance;
+        std::unique_ptr<native::Instance> instance;
 
-        const char* disallowUnsafeApisToggle = "disallow_unsafe_apis";
+        const char* allowUnsafeApisToggle = "allow_unsafe_apis";
         WGPUDawnTogglesDescriptor instanceTogglesDesc = {};
         instanceTogglesDesc.chain.sType = WGPUSType::WGPUSType_DawnTogglesDescriptor;
         instanceTogglesDesc.disabledTogglesCount = 1;
-        instanceTogglesDesc.disabledToggles = &disallowUnsafeApisToggle;
+        instanceTogglesDesc.disabledToggles = &allowUnsafeApisToggle;
 
         WGPUInstanceDescriptor instanceDesc = {};
         instanceDesc.nextInChain = &instanceTogglesDesc.chain;
 
         // Create an instance with DisallowUnsafeApis explicitly enabled.
-        instance = std::make_unique<dawn::native::Instance>(&instanceDesc);
+        instance = std::make_unique<native::Instance>(&instanceDesc);
         validateInstanceTogglesInheritedToAdapter(instance.get());
     }
 }
+
 }  // anonymous namespace
+}  // namespace dawn

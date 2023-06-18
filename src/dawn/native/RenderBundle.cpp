@@ -16,6 +16,7 @@
 
 #include <utility>
 
+#include "absl/strings/str_format.h"
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/native/Commands.h"
 #include "dawn/native/Device.h"
@@ -38,7 +39,8 @@ RenderBundleBase::RenderBundleBase(RenderBundleEncoder* encoder,
       mDepthReadOnly(depthReadOnly),
       mStencilReadOnly(stencilReadOnly),
       mDrawCount(encoder->GetDrawCount()),
-      mResourceUsage(std::move(resourceUsage)) {
+      mResourceUsage(std::move(resourceUsage)),
+      mEncoderLabel(encoder->GetLabel()) {
     GetObjectTrackingList()->Track(this);
 }
 
@@ -51,15 +53,37 @@ void RenderBundleBase::DestroyImpl() {
 }
 
 // static
-RenderBundleBase* RenderBundleBase::MakeError(DeviceBase* device) {
-    return new RenderBundleBase(device, ObjectBase::kError);
+RenderBundleBase* RenderBundleBase::MakeError(DeviceBase* device, const char* label) {
+    return new RenderBundleBase(device, ObjectBase::kError, label);
 }
 
-RenderBundleBase::RenderBundleBase(DeviceBase* device, ErrorTag errorTag)
-    : ApiObjectBase(device, errorTag), mIndirectDrawMetadata(device->GetLimits()) {}
+RenderBundleBase::RenderBundleBase(DeviceBase* device, ErrorTag errorTag, const char* label)
+    : ApiObjectBase(device, errorTag, label), mIndirectDrawMetadata(device->GetLimits()) {}
 
 ObjectType RenderBundleBase::GetType() const {
     return ObjectType::RenderBundle;
+}
+
+void RenderBundleBase::FormatLabel(absl::FormatSink* s) const {
+    s->Append(ObjectTypeAsString(GetType()));
+
+    const std::string& label = GetLabel();
+    if (!label.empty()) {
+        s->Append(absl::StrFormat(" \"%s\"", label));
+    }
+
+    if (!mEncoderLabel.empty()) {
+        s->Append(absl::StrFormat(
+            " from %s \"%s\"", ObjectTypeAsString(ObjectType::RenderBundleEncoder), mEncoderLabel));
+    }
+}
+
+const std::string& RenderBundleBase::GetEncoderLabel() const {
+    return mEncoderLabel;
+}
+
+void RenderBundleBase::SetEncoderLabel(std::string encoderLabel) {
+    mEncoderLabel = encoderLabel;
 }
 
 CommandIterator* RenderBundleBase::GetCommands() {

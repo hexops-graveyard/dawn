@@ -17,10 +17,11 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/hlsl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::hlsl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using HlslGeneratorImplTest_Binary = TestHelper;
 
@@ -66,7 +67,7 @@ TEST_P(HlslBinaryTest, Emit_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), params.result);
 }
 TEST_P(HlslBinaryTest, Emit_f16) {
@@ -98,7 +99,7 @@ TEST_P(HlslBinaryTest, Emit_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), params.result);
 }
 TEST_P(HlslBinaryTest, Emit_u32) {
@@ -121,7 +122,7 @@ TEST_P(HlslBinaryTest, Emit_u32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), params.result);
 }
 TEST_P(HlslBinaryTest, Emit_i32) {
@@ -149,7 +150,7 @@ TEST_P(HlslBinaryTest, Emit_i32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), params.result);
 }
 INSTANTIATE_TEST_SUITE_P(
@@ -176,7 +177,7 @@ INSTANTIATE_TEST_SUITE_P(
                                BinaryData::Types::Float}));
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f32) {
-    auto* lhs = vec3<f32>(1_f, 1_f, 1_f);
+    auto* lhs = Call<vec3<f32>>(1_f, 1_f, 1_f);
     auto* rhs = Expr(1_f);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
@@ -186,14 +187,14 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(1.0f).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f16) {
     Enable(builtin::Extension::kF16);
 
-    auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* lhs = Call<vec3<f16>>(1_h, 1_h, 1_h);
     auto* rhs = Expr(1_h);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
@@ -203,13 +204,13 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorScalar_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(float16_t(1.0h)).xxx");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f32) {
     auto* lhs = Expr(1_f);
-    auto* rhs = vec3<f32>(1_f, 1_f, 1_f);
+    auto* rhs = Call<vec3<f32>>(1_f, 1_f, 1_f);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
 
@@ -218,7 +219,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(1.0f).xxx");
 }
 
@@ -226,7 +227,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f16) {
     Enable(builtin::Extension::kF16);
 
     auto* lhs = Expr(1_h);
-    auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* rhs = Call<vec3<f16>>(1_h, 1_h, 1_h);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
 
@@ -235,7 +236,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarVector_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(float16_t(1.0h)).xxx");
 }
 
@@ -250,7 +251,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(mat * 1.0f)");
 }
 
@@ -267,7 +268,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixScalar_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(mat * float16_t(1.0h))");
 }
 
@@ -282,7 +283,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(1.0f * mat)");
 }
 
@@ -299,14 +300,14 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_ScalarMatrix_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(float16_t(1.0h) * mat)");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), builtin::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
-    auto* rhs = vec3<f32>(1_f, 1_f, 1_f);
+    auto* rhs = Call<vec3<f32>>(1_f, 1_f, 1_f);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
     WrapInFunction(expr);
@@ -314,7 +315,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul((1.0f).xxx, mat)");
 }
 
@@ -323,7 +324,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f16) {
 
     GlobalVar("mat", ty.mat3x3<f16>(), builtin::AddressSpace::kPrivate);
     auto* lhs = Expr("mat");
-    auto* rhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* rhs = Call<vec3<f16>>(1_h, 1_h, 1_h);
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
     WrapInFunction(expr);
@@ -331,13 +332,13 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixVector_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul((float16_t(1.0h)).xxx, mat)");
 }
 
 TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f32) {
     GlobalVar("mat", ty.mat3x3<f32>(), builtin::AddressSpace::kPrivate);
-    auto* lhs = vec3<f32>(1_f, 1_f, 1_f);
+    auto* lhs = Call<vec3<f32>>(1_f, 1_f, 1_f);
     auto* rhs = Expr("mat");
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
@@ -346,7 +347,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul(mat, (1.0f).xxx)");
 }
 
@@ -354,7 +355,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f16) {
     Enable(builtin::Extension::kF16);
 
     GlobalVar("mat", ty.mat3x3<f16>(), builtin::AddressSpace::kPrivate);
-    auto* lhs = vec3<f16>(1_h, 1_h, 1_h);
+    auto* lhs = Call<vec3<f16>>(1_h, 1_h, 1_h);
     auto* rhs = Expr("mat");
 
     auto* expr = create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, lhs, rhs);
@@ -363,7 +364,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_VectorMatrix_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul(mat, (float16_t(1.0h)).xxx)");
 }
 
@@ -377,7 +378,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f32) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul(rhs, lhs)");
 }
 
@@ -393,7 +394,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Multiply_MatrixMatrix_f16) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    EXPECT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "mul(rhs, lhs)");
 }
 
@@ -407,7 +408,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Logical_And) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(tint_tmp)");
     EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
 if (tint_tmp) {
@@ -432,7 +433,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Logical_Multi) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(tint_tmp)");
     EXPECT_EQ(gen.result(), R"(bool tint_tmp_1 = a;
 if (tint_tmp_1) {
@@ -459,7 +460,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Logical_Or) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(tint_tmp)");
     EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
 if (!tint_tmp) {
@@ -490,7 +491,7 @@ TEST_F(HlslGeneratorImplTest_Binary, If_WithLogical) {
 
     GeneratorImpl& gen = Build();
 
-    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.Diagnostics();
     EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
 if (tint_tmp) {
   tint_tmp = b;
@@ -526,7 +527,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Return_WithLogical) {
 
     GeneratorImpl& gen = Build();
 
-    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.Diagnostics();
     EXPECT_EQ(gen.result(), R"(bool tint_tmp_1 = a;
 if (tint_tmp_1) {
   tint_tmp_1 = b;
@@ -557,7 +558,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Assign_WithLogical) {
 
     GeneratorImpl& gen = Build();
 
-    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.Diagnostics();
     EXPECT_EQ(gen.result(), R"(bool tint_tmp_1 = b;
 if (!tint_tmp_1) {
   tint_tmp_1 = c;
@@ -589,7 +590,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Decl_WithLogical) {
 
     GeneratorImpl& gen = Build();
 
-    ASSERT_TRUE(gen.EmitStatement(decl)) << gen.error();
+    ASSERT_TRUE(gen.EmitStatement(decl)) << gen.Diagnostics();
     EXPECT_EQ(gen.result(), R"(bool tint_tmp_1 = b;
 if (tint_tmp_1) {
   tint_tmp_1 = c;
@@ -631,7 +632,7 @@ TEST_F(HlslGeneratorImplTest_Binary, Call_WithLogical) {
 
     GeneratorImpl& gen = Build();
 
-    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitStatement(expr)) << gen.Diagnostics();
     EXPECT_EQ(gen.result(), R"(bool tint_tmp = a;
 if (tint_tmp) {
   tint_tmp = b;

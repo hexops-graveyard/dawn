@@ -38,19 +38,17 @@ class StructMember;
 namespace tint::sem {
 
 /// Struct holds the semantic information for structures.
-class Struct final : public Castable<Struct, type::Struct> {
+/// Unlike type::Struct, sem::Struct has an AST declaration node.
+class Struct final : public utils::Castable<Struct, type::Struct> {
   public:
     /// Constructor
     /// @param declaration the AST structure declaration
-    /// @param source the source of the structure
     /// @param name the name of the structure
     /// @param members the structure members
     /// @param align the byte alignment of the structure
     /// @param size the byte size of the structure
-    /// @param size_no_padding size of the members without the end of structure
-    /// alignment padding
+    /// @param size_no_padding size of the members without the end of structure alignment padding
     Struct(const ast::Struct* declaration,
-           tint::Source source,
            Symbol name,
            utils::VectorRef<const StructMember*> members,
            uint32_t align,
@@ -73,27 +71,26 @@ class Struct final : public Castable<Struct, type::Struct> {
 };
 
 /// StructMember holds the semantic information for structure members.
-class StructMember final : public Castable<StructMember, type::StructMember> {
+/// Unlike type::StructMember, sem::StructMember has an AST declaration node.
+class StructMember final : public utils::Castable<StructMember, type::StructMember> {
   public:
     /// Constructor
     /// @param declaration the AST declaration node
-    /// @param source the source of the struct member
     /// @param name the name of the structure member
     /// @param type the type of the member
     /// @param index the index of the member in the structure
     /// @param offset the byte offset from the base of the structure
     /// @param align the byte alignment of the member
     /// @param size the byte size of the member
-    /// @param location the location attribute, if present
+    /// @param attributes the optional attributes
     StructMember(const ast::StructMember* declaration,
-                 tint::Source source,
                  Symbol name,
                  const type::Type* type,
                  uint32_t index,
                  uint32_t offset,
                  uint32_t align,
                  uint32_t size,
-                 std::optional<uint32_t> location);
+                 const type::StructMemberAttributes& attributes);
 
     /// Destructor
     ~StructMember() override;

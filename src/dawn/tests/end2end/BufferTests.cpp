@@ -19,6 +19,9 @@
 
 #include "dawn/tests/DawnTest.h"
 
+namespace dawn {
+namespace {
+
 class BufferMappingTests : public DawnTest {
   protected:
     void MapAsyncAndWait(const wgpu::Buffer& buffer,
@@ -428,7 +431,7 @@ TEST_P(BufferMappingTests, OffsetNotUpdatedOnError) {
     buffer.MapAsync(
         wgpu::MapMode::Read, 0, 4,
         [](WGPUBufferMapAsyncStatus status, void* userdata) {
-            ASSERT_EQ(WGPUBufferMapAsyncStatus_Error, status);
+            ASSERT_EQ(WGPUBufferMapAsyncStatus_MappingAlreadyPending, status);
             *static_cast<bool*>(userdata) = true;
         },
         &done2);
@@ -883,7 +886,7 @@ TEST_P(BufferMappedAtCreationTests, CreateThenMapBeforeUnmapFailure) {
         buffer.MapAsync(
             wgpu::MapMode::Write, 0, 4,
             [](WGPUBufferMapAsyncStatus status, void* userdata) {
-                ASSERT_EQ(WGPUBufferMapAsyncStatus_Error, status);
+                ASSERT_EQ(WGPUBufferMapAsyncStatus_ValidationError, status);
                 *static_cast<bool*>(userdata) = true;
             },
             &done);
@@ -990,6 +993,7 @@ TEST_P(BufferTests, CreateBufferOOM) {
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGL());
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
     DAWN_TEST_UNSUPPORTED_IF(IsAsan());
+    DAWN_TEST_UNSUPPORTED_IF(IsTsan());
 
     wgpu::BufferDescriptor descriptor;
     descriptor.usage = wgpu::BufferUsage::CopyDst;
@@ -1016,6 +1020,7 @@ TEST_P(BufferTests, BufferMappedAtCreationOOM) {
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGL());
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
     DAWN_TEST_UNSUPPORTED_IF(IsAsan());
+    DAWN_TEST_UNSUPPORTED_IF(IsTsan());
 
     // Test non-mappable buffer
     {
@@ -1082,6 +1087,7 @@ TEST_P(BufferTests, CreateBufferOOMMapAsync) {
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGL());
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
     DAWN_TEST_UNSUPPORTED_IF(IsAsan());
+    DAWN_TEST_UNSUPPORTED_IF(IsTsan());
 
     auto RunTest = [this](const wgpu::BufferDescriptor& descriptor) {
         wgpu::Buffer buffer;
@@ -1091,7 +1097,7 @@ TEST_P(BufferTests, CreateBufferOOMMapAsync) {
         ASSERT_DEVICE_ERROR(buffer.MapAsync(
             wgpu::MapMode::Write, 0, 4,
             [](WGPUBufferMapAsyncStatus status, void* userdata) {
-                EXPECT_EQ(status, WGPUBufferMapAsyncStatus_Error);
+                EXPECT_EQ(status, WGPUBufferMapAsyncStatus_ValidationError);
                 *static_cast<bool*>(userdata) = true;
             },
             &done));
@@ -1153,3 +1159,6 @@ DAWN_INSTANTIATE_TEST(BufferNoSuballocationTests,
                       OpenGLBackend({"disable_resource_suballocation"}),
                       OpenGLESBackend({"disable_resource_suballocation"}),
                       VulkanBackend({"disable_resource_suballocation"}));
+
+}  // anonymous namespace
+}  // namespace dawn

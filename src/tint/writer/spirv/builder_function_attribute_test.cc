@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "gmock/gmock.h"
+#include "gtest/gtest-spi.h"
 #include "src/tint/ast/stage_attribute.h"
 #include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::spirv {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using BuilderTest = TestHelper;
 
@@ -32,8 +35,8 @@ TEST_F(BuilderTest, Attribute_Stage) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.entry_points()),
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().EntryPoints()),
               R"(OpEntryPoint Fragment %3 "main"
 )");
 }
@@ -59,7 +62,7 @@ TEST_P(Attribute_StageTest, Emit) {
     if (params.stage == ast::PipelineStage::kVertex) {
         ret_type = ty.vec4<f32>();
         ret_type_attrs.Push(Builtin(builtin::BuiltinValue::kPosition));
-        body.Push(Return(Call(ty.vec4<f32>())));
+        body.Push(Return(Call<vec4<f32>>()));
     }
 
     utils::Vector<const ast::Attribute*, 2> deco_list{Stage(params.stage)};
@@ -72,11 +75,11 @@ TEST_P(Attribute_StageTest, Emit) {
     spirv::Builder& b = Build();
 
     if (var) {
-        ASSERT_TRUE(b.GenerateGlobalVariable(var)) << b.error();
+        ASSERT_TRUE(b.GenerateGlobalVariable(var)) << b.Diagnostics();
     }
-    ASSERT_TRUE(b.GenerateFunction(func)) << b.error();
+    ASSERT_TRUE(b.GenerateFunction(func)) << b.Diagnostics();
 
-    auto preamble = b.entry_points();
+    auto preamble = b.Module().EntryPoints();
     ASSERT_GE(preamble.size(), 1u);
     EXPECT_EQ(preamble[0].opcode(), spv::Op::OpEntryPoint);
 
@@ -98,8 +101,8 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_Fragment_OriginUpperLeft) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.execution_modes()),
+    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().ExecutionModes()),
               R"(OpExecutionMode %3 OriginUpperLeft
 )");
 }
@@ -110,8 +113,8 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_WorkgroupSize_Default) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.execution_modes()),
+    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().ExecutionModes()),
               R"(OpExecutionMode %3 LocalSize 1 1 1
 )");
 }
@@ -125,8 +128,8 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_WorkgroupSize_Literals) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.execution_modes()),
+    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().ExecutionModes()),
               R"(OpExecutionMode %3 LocalSize 2 4 6
 )");
 }
@@ -143,45 +146,51 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_WorkgroupSize_Const) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(DumpInstructions(b.execution_modes()),
+    ASSERT_TRUE(b.GenerateExecutionModes(func, 3)) << b.Diagnostics();
+    EXPECT_EQ(DumpInstructions(b.Module().ExecutionModes()),
               R"(OpExecutionMode %3 LocalSize 2 3 4
 )");
 }
 
 TEST_F(BuilderTest, Decoration_ExecutionMode_WorkgroupSize_OverridableConst) {
-    Override("width", ty.i32(), Call<i32>(2_i), Id(7_u));
-    Override("height", ty.i32(), Call<i32>(3_i), Id(8_u));
-    Override("depth", ty.i32(), Call<i32>(4_i), Id(9_u));
-    auto* func = Func("main", utils::Empty, ty.void_(), utils::Empty,
-                      utils::Vector{
-                          WorkgroupSize("width", "height", "depth"),
-                          Stage(ast::PipelineStage::kCompute),
-                      });
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder pb;
+            pb.Override("width", pb.ty.i32(), pb.Call<i32>(2_i), pb.Id(7_u));
+            pb.Override("height", pb.ty.i32(), pb.Call<i32>(3_i), pb.Id(8_u));
+            pb.Override("depth", pb.ty.i32(), pb.Call<i32>(4_i), pb.Id(9_u));
+            auto* func = pb.Func("main", utils::Empty, pb.ty.void_(), utils::Empty,
+                                 utils::Vector{
+                                     pb.WorkgroupSize("width", "height", "depth"),
+                                     pb.Stage(ast::PipelineStage::kCompute),
+                                 });
+            auto program = std::make_unique<Program>(std::move(pb));
+            auto b = std::make_unique<spirv::Builder>(program.get());
 
-    spirv::Builder& b = Build();
-
-    EXPECT_FALSE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(
-        b.error(),
-        R"(override-expressions should have been removed with the SubstituteOverride transform)");
+            b->GenerateExecutionModes(func, 3);
+        },
+        "override-expressions should have been removed with the SubstituteOverride transform");
 }
 
 TEST_F(BuilderTest, Decoration_ExecutionMode_WorkgroupSize_LiteralAndConst) {
-    Override("height", ty.i32(), Call<i32>(2_i), Id(7_u));
-    GlobalConst("depth", ty.i32(), Call<i32>(3_i));
-    auto* func = Func("main", utils::Empty, ty.void_(), utils::Empty,
-                      utils::Vector{
-                          WorkgroupSize(4_i, "height", "depth"),
-                          Stage(ast::PipelineStage::kCompute),
-                      });
+    EXPECT_FATAL_FAILURE(
+        {
+            ProgramBuilder pb;
 
-    spirv::Builder& b = Build();
+            pb.Override("height", pb.ty.i32(), pb.Call<i32>(2_i), pb.Id(7_u));
+            pb.GlobalConst("depth", pb.ty.i32(), pb.Call<i32>(3_i));
+            auto* func = pb.Func("main", utils::Empty, pb.ty.void_(), utils::Empty,
+                                 utils::Vector{
+                                     pb.WorkgroupSize(4_i, "height", "depth"),
+                                     pb.Stage(ast::PipelineStage::kCompute),
+                                 });
 
-    EXPECT_FALSE(b.GenerateExecutionModes(func, 3)) << b.error();
-    EXPECT_EQ(
-        b.error(),
-        R"(override-expressions should have been removed with the SubstituteOverride transform)");
+            auto program = std::make_unique<Program>(std::move(pb));
+            auto b = std::make_unique<spirv::Builder>(program.get());
+
+            b->GenerateExecutionModes(func, 3);
+        },
+        "override-expressions should have been removed with the SubstituteOverride transform");
 }
 
 TEST_F(BuilderTest, Decoration_ExecutionMode_MultipleFragment) {
@@ -197,8 +206,8 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_MultipleFragment) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.GenerateFunction(func1)) << b.error();
-    ASSERT_TRUE(b.GenerateFunction(func2)) << b.error();
+    ASSERT_TRUE(b.GenerateFunction(func1)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateFunction(func2)) << b.Diagnostics();
     EXPECT_EQ(DumpBuilder(b),
               R"(OpEntryPoint Fragment %3 "main1"
 OpEntryPoint Fragment %5 "main2"
@@ -235,7 +244,7 @@ TEST_F(BuilderTest, Decoration_ExecutionMode_FragDepth) {
 
     ASSERT_TRUE(b.Build());
 
-    EXPECT_EQ(DumpInstructions(b.execution_modes()),
+    EXPECT_EQ(DumpInstructions(b.Module().ExecutionModes()),
               R"(OpExecutionMode %11 OriginUpperLeft
 OpExecutionMode %11 DepthReplacing
 )");

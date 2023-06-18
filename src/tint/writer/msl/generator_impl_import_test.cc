@@ -16,10 +16,11 @@
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/msl/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::msl {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using MslGeneratorImplTest = TestHelper;
 
@@ -83,7 +84,7 @@ TEST_F(MslGeneratorImplTest, MslImportData_SingleParamTest_IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), R"(abs(1))");
 }
 
@@ -94,7 +95,7 @@ TEST_F(MslGeneratorImplTest, MslImportData_SingleParamTest_ScalarLength) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), R"(fabs(2.0f))");
 }
 
@@ -108,7 +109,7 @@ TEST_P(MslImportData_DualParam_ScalarTest, Float) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string(param.msl_name) + "(1.0f, 2.0f)");
 }
 INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
@@ -126,7 +127,7 @@ TEST_F(MslGeneratorImplTest, MslImportData_DualParam_ScalarDistance) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), R"(fabs(2.0f - 3.0f))");
 }
 
@@ -134,13 +135,13 @@ using MslImportData_DualParam_VectorTest = TestParamHelper<MslImportData>;
 TEST_P(MslImportData_DualParam_VectorTest, Float) {
     auto param = GetParam();
 
-    auto* expr = Call(param.name, vec3<f32>(1_f, 2_f, 3_f), vec3<f32>(4_f, 5_f, 6_f));
+    auto* expr = Call(param.name, Call<vec3<f32>>(1_f, 2_f, 3_f), Call<vec3<f32>>(4_f, 5_f, 6_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string(param.msl_name) +
                              R"((float3(1.0f, 2.0f, 3.0f), float3(4.0f, 5.0f, 6.0f)))");
 }
@@ -165,7 +166,7 @@ TEST_P(MslImportData_DualParam_Int_Test, IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string(param.msl_name) + "(1, 2)");
 }
 INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
@@ -182,7 +183,7 @@ TEST_P(MslImportData_TripleParam_ScalarTest, Float) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string(param.msl_name) + "(1.0f, 2.0f, 3.0f)");
 }
 INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
@@ -196,14 +197,14 @@ using MslImportData_TripleParam_VectorTest = TestParamHelper<MslImportData>;
 TEST_P(MslImportData_TripleParam_VectorTest, Float) {
     auto param = GetParam();
 
-    auto* expr = Call(param.name, vec3<f32>(1_f, 2_f, 3_f), vec3<f32>(4_f, 5_f, 6_f),
-                      vec3<f32>(7_f, 8_f, 9_f));
+    auto* expr = Call(param.name, Call<vec3<f32>>(1_f, 2_f, 3_f), Call<vec3<f32>>(4_f, 5_f, 6_f),
+                      Call<vec3<f32>>(7_f, 8_f, 9_f));
     WrapInFunction(expr);
 
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(
         out.str(),
         std::string(param.msl_name) +
@@ -226,7 +227,7 @@ TEST_P(MslImportData_TripleParam_Int_Test, IntScalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string(param.msl_name) + "(1, 2, 3)");
 }
 INSTANTIATE_TEST_SUITE_P(MslGeneratorImplTest,
@@ -244,7 +245,7 @@ TEST_F(MslGeneratorImplTest, MslImportData_Determinant) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), std::string("determinant(var)"));
 }
 
@@ -257,12 +258,12 @@ TEST_F(MslGeneratorImplTest, MslImportData_QuantizeToF16_Scalar) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "float(half(v))");
 }
 
 TEST_F(MslGeneratorImplTest, MslImportData_QuantizeToF16_Vector) {
-    GlobalVar("v", vec3<f32>(2_f), builtin::AddressSpace::kPrivate);
+    GlobalVar("v", Call<vec3<f32>>(2_f), builtin::AddressSpace::kPrivate);
 
     auto* expr = Call("quantizeToF16", "v");
     WrapInFunction(expr);
@@ -270,7 +271,7 @@ TEST_F(MslGeneratorImplTest, MslImportData_QuantizeToF16_Vector) {
     GeneratorImpl& gen = Build();
 
     utils::StringStream out;
-    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.error();
+    ASSERT_TRUE(gen.EmitCall(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "float3(half3(v))");
 }
 

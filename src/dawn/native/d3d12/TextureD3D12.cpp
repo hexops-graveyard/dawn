@@ -28,7 +28,6 @@
 #include "dawn/native/d3d/D3DError.h"
 #include "dawn/native/d3d12/BufferD3D12.h"
 #include "dawn/native/d3d12/CommandRecordingContext.h"
-#include "dawn/native/d3d12/D3D11on12Util.h"
 #include "dawn/native/d3d12/DeviceD3D12.h"
 #include "dawn/native/d3d12/Forward.h"
 #include "dawn/native/d3d12/HeapD3D12.h"
@@ -113,25 +112,8 @@ D3D12_RESOURCE_DIMENSION D3D12TextureDimension(wgpu::TextureDimension dimension)
 
 }  // namespace
 
-MaybeError ValidateTextureDescriptorCanBeWrapped(const TextureDescriptor* descriptor) {
-    DAWN_INVALID_IF(descriptor->dimension != wgpu::TextureDimension::e2D,
-                    "Texture dimension (%s) is not %s.", descriptor->dimension,
-                    wgpu::TextureDimension::e2D);
-
-    DAWN_INVALID_IF(descriptor->mipLevelCount != 1, "Mip level count (%u) is not 1.",
-                    descriptor->mipLevelCount);
-
-    DAWN_INVALID_IF(descriptor->size.depthOrArrayLayers != 1, "Array layer count (%u) is not 1.",
-                    descriptor->size.depthOrArrayLayers);
-
-    DAWN_INVALID_IF(descriptor->sampleCount != 1, "Sample count (%u) is not 1.",
-                    descriptor->sampleCount);
-
-    return {};
-}
-
-MaybeError ValidateD3D12TextureCanBeWrapped(ID3D12Resource* d3d12Resource,
-                                            const TextureDescriptor* dawnDescriptor) {
+MaybeError ValidateTextureCanBeWrapped(ID3D12Resource* d3d12Resource,
+                                       const TextureDescriptor* dawnDescriptor) {
     const D3D12_RESOURCE_DESC d3dDescriptor = d3d12Resource->GetDesc();
     DAWN_INVALID_IF(
         (dawnDescriptor->size.width != d3dDescriptor.Width) ||
@@ -161,7 +143,7 @@ MaybeError ValidateD3D12TextureCanBeWrapped(ID3D12Resource* d3d12Resource,
 }
 
 // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_shared_resource_compatibility_tier
-MaybeError ValidateD3D12VideoTextureCanBeShared(Device* device, DXGI_FORMAT textureFormat) {
+MaybeError ValidateVideoTextureCanBeShared(Device* device, DXGI_FORMAT textureFormat) {
     const bool supportsSharedResourceCapabilityTier1 =
         device->GetDeviceInfo().supportsSharedResourceCapabilityTier1;
     switch (textureFormat) {
@@ -191,20 +173,17 @@ ResultOrError<Ref<Texture>> Texture::Create(Device* device, const TextureDescrip
 }
 
 // static
-ResultOrError<Ref<Texture>> Texture::CreateExternalImage(
-    Device* device,
-    const TextureDescriptor* descriptor,
-    ComPtr<ID3D12Resource> d3d12Texture,
-    std::vector<Ref<Fence>> waitFences,
-    Ref<D3D11on12ResourceCacheEntry> d3d11on12Resource,
-    bool isSwapChainTexture,
-    bool isInitialized) {
+ResultOrError<Ref<Texture>> Texture::CreateExternalImage(Device* device,
+                                                         const TextureDescriptor* descriptor,
+                                                         ComPtr<IUnknown> d3dTexture,
+                                                         std::vector<Ref<d3d::Fence>> waitFences,
+                                                         bool isSwapChainTexture,
+                                                         bool isInitialized) {
     Ref<Texture> dawnTexture =
         AcquireRef(new Texture(device, descriptor, TextureState::OwnedExternal));
 
-    DAWN_TRY(
-        dawnTexture->InitializeAsExternalTexture(std::move(d3d12Texture), std::move(waitFences),
-                                                 std::move(d3d11on12Resource), isSwapChainTexture));
+    DAWN_TRY(dawnTexture->InitializeAsExternalTexture(std::move(d3dTexture), std::move(waitFences),
+                                                      isSwapChainTexture));
 
     // Importing a multi-planar format must be initialized. This is required because
     // a shared multi-planar format cannot be initialized by Dawn.
@@ -228,10 +207,12 @@ ResultOrError<Ref<Texture>> Texture::Create(Device* device,
     return std::move(dawnTexture);
 }
 
-MaybeError Texture::InitializeAsExternalTexture(ComPtr<ID3D12Resource> d3d12Texture,
-                                                std::vector<Ref<Fence>> waitFences,
-                                                Ref<D3D11on12ResourceCacheEntry> d3d11on12Resource,
+MaybeError Texture::InitializeAsExternalTexture(ComPtr<IUnknown> d3dTexture,
+                                                std::vector<Ref<d3d::Fence>> waitFences,
                                                 bool isSwapChainTexture) {
+    ComPtr<ID3D12Resource> d3d12Texture;
+    DAWN_TRY(CheckHRESULT(d3dTexture.As(&d3d12Texture), "texture is not a valid ID3D12Resource"));
+
     D3D12_RESOURCE_DESC desc = d3d12Texture->GetDesc();
     mD3D12ResourceFlags = desc.Flags;
 
@@ -243,7 +224,6 @@ MaybeError Texture::InitializeAsExternalTexture(ComPtr<ID3D12Resource> d3d12Text
     mResourceAllocation = {info, 0, std::move(d3d12Texture), nullptr};
 
     mWaitFences = std::move(waitFences);
-    mD3D11on12Resource = std::move(d3d11on12Resource);
     mSwapChainTexture = isSwapChainTexture;
 
     SetLabelHelper("Dawn_ExternalTexture");
@@ -336,32 +316,24 @@ MaybeError Texture::InitializeAsSwapChainTexture(ComPtr<ID3D12Resource> d3d12Tex
 }
 
 Texture::Texture(Device* device, const TextureDescriptor* descriptor, TextureState state)
-    : TextureBase(device, descriptor, state),
+    : Base(device, descriptor, state),
       mSubresourceStateAndDecay(
           GetFormat().aspects,
           GetArrayLayers(),
           GetNumMipLevels(),
           {D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, kMaxExecutionSerial, false}) {}
 
-Texture::~Texture() {}
+Texture::~Texture() = default;
 
 void Texture::DestroyImpl() {
     TextureBase::DestroyImpl();
-
     ToBackend(GetDevice())->DeallocateMemory(mResourceAllocation);
-
     // Set mSwapChainTexture to false to prevent ever calling ID3D12SharingContract::Present again.
     mSwapChainTexture = false;
-
-    // Now that the texture has been destroyed, it should release the d3d11on12 resource refptr.
-    mD3D11on12Resource = nullptr;
 }
 
 ResultOrError<ExecutionSerial> Texture::EndAccess() {
-    ASSERT(mD3D11on12Resource == nullptr);
-
     Device* device = ToBackend(GetDevice());
-
     // Synchronize if texture access wasn't synchronized already due to ExecuteCommandLists.
     if (!mSignalFenceValue.has_value()) {
         // Needed to ensure that command allocator doesn't get destroyed before pending commands
@@ -376,7 +348,6 @@ ResultOrError<ExecutionSerial> Texture::EndAccess() {
         DAWN_TRY(device->NextSerial());
         ASSERT(mSignalFenceValue.has_value());
     }
-
     ExecutionSerial ret = mSignalFenceValue.value();
     ASSERT(ret <= device->GetLastSubmittedCommandSerial());
     // Explicitly call reset() since std::move() on optional doesn't make it std::nullopt.
@@ -418,17 +389,15 @@ DXGI_FORMAT Texture::GetD3D12CopyableSubresourceFormat(Aspect aspect) const {
 }
 
 MaybeError Texture::SynchronizeImportedTextureBeforeUse() {
-    if (mD3D11on12Resource != nullptr) {
-        DAWN_TRY(mD3D11on12Resource->AcquireKeyedMutex());
-    }
     // Perform the wait only on the first call.
     Device* device = ToBackend(GetDevice());
-    for (Ref<Fence>& fence : mWaitFences) {
-        DAWN_TRY(CheckHRESULT(device->GetCommandQueue()->Wait(fence->GetD3D12Fence(),
-                                                              fence->GetFenceValue()),
-                              "D3D12 fence wait"););
+    for (Ref<d3d::Fence>& fence : mWaitFences) {
+        DAWN_TRY(CheckHRESULT(
+                     device->GetCommandQueue()->Wait(
+                         static_cast<Fence*>(fence.Get())->GetD3D12Fence(), fence->GetFenceValue()),
+                     "D3D12 fence wait"););
         // Keep D3D12 fence alive since we'll clear the waitFences list below.
-        device->ReferenceUntilUnused(fence->GetD3D12Fence());
+        device->ReferenceUntilUnused(static_cast<Fence*>(fence.Get())->GetD3D12Fence());
     }
     mWaitFences.clear();
     return {};
@@ -448,12 +417,8 @@ MaybeError Texture::SynchronizeImportedTextureAfterUse() {
             d3dSharingContract->Present(mResourceAllocation.GetD3D12Resource(), 0, 0);
         }
     }
-    if (mD3D11on12Resource != nullptr) {
-        DAWN_TRY(mD3D11on12Resource->ReleaseKeyedMutex());
-    } else {
-        // NextSerial() will be called after this - this is also checked in EndAccess().
-        mSignalFenceValue = device->GetPendingCommandSerial();
-    }
+    // NextSerial() will be called after this - this is also checked in EndAccess().
+    mSignalFenceValue = device->GetPendingCommandSerial();
     return {};
 }
 

@@ -1226,9 +1226,9 @@ const Type* ParserImpl::ConvertType(uint32_t type_id,
     }
     switch (ptr_as) {
         case PtrAs::Ref:
-            return ty_.Reference(ast_elem_ty, ast_address_space);
+            return ty_.Reference(ast_address_space, ast_elem_ty);
         case PtrAs::Ptr:
-            return ty_.Pointer(ast_elem_ty, ast_address_space);
+            return ty_.Pointer(ast_address_space, ast_elem_ty);
     }
     Fail() << "invalid value for ptr_as: " << static_cast<int>(ptr_as);
     return nullptr;
@@ -1438,6 +1438,12 @@ bool ParserImpl::EmitModuleScopeVariables() {
         if ((type_id == builtin_position_.pointer_type_id) &&
             ((spirv_storage_class == spv::StorageClass::Input) ||
              (spirv_storage_class == spv::StorageClass::Output))) {
+            // TODO(crbug.com/tint/103): Support modules that contain multiple Position built-ins.
+            if (builtin_position_.per_vertex_var_id != 0) {
+                return Fail()
+                       << "unsupported: multiple Position built-in variables in the same module";
+            }
+
             // Skip emitting gl_PerVertex.
             builtin_position_.per_vertex_var_id = var.result_id();
             builtin_position_.per_vertex_var_init_id =
@@ -1604,16 +1610,15 @@ const ast::Var* ParserImpl::MakeVar(uint32_t id,
         return nullptr;
     }
 
+    // Use type inference if there is an initializer.
     auto sym = builder_.Symbols().Register(namer_.Name(id));
-    return builder_.Var(Source{}, sym, storage_type->Build(builder_), address_space, access,
-                        initializer, std::move(attrs.list));
+    return builder_.Var(Source{}, sym, initializer ? ast::Type{} : storage_type->Build(builder_),
+                        address_space, access, initializer, std::move(attrs.list));
 }
 
-const ast::Let* ParserImpl::MakeLet(uint32_t id,
-                                    const Type* type,
-                                    const ast::Expression* initializer) {
+const ast::Let* ParserImpl::MakeLet(uint32_t id, const ast::Expression* initializer) {
     auto sym = builder_.Symbols().Register(namer_.Name(id));
-    return builder_.Let(Source{}, sym, type->Build(builder_), initializer, utils::Empty);
+    return builder_.Let(Source{}, sym, initializer, utils::Empty);
 }
 
 const ast::Override* ParserImpl::MakeOverride(uint32_t id,
@@ -1885,8 +1890,6 @@ TypedExpression ParserImpl::MakeConstantExpression(uint32_t id) {
     }
     auto source = GetSourceForInst(inst);
 
-    // TODO(dneto): Handle spec constants too?
-
     auto* original_ast_type = ConvertType(inst->type_id());
     if (original_ast_type == nullptr) {
         return {};
@@ -1910,6 +1913,13 @@ TypedExpression ParserImpl::MakeConstantExpression(uint32_t id) {
         case spv::Op::OpConstantComposite: {
             // Handle vector, matrix, array, and struct
 
+            auto itr = declared_constant_composites_.find(id);
+            if (itr != declared_constant_composites_.end()) {
+                // We've already declared this constant value as a module-scope const, so just
+                // reference that identifier.
+                return {original_ast_type, builder_.Expr(itr->second)};
+            }
+
             // Generate a composite from explicit components.
             ExpressionList ast_components;
             if (!inst->WhileEachInId([&](const uint32_t* id_ref) -> bool {
@@ -1924,8 +1934,26 @@ TypedExpression ParserImpl::MakeConstantExpression(uint32_t id) {
                 // We've already emitted a diagnostic.
                 return {};
             }
-            return {original_ast_type, builder_.Call(source, original_ast_type->Build(builder_),
-                                                     std::move(ast_components))};
+
+            auto* expr = builder_.Call(source, original_ast_type->Build(builder_),
+                                       std::move(ast_components));
+
+            if (def_use_mgr_->NumUses(id) == 1) {
+                // The constant is only used once, so just inline its use.
+                return {original_ast_type, expr};
+            }
+
+            // Create a module-scope const declaration for the constant.
+            auto name = namer_.Name(id);
+            auto* decl = builder_.GlobalConst(name, expr);
+            declared_constant_composites_.insert({id, decl->name->symbol});
+            return {original_ast_type, builder_.Expr(name)};
+        }
+        case spv::Op::OpSpecConstantComposite:
+        case spv::Op::OpSpecConstantOp: {
+            // TODO(crbug.com/tint/111): Handle OpSpecConstantOp and OpSpecConstantComposite here.
+            Fail() << "unimplemented: OpSpecConstantOp and OpSpecConstantComposite";
+            return {};
         }
         default:
             break;

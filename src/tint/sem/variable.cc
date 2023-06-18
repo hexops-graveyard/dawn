@@ -61,7 +61,7 @@ GlobalVariable::GlobalVariable(const ast::Variable* declaration,
                                builtin::AddressSpace address_space,
                                builtin::Access access,
                                const constant::Value* constant_value,
-                               sem::BindingPoint binding_point,
+                               std::optional<sem::BindingPoint> binding_point,
                                std::optional<uint32_t> location)
     : Base(declaration, type, stage, address_space, access, constant_value),
       binding_point_(binding_point),
@@ -75,7 +75,7 @@ Parameter::Parameter(const ast::Parameter* declaration,
                      builtin::AddressSpace address_space,
                      builtin::Access access,
                      const ParameterUsage usage /* = ParameterUsage::kNone */,
-                     sem::BindingPoint binding_point /* = {} */,
+                     std::optional<sem::BindingPoint> binding_point /* = {} */,
                      std::optional<uint32_t> location /* = std::nullopt */)
     : Base(declaration, type, EvaluationStage::kRuntime, address_space, access, nullptr),
       index_(index),
@@ -86,13 +86,15 @@ Parameter::Parameter(const ast::Parameter* declaration,
 Parameter::~Parameter() = default;
 
 VariableUser::VariableUser(const ast::IdentifierExpression* declaration,
+                           EvaluationStage stage,
                            Statement* statement,
+                           const constant::Value* constant,
                            sem::Variable* variable)
     : Base(declaration,
            variable->Type(),
-           variable->Stage(),
+           stage,
            statement,
-           variable->ConstantValue(),
+           constant,
            /* has_side_effects */ false),
       variable_(variable) {
     auto* type = variable->Type();

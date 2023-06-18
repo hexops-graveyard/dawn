@@ -23,6 +23,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 // For MinimumBufferSpec bytesPerRow and rowsPerImage, compute a default from the copy extent.
 constexpr uint32_t kStrideComputeDefault = 0xFFFF'FFFEul;
 
@@ -2446,9 +2449,10 @@ TEST_P(CopyTests_T2T, Texture3DMipUnaligned) {
     }
 }
 
+// TODO(dawn:1705): enable this test for D3D11
 DAWN_INSTANTIATE_TEST_P(
     CopyTests_T2T,
-    {D3D11Backend(), D3D12Backend(),
+    {D3D12Backend(),
      D3D12Backend({"use_temp_buffer_in_small_format_texture_to_texture_copy_from_greater_to_less_"
                    "mip_level"}),
      D3D12Backend(
@@ -2591,6 +2595,11 @@ TEST_P(CopyToDepthStencilTextureAfterDestroyingBigBufferTests, DoTest) {
     // Copies to stencil textures are unsupported on the OpenGL backend.
     DAWN_TEST_UNSUPPORTED_IF(GetParam().mTextureFormat == wgpu::TextureFormat::Stencil8 &&
                              (IsOpenGL() || IsOpenGLES()));
+
+    // TODO(dawn:1848): support depth-stencil texture write on D3D11.
+    DAWN_TEST_UNSUPPORTED_IF(
+        GetParam().mTextureFormat == wgpu::TextureFormat::Stencil8 &&
+        GetParam().mInitializationMethod == InitializationMethod::WriteTexture && IsD3D11());
 
     wgpu::TextureFormat format = GetParam().mTextureFormat;
 
@@ -2767,8 +2776,6 @@ class T2TCopyFromDirtyHeapTests : public DawnTest {
     }
 
     wgpu::Buffer GetUploadBufferAndExpectedData(std::vector<uint32_t>* expectedData) {
-        const uint32_t kBytesPerRow =
-            Align(kBytesPerBlock * kTextureSize, kTextureBytesPerRowAlignment);
         const size_t kBufferSize =
             kBytesPerRow * (kTextureSize - 1) + kTextureSize * kBytesPerBlock;
 
@@ -2916,9 +2923,11 @@ TEST_P(T2TCopyFromDirtyHeapTests, From2DMultiMipmapLevelTexture) {
 }
 
 DAWN_INSTANTIATE_TEST(T2TCopyFromDirtyHeapTests,
-                      D3D11Backend(),
                       D3D12Backend(),
                       MetalBackend(),
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

@@ -15,6 +15,8 @@
 #ifndef SRC_DAWN_NATIVE_COMMANDBUFFER_H_
 #define SRC_DAWN_NATIVE_COMMANDBUFFER_H_
 
+#include <string>
+
 #include "dawn/native/dawn_platform.h"
 
 #include "dawn/native/CommandAllocator.h"
@@ -34,9 +36,13 @@ class CommandBufferBase : public ApiObjectBase {
   public:
     CommandBufferBase(CommandEncoder* encoder, const CommandBufferDescriptor* descriptor);
 
-    static CommandBufferBase* MakeError(DeviceBase* device);
+    static CommandBufferBase* MakeError(DeviceBase* device, const char* label);
 
     ObjectType GetType() const override;
+    void FormatLabel(absl::FormatSink* s) const override;
+
+    const std::string& GetEncoderLabel() const;
+    void SetEncoderLabel(std::string encoderLabel);
 
     MaybeError ValidateCanUseInSubmitNow() const;
 
@@ -50,9 +56,11 @@ class CommandBufferBase : public ApiObjectBase {
     CommandIterator mCommands;
 
   private:
-    CommandBufferBase(DeviceBase* device, ObjectBase::ErrorTag tag);
+    CommandBufferBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label);
 
     CommandBufferResourceUsage mResourceUsages;
+
+    std::string mEncoderLabel;
 };
 
 bool IsCompleteSubresourceCopiedTo(const TextureBase* texture,

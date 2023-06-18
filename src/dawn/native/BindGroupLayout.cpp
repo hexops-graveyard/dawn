@@ -114,11 +114,9 @@ MaybeError ValidateBindGroupLayoutEntry(DeviceBase* device,
                         "View dimension (%s) for a multisampled texture bindings was not %s.",
                         viewDimension, wgpu::TextureViewDimension::e2D);
 
-        if (texture.multisampled && texture.sampleType == wgpu::TextureSampleType::Float) {
-            DAWN_TRY(DAWN_MAKE_DEPRECATION_ERROR(
-                device, "Sample type %s for multisampled texture bindings was %s.",
-                texture.sampleType, wgpu::TextureSampleType::Float));
-        }
+        DAWN_INVALID_IF(
+            texture.multisampled && texture.sampleType == wgpu::TextureSampleType::Float,
+            "Sample type for multisampled texture binding was %s.", wgpu::TextureSampleType::Float);
     }
 
     if (entry.storageTexture.access != wgpu::StorageTextureAccess::Undefined) {
@@ -491,8 +489,10 @@ BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device,
     GetObjectTrackingList()->Track(this);
 }
 
-BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device, ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag) {}
+BindGroupLayoutBase::BindGroupLayoutBase(DeviceBase* device,
+                                         ObjectBase::ErrorTag tag,
+                                         const char* label)
+    : ApiObjectBase(device, tag, label) {}
 
 BindGroupLayoutBase::~BindGroupLayoutBase() = default;
 
@@ -504,8 +504,8 @@ void BindGroupLayoutBase::DestroyImpl() {
 }
 
 // static
-BindGroupLayoutBase* BindGroupLayoutBase::MakeError(DeviceBase* device) {
-    return new BindGroupLayoutBase(device, ObjectBase::kError);
+BindGroupLayoutBase* BindGroupLayoutBase::MakeError(DeviceBase* device, const char* label) {
+    return new BindGroupLayoutBase(device, ObjectBase::kError, label);
 }
 
 ObjectType BindGroupLayoutBase::GetType() const {

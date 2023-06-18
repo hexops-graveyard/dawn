@@ -22,7 +22,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
+
 static constexpr wgpu::TextureFormat kTextureFormat = wgpu::TextureFormat::RGBA8Unorm;
 
 // Set default texture size to single line texture for color conversion tests.
@@ -148,7 +150,6 @@ static constexpr std::array<ColorSpaceInfo, kSupportedColorSpaceCount> ColorSpac
     }
     //
 }};
-}  // anonymous namespace
 
 template <typename Parent>
 class CopyTextureForBrowserTests : public Parent {
@@ -1138,20 +1139,19 @@ TEST_P(CopyTextureForBrowser_Formats, ColorConversion) {
     DoColorConversionTest();
 }
 
-DAWN_INSTANTIATE_TEST_P(CopyTextureForBrowser_Formats,
-                        {D3D11Backend(), D3D12Backend(), MetalBackend(), OpenGLBackend(),
-                         OpenGLESBackend(), VulkanBackend()},
-                        std::vector<wgpu::TextureFormat>({wgpu::TextureFormat::RGBA8Unorm,
-                                                          wgpu::TextureFormat::BGRA8Unorm,
-                                                          wgpu::TextureFormat::RGBA16Float}),
-                        std::vector<wgpu::TextureFormat>(
-                            {wgpu::TextureFormat::R8Unorm, wgpu::TextureFormat::R16Float,
-                             wgpu::TextureFormat::R32Float, wgpu::TextureFormat::RG8Unorm,
-                             wgpu::TextureFormat::RG16Float, wgpu::TextureFormat::RG32Float,
-                             wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureFormat::RGBA8UnormSrgb,
-                             wgpu::TextureFormat::BGRA8Unorm, wgpu::TextureFormat::BGRA8UnormSrgb,
-                             wgpu::TextureFormat::RGB10A2Unorm, wgpu::TextureFormat::RGBA16Float,
-                             wgpu::TextureFormat::RGBA32Float}));
+DAWN_INSTANTIATE_TEST_P(
+    CopyTextureForBrowser_Formats,
+    {D3D12Backend(), MetalBackend(), OpenGLBackend(), OpenGLESBackend(), VulkanBackend()},
+    std::vector<wgpu::TextureFormat>({wgpu::TextureFormat::RGBA8Unorm,
+                                      wgpu::TextureFormat::BGRA8Unorm,
+                                      wgpu::TextureFormat::RGBA16Float}),
+    std::vector<wgpu::TextureFormat>(
+        {wgpu::TextureFormat::R8Unorm, wgpu::TextureFormat::R16Float, wgpu::TextureFormat::R32Float,
+         wgpu::TextureFormat::RG8Unorm, wgpu::TextureFormat::RG16Float,
+         wgpu::TextureFormat::RG32Float, wgpu::TextureFormat::RGBA8Unorm,
+         wgpu::TextureFormat::RGBA8UnormSrgb, wgpu::TextureFormat::BGRA8Unorm,
+         wgpu::TextureFormat::BGRA8UnormSrgb, wgpu::TextureFormat::RGB10A2Unorm,
+         wgpu::TextureFormat::RGBA16Float, wgpu::TextureFormat::RGBA32Float}));
 
 // Verify |CopyTextureForBrowser| doing subrect copy.
 // Source texture is a full red texture and dst texture is a full
@@ -1226,3 +1226,6 @@ DAWN_INSTANTIATE_TEST_P(CopyTextureForBrowser_ColorSpace,
                                                       wgpu::AlphaMode::Unpremultiplied}),
                         std::vector<wgpu::AlphaMode>({wgpu::AlphaMode::Premultiplied,
                                                       wgpu::AlphaMode::Unpremultiplied}));
+
+}  // anonymous namespace
+}  // namespace dawn

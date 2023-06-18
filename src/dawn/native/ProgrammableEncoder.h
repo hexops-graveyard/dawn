@@ -15,6 +15,8 @@
 #ifndef SRC_DAWN_NATIVE_PROGRAMMABLEENCODER_H_
 #define SRC_DAWN_NATIVE_PROGRAMMABLEENCODER_H_
 
+#include <string>
+
 #include "dawn/native/CommandEncoder.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/Forward.h"
@@ -53,7 +55,10 @@ class ProgrammableEncoder : public ApiObjectBase {
                             const uint32_t* dynamicOffsets) const;
 
     // Construct an "error" programmable pass encoder.
-    ProgrammableEncoder(DeviceBase* device, EncodingContext* encodingContext, ErrorTag errorTag);
+    ProgrammableEncoder(DeviceBase* device,
+                        EncodingContext* encodingContext,
+                        ErrorTag errorTag,
+                        const char* label);
 
     EncodingContext* mEncodingContext = nullptr;
 

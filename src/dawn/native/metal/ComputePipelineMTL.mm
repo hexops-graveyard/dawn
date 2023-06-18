@@ -47,8 +47,19 @@ MaybeError ComputePipeline::Initialize() {
                                   &computeData));
 
     NSError* error = nullptr;
-    mMtlComputePipelineState.Acquire(
-        [mtlDevice newComputePipelineStateWithFunction:computeData.function.Get() error:&error]);
+    NSRef<NSString> label = MakeDebugName(GetDevice(), "Dawn_ComputePipeline", GetLabel());
+
+    NSRef<MTLComputePipelineDescriptor> descriptorRef =
+        AcquireNSRef([MTLComputePipelineDescriptor new]);
+    MTLComputePipelineDescriptor* descriptor = descriptorRef.Get();
+    descriptor.computeFunction = computeData.function.Get();
+    descriptor.label = label.Get();
+
+    mMtlComputePipelineState.Acquire([mtlDevice
+        newComputePipelineStateWithDescriptor:descriptor
+                                      options:MTLPipelineOptionNone
+                                   reflection:nil
+                                        error:&error]);
     if (error != nullptr) {
         return DAWN_INTERNAL_ERROR("Error creating pipeline state " +
                                    std::string([error.localizedDescription UTF8String]));
@@ -86,14 +97,14 @@ bool ComputePipeline::RequiresStorageBufferLength() const {
 void ComputePipeline::InitializeAsync(Ref<ComputePipelineBase> computePipeline,
                                       WGPUCreateComputePipelineAsyncCallback callback,
                                       void* userdata) {
-    AdapterBase* adapter = computePipeline->GetDevice()->GetAdapter();
+    PhysicalDeviceBase* physicalDevice = computePipeline->GetDevice()->GetPhysicalDevice();
     std::unique_ptr<CreateComputePipelineAsyncTask> asyncTask =
         std::make_unique<CreateComputePipelineAsyncTask>(std::move(computePipeline), callback,
                                                          userdata);
     // Workaround a crash where the validation layers on AMD crash with partition alloc.
     // See crbug.com/dawn/1200.
-    if (adapter->GetInstance()->IsBackendValidationEnabled() &&
-        gpu_info::IsAMD(adapter->GetVendorId())) {
+    if (physicalDevice->GetInstance()->IsBackendValidationEnabled() &&
+        gpu_info::IsAMD(physicalDevice->GetVendorId())) {
         asyncTask->Run();
         return;
     }

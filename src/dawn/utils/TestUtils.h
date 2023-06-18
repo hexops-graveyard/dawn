@@ -15,11 +15,12 @@
 #ifndef SRC_DAWN_UTILS_TESTUTILS_H_
 #define SRC_DAWN_UTILS_TESTUTILS_H_
 
+#include <functional>
 #include <ostream>
 
 #include "dawn/webgpu_cpp.h"
 
-namespace utils {
+namespace dawn::utils {
 
 struct RGBA8 {
     constexpr RGBA8() : RGBA8(0, 0, 0, 0) {}
@@ -84,6 +85,10 @@ void UnalignDynamicUploader(wgpu::Device device);
 
 uint32_t VertexFormatSize(wgpu::VertexFormat format);
 
-}  // namespace utils
+void RunInParallel(uint32_t numThreads,
+                   const std::function<void(uint32_t)>& workerFunc,
+                   const std::function<void()>& mainThreadFunc = nullptr);
+
+}  // namespace dawn::utils
 
 #endif  // SRC_DAWN_UTILS_TESTUTILS_H_

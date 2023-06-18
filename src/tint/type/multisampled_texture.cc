@@ -26,7 +26,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::MultisampledTexture);
 namespace tint::type {
 
 MultisampledTexture::MultisampledTexture(TextureDimension dim, const Type* type)
-    : Base(utils::Hash(TypeInfo::Of<MultisampledTexture>().full_hashcode, dim, type), dim),
+    : Base(utils::Hash(utils::TypeInfo::Of<MultisampledTexture>().full_hashcode, dim, type), dim),
       type_(type) {
     TINT_ASSERT(Type, type_);
 }
@@ -40,9 +40,9 @@ bool MultisampledTexture::Equals(const UniqueNode& other) const {
     return false;
 }
 
-std::string MultisampledTexture::FriendlyName(const SymbolTable& symbols) const {
+std::string MultisampledTexture::FriendlyName() const {
     utils::StringStream out;
-    out << "texture_multisampled_" << dim() << "<" << type_->FriendlyName(symbols) << ">";
+    out << "texture_multisampled_" << dim() << "<" << type_->FriendlyName() << ">";
     return out.str();
 }
 

@@ -23,7 +23,7 @@
 namespace tint::type {
 
 /// A depth texture type.
-class DepthTexture final : public Castable<DepthTexture, Texture> {
+class DepthTexture final : public utils::Castable<DepthTexture, Texture> {
   public:
     /// Constructor
     /// @param dim the dimensionality of the texture
@@ -36,10 +36,9 @@ class DepthTexture final : public Castable<DepthTexture, Texture> {
     /// @returns true if the this type is equal to @p other
     bool Equals(const UniqueNode& other) const override;
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

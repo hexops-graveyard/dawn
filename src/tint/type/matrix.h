@@ -17,7 +17,7 @@
 
 #include <string>
 
-#include "src/tint/type/type.h"
+#include "src/tint/type/vector.h"
 
 // Forward declarations
 namespace tint::type {
@@ -27,7 +27,7 @@ class Vector;
 namespace tint::type {
 
 /// A matrix type
-class Matrix final : public Castable<Matrix, Type> {
+class Matrix final : public utils::Castable<Matrix, Type> {
   public:
     /// Constructor
     /// @param column_type the type of a column of the matrix
@@ -51,10 +51,9 @@ class Matrix final : public Castable<Matrix, Type> {
     /// @returns the column-vector type of the matrix
     const Vector* ColumnType() const { return column_type_; }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @returns the size in bytes of the type. This may include tail padding.
     uint32_t Size() const override;
@@ -65,6 +64,13 @@ class Matrix final : public Castable<Matrix, Type> {
 
     /// @returns the number of bytes between columns of the matrix
     uint32_t ColumnStride() const;
+
+    /// @copydoc Type::Elements
+    TypeAndCount Elements(const Type* type_if_invalid = nullptr,
+                          uint32_t count_if_invalid = 0) const override;
+
+    /// @copydoc Type::Element
+    const Vector* Element(uint32_t index) const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

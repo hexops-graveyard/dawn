@@ -23,8 +23,13 @@
 
 namespace dawn::wire::client {
 
-Device::Device(const ObjectBaseParams& params)
+Device::Device(const ObjectBaseParams& params, const WGPUDeviceDescriptor* descriptor)
     : ObjectBase(params), mIsAlive(std::make_shared<bool>()) {
+    if (descriptor && descriptor->deviceLostCallback) {
+        mDeviceLostCallback = descriptor->deviceLostCallback;
+        mDeviceLostUserdata = descriptor->deviceLostUserdata;
+    }
+
 #if defined(DAWN_ENABLE_ASSERTS)
     mErrorCallback = [](WGPUErrorType, char const*, void*) {
         static bool calledOnce = false;
@@ -36,15 +41,17 @@ Device::Device(const ObjectBaseParams& params)
         }
     };
 
-    mDeviceLostCallback = [](WGPUDeviceLostReason, char const*, void*) {
-        static bool calledOnce = false;
-        if (!calledOnce) {
-            calledOnce = true;
-            dawn::WarningLog() << "No Dawn device lost callback was set. This is probably not "
-                                  "intended. If you really want to ignore device lost "
-                                  "and suppress this message, set the callback to null.";
-        }
-    };
+    if (!mDeviceLostCallback) {
+        mDeviceLostCallback = [](WGPUDeviceLostReason, char const*, void*) {
+            static bool calledOnce = false;
+            if (!calledOnce) {
+                calledOnce = true;
+                dawn::WarningLog() << "No Dawn device lost callback was set. This is probably not "
+                                      "intended. If you really want to ignore device lost "
+                                      "and suppress this message, set the callback to null.";
+            }
+        };
+    }
 #endif  // DAWN_ENABLE_ASSERTS
 }
 
@@ -148,12 +155,11 @@ void Device::SetDeviceLostCallback(WGPUDeviceLostCallback callback, void* userda
     mDeviceLostUserdata = userdata;
 }
 
-bool Device::PopErrorScope(WGPUErrorCallback callback, void* userdata) {
-    // TODO(crbug.com/dawn/1324) Replace bool return with void when users are updated.
+void Device::PopErrorScope(WGPUErrorCallback callback, void* userdata) {
     Client* client = GetClient();
     if (client->IsDisconnected()) {
         callback(WGPUErrorType_DeviceLost, "GPU device disconnected", userdata);
-        return true;
+        return;
     }
 
     uint64_t serial = mErrorScopes.Add({callback, userdata});
@@ -161,7 +167,6 @@ bool Device::PopErrorScope(WGPUErrorCallback callback, void* userdata) {
     cmd.deviceId = GetWireId();
     cmd.requestSerial = serial;
     client->SerializeCommand(cmd);
-    return true;
 }
 
 bool Device::OnPopErrorScopeCallback(uint64_t requestSerial,
@@ -171,6 +176,7 @@ bool Device::OnPopErrorScopeCallback(uint64_t requestSerial,
         case WGPUErrorType_NoError:
         case WGPUErrorType_Validation:
         case WGPUErrorType_OutOfMemory:
+        case WGPUErrorType_Internal:
         case WGPUErrorType_Unknown:
         case WGPUErrorType_DeviceLost:
             break;
@@ -207,6 +213,11 @@ WGPUQuerySet Device::CreateQuerySet(const WGPUQuerySetDescriptor* descriptor) {
     return QuerySet::Create(this, descriptor);
 }
 
+WGPUSwapChain Device::CreateSwapChain(WGPUSurface surface,
+                                      const WGPUSwapChainDescriptor* descriptor) {
+    return SwapChain::Create(this, surface, descriptor);
+}
+
 WGPUTexture Device::CreateTexture(const WGPUTextureDescriptor* descriptor) {
     return Texture::Create(this, descriptor);
 }
@@ -219,6 +230,12 @@ WGPUAdapter Device::GetAdapter() {
     // Not implemented in the wire.
     UNREACHABLE();
     return nullptr;
+}
+
+WGPUTextureUsage Device::GetSupportedSurfaceUsage(WGPUSurface) {
+    // Not implemented in the wire.
+    UNREACHABLE();
+    return WGPUTextureUsage_RenderAttachment;
 }
 
 WGPUQueue Device::GetQueue() {

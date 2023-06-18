@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "dawn/common/Constants.h"
+#include "dawn/common/ityp_span.h"
 #include "dawn/native/Buffer.h"
 #include "dawn/native/CommandBuffer.h"
 #include "dawn/native/CommandEncoder.h"
@@ -159,7 +160,8 @@ struct SubmittedWorkDone : TrackTaskCallback {
 
 class ErrorQueue : public QueueBase {
   public:
-    explicit ErrorQueue(DeviceBase* device) : QueueBase(device, ObjectBase::kError) {}
+    explicit ErrorQueue(DeviceBase* device, const char* label)
+        : QueueBase(device, ObjectBase::kError, label) {}
 
   private:
     MaybeError SubmitImpl(uint32_t commandCount, CommandBufferBase* const* commands) override {
@@ -177,7 +179,8 @@ void TrackTaskCallback::SetFinishedSerial(ExecutionSerial serial) {
 QueueBase::QueueBase(DeviceBase* device, const QueueDescriptor* descriptor)
     : ApiObjectBase(device, descriptor->label) {}
 
-QueueBase::QueueBase(DeviceBase* device, ObjectBase::ErrorTag tag) : ApiObjectBase(device, tag) {}
+QueueBase::QueueBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label)
+    : ApiObjectBase(device, tag, label) {}
 
 QueueBase::~QueueBase() {
     ASSERT(mTasksInFlight.Empty());
@@ -186,8 +189,8 @@ QueueBase::~QueueBase() {
 void QueueBase::DestroyImpl() {}
 
 // static
-QueueBase* QueueBase::MakeError(DeviceBase* device) {
-    return new ErrorQueue(device);
+QueueBase* QueueBase::MakeError(DeviceBase* device, const char* label) {
+    return new ErrorQueue(device, label);
 }
 
 ObjectType QueueBase::GetType() const {
@@ -284,7 +287,9 @@ void QueueBase::APIWriteBuffer(BufferBase* buffer,
                                uint64_t bufferOffset,
                                const void* data,
                                size_t size) {
-    DAWN_UNUSED(GetDevice()->ConsumedError(WriteBuffer(buffer, bufferOffset, data, size)));
+    DAWN_UNUSED(GetDevice()->ConsumedError(WriteBuffer(buffer, bufferOffset, data, size),
+                                           "calling %s.WriteBuffer(%s, %s, (%d bytes))", this,
+                                           buffer, bufferOffset, size));
 }
 
 MaybeError QueueBase::WriteBuffer(BufferBase* buffer,
@@ -326,7 +331,9 @@ void QueueBase::APIWriteTexture(const ImageCopyTexture* destination,
                                 const TextureDataLayout* dataLayout,
                                 const Extent3D* writeSize) {
     DAWN_UNUSED(GetDevice()->ConsumedError(
-        WriteTextureInternal(destination, data, dataSize, *dataLayout, writeSize)));
+        WriteTextureInternal(destination, data, dataSize, *dataLayout, writeSize),
+        "calling %s.WriteTexture(%s, (%s bytes), %s, %s)", destination, dataSize, dataLayout,
+        writeSize));
 }
 
 MaybeError QueueBase::WriteTextureInternal(const ImageCopyTexture* destination,
@@ -545,7 +552,9 @@ void QueueBase::SubmitInternal(uint32_t commandCount, CommandBufferBase* const* 
 
     TRACE_EVENT0(device->GetPlatform(), General, "Queue::Submit");
     if (device->IsValidationEnabled()) {
-        if (device->ConsumedError(ValidateSubmit(commandCount, commands))) {
+        if (device->ConsumedError(
+                ValidateSubmit(commandCount, commands), "calling %s.Submit(%s)", this,
+                ityp::span<uint32_t, CommandBufferBase* const>(commands, commandCount))) {
             return;
         }
     }

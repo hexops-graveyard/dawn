@@ -17,7 +17,8 @@
 #include "src/tint/reader/wgsl/parser.h"
 #include "src/tint/utils/result.h"
 
-using namespace tint::number_suffixes;  // NOLINT
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 using ::testing::HasSubstr;
 
 namespace tint::resolver {
@@ -1690,7 +1691,7 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_And_Invalid_Index) {
     // const i = 4;
     // const result = (one == 0) && (a[i] == 0);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(4_a));
     auto* lhs = Equal("one", 0_a);
     auto* rhs = Equal(IndexAccessor("a", "i"), 0_a);
@@ -1707,7 +1708,7 @@ TEST_F(ResolverConstEvalTest, NonShortCircuit_And_Invalid_Index) {
     // const i = 3;
     // const result = (one == 1) && (a[i] == 0);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(3_a));
     auto* lhs = Equal("one", 1_a);
     auto* rhs = Equal(IndexAccessor("a", Expr(Source{{12, 34}}, "i")), 0_a);
@@ -1724,7 +1725,7 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_And_Error_Index) {
     // const i = 3;
     // const result = (one == 0) && (a[i] == 0.0f);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(3_a));
     auto* lhs = Equal("one", 0_a);
     auto* rhs = Equal(Source{{12, 34}}, IndexAccessor("a", "i"), 0.0_f);
@@ -1747,7 +1748,7 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_Or_Invalid_Index) {
     // const i = 4;
     // const result = (one == 1) || (a[i] == 0);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(4_a));
     auto* lhs = Equal("one", 1_a);
     auto* rhs = Equal(IndexAccessor("a", "i"), 0_a);
@@ -1764,7 +1765,7 @@ TEST_F(ResolverConstEvalTest, NonShortCircuit_Or_Invalid_Index) {
     // const i = 3;
     // const result = (one == 0) || (a[i] == 0);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(3_a));
     auto* lhs = Equal("one", 0_a);
     auto* rhs = Equal(IndexAccessor("a", Expr(Source{{12, 34}}, "i")), 0_a);
@@ -1781,7 +1782,7 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_Or_Error_Index) {
     // const i = 3;
     // const result = (one == 1) || (a[i] == 0.0f);
     GlobalConst("one", Expr(1_a));
-    GlobalConst("a", array<i32, 3>(1_i, 2_i, 3_i));
+    GlobalConst("a", Call<array<i32, 3>>(1_i, 2_i, 3_i));
     GlobalConst("i", Expr(3_a));
     auto* lhs = Equal("one", 1_a);
     auto* rhs = Equal(Source{{12, 34}}, IndexAccessor("a", "i"), 0.0_f);
@@ -1914,17 +1915,19 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_And_Error_Init) {
     // const result = (one == 0) && (vec2<f32>(1.0, true).x == 0.0);
     GlobalConst("one", Expr(1_a));
     auto* lhs = Equal("one", 0_a);
-    auto* rhs = Equal(MemberAccessor(vec2<f32>(Source{{12, 34}}, 1.0_a, Expr(true)), "x"), 0.0_a);
+    auto* rhs =
+        Equal(MemberAccessor(Call<vec2<f32>>(Source{{12, 34}}, 1.0_a, Expr(true)), "x"), 0.0_a);
     GlobalConst("result", LogicalAnd(lhs, rhs));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
               R"(12:34 error: no matching constructor for vec2<f32>(abstract-float, bool)
 
-4 candidate constructors:
+5 candidate constructors:
   vec2(x: T, y: T) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec2(T) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec2(vec2<T>) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
+  vec2() -> vec2<abstract-int>
   vec2<T>() -> vec2<T>  where: T is f32, f16, i32, u32 or bool
 
 5 candidate conversions:
@@ -1941,17 +1944,19 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_Or_Error_Init) {
     // const result = (one == 1) || (vec2<f32>(1.0, true).x == 0.0);
     GlobalConst("one", Expr(1_a));
     auto* lhs = Equal("one", 0_a);
-    auto* rhs = Equal(MemberAccessor(vec2<f32>(Source{{12, 34}}, 1.0_a, Expr(true)), "x"), 0.0_a);
+    auto* rhs =
+        Equal(MemberAccessor(Call<vec2<f32>>(Source{{12, 34}}, 1.0_a, Expr(true)), "x"), 0.0_a);
     GlobalConst("result", LogicalOr(lhs, rhs));
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(),
               R"(12:34 error: no matching constructor for vec2<f32>(abstract-float, bool)
 
-4 candidate constructors:
+5 candidate constructors:
   vec2(x: T, y: T) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec2(T) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec2(vec2<T>) -> vec2<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
+  vec2() -> vec2<abstract-int>
   vec2<T>() -> vec2<T>  where: T is f32, f16, i32, u32 or bool
 
 5 candidate conversions:
@@ -2237,6 +2242,84 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_Or_Error_MemberAccess) {
 }
 
 ////////////////////////////////////////////////
+// Short-Circuit with RHS Variable Access
+////////////////////////////////////////////////
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_And_RHSConstDecl) {
+    // const FALSE = false;
+    // const result = FALSE && FALSE;
+    GlobalConst("FALSE", Expr(false));
+    auto* binary = LogicalAnd("FALSE", "FALSE");
+    GlobalConst("result", binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    ValidateAnd(Sem(), binary);
+}
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_Or_RHSConstDecl) {
+    // const TRUE = true;
+    // const result = TRUE || TRUE;
+    GlobalConst("TRUE", Expr(true));
+    auto* binary = LogicalOr("TRUE", "TRUE");
+    GlobalConst("result", binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    ValidateOr(Sem(), binary);
+}
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_And_RHSLetDecl) {
+    // fn f() {
+    //   let b = false;
+    //   let result = false && b;
+    // }
+    auto* binary = LogicalAnd(false, "b");
+    WrapInFunction(Decl(Let("b", Expr(false))), binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    ValidateAnd(Sem(), binary);
+}
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_Or_RHSLetDecl) {
+    // fn f() {
+    //   let b = false;
+    //   let result = true || b;
+    // }
+    auto* binary = LogicalOr(true, "b");
+    WrapInFunction(Decl(Let("b", Expr(false))), binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    ValidateOr(Sem(), binary);
+}
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_And_RHSVarDecl) {
+    // fn f() {
+    //   var b = false;
+    //   let result = false && b;
+    // }
+    auto* binary = LogicalAnd(false, "b");
+    WrapInFunction(Decl(Var("b", Expr(false))), binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    EXPECT_EQ(Sem().Get(binary)->Stage(), sem::EvaluationStage::kRuntime);
+    EXPECT_EQ(Sem().GetVal(binary->lhs)->Stage(), sem::EvaluationStage::kConstant);
+    EXPECT_EQ(Sem().GetVal(binary->rhs)->Stage(), sem::EvaluationStage::kRuntime);
+}
+
+TEST_F(ResolverConstEvalTest, ShortCircuit_Or_RHSVarDecl) {
+    // fn f() {
+    //   var b = false;
+    //   let result = true || b;
+    // }
+    auto* binary = LogicalOr(true, "b");
+    WrapInFunction(Decl(Var("b", Expr(false))), binary);
+
+    EXPECT_TRUE(r()->Resolve()) << r()->error();
+    EXPECT_EQ(Sem().Get(binary)->Stage(), sem::EvaluationStage::kRuntime);
+    EXPECT_EQ(Sem().GetVal(binary->lhs)->Stage(), sem::EvaluationStage::kConstant);
+    EXPECT_EQ(Sem().GetVal(binary->rhs)->Stage(), sem::EvaluationStage::kRuntime);
+}
+
+////////////////////////////////////////////////
 // Short-Circuit Swizzle
 ////////////////////////////////////////////////
 
@@ -2248,7 +2331,8 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_And_Error_Swizzle) {
     // const result = (one == 0) && (vec2(1, 2).z == 0);
     GlobalConst("one", Expr(1_a));
     auto* lhs = Equal("one", 0_a);
-    auto* rhs = Equal(MemberAccessor(vec2<Infer>(1_a, 2_a), Ident(Source{{12, 34}}, "z")), 0_a);
+    auto* rhs =
+        Equal(MemberAccessor(Call<vec2<Infer>>(1_a, 2_a), Ident(Source{{12, 34}}, "z")), 0_a);
     GlobalConst("result", LogicalAnd(lhs, rhs));
 
     EXPECT_FALSE(r()->Resolve());
@@ -2260,7 +2344,8 @@ TEST_F(ResolverConstEvalTest, ShortCircuit_Or_Error_Swizzle) {
     // const result = (one == 1) || (vec2(1, 2).z == 0);
     GlobalConst("one", Expr(1_a));
     auto* lhs = Equal("one", 1_a);
-    auto* rhs = Equal(MemberAccessor(vec2<Infer>(1_a, 2_a), Ident(Source{{12, 34}}, "z")), 0_a);
+    auto* rhs =
+        Equal(MemberAccessor(Call<vec2<Infer>>(1_a, 2_a), Ident(Source{{12, 34}}, "z")), 0_a);
     GlobalConst("result", LogicalOr(lhs, rhs));
 
     EXPECT_FALSE(r()->Resolve());

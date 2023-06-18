@@ -29,7 +29,8 @@ namespace tint::sem {
 /// override N : i32;
 /// type arr = array<i32, N>
 /// ```
-class NamedOverrideArrayCount final : public Castable<NamedOverrideArrayCount, type::ArrayCount> {
+class NamedOverrideArrayCount final
+    : public utils::Castable<NamedOverrideArrayCount, type::ArrayCount> {
   public:
     /// Constructor
     /// @param var the `override` variable
@@ -40,9 +41,8 @@ class NamedOverrideArrayCount final : public Castable<NamedOverrideArrayCount, t
     /// @returns true if this array count is equal @p other
     bool Equals(const type::UniqueNode& other) const override;
 
-    /// @param symbols the symbol table
     /// @returns the friendly name for this array count
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type
@@ -59,7 +59,7 @@ class NamedOverrideArrayCount final : public Castable<NamedOverrideArrayCount, t
 /// type arr = array<i32, N*2>
 /// ```
 class UnnamedOverrideArrayCount final
-    : public Castable<UnnamedOverrideArrayCount, type::ArrayCount> {
+    : public utils::Castable<UnnamedOverrideArrayCount, type::ArrayCount> {
   public:
     /// Constructor
     /// @param e the override expression
@@ -70,9 +70,8 @@ class UnnamedOverrideArrayCount final
     /// @returns true if this array count is equal @p other
     bool Equals(const type::UniqueNode& other) const override;
 
-    /// @param symbols the symbol table
     /// @returns the friendly name for this array count
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

@@ -15,9 +15,12 @@
 #ifndef SRC_TINT_IR_MODULE_H_
 #define SRC_TINT_IR_MODULE_H_
 
+#include <memory>
 #include <string>
 
-#include "src/tint/constant/value.h"
+#include "src/tint/constant/manager.h"
+#include "src/tint/ir/block.h"
+#include "src/tint/ir/constant.h"
 #include "src/tint/ir/function.h"
 #include "src/tint/ir/instruction.h"
 #include "src/tint/ir/value.h"
@@ -28,29 +31,20 @@
 #include "src/tint/utils/result.h"
 #include "src/tint/utils/vector.h"
 
-// Forward Declarations
-namespace tint {
-class Program;
-}  // namespace tint
-
 namespace tint::ir {
 
 /// Main module class for the IR.
 class Module {
+    /// Program Id required to create other components
+    ProgramID prog_id_;
+
+    /// Map of value to pre-declared identifier
+    utils::Hashmap<Value*, Symbol, 32> value_to_id_;
+
+    /// Map of pre-declared identifier to value
+    utils::Hashmap<Symbol, Value*, 32> id_to_value_;
+
   public:
-    /// The result type for the FromProgram method.
-    using Result = utils::Result<Module, std::string>;
-
-    /// Builds an ir::Module from the given Program
-    /// @param program the Program to use.
-    /// @returns the `utiils::Result` of generating the IR. The result will contain the `ir::Module`
-    /// on success, otherwise the `std::string` error.
-    ///
-    /// @note this assumes the program |IsValid|, and has had const-eval done so
-    /// any abstract values have been calculated and converted into the relevant
-    /// concrete types.
-    static Result FromProgram(const Program* program);
-
     /// Constructor
     Module();
     /// Move constructor
@@ -64,35 +58,41 @@ class Module {
     /// @returns a reference to this module
     Module& operator=(Module&& o);
 
-    /// Converts the module back to a Program
-    /// @returns the resulting program, or nullptr on error
-    ///  (Note, this will probably turn into a utils::Result, just stubbing for now)
-    const Program* ToProgram() const;
+    /// @param value the value
+    /// @return the name of the given value, or an invalid symbol if the value is not named.
+    Symbol NameOf(Value* value);
 
-  private:
-    /// Program Id required to create other components
-    ProgramID prog_id_;
+    /// @param value the value to name.
+    /// @param name the desired name of the value. May be suffixed on collision.
+    /// @return the unique symbol of the given value.
+    Symbol SetName(Value* value, std::string_view name);
 
-  public:
-    /// The flow node allocator
-    utils::BlockAllocator<FlowNode> flow_nodes;
-    /// The constant allocator
-    utils::BlockAllocator<constant::Value> constants;
+    /// @return the type manager for the module
+    type::Manager& Types() { return constant_values.types; }
+
+    /// The block allocator
+    utils::BlockAllocator<Block> blocks;
+
+    /// The constant value manager
+    constant::Manager constant_values;
+
     /// The value allocator
     utils::BlockAllocator<Value> values;
-    /// The instruction allocator
-    utils::BlockAllocator<Instruction> instructions;
 
     /// List of functions in the program
     utils::Vector<Function*, 8> functions;
-    /// List of indexes into the functions list for the entry points
-    utils::Vector<Function*, 8> entry_points;
 
-    /// The type manager for the module
-    type::Manager types;
+    /// The block containing module level declarations, if any exist.
+    Block* root_block = nullptr;
 
     /// The symbol table for the module
     SymbolTable symbols{prog_id_};
+
+    /// The map of constant::Value to their ir::Constant.
+    utils::Hashmap<const constant::Value*, ir::Constant*, 16> constants;
+
+    /// If the module generated a validation error, will store the file for the disassembly text.
+    std::unique_ptr<Source::File> disassembly_file;
 };
 
 }  // namespace tint::ir

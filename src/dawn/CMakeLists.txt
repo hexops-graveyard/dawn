@@ -23,6 +23,7 @@ add_subdirectory(wire)
 # TODO(dawn:269): Remove once the implementation-based swapchains are removed.
 add_subdirectory(utils)
 add_subdirectory(glfw)
+add_subdirectory(tests/benchmarks)
 
 if (DAWN_BUILD_SAMPLES)
     #TODO(dawn:269): Add this once implementation-based swapchains are removed.
@@ -72,10 +73,7 @@ DawnJSONGenerator(
 # because the file doesn't exist on disk.
 add_library(dawn_headers STATIC ${DAWN_PLACEHOLDER_FILE})
 common_compile_options(dawn_headers)
-target_sources(dawn_headers PRIVATE
-    "${DAWN_INCLUDE_DIR}/dawn/dawn_wsi.h"
-    ${DAWN_HEADERS_GEN_SOURCES}
-)
+target_sources(dawn_headers PRIVATE ${DAWN_HEADERS_GEN_SOURCES})
 target_link_libraries(dawn_headers INTERFACE dawn_public_config)
 
 ###############################################################################

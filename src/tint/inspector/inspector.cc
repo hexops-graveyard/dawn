@@ -80,7 +80,7 @@ std::tuple<ComponentType, CompositionType> CalculateComponentAndComposition(
     TINT_ASSERT(Inspector, type->is_numeric_scalar_or_vector());
 
     ComponentType componentType = Switch(
-        type::Type::DeepestElementOf(type),  //
+        type->DeepestElement(),  //
         [&](const type::F32*) { return ComponentType::kF32; },
         [&](const type::F16*) { return ComponentType::kF16; },
         [&](const type::I32*) { return ComponentType::kI32; },
@@ -133,8 +133,8 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
 
     auto* sem = program_->Sem().Get(func);
 
-    entry_point.name = program_->Symbols().NameFor(func->name->symbol);
-    entry_point.remapped_name = program_->Symbols().NameFor(func->name->symbol);
+    entry_point.name = func->name->symbol.Name();
+    entry_point.remapped_name = func->name->symbol.Name();
 
     switch (func->PipelineStage()) {
         case ast::PipelineStage::kCompute: {
@@ -163,9 +163,9 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
     }
 
     for (auto* param : sem->Parameters()) {
-        AddEntryPointInOutVariables(program_->Symbols().NameFor(param->Declaration()->name->symbol),
-                                    param->Type(), param->Declaration()->attributes,
-                                    param->Location(), entry_point.input_variables);
+        AddEntryPointInOutVariables(param->Declaration()->name->symbol.Name(), param->Type(),
+                                    param->Declaration()->attributes, param->Location(),
+                                    entry_point.input_variables);
 
         entry_point.input_position_used |= ContainsBuiltin(
             builtin::BuiltinValue::kPosition, param->Type(), param->Declaration()->attributes);
@@ -192,7 +192,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
     for (auto* var : sem->TransitivelyReferencedGlobals()) {
         auto* decl = var->Declaration();
 
-        auto name = program_->Symbols().NameFor(decl->name->symbol);
+        auto name = decl->name->symbol.Name();
 
         auto* global = var->As<sem::GlobalVariable>();
         if (global && global->Declaration()->Is<ast::Override>()) {
@@ -200,7 +200,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
             override.name = name;
             override.id = global->OverrideId();
             auto* type = var->Type();
-            TINT_ASSERT(Inspector, type->is_scalar());
+            TINT_ASSERT(Inspector, type->Is<type::Scalar>());
             if (type->is_bool_scalar_or_vector()) {
                 override.type = Override::Type::kBool;
             } else if (type->is_float_scalar()) {
@@ -295,7 +295,7 @@ std::map<std::string, OverrideId> Inspector::GetNamedOverrideIds() {
     for (auto* var : program_->AST().GlobalVariables()) {
         auto* global = program_->Sem().Get<sem::GlobalVariable>(var);
         if (global && global->Declaration()->Is<ast::Override>()) {
-            auto name = program_->Symbols().NameFor(var->name->symbol);
+            auto name = var->name->symbol.Name();
             result[name] = global->OverrideId();
         }
     }
@@ -456,7 +456,7 @@ std::vector<ResourceBinding> Inspector::GetWriteOnlyStorageTextureResourceBindin
 
 std::vector<ResourceBinding> Inspector::GetTextureResourceBindings(
     const std::string& entry_point,
-    const tint::TypeInfo* texture_type,
+    const tint::utils::TypeInfo* texture_type,
     ResourceBinding::ResourceType resource_type) {
     auto* func = FindEntryPointByName(entry_point);
     if (!func) {
@@ -485,19 +485,20 @@ std::vector<ResourceBinding> Inspector::GetTextureResourceBindings(
 
 std::vector<ResourceBinding> Inspector::GetDepthTextureResourceBindings(
     const std::string& entry_point) {
-    return GetTextureResourceBindings(entry_point, &TypeInfo::Of<type::DepthTexture>(),
+    return GetTextureResourceBindings(entry_point, &utils::TypeInfo::Of<type::DepthTexture>(),
                                       ResourceBinding::ResourceType::kDepthTexture);
 }
 
 std::vector<ResourceBinding> Inspector::GetDepthMultisampledTextureResourceBindings(
     const std::string& entry_point) {
-    return GetTextureResourceBindings(entry_point, &TypeInfo::Of<type::DepthMultisampledTexture>(),
+    return GetTextureResourceBindings(entry_point,
+                                      &utils::TypeInfo::Of<type::DepthMultisampledTexture>(),
                                       ResourceBinding::ResourceType::kDepthMultisampledTexture);
 }
 
 std::vector<ResourceBinding> Inspector::GetExternalTextureResourceBindings(
     const std::string& entry_point) {
-    return GetTextureResourceBindings(entry_point, &TypeInfo::Of<type::ExternalTexture>(),
+    return GetTextureResourceBindings(entry_point, &utils::TypeInfo::Of<type::ExternalTexture>(),
                                       ResourceBinding::ResourceType::kExternalTexture);
 }
 
@@ -531,8 +532,8 @@ std::vector<SamplerTexturePair> Inspector::GetSamplerTextureUses(
         auto* texture = pair.first->As<sem::GlobalVariable>();
         auto* sampler = pair.second ? pair.second->As<sem::GlobalVariable>() : nullptr;
         SamplerTexturePair new_pair;
-        new_pair.sampler_binding_point = sampler ? sampler->BindingPoint() : placeholder;
-        new_pair.texture_binding_point = texture->BindingPoint();
+        new_pair.sampler_binding_point = sampler ? *sampler->BindingPoint() : placeholder;
+        new_pair.texture_binding_point = *texture->BindingPoint();
         new_pairs.push_back(new_pair);
     }
     return new_pairs;
@@ -619,9 +620,9 @@ void Inspector::AddEntryPointInOutVariables(std::string name,
     if (auto* struct_ty = unwrapped_type->As<sem::Struct>()) {
         // Recurse into members.
         for (auto* member : struct_ty->Members()) {
-            AddEntryPointInOutVariables(name + "." + program_->Symbols().NameFor(member->Name()),
-                                        member->Type(), member->Declaration()->attributes,
-                                        member->Location(), variables);
+            AddEntryPointInOutVariables(name + "." + member->Name().Name(), member->Type(),
+                                        member->Declaration()->attributes,
+                                        member->Attributes().location, variables);
         }
         return;
     }
@@ -834,12 +835,12 @@ void Inspector::GenerateSamplerTargets() {
 
         GetOriginatingResources(std::array<const ast::Expression*, 2>{t, s},
                                 [&](std::array<const sem::GlobalVariable*, 2> globals) {
-                                    auto texture_binding_point = globals[0]->BindingPoint();
-                                    auto sampler_binding_point = globals[1]->BindingPoint();
+                                    auto texture_binding_point = *globals[0]->BindingPoint();
+                                    auto sampler_binding_point = *globals[1]->BindingPoint();
 
                                     for (auto* entry_point : entry_points) {
-                                        const auto& ep_name = program_->Symbols().NameFor(
-                                            entry_point->Declaration()->name->symbol);
+                                        const auto& ep_name =
+                                            entry_point->Declaration()->name->symbol.Name();
                                         (*sampler_targets_)[ep_name].Add(
                                             {sampler_binding_point, texture_binding_point});
                                     }

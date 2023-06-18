@@ -24,10 +24,10 @@
 #include "dawn/native/TintUtils.h"
 #include "dawn/native/d3d/D3DCompilationRequest.h"
 #include "dawn/native/d3d/D3DError.h"
-#include "dawn/native/d3d12/AdapterD3D12.h"
 #include "dawn/native/d3d12/BackendD3D12.h"
 #include "dawn/native/d3d12/BindGroupLayoutD3D12.h"
 #include "dawn/native/d3d12/DeviceD3D12.h"
+#include "dawn/native/d3d12/PhysicalDeviceD3D12.h"
 #include "dawn/native/d3d12/PipelineLayoutD3D12.h"
 #include "dawn/native/d3d12/PlatformFunctionsD3D12.h"
 #include "dawn/native/d3d12/UtilsD3D12.h"
@@ -89,10 +89,10 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
     if (device->IsToggleEnabled(Toggle::UseDXC)) {
         // If UseDXC toggle are not forced to be disable, DXC should have been validated to be
         // available.
-        ASSERT(ToBackend(device->GetAdapter())->GetBackend()->IsDXCAvailable());
+        ASSERT(ToBackend(device->GetPhysicalDevice())->GetBackend()->IsDXCAvailable());
         // We can get the DXC version information since IsDXCAvailable() is true.
         d3d::DxcVersionInfo dxcVersionInfo =
-            ToBackend(device->GetAdapter())->GetBackend()->GetDxcVersion();
+            ToBackend(device->GetPhysicalDevice())->GetBackend()->GetDxcVersion();
 
         req.bytecode.compiler = d3d::Compiler::DXC;
         req.bytecode.dxcLibrary = device->GetDxcLibrary().Get();
@@ -131,13 +131,13 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
     const BindingInfoArray& moduleBindingInfo = entryPoint.bindings;
     for (BindGroupIndex group : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
         const BindGroupLayout* bgl = ToBackend(layout->GetBindGroupLayout(group));
-        const auto& groupBindingInfo = moduleBindingInfo[group];
+        const auto& moduleGroupBindingInfo = moduleBindingInfo[group];
 
         // d3d12::BindGroupLayout packs the bindings per HLSL register-space. We modify
         // the Tint AST to make the "bindings" decoration match the offset chosen by
         // d3d12::BindGroupLayout so that Tint produces HLSL with the correct registers
         // assigned to each interface variable.
-        for (const auto& [binding, bindingInfo] : groupBindingInfo) {
+        for (const auto& [binding, bindingInfo] : moduleGroupBindingInfo) {
             BindingIndex bindingIndex = bgl->GetBindingIndex(binding);
             BindingPoint srcBindingPoint{static_cast<uint32_t>(group),
                                          static_cast<uint32_t>(binding)};
@@ -159,6 +159,36 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
             if (forceStorageBufferAsUAV) {
                 bindingRemapper.access_controls.emplace(srcBindingPoint,
                                                         tint::builtin::Access::kReadWrite);
+            }
+
+            // On D3D12 backend all storage buffers without Dynamic Buffer Offset will always be
+            // bound to root descriptor tables, where D3D12 runtime can guarantee that OOB-read will
+            // always return 0 and OOB-write will always take no action, so we don't need to do
+            // robustness transform on them. Note that we still need to do robustness transform on
+            // uniform buffers because only sized array is allowed in uniform buffers, so FXC will
+            // report compilation error when the indexing to the array in a cBuffer is out of bound
+            // and can be checked at compilation time. Storage buffers are OK because they are
+            // always translated with RWByteAddressBuffers, which has no such sized arrays.
+            //
+            // For example below WGSL shader will cause compilation error when we skip robustness
+            // transform on uniform buffers:
+            //
+            // struct TestData {
+            //     data: array<vec4<u32>, 3>,
+            // };
+            // @group(0) @binding(0) var<uniform> s: TestData;
+            //
+            // fn test() -> u32 {
+            //     let index = 1000000u;
+            //     if (s.data[index][0] != 0u) {    // error X3504: array index out of bounds
+            //         return 0x1004u;
+            //     }
+            //     return 0u;
+            // }
+            if ((bindingInfo.buffer.type == wgpu::BufferBindingType::Storage ||
+                 bindingInfo.buffer.type == wgpu::BufferBindingType::ReadOnlyStorage) &&
+                !bgl->GetBindingInfo(bindingIndex).buffer.hasDynamicOffset) {
+                req.hlsl.bindingPointsIgnoredInRobustnessTransform.emplace_back(srcBindingPoint);
             }
         }
 
@@ -183,7 +213,7 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
         }
     }
 
-    std::optional<tint::transform::SubstituteOverride::Config> substituteOverrideConfig;
+    std::optional<tint::ast::transform::SubstituteOverride::Config> substituteOverrideConfig;
     if (!programmableStage.metadata->overrides.empty()) {
         substituteOverrideConfig = BuildSubstituteOverridesTransformConfig(programmableStage);
     }
@@ -207,11 +237,18 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
     req.hlsl.limits = LimitsForCompilationRequest::Create(limits.v1);
 
     CacheResult<d3d::CompiledShader> compiledShader;
-    DAWN_TRY_LOAD_OR_RUN(compiledShader, device, std::move(req), d3d::CompiledShader::FromBlob,
-                         d3d::CompileShader);
+    MaybeError compileError = [&]() -> MaybeError {
+        DAWN_TRY_LOAD_OR_RUN(compiledShader, device, std::move(req), d3d::CompiledShader::FromBlob,
+                             d3d::CompileShader);
+        return {};
+    }();
 
     if (device->IsToggleEnabled(Toggle::DumpShaders)) {
         d3d::DumpCompiledShader(device, *compiledShader, compileFlags);
+    }
+
+    if (compileError.IsError()) {
+        return {compileError.AcquireError()};
     }
 
     device->GetBlobCache()->EnsureStored(compiledShader);

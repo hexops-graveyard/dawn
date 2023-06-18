@@ -22,9 +22,11 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 constexpr static unsigned int kRTSize = 64;
 
-namespace {
 struct AddressModeTestCase {
     wgpu::AddressMode mMode;
     uint8_t mExpected2;
@@ -47,7 +49,6 @@ AddressModeTestCase addressModes[] = {
         255,
     },
 };
-}  // namespace
 
 class SamplerTest : public DawnTest {
   protected:
@@ -120,7 +121,7 @@ class SamplerTest : public DawnTest {
             wgpu::SamplerDescriptor descriptor = {};
             descriptor.minFilter = wgpu::FilterMode::Nearest;
             descriptor.magFilter = wgpu::FilterMode::Nearest;
-            descriptor.mipmapFilter = wgpu::FilterMode::Nearest;
+            descriptor.mipmapFilter = wgpu::MipmapFilterMode::Nearest;
             descriptor.addressModeU = u.mMode;
             descriptor.addressModeV = v.mMode;
             descriptor.addressModeW = w.mMode;
@@ -211,3 +212,6 @@ DAWN_INSTANTIATE_TEST(SamplerTest,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

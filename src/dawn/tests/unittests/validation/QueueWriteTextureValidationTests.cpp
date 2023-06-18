@@ -20,6 +20,7 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
 
 class QueueWriteTextureValidationTest : public ValidationTest {
@@ -536,8 +537,8 @@ TEST_F(QueueWriteTextureValidationTest, WriteToStencilAspect) {
 
 class WriteTextureTest_CompressedTextureFormats : public QueueWriteTextureValidationTest {
   protected:
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[3] = {wgpu::FeatureName::TextureCompressionBC,
                                                  wgpu::FeatureName::TextureCompressionETC2,
                                                  wgpu::FeatureName::TextureCompressionASTC};
@@ -787,3 +788,4 @@ TEST_F(WriteTextureTest_CompressedTextureFormats, WriteToMultipleArrayLayers) {
 }
 
 }  // anonymous namespace
+}  // namespace dawn

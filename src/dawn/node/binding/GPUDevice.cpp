@@ -93,10 +93,7 @@ class DeviceLostInfo : public interop::GPUDeviceLostInfo {
   public:
     DeviceLostInfo(interop::GPUDeviceLostReason reason, std::string message)
         : reason_(reason), message_(message) {}
-    std::variant<interop::GPUDeviceLostReason, interop::UndefinedType> getReason(
-        Napi::Env env) override {
-        return reason_;
-    }
+    interop::GPUDeviceLostReason getReason(Napi::Env env) override { return reason_; }
     std::string getMessage(Napi::Env) override { return message_; }
 
   private:
@@ -323,7 +320,7 @@ interop::Interface<interop::GPUShaderModule> GPUDevice::createShaderModule(
 
     wgpu::ShaderModuleWGSLDescriptor wgsl_desc{};
     wgpu::ShaderModuleDescriptor sm_desc{};
-    if (!conv(wgsl_desc.source, descriptor.code) || !conv(sm_desc.label, descriptor.label)) {
+    if (!conv(wgsl_desc.code, descriptor.code) || !conv(sm_desc.label, descriptor.label)) {
         return {};
     }
     sm_desc.nextInChain = &wgsl_desc;

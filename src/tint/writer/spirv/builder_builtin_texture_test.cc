@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
+#include "gtest/gtest-spi.h"
 #include "src/tint/ast/builtin_texture_helper_test.h"
 #include "src/tint/ast/call_statement.h"
 #include "src/tint/ast/stage_attribute.h"
@@ -29,8 +30,8 @@ struct expected_texture_overload_spirv {
 };
 
 expected_texture_overload_spirv expected_texture_overload(
-    ast::builtin::test::ValidTextureOverload overload) {
-    using ValidTextureOverload = ast::builtin::test::ValidTextureOverload;
+    ast::test::ValidTextureOverload overload) {
+    using ValidTextureOverload = ast::test::ValidTextureOverload;
     switch (overload) {
         case ValidTextureOverload::kDimensions1d:
             return {
@@ -3704,11 +3705,11 @@ OpImageWrite %10 %16 %22
             "<unmatched texture overload>"};
 }  // NOLINT - Ignore the length of this function
 
-using BuiltinTextureTest = TestParamHelper<ast::builtin::test::TextureOverloadCase>;
+using BuiltinTextureTest = TestParamHelper<ast::test::TextureOverloadCase>;
 
 INSTANTIATE_TEST_SUITE_P(BuiltinTextureTest,
                          BuiltinTextureTest,
-                         testing::ValuesIn(ast::builtin::test::TextureOverloadCase::ValidCases()));
+                         testing::ValuesIn(ast::test::TextureOverloadCase::ValidCases()));
 
 TEST_P(BuiltinTextureTest, Call) {
     auto param = GetParam();
@@ -3726,16 +3727,16 @@ TEST_P(BuiltinTextureTest, Call) {
 
     spirv::Builder& b = Build();
 
-    b.push_function(Function{});
-    ASSERT_TRUE(b.GenerateGlobalVariable(texture)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(sampler)) << b.error();
+    b.PushFunctionForTesting();
+    ASSERT_TRUE(b.GenerateGlobalVariable(texture)) << b.Diagnostics();
+    ASSERT_TRUE(b.GenerateGlobalVariable(sampler)) << b.Diagnostics();
 
-    EXPECT_EQ(b.GenerateExpression(call), 8u) << b.error();
+    EXPECT_EQ(b.GenerateExpression(call), 8u) << b.Diagnostics();
 
     auto expected = expected_texture_overload(param.overload);
-    EXPECT_EQ(expected.types, "\n" + DumpInstructions(b.types()));
-    EXPECT_EQ(expected.instructions, "\n" + DumpInstructions(b.functions()[0].instructions()));
-    EXPECT_EQ(expected.capabilities, "\n" + DumpInstructions(b.capabilities()));
+    EXPECT_EQ(expected.types, "\n" + DumpInstructions(b.Module().Types()));
+    EXPECT_EQ(expected.instructions, "\n" + DumpInstructions(b.CurrentFunction().instructions()));
+    EXPECT_EQ(expected.capabilities, "\n" + DumpInstructions(b.Module().Capabilities()));
 }
 
 // Check the SPIRV generated passes validation
@@ -3756,37 +3757,43 @@ TEST_P(BuiltinTextureTest, ValidateSPIRV) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
     Validate(b);
 }
 
-TEST_P(BuiltinTextureTest, OutsideFunction_IsError) {
-    auto param = GetParam();
+// TODO(dsinclair): This generates two fatal errors, but expect_fatal_failure can only handle 1
+TEST_P(BuiltinTextureTest, DISABLED_OutsideFunction_IsError) {
+    EXPECT_FATAL_FAILURE(
+        {
+            auto param = GetParam();
 
-    // The point of this test is to try to generate the texture
-    // builtin call outside a function.
+            // The point of this test is to try to generate the texture
+            // builtin call outside a function.
 
-    auto* texture = param.BuildTextureVariable(this);
-    auto* sampler = param.BuildSamplerVariable(this);
+            ProgramBuilder pb;
 
-    auto* call = Call(param.function, param.args(this));
-    auto* stmt = param.returns_value ? static_cast<const ast::Statement*>(Assign(Phony(), call))
-                                     : static_cast<const ast::Statement*>(CallStmt(call));
+            auto* texture = param.BuildTextureVariable(&pb);
+            auto* sampler = param.BuildSamplerVariable(&pb);
 
-    Func("func", utils::Empty, ty.void_(), utils::Vector{stmt},
-         utils::Vector{
-             Stage(ast::PipelineStage::kFragment),
-         });
+            auto* call = pb.Call(param.function, param.args(&pb));
+            auto* stmt = param.returns_value
+                             ? static_cast<const ast::Statement*>(pb.Assign(pb.Phony(), call))
+                             : static_cast<const ast::Statement*>(pb.CallStmt(call));
 
-    spirv::Builder& b = Build();
+            pb.Func("func", utils::Empty, pb.ty.void_(), utils::Vector{stmt},
+                    utils::Vector{
+                        pb.Stage(ast::PipelineStage::kFragment),
+                    });
 
-    ASSERT_TRUE(b.GenerateGlobalVariable(texture)) << b.error();
-    ASSERT_TRUE(b.GenerateGlobalVariable(sampler)) << b.error();
-    EXPECT_EQ(b.GenerateExpression(call), 0u);
-    EXPECT_THAT(b.error(),
-                ::testing::StartsWith("Internal error: trying to add SPIR-V instruction "));
-    EXPECT_THAT(b.error(), ::testing::EndsWith(" outside a function"));
+            auto program = std::make_unique<Program>(std::move(pb));
+            auto b = std::make_unique<spirv::Builder>(program.get());
+
+            b->GenerateGlobalVariable(texture);
+            b->GenerateGlobalVariable(sampler);
+            b->GenerateExpression(call);
+        },
+        "Internal error: trying to add SPIR-V instruction ");
 }
 
 }  // namespace

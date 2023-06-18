@@ -40,12 +40,14 @@ class RenderPassEncoder final : public RenderEncoderBase {
                                          std::function<void()> endCallback = nullptr);
     static Ref<RenderPassEncoder> MakeError(DeviceBase* device,
                                             CommandEncoder* commandEncoder,
-                                            EncodingContext* encodingContext);
+                                            EncodingContext* encodingContext,
+                                            const char* label);
 
     ObjectType GetType() const override;
 
+    // NOTE: this will lock the device internally. To avoid deadlock when the device is already
+    // locked, use End() instead.
     void APIEnd();
-    void APIEndPass();  // TODO(dawn:1286): Remove after deprecation period.
 
     void APISetStencilReference(uint32_t reference);
     void APISetBlendConstant(const Color* color);
@@ -63,6 +65,10 @@ class RenderPassEncoder final : public RenderEncoderBase {
 
     void APIWriteTimestamp(QuerySetBase* querySet, uint32_t queryIndex);
 
+    // Internal code that already locked the device should call this method instead of
+    // APIEnd() to avoid the device being locked again.
+    void End();
+
   protected:
     RenderPassEncoder(DeviceBase* device,
                       const RenderPassDescriptor* descriptor,
@@ -78,7 +84,8 @@ class RenderPassEncoder final : public RenderEncoderBase {
     RenderPassEncoder(DeviceBase* device,
                       CommandEncoder* commandEncoder,
                       EncodingContext* encodingContext,
-                      ErrorTag errorTag);
+                      ErrorTag errorTag,
+                      const char* label);
 
   private:
     void DestroyImpl() override;

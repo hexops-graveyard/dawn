@@ -17,11 +17,11 @@
 #include "dawn/tests/DawnTest.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
 namespace {
+
 using RequestDP4aExtension = bool;
 DAWN_TEST_PARAM_STRUCT(ExperimentalDP4aTestsParams, RequestDP4aExtension);
-
-}  // anonymous namespace
 
 class ExperimentalDP4aTests : public DawnTestWithParams<ExperimentalDP4aTestsParams> {
   protected:
@@ -85,10 +85,10 @@ TEST_P(ExperimentalDP4aTests, BasicDP4aFeaturesTest) {
         GetParam().mRequestDP4aExtension &&
         // Adapter support the feature
         IsDP4aSupportedOnAdapter() &&
-        // Proper toggle, disallow_unsafe_apis and use_dxc if d3d12
-        // Note that "disallow_unsafe_apis" is always disabled in
-        // DawnTestEnvironment::CreateInstanceAndDiscoverAdapters.
-        !HasToggleEnabled("disallow_unsafe_apis") && UseDxcEnabledOrNonD3D12();
+        // Proper toggle, allow_unsafe_apis and use_dxc if d3d12
+        // Note that "allow_unsafe_apis" is always enabled in
+        // DawnTestEnvironment::CreateInstanceAndDiscoverPhysicalDevices.
+        HasToggleEnabled("allow_unsafe_apis") && UseDxcEnabledOrNonD3D12();
     const bool deviceSupportDP4AFeature =
         device.HasFeature(wgpu::FeatureName::ChromiumExperimentalDp4a);
     EXPECT_EQ(deviceSupportDP4AFeature, shouldDP4AFeatureSupportedByDevice);
@@ -128,7 +128,7 @@ TEST_P(ExperimentalDP4aTests, BasicDP4aFeaturesTest) {
     EXPECT_BUFFER_U32_RANGE_EQ(expected, bufferOut, 0, 4);
 }
 
-// DawnTestBase::CreateDeviceImpl always disable disallow_unsafe_apis toggle.
+// DawnTestBase::CreateDeviceImpl always enables allow_unsafe_apis toggle.
 DAWN_INSTANTIATE_TEST_P(ExperimentalDP4aTests,
                         {
                             D3D12Backend(),
@@ -136,3 +136,6 @@ DAWN_INSTANTIATE_TEST_P(ExperimentalDP4aTests,
                             VulkanBackend(),
                         },
                         {true, false});
+
+}  // anonymous namespace
+}  // namespace dawn

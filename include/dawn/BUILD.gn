@@ -34,7 +34,6 @@ source_set("headers") {
   public_deps = [ ":headers_gen" ]
 
   sources = get_target_outputs(":headers_gen")
-  sources += [ "${dawn_root}/include/dawn/dawn_wsi.h" ]
 }
 
 ###############################################################################
@@ -45,6 +44,7 @@ dawn_json_generator("cpp_headers_gen") {
   target = "cpp_headers"
   outputs = [
     "include/dawn/webgpu_cpp.h",
+    "include/dawn/webgpu_cpp_chained_struct.h",
     "include/dawn/webgpu_cpp_print.h",
   ]
 }

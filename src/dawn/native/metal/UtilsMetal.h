@@ -15,6 +15,9 @@
 #ifndef SRC_DAWN_NATIVE_METAL_UTILSMETAL_H_
 #define SRC_DAWN_NATIVE_METAL_UTILSMETAL_H_
 
+#include <string>
+
+#include "dawn/common/NSRef.h"
 #include "dawn/common/StackContainer.h"
 #include "dawn/native/dawn_platform.h"
 #include "dawn/native/metal/DeviceMTL.h"
@@ -31,6 +34,21 @@ enum class SingleShaderStage;
 }  // namespace dawn::native
 
 namespace dawn::native::metal {
+
+NSRef<NSString> MakeDebugName(DeviceBase* device, const char* prefix, std::string label = "");
+
+// Templating for setting the label on MTL objects because not all MTL objects are of the same base
+// class. For example MTLBuffer and MTLTexture inherit MTLResource, but MTLFunction does not. Note
+// that we allow a nullable Metal object because APISetLabel does not currently do any checks on
+// backend resources.
+template <typename T>
+void SetDebugName(DeviceBase* device, T* mtlObj, const char* prefix, std::string label = "") {
+    if (mtlObj == nullptr) {
+        return;
+    }
+    NSRef<NSString> debugName = MakeDebugName(device, prefix, label);
+    [mtlObj setLabel:debugName.Get()];
+}
 
 Aspect GetDepthStencilAspects(MTLPixelFormat format);
 MTLCompareFunction ToMetalCompareFunction(wgpu::CompareFunction compareFunction);
@@ -79,15 +97,6 @@ MaybeError EnsureDestinationTextureInitialized(CommandRecordingContext* commandC
                                                Texture* texture,
                                                const TextureCopy& dst,
                                                const Extent3D& size);
-
-// Allow use MTLStoreActionStoreAndMultismapleResolve because the logic in the backend is
-// first to compute what the "best" Metal render pass descriptor is, then fix it up if we
-// are not on macOS 10.12 (i.e. the EmulateStoreAndMSAAResolve toggle is on).
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunguarded-availability"
-constexpr MTLStoreAction kMTLStoreActionStoreAndMultisampleResolve =
-    MTLStoreActionStoreAndMultisampleResolve;
-#pragma clang diagnostic pop
 
 // Helper functions to encode Metal render passes that take care of multiple workarounds that
 // happen at the render pass start and end. Because workarounds wrap the encoding of the render

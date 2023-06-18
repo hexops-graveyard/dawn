@@ -28,7 +28,7 @@
 namespace tint::type {
 
 /// Array holds the type information for Array nodes.
-class Array final : public Castable<Array, Type> {
+class Array final : public utils::Castable<Array, Type> {
   public:
     /// An error message string stating that the array count was expected to be a constant
     /// expression. Used by multiple writers and transforms.
@@ -93,10 +93,16 @@ class Array final : public Castable<Array, Type> {
     /// natural stride
     bool IsStrideImplicit() const { return stride_ == implicit_stride_; }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
+
+    /// @copydoc Type::Elements
+    TypeAndCount Elements(const Type* type_if_invalid = nullptr,
+                          uint32_t count_if_invalid = 0) const override;
+
+    /// @copydoc Type::Element
+    const Type* Element(uint32_t index) const override;
 
     /// @param ctx the clone context
     /// @returns a clone of this type

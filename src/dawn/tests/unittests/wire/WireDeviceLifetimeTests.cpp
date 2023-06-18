@@ -20,6 +20,9 @@
 #include "dawn/webgpu.h"
 #include "gtest/gtest.h"
 
+namespace dawn {
+namespace {
+
 static WGPUDevice lastBackendDevice = nullptr;
 
 class WireDeviceLifetimeTests : public testing::Test {
@@ -28,7 +31,7 @@ class WireDeviceLifetimeTests : public testing::Test {
         : nativeProcs(BuildProcs()),
           wireHelper(utils::CreateWireHelper(nativeProcs, /* useWire */ true)) {
         WGPUInstanceDescriptor instanceDesc = {};
-        nativeInstance = std::make_unique<dawn::native::Instance>(&instanceDesc);
+        nativeInstance = std::make_unique<native::Instance>(&instanceDesc);
         instance = wireHelper->RegisterInstance(nativeInstance->Get());
     }
 
@@ -50,7 +53,7 @@ class WireDeviceLifetimeTests : public testing::Test {
     const DawnProcTable nativeProcs;
     std::unique_ptr<utils::WireHelper> wireHelper;
 
-    std::unique_ptr<dawn::native::Instance> nativeInstance;
+    std::unique_ptr<native::Instance> nativeInstance;
     wgpu::Instance instance;
     wgpu::Adapter adapter;
 
@@ -59,12 +62,12 @@ class WireDeviceLifetimeTests : public testing::Test {
     // static variable `lastBackendDevice`. This lets tests control the wire device and the native
     // backend device separately.
     DawnProcTable BuildProcs() {
-        DawnProcTable nativeProcs = dawn::native::GetProcs();
-        nativeProcs.adapterRequestDevice = [](WGPUAdapter adapter, const WGPUDeviceDescriptor* desc,
-                                              WGPURequestDeviceCallback callback, void* userdata) {
+        DawnProcTable procs = native::GetProcs();
+        procs.adapterRequestDevice = [](WGPUAdapter self, const WGPUDeviceDescriptor* desc,
+                                        WGPURequestDeviceCallback callback, void* userdata) {
             using WrappedUserdata = std::pair<WGPURequestDeviceCallback, void*>;
-            dawn::native::GetProcs().adapterRequestDevice(
-                adapter, desc,
+            native::GetProcs().adapterRequestDevice(
+                self, desc,
                 [](WGPURequestDeviceStatus status, WGPUDevice device, char const* message,
                    void* userdata) {
                     lastBackendDevice = device;
@@ -75,7 +78,7 @@ class WireDeviceLifetimeTests : public testing::Test {
                 new WrappedUserdata(callback, userdata));
         };
 
-        return nativeProcs;
+        return procs;
     }
 };
 
@@ -144,7 +147,7 @@ TEST_F(WireDeviceLifetimeTests, DeviceDroppedFromWireThenLoggingCallback) {
     wgpu::ShaderModuleDescriptor shaderModuleDesc = {};
     wgpu::ShaderModuleWGSLDescriptor wgslDesc = {};
     shaderModuleDesc.nextInChain = &wgslDesc;
-    wgslDesc.source = "@compute @workgroup_size(64) fn main() {}";
+    wgslDesc.code = "@compute @workgroup_size(64) fn main() {}";
 
     // Create a shader module so the transformed shaders are dumped.
     device.CreateShaderModule(&shaderModuleDesc);
@@ -213,3 +216,6 @@ TEST_F(WireDeviceLifetimeTests, DeviceDroppedFromWireThenLostCallback) {
     // callbacks.
     nativeProcs.deviceRelease(oldDevice);
 }
+
+}  // anonymous namespace
+}  // namespace dawn

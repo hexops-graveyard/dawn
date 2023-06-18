@@ -14,8 +14,10 @@
 
 #include "dawn/native/CommandBufferStateTracker.h"
 
+#include <limits>
 #include <optional>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <variant>
 
@@ -255,6 +257,29 @@ Return FindStorageBufferBindingAliasing(
     }
 }
 
+bool TextureViewsMatch(const TextureViewBase* a, const TextureViewBase* b) {
+    ASSERT(a->GetTexture() == b->GetTexture());
+    return a->GetFormat().GetIndex() == b->GetFormat().GetIndex() &&
+           a->GetDimension() == b->GetDimension() && a->GetBaseMipLevel() == b->GetBaseMipLevel() &&
+           a->GetLevelCount() == b->GetLevelCount() &&
+           a->GetBaseArrayLayer() == b->GetBaseArrayLayer() &&
+           a->GetLayerCount() == b->GetLayerCount();
+}
+
+using VectorOfTextureViews = StackVector<const TextureViewBase*, 8>;
+
+bool TextureViewsAllMatch(const VectorOfTextureViews& views) {
+    ASSERT(!views->empty());
+
+    const TextureViewBase* first = views[0];
+    for (size_t i = 1; i < views->size(); ++i) {
+        if (!TextureViewsMatch(first, views[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 }  // namespace
 
 enum ValidationAspect {
@@ -306,6 +331,43 @@ MaybeError CommandBufferStateTracker::ValidateCanDraw() {
 
 MaybeError CommandBufferStateTracker::ValidateCanDrawIndexed() {
     return ValidateOperation(kDrawIndexedAspects);
+}
+
+MaybeError CommandBufferStateTracker::ValidateNoDifferentTextureViewsOnSameTexture() {
+    // TODO(dawn:1855): Look into optimizations as unordered_map does many allocations
+    std::unordered_map<const TextureBase*, VectorOfTextureViews> textureToViews;
+
+    for (BindGroupIndex groupIndex :
+         IterateBitSet(mLastPipelineLayout->GetBindGroupLayoutsMask())) {
+        BindGroupBase* bindGroup = mBindgroups[groupIndex];
+        BindGroupLayoutBase* bgl = bindGroup->GetLayout();
+
+        for (BindingIndex bindingIndex{0}; bindingIndex < bgl->GetBindingCount(); ++bindingIndex) {
+            const BindingInfo& bindingInfo = bgl->GetBindingInfo(bindingIndex);
+            if (bindingInfo.bindingType != BindingInfoType::Texture &&
+                bindingInfo.bindingType != BindingInfoType::StorageTexture) {
+                continue;
+            }
+
+            const TextureViewBase* textureViewBase =
+                bindGroup->GetBindingAsTextureView(bindingIndex);
+
+            textureToViews[textureViewBase->GetTexture()]->push_back(textureViewBase);
+        }
+    }
+
+    for (const auto& it : textureToViews) {
+        const TextureBase* texture = it.first;
+        const VectorOfTextureViews& views = it.second;
+        DAWN_INVALID_IF(
+            !TextureViewsAllMatch(views),
+            "In compatibility mode, %s must not have different views in a single draw/dispatch "
+            "command. texture views: %s",
+            texture,
+            ityp::span<size_t, const TextureViewBase* const>(views->data(), views->size()));
+    }
+
+    return {};
 }
 
 MaybeError CommandBufferStateTracker::ValidateBufferInRangeForVertexBuffer(uint32_t vertexCount,
@@ -573,22 +635,40 @@ MaybeError CommandBufferStateTracker::CheckMissingAspects(ValidationAspects aspe
                 requiredBGL, mLastPipelineLayout, currentBGL, mBindgroups[i],
                 static_cast<uint32_t>(i));
 
-            // TODO(dawn:563): Report which buffer bindings are failing. This requires the ability
-            // to look up the binding index from the packed index.
             std::optional<uint32_t> packedIndex = FindFirstUndersizedBuffer(
                 mBindgroups[i]->GetUnverifiedBufferSizes(), (*mMinBufferSizes)[i]);
             if (packedIndex.has_value()) {
+                // Find the binding index for this packed index.
+                BindingIndex bindingIndex{std::numeric_limits<uint32_t>::max()};
+                mBindgroups[i]->ForEachUnverifiedBufferBindingIndex(
+                    [&](BindingIndex candidateBindingIndex, uint32_t candidatePackedIndex) {
+                        if (candidatePackedIndex == *packedIndex) {
+                            bindingIndex = candidateBindingIndex;
+                        }
+                    });
+                ASSERT(static_cast<uint32_t>(bindingIndex) != std::numeric_limits<uint32_t>::max());
+
+                const auto& bindingInfo = mBindgroups[i]->GetLayout()->GetBindingInfo(bindingIndex);
+                const BufferBinding& bufferBinding =
+                    mBindgroups[i]->GetBindingAsBufferBinding(bindingIndex);
+
+                BindingNumber bindingNumber = bindingInfo.binding;
+                const BufferBase* buffer = bufferBinding.buffer;
+
                 uint64_t bufferSize =
                     mBindgroups[i]->GetUnverifiedBufferSizes()[packedIndex.value()];
                 uint64_t minBufferSize = (*mMinBufferSizes)[i][packedIndex.value()];
+
                 return DAWN_VALIDATION_ERROR(
-                    "Binding sizes are too small for %s set at group index %u. A bound buffer "
-                    "contained %u bytes, but the current pipeline (%s) requires a buffer which is "
-                    "at least %u bytes. (Note that uniform buffer bindings must be a multiple of "
-                    "16 bytes, and as a result may be larger than the associated data in the "
-                    "shader source.)",
-                    mBindgroups[i], static_cast<uint32_t>(i), bufferSize, mLastPipeline,
-                    minBufferSize);
+                    "%s bound with size %u at group %u, binding %u is too small. The pipeline (%s) "
+                    "requires a buffer binding which is at least %u bytes.%s",
+                    buffer, bufferSize, static_cast<uint32_t>(i),
+                    static_cast<uint32_t>(bindingNumber), mLastPipeline, minBufferSize,
+                    (bindingInfo.buffer.type == wgpu::BufferBindingType::Uniform
+                         ? " This binding is a uniform buffer binding. It is padded to a multiple "
+                           "of 16 bytes, and as a result may be larger than the associated data in "
+                           "the shader source."
+                         : ""));
             }
         }
 
@@ -648,6 +728,10 @@ void CommandBufferStateTracker::SetRenderPipeline(RenderPipelineBase* pipeline) 
     SetPipelineCommon(pipeline);
 }
 
+void CommandBufferStateTracker::UnsetBindGroup(BindGroupIndex index) {
+    mBindgroups[index] = nullptr;
+    mAspects.reset(VALIDATION_ASPECT_BIND_GROUPS);
+}
 void CommandBufferStateTracker::SetBindGroup(BindGroupIndex index,
                                              BindGroupBase* bindgroup,
                                              uint32_t dynamicOffsetCount,
@@ -661,6 +745,12 @@ void CommandBufferStateTracker::SetIndexBuffer(wgpu::IndexFormat format, uint64_
     mIndexBufferSet = true;
     mIndexFormat = format;
     mIndexBufferSize = size;
+}
+
+void CommandBufferStateTracker::UnsetVertexBuffer(VertexBufferSlot slot) {
+    mVertexBufferSlotsUsed.set(slot, false);
+    mVertexBufferSizes[slot] = 0;
+    mAspects.reset(VALIDATION_ASPECT_VERTEX_BUFFERS);
 }
 
 void CommandBufferStateTracker::SetVertexBuffer(VertexBufferSlot slot, uint64_t size) {

@@ -15,17 +15,20 @@
 #ifndef SRC_TINT_IR_BINARY_H_
 #define SRC_TINT_IR_BINARY_H_
 
-#include "src/tint/castable.h"
-#include "src/tint/ir/instruction.h"
-#include "src/tint/symbol_table.h"
-#include "src/tint/type/type.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/ir/operand_instruction.h"
+#include "src/tint/utils/castable.h"
 
 namespace tint::ir {
 
-/// An instruction in the IR.
-class Binary : public Castable<Binary, Instruction> {
+/// A binary instruction in the IR.
+class Binary : public utils::Castable<Binary, OperandInstruction<2, 1>> {
   public:
+    /// The offset in Operands() for the LHS
+    static constexpr size_t kLhsOperandOffset = 0;
+
+    /// The offset in Operands() for the RHS
+    static constexpr size_t kRhsOperandOffset = 1;
+
     /// The kind of instruction.
     enum class Kind {
         kAdd,
@@ -37,9 +40,6 @@ class Binary : public Castable<Binary, Instruction> {
         kAnd,
         kOr,
         kXor,
-
-        kLogicalAnd,
-        kLogicalOr,
 
         kEqual,
         kNotEqual,
@@ -54,36 +54,27 @@ class Binary : public Castable<Binary, Instruction> {
 
     /// Constructor
     /// @param kind the kind of binary instruction
-    /// @param result the result value
+    /// @param type the result type
     /// @param lhs the lhs of the instruction
     /// @param rhs the rhs of the instruction
-    Binary(Kind kind, Value* result, Value* lhs, Value* rhs);
-    Binary(const Binary& instr) = delete;
-    Binary(Binary&& instr) = delete;
+    Binary(enum Kind kind, const type::Type* type, Value* lhs, Value* rhs);
     ~Binary() override;
 
-    Binary& operator=(const Binary& instr) = delete;
-    Binary& operator=(Binary&& instr) = delete;
+    /// @returns the kind of the binary instruction
+    enum Kind Kind() { return kind_; }
 
-    /// @returns the kind of instruction
-    Kind GetKind() const { return kind_; }
+    /// @returns the type of the value
+    const type::Type* Type() override { return result_type_; }
 
     /// @returns the left-hand-side value for the instruction
-    const Value* LHS() const { return lhs_; }
+    Value* LHS() { return operands_[kLhsOperandOffset]; }
 
     /// @returns the right-hand-side value for the instruction
-    const Value* RHS() const { return rhs_; }
-
-    /// Write the instruction to the given stream
-    /// @param out the stream to write to
-    /// @param st the symbol table
-    /// @returns the stream
-    utils::StringStream& ToString(utils::StringStream& out, const SymbolTable& st) const override;
+    Value* RHS() { return operands_[kRhsOperandOffset]; }
 
   private:
-    Kind kind_;
-    Value* lhs_ = nullptr;
-    Value* rhs_ = nullptr;
+    enum Kind kind_;
+    const type::Type* result_type_ = nullptr;
 };
 
 }  // namespace tint::ir

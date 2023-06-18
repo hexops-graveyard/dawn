@@ -15,17 +15,25 @@
 #ifndef SRC_TINT_CONSTANT_SCALAR_H_
 #define SRC_TINT_CONSTANT_SCALAR_H_
 
-#include "src/tint/castable.h"
+#include "src/tint/builtin/number.h"
+#include "src/tint/constant/manager.h"
 #include "src/tint/constant/value.h"
-#include "src/tint/number.h"
 #include "src/tint/type/type.h"
+#include "src/tint/utils/castable.h"
 #include "src/tint/utils/hash.h"
 
 namespace tint::constant {
 
+/// ScalarBase is the base class of all Scalar<T> specializations.
+/// Used for querying whether a value is a scalar type.
+class ScalarBase : public utils::Castable<ScalarBase, Value> {
+  public:
+    ~ScalarBase() override;
+};
+
 /// Scalar holds a single scalar or abstract-numeric value.
 template <typename T>
-class Scalar : public Castable<Scalar<T>, Value> {
+class Scalar : public utils::Castable<Scalar<T>, ScalarBase> {
   public:
     static_assert(!std::is_same_v<UnwrapNumber<T>, T> || std::is_same_v<T, bool>,
                   "T must be a Number or bool");
@@ -61,9 +69,9 @@ class Scalar : public Castable<Scalar<T>, Value> {
     /// Clones the constant into the provided context
     /// @param ctx the clone context
     /// @returns the cloned node
-    Scalar* Clone(CloneContext& ctx) const override {
+    const Scalar* Clone(CloneContext& ctx) const override {
         auto* ty = type->Clone(ctx.type_ctx);
-        return ctx.dst.constants->Create<Scalar<T>>(ty, value);
+        return ctx.dst.Get<Scalar<T>>(ty, value);
     }
 
     /// @returns `value` if `T` is not a Number, otherwise ValueOf returns the inner value of the

@@ -25,9 +25,10 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::Pointer);
 
 namespace tint::type {
 
-Pointer::Pointer(const Type* subtype, builtin::AddressSpace address_space, builtin::Access access)
-    : Base(utils::Hash(TypeInfo::Of<Pointer>().full_hashcode, address_space, subtype, access),
-           type::Flags{}),
+Pointer::Pointer(builtin::AddressSpace address_space, const Type* subtype, builtin::Access access)
+    : Base(
+          utils::Hash(utils::TypeInfo::Of<Pointer>().full_hashcode, address_space, subtype, access),
+          type::Flags{}),
       subtype_(subtype),
       address_space_(address_space),
       access_(access) {
@@ -43,13 +44,13 @@ bool Pointer::Equals(const UniqueNode& other) const {
     return false;
 }
 
-std::string Pointer::FriendlyName(const SymbolTable& symbols) const {
+std::string Pointer::FriendlyName() const {
     utils::StringStream out;
     out << "ptr<";
     if (address_space_ != builtin::AddressSpace::kUndefined) {
         out << address_space_ << ", ";
     }
-    out << subtype_->FriendlyName(symbols) << ", " << access_;
+    out << subtype_->FriendlyName() << ", " << access_;
     out << ">";
     return out.str();
 }
@@ -58,7 +59,7 @@ Pointer::~Pointer() = default;
 
 Pointer* Pointer::Clone(CloneContext& ctx) const {
     auto* ty = subtype_->Clone(ctx);
-    return ctx.dst.mgr->Get<Pointer>(ty, address_space_, access_);
+    return ctx.dst.mgr->Get<Pointer>(address_space_, ty, access_);
 }
 
 }  // namespace tint::type

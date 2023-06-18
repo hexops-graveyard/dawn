@@ -27,11 +27,11 @@ TEST_F(BuilderTest, GlobalConstAssert) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
     // const asserts are not emitted
-    EXPECT_EQ(DumpInstructions(b.types()), "");
-    EXPECT_EQ(b.functions().size(), 0u);
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), "");
+    EXPECT_EQ(b.Module().Functions().size(), 0u);
 }
 
 TEST_F(BuilderTest, FunctionConstAssert) {
@@ -39,13 +39,13 @@ TEST_F(BuilderTest, FunctionConstAssert) {
 
     spirv::Builder& b = Build();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
     // const asserts are not emitted
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpReturn
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpReturn
 )");
 }
 

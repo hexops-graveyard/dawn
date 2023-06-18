@@ -19,6 +19,9 @@
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class VertexStateTest : public ValidationTest {
   protected:
     void CreatePipeline(bool success,
@@ -174,7 +177,14 @@ TEST_F(VertexStateTest, SetVertexBuffersNumLimit) {
     CreatePipeline(true, state, kPlaceholderVertexShader);
 
     // Test vertex buffer number exceed the limit
+    wgpu::VertexAttribute attributes = {};
+    attributes.shaderLocation = 0;
+    wgpu::VertexBufferLayout bufferLayout = {};
+    bufferLayout.attributeCount = 1;
+    bufferLayout.attributes = &attributes;
+
     state.vertexBufferCount = kMaxVertexBuffers + 1;
+    state.cVertexBuffers.push_back(bufferLayout);
     CreatePipeline(false, state, kPlaceholderVertexShader);
 }
 
@@ -442,3 +452,6 @@ TEST_F(VertexStateTest, UnusedBufferZeroAttribute) {
     state.cVertexBuffers[0].stepMode = wgpu::VertexStepMode::VertexBufferNotUsed;
     CreatePipeline(false, state, kPlaceholderVertexShader);
 }
+
+}  // anonymous namespace
+}  // namespace dawn

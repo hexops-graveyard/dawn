@@ -101,6 +101,9 @@ class ErrorBuffer final : public BufferBase {
     std::unique_ptr<uint8_t[]> mFakeMappedData;
 };
 
+// GetMappedRange on a zero-sized buffer returns a pointer to this value.
+static uint32_t sZeroSizedMappingData = 0xCAFED00D;
+
 }  // anonymous namespace
 
 MaybeError ValidateBufferDescriptor(DeviceBase* device, const BufferDescriptor* descriptor) {
@@ -131,11 +134,9 @@ MaybeError ValidateBufferDescriptor(DeviceBase* device, const BufferDescriptor* 
                     "Buffer is mapped at creation but its size (%u) is not a multiple of 4.",
                     descriptor->size);
 
-    if (descriptor->size > device->GetLimits().v1.maxBufferSize) {
-        DAWN_TRY(DAWN_MAKE_DEPRECATION_ERROR(
-            device, "Buffer size (%u) exceeds the max buffer size limit (%u).", descriptor->size,
-            device->GetLimits().v1.maxBufferSize));
-    }
+    DAWN_INVALID_IF(descriptor->size > device->GetLimits().v1.maxBufferSize,
+                    "Buffer size (%u) exceeds the max buffer size limit (%u).", descriptor->size,
+                    device->GetLimits().v1.maxBufferSize);
 
     return {};
 }
@@ -171,13 +172,23 @@ BufferBase::BufferBase(DeviceBase* device, const BufferDescriptor* descriptor)
         mUsage |= kInternalStorageBuffer;
     }
 
+    if (mUsage & wgpu::BufferUsage::CopyDst) {
+        if (device->IsToggleEnabled(Toggle::UseBlitForDepth16UnormTextureToBufferCopy) ||
+            device->IsToggleEnabled(Toggle::UseBlitForDepth32FloatTextureToBufferCopy)) {
+            mUsage |= kInternalStorageBuffer;
+        }
+        if (device->IsToggleEnabled(Toggle::UseBlitForStencilTextureToBufferCopy)) {
+            mUsage |= kInternalStorageBuffer;
+        }
+    }
+
     GetObjectTrackingList()->Track(this);
 }
 
 BufferBase::BufferBase(DeviceBase* device,
                        const BufferDescriptor* descriptor,
                        ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag),
+    : ApiObjectBase(device, tag, descriptor->label),
       mSize(descriptor->size),
       mUsage(descriptor->usage),
       mState(BufferState::Unmapped) {
@@ -250,6 +261,9 @@ wgpu::BufferMapState BufferBase::APIGetMapState() const {
             return wgpu::BufferMapState::Pending;
         case BufferState::Unmapped:
         case BufferState::Destroyed:
+            return wgpu::BufferMapState::Unmapped;
+        default:
+            UNREACHABLE();
             return wgpu::BufferMapState::Unmapped;
     }
 }
@@ -374,7 +388,7 @@ void BufferBase::APIMapAsync(wgpu::MapMode mode,
     if (mState == BufferState::PendingMap) {
         if (callback) {
             GetDevice()->GetCallbackTaskManager()->AddCallbackTask(
-                callback, WGPUBufferMapAsyncStatus_Error, userdata);
+                callback, WGPUBufferMapAsyncStatus_MappingAlreadyPending, userdata);
         }
         return;
     }
@@ -434,7 +448,7 @@ void* BufferBase::GetMappedRange(size_t offset, size_t size, bool writable) {
         return static_cast<uint8_t*>(mStagingBuffer->GetMappedPointer()) + offset;
     }
     if (mSize == 0) {
-        return reinterpret_cast<uint8_t*>(intptr_t(0xCAFED00D));
+        return &sZeroSizedMappingData;
     }
     uint8_t* start = static_cast<uint8_t*>(GetMappedPointer());
     return start == nullptr ? nullptr : start + offset;
@@ -455,6 +469,9 @@ MaybeError BufferBase::CopyFromStagingBuffer() {
         ASSERT(mStagingBuffer == nullptr);
         return {};
     }
+
+    // D3D11 requires that buffers are unmapped before being used in a copy.
+    DAWN_TRY(mStagingBuffer->Unmap());
 
     DAWN_TRY(
         GetDevice()->CopyFromStagingToBuffer(mStagingBuffer.Get(), 0, this, 0, GetAllocatedSize()));
@@ -509,7 +526,7 @@ MaybeError BufferBase::ValidateMapAsync(wgpu::MapMode mode,
     *status = WGPUBufferMapAsyncStatus_DeviceLost;
     DAWN_TRY(GetDevice()->ValidateIsAlive());
 
-    *status = WGPUBufferMapAsyncStatus_Error;
+    *status = WGPUBufferMapAsyncStatus_ValidationError;
     DAWN_TRY(GetDevice()->ValidateObject(this));
 
     DAWN_INVALID_IF(uint64_t(offset) > mSize,

@@ -122,7 +122,7 @@ OpFunctionEnd)";
     EXPECT_THAT(program_ast, HasSubstr(R"(
 struct main_out {
   @builtin(position)
-  x_2_1 : vec4<f32>,
+  x_2_1 : vec4f,
 }
 )")) << program_ast;
 
@@ -377,12 +377,12 @@ TEST_F(SpvParserTest, EmitFunctions_CalleePrecedesCaller) {
 }
 
 fn branch() -> u32 {
-  let leaf_result : u32 = leaf();
+  let leaf_result = leaf();
   return leaf_result;
 }
 
 fn root() {
-  let branch_result : u32 = branch();
+  let branch_result = branch();
   return;
 }
 )")) << program_ast;

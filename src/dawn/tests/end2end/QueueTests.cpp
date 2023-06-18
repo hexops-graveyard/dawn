@@ -20,6 +20,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 class QueueTests : public DawnTest {};
 
 // Test that GetQueue always returns the same object.
@@ -641,6 +644,9 @@ TEST_P(QueueWriteTextureTests, WriteStencilAspectWithSourceOffsetUnalignedTo4) {
     // Copies to a single aspect are unsupported on OpenGL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
 
+    // TODO(dawn:1848): Support depth-stencil texture write on D3D11.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11());
+
     wgpu::TextureDescriptor textureDescriptor;
     textureDescriptor.format = wgpu::TextureFormat::Depth24PlusStencil8;
     textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
@@ -745,6 +751,9 @@ TEST_P(QueueWriteTextureTests, WriteStencilAspectAfterOtherQueueWriteTextureCall
     // Copies to a single aspect are unsupported on OpenGL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
 
+    // TODO(dawn:1848): Support depth-stencil texture write on D3D11.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11());
+
     wgpu::TextureDescriptor textureDescriptor;
     textureDescriptor.format = wgpu::TextureFormat::Depth24PlusStencil8;
     textureDescriptor.usage = wgpu::TextureUsage::CopySrc | wgpu::TextureUsage::CopyDst;
@@ -783,3 +792,6 @@ DAWN_INSTANTIATE_TEST(QueueWriteTextureTests,
                       OpenGLBackend(),
                       OpenGLESBackend(),
                       VulkanBackend());
+
+}  // anonymous namespace
+}  // namespace dawn

@@ -16,10 +16,24 @@
 
 #include <QuartzCore/CALayer.h>
 
-namespace utils {
+namespace dawn::utils {
 
-void* CreatePlaceholderCALayer() {
-    return [CALayer layer];
+ScopedCALayer::ScopedCALayer(void* layer) : layer(layer) {
+    if (layer) {
+        [static_cast<CALayer*>(layer) retain];
+    }
 }
 
-}  // namespace utils
+ScopedCALayer::~ScopedCALayer() {
+    if (layer) {
+        [static_cast<CALayer*>(layer) release];
+    }
+}
+
+ScopedCALayer CreatePlaceholderCALayer() {
+    @autoreleasepool {
+        return ScopedCALayer([CALayer layer]);
+    }
+}
+
+}  // namespace dawn::utils

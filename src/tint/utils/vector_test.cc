@@ -20,6 +20,7 @@
 #include "gmock/gmock.h"
 
 #include "src/tint/utils/bitcast.h"
+#include "src/tint/utils/predicates.h"
 #include "src/tint/utils/string_stream.h"
 
 namespace tint::utils {
@@ -79,6 +80,10 @@ static_assert(std::is_same_v<VectorCommonType<C2a*, C2b*>, C1*>);
 static_assert(std::is_same_v<VectorCommonType<const C2a*, C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<C2a*, const C2b*>, const C1*>);
 static_assert(std::is_same_v<VectorCommonType<const C2a*, const C2b*>, const C1*>);
+
+static_assert(IsVectorLike<Vector<int, 3>>);
+static_assert(IsVectorLike<VectorRef<int>>);
+static_assert(!IsVectorLike<int>);
 
 ////////////////////////////////////////////////////////////////////////////////
 // TintVectorTest
@@ -1105,6 +1110,54 @@ TEST(TintVectorTest, RepeatMoveAssignRef_WithSpill) {
     EXPECT_TRUE(AllExternallyHeld(vec));
 }
 
+TEST(TintVectorTest, CopyAssignSlice_N2_to_N2) {
+    std::string data[] = {"hello", "world"};
+    Slice<std::string> slice(data);
+    Vector<std::string, 2> vec_b;
+    vec_b = slice;
+    EXPECT_EQ(vec_b.Length(), 2u);
+    EXPECT_EQ(vec_b.Capacity(), 2u);
+    EXPECT_EQ(vec_b[0], "hello");
+    EXPECT_EQ(vec_b[1], "world");
+    EXPECT_TRUE(AllInternallyHeld(vec_b));
+}
+
+TEST(TintVectorTest, CopyAssignSlice_N2_to_N1) {
+    std::string data[] = {"hello", "world"};
+    Slice<std::string> slice(data);
+    Vector<std::string, 1> vec_b;
+    vec_b = slice;
+    EXPECT_EQ(vec_b.Length(), 2u);
+    EXPECT_EQ(vec_b.Capacity(), 2u);
+    EXPECT_EQ(vec_b[0], "hello");
+    EXPECT_EQ(vec_b[1], "world");
+    EXPECT_TRUE(AllExternallyHeld(vec_b));
+}
+
+TEST(TintVectorTest, CopyAssignSlice_N2_to_N3) {
+    std::string data[] = {"hello", "world"};
+    Slice<std::string> slice(data);
+    Vector<std::string, 3> vec_b;
+    vec_b = slice;
+    EXPECT_EQ(vec_b.Length(), 2u);
+    EXPECT_EQ(vec_b.Capacity(), 3u);
+    EXPECT_EQ(vec_b[0], "hello");
+    EXPECT_EQ(vec_b[1], "world");
+    EXPECT_TRUE(AllInternallyHeld(vec_b));
+}
+
+TEST(TintVectorTest, CopyAssignSlice_N2_to_N0) {
+    std::string data[] = {"hello", "world"};
+    Slice<std::string> slice(data);
+    Vector<std::string, 0> vec_b;
+    vec_b = slice;
+    EXPECT_EQ(vec_b.Length(), 2u);
+    EXPECT_EQ(vec_b.Capacity(), 2u);
+    EXPECT_EQ(vec_b[0], "hello");
+    EXPECT_EQ(vec_b[1], "world");
+    EXPECT_TRUE(AllExternallyHeld(vec_b));
+}
+
 TEST(TintVectorTest, Index) {
     Vector<std::string, 2> vec{"hello", "world"};
     static_assert(!std::is_const_v<std::remove_reference_t<decltype(vec[0])>>);
@@ -1788,6 +1841,56 @@ TEST(TintVectorTest, Equality) {
     EXPECT_NE((Vector{2, 1}), (Vector{1, 2}));
 }
 
+TEST(TintVectorTest, Sort) {
+    Vector vec{1, 5, 3, 4, 2};
+    vec.Sort();
+    EXPECT_THAT(vec, testing::ElementsAre(1, 2, 3, 4, 5));
+}
+
+TEST(TintVectorTest, Any) {
+    Vector vec{1, 7, 5, 9};
+    EXPECT_TRUE(vec.Any(Eq(1)));
+    EXPECT_FALSE(vec.Any(Eq(2)));
+    EXPECT_FALSE(vec.Any(Eq(3)));
+    EXPECT_FALSE(vec.Any(Eq(4)));
+    EXPECT_TRUE(vec.Any(Eq(5)));
+    EXPECT_FALSE(vec.Any(Eq(6)));
+    EXPECT_TRUE(vec.Any(Eq(7)));
+    EXPECT_FALSE(vec.Any(Eq(8)));
+    EXPECT_TRUE(vec.Any(Eq(9)));
+}
+
+TEST(TintVectorTest, All) {
+    Vector vec{1, 7, 5, 9};
+    EXPECT_FALSE(vec.All(Ne(1)));
+    EXPECT_TRUE(vec.All(Ne(2)));
+    EXPECT_TRUE(vec.All(Ne(3)));
+    EXPECT_TRUE(vec.All(Ne(4)));
+    EXPECT_FALSE(vec.All(Ne(5)));
+    EXPECT_TRUE(vec.All(Ne(6)));
+    EXPECT_FALSE(vec.All(Ne(7)));
+    EXPECT_TRUE(vec.All(Ne(8)));
+    EXPECT_FALSE(vec.All(Ne(9)));
+}
+
+TEST(TintVectorTest, Slice) {
+    Vector<std::string, 3> vec{"hello", "world"};
+    auto slice = vec.Slice();
+    static_assert(std::is_same_v<decltype(slice), Slice<std::string>>);
+    EXPECT_EQ(slice.data, &vec[0]);
+    EXPECT_EQ(slice.len, 2u);
+    EXPECT_EQ(slice.cap, 3u);
+}
+
+TEST(TintVectorTest, SliceConst) {
+    const Vector<std::string, 3> vec{"hello", "world"};
+    auto slice = vec.Slice();
+    static_assert(std::is_same_v<decltype(slice), Slice<const std::string>>);
+    EXPECT_EQ(slice.data, &vec[0]);
+    EXPECT_EQ(slice.len, 2u);
+    EXPECT_EQ(slice.cap, 3u);
+}
+
 TEST(TintVectorTest, ostream) {
     utils::StringStream ss;
     ss << Vector{1, 2, 3};
@@ -2005,12 +2108,6 @@ TEST(TintVectorRefTest, Index) {
     EXPECT_EQ(vec_ref[1], "two");
 }
 
-TEST(TintVectorRefTest, Sort) {
-    Vector vec{1, 5, 3, 4, 2};
-    vec.Sort();
-    EXPECT_THAT(vec, testing::ElementsAre(1, 2, 3, 4, 5));
-}
-
 TEST(TintVectorRefTest, SortPredicate) {
     Vector vec{1, 5, 3, 4, 2};
     vec.Sort([](int a, int b) { return b < a; });
@@ -2072,6 +2169,7 @@ TEST(TintVectorRefTest, ostream) {
     ss << vec_ref;
     EXPECT_EQ(ss.str(), "[1, 2, 3]");
 }
+
 }  // namespace
 }  // namespace tint::utils
 

@@ -20,6 +20,7 @@
 #include "dawn/wire/server/ServerMemoryTransferService_mock.h"
 
 namespace dawn::wire {
+namespace {
 
 using testing::_;
 using testing::Eq;
@@ -29,8 +30,6 @@ using testing::Pointee;
 using testing::Return;
 using testing::StrictMock;
 using testing::WithArg;
-
-namespace {
 
 // Mock class to add expectations on the wire calling callbacks
 class MockBufferMapCallback {
@@ -42,8 +41,6 @@ std::unique_ptr<StrictMock<MockBufferMapCallback>> mockBufferMapCallback;
 void ToMockBufferMapCallback(WGPUBufferMapAsyncStatus status, void* userdata) {
     mockBufferMapCallback->Call(status, userdata);
 }
-
-}  // anonymous namespace
 
 // WireMemoryTransferServiceTests test the MemoryTransferService with buffer mapping.
 // They test the basic success and error cases for buffer mapping, and they test
@@ -320,8 +317,8 @@ class WireMemoryTransferServiceTests : public WireTest {
     // mUpdatedBufferContent| after all writes are flushed.
     static uint32_t mUpdatedBufferContent;
 
-    StrictMock<dawn::wire::server::MockMemoryTransferService> serverMemoryTransferService;
-    StrictMock<dawn::wire::client::MockMemoryTransferService> clientMemoryTransferService;
+    StrictMock<wire::server::MockMemoryTransferService> serverMemoryTransferService;
+    StrictMock<wire::client::MockMemoryTransferService> clientMemoryTransferService;
 };
 
 uint32_t WireMemoryTransferServiceTests::mBufferContent = 1337;
@@ -427,13 +424,14 @@ TEST_F(WireMemoryTransferServiceTests, BufferMapReadError) {
 
     // Mock a failed callback.
     EXPECT_CALL(api, OnBufferMapAsync(apiBuffer, WGPUMapMode_Read, 0, kBufferSize, _, _))
-        .WillOnce(InvokeWithoutArgs(
-            [&]() { api.CallBufferMapAsyncCallback(apiBuffer, WGPUBufferMapAsyncStatus_Error); }));
+        .WillOnce(InvokeWithoutArgs([&]() {
+            api.CallBufferMapAsyncCallback(apiBuffer, WGPUBufferMapAsyncStatus_ValidationError);
+        }));
 
     FlushClient();
 
     // The client receives an error callback.
-    EXPECT_CALL(*mockBufferMapCallback, Call(WGPUBufferMapAsyncStatus_Error, _)).Times(1);
+    EXPECT_CALL(*mockBufferMapCallback, Call(WGPUBufferMapAsyncStatus_ValidationError, _)).Times(1);
 
     FlushServer();
 
@@ -684,13 +682,14 @@ TEST_F(WireMemoryTransferServiceTests, BufferMapWriteError) {
 
     // Mock an error callback.
     EXPECT_CALL(api, OnBufferMapAsync(apiBuffer, WGPUMapMode_Write, 0, kBufferSize, _, _))
-        .WillOnce(InvokeWithoutArgs(
-            [&]() { api.CallBufferMapAsyncCallback(apiBuffer, WGPUBufferMapAsyncStatus_Error); }));
+        .WillOnce(InvokeWithoutArgs([&]() {
+            api.CallBufferMapAsyncCallback(apiBuffer, WGPUBufferMapAsyncStatus_ValidationError);
+        }));
 
     FlushClient();
 
     // The client receives an error callback.
-    EXPECT_CALL(*mockBufferMapCallback, Call(WGPUBufferMapAsyncStatus_Error, _)).Times(1);
+    EXPECT_CALL(*mockBufferMapCallback, Call(WGPUBufferMapAsyncStatus_ValidationError, _)).Times(1);
 
     FlushServer();
 
@@ -1063,4 +1062,5 @@ TEST_F(WireMemoryTransferServiceTests, MappedAtCreationAndMapWriteSuccess) {
     EXPECT_CALL(serverMemoryTransferService, OnWriteHandleDestroy(serverHandle)).Times(1);
 }
 
+}  // anonymous namespace
 }  // namespace dawn::wire

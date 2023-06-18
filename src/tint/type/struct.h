@@ -22,6 +22,7 @@
 #include <unordered_set>
 
 #include "src/tint/builtin/address_space.h"
+#include "src/tint/builtin/interpolation.h"
 #include "src/tint/symbol.h"
 #include "src/tint/type/node.h"
 #include "src/tint/type/type.h"
@@ -44,19 +45,25 @@ enum class PipelineStageUsage {
     kComputeOutput,
 };
 
+enum StructFlag {
+    /// The structure is a block-decorated structure (for SPIR-V or GLSL).
+    kBlock,
+};
+
+/// An alias to utils::EnumSet<StructFlag>
+using StructFlags = utils::EnumSet<StructFlag>;
+
 /// Struct holds the Type information for structures.
-class Struct : public Castable<Struct, Type> {
+class Struct : public utils::Castable<Struct, Type> {
   public:
     /// Constructor
-    /// @param source the source of the structure
     /// @param name the name of the structure
     /// @param members the structure members
     /// @param align the byte alignment of the structure
     /// @param size the byte size of the structure
     /// @param size_no_padding size of the members without the end of structure
     /// alignment padding
-    Struct(tint::Source source,
-           Symbol name,
+    Struct(Symbol name,
            utils::VectorRef<const StructMember*> members,
            uint32_t align,
            uint32_t size,
@@ -68,9 +75,6 @@ class Struct : public Castable<Struct, Type> {
     /// @param other the other node to compare against
     /// @returns true if the this type is equal to @p other
     bool Equals(const UniqueNode& other) const override;
-
-    /// @returns the source of the structure
-    tint::Source Source() const { return source_; }
 
     /// @returns the name of the structure
     Symbol Name() const { return name_; }
@@ -97,6 +101,13 @@ class Struct : public Castable<Struct, Type> {
     /// @returns the byte size of the members without the end of structure
     /// alignment padding
     uint32_t SizeNoPadding() const { return size_no_padding_; }
+
+    /// @returns the structure flags
+    type::StructFlags StructFlags() const { return struct_flags_; }
+
+    /// Set a structure flag.
+    /// @param flag the flag to set
+    void SetStructFlag(StructFlag flag) { struct_flags_.Add(flag); }
 
     /// Adds the AddressSpace usage to the structure.
     /// @param usage the storage usage
@@ -131,15 +142,13 @@ class Struct : public Castable<Struct, Type> {
         return pipeline_stage_uses_;
     }
 
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
-    /// @param symbols the program's symbol table
     /// @returns a multiline string that describes the layout of this struct,
     /// including size and alignment information.
-    std::string Layout(const tint::SymbolTable& symbols) const;
+    std::string Layout() const;
 
     /// @param concrete the conversion-rank ordered concrete versions of this abstract structure.
     void SetConcreteTypes(utils::VectorRef<const Struct*> concrete) { concrete_types_ = concrete; }
@@ -149,48 +158,62 @@ class Struct : public Castable<Struct, Type> {
     /// @note only structures returned by builtins may be abstract (e.g. modf, frexp)
     utils::VectorRef<const Struct*> ConcreteTypes() const { return concrete_types_; }
 
+    /// @copydoc Type::Elements
+    TypeAndCount Elements(const Type* type_if_invalid = nullptr,
+                          uint32_t count_if_invalid = 0) const override;
+
+    /// @copydoc Type::Element
+    const Type* Element(uint32_t index) const override;
+
     /// @param ctx the clone context
     /// @returns a clone of this type
     Struct* Clone(CloneContext& ctx) const override;
 
   private:
-    const tint::Source source_;
     const Symbol name_;
     const utils::Vector<const StructMember*, 4> members_;
     const uint32_t align_;
     const uint32_t size_;
     const uint32_t size_no_padding_;
+    type::StructFlags struct_flags_;
     std::unordered_set<builtin::AddressSpace> address_space_usage_;
     std::unordered_set<PipelineStageUsage> pipeline_stage_uses_;
     utils::Vector<const Struct*, 2> concrete_types_;
 };
 
+/// Attributes that can be applied to the StructMember
+struct StructMemberAttributes {
+    /// The value of a `@location` attribute
+    std::optional<uint32_t> location;
+    /// The value of a `@builtin` attribute
+    std::optional<builtin::BuiltinValue> builtin;
+    /// The values of a `@interpolate` attribute
+    std::optional<builtin::Interpolation> interpolation;
+    /// True if the member was annotated with `@invariant`
+    bool invariant = false;
+};
+
 /// StructMember holds the type information for structure members.
-class StructMember : public Castable<StructMember, Node> {
+class StructMember : public utils::Castable<StructMember, Node> {
   public:
     /// Constructor
-    /// @param source the source of the struct member
     /// @param name the name of the structure member
     /// @param type the type of the member
     /// @param index the index of the member in the structure
     /// @param offset the byte offset from the base of the structure
     /// @param align the byte alignment of the member
     /// @param size the byte size of the member
-    /// @param location the location attribute, if present
-    StructMember(tint::Source source,
-                 Symbol name,
+    /// @param attributes the optional attributes
+    StructMember(Symbol name,
                  const type::Type* type,
                  uint32_t index,
                  uint32_t offset,
                  uint32_t align,
                  uint32_t size,
-                 std::optional<uint32_t> location);
+                 const StructMemberAttributes& attributes);
 
     /// Destructor
     ~StructMember() override;
-
-    /// @returns the source the struct member
-    const tint::Source& Source() const { return source_; }
 
     /// @returns the name of the structure member
     Symbol Name() const { return name_; }
@@ -217,15 +240,14 @@ class StructMember : public Castable<StructMember, Node> {
     /// @returns byte size
     uint32_t Size() const { return size_; }
 
-    /// @returns the location, if set
-    std::optional<uint32_t> Location() const { return location_; }
+    /// @returns the optional attributes
+    const StructMemberAttributes& Attributes() const { return attributes_; }
 
     /// @param ctx the clone context
     /// @returns a clone of this struct member
     StructMember* Clone(CloneContext& ctx) const;
 
   private:
-    const tint::Source source_;
     const Symbol name_;
     const type::Struct* struct_;
     const type::Type* type_;
@@ -233,7 +255,7 @@ class StructMember : public Castable<StructMember, Node> {
     const uint32_t offset_;
     const uint32_t align_;
     const uint32_t size_;
-    const std::optional<uint32_t> location_;
+    const StructMemberAttributes attributes_;
 };
 
 }  // namespace tint::type

@@ -40,7 +40,7 @@ MaybeError ValidateSamplerDescriptor(DeviceBase*, const SamplerDescriptor* descr
     if (descriptor->maxAnisotropy > 1) {
         DAWN_INVALID_IF(descriptor->minFilter != wgpu::FilterMode::Linear ||
                             descriptor->magFilter != wgpu::FilterMode::Linear ||
-                            descriptor->mipmapFilter != wgpu::FilterMode::Linear,
+                            descriptor->mipmapFilter != wgpu::MipmapFilterMode::Linear,
                         "One of minFilter (%s), magFilter (%s) or mipmapFilter (%s) is not %s "
                         "while using anisotropic filter (maxAnisotropy is %f)",
                         descriptor->magFilter, descriptor->minFilter, descriptor->mipmapFilter,
@@ -52,7 +52,7 @@ MaybeError ValidateSamplerDescriptor(DeviceBase*, const SamplerDescriptor* descr
 
     DAWN_TRY(ValidateFilterMode(descriptor->minFilter));
     DAWN_TRY(ValidateFilterMode(descriptor->magFilter));
-    DAWN_TRY(ValidateFilterMode(descriptor->mipmapFilter));
+    DAWN_TRY(ValidateMipmapFilterMode(descriptor->mipmapFilter));
     DAWN_TRY(ValidateAddressMode(descriptor->addressModeU));
     DAWN_TRY(ValidateAddressMode(descriptor->addressModeV));
     DAWN_TRY(ValidateAddressMode(descriptor->addressModeW));
@@ -89,8 +89,8 @@ SamplerBase::SamplerBase(DeviceBase* device, const SamplerDescriptor* descriptor
     GetObjectTrackingList()->Track(this);
 }
 
-SamplerBase::SamplerBase(DeviceBase* device, ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag) {}
+SamplerBase::SamplerBase(DeviceBase* device, ObjectBase::ErrorTag tag, const char* label)
+    : ApiObjectBase(device, tag, label) {}
 
 SamplerBase::~SamplerBase() = default;
 
@@ -102,8 +102,8 @@ void SamplerBase::DestroyImpl() {
 }
 
 // static
-SamplerBase* SamplerBase::MakeError(DeviceBase* device) {
-    return new SamplerBase(device, ObjectBase::kError);
+SamplerBase* SamplerBase::MakeError(DeviceBase* device, const char* label) {
+    return new SamplerBase(device, ObjectBase::kError, label);
 }
 
 ObjectType SamplerBase::GetType() const {
@@ -116,7 +116,7 @@ bool SamplerBase::IsComparison() const {
 
 bool SamplerBase::IsFiltering() const {
     return mMinFilter == wgpu::FilterMode::Linear || mMagFilter == wgpu::FilterMode::Linear ||
-           mMipmapFilter == wgpu::FilterMode::Linear;
+           mMipmapFilter == wgpu::MipmapFilterMode::Linear;
 }
 
 size_t SamplerBase::ComputeContentHash() {

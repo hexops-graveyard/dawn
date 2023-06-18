@@ -39,7 +39,7 @@ std::array<float, 7> kGammaDecodeBT709 = {2.2, 1.0 / 1.099, 0.099 / 1.099, 1 / 4
 std::array<float, 7> kGammaEncodeSrgb = {1 / 2.4, 1.137119, 0.0, 12.92, 0.0031308, -0.055, 0.0};
 }  // namespace
 
-namespace utils {
+namespace dawn::utils {
 #if TINT_BUILD_SPV_READER
 wgpu::ShaderModule CreateShaderModuleFromASM(
     const wgpu::Device& device,
@@ -84,7 +84,7 @@ wgpu::ShaderModule CreateShaderModuleFromASM(
 
 wgpu::ShaderModule CreateShaderModule(const wgpu::Device& device, const char* source) {
     wgpu::ShaderModuleWGSLDescriptor wgslDesc;
-    wgslDesc.source = source;
+    wgslDesc.code = source;
     wgpu::ShaderModuleDescriptor descriptor;
     descriptor.nextInChain = &wgslDesc;
     return device.CreateShaderModule(&descriptor);
@@ -418,4 +418,4 @@ ColorSpaceConversionInfo GetYUVBT709ToRGBSRGBColorSpaceConversionInfo() {
     return info;
 }
 
-}  // namespace utils
+}  // namespace dawn::utils

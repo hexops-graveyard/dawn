@@ -15,42 +15,23 @@
 #ifndef SRC_TINT_IR_CONVERT_H_
 #define SRC_TINT_IR_CONVERT_H_
 
-#include "src/tint/castable.h"
 #include "src/tint/ir/call.h"
-#include "src/tint/symbol_table.h"
 #include "src/tint/type/type.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/utils/castable.h"
 
 namespace tint::ir {
 
 /// A value conversion instruction in the IR.
-class Convert : public Castable<Convert, Call> {
+class Convert : public utils::Castable<Convert, Call> {
   public:
+    /// The offset in Operands() for the value
+    static constexpr size_t kValueOperandOffset = 0;
+
     /// Constructor
-    /// @param result the result value
-    /// @param from the type being converted from
-    /// @param args the conversion arguments
-    Convert(Value* result, const type::Type* from, utils::VectorRef<Value*> args);
-    Convert(const Convert& instr) = delete;
-    Convert(Convert&& instr) = delete;
+    /// @param to_type the target conversion type
+    /// @param value the value to convert
+    Convert(const type::Type* to_type, Value* value);
     ~Convert() override;
-
-    Convert& operator=(const Convert& instr) = delete;
-    Convert& operator=(Convert&& instr) = delete;
-
-    /// @returns the from type
-    const type::Type* From() const { return from_; }
-    /// @returns the to type
-    const type::Type* To() const { return Result()->Type(); }
-
-    /// Write the instruction to the given stream
-    /// @param out the stream to write to
-    /// @param st the symbol table
-    /// @returns the stream
-    utils::StringStream& ToString(utils::StringStream& out, const SymbolTable& st) const override;
-
-  private:
-    const type::Type* from_ = nullptr;
 };
 
 }  // namespace tint::ir

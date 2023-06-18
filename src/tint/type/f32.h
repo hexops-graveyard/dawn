@@ -17,12 +17,12 @@
 
 #include <string>
 
-#include "src/tint/type/type.h"
+#include "src/tint/type/numeric_scalar.h"
 
 namespace tint::type {
 
 /// A float 32 type
-class F32 final : public Castable<F32, Type> {
+class F32 final : public utils::Castable<F32, NumericScalar> {
   public:
     /// Constructor
     F32();
@@ -30,14 +30,9 @@ class F32 final : public Castable<F32, Type> {
     /// Destructor
     ~F32() override;
 
-    /// @param other the other node to compare against
-    /// @returns true if the this type is equal to @p other
-    bool Equals(const UniqueNode& other) const override;
-
-    /// @param symbols the program's symbol table
     /// @returns the name for this type that closely resembles how it would be
     /// declared in WGSL.
-    std::string FriendlyName(const SymbolTable& symbols) const override;
+    std::string FriendlyName() const override;
 
     /// @returns the size in bytes of the type.
     uint32_t Size() const override;

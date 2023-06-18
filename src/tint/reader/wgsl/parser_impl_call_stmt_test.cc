@@ -35,7 +35,7 @@ TEST_F(ParserImplTest, Statement_Call) {
     ASSERT_TRUE(e->Is<ast::CallStatement>());
     auto* c = e->As<ast::CallStatement>()->expr;
 
-    ast::CheckIdentifier(p->builder().Symbols(), c->target, "a");
+    ast::CheckIdentifier(c->target, "a");
 
     EXPECT_EQ(c->args.Length(), 0u);
 }
@@ -51,7 +51,7 @@ TEST_F(ParserImplTest, Statement_Call_WithParams) {
     ASSERT_TRUE(e->Is<ast::CallStatement>());
     auto* c = e->As<ast::CallStatement>()->expr;
 
-    ast::CheckIdentifier(p->builder().Symbols(), c->target, "a");
+    ast::CheckIdentifier(c->target, "a");
 
     EXPECT_EQ(c->args.Length(), 3u);
     EXPECT_TRUE(c->args[0]->Is<ast::IntLiteralExpression>());
@@ -70,7 +70,7 @@ TEST_F(ParserImplTest, Statement_Call_WithParams_TrailingComma) {
     ASSERT_TRUE(e->Is<ast::CallStatement>());
     auto* c = e->As<ast::CallStatement>()->expr;
 
-    ast::CheckIdentifier(p->builder().Symbols(), c->target, "a");
+    ast::CheckIdentifier(c->target, "a");
 
     EXPECT_EQ(c->args.Length(), 2u);
     EXPECT_TRUE(c->args[0]->Is<ast::IntLiteralExpression>());
@@ -83,7 +83,7 @@ TEST_F(ParserImplTest, Statement_Call_Missing_RightParen) {
     EXPECT_TRUE(p->has_error());
     EXPECT_TRUE(e.errored);
     EXPECT_FALSE(e.matched);
-    EXPECT_EQ(p->error(), "1:3: expected ')' for function call");
+    EXPECT_EQ(p->error(), "1:3: expected expression for function call");
 }
 
 TEST_F(ParserImplTest, Statement_Call_Missing_Semi) {
@@ -101,7 +101,7 @@ TEST_F(ParserImplTest, Statement_Call_Bad_ArgList) {
     EXPECT_TRUE(p->has_error());
     EXPECT_TRUE(e.errored);
     EXPECT_FALSE(e.matched);
-    EXPECT_EQ(p->error(), "1:5: expected ')' for function call");
+    EXPECT_EQ(p->error(), "1:5: expected ',' for function call");
 }
 
 }  // namespace

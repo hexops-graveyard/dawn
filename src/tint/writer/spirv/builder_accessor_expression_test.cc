@@ -15,10 +15,11 @@
 #include "src/tint/writer/spirv/spv_dump.h"
 #include "src/tint/writer/spirv/test_helper.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::writer::spirv {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 using BuilderTest = TestHelper;
 
@@ -26,15 +27,15 @@ TEST_F(BuilderTest, Let_IndexAccessor_Vector) {
     // let ary = vec3<i32>(1, 2, 3);
     // var x = ary[1i];
 
-    auto* ary = Let("ary", vec3<i32>(1_i, 2_i, 3_i));
+    auto* ary = Let("ary", Call<vec3<i32>>(1_i, 2_i, 3_i));
     auto* x = Var("x", IndexAccessor(ary, 1_i));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %6 = OpTypeInt 32 1
 %5 = OpTypeVector %6 3
@@ -45,9 +46,10 @@ TEST_F(BuilderTest, Let_IndexAccessor_Vector) {
 %13 = OpTypePointer Function %6
 %14 = OpConstantNull %6
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%12 = OpVariable %13 Function %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%12 = OpVariable %13 Function %14
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%11 = OpCompositeExtract %6 %10 1
 OpStore %12 %11
 OpReturn
@@ -60,24 +62,25 @@ TEST_F(BuilderTest, Const_IndexAccessor_Vector) {
     // const ary = vec3<i32>(1, 2, 3);
     // var x = ary[1i];
 
-    auto* ary = Const("ary", vec3<i32>(1_i, 2_i, 3_i));
+    auto* ary = Const("ary", Call<vec3<i32>>(1_i, 2_i, 3_i));
     auto* x = Var("x", IndexAccessor(ary, 1_i));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %5 = OpTypeInt 32 1
 %6 = OpConstant %5 2
 %8 = OpTypePointer Function %5
 %9 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%7 = OpVariable %8 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%7 = OpVariable %8 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(OpStore %7 %6
 OpReturn
 )");
@@ -95,9 +98,9 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Vector) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeInt 32 0
 %7 = OpTypeVector %8 3
@@ -108,10 +111,12 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Vector) {
 %12 = OpTypePointer Function %8
 %16 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 %15 = OpVariable %12 Function %16
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%13 = OpAccessChain %12 %5 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%13 = OpAccessChain %12 %5 %11
 %14 = OpLoad %8 %13
 OpStore %15 %14
 OpReturn
@@ -132,9 +137,9 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Vector) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -146,11 +151,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Vector) {
 %15 = OpTypePointer Function %8
 %19 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 %10 = OpVariable %11 Function %13
 %18 = OpVariable %15 Function %19
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%14 = OpLoad %12 %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%14 = OpLoad %12 %10
 %16 = OpAccessChain %15 %5 %14
 %17 = OpLoad %8 %16
 OpStore %18 %17
@@ -164,15 +170,15 @@ TEST_F(BuilderTest, Const_IndexAccessor_Vector2) {
     // let ary : vec3<i32>(1, 2, 3);
     // var x = ary[1i + 1i];
 
-    auto* ary = Let("ary", vec3<i32>(1_i, 2_i, 3_i));
+    auto* ary = Let("ary", Call<vec3<i32>>(1_i, 2_i, 3_i));
     auto* x = Var("x", IndexAccessor(ary, Add(1_i, 1_i)));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %6 = OpTypeInt 32 1
 %5 = OpTypeVector %6 3
@@ -183,9 +189,10 @@ TEST_F(BuilderTest, Const_IndexAccessor_Vector2) {
 %13 = OpTypePointer Function %6
 %14 = OpConstantNull %6
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%12 = OpVariable %13 Function %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%12 = OpVariable %13 Function %14
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%11 = OpCompositeExtract %6 %10 2
 OpStore %12 %11
 OpReturn
@@ -204,9 +211,9 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Vector2) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -217,10 +224,12 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Vector2) {
 %12 = OpTypePointer Function %8
 %16 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 %15 = OpVariable %12 Function %16
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%13 = OpAccessChain %12 %5 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%13 = OpAccessChain %12 %5 %11
 %14 = OpLoad %8 %13
 OpStore %15 %14
 OpReturn
@@ -241,9 +250,9 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Vector2) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -257,11 +266,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Vector2) {
 %18 = OpTypePointer Function %8
 %22 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 %12 = OpVariable %13 Function %14
 %21 = OpVariable %18 Function %22
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpStore %12 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpStore %12 %11
 %15 = OpLoad %10 %12
 %17 = OpIAdd %10 %15 %16
 %19 = OpAccessChain %18 %5 %17
@@ -277,16 +287,16 @@ TEST_F(BuilderTest, Let_IndexAccessor_Array_MultiLevel) {
     // let ary = array<vec3<f32>, 2u>(vec3<f32>(1.0f, 2.0f, 3.0f), vec3<f32>(4.0f, 5.0f, 6.0f));
     // var x = ary[1i][2i];
 
-    auto* ary = Let("ary", array(ty.vec3<f32>(), 2_u, vec3<f32>(1._f, 2._f, 3._f),
-                                 vec3<f32>(4._f, 5._f, 6._f)));
+    auto* ary = Let("ary", Call<array<vec3<f32>, 2>>(Call<vec3<f32>>(1._f, 2._f, 3._f),
+                                                     Call<vec3<f32>>(4._f, 5._f, 6._f)));
     auto* x = Var("x", IndexAccessor(IndexAccessor(ary, 1_i), 2_i));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %7 = OpTypeFloat 32
 %6 = OpTypeVector %7 3
@@ -308,9 +318,10 @@ TEST_F(BuilderTest, Let_IndexAccessor_Array_MultiLevel) {
 %25 = OpTypePointer Function %7
 %26 = OpConstantNull %7
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%24 = OpVariable %25 Function %26
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%24 = OpVariable %25 Function %26
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%21 = OpCompositeExtract %6 %18 1
 %23 = OpCompositeExtract %7 %21 2
 OpStore %24 %23
@@ -324,25 +335,26 @@ TEST_F(BuilderTest, Const_IndexAccessor_Array_MultiLevel) {
     // const ary = array<vec3<f32>, 2u>(vec3<f32>(1.0f, 2.0f, 3.0f), vec3<f32>(4.0f, 5.0f, 6.0f));
     // var x = ary[1i][2i];
 
-    auto* ary = Const("ary", array(ty.vec3<f32>(), 2_u, vec3<f32>(1._f, 2._f, 3._f),
-                                   vec3<f32>(4._f, 5._f, 6._f)));
+    auto* ary = Const("ary", Call<array<vec3<f32>, 2>>(Call<vec3<f32>>(1._f, 2._f, 3._f),
+                                                       Call<vec3<f32>>(4._f, 5._f, 6._f)));
     auto* x = Var("x", IndexAccessor(IndexAccessor(ary, 1_i), 2_i));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %5 = OpTypeFloat 32
 %6 = OpConstant %5 6
 %8 = OpTypePointer Function %5
 %9 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%7 = OpVariable %8 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%7 = OpVariable %8 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(OpStore %7 %6
 OpReturn
 )");
@@ -354,15 +366,15 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_MultiLevel) {
     // var ary : array<vec3<f32>, 4u>;
     // var x = ary[1i][2i];
 
-    auto* ary = Var("ary", ty.array(ty.vec3<f32>(), 4_u));
+    auto* ary = Var("ary", ty.array<vec3<f32>, 4>());
     auto* x = Var("x", IndexAccessor(IndexAccessor(ary, 1_i), 2_i));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 3
@@ -377,10 +389,11 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_MultiLevel) {
 %16 = OpTypePointer Function %9
 %20 = OpConstantNull %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %12
 %19 = OpVariable %16 Function %20
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%17 = OpAccessChain %16 %5 %14 %15
 %18 = OpLoad %9 %17
 OpStore %19 %18
@@ -395,16 +408,16 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Array_MultiLevel) {
     // var one = 1i;
     // var x = ary[one][2i];
 
-    auto* ary = Var("ary", ty.array(ty.vec3<f32>(), 4_u));
+    auto* ary = Var("ary", ty.array<vec3<f32>, 4>());
     auto* one = Var("one", Expr(3_i));
     auto* x = Var("x", IndexAccessor(IndexAccessor(ary, one), 2_i));
     WrapInFunction(ary, one, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 3
@@ -421,11 +434,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Array_MultiLevel) {
 %20 = OpTypePointer Function %9
 %24 = OpConstantNull %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %12
 %15 = OpVariable %16 Function %17
 %23 = OpVariable %20 Function %24
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpStore %15 %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpStore %15 %14
 %18 = OpLoad %13 %15
 %21 = OpAccessChain %20 %5 %18 %19
 %22 = OpLoad %9 %21
@@ -440,16 +454,16 @@ TEST_F(BuilderTest, Const_IndexAccessor_Array_ArrayWithSwizzle) {
     // let ary = array<vec3<f32>, 2u>(vec3<f32>(1.0f, 2.0f, 3.0f), vec3<f32>(4.0f, 5.0f, 6.0f));
     // var x = a[1i].xy;
 
-    auto* ary = Let("ary", array(ty.vec3<f32>(), 2_u, vec3<f32>(1._f, 2._f, 3._f),
-                                 vec3<f32>(4._f, 5._f, 6._f)));
+    auto* ary = Let("ary", Call<array<vec3<f32>, 2>>(Call<vec3<f32>>(1._f, 2._f, 3._f),
+                                                     Call<vec3<f32>>(4._f, 5._f, 6._f)));
     auto* x = Var("x", MemberAccessor(IndexAccessor("ary", 1_i), "xy"));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %7 = OpTypeFloat 32
 %6 = OpTypeVector %7 3
@@ -471,9 +485,10 @@ TEST_F(BuilderTest, Const_IndexAccessor_Array_ArrayWithSwizzle) {
 %25 = OpTypePointer Function %22
 %26 = OpConstantNull %22
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%24 = OpVariable %25 Function %26
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%24 = OpVariable %25 Function %26
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%21 = OpCompositeExtract %6 %18 1
 %23 = OpVectorShuffle %22 %21 %21 0 1
 OpStore %24 %23
@@ -487,15 +502,15 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_ArrayWithSwizzle) {
     // var ary : array<vec3<f32>, 4u>;
     // var x = ary[1i].xy;
 
-    auto* ary = Var("ary", ty.array(ty.vec3<f32>(), 4_u));
+    auto* ary = Var("ary", ty.array<vec3<f32>, 4>());
     auto* x = Var("x", MemberAccessor(IndexAccessor("ary", 1_i), "xy"));
     WrapInFunction(ary, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 3
@@ -511,10 +526,12 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_ArrayWithSwizzle) {
 %21 = OpTypePointer Function %17
 %22 = OpConstantNull %17
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %12
 %20 = OpVariable %21 Function %22
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%16 = OpAccessChain %15 %5 %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%16 = OpAccessChain %15 %5 %14
 %18 = OpLoad %8 %16
 %19 = OpVectorShuffle %17 %18 %18 0 1
 OpStore %20 %19
@@ -529,16 +546,16 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Array_ArrayWithSwizzle) {
     // var one = 1i;
     // var x = ary[one].xy;
 
-    auto* ary = Var("ary", ty.array(ty.vec3<f32>(), 4_u));
+    auto* ary = Var("ary", ty.array<vec3<f32>, 4>());
     auto* one = Var("one", Expr(1_i));
     auto* x = Var("x", MemberAccessor(IndexAccessor("ary", one), "xy"));
     WrapInFunction(ary, one, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 3
@@ -556,11 +573,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Array_ArrayWithSwizzle) {
 %25 = OpTypePointer Function %21
 %26 = OpConstantNull %21
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %12
 %15 = OpVariable %16 Function %17
 %24 = OpVariable %25 Function %26
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpStore %15 %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpStore %15 %14
 %18 = OpLoad %13 %15
 %20 = OpAccessChain %19 %5 %18
 %22 = OpLoad %8 %20
@@ -579,17 +597,18 @@ TEST_F(BuilderTest, Let_IndexAccessor_Nested_Array_f32) {
     //   array<f32, 2>(0.5, -0.5));
     // var x = pos[1u][0u];
 
-    auto* pos = Let("pos", ty.array(ty.vec2<f32>(), 3_u),
-                    Call(ty.array(ty.vec2<f32>(), 3_u), vec2<f32>(0_f, 0.5_f),
-                         vec2<f32>(-0.5_f, -0.5_f), vec2<f32>(0.5_f, -0.5_f)));
+    auto* pos =
+        Let("pos", ty.array<vec2<f32>, 3>(),
+            Call<array<vec2<f32>, 3>>(Call<vec2<f32>>(0_f, 0.5_f), Call<vec2<f32>>(-0.5_f, -0.5_f),
+                                      Call<vec2<f32>>(0.5_f, -0.5_f)));
     auto* x = Var("x", IndexAccessor(IndexAccessor(pos, 1_u), 0_u));
     WrapInFunction(pos, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %7 = OpTypeFloat 32
 %6 = OpTypeVector %7 2
@@ -607,9 +626,10 @@ TEST_F(BuilderTest, Let_IndexAccessor_Nested_Array_f32) {
 %19 = OpConstantNull %8
 %22 = OpTypePointer Function %7
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%21 = OpVariable %22 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%21 = OpVariable %22 Function %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%18 = OpCompositeExtract %6 %16 1
 %20 = OpCompositeExtract %7 %18 0
 OpStore %21 %20
@@ -626,26 +646,28 @@ TEST_F(BuilderTest, Const_IndexAccessor_Nested_Array_f32) {
     //   array<f32, 2>(0.5, -0.5));
     // var x = pos[1u][0u];
 
-    auto* pos = Const("pos", ty.array(ty.vec2<f32>(), 3_u),
-                      Call(ty.array(ty.vec2<f32>(), 3_u), vec2<f32>(0_f, 0.5_f),
-                           vec2<f32>(-0.5_f, -0.5_f), vec2<f32>(0.5_f, -0.5_f)));
+    auto* pos = Const(
+        "pos", ty.array<vec2<f32>, 3>(),
+        Call<array<vec2<f32>, 3>>(Call<vec2<f32>>(0_f, 0.5_f), Call<vec2<f32>>(-0.5_f, -0.5_f),
+                                  Call<vec2<f32>>(0.5_f, -0.5_f)));
     auto* x = Var("x", IndexAccessor(IndexAccessor(pos, 1_u), 0_u));
     WrapInFunction(pos, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %5 = OpTypeFloat 32
 %6 = OpConstant %5 -0.5
 %8 = OpTypePointer Function %5
 %9 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%7 = OpVariable %8 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%7 = OpVariable %8 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(OpStore %7 %6
 OpReturn
 )");
@@ -657,15 +679,15 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_Vec3_f32) {
     // var pos : array<vec3<f32>, 3u>;
     // var x = pos[1u][2u];
 
-    auto* pos = Var("pos", ty.array(ty.vec3<f32>(), 3_a));
+    auto* pos = Var("pos", ty.array<vec3<f32>, 3>());
     auto* x = Var("x", IndexAccessor(IndexAccessor(pos, 1_u), 2_u));
     WrapInFunction(pos, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 3
@@ -679,10 +701,11 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Array_Vec3_f32) {
 %15 = OpTypePointer Function %9
 %19 = OpConstantNull %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %12
 %18 = OpVariable %15 Function %19
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%16 = OpAccessChain %15 %5 %13 %14
 %17 = OpLoad %9 %16
 OpStore %18 %17
@@ -704,9 +727,9 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Nested_Array_f32) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %10 = OpTypeInt 32 0
@@ -722,11 +745,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Nested_Array_f32) {
 %19 = OpTypePointer Function %9
 %23 = OpConstantNull %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %13
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %13
 %15 = OpVariable %16 Function %17
 %22 = OpVariable %19 Function %23
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(OpStore %15 %14
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(OpStore %15 %14
 %18 = OpLoad %10 %15
 %20 = OpAccessChain %19 %5 %18 %14
 %21 = OpLoad %9 %20
@@ -741,17 +765,18 @@ TEST_F(BuilderTest, Let_IndexAccessor_Matrix) {
     // let a : mat2x2<f32>(vec2<f32>(1., 2.), vec2<f32>(3., 4.));
     // var x = a[1i]
 
-    auto* a =
-        Let("a", ty.mat2x2<f32>(),
-            Call(ty.mat2x2<f32>(), Call(ty.vec2<f32>(), 1_f, 2_f), Call(ty.vec2<f32>(), 3_f, 4_f)));
+    auto* a = Let("a", ty.mat2x2<f32>(),
+                  Call<mat2x2<f32>>(              //
+                      Call<vec2<f32>>(1_f, 2_f),  //
+                      Call<vec2<f32>>(3_f, 4_f)));
     auto* x = Var("x", IndexAccessor("a", 1_i));
     WrapInFunction(a, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %7 = OpTypeFloat 32
 %6 = OpTypeVector %7 2
@@ -768,9 +793,10 @@ TEST_F(BuilderTest, Let_IndexAccessor_Matrix) {
 %19 = OpTypePointer Function %6
 %20 = OpConstantNull %6
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%18 = OpVariable %19 Function %20
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%18 = OpVariable %19 Function %20
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%17 = OpCompositeExtract %6 %14 1
 OpStore %18 %17
 OpReturn
@@ -783,17 +809,18 @@ TEST_F(BuilderTest, Const_IndexAccessor_Matrix) {
     // const a : mat2x2<f32>(vec2<f32>(1., 2.), vec2<f32>(3., 4.));
     // var x = a[1i]
 
-    auto* a = Const(
-        "a", ty.mat2x2<f32>(),
-        Call(ty.mat2x2<f32>(), Call(ty.vec2<f32>(), 1_f, 2_f), Call(ty.vec2<f32>(), 3_f, 4_f)));
+    auto* a = Const("a", ty.mat2x2<f32>(),
+                    Call<mat2x2<f32>>(              //
+                        Call<vec2<f32>>(1_f, 2_f),  //
+                        Call<vec2<f32>>(3_f, 4_f)));
     auto* x = Var("x", IndexAccessor("a", 1_i));
     WrapInFunction(a, x);
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %6 = OpTypeFloat 32
 %5 = OpTypeVector %6 2
@@ -803,9 +830,10 @@ TEST_F(BuilderTest, Const_IndexAccessor_Matrix) {
 %11 = OpTypePointer Function %5
 %12 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%10 = OpVariable %11 Function %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%10 = OpVariable %11 Function %12
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(OpStore %10 %9
 OpReturn
 )");
@@ -823,9 +851,9 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Matrix) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 2
@@ -837,10 +865,12 @@ TEST_F(BuilderTest, Runtime_IndexAccessor_Matrix) {
 %13 = OpTypePointer Function %8
 %17 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 %16 = OpVariable %13 Function %17
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%14 = OpAccessChain %13 %5 %12
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%14 = OpAccessChain %13 %5 %12
 %15 = OpLoad %8 %14
 OpStore %16 %15
 OpReturn
@@ -861,9 +891,9 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Matrix) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeVector %9 2
@@ -876,11 +906,12 @@ TEST_F(BuilderTest, Dynamic_IndexAccessor_Matrix) {
 %16 = OpTypePointer Function %8
 %20 = OpConstantNull %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 %11 = OpVariable %12 Function %14
 %19 = OpVariable %16 Function %20
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%15 = OpLoad %13 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%15 = OpLoad %13 %11
 %17 = OpAccessChain %16 %5 %15
 %18 = OpLoad %8 %17
 OpStore %19 %18
@@ -910,9 +941,9 @@ TEST_F(BuilderTest, MemberAccessor) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeStruct %8 %8
@@ -922,9 +953,11 @@ TEST_F(BuilderTest, MemberAccessor) {
 %11 = OpConstant %10 1
 %12 = OpTypePointer Function %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%13 = OpAccessChain %12 %5 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%13 = OpAccessChain %12 %5 %11
 %14 = OpLoad %8 %13
 OpReturn
 )");
@@ -956,9 +989,9 @@ TEST_F(BuilderTest, MemberAccessor_Nested) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeStruct %9 %9
@@ -970,9 +1003,10 @@ TEST_F(BuilderTest, MemberAccessor_Nested) {
 %13 = OpConstant %11 1
 %14 = OpTypePointer Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%15 = OpAccessChain %14 %5 %12 %13
 %16 = OpLoad %9 %15
 OpReturn
@@ -1001,16 +1035,17 @@ TEST_F(BuilderTest, MemberAccessor_NonPointer) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %6 = OpTypeFloat 32
 %5 = OpTypeStruct %6 %6
 %7 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%8 = OpCompositeExtract %6 %7 1
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%8 = OpCompositeExtract %6 %7 1
 OpReturn
 )");
 
@@ -1042,17 +1077,17 @@ TEST_F(BuilderTest, MemberAccessor_Nested_NonPointer) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %7 = OpTypeFloat 32
 %6 = OpTypeStruct %7 %7
 %5 = OpTypeStruct %6
 %8 = OpConstantNull %5
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"()");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()), R"()");
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%9 = OpCompositeExtract %6 %8 0
 %10 = OpCompositeExtract %7 %9 1
 OpReturn
@@ -1087,9 +1122,9 @@ TEST_F(BuilderTest, MemberAccessor_Nested_WithAlias) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeStruct %9 %9
@@ -1100,9 +1135,10 @@ TEST_F(BuilderTest, MemberAccessor_Nested_WithAlias) {
 %12 = OpConstant %11 0
 %13 = OpTypePointer Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%14 = OpAccessChain %13 %5 %12 %12
 %15 = OpLoad %9 %14
 OpReturn
@@ -1134,9 +1170,9 @@ TEST_F(BuilderTest, MemberAccessor_Nested_Assignment_LHS) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeStruct %9 %9
@@ -1148,9 +1184,10 @@ TEST_F(BuilderTest, MemberAccessor_Nested_Assignment_LHS) {
 %13 = OpTypePointer Function %9
 %15 = OpConstant %9 2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%14 = OpAccessChain %13 %5 %12 %12
 OpStore %14 %15
 OpReturn
@@ -1186,9 +1223,9 @@ TEST_F(BuilderTest, MemberAccessor_Nested_Assignment_RHS) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %9 = OpTypeFloat 32
 %8 = OpTypeStruct %9 %9
@@ -1200,10 +1237,11 @@ TEST_F(BuilderTest, MemberAccessor_Nested_Assignment_RHS) {
 %14 = OpTypeInt 32 0
 %15 = OpConstant %14 0
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %10
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %10
 %11 = OpVariable %12 Function %13
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%16 = OpAccessChain %12 %5 %15 %15
 %17 = OpLoad %9 %16
 OpStore %11 %17
@@ -1223,9 +1261,9 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_Single) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -1235,9 +1273,11 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_Single) {
 %11 = OpConstant %10 1
 %12 = OpTypePointer Function %8
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%13 = OpAccessChain %12 %5 %11
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
+              R"(%13 = OpAccessChain %12 %5 %11
 %14 = OpLoad %8 %13
 OpReturn
 )");
@@ -1255,9 +1295,9 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_MultipleNames) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -1265,9 +1305,10 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_MultipleNames) {
 %9 = OpConstantNull %7
 %11 = OpTypeVector %8 2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%10 = OpLoad %7 %5
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%10 = OpLoad %7 %5
 %12 = OpVectorShuffle %11 %10 %10 1 0
 OpReturn
 )");
@@ -1285,9 +1326,9 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_of_Swizzle) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -1295,9 +1336,10 @@ TEST_F(BuilderTest, MemberAccessor_Swizzle_of_Swizzle) {
 %9 = OpConstantNull %7
 %12 = OpTypeVector %8 2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%10 = OpLoad %7 %5
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%10 = OpLoad %7 %5
 %11 = OpVectorShuffle %7 %10 %10 1 0 2
 %13 = OpVectorShuffle %12 %11 %11 0 2
 OpReturn
@@ -1316,18 +1358,19 @@ TEST_F(BuilderTest, MemberAccessor_Member_of_Swizzle) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
 %6 = OpTypePointer Function %7
 %9 = OpConstantNull %7
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%10 = OpLoad %7 %5
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%10 = OpLoad %7 %5
 %11 = OpVectorShuffle %7 %10 %10 1 0 2
 %12 = OpCompositeExtract %8 %11 0
 OpReturn
@@ -1346,9 +1389,9 @@ TEST_F(BuilderTest, MemberAccessor_Array_of_Swizzle) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %8 = OpTypeFloat 32
 %7 = OpTypeVector %8 3
@@ -1357,9 +1400,10 @@ TEST_F(BuilderTest, MemberAccessor_Array_of_Swizzle) {
 %12 = OpTypeInt 32 1
 %13 = OpConstant %12 1
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %9
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %9
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()), R"(%10 = OpLoad %7 %5
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()), R"(%10 = OpLoad %7 %5
 %11 = OpVectorShuffle %7 %10 %10 1 0 2
 %14 = OpCompositeExtract %8 %11 1
 OpReturn
@@ -1399,9 +1443,9 @@ TEST_F(BuilderTest, IndexAccessor_Mixed_ArrayAndMember) {
 
     spirv::Builder& b = SanitizeAndBuild();
 
-    ASSERT_TRUE(b.Build()) << b.error();
+    ASSERT_TRUE(b.Build()) << b.Diagnostics();
 
-    EXPECT_EQ(DumpInstructions(b.types()), R"(%2 = OpTypeVoid
+    EXPECT_EQ(DumpInstructions(b.Module().Types()), R"(%2 = OpTypeVoid
 %1 = OpTypeFunction %2
 %13 = OpTypeFloat 32
 %12 = OpTypeVector %13 3
@@ -1422,9 +1466,10 @@ TEST_F(BuilderTest, IndexAccessor_Mixed_ArrayAndMember) {
 %22 = OpTypePointer Function %12
 %24 = OpTypeVector %13 2
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].variables()), R"(%5 = OpVariable %6 Function %17
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].variables()),
+              R"(%5 = OpVariable %6 Function %17
 )");
-    EXPECT_EQ(DumpInstructions(b.functions()[0].instructions()),
+    EXPECT_EQ(DumpInstructions(b.Module().Functions()[0].instructions()),
               R"(%23 = OpAccessChain %22 %5 %19 %20 %21 %20 %20
 %25 = OpLoad %12 %23
 %26 = OpVectorShuffle %24 %25 %25 1 0

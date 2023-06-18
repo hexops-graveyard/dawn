@@ -29,7 +29,27 @@
 #include "src/tint/ast/id_attribute.h"
 #include "src/tint/ast/interpolate_attribute.h"
 #include "src/tint/ast/module.h"
+#include "src/tint/ast/transform/array_length_from_uniform.h"
+#include "src/tint/ast/transform/binding_remapper.h"
+#include "src/tint/ast/transform/builtin_polyfill.h"
+#include "src/tint/ast/transform/canonicalize_entry_point_io.h"
+#include "src/tint/ast/transform/demote_to_helper.h"
+#include "src/tint/ast/transform/disable_uniformity_analysis.h"
+#include "src/tint/ast/transform/expand_compound_assignment.h"
+#include "src/tint/ast/transform/module_scope_var_to_entry_point_param.h"
+#include "src/tint/ast/transform/multiplanar_external_texture.h"
+#include "src/tint/ast/transform/packed_vec3.h"
+#include "src/tint/ast/transform/preserve_padding.h"
+#include "src/tint/ast/transform/promote_initializers_to_let.h"
+#include "src/tint/ast/transform/promote_side_effects_to_decl.h"
+#include "src/tint/ast/transform/remove_phonies.h"
+#include "src/tint/ast/transform/robustness.h"
+#include "src/tint/ast/transform/simplify_pointers.h"
+#include "src/tint/ast/transform/unshadow.h"
+#include "src/tint/ast/transform/vectorize_scalar_matrix_initializers.h"
+#include "src/tint/ast/transform/zero_init_workgroup_memory.h"
 #include "src/tint/ast/variable_decl_statement.h"
+#include "src/tint/constant/splat.h"
 #include "src/tint/constant/value.h"
 #include "src/tint/sem/call.h"
 #include "src/tint/sem/function.h"
@@ -41,26 +61,7 @@
 #include "src/tint/sem/value_conversion.h"
 #include "src/tint/sem/variable.h"
 #include "src/tint/switch.h"
-#include "src/tint/transform/array_length_from_uniform.h"
-#include "src/tint/transform/binding_remapper.h"
-#include "src/tint/transform/builtin_polyfill.h"
-#include "src/tint/transform/canonicalize_entry_point_io.h"
-#include "src/tint/transform/demote_to_helper.h"
-#include "src/tint/transform/disable_uniformity_analysis.h"
-#include "src/tint/transform/expand_compound_assignment.h"
 #include "src/tint/transform/manager.h"
-#include "src/tint/transform/module_scope_var_to_entry_point_param.h"
-#include "src/tint/transform/multiplanar_external_texture.h"
-#include "src/tint/transform/packed_vec3.h"
-#include "src/tint/transform/preserve_padding.h"
-#include "src/tint/transform/promote_initializers_to_let.h"
-#include "src/tint/transform/promote_side_effects_to_decl.h"
-#include "src/tint/transform/remove_phonies.h"
-#include "src/tint/transform/robustness.h"
-#include "src/tint/transform/simplify_pointers.h"
-#include "src/tint/transform/unshadow.h"
-#include "src/tint/transform/vectorize_scalar_matrix_initializers.h"
-#include "src/tint/transform/zero_init_workgroup_memory.h"
 #include "src/tint/type/array.h"
 #include "src/tint/type/atomic.h"
 #include "src/tint/type/bool.h"
@@ -90,7 +91,7 @@ namespace tint::writer::msl {
 namespace {
 
 bool last_is_break(const ast::BlockStatement* stmts) {
-    return IsAnyOf<ast::BreakStatement>(stmts->Last());
+    return utils::IsAnyOf<ast::BreakStatement>(stmts->Last());
 }
 
 void PrintF32(utils::StringStream& out, float value) {
@@ -143,7 +144,7 @@ class ScopedBitCast {
 
         // If we need to promote from scalar to vector, bitcast the scalar to the
         // vector element type.
-        if (curr_type->is_scalar() && target_vec_type) {
+        if (curr_type->Is<type::Scalar>() && target_vec_type) {
             target_type = target_vec_type->type();
         }
 
@@ -169,58 +170,56 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     transform::Manager manager;
     transform::DataMap data;
 
-    manager.Add<transform::DisableUniformityAnalysis>();
+    manager.Add<ast::transform::DisableUniformityAnalysis>();
 
     // ExpandCompoundAssignment must come before BuiltinPolyfill
-    manager.Add<transform::ExpandCompoundAssignment>();
+    manager.Add<ast::transform::ExpandCompoundAssignment>();
 
     // Build the configs for the internal CanonicalizeEntryPointIO transform.
-    auto entry_point_io_cfg = transform::CanonicalizeEntryPointIO::Config(
-        transform::CanonicalizeEntryPointIO::ShaderStyle::kMsl, options.fixed_sample_mask,
+    auto entry_point_io_cfg = ast::transform::CanonicalizeEntryPointIO::Config(
+        ast::transform::CanonicalizeEntryPointIO::ShaderStyle::kMsl, options.fixed_sample_mask,
         options.emit_vertex_point_size);
 
-    manager.Add<transform::PreservePadding>();
+    manager.Add<ast::transform::PreservePadding>();
 
-    manager.Add<transform::Unshadow>();
+    manager.Add<ast::transform::Unshadow>();
 
-    manager.Add<transform::PromoteSideEffectsToDecl>();
+    manager.Add<ast::transform::PromoteSideEffectsToDecl>();
 
     if (!options.disable_robustness) {
         // Robustness must come after PromoteSideEffectsToDecl
         // Robustness must come before BuiltinPolyfill and CanonicalizeEntryPointIO
         // Robustness must come before ArrayLengthFromUniform
-        manager.Add<transform::Robustness>();
+        manager.Add<ast::transform::Robustness>();
     }
 
     {  // Builtin polyfills
-        transform::BuiltinPolyfill::Builtins polyfills;
-        polyfills.acosh = transform::BuiltinPolyfill::Level::kRangeCheck;
-        polyfills.atanh = transform::BuiltinPolyfill::Level::kRangeCheck;
+        ast::transform::BuiltinPolyfill::Builtins polyfills;
+        polyfills.acosh = ast::transform::BuiltinPolyfill::Level::kRangeCheck;
+        polyfills.atanh = ast::transform::BuiltinPolyfill::Level::kRangeCheck;
         polyfills.bitshift_modulo = true;  // crbug.com/tint/1543
         polyfills.clamp_int = true;
         polyfills.conv_f32_to_iu32 = true;
-        polyfills.extract_bits = transform::BuiltinPolyfill::Level::kClampParameters;
+        polyfills.extract_bits = ast::transform::BuiltinPolyfill::Level::kClampParameters;
         polyfills.first_leading_bit = true;
         polyfills.first_trailing_bit = true;
-        polyfills.insert_bits = transform::BuiltinPolyfill::Level::kClampParameters;
+        polyfills.insert_bits = ast::transform::BuiltinPolyfill::Level::kClampParameters;
         polyfills.int_div_mod = true;
         polyfills.sign_int = true;
         polyfills.texture_sample_base_clamp_to_edge_2d_f32 = true;
         polyfills.workgroup_uniform_load = true;
-        data.Add<transform::BuiltinPolyfill::Config>(polyfills);
-        manager.Add<transform::BuiltinPolyfill>();
+        data.Add<ast::transform::BuiltinPolyfill::Config>(polyfills);
+        manager.Add<ast::transform::BuiltinPolyfill>();
     }
 
-    if (!options.external_texture_options.bindings_map.empty()) {
-        // Note: it is more efficient for MultiplanarExternalTexture to come after Robustness
-        data.Add<transform::MultiplanarExternalTexture::NewBindingPoints>(
-            options.external_texture_options.bindings_map);
-        manager.Add<transform::MultiplanarExternalTexture>();
-    }
+    // Note: it is more efficient for MultiplanarExternalTexture to come after Robustness
+    data.Add<ast::transform::MultiplanarExternalTexture::NewBindingPoints>(
+        options.external_texture_options.bindings_map);
+    manager.Add<ast::transform::MultiplanarExternalTexture>();
 
     // BindingRemapper must come after MultiplanarExternalTexture
-    manager.Add<transform::BindingRemapper>();
-    data.Add<transform::BindingRemapper::Remappings>(
+    manager.Add<ast::transform::BindingRemapper>();
+    data.Add<ast::transform::BindingRemapper::Remappings>(
         options.binding_remapper_options.binding_points,
         options.binding_remapper_options.access_controls,
         options.binding_remapper_options.allow_collisions);
@@ -228,45 +227,44 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     if (!options.disable_workgroup_init) {
         // ZeroInitWorkgroupMemory must come before CanonicalizeEntryPointIO as
         // ZeroInitWorkgroupMemory may inject new builtin parameters.
-        manager.Add<transform::ZeroInitWorkgroupMemory>();
+        manager.Add<ast::transform::ZeroInitWorkgroupMemory>();
     }
 
     // CanonicalizeEntryPointIO must come after Robustness
-    manager.Add<transform::CanonicalizeEntryPointIO>();
-    data.Add<transform::CanonicalizeEntryPointIO::Config>(std::move(entry_point_io_cfg));
+    manager.Add<ast::transform::CanonicalizeEntryPointIO>();
+    data.Add<ast::transform::CanonicalizeEntryPointIO::Config>(std::move(entry_point_io_cfg));
 
-    manager.Add<transform::PromoteInitializersToLet>();
+    manager.Add<ast::transform::PromoteInitializersToLet>();
 
     // DemoteToHelper must come after PromoteSideEffectsToDecl and ExpandCompoundAssignment.
     // TODO(crbug.com/tint/1752): This is only necessary for Metal versions older than 2.3.
-    manager.Add<transform::DemoteToHelper>();
+    manager.Add<ast::transform::DemoteToHelper>();
 
-    manager.Add<transform::VectorizeScalarMatrixInitializers>();
-    manager.Add<transform::RemovePhonies>();
-    manager.Add<transform::SimplifyPointers>();
+    manager.Add<ast::transform::VectorizeScalarMatrixInitializers>();
+    manager.Add<ast::transform::RemovePhonies>();
+    manager.Add<ast::transform::SimplifyPointers>();
 
     // ArrayLengthFromUniform must come after SimplifyPointers, as
     // it assumes that the form of the array length argument is &var.array.
-    manager.Add<transform::ArrayLengthFromUniform>();
+    manager.Add<ast::transform::ArrayLengthFromUniform>();
 
-    transform::ArrayLengthFromUniform::Config array_length_cfg(
+    ast::transform::ArrayLengthFromUniform::Config array_length_cfg(
         std::move(options.array_length_from_uniform.ubo_binding));
     array_length_cfg.bindpoint_to_size_index =
         std::move(options.array_length_from_uniform.bindpoint_to_size_index);
-    data.Add<transform::ArrayLengthFromUniform::Config>(array_length_cfg);
+    data.Add<ast::transform::ArrayLengthFromUniform::Config>(array_length_cfg);
 
     // PackedVec3 must come after ExpandCompoundAssignment.
-    manager.Add<transform::PackedVec3>();
-    manager.Add<transform::ModuleScopeVarToEntryPointParam>();
-
-    auto out = manager.Run(in, data);
+    manager.Add<ast::transform::PackedVec3>();
+    manager.Add<ast::transform::ModuleScopeVarToEntryPointParam>();
 
     SanitizedResult result;
-    result.program = std::move(out.program);
+    transform::DataMap outputs;
+    result.program = manager.Run(in, data, outputs);
     if (!result.program.IsValid()) {
         return result;
     }
-    if (auto* res = out.data.Get<transform::ArrayLengthFromUniform::Result>()) {
+    if (auto* res = outputs.Get<ast::transform::ArrayLengthFromUniform::Result>()) {
         result.used_array_length_from_uniform_indices = std::move(res->used_size_indices);
     }
     result.needs_storage_buffer_sizes = !result.used_array_length_from_uniform_indices.empty();
@@ -349,7 +347,7 @@ bool GeneratorImpl::Generate() {
         // WGSL can ignore the invariant attribute on pre MSL 2.1 devices.
         // See: https://github.com/gpuweb/gpuweb/issues/893#issuecomment-745537465
         line(&helpers_) << "#if __METAL_VERSION__ >= 210";
-        line(&helpers_) << "#define " << invariant_define_name_ << " @invariant";
+        line(&helpers_) << "#define " << invariant_define_name_ << " [[invariant]]";
         line(&helpers_) << "#else";
         line(&helpers_) << "#define " << invariant_define_name_;
         line(&helpers_) << "#endif";
@@ -365,13 +363,12 @@ bool GeneratorImpl::Generate() {
 }
 
 bool GeneratorImpl::EmitTypeDecl(const type::Type* ty) {
-    if (auto* str = ty->As<sem::Struct>()) {
+    if (auto* str = ty->As<type::Struct>()) {
         if (!EmitStructType(current_buffer_, str)) {
             return false;
         }
     } else {
-        diagnostics_.add_error(diag::System::Writer,
-                               "unknown alias type: " + ty->FriendlyName(builder_.Symbols()));
+        diagnostics_.add_error(diag::System::Writer, "unknown alias type: " + ty->FriendlyName());
         return false;
     }
 
@@ -663,7 +660,7 @@ bool GeneratorImpl::EmitCall(utils::StringStream& out, const ast::CallExpression
 bool GeneratorImpl::EmitFunctionCall(utils::StringStream& out,
                                      const sem::Call* call,
                                      const sem::Function* fn) {
-    out << program_->Symbols().NameFor(fn->Declaration()->name->symbol) << "(";
+    out << fn->Declaration()->name->symbol.Name() << "(";
 
     bool first = true;
     for (auto* arg : call->Arguments()) {
@@ -744,7 +741,7 @@ bool GeneratorImpl::EmitBuiltinCall(utils::StringStream& out,
 
         case builtin::Function::kLength: {
             auto* sem = builder_.Sem().GetVal(expr->args[0]);
-            if (sem->Type()->UnwrapRef()->is_scalar()) {
+            if (sem->Type()->UnwrapRef()->Is<type::Scalar>()) {
                 // Emulate scalar overload using fabs(x).
                 name = "fabs";
             }
@@ -753,7 +750,7 @@ bool GeneratorImpl::EmitBuiltinCall(utils::StringStream& out,
 
         case builtin::Function::kDistance: {
             auto* sem = builder_.Sem().GetVal(expr->args[0]);
-            if (sem->Type()->UnwrapRef()->is_scalar()) {
+            if (sem->Type()->UnwrapRef()->Is<type::Scalar>()) {
                 // Emulate scalar overload using fabs(x - y);
                 out << "fabs";
                 ScopedParen sp(out);
@@ -829,7 +826,7 @@ bool GeneratorImpl::EmitTypeInitializer(utils::StringStream& out,
             terminator = "}";
             return true;
         },
-        [&](const sem::Struct*) {
+        [&](const type::Struct*) {
             out << "{";
             terminator = "}";
             return true;
@@ -851,10 +848,9 @@ bool GeneratorImpl::EmitTypeInitializer(utils::StringStream& out,
             out << ", ";
         }
 
-        if (auto* struct_ty = type->As<sem::Struct>()) {
+        if (auto* struct_ty = type->As<type::Struct>()) {
             // Emit field designators for structures to account for padding members.
-            auto* member = struct_ty->Members()[i]->Declaration();
-            auto name = program_->Symbols().NameFor(member->name->symbol);
+            auto name = struct_ty->Members()[i]->Name().Name();
             out << "." << name << "=";
         }
 
@@ -925,11 +921,11 @@ bool GeneratorImpl::EmitAtomicCall(utils::StringStream& out,
         case builtin::Function::kAtomicCompareExchangeWeak: {
             auto* ptr_ty = TypeOf(expr->args[0])->UnwrapRef()->As<type::Pointer>();
             auto sc = ptr_ty->AddressSpace();
-            auto* str = builtin->ReturnType()->As<sem::Struct>();
+            auto* str = builtin->ReturnType()->As<type::Struct>();
 
             auto func = utils::GetOrCreate(
                 atomicCompareExchangeWeak_, ACEWKeyType{{sc, str}}, [&]() -> std::string {
-                    if (!EmitStructType(&helpers_, builtin->ReturnType()->As<sem::Struct>())) {
+                    if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
                         return "";
                     }
 
@@ -940,7 +936,7 @@ bool GeneratorImpl::EmitAtomicCall(utils::StringStream& out,
 
                     {
                         auto f = line(&buf);
-                        auto str_name = StructName(builtin->ReturnType()->As<sem::Struct>());
+                        auto str_name = StructName(builtin->ReturnType()->As<type::Struct>());
                         f << str_name << " " << name << "(";
                         if (!EmitTypeAndName(f, atomic_ty, "atomic")) {
                             return "";
@@ -1364,11 +1360,11 @@ bool GeneratorImpl::EmitModfCall(utils::StringStream& out,
 
             // Emit the builtin return type unique to this overload. This does not
             // exist in the AST, so it will not be generated in Generate().
-            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<sem::Struct>())) {
+            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
                 return false;
             }
 
-            line(b) << StructName(builtin->ReturnType()->As<sem::Struct>()) << " result;";
+            line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
             line(b) << "result.fract = modf(" << in << ", result.whole);";
             line(b) << "return result;";
             return true;
@@ -1390,11 +1386,11 @@ bool GeneratorImpl::EmitFrexpCall(utils::StringStream& out,
 
             // Emit the builtin return type unique to this overload. This does not
             // exist in the AST, so it will not be generated in Generate().
-            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<sem::Struct>())) {
+            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
                 return false;
             }
 
-            line(b) << StructName(builtin->ReturnType()->As<sem::Struct>()) << " result;";
+            line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
             line(b) << "result.fract = frexp(" << in << ", result.exp);";
             line(b) << "return result;";
             return true;
@@ -1661,14 +1657,13 @@ bool GeneratorImpl::EmitZeroValue(utils::StringStream& out, const type::Type* ty
             out << "{}";
             return true;
         },
-        [&](const sem::Struct*) {
+        [&](const type::Struct*) {
             out << "{}";
             return true;
         },
         [&](Default) {
-            diagnostics_.add_error(
-                diag::System::Writer,
-                "Invalid type for zero emission: " + type->FriendlyName(builder_.Symbols()));
+            diagnostics_.add_error(diag::System::Writer,
+                                   "Invalid type for zero emission: " + type->FriendlyName());
             return false;
         });
 }
@@ -1767,7 +1762,7 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
 
             return true;
         },
-        [&](const sem::Struct* s) {
+        [&](const type::Struct* s) {
             if (!EmitStructType(&helpers_, s)) {
                 return false;
             }
@@ -1784,7 +1779,7 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
                 if (i > 0) {
                     out << ", ";
                 }
-                out << "." << program_->Symbols().NameFor(members[i]->Name()) << "=";
+                out << "." << members[i]->Name().Name() << "=";
                 if (!EmitConstant(out, constant->Index(i))) {
                     return false;
                 }
@@ -1793,9 +1788,8 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
             return true;
         },
         [&](Default) {
-            diagnostics_.add_error(
-                diag::System::Writer,
-                "unhandled constant type: " + builder_.FriendlyName(constant->Type()));
+            diagnostics_.add_error(diag::System::Writer,
+                                   "unhandled constant type: " + constant->Type()->FriendlyName());
             return false;
         });
 }
@@ -1884,7 +1878,7 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
         if (!EmitType(out, func_sem->ReturnType(), "")) {
             return false;
         }
-        out << " " << program_->Symbols().NameFor(func->name->symbol) << "(";
+        out << " " << func->name->symbol.Name() << "(";
 
         bool first = true;
         for (auto* v : func->params) {
@@ -1895,13 +1889,13 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
 
             auto* type = program_->Sem().Get(v)->Type();
 
-            std::string param_name = "const " + program_->Symbols().NameFor(v->name->symbol);
+            std::string param_name = "const " + v->name->symbol.Name();
             if (!EmitType(out, type, param_name)) {
                 return false;
             }
             // Parameter name is output as part of the type for pointers.
             if (!type->Is<type::Pointer>()) {
-                out << " " << program_->Symbols().NameFor(v->name->symbol);
+                out << " " << v->name->symbol.Name();
             }
         }
 
@@ -1987,7 +1981,7 @@ std::string GeneratorImpl::interpolation_to_attribute(
 bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
     auto* func_sem = builder_.Sem().Get(func);
 
-    auto func_name = program_->Symbols().NameFor(func->name->symbol);
+    auto func_name = func->name->symbol.Name();
 
     // Returns the binding index of a variable, requiring that the group
     // attribute have a value of zero.
@@ -2000,12 +1994,12 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
         }
         auto* param_sem = program_->Sem().Get<sem::Parameter>(param);
         auto bp = param_sem->BindingPoint();
-        if (TINT_UNLIKELY(bp.group != 0)) {
+        if (TINT_UNLIKELY(bp->group != 0)) {
             TINT_ICE(Writer, diagnostics_) << "encountered non-zero resource group index (use "
                                               "BindingRemapper to fix)";
             return kInvalidBindingIndex;
         }
-        return bp.binding;
+        return bp->binding;
     };
 
     {
@@ -2028,7 +2022,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
 
             auto* type = program_->Sem().Get(param)->Type()->UnwrapRef();
 
-            auto param_name = program_->Symbols().NameFor(param->name->symbol);
+            auto param_name = param->name->symbol.Name();
             if (!EmitType(out, type, param_name)) {
                 return false;
             }
@@ -2138,7 +2132,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
 
 bool GeneratorImpl::EmitIdentifier(utils::StringStream& out,
                                    const ast::IdentifierExpression* expr) {
-    out << program_->Symbols().NameFor(expr->identifier->symbol);
+    out << expr->identifier->symbol.Name();
     return true;
 }
 
@@ -2259,7 +2253,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
                 out << cond_buf.str() << "; ";
 
                 if (!cont_buf.lines.empty()) {
-                    out << TrimSuffix(cont_buf.lines[0].content, ";");
+                    out << utils::TrimSuffix(cont_buf.lines[0].content, ";");
                 }
             }
             out << " {";
@@ -2400,7 +2394,7 @@ bool GeneratorImpl::EmitMemberAccessor(utils::StringStream& out,
                 if (!write_lhs()) {
                     return false;
                 }
-                out << "." << program_->Symbols().NameFor(expr->member->symbol);
+                out << "." << expr->member->symbol.Name();
             }
             return true;
         },
@@ -2408,7 +2402,7 @@ bool GeneratorImpl::EmitMemberAccessor(utils::StringStream& out,
             if (!write_lhs()) {
                 return false;
             }
-            out << "." << program_->Symbols().NameFor(member_access->Member()->Name());
+            out << "." << member_access->Member()->Name().Name();
             return true;
         },
         [&](Default) {
@@ -2572,7 +2566,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
                 return true;
             }
             TINT_ICE(Writer, diagnostics_)
-                << "unhandled atomic type " << atomic->Type()->FriendlyName(builder_.Symbols());
+                << "unhandled atomic type " << atomic->Type()->FriendlyName();
             return false;
         },
         [&](const type::Array* arr) {
@@ -2640,7 +2634,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
             out << "sampler";
             return true;
         },
-        [&](const sem::Struct* str) {
+        [&](const type::Struct* str) {
             // The struct type emits as just the name. The declaration would be
             // emitted as part of emitting the declared types.
             out << StructName(str);
@@ -2753,9 +2747,8 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
             return true;
         },
         [&](Default) {
-            diagnostics_.add_error(
-                diag::System::Writer,
-                "unknown type in EmitType: " + type->FriendlyName(builder_.Symbols()));
+            diagnostics_.add_error(diag::System::Writer,
+                                   "unknown type in EmitType: " + type->FriendlyName());
             return false;
         });
 }
@@ -2796,7 +2789,7 @@ bool GeneratorImpl::EmitAddressSpace(utils::StringStream& out, builtin::AddressS
     return false;
 }
 
-bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
+bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
     auto it = emitted_structs_.emplace(str);
     if (!it.second) {
         return true;
@@ -2829,7 +2822,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
     uint32_t msl_offset = 0;
     for (auto* mem : str->Members()) {
         auto out = line(b);
-        auto mem_name = program_->Symbols().NameFor(mem->Name());
+        auto mem_name = mem->Name().Name();
         auto wgsl_offset = mem->Offset();
 
         if (is_host_shareable) {
@@ -2857,88 +2850,51 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
 
         out << " " << mem_name;
         // Emit attributes
-        if (auto* decl = mem->Declaration()) {
-            for (auto* attr : decl->attributes) {
-                bool ok = Switch(
-                    attr,
-                    [&](const ast::BuiltinAttribute* builtin_attr) {
-                        auto builtin = program_->Sem().Get(builtin_attr)->Value();
-                        auto name = builtin_to_attribute(builtin);
-                        if (name.empty()) {
-                            diagnostics_.add_error(diag::System::Writer, "unknown builtin");
-                            return false;
-                        }
-                        out << " [[" << name << "]]";
-                        return true;
-                    },
-                    [&](const ast::LocationAttribute*) {
-                        auto& pipeline_stage_uses = str->PipelineStageUses();
-                        if (TINT_UNLIKELY(pipeline_stage_uses.size() != 1)) {
-                            TINT_ICE(Writer, diagnostics_) << "invalid entry point IO struct uses";
-                            return false;
-                        }
+        auto& attributes = mem->Attributes();
 
-                        uint32_t loc = mem->Location().value();
-                        if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexInput)) {
-                            out << " [[attribute(" + std::to_string(loc) + ")]]";
-                        } else if (pipeline_stage_uses.count(
-                                       type::PipelineStageUsage::kVertexOutput)) {
-                            out << " [[user(locn" + std::to_string(loc) + ")]]";
-                        } else if (pipeline_stage_uses.count(
-                                       type::PipelineStageUsage::kFragmentInput)) {
-                            out << " [[user(locn" + std::to_string(loc) + ")]]";
-                        } else if (TINT_LIKELY(pipeline_stage_uses.count(
-                                       type::PipelineStageUsage::kFragmentOutput))) {
-                            out << " [[color(" + std::to_string(loc) + ")]]";
-                        } else {
-                            TINT_ICE(Writer, diagnostics_) << "invalid use of location decoration";
-                            return false;
-                        }
-                        return true;
-                    },
-                    [&](const ast::InterpolateAttribute* interpolate) {
-                        auto& sem = program_->Sem();
-                        auto i_type =
-                            sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationType>>(
-                                   interpolate->type)
-                                ->Value();
-
-                        auto i_smpl = builtin::InterpolationSampling::kUndefined;
-                        if (interpolate->sampling) {
-                            i_smpl =
-                                sem.Get<sem::BuiltinEnumExpression<builtin::InterpolationSampling>>(
-                                       interpolate->sampling)
-                                    ->Value();
-                        }
-
-                        auto name = interpolation_to_attribute(i_type, i_smpl);
-                        if (name.empty()) {
-                            diagnostics_.add_error(diag::System::Writer,
-                                                   "unknown interpolation attribute");
-                            return false;
-                        }
-                        out << " [[" << name << "]]";
-                        return true;
-                    },
-                    [&](const ast::InvariantAttribute*) {
-                        if (invariant_define_name_.empty()) {
-                            invariant_define_name_ = UniqueIdentifier("TINT_INVARIANT");
-                        }
-                        out << " " << invariant_define_name_;
-                        return true;
-                    },
-                    [&](const ast::StructMemberOffsetAttribute*) { return true; },
-                    [&](const ast::StructMemberAlignAttribute*) { return true; },
-                    [&](const ast::StructMemberSizeAttribute*) { return true; },
-                    [&](Default) {
-                        TINT_ICE(Writer, diagnostics_)
-                            << "unhandled struct member attribute: " << attr->Name();
-                        return false;
-                    });
-                if (!ok) {
-                    return false;
-                }
+        if (auto builtin = attributes.builtin) {
+            auto name = builtin_to_attribute(builtin.value());
+            if (name.empty()) {
+                diagnostics_.add_error(diag::System::Writer, "unknown builtin");
+                return false;
             }
+            out << " [[" << name << "]]";
+        }
+
+        if (auto location = attributes.location) {
+            auto& pipeline_stage_uses = str->PipelineStageUses();
+            if (TINT_UNLIKELY(pipeline_stage_uses.size() != 1)) {
+                TINT_ICE(Writer, diagnostics_) << "invalid entry point IO struct uses";
+                return false;
+            }
+
+            if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexInput)) {
+                out << " [[attribute(" + std::to_string(location.value()) + ")]]";
+            } else if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexOutput)) {
+                out << " [[user(locn" + std::to_string(location.value()) + ")]]";
+            } else if (pipeline_stage_uses.count(type::PipelineStageUsage::kFragmentInput)) {
+                out << " [[user(locn" + std::to_string(location.value()) + ")]]";
+            } else if (TINT_LIKELY(
+                           pipeline_stage_uses.count(type::PipelineStageUsage::kFragmentOutput))) {
+                out << " [[color(" + std::to_string(location.value()) + ")]]";
+            } else {
+                TINT_ICE(Writer, diagnostics_) << "invalid use of location decoration";
+                return false;
+            }
+        }
+
+        if (auto interpolation = attributes.interpolation) {
+            auto name = interpolation_to_attribute(interpolation->type, interpolation->sampling);
+            if (name.empty()) {
+                diagnostics_.add_error(diag::System::Writer, "unknown interpolation attribute");
+                return false;
+            }
+            out << " [[" << name << "]]";
+        }
+
+        if (attributes.invariant) {
+            invariant_define_name_ = UniqueIdentifier("TINT_INVARIANT");
+            out << " " << invariant_define_name_;
         }
 
         out << ";";
@@ -2948,8 +2904,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const sem::Struct* str) {
             auto size_align = MslPackedTypeSizeAndAlign(ty);
             if (TINT_UNLIKELY(msl_offset % size_align.align)) {
                 TINT_ICE(Writer, diagnostics_)
-                    << "Misaligned MSL structure member " << ty->FriendlyName(program_->Symbols())
-                    << " " << mem_name;
+                    << "Misaligned MSL structure member " << ty->FriendlyName() << " " << mem_name;
                 return false;
             }
             msl_offset += size_align.size;
@@ -3060,7 +3015,7 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
             return false;
     }
 
-    std::string name = program_->Symbols().NameFor(var->name->symbol);
+    std::string name = var->name->symbol.Name();
     if (!EmitType(out, type, name)) {
         return false;
     }
@@ -3109,7 +3064,7 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
             return false;
     }
 
-    std::string name = "const " + program_->Symbols().NameFor(let->name->symbol);
+    std::string name = "const " + let->name->symbol.Name();
     if (!EmitType(out, type, name)) {
         return false;
     }
@@ -3229,7 +3184,7 @@ GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const type:
             return SizeAndAlign{};
         },
 
-        [&](const sem::Struct* str) {
+        [&](const type::Struct* str) {
             // TODO(crbug.com/tint/650): There's an assumption here that MSL's
             // default structure size and alignment matches WGSL's. We need to
             // confirm this.

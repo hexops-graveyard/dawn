@@ -1056,7 +1056,11 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
                 auto startIt = querySet->GetQueryAvailability().begin() + firstQuery;
                 auto endIt = querySet->GetQueryAvailability().begin() + firstQuery + queryCount;
                 bool hasUnavailableQueries = std::find(startIt, endIt, false) != endIt;
-                if (hasUnavailableQueries) {
+                // Workaround for resolving overlapping queries to a same buffer on Intel Gen12 GPUs
+                // due to D3D12 driver issue.
+                // See http://crbug.com/dawn/1546 for more information.
+                bool clearNeeded = device->IsToggleEnabled(Toggle::ClearBufferBeforeResolveQueries);
+                if (hasUnavailableQueries || clearNeeded) {
                     DAWN_TRY(device->ClearBufferToZero(commandContext, destination,
                                                        destinationOffset,
                                                        queryCount * sizeof(uint64_t)));
@@ -1125,7 +1129,6 @@ MaybeError CommandBuffer::RecordCommands(CommandRecordingContext* commandContext
 
                 Buffer* dstBuffer = ToBackend(write->buffer.Get());
                 uint8_t* data = mCommands.NextData<uint8_t>(size);
-                Device* device = ToBackend(GetDevice());
 
                 UploadHandle uploadHandle;
                 DAWN_TRY_ASSIGN(uploadHandle, device->GetDynamicUploader()->Allocate(

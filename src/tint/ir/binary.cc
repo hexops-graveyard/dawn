@@ -19,80 +19,16 @@ TINT_INSTANTIATE_TYPEINFO(tint::ir::Binary);
 
 namespace tint::ir {
 
-Binary::Binary(Kind kind, Value* result, Value* lhs, Value* rhs)
-    : Base(result), kind_(kind), lhs_(lhs), rhs_(rhs) {
-    TINT_ASSERT(IR, lhs_);
-    TINT_ASSERT(IR, rhs_);
-    lhs_->AddUsage(this);
-    rhs_->AddUsage(this);
+Binary::Binary(enum Kind kind, const type::Type* res_ty, Value* lhs, Value* rhs)
+    : kind_(kind), result_type_(res_ty) {
+    TINT_ASSERT(IR, result_type_);
+
+    AddOperand(Binary::kLhsOperandOffset, lhs);
+    AddOperand(Binary::kRhsOperandOffset, rhs);
+
+    AddResult(this);
 }
 
 Binary::~Binary() = default;
-
-utils::StringStream& Binary::ToString(utils::StringStream& out, const SymbolTable& st) const {
-    Result()->ToString(out, st) << " = ";
-    lhs_->ToString(out, st) << " ";
-
-    switch (GetKind()) {
-        case Binary::Kind::kAdd:
-            out << "+";
-            break;
-        case Binary::Kind::kSubtract:
-            out << "-";
-            break;
-        case Binary::Kind::kMultiply:
-            out << "*";
-            break;
-        case Binary::Kind::kDivide:
-            out << "/";
-            break;
-        case Binary::Kind::kModulo:
-            out << "%";
-            break;
-        case Binary::Kind::kAnd:
-            out << "&";
-            break;
-        case Binary::Kind::kOr:
-            out << "|";
-            break;
-        case Binary::Kind::kXor:
-            out << "^";
-            break;
-        case Binary::Kind::kLogicalAnd:
-            out << "&&";
-            break;
-        case Binary::Kind::kLogicalOr:
-            out << "||";
-            break;
-        case Binary::Kind::kEqual:
-            out << "==";
-            break;
-        case Binary::Kind::kNotEqual:
-            out << "!=";
-            break;
-        case Binary::Kind::kLessThan:
-            out << "<";
-            break;
-        case Binary::Kind::kGreaterThan:
-            out << ">";
-            break;
-        case Binary::Kind::kLessThanEqual:
-            out << "<=";
-            break;
-        case Binary::Kind::kGreaterThanEqual:
-            out << ">=";
-            break;
-        case Binary::Kind::kShiftLeft:
-            out << "<<";
-            break;
-        case Binary::Kind::kShiftRight:
-            out << ">>";
-            break;
-    }
-    out << " ";
-    rhs_->ToString(out, st);
-
-    return out;
-}
 
 }  // namespace tint::ir

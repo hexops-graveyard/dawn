@@ -348,10 +348,9 @@ class Validator {
     bool Matrix(const type::Type* el_ty, const Source& source) const;
 
     /// Validates a function parameter
-    /// @param func the function the variable is for
     /// @param var the variable to validate
     /// @returns true on success, false otherwise
-    bool Parameter(const ast::Function* func, const sem::Variable* var) const;
+    bool Parameter(const sem::Variable* var) const;
 
     /// Validates a return
     /// @param ret the return statement to validate
@@ -398,7 +397,7 @@ class Validator {
     /// @param struct_type the type of the structure
     /// @returns true on success, false otherwise
     bool StructureInitializer(const ast::CallExpression* ctor,
-                              const sem::Struct* struct_type) const;
+                              const type::Struct* struct_type) const;
 
     /// Validates a switch statement
     /// @param s the switch to validate

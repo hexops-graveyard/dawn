@@ -22,10 +22,11 @@
 
 #include "gmock/gmock.h"
 
-using namespace tint::number_suffixes;  // NOLINT
-
 namespace tint::resolver {
 namespace {
+
+using namespace tint::builtin::fluent_types;  // NOLINT
+using namespace tint::number_suffixes;        // NOLINT
 
 class ResolverFunctionValidationTest : public TestHelper, public testing::Test {};
 
@@ -187,7 +188,7 @@ TEST_F(ResolverFunctionValidationTest, DiscardCalledDirectlyFromVertexEntryPoint
     Func(Source{{1, 2}}, "func", utils::Empty, ty.vec4<f32>(),
          utils::Vector{
              Discard(Source{{12, 34}}),
-             Return(Call(ty.vec4<f32>())),
+             Return(Call<vec4<f32>>()),
          },
          utils::Vector{Stage(ast::PipelineStage::kVertex)},
          utils::Vector{Builtin(builtin::BuiltinValue::kPosition)});
@@ -926,7 +927,7 @@ TEST_F(ResolverFunctionValidationTest, WorkgroupSize_InvalidExpr_z) {
 }
 
 TEST_F(ResolverFunctionValidationTest, ReturnIsConstructible_NonPlain) {
-    auto ret_type = ty.pointer(Source{{12, 34}}, ty.i32(), builtin::AddressSpace::kFunction);
+    auto ret_type = ty.ptr<function, i32>(Source{{12, 34}});
     Func("f", utils::Empty, ret_type, utils::Empty);
 
     EXPECT_FALSE(r()->Resolve());

@@ -21,7 +21,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::F16);
 namespace tint::type {
 
 F16::F16()
-    : Base(static_cast<size_t>(TypeInfo::Of<F16>().full_hashcode),
+    : Base(static_cast<size_t>(utils::TypeInfo::Of<F16>().full_hashcode),
            type::Flags{
                Flag::kConstructable,
                Flag::kCreationFixedFootprint,
@@ -30,11 +30,7 @@ F16::F16()
 
 F16::~F16() = default;
 
-bool F16::Equals(const UniqueNode& other) const {
-    return other.Is<F16>();
-}
-
-std::string F16::FriendlyName(const SymbolTable&) const {
+std::string F16::FriendlyName() const {
     return "f16";
 }
 

@@ -52,14 +52,12 @@ type::Flags FlagsFrom(utils::VectorRef<const StructMember*> members) {
 
 }  // namespace
 
-Struct::Struct(tint::Source source,
-               Symbol name,
+Struct::Struct(Symbol name,
                utils::VectorRef<const StructMember*> members,
                uint32_t align,
                uint32_t size,
                uint32_t size_no_padding)
-    : Base(utils::Hash(TypeInfo::Of<Struct>().full_hashcode, name), FlagsFrom(members)),
-      source_(source),
+    : Base(utils::Hash(utils::TypeInfo::Of<Struct>().full_hashcode, name), FlagsFrom(members)),
       name_(name),
       members_(std::move(members)),
       align_(align),
@@ -92,14 +90,14 @@ uint32_t Struct::Size() const {
     return size_;
 }
 
-std::string Struct::FriendlyName(const SymbolTable& symbols) const {
-    return symbols.NameFor(name_);
+std::string Struct::FriendlyName() const {
+    return name_.Name();
 }
 
-std::string Struct::Layout(const tint::SymbolTable& symbols) const {
+std::string Struct::Layout() const {
     utils::StringStream ss;
 
-    auto member_name_of = [&](const StructMember* sm) { return symbols.NameFor(sm->Name()); };
+    auto member_name_of = [&](const StructMember* sm) { return sm->Name().Name(); };
 
     if (Members().IsEmpty()) {
         return {};
@@ -128,7 +126,7 @@ std::string Struct::Layout(const tint::SymbolTable& symbols) const {
            << align << ") size(" << std::setw(size_w) << size << ") */   " << s << ";\n";
     };
 
-    print_struct_begin_line(Align(), Size(), UnwrapRef()->FriendlyName(symbols));
+    print_struct_begin_line(Align(), Size(), UnwrapRef()->FriendlyName());
 
     for (size_t i = 0; i < Members().Length(); ++i) {
         auto* const m = Members()[i];
@@ -147,7 +145,7 @@ std::string Struct::Layout(const tint::SymbolTable& symbols) const {
         // Output member
         std::string member_name = member_name_of(m);
         print_member_line(m->Offset(), m->Align(), m->Size(),
-                          member_name + " : " + m->Type()->UnwrapRef()->FriendlyName(symbols));
+                          member_name + " : " + m->Type()->UnwrapRef()->FriendlyName());
     }
 
     // Output struct size padding, if any
@@ -162,40 +160,46 @@ std::string Struct::Layout(const tint::SymbolTable& symbols) const {
     return ss.str();
 }
 
+TypeAndCount Struct::Elements(const Type* type_if_invalid /* = nullptr */,
+                              uint32_t /* count_if_invalid = 0 */) const {
+    return {type_if_invalid, static_cast<uint32_t>(members_.Length())};
+}
+
+const Type* Struct::Element(uint32_t index) const {
+    return index < members_.Length() ? members_[index]->Type() : nullptr;
+}
+
 Struct* Struct::Clone(CloneContext& ctx) const {
-    auto sym = ctx.dst.st->Register(ctx.src.st->NameFor(name_));
+    auto sym = ctx.dst.st->Register(name_.Name());
 
     utils::Vector<const StructMember*, 4> members;
     for (const auto& mem : members_) {
         members.Push(mem->Clone(ctx));
     }
-    return ctx.dst.mgr->Get<Struct>(source_, sym, members, align_, size_, size_no_padding_);
+    return ctx.dst.mgr->Get<Struct>(sym, members, align_, size_, size_no_padding_);
 }
 
-StructMember::StructMember(tint::Source source,
-                           Symbol name,
+StructMember::StructMember(Symbol name,
                            const type::Type* type,
                            uint32_t index,
                            uint32_t offset,
                            uint32_t align,
                            uint32_t size,
-                           std::optional<uint32_t> location)
-    : source_(source),
-      name_(name),
+                           const StructMemberAttributes& attributes)
+    : name_(name),
       type_(type),
       index_(index),
       offset_(offset),
       align_(align),
       size_(size),
-      location_(location) {}
+      attributes_(attributes) {}
 
 StructMember::~StructMember() = default;
 
 StructMember* StructMember::Clone(CloneContext& ctx) const {
-    auto sym = ctx.dst.st->Register(ctx.src.st->NameFor(name_));
+    auto sym = ctx.dst.st->Register(name_.Name());
     auto* ty = type_->Clone(ctx);
-    return ctx.dst.mgr->Get<StructMember>(source_, sym, ty, index_, offset_, align_, size_,
-                                          location_);
+    return ctx.dst.mgr->Get<StructMember>(sym, ty, index_, offset_, align_, size_, attributes_);
 }
 
 }  // namespace tint::type

@@ -29,20 +29,45 @@ CommandBufferBase::CommandBufferBase(CommandEncoder* encoder,
                                      const CommandBufferDescriptor* descriptor)
     : ApiObjectBase(encoder->GetDevice(), descriptor->label),
       mCommands(encoder->AcquireCommands()),
-      mResourceUsages(encoder->AcquireResourceUsages()) {
+      mResourceUsages(encoder->AcquireResourceUsages()),
+      mEncoderLabel(encoder->GetLabel()) {
     GetObjectTrackingList()->Track(this);
 }
 
-CommandBufferBase::CommandBufferBase(DeviceBase* device, ObjectBase::ErrorTag tag)
-    : ApiObjectBase(device, tag) {}
+CommandBufferBase::CommandBufferBase(DeviceBase* device,
+                                     ObjectBase::ErrorTag tag,
+                                     const char* label)
+    : ApiObjectBase(device, tag, label) {}
 
 // static
-CommandBufferBase* CommandBufferBase::MakeError(DeviceBase* device) {
-    return new CommandBufferBase(device, ObjectBase::kError);
+CommandBufferBase* CommandBufferBase::MakeError(DeviceBase* device, const char* label) {
+    return new CommandBufferBase(device, ObjectBase::kError, label);
 }
 
 ObjectType CommandBufferBase::GetType() const {
     return ObjectType::CommandBuffer;
+}
+
+void CommandBufferBase::FormatLabel(absl::FormatSink* s) const {
+    s->Append(ObjectTypeAsString(GetType()));
+
+    const std::string& label = GetLabel();
+    if (!label.empty()) {
+        s->Append(absl::StrFormat(" \"%s\"", label));
+    }
+
+    if (!mEncoderLabel.empty()) {
+        s->Append(absl::StrFormat(" from %s \"%s\"", ObjectTypeAsString(ObjectType::CommandEncoder),
+                                  mEncoderLabel));
+    }
+}
+
+const std::string& CommandBufferBase::GetEncoderLabel() const {
+    return mEncoderLabel;
+}
+
+void CommandBufferBase::SetEncoderLabel(std::string encoderLabel) {
+    mEncoderLabel = encoderLabel;
 }
 
 MaybeError CommandBufferBase::ValidateCanUseInSubmitNow() const {

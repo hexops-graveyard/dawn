@@ -23,6 +23,9 @@
 #include "dawn/utils/TextureUtils.h"
 #include "dawn/utils/WGPUHelpers.h"
 
+namespace dawn {
+namespace {
+
 // The helper struct to configure the copies between buffers and textures.
 struct CopyConfig {
     wgpu::TextureDescriptor textureDescriptor;
@@ -34,10 +37,8 @@ struct CopyConfig {
     uint32_t rowsPerImage = wgpu::kCopyStrideUndefined;
 };
 
-namespace {
 using TextureFormat = wgpu::TextureFormat;
 DAWN_TEST_PARAM_STRUCT(CompressedTextureFormatTestParams, TextureFormat);
-}  // namespace
 
 class CompressedTextureFormatTest : public DawnTestWithParams<CompressedTextureFormatTestParams> {
   protected:
@@ -688,6 +689,9 @@ TEST_P(CompressedTextureFormatTest, CopyIntoSubRegion) {
 
     DAWN_TEST_UNSUPPORTED_IF(!IsFormatSupported());
 
+    // TODO(dawn:1802): Clear BC formats.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11() && utils::IsBCTextureFormat(GetParam().mTextureFormat));
+
     CopyConfig config = GetDefaultSmallConfig();
     config.copyOrigin3D = {BlockWidthInTexels(), BlockHeightInTexels(), 0};
     config.copyExtent3D = {BlockWidthInTexels(), BlockHeightInTexels(), 1};
@@ -1153,6 +1157,9 @@ TEST_P(CompressedTextureFormatSpecificTest, BC1RGBAUnorm_UnalignedDynamicUploade
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
     DAWN_TEST_UNSUPPORTED_IF(!IsBCFormatSupported());
 
+    // TODO(dawn:1802): Clear BC formats.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11());
+
     utils::UnalignDynamicUploader(device);
 
     wgpu::TextureDescriptor textureDescriptor = {};
@@ -1226,6 +1233,9 @@ TEST_P(CompressedTextureWriteTextureTest, Basic) {
     // TODO(crbug.com/dawn/976): Failing on Linux Intel OpenGL drivers.
     DAWN_SUPPRESS_TEST_IF(IsIntel() && IsOpenGL() && IsLinux());
 
+    // TODO(dawn:1802): Clear BC formats.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11() && utils::IsBCTextureFormat(GetParam().mTextureFormat));
+
     constexpr uint32_t kSizeWidthMultiplier = 5;
     constexpr uint32_t kSizeHeightMultiplier = 6;
     constexpr uint32_t kOriginWidthMultiplier = 1;
@@ -1255,6 +1265,9 @@ TEST_P(CompressedTextureWriteTextureTest, WriteMultiple2DArrayLayers) {
 
     // TODO(crbug.com/dawn/1328): ES3.1 does not support subsetting of compressed textures.
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
+
+    // TODO(dawn:1802): Clear BC formats.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11() && utils::IsBCTextureFormat(GetParam().mTextureFormat));
 
     // TODO(b/198674734): Width multiplier set to 7 because 5 results in square size for ASTC6x5.
     constexpr uint32_t kSizeWidthMultiplier = 7;
@@ -1289,6 +1302,9 @@ TEST_P(CompressedTextureWriteTextureTest,
     // TODO(crbug.com/dawn/1328): ES3.1 does not support subsetting of compressed textures.
     DAWN_TEST_UNSUPPORTED_IF(IsOpenGLES());
 
+    // TODO(dawn:1802): Clear BC formats.
+    DAWN_SUPPRESS_TEST_IF(IsD3D11() && utils::IsBCTextureFormat(GetParam().mTextureFormat));
+
     CopyConfig config = GetDefaultFullConfig();
 
     // The virtual size of the texture at mipmap level == 2 is not a multiple of the texel
@@ -1309,3 +1325,6 @@ DAWN_INSTANTIATE_TEST_P(CompressedTextureWriteTextureTest,
                          OpenGLESBackend(), VulkanBackend()},
                         std::vector<wgpu::TextureFormat>(utils::kCompressedFormats.begin(),
                                                          utils::kCompressedFormats.end()));
+
+}  // anonymous namespace
+}  // namespace dawn

@@ -15,12 +15,18 @@
 #ifndef SRC_DAWN_NATIVE_D3D_DEVICED3D_H_
 #define SRC_DAWN_NATIVE_D3D_DEVICED3D_H_
 
-#include "dawn/native/Device.h"
+#include <memory>
+#include <vector>
 
+#include "dawn/native/Device.h"
 #include "dawn/native/d3d/d3d_platform.h"
 
 namespace dawn::native::d3d {
 
+struct ExternalImageDescriptorDXGISharedHandle;
+struct ExternalImageDXGIFenceDescriptor;
+class ExternalImageDXGIImpl;
+class Fence;
 class PlatformFunctions;
 
 class Device : public DeviceBase {
@@ -29,6 +35,9 @@ class Device : public DeviceBase {
            const DeviceDescriptor* descriptor,
            const TogglesState& deviceToggles);
     ~Device() override;
+
+    ResultOrError<wgpu::TextureUsage> GetSupportedSurfaceUsageImpl(
+        const Surface* surface) const override;
 
     const PlatformFunctions* GetFunctions() const;
     ComPtr<IDXGIFactory4> GetFactory() const;
@@ -39,6 +48,31 @@ class Device : public DeviceBase {
     ComPtr<IDxcLibrary> GetDxcLibrary() const;
     ComPtr<IDxcCompiler> GetDxcCompiler() const;
     ComPtr<IDxcValidator> GetDxcValidator() const;
+
+    HANDLE GetFenceHandle() const;
+
+    std::unique_ptr<ExternalImageDXGIImpl> CreateExternalImageDXGIImpl(
+        const ExternalImageDescriptorDXGISharedHandle* descriptor);
+
+    virtual ResultOrError<Ref<Fence>> CreateFence(
+        const ExternalImageDXGIFenceDescriptor* descriptor) = 0;
+    virtual Ref<TextureBase> CreateD3DExternalTexture(const TextureDescriptor* descriptor,
+                                                      ComPtr<IUnknown> d3dTexture,
+                                                      std::vector<Ref<Fence>> waitFences,
+                                                      bool isSwapChainTexture,
+                                                      bool isInitialized) = 0;
+
+  protected:
+    void DestroyImpl() override;
+
+    virtual ResultOrError<std::unique_ptr<ExternalImageDXGIImpl>> CreateExternalImageDXGIImplImpl(
+        const ExternalImageDescriptorDXGISharedHandle* descriptor) = 0;
+
+    HANDLE mFenceHandle = nullptr;
+
+  private:
+    // List of external image resources opened using this device.
+    LinkedList<d3d::ExternalImageDXGIImpl> mExternalImageList;
 };
 
 }  // namespace dawn::native::d3d

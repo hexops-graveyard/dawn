@@ -36,15 +36,16 @@ namespace tint::resolver {
 namespace {
 
 using ::testing::HasSubstr;
+using namespace tint::builtin::fluent_types;  // NOLINT
 
 using Parameter = sem::Parameter;
 using ParameterUsage = sem::ParameterUsage;
 
-using AFloatV = builder::vec<3, AFloat>;
-using AIntV = builder::vec<3, AInt>;
-using f32V = builder::vec<3, f32>;
-using i32V = builder::vec<3, i32>;
-using u32V = builder::vec<3, u32>;
+using AFloatV = vec3<AFloat>;
+using AIntV = vec3<AInt>;
+using f32V = vec3<f32>;
+using i32V = vec3<i32>;
+using u32V = vec3<u32>;
 
 class IntrinsicTableTest : public testing::Test, public ProgramBuilder {
   public:
@@ -230,7 +231,7 @@ TEST_F(IntrinsicTableTest, MismatchBool) {
 TEST_F(IntrinsicTableTest, MatchPointer) {
     auto* i32 = create<type::I32>();
     auto* atomicI32 = create<type::Atomic>(i32);
-    auto* ptr = create<type::Pointer>(atomicI32, builtin::AddressSpace::kWorkgroup,
+    auto* ptr = create<type::Pointer>(builtin::AddressSpace::kWorkgroup, atomicI32,
                                       builtin::Access::kReadWrite);
     auto result = table->Lookup(builtin::Function::kAtomicLoad, utils::Vector{ptr},
                                 sem::EvaluationStage::kConstant, Source{});
@@ -255,7 +256,7 @@ TEST_F(IntrinsicTableTest, MatchArray) {
     auto* arr =
         create<type::Array>(create<type::U32>(), create<type::RuntimeArrayCount>(), 4u, 4u, 4u, 4u);
     auto* arr_ptr =
-        create<type::Pointer>(arr, builtin::AddressSpace::kStorage, builtin::Access::kReadWrite);
+        create<type::Pointer>(builtin::AddressSpace::kStorage, arr, builtin::Access::kReadWrite);
     auto result = table->Lookup(builtin::Function::kArrayLength, utils::Vector{arr_ptr},
                                 sem::EvaluationStage::kConstant, Source{});
     ASSERT_NE(result.sem, nullptr) << Diagnostics().str();
@@ -450,7 +451,7 @@ TEST_F(IntrinsicTableTest, ImplicitLoadOnReference) {
     auto* f32 = create<type::F32>();
     auto result = table->Lookup(builtin::Function::kCos,
                                 utils::Vector{
-                                    create<type::Reference>(f32, builtin::AddressSpace::kFunction,
+                                    create<type::Reference>(builtin::AddressSpace::kFunction, f32,
                                                             builtin::Access::kReadWrite),
                                 },
                                 sem::EvaluationStage::kConstant, Source{});
@@ -552,7 +553,7 @@ TEST_F(IntrinsicTableTest, MatchDifferentArgsElementType_Builtin_ConstantEval) {
 
 TEST_F(IntrinsicTableTest, MatchDifferentArgsElementType_Builtin_RuntimeEval) {
     auto* af = create<type::AbstractFloat>();
-    auto* bool_ref = create<type::Reference>(create<type::Bool>(), builtin::AddressSpace::kFunction,
+    auto* bool_ref = create<type::Reference>(builtin::AddressSpace::kFunction, create<type::Bool>(),
                                              builtin::Access::kReadWrite);
     auto result = table->Lookup(builtin::Function::kSelect, utils::Vector{af, af, bool_ref},
                                 sem::EvaluationStage::kRuntime, Source{});
@@ -841,12 +842,13 @@ TEST_F(IntrinsicTableTest, MismatchTypeInitializerImplicit) {
     EXPECT_EQ(Diagnostics().str(),
               R"(12:34 error: no matching constructor for vec3(i32, f32, i32)
 
-6 candidate constructors:
+7 candidate constructors:
   vec3(x: T, y: T, z: T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(xy: vec2<T>, z: T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(x: T, yz: vec2<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(vec3<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
+  vec3() -> vec3<abstract-int>
   vec3<T>() -> vec3<T>  where: T is f32, f16, i32, u32 or bool
 
 5 candidate conversions:
@@ -867,12 +869,13 @@ TEST_F(IntrinsicTableTest, MismatchTypeInitializerExplicit) {
     EXPECT_EQ(Diagnostics().str(),
               R"(12:34 error: no matching constructor for vec3<i32>(i32, f32, i32)
 
-6 candidate constructors:
+7 candidate constructors:
   vec3(x: T, y: T, z: T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(x: T, yz: vec2<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(xy: vec2<T>, z: T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(vec3<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
+  vec3() -> vec3<abstract-int>
   vec3<T>() -> vec3<T>  where: T is f32, f16, i32, u32 or bool
 
 5 candidate conversions:
@@ -971,9 +974,10 @@ TEST_F(IntrinsicTableTest, MismatchTypeConversion) {
     EXPECT_EQ(Diagnostics().str(),
               R"(12:34 error: no matching constructor for vec3<f32>(array<u32>)
 
-6 candidate constructors:
+7 candidate constructors:
   vec3(vec3<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
+  vec3() -> vec3<abstract-int>
   vec3<T>() -> vec3<T>  where: T is f32, f16, i32, u32 or bool
   vec3(xy: vec2<T>, z: T) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool
   vec3(x: T, yz: vec2<T>) -> vec3<T>  where: T is abstract-int, abstract-float, f32, f16, i32, u32 or bool

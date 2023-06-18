@@ -19,8 +19,12 @@
 #include "dawn/common/Assert.h"
 #include "dawn/common/Constants.h"
 #include "dawn/tests/unittests/validation/ValidationTest.h"
+#include "dawn/utils/ComboRenderBundleEncoderDescriptor.h"
 #include "dawn/utils/ComboRenderPipelineDescriptor.h"
 #include "dawn/utils/WGPUHelpers.h"
+
+namespace dawn {
+namespace {
 
 class BindGroupValidationTest : public ValidationTest {
   public:
@@ -79,12 +83,35 @@ class BindGroupValidationTest : public ValidationTest {
         return desc;
     }
 
-    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter) override {
-        wgpu::DeviceDescriptor descriptor;
+    WGPUDevice CreateTestDevice(native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
         wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::Depth32FloatStencil8};
         descriptor.requiredFeatures = requiredFeatures;
         descriptor.requiredFeaturesCount = 1;
         return dawnAdapter.CreateDevice(&descriptor);
+    }
+
+    void DoTextureSampleTypeTest(bool success,
+                                 wgpu::TextureFormat format,
+                                 wgpu::TextureSampleType sampleType,
+                                 wgpu::TextureAspect aspect = wgpu::TextureAspect::All) {
+        wgpu::BindGroupLayout layout =
+            utils::MakeBindGroupLayout(device, {{0, wgpu::ShaderStage::Fragment, sampleType}});
+
+        wgpu::TextureDescriptor descriptor;
+        descriptor.size = {4, 4, 1};
+        descriptor.usage = wgpu::TextureUsage::TextureBinding;
+        descriptor.format = format;
+
+        wgpu::TextureViewDescriptor viewDescriptor;
+        viewDescriptor.aspect = aspect;
+        wgpu::TextureView view = device.CreateTexture(&descriptor).CreateView(&viewDescriptor);
+
+        if (success) {
+            utils::MakeBindGroup(device, layout, {{0, view}});
+        } else {
+            ASSERT_DEVICE_ERROR(utils::MakeBindGroup(device, layout, {{0, view}}));
+        }
     }
 
     wgpu::Buffer mUBO;
@@ -465,126 +492,153 @@ TEST_F(BindGroupValidationTest, StorageTextureUsage) {
 
 // Check that a texture must have the correct sample type
 TEST_F(BindGroupValidationTest, TextureSampleType) {
-    auto DoTest = [this](bool success, wgpu::TextureFormat format,
-                         wgpu::TextureSampleType sampleType,
-                         wgpu::TextureAspect aspect = wgpu::TextureAspect::All) {
-        wgpu::BindGroupLayout layout =
-            utils::MakeBindGroupLayout(device, {{0, wgpu::ShaderStage::Fragment, sampleType}});
+    // Test that RGBA8Unorm is only compatible with float/unfilterable-float.
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::RGBA8Unorm,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Sint);
 
-        wgpu::TextureDescriptor descriptor;
-        descriptor.size = {4, 4, 1};
-        descriptor.usage = wgpu::TextureUsage::TextureBinding;
-        descriptor.format = format;
-
-        wgpu::TextureViewDescriptor viewDescriptor;
-        viewDescriptor.aspect = aspect;
-        wgpu::TextureView view = device.CreateTexture(&descriptor).CreateView(&viewDescriptor);
-
-        if (success) {
-            utils::MakeBindGroup(device, layout, {{0, view}});
-        } else {
-            ASSERT_DEVICE_ERROR(utils::MakeBindGroup(device, layout, {{0, view}}));
-        }
-    };
-
-    // Test that RGBA8Unorm is only compatible with float/unfilterable-float
-    DoTest(true, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Float);
-    DoTest(true, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::RGBA8Unorm, wgpu::TextureSampleType::Sint);
-
-    // Test that R32Float is only compatible with unfilterable-float
-    DoTest(false, wgpu::TextureFormat::R32Float, wgpu::TextureSampleType::Float);
-    DoTest(true, wgpu::TextureFormat::R32Float, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(false, wgpu::TextureFormat::R32Float, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::R32Float, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::R32Float, wgpu::TextureSampleType::Sint);
+    // Test that float32 formats are only compatible with unfilterable-float (without the
+    // float32-filterable feature enabled).
+    for (const auto f32Format : {wgpu::TextureFormat::R32Float, wgpu::TextureFormat::RG32Float,
+                                 wgpu::TextureFormat::RGBA32Float}) {
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Float);
+        DoTextureSampleTypeTest(true, f32Format, wgpu::TextureSampleType::UnfilterableFloat);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Depth);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Uint);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Sint);
+    }
 
     // Test that Depth16Unorm is only compatible with depth/unfilterable-float.
-    DoTest(false, wgpu::TextureFormat::Depth16Unorm, wgpu::TextureSampleType::Float);
-    DoTest(true, wgpu::TextureFormat::Depth16Unorm, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(true, wgpu::TextureFormat::Depth16Unorm, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::Depth16Unorm, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::Depth16Unorm, wgpu::TextureSampleType::Sint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth16Unorm,
+                            wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth16Unorm,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth16Unorm,
+                            wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth16Unorm,
+                            wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth16Unorm,
+                            wgpu::TextureSampleType::Sint);
 
     // Test that Depth24Plus is only compatible with depth/unfilterable-float.
-    DoTest(false, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Float);
-    DoTest(true, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(true, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Sint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24Plus,
+                            wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth24Plus,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24Plus, wgpu::TextureSampleType::Sint);
 
     // Test that Depth24PlusStencil8 with depth aspect is only compatible with
     // depth/unfilterable-float.
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Float,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(true, wgpu::TextureFormat::Depth24PlusStencil8,
-           wgpu::TextureSampleType::UnfilterableFloat, wgpu::TextureAspect::DepthOnly);
-    DoTest(true, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Depth,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Uint,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Sint,
-           wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Float, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::UnfilterableFloat,
+                            wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Depth, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Uint, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Sint, wgpu::TextureAspect::DepthOnly);
 
     // Test that Depth24PlusStencil8 with stencil aspect is only compatible with uint.
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Float,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
-           wgpu::TextureSampleType::UnfilterableFloat, wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Depth,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(true, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Uint,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth24PlusStencil8, wgpu::TextureSampleType::Sint,
-           wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Float, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::UnfilterableFloat,
+                            wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Depth, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Uint, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth24PlusStencil8,
+                            wgpu::TextureSampleType::Sint, wgpu::TextureAspect::StencilOnly);
 
     // Test that Depth32Float is only compatible with depth/unfilterable-float.
-    DoTest(false, wgpu::TextureFormat::Depth32Float, wgpu::TextureSampleType::Float);
-    DoTest(true, wgpu::TextureFormat::Depth32Float, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(true, wgpu::TextureFormat::Depth32Float, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::Depth32Float, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::Depth32Float, wgpu::TextureSampleType::Sint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32Float,
+                            wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth32Float,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth32Float,
+                            wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32Float,
+                            wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32Float,
+                            wgpu::TextureSampleType::Sint);
 
     // Test that Depth32FloatStencil8 with depth aspect is only compatible with
     // depth/unfilterable-float.
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Float,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(true, wgpu::TextureFormat::Depth32FloatStencil8,
-           wgpu::TextureSampleType::UnfilterableFloat, wgpu::TextureAspect::DepthOnly);
-    DoTest(true, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Depth,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Uint,
-           wgpu::TextureAspect::DepthOnly);
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Sint,
-           wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Float, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::UnfilterableFloat,
+                            wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Depth, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Uint, wgpu::TextureAspect::DepthOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Sint, wgpu::TextureAspect::DepthOnly);
 
     // Test that Depth32FloatStencil8 with stencil aspect is only compatible with uint.
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Float,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
-           wgpu::TextureSampleType::UnfilterableFloat, wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Depth,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(true, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Uint,
-           wgpu::TextureAspect::StencilOnly);
-    DoTest(false, wgpu::TextureFormat::Depth32FloatStencil8, wgpu::TextureSampleType::Sint,
-           wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Float, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::UnfilterableFloat,
+                            wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Depth, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Uint, wgpu::TextureAspect::StencilOnly);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::Depth32FloatStencil8,
+                            wgpu::TextureSampleType::Sint, wgpu::TextureAspect::StencilOnly);
 
-    // Test that RG8Uint is only compatible with uint
-    DoTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Float);
-    DoTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Depth);
-    DoTest(true, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Uint);
-    DoTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Sint);
+    // Test that RG8Uint is only compatible with uint.
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RG8Uint,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::RG8Uint, wgpu::TextureSampleType::Sint);
 
-    // Test that R16Sint is only compatible with sint
-    DoTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Float);
-    DoTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::UnfilterableFloat);
-    DoTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Depth);
-    DoTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Uint);
-    DoTest(true, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Sint);
+    // Test that R16Sint is only compatible with sint.
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Float);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::R16Sint,
+                            wgpu::TextureSampleType::UnfilterableFloat);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Depth);
+    DoTextureSampleTypeTest(false, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Uint);
+    DoTextureSampleTypeTest(true, wgpu::TextureFormat::R16Sint, wgpu::TextureSampleType::Sint);
+}
+
+class BindGroupValidationTest_Float32Filterable : public BindGroupValidationTest {
+  protected:
+    WGPUDevice CreateTestDevice(dawn::native::Adapter dawnAdapter,
+                                wgpu::DeviceDescriptor descriptor) override {
+        wgpu::FeatureName requiredFeatures[1] = {wgpu::FeatureName::Float32Filterable};
+        descriptor.requiredFeatures = requiredFeatures;
+        descriptor.requiredFeaturesCount = 1;
+        return dawnAdapter.CreateDevice(&descriptor);
+    }
+};
+
+// Checks that float32 texture formats have the correct sample type when float32-filterable feature
+// enabled.
+TEST_F(BindGroupValidationTest_Float32Filterable, TextureSampleType) {
+    // With the feature enabled, float32 formats should be compatible with both float and
+    // unfilterable-float.
+    for (const auto f32Format : {wgpu::TextureFormat::R32Float, wgpu::TextureFormat::RG32Float,
+                                 wgpu::TextureFormat::RGBA32Float}) {
+        DoTextureSampleTypeTest(true, f32Format, wgpu::TextureSampleType::Float);
+        DoTextureSampleTypeTest(true, f32Format, wgpu::TextureSampleType::UnfilterableFloat);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Depth);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Uint);
+        DoTextureSampleTypeTest(false, f32Format, wgpu::TextureSampleType::Sint);
+    }
 }
 
 // Test which depth-stencil formats are allowed to be sampled (all).
@@ -824,15 +878,15 @@ TEST_F(BindGroupValidationTest, MultisampledTexture) {
 
 // Tests dafault offset and size of bind group entry work as expected
 TEST_F(BindGroupValidationTest, BufferBindingDefaultOffsetAndSize) {
-    wgpu::BufferDescriptor descriptor;
-    descriptor.size = 768;  // 768 = 256 x 3
-    descriptor.usage = wgpu::BufferUsage::Uniform;
-    wgpu::Buffer buffer = device.CreateBuffer(&descriptor);
+    wgpu::BufferDescriptor bufferDesc;
+    bufferDesc.size = 768;  // 768 = 256 x 3
+    bufferDesc.usage = wgpu::BufferUsage::Uniform;
+    wgpu::Buffer buffer = device.CreateBuffer(&bufferDesc);
 
-    descriptor.size = 260;
-    wgpu::Buffer bufferSized260 = device.CreateBuffer(&descriptor);
-    descriptor.size = 256;
-    wgpu::Buffer bufferSized256 = device.CreateBuffer(&descriptor);
+    bufferDesc.size = 260;
+    wgpu::Buffer bufferSized260 = device.CreateBuffer(&bufferDesc);
+    bufferDesc.size = 256;
+    wgpu::Buffer bufferSized256 = device.CreateBuffer(&bufferDesc);
 
     // Create a layout requiring minimium buffer binding size of 260
     wgpu::BufferBindingLayout bufferBindingLayout;
@@ -860,25 +914,25 @@ TEST_F(BindGroupValidationTest, BufferBindingDefaultOffsetAndSize) {
         // binding.offset omitted.
         binding.size = 768;
 
-        wgpu::BindGroupDescriptor descriptor;
-        descriptor.layout = layout;
-        descriptor.entryCount = 1;
-        descriptor.entries = &binding;
+        wgpu::BindGroupDescriptor bgDesc;
+        bgDesc.layout = layout;
+        bgDesc.entryCount = 1;
+        bgDesc.entries = &binding;
 
         // Offset 0 and size 768 should work.
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Offset 0 and size 260 should work.
         binding.size = 260;
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Offset 0 and size 256 go smaller than minBindingSize and validation error.
         binding.size = 256;
-        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
+        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&bgDesc));
 
         // Offset 0 and size 769 should be OOB and validation error.
         binding.size = 769;
-        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
+        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&bgDesc));
     }
 
     // Default size should be whole size - offset
@@ -891,25 +945,25 @@ TEST_F(BindGroupValidationTest, BufferBindingDefaultOffsetAndSize) {
         binding.offset = 0;
         // binding.size omitted
 
-        wgpu::BindGroupDescriptor descriptor;
-        descriptor.layout = layout;
-        descriptor.entryCount = 1;
-        descriptor.entries = &binding;
+        wgpu::BindGroupDescriptor bgDesc;
+        bgDesc.layout = layout;
+        bgDesc.entryCount = 1;
+        bgDesc.entries = &binding;
 
         // Offset 0 and default size = 768 should work.
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Offset 256 and default size = 512 should work.
         binding.offset = 256;
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Offset 512 and default size = 256 go smaller than minBindingSize and validation error.
         binding.offset = 512;
-        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
+        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&bgDesc));
 
         // Offset 1024 should be OOB and validation error.
         binding.offset = 1024;
-        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
+        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&bgDesc));
     }
 
     // Both offset and size are default, should be offset = 0 and size = whole size
@@ -922,22 +976,22 @@ TEST_F(BindGroupValidationTest, BufferBindingDefaultOffsetAndSize) {
         // binding.offset omitted
         // binding.size omitted
 
-        wgpu::BindGroupDescriptor descriptor;
-        descriptor.layout = layout;
-        descriptor.entryCount = 1;
-        descriptor.entries = &binding;
+        wgpu::BindGroupDescriptor bgDesc;
+        bgDesc.layout = layout;
+        bgDesc.entryCount = 1;
+        bgDesc.entries = &binding;
 
         // Offset 0 and default size = 768 should work.
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Use a buffer with size 260, offset 0 and default size = 260 should work.
         binding.buffer = bufferSized260;
-        device.CreateBindGroup(&descriptor);
+        device.CreateBindGroup(&bgDesc);
 
         // Use a buffer with size 256, offset 0 and default size = 256 go smaller than
         // minBindingSize and validation error.
         binding.buffer = bufferSized256;
-        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&descriptor));
+        ASSERT_DEVICE_ERROR(device.CreateBindGroup(&bgDesc));
     }
 }
 
@@ -1414,9 +1468,9 @@ TEST_F(BindGroupLayoutValidationTest, PerStageLimitsWithExternalTexture) {
         std::vector<utils::BindingLayoutEntryInitializationHelper> maxBindings;
 
         // Create an external texture binding layout entry
-        wgpu::BindGroupLayoutEntry entry = BGLEntryType(&utils::kExternalTextureBindingLayout);
-        entry.binding = 0;
-        maxBindings.push_back(entry);
+        wgpu::BindGroupLayoutEntry firstEntry = BGLEntryType(&utils::kExternalTextureBindingLayout);
+        firstEntry.binding = 0;
+        maxBindings.push_back(firstEntry);
 
         // Create the other bindings such that we reach the max bindings per stage when including
         // the external texture.
@@ -1650,7 +1704,7 @@ TEST_F(BindGroupLayoutValidationTest, MultisampledTextureViewDimension) {
 
 // Test that multisampled texture bindings are valid
 TEST_F(BindGroupLayoutValidationTest, MultisampledTextureSampleType) {
-    // Multisampled float sample type deprecated.
+    // Multisampled float sample type is not supported.
     ASSERT_DEVICE_ERROR(utils::MakeBindGroupLayout(
         device, {
                     {0, wgpu::ShaderStage::Compute, wgpu::TextureSampleType::Float,
@@ -1842,6 +1896,102 @@ TEST_F(SetBindGroupValidationTest, Basic) {
 TEST_F(SetBindGroupValidationTest, MissingBindGroup) {
     TestRenderPassBindGroup(nullptr, nullptr, 0, false);
     TestComputePassBindGroup(nullptr, nullptr, 0, false);
+}
+
+// Unset the bind group required by current pipeline is invalid.
+TEST_F(SetBindGroupValidationTest, UnsetBindGroupWhenNeeded) {
+    // Set up the bind group.
+    wgpu::Buffer uniformBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Uniform);
+    wgpu::Buffer storageBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Storage);
+    wgpu::Buffer readonlyStorageBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Storage);
+    wgpu::BindGroup bindGroup = utils::MakeBindGroup(device, mBindGroupLayout,
+                                                     {{0, uniformBuffer, 0, kBindingSize},
+                                                      {1, uniformBuffer, 0, kBindingSize},
+                                                      {2, storageBuffer, 0, kBindingSize},
+                                                      {3, readonlyStorageBuffer, 0, kBindingSize}});
+
+    std::array<uint32_t, 3> offsets = {512, 256, 0};
+
+    // render pass case
+    {
+        wgpu::RenderPipeline renderPipeline = CreateRenderPipeline();
+        PlaceholderRenderPass renderPass(device);
+
+        wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
+        wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
+        renderPassEncoder.SetPipeline(renderPipeline);
+        renderPassEncoder.SetBindGroup(0, bindGroup, offsets.size(), offsets.data());
+        // Unset the bind group which is required by the current pipeline.
+        renderPassEncoder.SetBindGroup(0, nullptr);
+        renderPassEncoder.Draw(3);
+        renderPassEncoder.End();
+        ASSERT_DEVICE_ERROR(commandEncoder.Finish());
+    }
+
+    // compute pass case
+    {
+        wgpu::ComputePipeline computePipeline = CreateComputePipeline();
+
+        wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
+        wgpu::ComputePassEncoder computePassEncoder = commandEncoder.BeginComputePass();
+        computePassEncoder.SetPipeline(computePipeline);
+        computePassEncoder.SetBindGroup(0, bindGroup, offsets.size(), offsets.data());
+        // The pipeline in compute pass requires an appropriate bindgroup, which is missing.
+        computePassEncoder.SetBindGroup(0, nullptr);
+        computePassEncoder.DispatchWorkgroups(1);
+        computePassEncoder.End();
+        ASSERT_DEVICE_ERROR(commandEncoder.Finish());
+    }
+}
+
+// Regression test for the validation aspect caching not being invalidated when unsetting a
+// bind group.
+TEST_F(SetBindGroupValidationTest, UnsetInvalidatesBindGroupValidationCache) {
+    // Set up the bind group.
+    wgpu::Buffer uniformBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Uniform);
+    wgpu::Buffer storageBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Storage);
+    wgpu::Buffer readonlyStorageBuffer = CreateBuffer(mBufferSize, wgpu::BufferUsage::Storage);
+    wgpu::BindGroup bindGroup = utils::MakeBindGroup(device, mBindGroupLayout,
+                                                     {{0, uniformBuffer, 0, kBindingSize},
+                                                      {1, uniformBuffer, 0, kBindingSize},
+                                                      {2, storageBuffer, 0, kBindingSize},
+                                                      {3, readonlyStorageBuffer, 0, kBindingSize}});
+
+    std::array<uint32_t, 3> offsets = {512, 256, 0};
+
+    // Render pass case
+    {
+        wgpu::RenderPipeline renderPipeline = CreateRenderPipeline();
+        PlaceholderRenderPass renderPass(device);
+
+        wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
+        wgpu::RenderPassEncoder renderPassEncoder = commandEncoder.BeginRenderPass(&renderPass);
+        renderPassEncoder.SetPipeline(renderPipeline);
+        renderPassEncoder.SetBindGroup(0, bindGroup, 3, offsets.data());
+        renderPassEncoder.Draw(3);
+        // Unset the bindgroup after draw. The bindgroup might be cached by the previous draw.
+        renderPassEncoder.SetBindGroup(0, nullptr);
+        renderPassEncoder.Draw(3);
+        renderPassEncoder.End();
+        ASSERT_DEVICE_ERROR(commandEncoder.Finish());
+    }
+
+    // Compute pass case
+    {
+        wgpu::ComputePipeline computePipeline = CreateComputePipeline();
+
+        wgpu::CommandEncoder commandEncoder = device.CreateCommandEncoder();
+        wgpu::ComputePassEncoder computePassEncoder = commandEncoder.BeginComputePass();
+        computePassEncoder.SetPipeline(computePipeline);
+        computePassEncoder.SetBindGroup(0, bindGroup, 3, offsets.data());
+        computePassEncoder.DispatchWorkgroups(1);
+        // Unset the bindgroup after dispatch. The bindgroup might be cached by the previous
+        // dispatch.
+        computePassEncoder.SetBindGroup(0, nullptr);
+        computePassEncoder.DispatchWorkgroups(1);
+        computePassEncoder.End();
+        ASSERT_DEVICE_ERROR(commandEncoder.Finish());
+    }
 }
 
 // Setting bind group after a draw / dispatch should re-verify the layout is compatible
@@ -2124,6 +2274,119 @@ TEST_F(SetBindGroupValidationTest, ErrorBindGroup) {
     TestRenderPassBindGroup(bindGroup, nullptr, 0, false);
 
     TestComputePassBindGroup(bindGroup, nullptr, 0, false);
+}
+
+// Test validation of the bindgroup slot for OOB.
+TEST_F(SetBindGroupValidationTest, BindGroupSlotBoundary) {
+    wgpu::BindGroupLayout emptyBGL = utils::MakeBindGroupLayout(device, {});
+    wgpu::BindGroup emptyBindGroup = utils::MakeBindGroup(device, emptyBGL, {});
+
+    PlaceholderRenderPass renderPass(device);
+
+    auto TestIndex = [=](wgpu::BindGroup bg, uint32_t i, bool valid) {
+        {
+            wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+            wgpu::ComputePassEncoder cp = encoder.BeginComputePass();
+            cp.SetBindGroup(i, bg);
+            cp.End();
+            if (valid) {
+                encoder.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(encoder.Finish());
+            }
+        }
+
+        {
+            wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+            wgpu::RenderPassEncoder rp = encoder.BeginRenderPass(&renderPass);
+            rp.SetBindGroup(i, bg);
+            rp.End();
+            if (valid) {
+                encoder.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(encoder.Finish());
+            }
+        }
+
+        {
+            utils::ComboRenderBundleEncoderDescriptor renderBundleDesc = {};
+            renderBundleDesc.colorFormatsCount = 1;
+            renderBundleDesc.cColorFormats[0] = wgpu::TextureFormat::RGBA8Unorm;
+            wgpu::RenderBundleEncoder rb = device.CreateRenderBundleEncoder(&renderBundleDesc);
+            rb.SetBindGroup(i, bg);
+            if (valid) {
+                rb.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(rb.Finish());
+            }
+        }
+    };
+
+    // Base
+    TestIndex(emptyBindGroup, 0, true);
+    // Set the last bind group slot is valid
+    TestIndex(emptyBindGroup, kMaxBindGroups - 1, true);
+    // Set pass the last bind group slot is invalid
+    TestIndex(emptyBindGroup, kMaxBindGroups, false);
+
+    // Unset the slot which is not set before is valid
+    TestIndex(nullptr, 0, true);
+    // Unset the last bind group slot is valid
+    TestIndex(nullptr, kMaxBindGroups - 1, true);
+    // Unset pass the last bind group slot is invalid
+    TestIndex(nullptr, kMaxBindGroups, false);
+}
+
+// Test that dynamic offset count must be zero when unsetting a bindgroup.
+TEST_F(SetBindGroupValidationTest, UnsetWithDynamicOffsetIsInvalid) {
+    auto TestDynamicOffsetCount = [=](uint32_t count, uint32_t* offsets, bool valid) {
+        {
+            wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+            wgpu::ComputePassEncoder cp = encoder.BeginComputePass();
+            cp.SetBindGroup(0, nullptr, count, offsets);
+            cp.End();
+            if (valid) {
+                encoder.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(encoder.Finish());
+            }
+        }
+
+        {
+            PlaceholderRenderPass renderPass(device);
+            wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
+            wgpu::RenderPassEncoder rp = encoder.BeginRenderPass(&renderPass);
+            rp.SetBindGroup(0, nullptr, count, offsets);
+            rp.End();
+            if (valid) {
+                encoder.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(encoder.Finish());
+            }
+        }
+
+        {
+            utils::ComboRenderBundleEncoderDescriptor renderBundleDesc = {};
+            renderBundleDesc.colorFormatsCount = 1;
+            renderBundleDesc.cColorFormats[0] = wgpu::TextureFormat::RGBA8Unorm;
+            wgpu::RenderBundleEncoder rb = device.CreateRenderBundleEncoder(&renderBundleDesc);
+            rb.SetBindGroup(0, nullptr, count, offsets);
+            if (valid) {
+                rb.Finish();
+            } else {
+                ASSERT_DEVICE_ERROR(rb.Finish());
+            }
+        }
+    };
+
+    std::array<uint32_t, 2> offsets = {256, 0};
+
+    // When unsetting bindgroup, it is invalid if dynamicOffsetsCount > 0.
+    TestDynamicOffsetCount(2, offsets.data(), false);
+
+    // When unsetting bindgroup, it is valid if dynamicOffsets is non-null and dynamicOffsetsCount
+    // is 0.
+    TestDynamicOffsetCount(0, offsets.data(), true);
 }
 
 // Test that a pipeline with empty bindgroups layouts requires empty bindgroups to be set.
@@ -3033,7 +3296,7 @@ TEST_F(SamplerTypeBindingTest, SamplerAndBindGroupMatches) {
         }
         {
             wgpu::SamplerDescriptor desc;
-            desc.mipmapFilter = wgpu::FilterMode::Linear;
+            desc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
             utils::MakeBindGroup(device, bindGroupLayout, {{0, device.CreateSampler(&desc)}});
         }
 
@@ -3061,7 +3324,7 @@ TEST_F(SamplerTypeBindingTest, SamplerAndBindGroupMatches) {
         }
         {
             wgpu::SamplerDescriptor desc;
-            desc.mipmapFilter = wgpu::FilterMode::Linear;
+            desc.mipmapFilter = wgpu::MipmapFilterMode::Linear;
             ASSERT_DEVICE_ERROR(
                 utils::MakeBindGroup(device, bindGroupLayout, {{0, device.CreateSampler(&desc)}}));
         }
@@ -3070,3 +3333,6 @@ TEST_F(SamplerTypeBindingTest, SamplerAndBindGroupMatches) {
         utils::MakeBindGroup(device, bindGroupLayout, {{0, device.CreateSampler()}});
     }
 }
+
+}  // anonymous namespace
+}  // namespace dawn

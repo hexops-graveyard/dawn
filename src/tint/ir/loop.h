@@ -15,27 +15,82 @@
 #ifndef SRC_TINT_IR_LOOP_H_
 #define SRC_TINT_IR_LOOP_H_
 
-#include "src/tint/ir/block.h"
-#include "src/tint/ir/branch.h"
-#include "src/tint/ir/flow_node.h"
+#include "src/tint/ir/control_instruction.h"
+
+// Forward declarations
+namespace tint::ir {
+class MultiInBlock;
+}  // namespace tint::ir
 
 namespace tint::ir {
 
-/// Flow node describing a loop.
-class Loop : public Castable<Loop, FlowNode> {
+/// Loop instruction.
+///
+/// ```
+///                     in
+///                      ┃
+///                      ┣━━━━━━━━━━━┓
+///                      ▼           ┃
+///             ┌─────────────────┐  ┃
+///             │   Initializer   │  ┃
+///             │    (optional)   │  ┃
+///             └─────────────────┘  ┃
+///        NextIteration ┃           ┃
+///                      ┃◀━━━━━━━━━━┫
+///                      ▼           ┃
+///             ┌─────────────────┐  ┃
+///          ┏━━│       Body      │  ┃
+///          ┃  └─────────────────┘  ┃
+///          ┃  Continue ┃           ┃ NextIteration
+///          ┃           ▼           ┃
+///          ┃  ┌─────────────────┐  ┃ BreakIf(false)
+/// ExitLoop ┃  │   Continuing    │━━┛
+///             │  (optional)     │
+///          ┃  └─────────────────┘
+///          ┃           ┃
+///          ┃           ┃ BreakIf(true)
+///          ┗━━━━━━━━━━▶┃
+///                      ▼
+///             ┌────────────────┐
+///             │     Merge      │
+///             │  (optional)    │
+///             └────────────────┘
+///                      ┃
+///                      ▼
+///                     out
+///
+/// ```
+class Loop : public utils::Castable<Loop, ControlInstruction> {
   public:
     /// Constructor
-    Loop();
+    /// @param i the initializer block
+    /// @param b the body block
+    /// @param c the continuing block
+    /// @param m the merge block
+    Loop(ir::Block* i, ir::MultiInBlock* b, ir::MultiInBlock* c, ir::MultiInBlock* m);
     ~Loop() override;
 
-    /// The start block is the first block in a loop.
-    Branch start = {};
-    /// The continue target of the block.
-    Branch continuing = {};
-    /// The loop merge target. If the `loop` does a `return` then this block may not actually
-    /// end up in the control flow. We need it if the loop does a `break` we know where to break
-    /// too.
-    Branch merge = {};
+    /// @returns the switch initializer block
+    ir::Block* Initializer() { return initializer_; }
+
+    /// @returns true if the loop uses an initializer block. If true, then the Loop first branches
+    /// to the initializer block, otherwise it first branches to the body block.
+    bool HasInitializer();
+
+    /// @returns the switch start block
+    ir::MultiInBlock* Body() { return body_; }
+
+    /// @returns the switch continuing block
+    ir::MultiInBlock* Continuing() { return continuing_; }
+
+    /// @returns the switch merge branch
+    ir::MultiInBlock* Merge() { return merge_; }
+
+  private:
+    ir::Block* initializer_ = nullptr;
+    ir::MultiInBlock* body_ = nullptr;
+    ir::MultiInBlock* continuing_ = nullptr;
+    ir::MultiInBlock* merge_ = nullptr;
 };
 
 }  // namespace tint::ir

@@ -72,6 +72,21 @@ TEST(TintSliceTest, Ctor) {
     EXPECT_TRUE(slice.IsEmpty());
 }
 
+TEST(TintSliceTest, CtorCast) {
+    C1* elements[3];
+
+    Slice<C1*> slice_a;
+    slice_a.data = &elements[0];
+    slice_a.len = 3;
+    slice_a.cap = 3;
+
+    Slice<const C0*> slice_b(slice_a);
+    EXPECT_EQ(slice_b.data, Bitcast<const C0**>(&elements[0]));
+    EXPECT_EQ(slice_b.len, 3u);
+    EXPECT_EQ(slice_b.cap, 3u);
+    EXPECT_FALSE(slice_b.IsEmpty());
+}
+
 TEST(TintSliceTest, CtorEmpty) {
     Slice<int> slice{Empty};
     EXPECT_EQ(slice.data, nullptr);
@@ -125,6 +140,45 @@ TEST(TintSliceTest, ReverseBeginEnd) {
         EXPECT_EQ(*it, elements[2 - i]);
         i++;
     }
+}
+
+TEST(TintSliceTest, Offset) {
+    int elements[] = {1, 2, 3};
+
+    auto slice = Slice{elements};
+    auto offset = slice.Offset(1);
+    EXPECT_EQ(offset.Length(), 2u);
+    EXPECT_EQ(offset[0], 2);
+    EXPECT_EQ(offset[1], 3);
+}
+
+TEST(TintSliceTest, Offset_PastEnd) {
+    int elements[] = {1, 2, 3};
+
+    auto slice = Slice{elements};
+    auto offset = slice.Offset(4);
+    EXPECT_EQ(offset.Length(), 0u);
+}
+
+TEST(TintSliceTest, Truncate) {
+    int elements[] = {1, 2, 3};
+
+    auto slice = Slice{elements};
+    auto truncated = slice.Truncate(2);
+    EXPECT_EQ(truncated.Length(), 2u);
+    EXPECT_EQ(truncated[0], 1);
+    EXPECT_EQ(truncated[1], 2);
+}
+
+TEST(TintSliceTest, Truncate_PastEnd) {
+    int elements[] = {1, 2, 3};
+
+    auto slice = Slice{elements};
+    auto truncated = slice.Truncate(4);
+    EXPECT_EQ(truncated.Length(), 3u);
+    EXPECT_EQ(truncated[0], 1);
+    EXPECT_EQ(truncated[1], 2);
+    EXPECT_EQ(truncated[2], 3);
 }
 
 }  // namespace

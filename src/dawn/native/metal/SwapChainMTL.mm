@@ -18,8 +18,6 @@
 #include "dawn/native/metal/DeviceMTL.h"
 #include "dawn/native/metal/TextureMTL.h"
 
-#include "dawn/dawn_wsi.h"
-
 #import <QuartzCore/CAMetalLayer.h>
 
 namespace dawn::native::metal {
@@ -27,7 +25,7 @@ namespace dawn::native::metal {
 // static
 ResultOrError<Ref<SwapChain>> SwapChain::Create(Device* device,
                                                 Surface* surface,
-                                                NewSwapChainBase* previousSwapChain,
+                                                SwapChainBase* previousSwapChain,
                                                 const SwapChainDescriptor* descriptor) {
     Ref<SwapChain> swapchain = AcquireRef(new SwapChain(device, surface, descriptor));
     DAWN_TRY(swapchain->Initialize(previousSwapChain));
@@ -35,7 +33,7 @@ ResultOrError<Ref<SwapChain>> SwapChain::Create(Device* device,
 }
 
 SwapChain::SwapChain(DeviceBase* dev, Surface* sur, const SwapChainDescriptor* desc)
-    : NewSwapChainBase(dev, sur, desc) {}
+    : SwapChainBase(dev, sur, desc) {}
 
 SwapChain::~SwapChain() = default;
 
@@ -44,7 +42,7 @@ void SwapChain::DestroyImpl() {
     DetachFromSurface();
 }
 
-MaybeError SwapChain::Initialize(NewSwapChainBase* previousSwapChain) {
+MaybeError SwapChain::Initialize(SwapChainBase* previousSwapChain) {
     ASSERT(GetSurface()->GetType() == Surface::Type::MetalLayer);
 
     if (previousSwapChain != nullptr) {
@@ -93,15 +91,17 @@ MaybeError SwapChain::PresentImpl() {
     return {};
 }
 
-ResultOrError<Ref<TextureViewBase>> SwapChain::GetCurrentTextureViewImpl() {
-    ASSERT(mCurrentDrawable == nullptr);
-    mCurrentDrawable = [*mLayer nextDrawable];
+ResultOrError<Ref<TextureBase>> SwapChain::GetCurrentTextureImpl() {
+    @autoreleasepool {
+        ASSERT(mCurrentDrawable == nullptr);
+        mCurrentDrawable = [*mLayer nextDrawable];
 
-    TextureDescriptor textureDesc = GetSwapChainBaseTextureDescriptor(this);
+        TextureDescriptor textureDesc = GetSwapChainBaseTextureDescriptor(this);
 
-    mTexture =
-        Texture::CreateWrapping(ToBackend(GetDevice()), &textureDesc, [*mCurrentDrawable texture]);
-    return mTexture->CreateView();
+        mTexture = Texture::CreateWrapping(ToBackend(GetDevice()), &textureDesc,
+                                           NSPRef<id<MTLTexture>>([*mCurrentDrawable texture]));
+        return mTexture;
+    }
 }
 
 void SwapChain::DetachFromSurfaceImpl() {

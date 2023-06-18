@@ -16,187 +16,85 @@
 
 #include <utility>
 
-#include "src/tint/ir/builder_impl.h"
+#include "src/tint/constant/scalar.h"
+#include "src/tint/type/pointer.h"
+#include "src/tint/type/reference.h"
 
 namespace tint::ir {
 
-Builder::Builder() {}
+Builder::Builder(Module& mod) : ir(mod) {}
 
-Builder::Builder(Module&& mod) : ir(std::move(mod)) {}
+Builder::Builder(Module& mod, ir::Block* block) : current_block_(block), ir(mod) {}
 
 Builder::~Builder() = default;
 
-Block* Builder::CreateBlock() {
-    return ir.flow_nodes.Create<Block>();
+ir::Block* Builder::RootBlock() {
+    if (!ir.root_block) {
+        ir.root_block = Block();
+    }
+    return ir.root_block;
 }
 
-Terminator* Builder::CreateTerminator() {
-    return ir.flow_nodes.Create<Terminator>();
+Block* Builder::Block() {
+    return ir.blocks.Create<ir::Block>();
 }
 
-Function* Builder::CreateFunction() {
-    auto* ir_func = ir.flow_nodes.Create<Function>();
-    ir_func->start_target = CreateBlock();
-    ir_func->end_target = CreateTerminator();
+MultiInBlock* Builder::MultiInBlock() {
+    return ir.blocks.Create<ir::MultiInBlock>();
+}
 
-    // Function is always branching into the start target
-    ir_func->start_target->inbound_branches.Push(ir_func);
-
+Function* Builder::Function(std::string_view name,
+                            const type::Type* return_type,
+                            Function::PipelineStage stage,
+                            std::optional<std::array<uint32_t, 3>> wg_size) {
+    auto* ir_func = ir.values.Create<ir::Function>(return_type, stage, wg_size);
+    ir_func->SetStartTarget(Block());
+    ir.SetName(ir_func, name);
     return ir_func;
 }
 
-If* Builder::CreateIf() {
-    auto* ir_if = ir.flow_nodes.Create<If>();
-    ir_if->true_.target = CreateBlock();
-    ir_if->false_.target = CreateBlock();
-    ir_if->merge.target = CreateBlock();
-
-    // An if always branches to both the true and false block.
-    ir_if->true_.target->inbound_branches.Push(ir_if);
-    ir_if->false_.target->inbound_branches.Push(ir_if);
-
-    return ir_if;
+ir::Loop* Builder::Loop() {
+    return Append(
+        ir.values.Create<ir::Loop>(Block(), MultiInBlock(), MultiInBlock(), MultiInBlock()));
 }
 
-Loop* Builder::CreateLoop() {
-    auto* ir_loop = ir.flow_nodes.Create<Loop>();
-    ir_loop->start.target = CreateBlock();
-    ir_loop->continuing.target = CreateBlock();
-    ir_loop->merge.target = CreateBlock();
-
-    // A loop always branches to the start block.
-    ir_loop->start.target->inbound_branches.Push(ir_loop);
-
-    return ir_loop;
+Block* Builder::Case(ir::Switch* s, utils::VectorRef<Switch::CaseSelector> selectors) {
+    auto* block = Block();
+    s->Cases().Push(Switch::Case{std::move(selectors), block});
+    block->SetParent(s);
+    return block;
 }
 
-Switch* Builder::CreateSwitch() {
-    auto* ir_switch = ir.flow_nodes.Create<Switch>();
-    ir_switch->merge.target = CreateBlock();
-    return ir_switch;
+Block* Builder::Case(ir::Switch* s, std::initializer_list<Switch::CaseSelector> selectors) {
+    return Case(s, utils::Vector<Switch::CaseSelector, 4>(selectors));
 }
 
-Block* Builder::CreateCase(Switch* s, utils::VectorRef<Switch::CaseSelector> selectors) {
-    s->cases.Push(Switch::Case{selectors, {CreateBlock(), utils::Empty}});
-
-    Block* b = s->cases.Back().start.target->As<Block>();
-    // Switch branches into the case block
-    b->inbound_branches.Push(s);
-    return b;
+ir::Discard* Builder::Discard() {
+    return Append(ir.values.Create<ir::Discard>(ir.Types().void_()));
 }
 
-void Builder::Branch(Block* from, FlowNode* to, utils::VectorRef<Value*> args) {
-    TINT_ASSERT(IR, from);
-    TINT_ASSERT(IR, to);
-    from->branch.target = to;
-    from->branch.args = args;
-    to->inbound_branches.Push(from);
+ir::Var* Builder::Var(const type::Pointer* type) {
+    return Append(ir.values.Create<ir::Var>(type));
 }
 
-Temp::Id Builder::AllocateTempId() {
-    return next_temp_id++;
+ir::BlockParam* Builder::BlockParam(const type::Type* type) {
+    return ir.values.Create<ir::BlockParam>(type);
 }
 
-Binary* Builder::CreateBinary(Binary::Kind kind, const type::Type* type, Value* lhs, Value* rhs) {
-    return ir.instructions.Create<ir::Binary>(kind, Temp(type), lhs, rhs);
+ir::FunctionParam* Builder::FunctionParam(const type::Type* type) {
+    return ir.values.Create<ir::FunctionParam>(type);
 }
 
-Binary* Builder::And(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kAnd, type, lhs, rhs);
+ir::Swizzle* Builder::Swizzle(const type::Type* type,
+                              ir::Value* object,
+                              utils::VectorRef<uint32_t> indices) {
+    return Append(ir.values.Create<ir::Swizzle>(type, object, std::move(indices)));
 }
 
-Binary* Builder::Or(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kOr, type, lhs, rhs);
-}
-
-Binary* Builder::Xor(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kXor, type, lhs, rhs);
-}
-
-Binary* Builder::LogicalAnd(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kLogicalAnd, type, lhs, rhs);
-}
-
-Binary* Builder::LogicalOr(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kLogicalOr, type, lhs, rhs);
-}
-
-Binary* Builder::Equal(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kEqual, type, lhs, rhs);
-}
-
-Binary* Builder::NotEqual(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kNotEqual, type, lhs, rhs);
-}
-
-Binary* Builder::LessThan(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kLessThan, type, lhs, rhs);
-}
-
-Binary* Builder::GreaterThan(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kGreaterThan, type, lhs, rhs);
-}
-
-Binary* Builder::LessThanEqual(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kLessThanEqual, type, lhs, rhs);
-}
-
-Binary* Builder::GreaterThanEqual(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kGreaterThanEqual, type, lhs, rhs);
-}
-
-Binary* Builder::ShiftLeft(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kShiftLeft, type, lhs, rhs);
-}
-
-Binary* Builder::ShiftRight(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kShiftRight, type, lhs, rhs);
-}
-
-Binary* Builder::Add(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kAdd, type, lhs, rhs);
-}
-
-Binary* Builder::Subtract(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kSubtract, type, lhs, rhs);
-}
-
-Binary* Builder::Multiply(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kMultiply, type, lhs, rhs);
-}
-
-Binary* Builder::Divide(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kDivide, type, lhs, rhs);
-}
-
-Binary* Builder::Modulo(const type::Type* type, Value* lhs, Value* rhs) {
-    return CreateBinary(Binary::Kind::kModulo, type, lhs, rhs);
-}
-
-ir::Bitcast* Builder::Bitcast(const type::Type* type, Value* val) {
-    return ir.instructions.Create<ir::Bitcast>(Temp(type), val);
-}
-
-ir::UserCall* Builder::UserCall(const type::Type* type,
-                                Symbol name,
-                                utils::VectorRef<Value*> args) {
-    return ir.instructions.Create<ir::UserCall>(Temp(type), name, std::move(args));
-}
-
-ir::Convert* Builder::Convert(const type::Type* to,
-                              const type::Type* from,
-                              utils::VectorRef<Value*> args) {
-    return ir.instructions.Create<ir::Convert>(Temp(to), from, std::move(args));
-}
-
-ir::Construct* Builder::Construct(const type::Type* to, utils::VectorRef<Value*> args) {
-    return ir.instructions.Create<ir::Construct>(Temp(to), std::move(args));
-}
-
-ir::Builtin* Builder::Builtin(const type::Type* type,
-                              builtin::Function func,
-                              utils::VectorRef<Value*> args) {
-    return ir.instructions.Create<ir::Builtin>(Temp(type), func, args);
+ir::Swizzle* Builder::Swizzle(const type::Type* type,
+                              ir::Value* object,
+                              std::initializer_list<uint32_t> indices) {
+    return Append(ir.values.Create<ir::Swizzle>(type, object, utils::Vector<uint32_t, 4>(indices)));
 }
 
 }  // namespace tint::ir

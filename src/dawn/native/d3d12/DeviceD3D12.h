@@ -25,11 +25,13 @@
 #include "dawn/native/d3d12/Forward.h"
 #include "dawn/native/d3d12/TextureD3D12.h"
 
+namespace dawn::native::d3d {
+class ExternalImageDXGIImpl;
+}  // namespace dawn::native::d3d
+
 namespace dawn::native::d3d12 {
 
 class CommandAllocatorManager;
-struct ExternalImageDescriptorDXGISharedHandle;
-class ExternalImageDXGIImpl;
 class PlatformFunctions;
 class ResidencyManager;
 class ResourceAllocatorManager;
@@ -46,7 +48,7 @@ class StagingDescriptorAllocator;
 // Definition of backend types
 class Device final : public d3d::Device {
   public:
-    static ResultOrError<Ref<Device>> Create(Adapter* adapter,
+    static ResultOrError<Ref<Device>> Create(AdapterBase* adapter,
                                              const DeviceDescriptor* descriptor,
                                              const TogglesState& deviceToggles);
     ~Device() override;
@@ -62,7 +64,6 @@ class Device final : public d3d::Device {
     ID3D12Device* GetD3D12Device() const;
     ComPtr<ID3D12CommandQueue> GetCommandQueue() const;
     ID3D12SharingContract* GetSharingContract() const;
-    HANDLE GetFenceHandle() const;
 
     ComPtr<ID3D12CommandSignature> GetDispatchIndirectSignature() const;
     ComPtr<ID3D12CommandSignature> GetDrawIndirectSignature() const;
@@ -134,17 +135,16 @@ class Device final : public d3d::Device {
 
     StagingDescriptorAllocator* GetDepthStencilViewAllocator() const;
 
-    std::unique_ptr<ExternalImageDXGIImpl> CreateExternalImageDXGIImpl(
-        const ExternalImageDescriptorDXGISharedHandle* descriptor);
+    ResultOrError<Ref<d3d::Fence>> CreateFence(
+        const d3d::ExternalImageDXGIFenceDescriptor* descriptor) override;
+    ResultOrError<std::unique_ptr<d3d::ExternalImageDXGIImpl>> CreateExternalImageDXGIImplImpl(
+        const d3d::ExternalImageDescriptorDXGISharedHandle* descriptor) override;
 
-    Ref<TextureBase> CreateD3D12ExternalTexture(const TextureDescriptor* descriptor,
-                                                ComPtr<ID3D12Resource> d3d12Texture,
-                                                std::vector<Ref<Fence>> waitFences,
-                                                Ref<D3D11on12ResourceCacheEntry> d3d11on12Resource,
-                                                bool isSwapChainTexture,
-                                                bool isInitialized);
-
-    ComPtr<ID3D11On12Device> GetOrCreateD3D11on12Device();
+    Ref<TextureBase> CreateD3DExternalTexture(const TextureDescriptor* descriptor,
+                                              ComPtr<IUnknown> d3dTexture,
+                                              std::vector<Ref<d3d::Fence>> waitFences,
+                                              bool isSwapChainTexture,
+                                              bool isInitialized) override;
 
     uint32_t GetOptimalBytesPerRowAlignment() const override;
     uint64_t GetOptimalBufferToTextureCopyOffsetAlignment() const override;
@@ -186,9 +186,9 @@ class Device final : public d3d::Device {
         const ShaderModuleDescriptor* descriptor,
         ShaderModuleParseResult* parseResult,
         OwnedCompilationMessages* compilationMessages) override;
-    ResultOrError<Ref<NewSwapChainBase>> CreateSwapChainImpl(
+    ResultOrError<Ref<SwapChainBase>> CreateSwapChainImpl(
         Surface* surface,
-        NewSwapChainBase* previousSwapChain,
+        SwapChainBase* previousSwapChain,
         const SwapChainDescriptor* descriptor) override;
     ResultOrError<Ref<TextureBase>> CreateTextureImpl(const TextureDescriptor* descriptor) override;
     ResultOrError<Ref<TextureViewBase>> CreateTextureViewImpl(
@@ -218,15 +218,11 @@ class Device final : public d3d::Device {
 
     ComPtr<ID3D12Fence> mFence;
     HANDLE mFenceEvent = nullptr;
-    HANDLE mFenceHandle = nullptr;
     ResultOrError<ExecutionSerial> CheckAndUpdateCompletedSerials() override;
 
     ComPtr<ID3D12Device> mD3d12Device;  // Device is owned by adapter and will not be outlived.
     ComPtr<ID3D12CommandQueue> mCommandQueue;
     ComPtr<ID3D12SharingContract> mD3d12SharingContract;
-
-    // 11on12 device corresponding to mCommandQueue
-    ComPtr<ID3D11On12Device> mD3d11On12Device;
 
     ComPtr<ID3D12CommandSignature> mDispatchIndirectSignature;
     ComPtr<ID3D12CommandSignature> mDrawIndirectSignature;
@@ -277,9 +273,6 @@ class Device final : public d3d::Device {
 
     // The number of nanoseconds required for a timestamp query to be incremented by 1
     float mTimestampPeriod = 1.0f;
-
-    // List of external image resources opened using this device.
-    LinkedList<ExternalImageDXGIImpl> mExternalImageList;
 };
 
 }  // namespace dawn::native::d3d12

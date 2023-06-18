@@ -20,7 +20,8 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::Void);
 
 namespace tint::type {
 
-Void::Void() : Base(static_cast<size_t>(TypeInfo::Of<Void>().full_hashcode), type::Flags{}) {}
+Void::Void()
+    : Base(static_cast<size_t>(utils::TypeInfo::Of<Void>().full_hashcode), type::Flags{}) {}
 
 Void::~Void() = default;
 
@@ -28,7 +29,7 @@ bool Void::Equals(const UniqueNode& other) const {
     return other.Is<Void>();
 }
 
-std::string Void::FriendlyName(const SymbolTable&) const {
+std::string Void::FriendlyName() const {
     return "void";
 }
 
