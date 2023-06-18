@@ -224,7 +224,7 @@ MaybeError SwapChain::InitializeSwapChainFromScratch() {
                                   "Setting SwapChain"));
             break;
         }
-#endif  // defined(DAWN_USE_WINDOWS_UI)
+#endif // defined(DAWN_USE_WINDOWS_UI)
         default:
             UNREACHABLE();
     }
