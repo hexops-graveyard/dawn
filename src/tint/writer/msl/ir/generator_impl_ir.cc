@@ -14,6 +14,8 @@
 
 #include "src/tint/writer/msl/ir/generator_impl_ir.h"
 
+#include "src/tint/constant/composite.h"
+#include "src/tint/constant/splat.h"
 #include "src/tint/ir/constant.h"
 #include "src/tint/ir/validate.h"
 #include "src/tint/switch.h"
@@ -431,14 +433,77 @@ void GeneratorImplIr::EmitStructType(const type::Struct* str) {
 }
 
 void GeneratorImplIr::EmitConstant(utils::StringStream& out, ir::Constant* c) {
-    return tint::Switch(
+    EmitConstant(out, c->Value());
+}
+
+void GeneratorImplIr::EmitConstant(utils::StringStream& out, const constant::Value* c) {
+    auto emit_values = [&](uint32_t count) {
+        for (size_t i = 0; i < count; i++) {
+            if (i > 0) {
+                out << ", ";
+            }
+            EmitConstant(out, c->Index(i));
+        }
+    };
+
+    tint::Switch(
         c->Type(),  //
-        [&](const type::Bool*) { out << (c->Value()->ValueAs<bool>() ? "true" : "false"); },
-        [&](const type::I32*) { PrintI32(out, c->Value()->ValueAs<i32>()); },
-        [&](const type::U32*) { out << c->Value()->ValueAs<u32>() << "u"; },
-        [&](const type::F32*) { PrintF32(out, c->Value()->ValueAs<f32>()); },
-        [&](const type::F16*) { PrintF16(out, c->Value()->ValueAs<f16>()); },
-        [&](Default) { UNHANDLED_CASE(c); });
+        [&](const type::Bool*) { out << (c->ValueAs<bool>() ? "true" : "false"); },
+        [&](const type::I32*) { PrintI32(out, c->ValueAs<i32>()); },
+        [&](const type::U32*) { out << c->ValueAs<u32>() << "u"; },
+        [&](const type::F32*) { PrintF32(out, c->ValueAs<f32>()); },
+        [&](const type::F16*) { PrintF16(out, c->ValueAs<f16>()); },
+        [&](const type::Vector* v) {
+            EmitType(out, v);
+
+            ScopedParen sp(out);
+            if (auto* splat = c->As<constant::Splat>()) {
+                EmitConstant(out, splat->el);
+                return;
+            }
+            emit_values(v->Width());
+        },
+        [&](const type::Matrix* m) {
+            EmitType(out, m);
+            ScopedParen sp(out);
+            emit_values(m->columns());
+        },
+        [&](const type::Array* a) {
+            EmitType(out, a);
+            out << "{";
+            TINT_DEFER(out << "}");
+
+            if (c->AllZero()) {
+                return;
+            }
+
+            auto count = a->ConstantCount();
+            if (!count) {
+                diagnostics_.add_error(diag::System::Writer,
+                                       type::Array::kErrExpectedConstantCount);
+                return;
+            }
+            emit_values(*count);
+        },
+        [&](const type::Struct* s) {
+            EmitStructType(s);
+            out << StructName(s) << "{";
+            TINT_DEFER(out << "}");
+
+            if (c->AllZero()) {
+                return;
+            }
+
+            auto members = s->Members();
+            for (size_t i = 0; i < members.Length(); i++) {
+                if (i > 0) {
+                    out << ", ";
+                }
+                out << "." << members[i]->Name().Name() << "=";
+                EmitConstant(out, c->Index(i));
+            }
+        },
+        [&](Default) { UNHANDLED_CASE(c->Type()); });
 }
 
 }  // namespace tint::writer::msl
