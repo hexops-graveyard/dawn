@@ -223,6 +223,11 @@ MaybeError PhysicalDevice::ValidateFeatureSupportedWithTogglesImpl(
     return {};
 }
 
+void PhysicalDevice::SetupBackendAdapterToggles(TogglesState* adpterToggles) const {
+    // D3D11 must use FXC, not DXC.
+    adpterToggles->ForceSet(Toggle::UseDXC, false);
+}
+
 void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     // D3D11 can only clear RTV with float values.
     deviceToggles->Default(Toggle::ApplyClearBigIntegerColorValueWithDraw, true);

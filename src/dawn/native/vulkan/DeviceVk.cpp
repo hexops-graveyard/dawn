@@ -18,7 +18,7 @@
 #include "dawn/common/NonCopyable.h"
 #include "dawn/common/Platform.h"
 #include "dawn/native/BackendConnection.h"
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 #include "dawn/native/Error.h"
 #include "dawn/native/ErrorData.h"
 #include "dawn/native/Instance.h"
@@ -518,6 +518,16 @@ ResultOrError<VulkanDeviceKnobs> Device::CreateDevice(VkPhysicalDevice vkPhysica
                           VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR);
         featuresChain.Add(&usedKnobs._16BitStorageFeatures,
                           VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES);
+    }
+
+    if (mDeviceInfo.HasExt(DeviceExt::Robustness2)) {
+        ASSERT(usedKnobs.HasExt(DeviceExt::Robustness2));
+
+        usedKnobs.robustness2Features = mDeviceInfo.robustness2Features;
+        // TODO(tint:1890): investigate how we can safely disable buffer access in Tint when
+        // robustBufferAccess2 == TRUE
+        usedKnobs.robustness2Features.robustBufferAccess2 = VK_FALSE;
+        featuresChain.Add(&usedKnobs.robustness2Features);
     }
 
     // Find a universal queue family

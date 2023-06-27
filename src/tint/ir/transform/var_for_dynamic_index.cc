@@ -63,7 +63,7 @@ struct PartialAccess {
 };
 
 std::optional<AccessToReplace> ShouldReplace(Access* access) {
-    if (access->Type()->Is<type::Pointer>()) {
+    if (access->Result()->Type()->Is<type::Pointer>()) {
         // No need to modify accesses into pointer types.
         return {};
     }
@@ -101,7 +101,7 @@ void VarForDynamicIndex::Run(ir::Module* ir, const DataMap&, DataMap&) const {
 
     // Find the access instructions that need replacing.
     utils::Vector<AccessToReplace, 4> worklist;
-    for (auto* inst : ir->values.Objects()) {
+    for (auto* inst : ir->instructions.Objects()) {
         if (auto* access = inst->As<Access>()) {
             if (auto to_replace = ShouldReplace(access)) {
                 worklist.Push(to_replace.value());
@@ -121,29 +121,29 @@ void VarForDynamicIndex::Run(ir::Module* ir, const DataMap&, DataMap&) const {
         if (to_replace.first_dynamic_index > 0) {
             PartialAccess partial_access = {
                 access->Object(), access->Indices().Truncate(to_replace.first_dynamic_index)};
-            source_object = source_object_to_value.GetOrCreate(partial_access, [&]() {
+            source_object = source_object_to_value.GetOrCreate(partial_access, [&] {
                 auto* intermediate_source = builder.Access(to_replace.dynamic_index_source_type,
                                                            source_object, partial_access.indices);
                 intermediate_source->InsertBefore(access);
-                return intermediate_source;
+                return intermediate_source->Result();
             });
         }
 
         // Declare a local variable and copy the source object to it.
-        auto* local = object_to_local.GetOrCreate(source_object, [&]() {
+        auto* local = object_to_local.GetOrCreate(source_object, [&] {
             auto* decl =
                 builder.Var(ir->Types().ptr(builtin::AddressSpace::kFunction, source_object->Type(),
                                             builtin::Access::kReadWrite));
             decl->SetInitializer(source_object);
             decl->InsertBefore(access);
-            return decl;
+            return decl->Result();
         });
 
         // Create a new access instruction using the local variable as the source.
         utils::Vector<Value*, 4> indices{access->Indices().Offset(to_replace.first_dynamic_index)};
         auto* new_access =
-            builder.Access(ir->Types().ptr(builtin::AddressSpace::kFunction, access->Type(),
-                                           builtin::Access::kReadWrite),
+            builder.Access(ir->Types().ptr(builtin::AddressSpace::kFunction,
+                                           access->Result()->Type(), builtin::Access::kReadWrite),
                            local, indices);
         access->ReplaceWith(new_access);
 
@@ -152,7 +152,7 @@ void VarForDynamicIndex::Run(ir::Module* ir, const DataMap&, DataMap&) const {
         load->InsertAfter(new_access);
 
         // Replace all uses of the old access instruction with the loaded result.
-        access->ReplaceAllUsesWith([&](Usage) { return load; });
+        access->Result()->ReplaceAllUsesWith([&](Usage) { return load->Result(); });
     }
 }
 

@@ -21,6 +21,7 @@ vars = {
   # https://chrome-infra-packages.appspot.com/p/infra/3pp/tools/ninja
   'dawn_ninja_version': 'version:2@1.11.1.chromium.6',
   'dawn_go_version': 'version:2@1.18.4',
+  'dawn_build_dxc': True,
 
   'node_darwin_arm64_sha': '31859fc1fa0994a95f44f09c367d6ff63607cfde',
   'node_darwin_x64_sha': '16dfd094763b71988933a31735f9dea966f9abd6',
@@ -136,17 +137,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@3545ae0ca0b385e32c1e0500d562971455ced345',
+    'url': '{chromium_git}/angle/angle@764f31be3228f3a7e4fb4fb9685c69a927b23865',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@ae667fe96db9b7f76edea242015d61f293c7210e',
+    'url': '{swiftshader_git}/SwiftShader@afd97bf1e9148cf31b850af8b63d288a6ed9f0f8',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@320d8d9bc0612b21ebf09b565434ef8b0aab3b26',
+    'url': '{chromium_git}/vulkan-deps@23a32754e71562453af68898e6918e06172d4c46',
     'condition': 'dawn_standalone',
   },
 
@@ -160,9 +161,19 @@ deps = {
     'condition': 'dawn_standalone',
   },
 
+  'third_party/dxc': {
+    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@5e080a772910f147cc447fc34e8eb489f0761144',
+    'condition': 'dawn_build_dxc',
+  },
+  'third_party/dxheaders': {
+    # The non-Windows build of DXC depends on DirectX-Headers, and at a specific commit (not ToT)
+    'url': '{chromium_git}/external/github.com/microsoft/DirectX-Headers@980971e835876dc0cde415e8f9bc646e64667bf7',
+    'condition': 'dawn_build_dxc and host_os != "win"',
+  },
+
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
   'third_party/webgpu-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@b033a4f1ae4a0e19ae4d5563fae023001bbf570f',
+    'url': '{chromium_git}/external/github.com/gpuweb/cts@82ed433cbcb632d6700551067a6d3acc6c2ab46e',
     'condition': 'build_with_chromium',
   },
 

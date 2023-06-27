@@ -12,29 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SRC_TINT_IR_BRANCH_H_
-#define SRC_TINT_IR_BRANCH_H_
+#include "src/tint/writer/msl/ir/test_helper_ir.h"
 
-#include "src/tint/ir/operand_instruction.h"
-#include "src/tint/ir/value.h"
-#include "src/tint/utils/castable.h"
+namespace tint::writer::msl {
+namespace {
 
-// Forward declarations
-namespace tint::ir {
-class Block;
-}  // namespace tint::ir
+TEST_F(MslGeneratorImplIrTest, Function_Empty) {
+    auto* func = b.Function("foo", ty.void_());
+    func->Block()->Append(b.Return(func));
 
-namespace tint::ir {
+    ASSERT_TRUE(IRIsValid()) << Error();
+    generator_.EmitFunction(func);
 
-/// A branch instruction.
-class Branch : public utils::Castable<Branch, OperandInstruction<1, 0>> {
-  public:
-    ~Branch() override;
+    ASSERT_TRUE(generator_.Diagnostics().empty()) << generator_.Diagnostics().str();
+    EXPECT_EQ(generator_.Result(), R"(
+void foo() {
+}
+)");
+}
 
-    /// @returns the branch arguments
-    virtual utils::Slice<Value* const> Args() { return operands_.Slice(); }
-};
-
-}  // namespace tint::ir
-
-#endif  // SRC_TINT_IR_BRANCH_H_
+}  // namespace
+}  // namespace tint::writer::msl

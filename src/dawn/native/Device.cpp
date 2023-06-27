@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <mutex>
-#include <unordered_set>
+#include <utility>
 
 #include "dawn/common/Log.h"
 #include "dawn/common/Version_autogen.h"
@@ -28,7 +28,7 @@
 #include "dawn/native/BlitBufferToDepthStencil.h"
 #include "dawn/native/BlobCache.h"
 #include "dawn/native/Buffer.h"
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 #include "dawn/native/CommandBuffer.h"
 #include "dawn/native/CommandEncoder.h"
 #include "dawn/native/CompilationMessages.h"
@@ -60,24 +60,8 @@ namespace dawn::native {
 
 // DeviceBase sub-structures
 
-// The caches are unordered_sets of pointers with special hash and compare functions
-// to compare the value of the objects, instead of the pointers.
-template <typename Object>
-using ContentLessObjectCache =
-    std::unordered_set<Object*, typename Object::HashFunc, typename Object::EqualityFunc>;
-
 struct DeviceBase::Caches {
-    ~Caches() {
-        ASSERT(attachmentStates.empty());
-        ASSERT(bindGroupLayouts.empty());
-        ASSERT(computePipelines.empty());
-        ASSERT(pipelineLayouts.empty());
-        ASSERT(renderPipelines.empty());
-        ASSERT(samplers.empty());
-        ASSERT(shaderModules.empty());
-    }
-
-    ContentLessObjectCache<AttachmentStateBlueprint> attachmentStates;
+    ContentLessObjectCache<AttachmentState, AttachmentStateBlueprint> attachmentStates;
     ContentLessObjectCache<BindGroupLayoutBase> bindGroupLayouts;
     ContentLessObjectCache<ComputePipelineBase> computePipelines;
     ContentLessObjectCache<PipelineLayoutBase> pipelineLayouts;
@@ -85,6 +69,44 @@ struct DeviceBase::Caches {
     ContentLessObjectCache<SamplerBase> samplers;
     ContentLessObjectCache<ShaderModuleBase> shaderModules;
 };
+
+// Tries to find the blueprint in the cache, creating and inserting into the cache if not found.
+template <typename RefCountedT, typename BlueprintT, typename CreateFn>
+auto GetOrCreate(ContentLessObjectCache<RefCountedT, BlueprintT>& cache,
+                 BlueprintT* blueprint,
+                 CreateFn createFn) {
+    using ReturnType = decltype(createFn());
+
+    // If we find the blueprint in the cache we can just return it.
+    Ref<RefCountedT> result = cache.Find(blueprint);
+    if (result != nullptr) {
+        return ReturnType(result);
+    }
+
+    using UnwrappedReturnType = typename detail::UnwrapResultOrError<ReturnType>::type;
+    static_assert(std::is_same_v<UnwrappedReturnType, Ref<RefCountedT>>,
+                  "CreateFn should return an unwrapped type that is the same as Ref<RefCountedT>.");
+
+    // Create the result and try inserting it. Note that inserts can race because the critical
+    // sections here is disjoint, hence the checks to verify whether this thread inserted.
+    if constexpr (!detail::IsResultOrError<ReturnType>::value) {
+        result = createFn();
+    } else {
+        auto resultOrError = createFn();
+        if (DAWN_UNLIKELY(resultOrError.IsError())) {
+            return ReturnType(std::move(resultOrError.AcquireError()));
+        }
+        result = resultOrError.AcquireSuccess();
+    }
+    ASSERT(result.Get() != nullptr);
+
+    bool inserted = false;
+    std::tie(result, inserted) = cache.Insert(result.Get());
+    if (inserted) {
+        result->SetIsCachedReference();
+    }
+    return ReturnType(result);
+}
 
 struct DeviceBase::DeprecationWarnings {
     std::unordered_set<std::string> emitted;
@@ -646,7 +668,6 @@ void DeviceBase::APIPopErrorScope(wgpu::ErrorCallback callback, void* userdata) 
         static wgpu::ErrorCallback defaultCallback = [](WGPUErrorType, char const*, void*) {};
         callback = defaultCallback;
     }
-    // TODO(crbug.com/dawn/1122): Call callbacks only on wgpuInstanceProcessEvents
     if (IsLost()) {
         mCallbackTaskManager->AddCallbackTask(
             std::bind(callback, WGPUErrorType_DeviceLost, "GPU device disconnected", userdata));
@@ -824,24 +845,19 @@ ResultOrError<Ref<BindGroupLayoutBase>> DeviceBase::GetOrCreateBindGroupLayout(
     const size_t blueprintHash = blueprint.ComputeContentHash();
     blueprint.SetContentHash(blueprintHash);
 
-    Ref<BindGroupLayoutBase> result;
-    auto iter = mCaches->bindGroupLayouts.find(&blueprint);
-    if (iter != mCaches->bindGroupLayouts.end()) {
-        result = *iter;
-    } else {
-        DAWN_TRY_ASSIGN(result, CreateBindGroupLayoutImpl(descriptor, pipelineCompatibilityToken));
-        result->SetIsCachedReference();
-        result->SetContentHash(blueprintHash);
-        mCaches->bindGroupLayouts.insert(result.Get());
-    }
-
-    return std::move(result);
+    return GetOrCreate(
+        mCaches->bindGroupLayouts, &blueprint, [&]() -> ResultOrError<Ref<BindGroupLayoutBase>> {
+            Ref<BindGroupLayoutBase> result;
+            DAWN_TRY_ASSIGN(result,
+                            CreateBindGroupLayoutImpl(descriptor, pipelineCompatibilityToken));
+            result->SetContentHash(blueprintHash);
+            return result;
+        });
 }
 
 void DeviceBase::UncacheBindGroupLayout(BindGroupLayoutBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->bindGroupLayouts.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->bindGroupLayouts.Erase(obj);
 }
 
 // Private function used at initialization
@@ -873,53 +889,41 @@ PipelineLayoutBase* DeviceBase::GetEmptyPipelineLayout() {
 
 Ref<ComputePipelineBase> DeviceBase::GetCachedComputePipeline(
     ComputePipelineBase* uninitializedComputePipeline) {
-    Ref<ComputePipelineBase> cachedPipeline;
-    auto iter = mCaches->computePipelines.find(uninitializedComputePipeline);
-    if (iter != mCaches->computePipelines.end()) {
-        cachedPipeline = *iter;
-    }
-
-    return cachedPipeline;
+    return mCaches->computePipelines.Find(uninitializedComputePipeline);
 }
 
 Ref<RenderPipelineBase> DeviceBase::GetCachedRenderPipeline(
     RenderPipelineBase* uninitializedRenderPipeline) {
-    Ref<RenderPipelineBase> cachedPipeline;
-    auto iter = mCaches->renderPipelines.find(uninitializedRenderPipeline);
-    if (iter != mCaches->renderPipelines.end()) {
-        cachedPipeline = *iter;
-    }
-    return cachedPipeline;
+    return mCaches->renderPipelines.Find(uninitializedRenderPipeline);
 }
 
 Ref<ComputePipelineBase> DeviceBase::AddOrGetCachedComputePipeline(
     Ref<ComputePipelineBase> computePipeline) {
     ASSERT(IsLockedByCurrentThreadIfNeeded());
-    auto [cachedPipeline, inserted] = mCaches->computePipelines.insert(computePipeline.Get());
+    auto [cachedPipeline, inserted] = mCaches->computePipelines.Insert(computePipeline.Get());
     if (inserted) {
         computePipeline->SetIsCachedReference();
         return computePipeline;
     } else {
-        return *cachedPipeline;
+        return std::move(cachedPipeline);
     }
 }
 
 Ref<RenderPipelineBase> DeviceBase::AddOrGetCachedRenderPipeline(
     Ref<RenderPipelineBase> renderPipeline) {
     ASSERT(IsLockedByCurrentThreadIfNeeded());
-    auto [cachedPipeline, inserted] = mCaches->renderPipelines.insert(renderPipeline.Get());
+    auto [cachedPipeline, inserted] = mCaches->renderPipelines.Insert(renderPipeline.Get());
     if (inserted) {
         renderPipeline->SetIsCachedReference();
         return renderPipeline;
     } else {
-        return *cachedPipeline;
+        return std::move(cachedPipeline);
     }
 }
 
 void DeviceBase::UncacheComputePipeline(ComputePipelineBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->computePipelines.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->computePipelines.Erase(obj);
 }
 
 ResultOrError<Ref<TextureViewBase>>
@@ -958,30 +962,23 @@ ResultOrError<Ref<PipelineLayoutBase>> DeviceBase::GetOrCreatePipelineLayout(
     const size_t blueprintHash = blueprint.ComputeContentHash();
     blueprint.SetContentHash(blueprintHash);
 
-    Ref<PipelineLayoutBase> result;
-    auto iter = mCaches->pipelineLayouts.find(&blueprint);
-    if (iter != mCaches->pipelineLayouts.end()) {
-        result = *iter;
-    } else {
-        DAWN_TRY_ASSIGN(result, CreatePipelineLayoutImpl(descriptor));
-        result->SetIsCachedReference();
-        result->SetContentHash(blueprintHash);
-        mCaches->pipelineLayouts.insert(result.Get());
-    }
-
-    return std::move(result);
+    return GetOrCreate(mCaches->pipelineLayouts, &blueprint,
+                       [&]() -> ResultOrError<Ref<PipelineLayoutBase>> {
+                           Ref<PipelineLayoutBase> result;
+                           DAWN_TRY_ASSIGN(result, CreatePipelineLayoutImpl(descriptor));
+                           result->SetContentHash(blueprintHash);
+                           return result;
+                       });
 }
 
 void DeviceBase::UncachePipelineLayout(PipelineLayoutBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->pipelineLayouts.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->pipelineLayouts.Erase(obj);
 }
 
 void DeviceBase::UncacheRenderPipeline(RenderPipelineBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->renderPipelines.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->renderPipelines.Erase(obj);
 }
 
 ResultOrError<Ref<SamplerBase>> DeviceBase::GetOrCreateSampler(
@@ -991,24 +988,17 @@ ResultOrError<Ref<SamplerBase>> DeviceBase::GetOrCreateSampler(
     const size_t blueprintHash = blueprint.ComputeContentHash();
     blueprint.SetContentHash(blueprintHash);
 
-    Ref<SamplerBase> result;
-    auto iter = mCaches->samplers.find(&blueprint);
-    if (iter != mCaches->samplers.end()) {
-        result = *iter;
-    } else {
+    return GetOrCreate(mCaches->samplers, &blueprint, [&]() -> ResultOrError<Ref<SamplerBase>> {
+        Ref<SamplerBase> result;
         DAWN_TRY_ASSIGN(result, CreateSamplerImpl(descriptor));
-        result->SetIsCachedReference();
         result->SetContentHash(blueprintHash);
-        mCaches->samplers.insert(result.Get());
-    }
-
-    return std::move(result);
+        return result;
+    });
 }
 
 void DeviceBase::UncacheSampler(SamplerBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->samplers.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->samplers.Erase(obj);
 }
 
 ResultOrError<Ref<ShaderModuleBase>> DeviceBase::GetOrCreateShaderModule(
@@ -1022,46 +1012,35 @@ ResultOrError<Ref<ShaderModuleBase>> DeviceBase::GetOrCreateShaderModule(
     const size_t blueprintHash = blueprint.ComputeContentHash();
     blueprint.SetContentHash(blueprintHash);
 
-    Ref<ShaderModuleBase> result;
-    auto iter = mCaches->shaderModules.find(&blueprint);
-    if (iter != mCaches->shaderModules.end()) {
-        result = *iter;
-    } else {
-        if (!parseResult->HasParsedShader()) {
-            // We skip the parse on creation if validation isn't enabled which let's us quickly
-            // lookup in the cache without validating and parsing. We need the parsed module
-            // now.
-            ASSERT(!IsValidationEnabled());
-            DAWN_TRY(
-                ValidateAndParseShaderModule(this, descriptor, parseResult, compilationMessages));
-        }
-        DAWN_TRY_ASSIGN(result,
-                        CreateShaderModuleImpl(descriptor, parseResult, compilationMessages));
-        result->SetIsCachedReference();
-        result->SetContentHash(blueprintHash);
-        mCaches->shaderModules.insert(result.Get());
-    }
-
-    return std::move(result);
+    return GetOrCreate(
+        mCaches->shaderModules, &blueprint, [&]() -> ResultOrError<Ref<ShaderModuleBase>> {
+            Ref<ShaderModuleBase> result;
+            if (!parseResult->HasParsedShader()) {
+                // We skip the parse on creation if validation isn't enabled which let's us quickly
+                // lookup in the cache without validating and parsing. We need the parsed module
+                // now.
+                ASSERT(!IsValidationEnabled());
+                DAWN_TRY(ValidateAndParseShaderModule(this, descriptor, parseResult,
+                                                      compilationMessages));
+            }
+            DAWN_TRY_ASSIGN(result,
+                            CreateShaderModuleImpl(descriptor, parseResult, compilationMessages));
+            result->SetContentHash(blueprintHash);
+            return result;
+        });
 }
 
 void DeviceBase::UncacheShaderModule(ShaderModuleBase* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->shaderModules.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->shaderModules.Erase(obj);
 }
 
 Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(AttachmentStateBlueprint* blueprint) {
-    auto iter = mCaches->attachmentStates.find(blueprint);
-    if (iter != mCaches->attachmentStates.end()) {
-        return static_cast<AttachmentState*>(*iter);
-    }
-
-    Ref<AttachmentState> attachmentState = AcquireRef(new AttachmentState(this, *blueprint));
-    attachmentState->SetIsCachedReference();
-    attachmentState->SetContentHash(attachmentState->ComputeContentHash());
-    mCaches->attachmentStates.insert(attachmentState.Get());
-    return attachmentState;
+    return GetOrCreate(mCaches->attachmentStates, blueprint, [&]() -> Ref<AttachmentState> {
+        Ref<AttachmentState> attachmentState = AcquireRef(new AttachmentState(this, *blueprint));
+        attachmentState->SetContentHash(attachmentState->ComputeContentHash());
+        return attachmentState;
+    });
 }
 
 Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(
@@ -1084,8 +1063,7 @@ Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(
 
 void DeviceBase::UncacheAttachmentState(AttachmentState* obj) {
     ASSERT(obj->IsCachedReference());
-    size_t removedCount = mCaches->attachmentStates.erase(obj);
-    ASSERT(removedCount == 1);
+    mCaches->attachmentStates.Erase(obj);
 }
 
 Ref<PipelineCacheBase> DeviceBase::GetOrCreatePipelineCache(const CacheKey& key) {
@@ -1146,20 +1124,30 @@ void DeviceBase::APICreateComputePipelineAsync(const ComputePipelineDescriptor* 
     TRACE_EVENT1(GetPlatform(), General, "DeviceBase::APICreateComputePipelineAsync", "label",
                  utils::GetLabelForTrace(descriptor->label));
 
-    MaybeError maybeResult = CreateComputePipelineAsync(descriptor, callback, userdata);
+    auto resultOrError = CreateUninitializedComputePipeline(descriptor);
+    // Enqueue the callback directly when an error has been found in the front-end
+    // validation.
+    if (resultOrError.IsError()) {
+        AddComputePipelineAsyncCallbackTask(resultOrError.AcquireError(), descriptor->label,
+                                            callback, userdata);
+        return;
+    }
 
-    // Call the callback directly when a validation error has been found in the front-end
-    // validations. If there is no error, then CreateComputePipelineAsync will call the
-    // callback.
-    if (maybeResult.IsError()) {
-        std::unique_ptr<ErrorData> error = maybeResult.AcquireError();
-        WGPUCreatePipelineAsyncStatus status =
-            CreatePipelineAsyncStatusFromErrorType(error->GetType());
-        // TODO(crbug.com/dawn/1122): Call callbacks only on wgpuInstanceProcessEvents
+    Ref<ComputePipelineBase> uninitializedComputePipeline = resultOrError.AcquireSuccess();
+
+    // Call the callback directly when we can get a cached compute pipeline object.
+    Ref<ComputePipelineBase> cachedComputePipeline =
+        GetCachedComputePipeline(uninitializedComputePipeline.Get());
+    if (cachedComputePipeline.Get() != nullptr) {
         mCallbackTaskManager->AddCallbackTask(
-            [callback, status, message = error->GetMessage(), userdata] {
-                callback(status, nullptr, message.c_str(), userdata);
-            });
+            std::bind(callback, WGPUCreatePipelineAsyncStatus_Success,
+                      ToAPI(cachedComputePipeline.Detach()), "", userdata));
+    } else {
+        // Otherwise we will create the pipeline object in InitializeComputePipelineAsyncImpl(),
+        // where the pipeline object may be initialized asynchronously and the result will be
+        // saved to mCreatePipelineAsyncTracker.
+        InitializeComputePipelineAsyncImpl(std::move(uninitializedComputePipeline), callback,
+                                           userdata);
     }
 }
 PipelineLayoutBase* DeviceBase::APICreatePipelineLayout(
@@ -1192,23 +1180,35 @@ void DeviceBase::APICreateRenderPipelineAsync(const RenderPipelineDescriptor* de
                                               void* userdata) {
     TRACE_EVENT1(GetPlatform(), General, "DeviceBase::APICreateRenderPipelineAsync", "label",
                  utils::GetLabelForTrace(descriptor->label));
-    // TODO(dawn:563): Add validation error context.
-    MaybeError maybeResult = CreateRenderPipelineAsync(descriptor, callback, userdata);
 
-    // Call the callback directly when a validation error has been found in the front-end
-    // validations. If there is no error, then CreateRenderPipelineAsync will call the
-    // callback.
-    if (maybeResult.IsError()) {
-        std::unique_ptr<ErrorData> error = maybeResult.AcquireError();
-        WGPUCreatePipelineAsyncStatus status =
-            CreatePipelineAsyncStatusFromErrorType(error->GetType());
-        // TODO(crbug.com/dawn/1122): Call callbacks only on wgpuInstanceProcessEvents
+    auto resultOrError = CreateUninitializedRenderPipeline(descriptor);
+
+    // Enqueue the callback directly when an error has been found in the front-end
+    // validation.
+    if (resultOrError.IsError()) {
+        AddRenderPipelineAsyncCallbackTask(resultOrError.AcquireError(), descriptor->label,
+                                           callback, userdata);
+        return;
+    }
+
+    Ref<RenderPipelineBase> uninitializedRenderPipeline = resultOrError.AcquireSuccess();
+
+    // Call the callback directly when we can get a cached render pipeline object.
+    Ref<RenderPipelineBase> cachedRenderPipeline =
+        GetCachedRenderPipeline(uninitializedRenderPipeline.Get());
+    if (cachedRenderPipeline != nullptr) {
         mCallbackTaskManager->AddCallbackTask(
-            [callback, status, message = error->GetMessage(), userdata] {
-                callback(status, nullptr, message.c_str(), userdata);
-            });
+            std::bind(callback, WGPUCreatePipelineAsyncStatus_Success,
+                      ToAPI(cachedRenderPipeline.Detach()), "", userdata));
+    } else {
+        // Otherwise we will create the pipeline object in InitializeRenderPipelineAsyncImpl(),
+        // where the pipeline object may be initialized asynchronously and the result will be
+        // saved to mCreatePipelineAsyncTracker.
+        InitializeRenderPipelineAsyncImpl(std::move(uninitializedRenderPipeline), callback,
+                                          userdata);
     }
 }
+
 RenderBundleEncoder* DeviceBase::APICreateRenderBundleEncoder(
     const RenderBundleEncoderDescriptor* descriptor) {
     Ref<RenderBundleEncoder> result;
@@ -1412,8 +1412,9 @@ ExternalTextureBase* DeviceBase::APICreateExternalTexture(
 
 void DeviceBase::ApplyFeatures(const DeviceDescriptor* deviceDescriptor) {
     ASSERT(deviceDescriptor);
+    // Validate all required features with device toggles.
     ASSERT(GetPhysicalDevice()->SupportsAllRequiredFeatures(
-        {deviceDescriptor->requiredFeatures, deviceDescriptor->requiredFeaturesCount}));
+        {deviceDescriptor->requiredFeatures, deviceDescriptor->requiredFeaturesCount}, mToggles));
 
     for (uint32_t i = 0; i < deviceDescriptor->requiredFeaturesCount; ++i) {
         mEnabledFeatures.EnableFeature(deviceDescriptor->requiredFeatures[i]);
@@ -1575,20 +1576,9 @@ ResultOrError<Ref<BufferBase>> DeviceBase::CreateBuffer(const BufferDescriptor* 
 
 ResultOrError<Ref<ComputePipelineBase>> DeviceBase::CreateComputePipeline(
     const ComputePipelineDescriptor* descriptor) {
-    DAWN_TRY(ValidateIsAlive());
-    if (IsValidationEnabled()) {
-        DAWN_TRY(ValidateComputePipelineDescriptor(this, descriptor));
-    }
+    Ref<ComputePipelineBase> uninitializedComputePipeline;
+    DAWN_TRY_ASSIGN(uninitializedComputePipeline, CreateUninitializedComputePipeline(descriptor));
 
-    // Ref will keep the pipeline layout alive until the end of the function where
-    // the pipeline will take another reference.
-    Ref<PipelineLayoutBase> layoutRef;
-    ComputePipelineDescriptor appliedDescriptor;
-    DAWN_TRY_ASSIGN(layoutRef, ValidateLayoutAndGetComputePipelineDescriptorWithDefaults(
-                                   this, *descriptor, &appliedDescriptor));
-
-    Ref<ComputePipelineBase> uninitializedComputePipeline =
-        CreateUninitializedComputePipelineImpl(&appliedDescriptor);
     Ref<ComputePipelineBase> cachedComputePipeline =
         GetCachedComputePipeline(uninitializedComputePipeline.Get());
     if (cachedComputePipeline.Get() != nullptr) {
@@ -1618,9 +1608,8 @@ Ref<PipelineCacheBase> DeviceBase::GetOrCreatePipelineCacheImpl(const CacheKey& 
     UNREACHABLE();
 }
 
-MaybeError DeviceBase::CreateComputePipelineAsync(const ComputePipelineDescriptor* descriptor,
-                                                  WGPUCreateComputePipelineAsyncCallback callback,
-                                                  void* userdata) {
+ResultOrError<Ref<ComputePipelineBase>> DeviceBase::CreateUninitializedComputePipeline(
+    const ComputePipelineDescriptor* descriptor) {
     DAWN_TRY(ValidateIsAlive());
     if (IsValidationEnabled()) {
         DAWN_TRY(ValidateComputePipelineDescriptor(this, descriptor));
@@ -1631,45 +1620,20 @@ MaybeError DeviceBase::CreateComputePipelineAsync(const ComputePipelineDescripto
     DAWN_TRY_ASSIGN(layoutRef, ValidateLayoutAndGetComputePipelineDescriptorWithDefaults(
                                    this, *descriptor, &appliedDescriptor));
 
-    Ref<ComputePipelineBase> uninitializedComputePipeline =
-        CreateUninitializedComputePipelineImpl(&appliedDescriptor);
-
-    // Call the callback directly when we can get a cached compute pipeline object.
-    Ref<ComputePipelineBase> cachedComputePipeline =
-        GetCachedComputePipeline(uninitializedComputePipeline.Get());
-    if (cachedComputePipeline.Get() != nullptr) {
-        // TODO(crbug.com/dawn/1122): Call callbacks only on wgpuInstanceProcessEvents
-        mCallbackTaskManager->AddCallbackTask(
-            std::bind(callback, WGPUCreatePipelineAsyncStatus_Success,
-                      ToAPI(cachedComputePipeline.Detach()), "", userdata));
-    } else {
-        // Otherwise we will create the pipeline object in InitializeComputePipelineAsyncImpl(),
-        // where the pipeline object may be initialized asynchronously and the result will be
-        // saved to mCreatePipelineAsyncTracker.
-        InitializeComputePipelineAsyncImpl(std::move(uninitializedComputePipeline), callback,
-                                           userdata);
-    }
-
-    return {};
+    return CreateUninitializedComputePipelineImpl(&appliedDescriptor);
 }
 
 // This function is overwritten with the async version on the backends that supports
-//  initializing compute pipelines asynchronously.
+// initializing compute pipelines asynchronously.
 void DeviceBase::InitializeComputePipelineAsyncImpl(Ref<ComputePipelineBase> computePipeline,
                                                     WGPUCreateComputePipelineAsyncCallback callback,
                                                     void* userdata) {
     MaybeError maybeError = computePipeline->Initialize();
     if (maybeError.IsError()) {
-        std::unique_ptr<ErrorData> error = maybeError.AcquireError();
-        WGPUCreatePipelineAsyncStatus status =
-            CreatePipelineAsyncStatusFromErrorType(error->GetType());
-        mCallbackTaskManager->AddCallbackTask(
-            std::make_unique<CreateComputePipelineAsyncCallbackTask>(status, error->GetMessage(),
-                                                                     callback, userdata));
+        AddComputePipelineAsyncCallbackTask(
+            maybeError.AcquireError(), computePipeline->GetLabel().c_str(), callback, userdata);
     } else {
-        mCallbackTaskManager->AddCallbackTask(
-            std::make_unique<CreateComputePipelineAsyncCallbackTask>(
-                AddOrGetCachedComputePipeline(std::move(computePipeline)), callback, userdata));
+        AddComputePipelineAsyncCallbackTask(std::move(computePipeline), callback, userdata);
     }
 }
 
@@ -1680,16 +1644,10 @@ void DeviceBase::InitializeRenderPipelineAsyncImpl(Ref<RenderPipelineBase> rende
                                                    void* userdata) {
     MaybeError maybeError = renderPipeline->Initialize();
     if (maybeError.IsError()) {
-        std::unique_ptr<ErrorData> error = maybeError.AcquireError();
-        WGPUCreatePipelineAsyncStatus status =
-            CreatePipelineAsyncStatusFromErrorType(error->GetType());
-        mCallbackTaskManager->AddCallbackTask(
-            std::make_unique<CreateRenderPipelineAsyncCallbackTask>(status, error->GetMessage(),
-                                                                    callback, userdata));
+        AddRenderPipelineAsyncCallbackTask(maybeError.AcquireError(),
+                                           renderPipeline->GetLabel().c_str(), callback, userdata);
     } else {
-        mCallbackTaskManager->AddCallbackTask(
-            std::make_unique<CreateRenderPipelineAsyncCallbackTask>(
-                AddOrGetCachedRenderPipeline(std::move(renderPipeline)), callback, userdata));
+        AddRenderPipelineAsyncCallbackTask(std::move(renderPipeline), callback, userdata);
     }
 }
 
@@ -1733,20 +1691,8 @@ ResultOrError<Ref<RenderBundleEncoder>> DeviceBase::CreateRenderBundleEncoder(
 
 ResultOrError<Ref<RenderPipelineBase>> DeviceBase::CreateRenderPipeline(
     const RenderPipelineDescriptor* descriptor) {
-    DAWN_TRY(ValidateIsAlive());
-    if (IsValidationEnabled()) {
-        DAWN_TRY(ValidateRenderPipelineDescriptor(this, descriptor));
-    }
-
-    // Ref will keep the pipeline layout alive until the end of the function where
-    // the pipeline will take another reference.
-    Ref<PipelineLayoutBase> layoutRef;
-    RenderPipelineDescriptor appliedDescriptor;
-    DAWN_TRY_ASSIGN(layoutRef, ValidateLayoutAndGetRenderPipelineDescriptorWithDefaults(
-                                   this, *descriptor, &appliedDescriptor));
-
-    Ref<RenderPipelineBase> uninitializedRenderPipeline =
-        CreateUninitializedRenderPipelineImpl(&appliedDescriptor);
+    Ref<RenderPipelineBase> uninitializedRenderPipeline;
+    DAWN_TRY_ASSIGN(uninitializedRenderPipeline, CreateUninitializedRenderPipeline(descriptor));
 
     Ref<RenderPipelineBase> cachedRenderPipeline =
         GetCachedRenderPipeline(uninitializedRenderPipeline.Get());
@@ -1758,9 +1704,8 @@ ResultOrError<Ref<RenderPipelineBase>> DeviceBase::CreateRenderPipeline(
     return AddOrGetCachedRenderPipeline(std::move(uninitializedRenderPipeline));
 }
 
-MaybeError DeviceBase::CreateRenderPipelineAsync(const RenderPipelineDescriptor* descriptor,
-                                                 WGPUCreateRenderPipelineAsyncCallback callback,
-                                                 void* userdata) {
+ResultOrError<Ref<RenderPipelineBase>> DeviceBase::CreateUninitializedRenderPipeline(
+    const RenderPipelineDescriptor* descriptor) {
     DAWN_TRY(ValidateIsAlive());
     if (IsValidationEnabled()) {
         DAWN_TRY(ValidateRenderPipelineDescriptor(this, descriptor));
@@ -1773,26 +1718,7 @@ MaybeError DeviceBase::CreateRenderPipelineAsync(const RenderPipelineDescriptor*
     DAWN_TRY_ASSIGN(layoutRef, ValidateLayoutAndGetRenderPipelineDescriptorWithDefaults(
                                    this, *descriptor, &appliedDescriptor));
 
-    Ref<RenderPipelineBase> uninitializedRenderPipeline =
-        CreateUninitializedRenderPipelineImpl(&appliedDescriptor);
-
-    // Call the callback directly when we can get a cached render pipeline object.
-    Ref<RenderPipelineBase> cachedRenderPipeline =
-        GetCachedRenderPipeline(uninitializedRenderPipeline.Get());
-    if (cachedRenderPipeline != nullptr) {
-        // TODO(crbug.com/dawn/1122): Call callbacks only on wgpuInstanceProcessEvents
-        mCallbackTaskManager->AddCallbackTask(
-            std::bind(callback, WGPUCreatePipelineAsyncStatus_Success,
-                      ToAPI(cachedRenderPipeline.Detach()), "", userdata));
-    } else {
-        // Otherwise we will create the pipeline object in InitializeRenderPipelineAsyncImpl(),
-        // where the pipeline object may be initialized asynchronously and the result will be
-        // saved to mCreatePipelineAsyncTracker.
-        InitializeRenderPipelineAsyncImpl(std::move(uninitializedRenderPipeline), callback,
-                                          userdata);
-    }
-
-    return {};
+    return CreateUninitializedRenderPipelineImpl(&appliedDescriptor);
 }
 
 ResultOrError<Ref<SamplerBase>> DeviceBase::CreateSampler(const SamplerDescriptor* descriptor) {
@@ -1942,68 +1868,94 @@ dawn::platform::WorkerTaskPool* DeviceBase::GetWorkerTaskPool() const {
 }
 
 void DeviceBase::AddComputePipelineAsyncCallbackTask(
+    std::unique_ptr<ErrorData> error,
+    const char* label,
+    WGPUCreateComputePipelineAsyncCallback callback,
+    void* userdata) {
+    if (GetState() != State::Alive) {
+        // If the device is no longer alive, errors should not be reported anymore.
+        // Call the callback with an error pipeline.
+        return mCallbackTaskManager->AddCallbackTask(
+            [callback, pipeline = ComputePipelineBase::MakeError(this, label), userdata]() {
+                callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(pipeline), "", userdata);
+            });
+    }
+
+    WGPUCreatePipelineAsyncStatus status = CreatePipelineAsyncStatusFromErrorType(error->GetType());
+    mCallbackTaskManager->AddCallbackTask(
+        [callback, message = error->GetFormattedMessage(), status, userdata]() {
+            callback(status, nullptr, message.c_str(), userdata);
+        });
+}
+
+void DeviceBase::AddComputePipelineAsyncCallbackTask(
     Ref<ComputePipelineBase> pipeline,
     WGPUCreateComputePipelineAsyncCallback callback,
     void* userdata) {
-    // CreateComputePipelineAsyncWaitableCallbackTask is declared as an internal class as it
-    // needs to call the private member function DeviceBase::AddOrGetCachedComputePipeline().
-    struct CreateComputePipelineAsyncWaitableCallbackTask final
-        : CreateComputePipelineAsyncCallbackTask {
-        using CreateComputePipelineAsyncCallbackTask::CreateComputePipelineAsyncCallbackTask;
-        void FinishImpl() final {
+    mCallbackTaskManager->AddCallbackTask(
+        [callback, pipeline = std::move(pipeline), userdata]() mutable {
             // TODO(dawn:529): call AddOrGetCachedComputePipeline() asynchronously in
             // CreateComputePipelineAsyncTaskImpl::Run() when the front-end pipeline cache is
             // thread-safe.
-            ASSERT(mPipeline != nullptr);
+            ASSERT(pipeline != nullptr);
             {
-                // This is called inside a callback, and no lock will be held by default so we have
-                // to lock now to protect the cache.
-                // Note: we don't lock inside AddOrGetCachedComputePipeline() to avoid deadlock
-                // because many places calling that method might already have the lock held. For
-                // example, APICreateComputePipeline()
-                auto deviceLock(mPipeline->GetDevice()->GetScopedLock());
-                mPipeline = mPipeline->GetDevice()->AddOrGetCachedComputePipeline(mPipeline);
+                // This is called inside a callback, and no lock will be held by default so we
+                // have to lock now to protect the cache. Note: we don't lock inside
+                // AddOrGetCachedComputePipeline() to avoid deadlock because many places calling
+                // that method might already have the lock held. For example,
+                // APICreateComputePipeline()
+                auto deviceLock(pipeline->GetDevice()->GetScopedLock());
+                if (pipeline->GetDevice()->GetState() == State::Alive) {
+                    pipeline =
+                        pipeline->GetDevice()->AddOrGetCachedComputePipeline(std::move(pipeline));
+                }
             }
+            callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(pipeline.Detach()), "", userdata);
+        });
+}
 
-            CreateComputePipelineAsyncCallbackTask::FinishImpl();
-        }
-    };
+void DeviceBase::AddRenderPipelineAsyncCallbackTask(std::unique_ptr<ErrorData> error,
+                                                    const char* label,
+                                                    WGPUCreateRenderPipelineAsyncCallback callback,
+                                                    void* userdata) {
+    if (GetState() != State::Alive) {
+        // If the device is no longer alive, errors should not be reported anymore.
+        // Call the callback with an error pipeline.
+        return mCallbackTaskManager->AddCallbackTask(
+            [callback, pipeline = RenderPipelineBase::MakeError(this, label), userdata]() {
+                callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(pipeline), "", userdata);
+            });
+    }
 
+    WGPUCreatePipelineAsyncStatus status = CreatePipelineAsyncStatusFromErrorType(error->GetType());
     mCallbackTaskManager->AddCallbackTask(
-        std::make_unique<CreateComputePipelineAsyncWaitableCallbackTask>(std::move(pipeline),
-                                                                         callback, userdata));
+        [callback, message = error->GetFormattedMessage(), status, userdata]() {
+            callback(status, nullptr, message.c_str(), userdata);
+        });
 }
 
 void DeviceBase::AddRenderPipelineAsyncCallbackTask(Ref<RenderPipelineBase> pipeline,
                                                     WGPUCreateRenderPipelineAsyncCallback callback,
                                                     void* userdata) {
-    // CreateRenderPipelineAsyncWaitableCallbackTask is declared as an internal class as it
-    // needs to call the private member function DeviceBase::AddOrGetCachedRenderPipeline().
-    struct CreateRenderPipelineAsyncWaitableCallbackTask final
-        : CreateRenderPipelineAsyncCallbackTask {
-        using CreateRenderPipelineAsyncCallbackTask::CreateRenderPipelineAsyncCallbackTask;
-
-        void FinishImpl() final {
-            // TODO(dawn:529): call AddOrGetCachedRenderPipeline() asynchronously in
-            // CreateRenderPipelineAsyncTaskImpl::Run() when the front-end pipeline cache is
-            // thread-safe.
-            if (mPipeline.Get() != nullptr) {
-                // This is called inside a callback, and no lock will be held by default so we have
-                // to lock now to protect the cache.
-                // Note: we don't lock inside AddOrGetCachedRenderPipeline() to avoid deadlock
-                // because many places calling that method might already have the lock held. For
-                // example, APICreateRenderPipeline()
-                auto deviceLock(mPipeline->GetDevice()->GetScopedLock());
-                mPipeline = mPipeline->GetDevice()->AddOrGetCachedRenderPipeline(mPipeline);
+    mCallbackTaskManager->AddCallbackTask([callback, pipeline = std::move(pipeline),
+                                           userdata]() mutable {
+        // TODO(dawn:529): call AddOrGetCachedRenderPipeline() asynchronously in
+        // CreateRenderPipelineAsyncTaskImpl::Run() when the front-end pipeline cache is
+        // thread-safe.
+        ASSERT(pipeline != nullptr);
+        {
+            // This is called inside a callback, and no lock will be held by default so we have
+            // to lock now to protect the cache.
+            // Note: we don't lock inside AddOrGetCachedRenderPipeline() to avoid deadlock
+            // because many places calling that method might already have the lock held. For
+            // example, APICreateRenderPipeline()
+            auto deviceLock(pipeline->GetDevice()->GetScopedLock());
+            if (pipeline->GetDevice()->GetState() == State::Alive) {
+                pipeline = pipeline->GetDevice()->AddOrGetCachedRenderPipeline(std::move(pipeline));
             }
-
-            CreateRenderPipelineAsyncCallbackTask::FinishImpl();
         }
-    };
-
-    mCallbackTaskManager->AddCallbackTask(
-        std::make_unique<CreateRenderPipelineAsyncWaitableCallbackTask>(std::move(pipeline),
-                                                                        callback, userdata));
+        callback(WGPUCreatePipelineAsyncStatus_Success, ToAPI(pipeline.Detach()), "", userdata);
+    });
 }
 
 PipelineCompatibilityToken DeviceBase::GetNextPipelineCompatibilityToken() {

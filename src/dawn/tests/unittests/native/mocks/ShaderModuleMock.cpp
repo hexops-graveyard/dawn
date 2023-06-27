@@ -14,7 +14,7 @@
 
 #include "dawn/tests/unittests/native/mocks/ShaderModuleMock.h"
 
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 
 namespace dawn::native {
 
@@ -22,7 +22,7 @@ using ::testing::NiceMock;
 
 ShaderModuleMock::ShaderModuleMock(DeviceMock* device, const ShaderModuleDescriptor* descriptor)
     : ShaderModuleBase(device, descriptor) {
-    ON_CALL(*this, DestroyImpl).WillByDefault([this]() { this->ShaderModuleBase::DestroyImpl(); });
+    ON_CALL(*this, DestroyImpl).WillByDefault([this] { this->ShaderModuleBase::DestroyImpl(); });
 
     SetContentHash(ComputeContentHash());
 }

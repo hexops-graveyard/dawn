@@ -27,10 +27,9 @@
 namespace dawn {
 namespace {
 
-bool OpenGLESSupportsStorageTexture(wgpu::TextureFormat format) {
-    // TODO(crbug.com/dawn/595): 32-bit RG* formats are unsupported on OpenGL ES.
-    return format != wgpu::TextureFormat::RG32Float && format != wgpu::TextureFormat::RG32Sint &&
-           format != wgpu::TextureFormat::RG32Uint;
+bool D3D11SupportsStorageTexture(wgpu::TextureFormat format) {
+    // TODO(dawn:1802): Support clearing non-renderable textures on D3D11.
+    return format != wgpu::TextureFormat::RGBA8Snorm;
 }
 
 class StorageTextureTests : public DawnTest {
@@ -668,14 +667,15 @@ fn IsEqualTo(pixel : vec4f, expected : vec4f) -> bool {
 // Test that write-only storage textures are supported in compute shader.
 TEST_P(StorageTextureTests, WriteonlyStorageTextureInComputeShader) {
     for (wgpu::TextureFormat format : utils::kAllTextureFormats) {
-        if (!utils::TextureFormatSupportsStorageTexture(format)) {
+        if (!utils::TextureFormatSupportsStorageTexture(format, IsCompatibilityMode())) {
             continue;
         }
-        if (IsOpenGLES() && !OpenGLESSupportsStorageTexture(format)) {
+        if (IsD3D11() && !D3D11SupportsStorageTexture(format)) {
             continue;
         }
 
-        if (format == wgpu::TextureFormat::RGBA8Snorm && HasToggleEnabled("disable_snorm_read")) {
+        // TODO(dawn:1877): Snorm copy failing ANGLE Swiftshader, need further investigation.
+        if (format == wgpu::TextureFormat::RGBA8Snorm && IsANGLESwiftShader()) {
             continue;
         }
 
@@ -707,14 +707,15 @@ TEST_P(StorageTextureTests, WriteonlyStorageTextureInFragmentShader) {
     DAWN_SUPPRESS_TEST_IF(IsNvidia() && IsLinux() && IsOpenGLES());
 
     for (wgpu::TextureFormat format : utils::kAllTextureFormats) {
-        if (!utils::TextureFormatSupportsStorageTexture(format)) {
+        if (!utils::TextureFormatSupportsStorageTexture(format, IsCompatibilityMode())) {
             continue;
         }
-        if (IsOpenGLES() && !OpenGLESSupportsStorageTexture(format)) {
+        if (IsD3D11() && !D3D11SupportsStorageTexture(format)) {
             continue;
         }
 
-        if (format == wgpu::TextureFormat::RGBA8Snorm && HasToggleEnabled("disable_snorm_read")) {
+        // TODO(dawn:1877): Snorm copy failing ANGLE Swiftshader, need further investigation.
+        if (format == wgpu::TextureFormat::RGBA8Snorm && IsANGLESwiftShader()) {
             continue;
         }
 
@@ -868,6 +869,7 @@ TEST_P(StorageTextureTests, SampledAndWriteonlyStorageTexturePingPong) {
 }
 
 DAWN_INSTANTIATE_TEST(StorageTextureTests,
+                      D3D11Backend(),
                       D3D12Backend(),
                       MetalBackend(),
                       OpenGLBackend(),
@@ -932,6 +934,7 @@ TEST_P(BGRA8UnormStorageTextureTests, WriteonlyStorageTextureInFragmentShader) {
 }
 
 DAWN_INSTANTIATE_TEST(BGRA8UnormStorageTextureTests,
+                      D3D11Backend(),
                       D3D12Backend(),
                       MetalBackend(),
                       OpenGLBackend(),
@@ -1010,6 +1013,7 @@ TEST_P(StorageTextureZeroInitTests, WriteonlyStorageTextureClearsToZeroInCompute
 }
 
 DAWN_INSTANTIATE_TEST(StorageTextureZeroInitTests,
+                      D3D11Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       D3D12Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       OpenGLBackend({"nonzero_clear_resources_on_creation_for_testing"}),
                       OpenGLESBackend({"nonzero_clear_resources_on_creation_for_testing"}),

@@ -49,12 +49,12 @@ class TestHelperBase : public ProgramBuilder, public BASE {
         if (spirv_builder) {
             return *spirv_builder;
         }
-        [&]() {
+        [&] {
             ASSERT_TRUE(IsValid()) << "Builder program is not valid\n"
                                    << diag::Formatter().format(Diagnostics());
         }();
         program = std::make_unique<Program>(std::move(*this));
-        [&]() {
+        [&] {
             ASSERT_TRUE(program->IsValid()) << diag::Formatter().format(program->Diagnostics());
         }();
         spirv_builder = std::make_unique<spirv::Builder>(program.get());
@@ -71,16 +71,16 @@ class TestHelperBase : public ProgramBuilder, public BASE {
         if (spirv_builder) {
             return *spirv_builder;
         }
-        [&]() {
+        [&] {
             ASSERT_TRUE(IsValid()) << "Builder program is not valid\n"
                                    << diag::Formatter().format(Diagnostics());
         }();
         program = std::make_unique<Program>(std::move(*this));
-        [&]() {
+        [&] {
             ASSERT_TRUE(program->IsValid()) << diag::Formatter().format(program->Diagnostics());
         }();
         auto result = Sanitize(program.get(), options);
-        [&]() {
+        [&] {
             ASSERT_TRUE(result.program.IsValid())
                 << diag::Formatter().format(result.program.Diagnostics());
         }();
@@ -96,7 +96,7 @@ class TestHelperBase : public ProgramBuilder, public BASE {
         BinaryWriter writer;
         writer.WriteHeader(b.Module().IdBound());
         writer.WriteModule(&b.Module());
-        auto binary = writer.result();
+        auto binary = writer.Result();
 
         std::string spv_errors;
         auto msg_consumer = [&spv_errors](spv_message_level_t level, const char*,

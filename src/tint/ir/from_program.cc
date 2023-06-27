@@ -109,10 +109,6 @@ namespace {
 
 using ResultType = utils::Result<Module, diag::List>;
 
-bool IsConnected(MultiInBlock* b) {
-    return b->InboundSiblingBranches().Length() > 0;
-}
-
 /// Impl is the private-implementation of FromProgram().
 class Impl {
   public:
@@ -176,17 +172,17 @@ class Impl {
         diagnostics_.add_error(tint::diag::System::IR, err, s);
     }
 
-    bool NeedBranch() { return current_block_ && !current_block_->HasBranchTarget(); }
+    bool NeedTerminator() { return current_block_ && !current_block_->HasTerminator(); }
 
-    void SetBranch(Branch* br) {
+    void SetTerminator(Terminator* terminator) {
         TINT_ASSERT(IR, current_block_);
-        TINT_ASSERT(IR, !current_block_->HasBranchTarget());
+        TINT_ASSERT(IR, !current_block_->HasTerminator());
 
-        current_block_->Append(br);
+        current_block_->Append(terminator);
         current_block_ = nullptr;
     }
 
-    Branch* FindEnclosingControl(ControlFlags flags) {
+    Instruction* FindEnclosingControl(ControlFlags flags) {
         for (auto it = control_stack_.rbegin(); it != control_stack_.rend(); ++it) {
             if ((*it)->Is<Loop>()) {
                 return *it;
@@ -215,7 +211,7 @@ class Impl {
                     // Folded away and doesn't appear in the IR.
                 },
                 [&](const ast::Variable* var) {
-                    // Setup the current flow node to be the root block for the module. The builder
+                    // Setup the current block to be the root block for the module. The builder
                     // will handle creating it if it doesn't exist already.
                     TINT_SCOPED_ASSIGNMENT(current_block_, builder_.RootBlock());
                     EmitVariable(var);
@@ -421,13 +417,12 @@ class Impl {
         }
         ir_func->SetParams(params);
 
-        current_block_ = ir_func->StartTarget();
+        TINT_SCOPED_ASSIGNMENT(current_block_, ir_func->Block());
         EmitBlock(ast_func->body);
 
-        // If the branch target has already been set then a `return` was called. Only set in
-        // the case where `return` wasn't called.
-        if (NeedBranch()) {
-            SetBranch(builder_.Return(current_function_));
+        // Add a terminator if one was not already created.
+        if (NeedTerminator()) {
+            SetTerminator(builder_.Return(current_function_));
         }
 
         TINT_ASSERT(IR, control_stack_.IsEmpty());
@@ -439,10 +434,9 @@ class Impl {
         for (auto* s : stmts) {
             EmitStatement(s);
 
-            // If the current flow block has a branch target then the rest of the statements in
-            // this block are dead code. Skip them.
-            if (!NeedBranch()) {
-                break;
+            if (auto* sem = program_->Sem().Get(s);
+                sem && !sem->Behaviors().Contains(sem::Behavior::kNext)) {
+                break;  // Unreachable statement.
             }
         }
     }
@@ -508,7 +502,7 @@ class Impl {
         auto* lhs_value = builder_.Load(lhs.Get());
         current_block_->Append(lhs_value);
 
-        auto* ty = lhs_value->Type();
+        auto* ty = lhs_value->Result()->Type();
 
         auto* rhs =
             ty->is_signed_integer_scalar() ? builder_.Constant(1_i) : builder_.Constant(1_u);
@@ -540,7 +534,7 @@ class Impl {
         auto* lhs_value = builder_.Load(lhs.Get());
         current_block_->Append(lhs_value);
 
-        auto* ty = lhs_value->Type();
+        auto* ty = lhs_value->Result()->Type();
 
         Binary* inst = nullptr;
         switch (stmt->op) {
@@ -598,9 +592,9 @@ class Impl {
         scopes_.Push();
         TINT_DEFER(scopes_.Pop());
 
-        // Note, this doesn't need to emit a Block as the current block flow node should be
-        // sufficient as the blocks all get flattened. Each flow control node will inject the
-        // basic blocks it requires.
+        // Note, this doesn't need to emit a Block as the current block should be sufficient as the
+        // blocks all get flattened. Each flow control node will inject the basic blocks it
+        // requires.
         EmitStatements(block->statements);
     }
 
@@ -616,31 +610,25 @@ class Impl {
         {
             ControlStackScope scope(this, if_inst);
 
-            current_block_ = if_inst->True();
-            EmitBlock(stmt->body);
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->True());
+                EmitBlock(stmt->body);
 
-            // If the true branch did not execute control flow, then go to the Merge().target
-            if (NeedBranch()) {
-                SetBranch(builder_.ExitIf(if_inst));
+                // If the true block did not terminate, then emit an exit_if
+                if (NeedTerminator()) {
+                    SetTerminator(builder_.ExitIf(if_inst));
+                }
             }
 
-            current_block_ = if_inst->False();
             if (stmt->else_statement) {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->False());
                 EmitStatement(stmt->else_statement);
-            }
 
-            // If the false branch did not execute control flow, then go to the Merge().target
-            if (NeedBranch()) {
-                SetBranch(builder_.ExitIf(if_inst));
+                // If the false block did not terminate, then emit an exit_if
+                if (NeedTerminator()) {
+                    SetTerminator(builder_.ExitIf(if_inst));
+                }
             }
-        }
-        current_block_ = nullptr;
-
-        // If both branches went somewhere, then they both returned, continued or broke. So,
-        // there is no need for the if merge-block and there is nothing to branch to the merge
-        // block anyway.
-        if (IsConnected(if_inst->Merge())) {
-            current_block_ = if_inst->Merge();
         }
     }
 
@@ -648,43 +636,33 @@ class Impl {
         auto* loop_inst = builder_.Loop();
         current_block_->Append(loop_inst);
 
-        {
-            ControlStackScope scope(this, loop_inst);
-            current_block_ = loop_inst->Body();
+        ControlStackScope scope(this, loop_inst);
 
-            // The loop doesn't use EmitBlock because it needs the scope stack to not get popped
-            // until after the continuing block.
-            scopes_.Push();
-            TINT_DEFER(scopes_.Pop());
+        // The loop doesn't use EmitBlock because it needs the scope stack to not get popped until
+        // after the continuing block.
+        scopes_.Push();
+        TINT_DEFER(scopes_.Pop());
+
+        {
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Body());
+
             EmitStatements(stmt->body->statements);
 
             // The current block didn't `break`, `return` or `continue`, go to the continuing block.
-            if (NeedBranch()) {
-                SetBranch(builder_.Continue(loop_inst));
-            }
-
-            if (IsConnected(loop_inst->Continuing())) {
-                // Note, even if there is no continuing block, we may have branched into the
-                // continue so we have to set the current block and then emit the branch if needed
-                // below otherwise empty continuing blocks will fail to branch back to the start
-                // block.
-                current_block_ = loop_inst->Continuing();
-                if (stmt->continuing) {
-                    EmitBlock(stmt->continuing);
-                }
-                // Branch back to the start node if the continue target didn't branch out already
-                if (NeedBranch()) {
-                    SetBranch(builder_.NextIteration(loop_inst));
-                }
+            if (NeedTerminator()) {
+                SetTerminator(builder_.Continue(loop_inst));
             }
         }
 
-        // The loop merge can get disconnected if the loop returns directly, or the continuing
-        // target branches, eventually, to the merge, but nothing branched to the
-        // Continuing() block.
-        current_block_ = loop_inst->Merge();
-        if (!IsConnected(loop_inst->Merge())) {
-            current_block_ = nullptr;
+        {
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Continuing());
+            if (stmt->continuing) {
+                EmitBlock(stmt->continuing);
+            }
+            // Branch back to the start block if the continue target didn't terminate already
+            if (NeedTerminator()) {
+                SetTerminator(builder_.NextIteration(loop_inst));
+            }
         }
     }
 
@@ -692,14 +670,16 @@ class Impl {
         auto* loop_inst = builder_.Loop();
         current_block_->Append(loop_inst);
 
+        ControlStackScope scope(this, loop_inst);
+
         // Continue is always empty, just go back to the start
-        current_block_ = loop_inst->Continuing();
-        SetBranch(builder_.NextIteration(loop_inst));
+        {
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Continuing());
+            SetTerminator(builder_.NextIteration(loop_inst));
+        }
 
         {
-            ControlStackScope scope(this, loop_inst);
-
-            current_block_ = loop_inst->Body();
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Body());
 
             // Emit the while condition into the Start().target of the loop
             auto reg = EmitExpression(stmt->condition);
@@ -711,22 +691,23 @@ class Impl {
             auto* if_inst = builder_.If(reg.Get());
             current_block_->Append(if_inst);
 
-            current_block_ = if_inst->True();
-            SetBranch(builder_.ExitIf(if_inst));
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->True());
+                SetTerminator(builder_.ExitIf(if_inst));
+            }
 
-            current_block_ = if_inst->False();
-            SetBranch(builder_.ExitLoop(loop_inst));
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->False());
+                SetTerminator(builder_.ExitLoop(loop_inst));
+            }
 
-            current_block_ = if_inst->Merge();
-            EmitBlock(stmt->body);
+            EmitStatements(stmt->body->statements);
 
-            if (NeedBranch()) {
-                SetBranch(builder_.Continue(loop_inst));
+            // The current block didn't `break`, `return` or `continue`, go to the continuing block.
+            if (NeedTerminator()) {
+                SetTerminator(builder_.Continue(loop_inst));
             }
         }
-        // The while loop always has a path to the Merge().target as the break statement comes
-        // before anything inside the loop.
-        current_block_ = loop_inst->Merge();
     }
 
     void EmitForLoop(const ast::ForLoopStatement* stmt) {
@@ -737,52 +718,53 @@ class Impl {
         scopes_.Push();
         TINT_DEFER(scopes_.Pop());
 
-        {
-            ControlStackScope scope(this, loop_inst);
+        ControlStackScope scope(this, loop_inst);
 
-            if (stmt->initializer) {
-                // Emit the for initializer before branching to the body
-                current_block_ = loop_inst->Initializer();
-                EmitStatement(stmt->initializer);
-                SetBranch(builder_.NextIteration(loop_inst));
-            }
+        if (stmt->initializer) {
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Initializer());
 
-            current_block_ = loop_inst->Body();
-            if (stmt->condition) {
-                // Emit the condition into the target target of the loop
-                auto reg = EmitExpression(stmt->condition);
-                if (!reg) {
-                    return;
-                }
+            // Emit the for initializer before branching to the loop body
+            EmitStatement(stmt->initializer);
 
-                // Create an `if (cond) {} else {break;}` control flow
-                auto* if_inst = builder_.If(reg.Get());
-                current_block_->Append(if_inst);
-
-                current_block_ = if_inst->True();
-                SetBranch(builder_.ExitIf(if_inst));
-
-                current_block_ = if_inst->False();
-                SetBranch(builder_.ExitLoop(loop_inst));
-
-                current_block_ = if_inst->Merge();
-            }
-
-            EmitBlock(stmt->body);
-            if (NeedBranch()) {
-                SetBranch(builder_.Continue(loop_inst));
-            }
-
-            if (stmt->continuing) {
-                current_block_ = loop_inst->Continuing();
-                EmitStatement(stmt->continuing);
-                SetBranch(builder_.NextIteration(loop_inst));
+            if (NeedTerminator()) {
+                SetTerminator(builder_.NextIteration(loop_inst));
             }
         }
 
-        // The while loop always has a path to the Merge().target as the break statement comes
-        // before anything inside the loop.
-        current_block_ = loop_inst->Merge();
+        TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Body());
+
+        if (stmt->condition) {
+            // Emit the condition into the target target of the loop body
+            auto reg = EmitExpression(stmt->condition);
+            if (!reg) {
+                return;
+            }
+
+            // Create an `if (cond) {} else {break;}` control flow
+            auto* if_inst = builder_.If(reg.Get());
+            current_block_->Append(if_inst);
+
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->True());
+                SetTerminator(builder_.ExitIf(if_inst));
+            }
+
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->False());
+                SetTerminator(builder_.ExitLoop(loop_inst));
+            }
+        }
+
+        EmitBlock(stmt->body);
+        if (NeedTerminator()) {
+            SetTerminator(builder_.Continue(loop_inst));
+        }
+
+        if (stmt->continuing) {
+            TINT_SCOPED_ASSIGNMENT(current_block_, loop_inst->Continuing());
+            EmitStatement(stmt->continuing);
+            SetTerminator(builder_.NextIteration(loop_inst));
+        }
     }
 
     void EmitSwitch(const ast::SwitchStatement* stmt) {
@@ -794,32 +776,25 @@ class Impl {
         auto* switch_inst = builder_.Switch(reg.Get());
         current_block_->Append(switch_inst);
 
-        {
-            ControlStackScope scope(this, switch_inst);
+        ControlStackScope scope(this, switch_inst);
 
-            const auto* sem = program_->Sem().Get(stmt);
-            for (const auto* c : sem->Cases()) {
-                utils::Vector<Switch::CaseSelector, 4> selectors;
-                for (const auto* selector : c->Selectors()) {
-                    if (selector->IsDefault()) {
-                        selectors.Push({nullptr});
-                    } else {
-                        selectors.Push({builder_.Constant(selector->Value()->Clone(clone_ctx_))});
-                    }
-                }
-
-                current_block_ = builder_.Case(switch_inst, selectors);
-                EmitBlock(c->Body()->Declaration());
-
-                if (NeedBranch()) {
-                    SetBranch(builder_.ExitSwitch(switch_inst));
+        const auto* sem = program_->Sem().Get(stmt);
+        for (const auto* c : sem->Cases()) {
+            utils::Vector<Switch::CaseSelector, 4> selectors;
+            for (const auto* selector : c->Selectors()) {
+                if (selector->IsDefault()) {
+                    selectors.Push({nullptr});
+                } else {
+                    selectors.Push({builder_.Constant(selector->Value()->Clone(clone_ctx_))});
                 }
             }
-        }
-        current_block_ = nullptr;
 
-        if (IsConnected(switch_inst->Merge())) {
-            current_block_ = switch_inst->Merge();
+            TINT_SCOPED_ASSIGNMENT(current_block_, builder_.Case(switch_inst, selectors));
+            EmitBlock(c->Body()->Declaration());
+
+            if (NeedTerminator()) {
+                SetTerminator(builder_.ExitSwitch(switch_inst));
+            }
         }
     }
 
@@ -833,9 +808,9 @@ class Impl {
             ret_value = ret.Get();
         }
         if (ret_value) {
-            SetBranch(builder_.Return(current_function_, ret_value));
+            SetTerminator(builder_.Return(current_function_, ret_value));
         } else {
-            SetBranch(builder_.Return(current_function_));
+            SetTerminator(builder_.Return(current_function_));
         }
     }
 
@@ -844,9 +819,9 @@ class Impl {
         TINT_ASSERT(IR, current_control);
 
         if (auto* c = current_control->As<Loop>()) {
-            SetBranch(builder_.ExitLoop(c));
+            SetTerminator(builder_.ExitLoop(c));
         } else if (auto* s = current_control->As<Switch>()) {
-            SetBranch(builder_.ExitSwitch(s));
+            SetTerminator(builder_.ExitSwitch(s));
         } else {
             TINT_UNREACHABLE(IR, diagnostics_);
         }
@@ -857,7 +832,7 @@ class Impl {
         TINT_ASSERT(IR, current_control);
 
         if (auto* c = current_control->As<Loop>()) {
-            SetBranch(builder_.Continue(c));
+            SetTerminator(builder_.Continue(c));
         } else {
             TINT_UNREACHABLE(IR, diagnostics_);
         }
@@ -880,12 +855,12 @@ class Impl {
         if (!cond) {
             return;
         }
-        SetBranch(builder_.BreakIf(cond.Get(), current_control->As<ir::Loop>()));
+        SetTerminator(builder_.BreakIf(cond.Get(), current_control->As<ir::Loop>()));
     }
 
     struct AccessorInfo {
         Value* object = nullptr;
-        Instruction* result = nullptr;
+        Value* result = nullptr;
         const type::Type* result_type = nullptr;
         utils::Vector<Value*, 1> indices;
     };
@@ -944,7 +919,7 @@ class Impl {
         return info.result;
     }
 
-    Instruction* GenerateAccess(const AccessorInfo& info) {
+    Value* GenerateAccess(const AccessorInfo& info) {
         // The access result type should match the source result type. If the source is a pointer,
         // we generate a pointer.
         const type::Type* ty = nullptr;
@@ -957,7 +932,7 @@ class Impl {
 
         auto* a = builder_.Access(ty, info.object, info.indices);
         current_block_->Append(a);
-        return a;
+        return a->Result();
     }
 
     bool GenerateIndexAccessor(const ast::IndexAccessorExpression* expr, AccessorInfo& info) {
@@ -1005,14 +980,15 @@ class Impl {
                     if (auto* ptr = info.object->Type()->As<type::Pointer>()) {
                         auto* load = builder_.Load(info.object);
                         info.result_type = ptr->StoreType();
-                        info.object = load;
+                        info.object = load->Result();
                         current_block_->Append(load);
                     }
                 }
 
-                info.result = builder_.Swizzle(swizzle->Type()->Clone(clone_ctx_.type_ctx),
-                                               info.object, std::move(indices));
-                current_block_->Append(info.result);
+                auto* val = builder_.Swizzle(swizzle->Type()->Clone(clone_ctx_.type_ctx),
+                                             info.object, std::move(indices));
+                current_block_->Append(val);
+                info.result = val->Result();
 
                 info.object = info.result;
                 info.result_type = result_type;
@@ -1065,7 +1041,7 @@ class Impl {
         if (result && sem->Is<sem::Load>()) {
             auto* load = builder_.Load(result.Get());
             current_block_->Append(load);
-            return load;
+            return load->Result();
         }
         return result;
     }
@@ -1097,7 +1073,7 @@ class Impl {
                 }
 
                 // Store the declaration so we can get the instruction to store too
-                scopes_.Set(v->name->symbol, val);
+                scopes_.Set(v->name->symbol, val->Result());
 
                 // Record the original name of the var
                 builder_.ir.SetName(val, v->name->symbol.Name());
@@ -1162,10 +1138,10 @@ class Impl {
         }
 
         current_block_->Append(inst);
-        return inst;
+        return inst->Result();
     }
 
-    // A short-circut needs special treatment. The short-circuit is decomposed into the relevant
+    // A short-circuit needs special treatment. The short-circuit is decomposed into the relevant
     // if statements and declarations.
     utils::Result<Value*> EmitShortCircuit(const ast::BinaryExpression* expr) {
         switch (expr->op) {
@@ -1174,7 +1150,7 @@ class Impl {
                 break;
             default:
                 TINT_ICE(IR, diagnostics_)
-                    << "invalid operation type for short-circut decomposition";
+                    << "invalid operation type for short-circuit decomposition";
                 return utils::Failure;
         }
 
@@ -1187,44 +1163,50 @@ class Impl {
         auto* if_inst = builder_.If(lhs.Get());
         current_block_->Append(if_inst);
 
-        auto* result = builder_.BlockParam(builder_.ir.Types().bool_());
-        if_inst->Merge()->SetParams({result});
+        auto* result = builder_.InstructionResult(builder_.ir.Types().bool_());
+        if_inst->SetResults(result);
 
-        utils::Result<Value*> rhs;
-        {
-            ControlStackScope scope(this, if_inst);
+        ControlStackScope scope(this, if_inst);
 
-            utils::Vector<Value*, 1> alt_args;
-            alt_args.Push(lhs.Get());
-
-            // If this is an `&&` then we only evaluate the RHS expression in the true block.
-            // If this is an `||` then we only evaluate the RHS expression in the false block.
-            if (expr->op == ast::BinaryOp::kLogicalAnd) {
-                // If the lhs is false, then that is the result we want to pass to the merge
-                // block as our argument
-                current_block_ = if_inst->False();
-                SetBranch(builder_.ExitIf(if_inst, std::move(alt_args)));
-
-                current_block_ = if_inst->True();
-            } else {
-                // If the lhs is true, then that is the result we want to pass to the merge
-                // block as our argument
-                current_block_ = if_inst->True();
-                SetBranch(builder_.ExitIf(if_inst, std::move(alt_args)));
-
-                current_block_ = if_inst->False();
+        if (expr->op == ast::BinaryOp::kLogicalAnd) {
+            //   res = lhs && rhs;
+            //
+            // transform into:
+            //
+            //   if (lhs) {
+            //     res = rhs;
+            //   } else {
+            //     res = false;
+            //   }
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->True());
+                auto rhs = EmitExpression(expr->rhs);
+                SetTerminator(builder_.ExitIf(if_inst, rhs.Get()));
             }
-
-            rhs = EmitExpression(expr->rhs);
-            if (!rhs) {
-                return utils::Failure;
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->False());
+                SetTerminator(builder_.ExitIf(if_inst, builder_.Constant(false)));
             }
-            utils::Vector<Value*, 1> args;
-            args.Push(rhs.Get());
-
-            SetBranch(builder_.ExitIf(if_inst, std::move(args)));
+        } else {
+            //   res = lhs || rhs;
+            //
+            // transform into:
+            //
+            //   if (lhs) {
+            //     res = true;
+            //   } else {
+            //     res = rhs;
+            //   }
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->True());
+                SetTerminator(builder_.ExitIf(if_inst, builder_.Constant(true)));
+            }
+            {
+                TINT_SCOPED_ASSIGNMENT(current_block_, if_inst->False());
+                auto rhs = EmitExpression(expr->rhs);
+                SetTerminator(builder_.ExitIf(if_inst, rhs.Get()));
+            }
         }
-        current_block_ = if_inst->Merge();
 
         return result;
     }
@@ -1307,7 +1289,7 @@ class Impl {
         }
 
         current_block_->Append(inst);
-        return inst;
+        return inst->Result();
     }
 
     utils::Result<Value*> EmitBitcast(const ast::BitcastExpression* expr) {
@@ -1321,7 +1303,7 @@ class Impl {
         auto* inst = builder_.Bitcast(ty, val.Get());
 
         current_block_->Append(inst);
-        return inst;
+        return inst->Result();
     }
 
     void EmitCall(const ast::CallStatement* stmt) { (void)EmitCall(stmt->expr); }
@@ -1384,7 +1366,7 @@ class Impl {
             return utils::Failure;
         }
         current_block_->Append(inst);
-        return inst;
+        return inst->Result();
     }
 
     utils::Result<Value*> EmitLiteral(const ast::LiteralExpression* lit) {

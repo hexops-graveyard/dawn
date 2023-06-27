@@ -15,18 +15,27 @@
 #ifndef SRC_TINT_IR_OPERAND_INSTRUCTION_H_
 #define SRC_TINT_IR_OPERAND_INSTRUCTION_H_
 
+#include <utility>
+
 #include "src/tint/ir/instruction.h"
+#include "src/tint/ir/instruction_result.h"
 
 namespace tint::ir {
 
 /// An instruction in the IR that expects one or more operands.
-/// @tparam N the default number of operands
-/// @tparam R the default number of result values
+/// @tparam N the number of operands before spilling to the heap
+/// @tparam R the number of result values before spilling to the heap
 template <unsigned N, unsigned R>
 class OperandInstruction : public utils::Castable<OperandInstruction<N, R>, Instruction> {
   public:
     /// Destructor
     ~OperandInstruction() override = default;
+
+    /// @copydoc tint::ir::Value::Destroy
+    void Destroy() override {
+        ClearOperands();
+        Instruction::Destroy();
+    }
 
     /// Set an operand at a given index.
     /// @param index the operand index
@@ -40,15 +49,52 @@ class OperandInstruction : public utils::Castable<OperandInstruction<N, R>, Inst
         if (value) {
             value->AddUsage({this, index});
         }
-        return;
     }
 
+    /// Sets the operands to @p operands
+    /// @param operands the new operands for the instruction
+    void SetOperands(utils::VectorRef<ir::Value*> operands) {
+        ClearOperands();
+        operands_ = std::move(operands);
+        for (size_t i = 0; i < operands_.Length(); i++) {
+            if (operands_[i]) {
+                operands_[i]->AddUsage({this, static_cast<uint32_t>(i)});
+            }
+        }
+    }
+
+    /// Removes all operands from the instruction
+    void ClearOperands() {
+        for (uint32_t i = 0; i < operands_.Length(); i++) {
+            if (!operands_[i]) {
+                continue;
+            }
+            operands_[i]->RemoveUsage({this, i});
+        }
+        operands_.Clear();
+    }
+
+    /// @returns the operands of the instruction
+    utils::VectorRef<ir::Value*> Operands() override { return operands_; }
+
     /// @returns true if the instruction has result values
-    bool HasResults() { return !results_.IsEmpty(); }
+    bool HasResults() override { return !results_.IsEmpty(); }
     /// @returns true if the instruction has multiple values
-    bool HasMultiResults() { return results_.Length() > 1; }
+    bool HasMultiResults() override { return results_.Length() > 1; }
+
+    /// @returns the first result. Returns `nullptr` if there are no results, or if ther are
+    /// multi-results
+    InstructionResult* Result() override {
+        if (!HasResults() || HasMultiResults()) {
+            return nullptr;
+        }
+        return results_[0];
+    }
+
+    using Instruction::Result;
+
     /// @returns the result values for this instruction
-    utils::VectorRef<Value*> Results() { return results_; }
+    utils::VectorRef<InstructionResult*> Results() override { return results_; }
 
   protected:
     /// Append a new operand to the operand list for this instruction.
@@ -63,8 +109,8 @@ class OperandInstruction : public utils::Castable<OperandInstruction<N, R>, Inst
         operands_.Push(value);
     }
 
-    /// Append a list of non-null operands to the operand list for this instruction.
-    /// @param start_idx the index from whic the values should start
+    /// Append a list of operands to the operand list for this instruction.
+    /// @param start_idx the index from which the values should start
     /// @param values the operand values to append
     void AddOperands(size_t start_idx, utils::VectorRef<ir::Value*> values) {
         size_t idx = start_idx;
@@ -76,7 +122,7 @@ class OperandInstruction : public utils::Castable<OperandInstruction<N, R>, Inst
 
     /// Appends a result value to the instruction
     /// @param value the value to append
-    void AddResult(Value* value) {
+    void AddResult(InstructionResult* value) {
         if (value) {
             value->SetSource(this);
         }
@@ -86,7 +132,7 @@ class OperandInstruction : public utils::Castable<OperandInstruction<N, R>, Inst
     /// The operands to this instruction.
     utils::Vector<ir::Value*, N> operands_;
     /// The results of this instruction.
-    utils::Vector<ir::Value*, R> results_;
+    utils::Vector<ir::InstructionResult*, R> results_;
 };
 
 }  // namespace tint::ir

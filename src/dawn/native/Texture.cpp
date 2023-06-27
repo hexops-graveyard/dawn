@@ -21,7 +21,7 @@
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
 #include "dawn/native/Adapter.h"
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 #include "dawn/native/Device.h"
 #include "dawn/native/EnumMaskIterator.h"
 #include "dawn/native/ObjectType_autogen.h"
@@ -617,6 +617,11 @@ TextureBase::TextureBase(DeviceBase* device,
     }
     if (mFormat.HasStencil() &&
         device->IsToggleEnabled(Toggle::UseBlitForStencilTextureToBufferCopy)) {
+        if (mInternalUsage & wgpu::TextureUsage::CopySrc) {
+            AddInternalUsage(wgpu::TextureUsage::TextureBinding);
+        }
+    }
+    if (mFormat.IsSnorm() && device->IsToggleEnabled(Toggle::UseBlitForSnormTextureToBufferCopy)) {
         if (mInternalUsage & wgpu::TextureUsage::CopySrc) {
             AddInternalUsage(wgpu::TextureUsage::TextureBinding);
         }

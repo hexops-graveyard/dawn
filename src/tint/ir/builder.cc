@@ -48,14 +48,13 @@ Function* Builder::Function(std::string_view name,
                             Function::PipelineStage stage,
                             std::optional<std::array<uint32_t, 3>> wg_size) {
     auto* ir_func = ir.values.Create<ir::Function>(return_type, stage, wg_size);
-    ir_func->SetStartTarget(Block());
+    ir_func->SetBlock(Block());
     ir.SetName(ir_func, name);
     return ir_func;
 }
 
 ir::Loop* Builder::Loop() {
-    return Append(
-        ir.values.Create<ir::Loop>(Block(), MultiInBlock(), MultiInBlock(), MultiInBlock()));
+    return Append(ir.instructions.Create<ir::Loop>(Block(), MultiInBlock(), MultiInBlock()));
 }
 
 Block* Builder::Case(ir::Switch* s, utils::VectorRef<Switch::CaseSelector> selectors) {
@@ -70,11 +69,11 @@ Block* Builder::Case(ir::Switch* s, std::initializer_list<Switch::CaseSelector> 
 }
 
 ir::Discard* Builder::Discard() {
-    return Append(ir.values.Create<ir::Discard>(ir.Types().void_()));
+    return Append(ir.instructions.Create<ir::Discard>());
 }
 
 ir::Var* Builder::Var(const type::Pointer* type) {
-    return Append(ir.values.Create<ir::Var>(type));
+    return Append(ir.instructions.Create<ir::Var>(InstructionResult(type)));
 }
 
 ir::BlockParam* Builder::BlockParam(const type::Type* type) {
@@ -85,16 +84,8 @@ ir::FunctionParam* Builder::FunctionParam(const type::Type* type) {
     return ir.values.Create<ir::FunctionParam>(type);
 }
 
-ir::Swizzle* Builder::Swizzle(const type::Type* type,
-                              ir::Value* object,
-                              utils::VectorRef<uint32_t> indices) {
-    return Append(ir.values.Create<ir::Swizzle>(type, object, std::move(indices)));
-}
-
-ir::Swizzle* Builder::Swizzle(const type::Type* type,
-                              ir::Value* object,
-                              std::initializer_list<uint32_t> indices) {
-    return Append(ir.values.Create<ir::Swizzle>(type, object, utils::Vector<uint32_t, 4>(indices)));
+ir::Unreachable* Builder::Unreachable() {
+    return Append(ir.instructions.Create<ir::Unreachable>());
 }
 
 }  // namespace tint::ir

@@ -64,25 +64,11 @@ void DawnNativeTest::SetUp() {
     instance = std::make_unique<dawn::native::Instance>(
         reinterpret_cast<const WGPUInstanceDescriptor*>(&instanceDesc));
     instance->EnableAdapterBlocklist(false);
-    instance->DiscoverDefaultPhysicalDevices();
 
-    std::vector<dawn::native::Adapter> adapters = instance->GetAdapters();
+    wgpu::RequestAdapterOptions options = {};
+    options.backendType = wgpu::BackendType::Null;
 
-    // DawnNative unittests run against the null backend, find the corresponding adapter
-    bool foundNullAdapter = false;
-    for (auto& currentAdapter : adapters) {
-        wgpu::AdapterProperties adapterProperties;
-        currentAdapter.GetProperties(&adapterProperties);
-
-        if (adapterProperties.backendType == wgpu::BackendType::Null) {
-            adapter = currentAdapter;
-            foundNullAdapter = true;
-            break;
-        }
-    }
-
-    ASSERT(foundNullAdapter);
-
+    adapter = instance->EnumerateAdapters(&options)[0];
     device = wgpu::Device::Acquire(CreateTestDevice());
     device.SetUncapturedErrorCallback(DawnNativeTest::OnDeviceError, nullptr);
 }

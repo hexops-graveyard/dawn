@@ -17,18 +17,14 @@
 #include <algorithm>
 #include <limits>
 
+#include "src/tint/debug.h"
 #include "src/tint/utils/map.h"
 
 namespace tint::writer {
 
-TextGenerator::TextGenerator(const Program* program)
-    : program_(program), builder_(ProgramBuilder::Wrap(program)) {}
+TextGenerator::TextGenerator() = default;
 
 TextGenerator::~TextGenerator() = default;
-
-std::string TextGenerator::UniqueIdentifier(const std::string& prefix) {
-    return builder_.Symbols().New(prefix).Name();
-}
 
 std::string TextGenerator::StructName(const type::Struct* s) {
     auto name = s->Name().Name();
@@ -64,7 +60,7 @@ void TextGenerator::TextBuffer::DecrementIndent() {
 }
 
 void TextGenerator::TextBuffer::Append(const std::string& line) {
-    lines.emplace_back(Line{current_indent, line});
+    lines.emplace_back(LineInfo{current_indent, line});
 }
 
 void TextGenerator::TextBuffer::Insert(const std::string& line, size_t before, uint32_t indent) {
@@ -76,13 +72,13 @@ void TextGenerator::TextBuffer::Insert(const std::string& line, size_t before, u
         return;
     }
     using DT = decltype(lines)::difference_type;
-    lines.insert(lines.begin() + static_cast<DT>(before), Line{indent, line});
+    lines.insert(lines.begin() + static_cast<DT>(before), LineInfo{indent, line});
 }
 
 void TextGenerator::TextBuffer::Append(const TextBuffer& tb) {
     for (auto& line : tb.lines) {
         // TODO(bclayton): inefficient, consider optimizing
-        lines.emplace_back(Line{current_indent + line.indent, line.content});
+        lines.emplace_back(LineInfo{current_indent + line.indent, line.content});
     }
 }
 
@@ -99,7 +95,7 @@ void TextGenerator::TextBuffer::Insert(const TextBuffer& tb, size_t before, uint
         // TODO(bclayton): inefficient, consider optimizing
         using DT = decltype(lines)::difference_type;
         lines.insert(lines.begin() + static_cast<DT>(before + idx),
-                     Line{indent + line.indent, line.content});
+                     LineInfo{indent + line.indent, line.content});
         idx++;
     }
 }

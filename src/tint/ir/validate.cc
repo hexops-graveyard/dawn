@@ -41,6 +41,7 @@
 #include "src/tint/ir/switch.h"
 #include "src/tint/ir/swizzle.h"
 #include "src/tint/ir/unary.h"
+#include "src/tint/ir/unreachable.h"
 #include "src/tint/ir/user_call.h"
 #include "src/tint/ir/var.h"
 #include "src/tint/switch.h"
@@ -157,21 +158,22 @@ class Validator {
                          std::string("root block: invalid instruction: ") + inst->TypeInfo().name);
                 continue;
             }
+            CheckVar(var);
         }
     }
 
-    void CheckFunction(Function* func) { CheckBlock(func->StartTarget()); }
+    void CheckFunction(Function* func) { CheckBlock(func->Block()); }
 
     void CheckBlock(Block* blk) {
         TINT_SCOPED_ASSIGNMENT(current_block_, blk);
 
-        if (!blk->HasBranchTarget()) {
-            AddError(blk, "block: does not end in a branch");
+        if (!blk->HasTerminator()) {
+            AddError(blk, "block: does not end in a terminator instruction");
         }
 
         for (auto* inst : *blk) {
-            if (inst->Is<ir::Branch>() && inst != blk->Branch()) {
-                AddError(inst, "block: branch which isn't the final instruction");
+            if (inst->Is<ir::Terminator>() && inst != blk->Terminator()) {
+                AddError(inst, "block: terminator which isn't the final instruction");
                 continue;
             }
 
@@ -180,17 +182,49 @@ class Validator {
     }
 
     void CheckInstruction(Instruction* inst) {
+        if (!inst->Alive()) {
+            AddError(inst, "destroyed instruction found in instruction list");
+        }
+        if (inst->Result()) {
+            if (inst->Result()->Source() == nullptr) {
+                AddError(inst, "instruction result source is undefined");
+            } else if (inst->Result()->Source() != inst) {
+                AddError(inst, "instruction result source has wrong instruction");
+            }
+        }
+
+        auto ops = inst->Operands();
+        for (size_t i = 0; i < ops.Length(); ++i) {
+            auto* op = ops[i];
+            if (!op) {
+                continue;
+            }
+
+            // Note, a `nullptr` is a valid operand in some cases, like `var` so we can't just check
+            // for `nullptr` here.
+            if (!op->Alive()) {
+                AddError(inst, "instruction has undefined operand");
+            }
+
+            if (!op->Usages().Contains({inst, i})) {
+                AddError(inst, i, "instruction operand missing usage");
+            }
+        }
+
         tint::Switch(
-            inst,                                //
-            [&](Access* a) { CheckAccess(a); },  //
-            [&](Binary*) {},                     //
-            [&](Branch* b) { CheckBranch(b); },  //
-            [&](Call* c) { CheckCall(c); },      //
-            [&](Load*) {},                       //
-            [&](Store*) {},                      //
-            [&](Swizzle*) {},                    //
-            [&](Unary*) {},                      //
-            [&](Var*) {},                        //
+            inst,                                        //
+            [&](Access* a) { CheckAccess(a); },          //
+            [&](Binary* b) { CheckBinary(b); },          //
+            [&](Call* c) { CheckCall(c); },              //
+            [&](If* if_) { CheckIf(if_); },              //
+            [&](Load*) {},                               //
+            [&](Loop*) {},                               //
+            [&](Store*) {},                              //
+            [&](Switch*) {},                             //
+            [&](Swizzle*) {},                            //
+            [&](Terminator* b) { CheckTerminator(b); },  //
+            [&](Unary*) {},                              //
+            [&](Var* var) { CheckVar(var); },            //
             [&](Default) {
                 AddError(std::string("missing validation of: ") + inst->TypeInfo().name);
             });
@@ -267,8 +301,8 @@ class Validator {
             }
         }
 
-        auto* want_ty = a->Type()->UnwrapPtr();
-        bool want_ptr = a->Type()->Is<type::Pointer>();
+        auto* want_ty = a->Result()->Type()->UnwrapPtr();
+        bool want_ptr = a->Result()->Type()->Is<type::Pointer>();
         if (TINT_UNLIKELY(ty != want_ty || is_ptr != want_ptr)) {
             std::string want =
                 want_ptr ? "ptr<" + want_ty->FriendlyName() + ">" : want_ty->FriendlyName();
@@ -278,34 +312,56 @@ class Validator {
         }
     }
 
-    void CheckBranch(ir::Branch* b) {
+    void CheckBinary(ir::Binary* b) {
+        if (b->LHS() == nullptr) {
+            AddError(b, "binary: left operand is undefined");
+        }
+        if (b->RHS() == nullptr) {
+            AddError(b, "binary: right operand is undefined");
+        }
+        if (b->Result() == nullptr) {
+            AddError(b, "binary: result is undefined");
+        }
+    }
+
+    void CheckTerminator(ir::Terminator* b) {
         tint::Switch(
-            b,                               //
-            [&](BreakIf*) {},                //
-            [&](Continue*) {},               //
-            [&](ExitIf*) {},                 //
-            [&](ExitLoop*) {},               //
-            [&](ExitSwitch*) {},             //
-            [&](If* if_) { CheckIf(if_); },  //
-            [&](Loop*) {},                   //
-            [&](NextIteration*) {},          //
-            [&](Return* ret) {
+            b,                           //
+            [&](ir::BreakIf*) {},        //
+            [&](ir::Continue*) {},       //
+            [&](ir::ExitIf*) {},         //
+            [&](ir::ExitLoop*) {},       //
+            [&](ir::ExitSwitch*) {},     //
+            [&](ir::NextIteration*) {},  //
+            [&](ir::Return* ret) {
                 if (ret->Func() == nullptr) {
                     AddError("return: null function");
                 }
-            },                //
-            [&](Switch*) {},  //
+            },
+            [&](ir::Unreachable*) {},  //
             [&](Default) {
-                AddError(std::string("missing validation of branch: ") + b->TypeInfo().name);
+                AddError(std::string("missing validation of terminator: ") + b->TypeInfo().name);
             });
     }
 
     void CheckIf(If* if_) {
         if (!if_->Condition()) {
-            AddError(if_, "if: condition is nullptr");
+            AddError(if_, "if: condition is undefined");
         }
         if (if_->Condition() && !if_->Condition()->Type()->Is<type::Bool>()) {
             AddError(if_, If::kConditionOperandOffset, "if: condition must be a `bool` type");
+        }
+    }
+
+    void CheckVar(Var* var) {
+        if (var->Result() == nullptr) {
+            AddError(var, "var: result is undefined");
+        }
+
+        if (var->Result() && var->Initializer()) {
+            if (var->Initializer()->Type() != var->Result()->Type()->UnwrapPtr()) {
+                AddError(var, "var initializer has incorrect type");
+            }
         }
     }
 };  // namespace

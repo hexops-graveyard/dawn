@@ -34,12 +34,14 @@ class ExperimentalDP4aTests : public DawnTestWithParams<ExperimentalDP4aTestsPar
         if (!IsD3D12()) {
             mUseDxcEnabledOrNonD3D12 = true;
         } else {
-            for (auto* enabledToggle : GetParam().forceEnabledWorkarounds) {
-                if (strncmp(enabledToggle, "use_dxc", 7) == 0) {
-                    mUseDxcEnabledOrNonD3D12 = true;
+            bool useDxcDisabled = false;
+            for (auto* disabledToggle : GetParam().forceDisabledWorkarounds) {
+                if (strncmp(disabledToggle, "use_dxc", strlen("use_dxc")) == 0) {
+                    useDxcDisabled = true;
                     break;
                 }
             }
+            mUseDxcEnabledOrNonD3D12 = !useDxcDisabled;
         }
 
         if (GetParam().mRequestDP4aExtension && mUseDxcEnabledOrNonD3D12) {
@@ -87,7 +89,7 @@ TEST_P(ExperimentalDP4aTests, BasicDP4aFeaturesTest) {
         IsDP4aSupportedOnAdapter() &&
         // Proper toggle, allow_unsafe_apis and use_dxc if d3d12
         // Note that "allow_unsafe_apis" is always enabled in
-        // DawnTestEnvironment::CreateInstanceAndDiscoverPhysicalDevices.
+        // DawnTestEnvironment::CreateInstance.
         HasToggleEnabled("allow_unsafe_apis") && UseDxcEnabledOrNonD3D12();
     const bool deviceSupportDP4AFeature =
         device.HasFeature(wgpu::FeatureName::ChromiumExperimentalDp4a);
@@ -97,8 +99,6 @@ TEST_P(ExperimentalDP4aTests, BasicDP4aFeaturesTest) {
         ASSERT_DEVICE_ERROR(utils::CreateShaderModule(device, computeShader));
         return;
     }
-
-    utils::CreateShaderModule(device, computeShader);
 
     wgpu::BufferDescriptor bufferDesc;
     bufferDesc.size = 4 * sizeof(uint32_t);
@@ -132,7 +132,7 @@ TEST_P(ExperimentalDP4aTests, BasicDP4aFeaturesTest) {
 DAWN_INSTANTIATE_TEST_P(ExperimentalDP4aTests,
                         {
                             D3D12Backend(),
-                            D3D12Backend({"use_dxc"}, {}),
+                            D3D12Backend({}, {"use_dxc"}),
                             VulkanBackend(),
                         },
                         {true, false});

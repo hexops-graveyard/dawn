@@ -32,12 +32,9 @@ class Var : public utils::Castable<Var, OperandInstruction<1, 1>> {
     static constexpr size_t kInitializerOperandOffset = 0;
 
     /// Constructor
-    /// @param type the type of the var
-    explicit Var(const type::Pointer* type);
+    /// @param result the result value
+    explicit Var(InstructionResult* result);
     ~Var() override;
-
-    /// @returns the type of the var
-    const type::Pointer* Type() override { return type_; }
 
     /// Sets the var initializer
     /// @param initializer the initializer
@@ -52,8 +49,10 @@ class Var : public utils::Castable<Var, OperandInstruction<1, 1>> {
     /// @returns the binding points if `Attributes` contains `kBindingPoint`
     std::optional<struct BindingPoint> BindingPoint() { return binding_point_; }
 
+    /// Destroys this instruction along with any assignment instructions, if the var is never read.
+    void DestroyIfOnlyAssigned();
+
   private:
-    const type::Pointer* type_ = nullptr;
     std::optional<struct BindingPoint> binding_point_;
 };
 

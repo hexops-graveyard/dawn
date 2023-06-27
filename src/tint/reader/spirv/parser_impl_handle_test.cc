@@ -4160,7 +4160,7 @@ TEST_F(SpvParserHandleTest, TexelTypeWhenLoop) {
     const auto got = test::ToString(p->program(), ast_body);
     auto* expect = R"(var x_24 : vec2f;
 var x_26 : i32;
-x_24 = vec2f(0.0f, 0.0f);
+x_24 = vec2f();
 x_26 = 0i;
 loop {
   var x_27 : i32;
@@ -4171,11 +4171,11 @@ loop {
 
   continuing {
     x_27 = (x_26 + 1i);
-    x_24 = vec2f(1.0f, 1.0f);
+    x_24 = vec2f(1.0f);
     x_26 = x_27;
   }
 }
-textureStore(Output2Texture2D, vec2i(vec2u(1u, 1u)), vec4f(x_24, 0.0f, 0.0f));
+textureStore(Output2Texture2D, vec2i(vec2u(1u)), vec4f(x_24, 0.0f, 0.0f));
 return;
 )";
     ASSERT_EQ(expect, got);
@@ -4250,7 +4250,7 @@ loop {
   }
 }
 let x_21 = select(0.0f, x_14, (x_14 > 1.0f));
-x_1 = vec4f(x_21, x_21, x_21, x_21);
+x_1 = vec4f(x_21);
 return;
 )";
     ASSERT_EQ(expect, got);

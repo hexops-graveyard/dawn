@@ -31,7 +31,8 @@ class PerThreadProcTests : public testing::Test {
     PerThreadProcTests()
         : mNativeInstance(native::InstanceBase::Create()),
           mAdapterBase(AcquireRef(new native::null::PhysicalDevice(mNativeInstance.Get())),
-                       native::FeatureLevel::Core) {}
+                       native::FeatureLevel::Core,
+                       native::TogglesState(native::ToggleStage::Adapter)) {}
     ~PerThreadProcTests() override = default;
 
   protected:
@@ -66,7 +67,7 @@ TEST_F(PerThreadProcTests, DispatchesPerThread) {
     wgpu::Device deviceB =
         wgpu::Device::Acquire(reinterpret_cast<WGPUDevice>(mAdapterBase.APICreateDevice()));
 
-    std::thread threadA([&]() {
+    std::thread threadA([&] {
         DawnProcTable procs = native::GetProcs();
         procs.deviceCreateBuffer = [](WGPUDevice device,
                                       WGPUBufferDescriptor const* descriptor) -> WGPUBuffer {
@@ -87,7 +88,7 @@ TEST_F(PerThreadProcTests, DispatchesPerThread) {
         dawnProcSetPerThreadProcs(nullptr);
     });
 
-    std::thread threadB([&]() {
+    std::thread threadB([&] {
         DawnProcTable procs = native::GetProcs();
         procs.deviceCreateBuffer = [](WGPUDevice device,
                                       WGPUBufferDescriptor const* bufferDesc) -> WGPUBuffer {

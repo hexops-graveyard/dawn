@@ -56,8 +56,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_Increment) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -80,8 +79,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundAdd) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -127,8 +125,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_Decrement) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, i32, read_write> = var
 }
 
@@ -151,8 +148,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundSubtract) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -198,8 +194,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundMultiply) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -245,8 +240,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundDiv) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -292,8 +286,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundModulo) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -339,8 +332,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundAnd) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, bool, read_write> = var
 }
 
@@ -386,8 +378,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundOr) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, bool, read_write> = var
 }
 
@@ -433,8 +424,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundXor) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -451,8 +441,9 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundXor) {
 
 TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_LogicalAnd) {
     Func("my_func", utils::Empty, ty.bool_(), utils::Vector{Return(true)});
-    auto* expr = If(LogicalAnd(Call("my_func"), false), Block());
-    WrapInFunction(expr);
+    auto* let = Let("logical_and", LogicalAnd(Call("my_func"), false));
+    auto* expr = If(let, Block());
+    WrapInFunction(let, expr);
 
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
@@ -465,37 +456,20 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_LogicalAnd) {
 %test_function = @compute @workgroup_size(1, 1, 1) func():void -> %b2 {
   %b2 = block {
     %3:bool = call %my_func
-    if %3 [t: %b3, f: %b4, m: %b5]
-      # True block
-      %b3 = block {
-        exit_if %b5 false
+    %logical_and:bool = if %3 [t: %b3, f: %b4] {  # if_1
+      %b3 = block {  # true
+        exit_if false  # if_1
       }
-
-      # False block
-      %b4 = block {
-        exit_if %b5 %3
+      %b4 = block {  # false
+        exit_if false  # if_1
       }
-
-    # Merge block
-    %b5 = block (%4:bool) {
-      if %4:bool [t: %b6, f: %b7, m: %b8]
-        # True block
-        %b6 = block {
-          exit_if %b8
-        }
-
-        # False block
-        %b7 = block {
-          exit_if %b8
-        }
-
-      # Merge block
-      %b8 = block {
-        ret
-      }
-
     }
-
+    if %logical_and [t: %b5] {  # if_2
+      %b5 = block {  # true
+        exit_if  # if_2
+      }
+    }
+    ret
   }
 }
 )");
@@ -503,8 +477,9 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_LogicalAnd) {
 
 TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_LogicalOr) {
     Func("my_func", utils::Empty, ty.bool_(), utils::Vector{Return(true)});
-    auto* expr = If(LogicalOr(Call("my_func"), true), Block());
-    WrapInFunction(expr);
+    auto* let = Let("logical_or", LogicalOr(Call("my_func"), true));
+    auto* expr = If(let, Block());
+    WrapInFunction(let, expr);
 
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
@@ -517,37 +492,20 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_LogicalOr) {
 %test_function = @compute @workgroup_size(1, 1, 1) func():void -> %b2 {
   %b2 = block {
     %3:bool = call %my_func
-    if %3 [t: %b3, f: %b4, m: %b5]
-      # True block
-      %b3 = block {
-        exit_if %b5 %3
+    %logical_or:bool = if %3 [t: %b3, f: %b4] {  # if_1
+      %b3 = block {  # true
+        exit_if true  # if_1
       }
-
-      # False block
-      %b4 = block {
-        exit_if %b5 true
+      %b4 = block {  # false
+        exit_if true  # if_1
       }
-
-    # Merge block
-    %b5 = block (%4:bool) {
-      if %4:bool [t: %b6, f: %b7, m: %b8]
-        # True block
-        %b6 = block {
-          exit_if %b8
-        }
-
-        # False block
-        %b7 = block {
-          exit_if %b8
-        }
-
-      # Merge block
-      %b8 = block {
-        ret
-      }
-
     }
-
+    if %logical_or [t: %b5] {  # if_2
+      %b5 = block {  # true
+        exit_if  # if_2
+      }
+    }
+    ret
   }
 }
 )");
@@ -722,8 +680,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundShiftLeft) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -769,8 +726,7 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_CompoundShiftRight) {
     auto m = Build();
     ASSERT_TRUE(m) << (!m ? m.Failure() : "");
 
-    EXPECT_EQ(Disassemble(m.Get()), R"(# Root block
-%b1 = block {
+    EXPECT_EQ(Disassemble(m.Get()), R"(%b1 = block {  # root
   %v1:ptr<private, u32, read_write> = var
 }
 
@@ -804,27 +760,20 @@ TEST_F(IR_FromProgramBinaryTest, EmitExpression_Binary_Compound) {
   %b2 = block {
     %3:f32 = call %my_func
     %4:bool = lt %3, 2.0f
-    if %4 [t: %b3, f: %b4, m: %b5]
-      # True block
-      %b3 = block {
-        %5:f32 = call %my_func
+    %tint_symbol:bool = if %4 [t: %b3, f: %b4] {  # if_1
+      %b3 = block {  # true
         %6:f32 = call %my_func
-        %7:f32 = mul 2.29999995231628417969f, %6
-        %8:f32 = div %5, %7
-        %9:bool = gt 2.5f, %8
-        exit_if %b5 %9
+        %7:f32 = call %my_func
+        %8:f32 = mul 2.29999995231628417969f, %7
+        %9:f32 = div %6, %8
+        %10:bool = gt 2.5f, %9
+        exit_if %10  # if_1
       }
-
-      # False block
-      %b4 = block {
-        exit_if %b5 %4
+      %b4 = block {  # false
+        exit_if false  # if_1
       }
-
-    # Merge block
-    %b5 = block (%tint_symbol:bool) {
-      ret
     }
-
+    ret
   }
 }
 )");

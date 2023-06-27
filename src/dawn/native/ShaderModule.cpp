@@ -21,7 +21,7 @@
 #include "dawn/common/BitSetIterator.h"
 #include "dawn/common/Constants.h"
 #include "dawn/native/BindGroupLayout.h"
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 #include "dawn/native/CompilationMessages.h"
 #include "dawn/native/Device.h"
 #include "dawn/native/ObjectContentHasher.h"
@@ -523,7 +523,7 @@ ResultOrError<std::unique_ptr<EntryPointMetadata>> ReflectEntryPointUsingTint(
     // error in metadata.infringedLimits. This is to delay the emission of these validation
     // errors until the entry point is used.
 #define DelayedInvalidIf(invalid, ...)                                              \
-    ([&]() {                                                                        \
+    ([&] {                                                                          \
         if (invalid) {                                                              \
             metadata->infringedLimitErrors.push_back(absl::StrFormat(__VA_ARGS__)); \
         }                                                                           \

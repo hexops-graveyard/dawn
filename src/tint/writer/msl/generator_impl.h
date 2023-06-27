@@ -42,8 +42,8 @@
 #include "src/tint/sem/struct.h"
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/array_length_from_uniform_options.h"
+#include "src/tint/writer/ast_text_generator.h"
 #include "src/tint/writer/msl/generator.h"
-#include "src/tint/writer/text_generator.h"
 
 // Forward declarations
 namespace tint::sem {
@@ -80,12 +80,12 @@ struct SanitizedResult {
 SanitizedResult Sanitize(const Program* program, const Options& options);
 
 /// Implementation class for MSL generator
-class GeneratorImpl : public TextGenerator {
+class GeneratorImpl : public ASTTextGenerator {
   public:
     /// Constructor
     /// @param program the program to generate
     explicit GeneratorImpl(const Program* program);
-    ~GeneratorImpl();
+    ~GeneratorImpl() override;
 
     /// @returns true on successful generation; false otherwise
     bool Generate();
@@ -317,13 +317,8 @@ class GeneratorImpl : public TextGenerator {
     /// Handles generating a type
     /// @param out the output of the type stream
     /// @param type the type to generate
-    /// @param name the name of the variable, only used for array emission
-    /// @param name_printed (optional) if not nullptr and an array was printed
     /// @returns true if the type is emitted
-    bool EmitType(utils::StringStream& out,
-                  const type::Type* type,
-                  const std::string& name,
-                  bool* name_printed = nullptr);
+    bool EmitType(utils::StringStream& out, const type::Type* type);
     /// Handles generating type and name
     /// @param out the output stream
     /// @param type the type to generate
@@ -365,25 +360,7 @@ class GeneratorImpl : public TextGenerator {
     /// @returns the name or "" if not valid
     std::string generate_builtin_name(const sem::Builtin* builtin);
 
-    /// Converts a builtin to an attribute name
-    /// @param builtin the builtin to convert
-    /// @returns the string name of the builtin or blank on error
-    std::string builtin_to_attribute(builtin::BuiltinValue builtin) const;
-
-    /// Converts interpolation attributes to an MSL attribute
-    /// @param type the interpolation type
-    /// @param sampling the interpolation sampling
-    /// @returns the string name of the attribute or blank on error
-    std::string interpolation_to_attribute(builtin::InterpolationType type,
-                                           builtin::InterpolationSampling sampling) const;
-
   private:
-    // A pair of byte size and alignment `uint32_t`s.
-    struct SizeAndAlign {
-        uint32_t size;
-        uint32_t align;
-    };
-
     /// CallBuiltinHelper will call the builtin helper function, creating it
     /// if it hasn't been built already. If the builtin needs to be built then
     /// CallBuiltinHelper will generate the function signature and will call
@@ -408,10 +385,6 @@ class GeneratorImpl : public TextGenerator {
     const std::string& ArrayType();
 
     TextBuffer helpers_;  // Helper functions emitted at the top of the output
-
-    /// @returns the MSL packed type size and alignment in bytes for the given
-    /// type.
-    SizeAndAlign MslPackedTypeSizeAndAlign(const type::Type* ty);
 
     std::function<bool()> emit_continuing_;
 

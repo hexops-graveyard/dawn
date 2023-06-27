@@ -25,6 +25,7 @@
 #include "src/tint/ir/block_param.h"
 #include "src/tint/ir/break_if.h"
 #include "src/tint/ir/builtin_call.h"
+#include "src/tint/ir/construct.h"
 #include "src/tint/ir/continue.h"
 #include "src/tint/ir/exit_if.h"
 #include "src/tint/ir/exit_loop.h"
@@ -38,9 +39,12 @@
 #include "src/tint/ir/return.h"
 #include "src/tint/ir/store.h"
 #include "src/tint/ir/switch.h"
+#include "src/tint/ir/terminator.h"
 #include "src/tint/ir/transform/add_empty_entry_point.h"
 #include "src/tint/ir/transform/block_decorated_structs.h"
+#include "src/tint/ir/transform/merge_return.h"
 #include "src/tint/ir/transform/var_for_dynamic_index.h"
+#include "src/tint/ir/unreachable.h"
 #include "src/tint/ir/user_call.h"
 #include "src/tint/ir/validate.h"
 #include "src/tint/ir/var.h"
@@ -58,6 +62,7 @@
 #include "src/tint/type/u32.h"
 #include "src/tint/type/vector.h"
 #include "src/tint/type/void.h"
+#include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/writer/spirv/generator.h"
 #include "src/tint/writer/spirv/module.h"
 
@@ -71,6 +76,7 @@ void Sanitize(ir::Module* module) {
 
     manager.Add<ir::transform::AddEmptyEntryPoint>();
     manager.Add<ir::transform::BlockDecoratedStructs>();
+    manager.Add<ir::transform::MergeReturn>();
     manager.Add<ir::transform::VarForDynamicIndex>();
 
     transform::DataMap outputs;
@@ -143,7 +149,7 @@ uint32_t GeneratorImplIr::Constant(ir::Constant* constant) {
 }
 
 uint32_t GeneratorImplIr::Constant(const constant::Value* constant) {
-    return constants_.GetOrCreate(constant, [&]() {
+    return constants_.GetOrCreate(constant, [&] {
         auto id = module_.NextId();
         auto* ty = constant->Type();
         Switch(
@@ -190,6 +196,13 @@ uint32_t GeneratorImplIr::Constant(const constant::Value* constant) {
                 }
                 module_.PushType(spv::Op::OpConstantComposite, operands);
             },
+            [&](const type::Struct* str) {
+                OperandList operands = {Type(ty), id};
+                for (uint32_t i = 0; i < str->Members().Length(); i++) {
+                    operands.push_back(Constant(constant->Index(i)));
+                }
+                module_.PushType(spv::Op::OpConstantComposite, operands);
+            },
             [&](Default) {
                 TINT_ICE(Writer, diagnostics_) << "unhandled constant type: " << ty->FriendlyName();
             });
@@ -198,7 +211,7 @@ uint32_t GeneratorImplIr::Constant(const constant::Value* constant) {
 }
 
 uint32_t GeneratorImplIr::ConstantNull(const type::Type* type) {
-    return constant_nulls_.GetOrCreate(type, [&]() {
+    return constant_nulls_.GetOrCreate(type, [&] {
         auto id = module_.NextId();
         module_.PushType(spv::Op::OpConstantNull, {Type(type), id});
         return id;
@@ -206,7 +219,7 @@ uint32_t GeneratorImplIr::ConstantNull(const type::Type* type) {
 }
 
 uint32_t GeneratorImplIr::Type(const type::Type* ty) {
-    return types_.GetOrCreate(ty, [&]() {
+    return types_.GetOrCreate(ty, [&] {
         auto id = module_.NextId();
         Switch(
             ty,  //
@@ -222,6 +235,10 @@ uint32_t GeneratorImplIr::Type(const type::Type* ty) {
                 module_.PushType(spv::Op::OpTypeFloat, {id, 32u});
             },
             [&](const type::F16*) {
+                module_.PushCapability(SpvCapabilityFloat16);
+                module_.PushCapability(SpvCapabilityUniformAndStorageBuffer16BitAccess);
+                module_.PushCapability(SpvCapabilityStorageBuffer16BitAccess);
+                module_.PushCapability(SpvCapabilityStorageInputOutput16);
                 module_.PushType(spv::Op::OpTypeFloat, {id, 16u});
             },
             [&](const type::Vector* vec) {
@@ -256,6 +273,10 @@ uint32_t GeneratorImplIr::Type(const type::Type* ty) {
     });
 }
 
+uint32_t GeneratorImplIr::Value(ir::Instruction* inst) {
+    return Value(inst->Result());
+}
+
 uint32_t GeneratorImplIr::Value(ir::Value* value) {
     return Switch(
         value,  //
@@ -264,7 +285,7 @@ uint32_t GeneratorImplIr::Value(ir::Value* value) {
 }
 
 uint32_t GeneratorImplIr::Label(ir::Block* block) {
-    return block_labels_.GetOrCreate(block, [&]() { return module_.NextId(); });
+    return block_labels_.GetOrCreate(block, [&] { return module_.NextId(); });
 }
 
 void GeneratorImplIr::EmitStructType(uint32_t id, const type::Struct* str) {
@@ -342,7 +363,7 @@ void GeneratorImplIr::EmitFunction(ir::Function* func) {
     }
 
     // Get the ID for the function type (creating it if needed).
-    auto function_type_id = function_types_.GetOrCreate(function_type, [&]() {
+    auto function_type_id = function_types_.GetOrCreate(function_type, [&] {
         auto func_ty_id = module_.NextId();
         OperandList operands = {func_ty_id, return_type_id};
         operands.insert(operands.end(), function_type.param_type_ids.begin(),
@@ -362,7 +383,7 @@ void GeneratorImplIr::EmitFunction(ir::Function* func) {
     TINT_DEFER(current_function_ = Function());
 
     // Emit the body of the function.
-    EmitBlock(func->StartTarget());
+    EmitBlock(func->Block());
 
     // Add the function to the module.
     module_.PushFunction(current_function_);
@@ -458,6 +479,7 @@ void GeneratorImplIr::EmitBlockInstructions(ir::Block* block) {
             [&](ir::Access* a) { EmitAccess(a); },            //
             [&](ir::Binary* b) { EmitBinary(b); },            //
             [&](ir::BuiltinCall* b) { EmitBuiltinCall(b); },  //
+            [&](ir::Construct* c) { EmitConstruct(c); },      //
             [&](ir::Load* l) { EmitLoad(l); },                //
             [&](ir::Loop* l) { EmitLoop(l); },                //
             [&](ir::Switch* sw) { EmitSwitch(sw); },          //
@@ -465,22 +487,27 @@ void GeneratorImplIr::EmitBlockInstructions(ir::Block* block) {
             [&](ir::UserCall* c) { EmitUserCall(c); },        //
             [&](ir::Var* v) { EmitVar(v); },                  //
             [&](ir::If* i) { EmitIf(i); },                    //
-            [&](ir::Branch* b) { EmitBranch(b); },            //
+            [&](ir::Terminator* t) { EmitTerminator(t); },    //
             [&](Default) {
                 TINT_ICE(Writer, diagnostics_)
                     << "unimplemented instruction: " << inst->TypeInfo().name;
             });
     }
+
+    if (block->IsEmpty()) {
+        // If the last emitted instruction is not a branch, then this should be unreachable.
+        current_function_.push_inst(spv::Op::OpUnreachable, {});
+    }
 }
 
-void GeneratorImplIr::EmitBranch(ir::Branch* b) {
+void GeneratorImplIr::EmitTerminator(ir::Terminator* t) {
     tint::Switch(  //
-        b,         //
+        t,         //
         [&](ir::Return*) {
-            if (!b->Args().IsEmpty()) {
-                TINT_ASSERT(Writer, b->Args().Length() == 1u);
+            if (!t->Args().IsEmpty()) {
+                TINT_ASSERT(Writer, t->Args().Length() == 1u);
                 OperandList operands;
-                operands.push_back(Value(b->Args()[0]));
+                operands.push_back(Value(t->Args()[0]));
                 current_function_.push_inst(spv::Op::OpReturnValue, operands);
             } else {
                 current_function_.push_inst(spv::Op::OpReturn, {});
@@ -491,49 +518,48 @@ void GeneratorImplIr::EmitBranch(ir::Branch* b) {
             current_function_.push_inst(spv::Op::OpBranchConditional,
                                         {
                                             Value(breakif->Condition()),
-                                            Label(breakif->Loop()->Merge()),
+                                            loop_merge_label_,
                                             Label(breakif->Loop()->Body()),
                                         });
         },
         [&](ir::Continue* cont) {
             current_function_.push_inst(spv::Op::OpBranch, {Label(cont->Loop()->Continuing())});
         },
-        [&](ir::ExitIf* if_) {
-            current_function_.push_inst(spv::Op::OpBranch, {Label(if_->If()->Merge())});
-        },
-        [&](ir::ExitLoop* loop) {
-            current_function_.push_inst(spv::Op::OpBranch, {Label(loop->Loop()->Merge())});
-        },
-        [&](ir::ExitSwitch* swtch) {
-            current_function_.push_inst(spv::Op::OpBranch, {Label(swtch->Switch()->Merge())});
+        [&](ir::ExitIf*) { current_function_.push_inst(spv::Op::OpBranch, {if_merge_label_}); },
+        [&](ir::ExitLoop*) { current_function_.push_inst(spv::Op::OpBranch, {loop_merge_label_}); },
+        [&](ir::ExitSwitch*) {
+            current_function_.push_inst(spv::Op::OpBranch, {switch_merge_label_});
         },
         [&](ir::NextIteration* loop) {
             current_function_.push_inst(spv::Op::OpBranch, {Label(loop->Loop()->Body())});
         },
+        [&](ir::Unreachable*) { current_function_.push_inst(spv::Op::OpUnreachable, {}); },
+
         [&](Default) {
-            TINT_ICE(Writer, diagnostics_) << "unimplemented branch: " << b->TypeInfo().name;
+            TINT_ICE(Writer, diagnostics_) << "unimplemented branch: " << t->TypeInfo().name;
         });
 }
 
 void GeneratorImplIr::EmitIf(ir::If* i) {
-    auto* merge_block = i->Merge();
     auto* true_block = i->True();
     auto* false_block = i->False();
 
     // Generate labels for the blocks. We emit the true or false block if it:
     // 1. contains instructions other then the branch, or
-    // 2. branches somewhere other then the Merge(), or
-    // 3. the merge has input parameters
+    // 2. branches somewhere instead of exiting the loop (e.g. return or break), or
+    // 3. the if returns a value
     // Otherwise we skip them and branch straight to the merge block.
-    uint32_t merge_label = Label(merge_block);
+    uint32_t merge_label = module_.NextId();
+    TINT_SCOPED_ASSIGNMENT(if_merge_label_, merge_label);
+
     uint32_t true_label = merge_label;
     uint32_t false_label = merge_label;
-    if (true_block->Length() > 1 || !merge_block->Params().IsEmpty() ||
-        (true_block->HasBranchTarget() && !true_block->Branch()->Is<ir::ExitIf>())) {
+    if (true_block->Length() > 1 || i->HasResults() ||
+        (true_block->HasTerminator() && !true_block->Terminator()->Is<ir::ExitIf>())) {
         true_label = Label(true_block);
     }
-    if (false_block->Length() > 1 || !merge_block->Params().IsEmpty() ||
-        (false_block->HasBranchTarget() && !false_block->Branch()->Is<ir::ExitIf>())) {
+    if (false_block->Length() > 1 || i->HasResults() ||
+        (false_block->HasTerminator() && !false_block->Terminator()->Is<ir::ExitIf>())) {
         false_label = Label(false_block);
     }
 
@@ -551,15 +577,19 @@ void GeneratorImplIr::EmitIf(ir::If* i) {
         EmitBlock(false_block);
     }
 
-    // Emit the merge block.
-    EmitBlock(merge_block);
+    current_function_.push_inst(spv::Op::OpLabel, {merge_label});
+
+    // Emit the OpPhis for the ExitIfs
+    EmitExitPhis(i);
 }
 
 void GeneratorImplIr::EmitAccess(ir::Access* access) {
-    auto id = Value(access);
-    OperandList operands = {Type(access->Type()), id, Value(access->Object())};
+    auto* ty = access->Result()->Type();
 
-    if (access->Type()->Is<type::Pointer>()) {
+    auto id = Value(access);
+    OperandList operands = {Type(ty), id, Value(access->Object())};
+
+    if (ty->Is<type::Pointer>()) {
         // Use OpAccessChain for accesses into pointer types.
         for (auto* idx : access->Indices()) {
             operands.push_back(Value(idx));
@@ -593,7 +623,7 @@ void GeneratorImplIr::EmitAccess(ir::Access* access) {
             }
 
             // Now emit the OpVectorExtractDynamic instruction.
-            operands = {Type(access->Type()), id, vec_id, Value(idx)};
+            operands = {Type(ty), id, vec_id, Value(idx)};
             current_function_.push_inst(spv::Op::OpVectorExtractDynamic, std::move(operands));
             return;
         }
@@ -603,17 +633,18 @@ void GeneratorImplIr::EmitAccess(ir::Access* access) {
 
 void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
     auto id = Value(binary);
+    auto* ty = binary->Result()->Type();
     auto* lhs_ty = binary->LHS()->Type();
 
     // Determine the opcode.
     spv::Op op = spv::Op::Max;
     switch (binary->Kind()) {
         case ir::Binary::Kind::kAdd: {
-            op = binary->Type()->is_integer_scalar_or_vector() ? spv::Op::OpIAdd : spv::Op::OpFAdd;
+            op = ty->is_integer_scalar_or_vector() ? spv::Op::OpIAdd : spv::Op::OpFAdd;
             break;
         }
         case ir::Binary::Kind::kSubtract: {
-            op = binary->Type()->is_integer_scalar_or_vector() ? spv::Op::OpISub : spv::Op::OpFSub;
+            op = ty->is_integer_scalar_or_vector() ? spv::Op::OpISub : spv::Op::OpFSub;
             break;
         }
 
@@ -698,17 +729,16 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
     }
 
     // Emit the instruction.
-    current_function_.push_inst(
-        op, {Type(binary->Type()), id, Value(binary->LHS()), Value(binary->RHS())});
+    current_function_.push_inst(op, {Type(ty), id, Value(binary->LHS()), Value(binary->RHS())});
 }
 
 void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
-    auto* result_ty = builtin->Type();
+    auto* result_ty = builtin->Result()->Type();
 
     if (builtin->Func() == builtin::Function::kAbs &&
         result_ty->is_unsigned_integer_scalar_or_vector()) {
         // abs() is a no-op for unsigned integers.
-        values_.Add(builtin, Value(builtin->Args()[0]));
+        values_.Add(builtin->Result(), Value(builtin->Args()[0]));
         return;
     }
 
@@ -721,7 +751,7 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
     auto glsl_ext_inst = [&](enum GLSLstd450 inst) {
         constexpr const char* kGLSLstd450 = "GLSL.std.450";
         op = spv::Op::OpExtInst;
-        operands.push_back(imports_.GetOrCreate(kGLSLstd450, [&]() {
+        operands.push_back(imports_.GetOrCreate(kGLSLstd450, [&] {
             // Import the instruction set the first time it is requested.
             auto import = module_.NextId();
             module_.PushExtImport(spv::Op::OpExtInstImport, {import, Operand(kGLSLstd450)});
@@ -771,9 +801,17 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
     current_function_.push_inst(op, operands);
 }
 
+void GeneratorImplIr::EmitConstruct(ir::Construct* construct) {
+    OperandList operands = {Type(construct->Result()->Type()), Value(construct)};
+    for (auto* arg : construct->Args()) {
+        operands.push_back(Value(arg));
+    }
+    current_function_.push_inst(spv::Op::OpCompositeConstruct, std::move(operands));
+}
+
 void GeneratorImplIr::EmitLoad(ir::Load* load) {
     current_function_.push_inst(spv::Op::OpLoad,
-                                {Type(load->Type()), Value(load), Value(load->From())});
+                                {Type(load->Result()->Type()), Value(load), Value(load->From())});
 }
 
 void GeneratorImplIr::EmitLoop(ir::Loop* loop) {
@@ -781,7 +819,9 @@ void GeneratorImplIr::EmitLoop(ir::Loop* loop) {
     auto header_label = Label(loop->Body());  // Back-edge needs to branch to the loop header
     auto body_label = module_.NextId();
     auto continuing_label = Label(loop->Continuing());
-    auto merge_label = Label(loop->Merge());
+
+    uint32_t merge_label = module_.NextId();
+    TINT_SCOPED_ASSIGNMENT(loop_merge_label_, merge_label);
 
     if (init_label != 0) {
         // Emit the loop initializer.
@@ -805,7 +845,7 @@ void GeneratorImplIr::EmitLoop(ir::Loop* loop) {
     EmitBlockInstructions(loop->Body());
 
     // Emit the loop continuing block.
-    if (loop->Continuing()->HasBranchTarget()) {
+    if (loop->Continuing()->HasTerminator()) {
         EmitBlock(loop->Continuing());
     } else {
         // We still need to emit a continuing block with a back-edge, even if it is unreachable.
@@ -814,7 +854,10 @@ void GeneratorImplIr::EmitLoop(ir::Loop* loop) {
     }
 
     // Emit the loop merge block.
-    EmitBlock(loop->Merge());
+    current_function_.push_inst(spv::Op::OpLabel, {merge_label});
+
+    // Emit the OpPhis for the ExitLoops
+    EmitExitPhis(loop);
 }
 
 void GeneratorImplIr::EmitSwitch(ir::Switch* swtch) {
@@ -823,7 +866,7 @@ void GeneratorImplIr::EmitSwitch(ir::Switch* swtch) {
     for (auto& c : swtch->Cases()) {
         for (auto& sel : c.selectors) {
             if (sel.IsDefault()) {
-                default_label = Label(c.Start());
+                default_label = Label(c.Block());
             }
         }
     }
@@ -832,7 +875,7 @@ void GeneratorImplIr::EmitSwitch(ir::Switch* swtch) {
     // Build the operands to the OpSwitch instruction.
     OperandList switch_operands = {Value(swtch->Condition()), default_label};
     for (auto& c : swtch->Cases()) {
-        auto label = Label(c.Start());
+        auto label = Label(c.Block());
         for (auto& sel : c.selectors) {
             if (sel.IsDefault()) {
                 continue;
@@ -842,18 +885,24 @@ void GeneratorImplIr::EmitSwitch(ir::Switch* swtch) {
         }
     }
 
+    uint32_t merge_label = module_.NextId();
+    TINT_SCOPED_ASSIGNMENT(switch_merge_label_, merge_label);
+
     // Emit the OpSelectionMerge and OpSwitch instructions.
     current_function_.push_inst(spv::Op::OpSelectionMerge,
-                                {Label(swtch->Merge()), U32Operand(SpvSelectionControlMaskNone)});
+                                {merge_label, U32Operand(SpvSelectionControlMaskNone)});
     current_function_.push_inst(spv::Op::OpSwitch, switch_operands);
 
     // Emit the cases.
     for (auto& c : swtch->Cases()) {
-        EmitBlock(c.Start());
+        EmitBlock(c.Block());
     }
 
     // Emit the switch merge block.
-    EmitBlock(swtch->Merge());
+    current_function_.push_inst(spv::Op::OpLabel, {merge_label});
+
+    // Emit the OpPhis for the ExitSwitches
+    EmitExitPhis(swtch);
 }
 
 void GeneratorImplIr::EmitStore(ir::Store* store) {
@@ -862,7 +911,7 @@ void GeneratorImplIr::EmitStore(ir::Store* store) {
 
 void GeneratorImplIr::EmitUserCall(ir::UserCall* call) {
     auto id = Value(call);
-    OperandList operands = {Type(call->Type()), id, Value(call->Func())};
+    OperandList operands = {Type(call->Result()->Type()), id, Value(call->Func())};
     for (auto* arg : call->Args()) {
         operands.push_back(Value(arg));
     }
@@ -871,7 +920,7 @@ void GeneratorImplIr::EmitUserCall(ir::UserCall* call) {
 
 void GeneratorImplIr::EmitVar(ir::Var* var) {
     auto id = Value(var);
-    auto* ptr = var->Type();
+    auto* ptr = var->Result()->Type()->As<type::Pointer>();
     auto ty = Type(ptr);
 
     switch (ptr->AddressSpace()) {
@@ -925,6 +974,34 @@ void GeneratorImplIr::EmitVar(ir::Var* var) {
     // Set the name if present.
     if (auto name = ir_->NameOf(var)) {
         module_.PushDebug(spv::Op::OpName, {id, Operand(name.Name())});
+    }
+}
+
+void GeneratorImplIr::EmitExitPhis(ir::ControlInstruction* inst) {
+    struct Branch {
+        uint32_t label = 0;
+        ir::Value* value = nullptr;
+        bool operator<(const Branch& other) const { return label < other.label; }
+    };
+
+    auto results = inst->Results();
+    for (size_t index = 0; index < results.Length(); index++) {
+        auto* result = results[index];
+        auto* ty = result->Type();
+
+        utils::Vector<Branch, 8> branches;
+        branches.Reserve(inst->Exits().Count());
+        for (auto& exit : inst->Exits()) {
+            branches.Push(Branch{Label(exit->Block()), exit->Args()[index]});
+        }
+        branches.Sort();  // Sort the branches by label to ensure deterministic output
+
+        OperandList ops{Type(ty), Value(result)};
+        for (auto& branch : branches) {
+            ops.push_back(Value(branch.value));
+            ops.push_back(branch.label);
+        }
+        current_function_.push_inst(spv::Op::OpPhi, std::move(ops));
     }
 }
 

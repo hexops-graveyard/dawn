@@ -62,16 +62,13 @@ int DawnWireServerFuzzer::Initialize(int* argc, char*** argv) {
     // for adapter discovery can be fuzzed.
     sInstance = std::make_unique<dawn::native::Instance>();
 
-    // TODO(crbug.com/1038952): Although we keep a static instance, when discovering default Vulkan
+    // TODO(crbug.com/1038952): Although we keep a static instance, when discovering Vulkan
     // adapters, if no adapter is found, the vulkan loader DLL will be loaded and then unloaded,
     // resulting in ASAN false positives. We work around this by explicitly loading the loader
     // without unloading it here.
 #if DAWN_PLATFORM_IS(WINDOWS) && defined(ADDRESS_SANITIZER)
     sVulkanLoader.Open(dawn::GetExecutableDirectory().value_or("") + "vulkan-1.dll");
 #endif
-
-    sInstance->DiscoverDefaultPhysicalDevices();
-
     return 0;
 }
 
@@ -106,7 +103,7 @@ int DawnWireServerFuzzer::Run(const uint8_t* data,
     procs.instanceRequestAdapter = [](WGPUInstance cInstance,
                                       const WGPURequestAdapterOptions* options,
                                       WGPURequestAdapterCallback callback, void* userdata) {
-        std::vector<dawn::native::Adapter> adapters = sInstance->GetAdapters();
+        std::vector<dawn::native::Adapter> adapters = sInstance->EnumerateAdapters();
         for (dawn::native::Adapter adapter : adapters) {
             if (sAdapterSupported(adapter)) {
                 WGPUAdapter cAdapter = adapter.Get();

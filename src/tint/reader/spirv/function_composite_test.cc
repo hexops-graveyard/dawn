@@ -101,6 +101,27 @@ let x_3 = vec2f(50.0f, 60.0f);
 )"));
 }
 
+TEST_F(SpvParserTest_Composite_Construct, VectorSplat) {
+    const auto assembly = Preamble() + R"(
+     %100 = OpFunction %void None %voidfn
+     %entry = OpLabel
+     %1 = OpCompositeConstruct %v4uint %uint_10 %uint_10 %uint_10 %uint_10
+     %2 = OpCompositeConstruct %v2int %int_30 %int_30
+     %3 = OpCompositeConstruct %v2float %float_50 %float_50
+     OpReturn
+     OpFunctionEnd
+  )";
+    auto p = parser(test::Assemble(assembly));
+    ASSERT_TRUE(p->BuildAndParseInternalModuleExceptFunctions()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    auto ast_body = fe.ast_body();
+    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr(R"(let x_1 = vec4u(10u);
+let x_2 = vec2i(30i);
+let x_3 = vec2f(50.0f);
+)"));
+}
+
 TEST_F(SpvParserTest_Composite_Construct, Matrix) {
     const auto assembly = Preamble() + R"(
      %100 = OpFunction %void None %voidfn
@@ -117,7 +138,7 @@ TEST_F(SpvParserTest_Composite_Construct, Matrix) {
     EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_1 = mat3x2f("
                                                                   "vec2f(50.0f, 60.0f), "
                                                                   "vec2f(60.0f, 50.0f), "
-                                                                  "vec2f(70.0f, 70.0f));"));
+                                                                  "vec2f(70.0f));"));
 }
 
 TEST_F(SpvParserTest_Composite_Construct, Array) {
@@ -779,7 +800,46 @@ TEST_F(SpvParserTest_VectorShuffle, FunctionScopeOperands_UseBoth) {
     EXPECT_TRUE(fe.EmitBody()) << p->error();
     auto ast_body = fe.ast_body();
     EXPECT_THAT(test::ToString(p->program(), ast_body),
-                HasSubstr("let x_10 = vec4u(x_2.y, x_2.x, x_1.y, x_1.x);"));
+                HasSubstr("let x_10 = vec4u(x_2.yx, x_1.yx);"));
+}
+
+TEST_F(SpvParserTest_VectorShuffle, FunctionScopeOperands_UseBoth_Swizzle) {
+    // Use the same vector for both source operands.
+    const auto assembly = Preamble() + R"(
+     %100 = OpFunction %void None %voidfn
+     %entry = OpLabel
+     %1 = OpCopyObject %v2uint %v2uint_3_4
+     %10 = OpVectorShuffle %v4uint %1 %1 1 0 2 3
+     OpReturn
+     OpFunctionEnd
+)";
+
+    auto p = parser(test::Assemble(assembly));
+    ASSERT_TRUE(p->BuildAndParseInternalModuleExceptFunctions()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    auto ast_body = fe.ast_body();
+    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_10 = x_1.yxxy;"));
+}
+
+TEST_F(SpvParserTest_VectorShuffle, FunctionScopeOperands_UseOne_Swizzle) {
+    // Only use the first vector operand.
+    const auto assembly = Preamble() + R"(
+     %100 = OpFunction %void None %voidfn
+     %entry = OpLabel
+     %1 = OpCopyObject %v2uint %v2uint_3_4
+     %2 = OpUndef %v2uint
+     %10 = OpVectorShuffle %v4uint %1 %2 1 0 0 1
+     OpReturn
+     OpFunctionEnd
+)";
+
+    auto p = parser(test::Assemble(assembly));
+    ASSERT_TRUE(p->BuildAndParseInternalModuleExceptFunctions()) << assembly;
+    auto fe = p->function_emitter(100);
+    EXPECT_TRUE(fe.EmitBody()) << p->error();
+    auto ast_body = fe.ast_body();
+    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_10 = x_1.yxxy;"));
 }
 
 TEST_F(SpvParserTest_VectorShuffle, ConstantOperands_UseBoth) {
@@ -796,11 +856,8 @@ TEST_F(SpvParserTest_VectorShuffle, ConstantOperands_UseBoth) {
     auto fe = p->function_emitter(100);
     EXPECT_TRUE(fe.EmitBody()) << p->error();
     auto ast_body = fe.ast_body();
-    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_10 = vec4u("
-                                                                  "vec2u(4u, 3u).y, "
-                                                                  "vec2u(4u, 3u).x, "
-                                                                  "vec2u(3u, 4u).y, "
-                                                                  "vec2u(3u, 4u).x);"));
+    EXPECT_THAT(test::ToString(p->program(), ast_body),
+                HasSubstr("let x_10 = vec4u(vec2u(4u, 3u).yx, vec2u(3u, 4u).yx);"));
 }
 
 TEST_F(SpvParserTest_VectorShuffle, ConstantOperands_AllOnesMapToNull) {
@@ -818,7 +875,7 @@ TEST_F(SpvParserTest_VectorShuffle, ConstantOperands_AllOnesMapToNull) {
     auto fe = p->function_emitter(100);
     EXPECT_TRUE(fe.EmitBody()) << p->error();
     auto ast_body = fe.ast_body();
-    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_10 = vec2u(0u, x_1.y);"));
+    EXPECT_THAT(test::ToString(p->program(), ast_body), HasSubstr("let x_10 = x_1.xy;"));
 }
 
 TEST_F(SpvParserTest_VectorShuffle, FunctionScopeOperands_MixedInputOperandSizes) {

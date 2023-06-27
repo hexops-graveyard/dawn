@@ -1044,6 +1044,14 @@ sem::Function* Resolver::Function(const ast::Function* decl) {
                     func->SetReturnLocation(value.Get());
                     return kSuccess;
                 },
+                [&](const ast::IndexAttribute* attr) {
+                    auto value = IndexAttribute(attr);
+                    if (!value) {
+                        return kErrored;
+                    }
+                    func->SetReturnIndex(value.Get());
+                    return kSuccess;
+                },
                 [&](const ast::BuiltinAttribute* attr) {
                     return BuiltinAttribute(attr) ? kSuccess : kErrored;
                 },
@@ -3570,6 +3578,30 @@ utils::Result<uint32_t> Resolver::LocationAttribute(const ast::LocationAttribute
     return static_cast<uint32_t>(value);
 }
 
+utils::Result<uint32_t> Resolver::IndexAttribute(const ast::IndexAttribute* attr) {
+    ExprEvalStageConstraint constraint{sem::EvaluationStage::kConstant, "@index value"};
+    TINT_SCOPED_ASSIGNMENT(expr_eval_stage_constraint_, constraint);
+
+    auto* materialized = Materialize(ValueExpression(attr->expr));
+    if (!materialized) {
+        return utils::Failure;
+    }
+
+    if (!materialized->Type()->IsAnyOf<type::I32, type::U32>()) {
+        AddError("@location must be an i32 or u32 value", attr->source);
+        return utils::Failure;
+    }
+
+    auto const_value = materialized->ConstantValue();
+    auto value = const_value->ValueAs<AInt>();
+    if (value != 0 && value != 1) {
+        AddError("@index value must be zero or one", attr->source);
+        return utils::Failure;
+    }
+
+    return static_cast<uint32_t>(value);
+}
+
 utils::Result<uint32_t> Resolver::BindingAttribute(const ast::BindingAttribute* attr) {
     ExprEvalStageConstraint constraint{sem::EvaluationStage::kConstant, "@binding"};
     TINT_SCOPED_ASSIGNMENT(expr_eval_stage_constraint_, constraint);
@@ -4140,6 +4172,14 @@ sem::Struct* Resolver::Structure(const ast::Struct* str) {
                         return false;
                     }
                     attributes.location = value.Get();
+                    return true;
+                },
+                [&](const ast::IndexAttribute* attr) {
+                    auto value = IndexAttribute(attr);
+                    if (!value) {
+                        return false;
+                    }
+                    attributes.index = value.Get();
                     return true;
                 },
                 [&](const ast::BuiltinAttribute* attr) {

@@ -462,6 +462,8 @@ bool PhysicalDevice::SupportsFeatureLevel(FeatureLevel) const {
     return true;
 }
 
+void PhysicalDevice::SetupBackendAdapterToggles(TogglesState* adpterToggles) const {}
+
 void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     // TODO(crbug.com/dawn/857): tighten this workaround when this issue is fixed in both
     // Vulkan SPEC and drivers.
@@ -503,10 +505,12 @@ void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) cons
         // Intel Mesa driver has a bug where vkCmdCopyQueryPoolResults fails to write overlapping
         // queries to a same buffer after the buffer is accessed by a compute shader with correct
         // resource barriers, which may caused by flush and memory coherency issue on Intel Gen12
-        // GPUs. Workaround for it to clear the buffer before vkCmdCopyQueryPoolResults.
-        // TODO(crbug.com/dawn/1823): Remove the workaround when the bug is fixed in Mesa driver.
+        // GPUs. Workaround for it to clear the buffer before vkCmdCopyQueryPoolResults on Mesa
+        // driver version < 23.1.3.
         const gpu_info::DriverVersion kBuggyDriverVersion = {21, 2, 0, 0};
-        if (gpu_info::CompareIntelMesaDriverVersion(GetDriverVersion(), kBuggyDriverVersion) >= 0) {
+        const gpu_info::DriverVersion kFixedDriverVersion = {23, 1, 3, 0};
+        if (gpu_info::CompareIntelMesaDriverVersion(GetDriverVersion(), kBuggyDriverVersion) >= 0 &&
+            gpu_info::CompareIntelMesaDriverVersion(GetDriverVersion(), kFixedDriverVersion) < 0) {
             deviceToggles->Default(Toggle::ClearBufferBeforeResolveQueries, true);
         }
     }
@@ -535,7 +539,7 @@ void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) cons
     deviceToggles->Default(Toggle::VulkanUseS8, true);
 
     // The environment can only request to use VK_KHR_zero_initialize_workgroup_memory when the
-    // extension is available. Override the decision if it is no applicable or
+    // extension is available. Override the decision if it is not applicable or
     // zeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory == VK_FALSE.
     if (!GetDeviceInfo().HasExt(DeviceExt::ZeroInitializeWorkgroupMemory) ||
         GetDeviceInfo().zeroInitializeWorkgroupMemoryFeatures.shaderZeroInitializeWorkgroupMemory ==
@@ -551,6 +555,16 @@ void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) cons
     // In particular, enable rasterizer discard if the depth-stencil stage is a no-op, and skip
     // insertion of the placeholder fragment shader.
     deviceToggles->Default(Toggle::UsePlaceholderFragmentInVertexOnlyPipeline, true);
+
+    // The environment can only request to use VK_EXT_robustness2 when the extension is available.
+    // Override the decision if it is not applicable or robustImageAccess2 is false.
+    if (!GetDeviceInfo().HasExt(DeviceExt::Robustness2) ||
+        GetDeviceInfo().robustness2Features.robustImageAccess2 == VK_FALSE) {
+        deviceToggles->ForceSet(Toggle::VulkanUseImageRobustAccess2, false);
+    }
+    // By default try to skip robustness transform on textures according to the Vulkan extension
+    // VK_EXT_robustness2.
+    deviceToggles->Default(Toggle::VulkanUseImageRobustAccess2, true);
 }
 
 ResultOrError<Ref<DeviceBase>> PhysicalDevice::CreateDeviceImpl(AdapterBase* adapter,

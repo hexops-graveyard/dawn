@@ -15,7 +15,7 @@
 #ifndef SRC_TINT_IR_EXIT_LOOP_H_
 #define SRC_TINT_IR_EXIT_LOOP_H_
 
-#include "src/tint/ir/branch.h"
+#include "src/tint/ir/exit.h"
 #include "src/tint/utils/castable.h"
 
 // Forward declarations
@@ -26,22 +26,23 @@ class Loop;
 namespace tint::ir {
 
 /// A exit loop instruction.
-class ExitLoop : public utils::Castable<ExitLoop, Branch> {
+class ExitLoop : public utils::Castable<ExitLoop, Exit> {
   public:
     /// The base offset in Operands() for the args
     static constexpr size_t kArgsOperandOffset = 0;
 
     /// Constructor
     /// @param loop the loop being exited
-    /// @param args the branch arguments
+    /// @param args the target MultiInBlock arguments
     explicit ExitLoop(ir::Loop* loop, utils::VectorRef<Value*> args = utils::Empty);
     ~ExitLoop() override;
 
-    /// @returns the loop being exited
-    ir::Loop* Loop() { return loop_; }
+    /// Re-associates the exit with the given loop instruction
+    /// @param l the new loop to exit from
+    void SetLoop(ir::Loop* l);
 
-  private:
-    ir::Loop* loop_ = nullptr;
+    /// @returns the loop being exited
+    ir::Loop* Loop();
 };
 
 }  // namespace tint::ir

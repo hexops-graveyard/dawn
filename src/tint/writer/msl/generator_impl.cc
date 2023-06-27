@@ -85,52 +85,13 @@
 #include "src/tint/utils/scoped_assignment.h"
 #include "src/tint/utils/string_stream.h"
 #include "src/tint/writer/check_supported_extensions.h"
-#include "src/tint/writer/float_to_string.h"
+#include "src/tint/writer/msl/generator_support.h"
 
 namespace tint::writer::msl {
 namespace {
 
 bool last_is_break(const ast::BlockStatement* stmts) {
     return utils::IsAnyOf<ast::BreakStatement>(stmts->Last());
-}
-
-void PrintF32(utils::StringStream& out, float value) {
-    // Note: Currently inf and nan should not be constructable, but this is implemented for the day
-    // we support them.
-    if (std::isinf(value)) {
-        out << (value >= 0 ? "INFINITY" : "-INFINITY");
-    } else if (std::isnan(value)) {
-        out << "NAN";
-    } else {
-        out << FloatToString(value) << "f";
-    }
-}
-
-void PrintF16(utils::StringStream& out, float value) {
-    // Note: Currently inf and nan should not be constructable, but this is implemented for the day
-    // we support them.
-    if (std::isinf(value)) {
-        // HUGE_VALH evaluates to +infinity.
-        out << (value >= 0 ? "HUGE_VALH" : "-HUGE_VALH");
-    } else if (std::isnan(value)) {
-        // There is no NaN expr for half in MSL, "NAN" is of float type.
-        out << "NAN";
-    } else {
-        out << FloatToString(value) << "h";
-    }
-}
-
-void PrintI32(utils::StringStream& out, int32_t value) {
-    // MSL (and C++) parse `-2147483648` as a `long` because it parses unary minus and `2147483648`
-    // as separate tokens, and the latter doesn't fit into an (32-bit) `int`.
-    // WGSL, on the other hand, parses this as an `i32`.
-    // To avoid issues with `long` to `int` casts, emit `(-2147483647 - 1)` instead, which ensures
-    // the expression type is `int`.
-    if (auto int_min = std::numeric_limits<int32_t>::min(); value == int_min) {
-        out << "(" << int_min + 1 << " - 1)";
-    } else {
-        out << value;
-    }
 }
 
 class ScopedBitCast {
@@ -150,7 +111,7 @@ class ScopedBitCast {
 
         // Bit cast
         s << "as_type<";
-        generator->EmitType(s, target_type, "");
+        generator->EmitType(s, target_type);
         s << ">(";
     }
 
@@ -271,7 +232,7 @@ SanitizedResult Sanitize(const Program* in, const Options& options) {
     return result;
 }
 
-GeneratorImpl::GeneratorImpl(const Program* program) : TextGenerator(program) {}
+GeneratorImpl::GeneratorImpl(const Program* program) : ASTTextGenerator(program) {}
 
 GeneratorImpl::~GeneratorImpl() = default;
 
@@ -287,9 +248,9 @@ bool GeneratorImpl::Generate() {
         return false;
     }
 
-    line() << "#include <metal_stdlib>";
-    line();
-    line() << "using namespace metal;";
+    Line() << "#include <metal_stdlib>";
+    Line();
+    Line() << "using namespace metal;";
 
     auto helpers_insertion_point = current_buffer_->lines.size();
 
@@ -298,7 +259,7 @@ bool GeneratorImpl::Generate() {
         bool ok = Switch(
             decl,  //
             [&](const ast::Struct* str) {
-                TINT_DEFER(line());
+                TINT_DEFER(Line());
                 return EmitTypeDecl(TypeOf(str));
             },
             [&](const ast::Alias*) {
@@ -315,7 +276,7 @@ bool GeneratorImpl::Generate() {
                 return false;
             },
             [&](const ast::Function* func) {
-                TINT_DEFER(line());
+                TINT_DEFER(Line());
                 if (func->IsEntryPoint()) {
                     return EmitEntryPointFunction(func);
                 }
@@ -346,12 +307,12 @@ bool GeneratorImpl::Generate() {
         // 'invariant' attribute requires MSL 2.1 or higher.
         // WGSL can ignore the invariant attribute on pre MSL 2.1 devices.
         // See: https://github.com/gpuweb/gpuweb/issues/893#issuecomment-745537465
-        line(&helpers_) << "#if __METAL_VERSION__ >= 210";
-        line(&helpers_) << "#define " << invariant_define_name_ << " [[invariant]]";
-        line(&helpers_) << "#else";
-        line(&helpers_) << "#define " << invariant_define_name_;
-        line(&helpers_) << "#endif";
-        line(&helpers_);
+        Line(&helpers_) << "#if __METAL_VERSION__ >= 210";
+        Line(&helpers_) << "#define " << invariant_define_name_ << " [[invariant]]";
+        Line(&helpers_) << "#else";
+        Line(&helpers_) << "#define " << invariant_define_name_;
+        Line(&helpers_) << "#endif";
+        Line(&helpers_);
     }
 
     if (!helpers_.lines.empty()) {
@@ -403,7 +364,7 @@ bool GeneratorImpl::EmitIndexAccessor(utils::StringStream& out,
 
 bool GeneratorImpl::EmitBitcast(utils::StringStream& out, const ast::BitcastExpression* expr) {
     out << "as_type<";
-    if (!EmitType(out, TypeOf(expr)->UnwrapRef(), "")) {
+    if (!EmitType(out, TypeOf(expr)->UnwrapRef())) {
         return false;
     }
 
@@ -417,7 +378,7 @@ bool GeneratorImpl::EmitBitcast(utils::StringStream& out, const ast::BitcastExpr
 }
 
 bool GeneratorImpl::EmitAssign(const ast::AssignmentStatement* stmt) {
-    auto out = line();
+    auto out = Line();
 
     if (!EmitExpression(out, stmt->lhs)) {
         return false;
@@ -629,12 +590,12 @@ bool GeneratorImpl::EmitBinary(utils::StringStream& out, const ast::BinaryExpres
 }
 
 bool GeneratorImpl::EmitBreak(const ast::BreakStatement*) {
-    line() << "break;";
+    Line() << "break;";
     return true;
 }
 
 bool GeneratorImpl::EmitBreakIf(const ast::BreakIfStatement* b) {
-    auto out = line();
+    auto out = Line();
     out << "if (";
     if (!EmitExpression(out, b->condition)) {
         return false;
@@ -795,7 +756,7 @@ bool GeneratorImpl::EmitBuiltinCall(utils::StringStream& out,
 bool GeneratorImpl::EmitTypeConversion(utils::StringStream& out,
                                        const sem::Call* call,
                                        const sem::ValueConversion* conv) {
-    if (!EmitType(out, conv->Target(), "")) {
+    if (!EmitType(out, conv->Target())) {
         return false;
     }
     out << "(";
@@ -819,7 +780,7 @@ bool GeneratorImpl::EmitTypeInitializer(utils::StringStream& out,
     bool ok = Switch(
         type,
         [&](const type::Array*) {
-            if (!EmitType(out, type, "")) {
+            if (!EmitType(out, type)) {
                 return false;
             }
             out << "{";
@@ -832,7 +793,7 @@ bool GeneratorImpl::EmitTypeInitializer(utils::StringStream& out,
             return true;
         },
         [&](Default) {
-            if (!EmitType(out, type, "")) {
+            if (!EmitType(out, type)) {
                 return false;
             }
             out << "(";
@@ -935,7 +896,7 @@ bool GeneratorImpl::EmitAtomicCall(utils::StringStream& out,
                     auto* arg_ty = builtin->Parameters()[1]->Type();
 
                     {
-                        auto f = line(&buf);
+                        auto f = Line(&buf);
                         auto str_name = StructName(builtin->ReturnType()->As<type::Struct>());
                         f << str_name << " " << name << "(";
                         if (!EmitTypeAndName(f, atomic_ty, "atomic")) {
@@ -955,22 +916,22 @@ bool GeneratorImpl::EmitAtomicCall(utils::StringStream& out,
                     buf.IncrementIndent();
                     TINT_DEFER({
                         buf.DecrementIndent();
-                        line(&buf) << "}";
-                        line(&buf);
+                        Line(&buf) << "}";
+                        Line(&buf);
                     });
 
                     {
-                        auto f = line(&buf);
+                        auto f = Line(&buf);
                         if (!EmitTypeAndName(f, arg_ty, "old_value")) {
                             return "";
                         }
                         f << " = compare;";
                     }
-                    line(&buf) << "bool exchanged = "
+                    Line(&buf) << "bool exchanged = "
                                   "atomic_compare_exchange_weak_explicit(atomic, "
                                   "&old_value, value, memory_order_relaxed, "
                                   "memory_order_relaxed);";
-                    line(&buf) << "return {old_value, exchanged};";
+                    Line(&buf) << "return {old_value, exchanged};";
                     return name;
                 });
 
@@ -1014,7 +975,7 @@ bool GeneratorImpl::EmitTextureCall(utils::StringStream& out,
     // Helper to emit the texture expression, wrapped in parentheses if the
     // expression includes an operator with lower precedence than the member
     // accessor used for the function calls.
-    auto texture_expr = [&]() {
+    auto texture_expr = [&] {
         bool paren_lhs = !texture->IsAnyOf<ast::AccessorExpression, ast::CallExpression,
                                            ast::IdentifierExpression>();
         if (paren_lhs) {
@@ -1074,7 +1035,7 @@ bool GeneratorImpl::EmitTextureCall(utils::StringStream& out,
             if (dims.size() == 1) {
                 get_dim(dims[0]);
             } else {
-                EmitType(out, TypeOf(expr)->UnwrapRef(), "");
+                EmitType(out, TypeOf(expr)->UnwrapRef());
                 out << "(";
                 for (size_t i = 0; i < dims.size(); i++) {
                     if (i > 0) {
@@ -1315,10 +1276,10 @@ bool GeneratorImpl::EmitDotCall(utils::StringStream& out,
             auto fn_name = UniqueIdentifier("tint_dot" + std::to_string(vec_ty->Width()));
             auto v = "vec<T," + std::to_string(vec_ty->Width()) + ">";
 
-            line(&b) << "template<typename T>";
-            line(&b) << "T " << fn_name << "(" << v << " a, " << v << " b) {";
+            Line(&b) << "template<typename T>";
+            Line(&b) << "T " << fn_name << "(" << v << " a, " << v << " b) {";
             {
-                auto l = line(&b);
+                auto l = Line(&b);
                 l << "  return ";
                 for (uint32_t i = 0; i < vec_ty->Width(); i++) {
                     if (i > 0) {
@@ -1328,7 +1289,7 @@ bool GeneratorImpl::EmitDotCall(utils::StringStream& out,
                 }
                 l << ";";
             }
-            line(&b) << "}";
+            Line(&b) << "}";
             return fn_name;
         });
     }
@@ -1364,9 +1325,9 @@ bool GeneratorImpl::EmitModfCall(utils::StringStream& out,
                 return false;
             }
 
-            line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
-            line(b) << "result.fract = modf(" << in << ", result.whole);";
-            line(b) << "return result;";
+            Line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
+            Line(b) << "result.fract = modf(" << in << ", result.whole);";
+            Line(b) << "return result;";
             return true;
         });
 }
@@ -1390,9 +1351,9 @@ bool GeneratorImpl::EmitFrexpCall(utils::StringStream& out,
                 return false;
             }
 
-            line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
-            line(b) << "result.fract = frexp(" << in << ", result.exp);";
-            line(b) << "return result;";
+            Line(b) << StructName(builtin->ReturnType()->As<type::Struct>()) << " result;";
+            Line(b) << "result.fract = frexp(" << in << ", result.exp);";
+            Line(b) << "return result;";
             return true;
         });
 }
@@ -1402,7 +1363,7 @@ bool GeneratorImpl::EmitDegreesCall(utils::StringStream& out,
                                     const sem::Builtin* builtin) {
     return CallBuiltinHelper(out, expr, builtin,
                              [&](TextBuffer* b, const std::vector<std::string>& params) {
-                                 line(b) << "return " << params[0] << " * " << std::setprecision(20)
+                                 Line(b) << "return " << params[0] << " * " << std::setprecision(20)
                                          << sem::kRadToDeg << ";";
                                  return true;
                              });
@@ -1413,7 +1374,7 @@ bool GeneratorImpl::EmitRadiansCall(utils::StringStream& out,
                                     const sem::Builtin* builtin) {
     return CallBuiltinHelper(out, expr, builtin,
                              [&](TextBuffer* b, const std::vector<std::string>& params) {
-                                 line(b) << "return " << params[0] << " * " << std::setprecision(20)
+                                 Line(b) << "return " << params[0] << " * " << std::setprecision(20)
                                          << sem::kDegToRad << ";";
                                  return true;
                              });
@@ -1576,7 +1537,7 @@ std::string GeneratorImpl::generate_builtin_name(const sem::Builtin* builtin) {
 bool GeneratorImpl::EmitCase(const ast::CaseStatement* stmt) {
     auto* sem = builder_.Sem().Get<sem::CaseStatement>(stmt);
     for (auto* selector : sem->Selectors()) {
-        auto out = line();
+        auto out = Line();
 
         if (selector->IsDefault()) {
             out << "default";
@@ -1602,11 +1563,11 @@ bool GeneratorImpl::EmitCase(const ast::CaseStatement* stmt) {
         }
 
         if (!last_is_break(stmt->body)) {
-            line() << "break;";
+            Line() << "break;";
         }
     }
 
-    line() << "}";
+    Line() << "}";
 
     return true;
 }
@@ -1616,7 +1577,7 @@ bool GeneratorImpl::EmitContinue(const ast::ContinueStatement*) {
         return false;
     }
 
-    line() << "continue;";
+    Line() << "continue;";
     return true;
 }
 
@@ -1647,7 +1608,7 @@ bool GeneratorImpl::EmitZeroValue(utils::StringStream& out, const type::Type* ty
             return EmitZeroValue(out, vec->type());
         },
         [&](const type::Matrix* mat) {
-            if (!EmitType(out, mat, "")) {
+            if (!EmitType(out, mat)) {
                 return false;
             }
             ScopedParen sp(out);
@@ -1692,7 +1653,7 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
             return true;
         },
         [&](const type::Vector* v) {
-            if (!EmitType(out, v, "")) {
+            if (!EmitType(out, v)) {
                 return false;
             }
 
@@ -1716,7 +1677,7 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
             return true;
         },
         [&](const type::Matrix* m) {
-            if (!EmitType(out, m, "")) {
+            if (!EmitType(out, m)) {
                 return false;
             }
 
@@ -1733,7 +1694,7 @@ bool GeneratorImpl::EmitConstant(utils::StringStream& out, const constant::Value
             return true;
         },
         [&](const type::Array* a) {
-            if (!EmitType(out, a, "")) {
+            if (!EmitType(out, a)) {
                 return false;
             }
 
@@ -1874,8 +1835,8 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
     auto* func_sem = program_->Sem().Get(func);
 
     {
-        auto out = line();
-        if (!EmitType(out, func_sem->ReturnType(), "")) {
+        auto out = Line();
+        if (!EmitType(out, func_sem->ReturnType())) {
             return false;
         }
         out << " " << func->name->symbol.Name() << "(";
@@ -1889,14 +1850,13 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
 
             auto* type = program_->Sem().Get(v)->Type();
 
-            std::string param_name = "const " + v->name->symbol.Name();
-            if (!EmitType(out, type, param_name)) {
+            if (!EmitType(out, type)) {
                 return false;
             }
-            // Parameter name is output as part of the type for pointers.
-            if (!type->Is<type::Pointer>()) {
-                out << " " << v->name->symbol.Name();
+            if (type->Is<type::Pointer>()) {
+                out << " const";
             }
+            out << " " << v->name->symbol.Name();
         }
 
         out << ") {";
@@ -1906,76 +1866,9 @@ bool GeneratorImpl::EmitFunction(const ast::Function* func) {
         return false;
     }
 
-    line() << "}";
+    Line() << "}";
 
     return true;
-}
-
-std::string GeneratorImpl::builtin_to_attribute(builtin::BuiltinValue builtin) const {
-    switch (builtin) {
-        case builtin::BuiltinValue::kPosition:
-            return "position";
-        case builtin::BuiltinValue::kVertexIndex:
-            return "vertex_id";
-        case builtin::BuiltinValue::kInstanceIndex:
-            return "instance_id";
-        case builtin::BuiltinValue::kFrontFacing:
-            return "front_facing";
-        case builtin::BuiltinValue::kFragDepth:
-            return "depth(any)";
-        case builtin::BuiltinValue::kLocalInvocationId:
-            return "thread_position_in_threadgroup";
-        case builtin::BuiltinValue::kLocalInvocationIndex:
-            return "thread_index_in_threadgroup";
-        case builtin::BuiltinValue::kGlobalInvocationId:
-            return "thread_position_in_grid";
-        case builtin::BuiltinValue::kWorkgroupId:
-            return "threadgroup_position_in_grid";
-        case builtin::BuiltinValue::kNumWorkgroups:
-            return "threadgroups_per_grid";
-        case builtin::BuiltinValue::kSampleIndex:
-            return "sample_id";
-        case builtin::BuiltinValue::kSampleMask:
-            return "sample_mask";
-        case builtin::BuiltinValue::kPointSize:
-            return "point_size";
-        default:
-            break;
-    }
-    return "";
-}
-
-std::string GeneratorImpl::interpolation_to_attribute(
-    builtin::InterpolationType type,
-    builtin::InterpolationSampling sampling) const {
-    std::string attr;
-    switch (sampling) {
-        case builtin::InterpolationSampling::kCenter:
-            attr = "center_";
-            break;
-        case builtin::InterpolationSampling::kCentroid:
-            attr = "centroid_";
-            break;
-        case builtin::InterpolationSampling::kSample:
-            attr = "sample_";
-            break;
-        case builtin::InterpolationSampling::kUndefined:
-            break;
-    }
-    switch (type) {
-        case builtin::InterpolationType::kPerspective:
-            attr += "perspective";
-            break;
-        case builtin::InterpolationType::kLinear:
-            attr += "no_perspective";
-            break;
-        case builtin::InterpolationType::kFlat:
-            attr += "flat";
-            break;
-        case builtin::InterpolationType::kUndefined:
-            break;
-    }
-    return attr;
 }
 
 bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
@@ -2003,7 +1896,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
     };
 
     {
-        auto out = line();
+        auto out = Line();
 
         EmitStage(out, func->PipelineStage());
         out << " ";
@@ -2022,14 +1915,10 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
 
             auto* type = program_->Sem().Get(param)->Type()->UnwrapRef();
 
-            auto param_name = param->name->symbol.Name();
-            if (!EmitType(out, type, param_name)) {
+            if (!EmitType(out, type)) {
                 return false;
             }
-            // Parameter name is output as part of the type for pointers.
-            if (!type->Is<type::Pointer>()) {
-                out << " " << param_name;
-            }
+            out << " " << param->name->symbol.Name();
 
             bool ok = Switch(
                 type,  //
@@ -2091,7 +1980,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
 
                         builtin_found = true;
 
-                        auto name = builtin_to_attribute(builtin);
+                        auto name = BuiltinToAttribute(builtin);
                         if (name.empty()) {
                             diagnostics_.add_error(diag::System::Writer, "unknown builtin");
                             return false;
@@ -2126,7 +2015,7 @@ bool GeneratorImpl::EmitEntryPointFunction(const ast::Function* func) {
         }
     }
 
-    line() << "}";
+    Line() << "}";
     return true;
 }
 
@@ -2137,7 +2026,7 @@ bool GeneratorImpl::EmitIdentifier(utils::StringStream& out,
 }
 
 bool GeneratorImpl::EmitLoop(const ast::LoopStatement* stmt) {
-    auto emit_continuing = [this, stmt]() {
+    auto emit_continuing = [this, stmt] {
         if (stmt->continuing && !stmt->continuing->Empty()) {
             if (!EmitBlock(stmt->continuing)) {
                 return false;
@@ -2147,7 +2036,7 @@ bool GeneratorImpl::EmitLoop(const ast::LoopStatement* stmt) {
     };
 
     TINT_SCOPED_ASSIGNMENT(emit_continuing_, emit_continuing);
-    line() << "while (true) {";
+    Line() << "while (true) {";
     {
         ScopedIndent si(this);
         if (!EmitStatements(stmt->body->statements)) {
@@ -2157,7 +2046,7 @@ bool GeneratorImpl::EmitLoop(const ast::LoopStatement* stmt) {
             return false;
         }
     }
-    line() << "}";
+    Line() << "}";
 
     return true;
 }
@@ -2198,35 +2087,35 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
     // statement(s) before the loop in a new block.
     bool nest_in_block = init_buf.lines.size() > 1 || (stmt->initializer && emit_as_loop);
     if (nest_in_block) {
-        line() << "{";
-        increment_indent();
+        Line() << "{";
+        IncrementIndent();
         current_buffer_->Append(init_buf);
         init_buf.lines.clear();  // Don't emit the initializer again in the 'for'
     }
     TINT_DEFER({
         if (nest_in_block) {
-            decrement_indent();
-            line() << "}";
+            DecrementIndent();
+            Line() << "}";
         }
     });
 
     if (emit_as_loop) {
-        auto emit_continuing = [&]() {
+        auto emit_continuing = [&] {
             current_buffer_->Append(cont_buf);
             return true;
         };
 
         TINT_SCOPED_ASSIGNMENT(emit_continuing_, emit_continuing);
-        line() << "while (true) {";
-        increment_indent();
+        Line() << "while (true) {";
+        IncrementIndent();
         TINT_DEFER({
-            decrement_indent();
-            line() << "}";
+            DecrementIndent();
+            Line() << "}";
         });
 
         if (stmt->condition) {
             current_buffer_->Append(cond_pre);
-            line() << "if (!(" << cond_buf.str() << ")) { break; }";
+            Line() << "if (!(" << cond_buf.str() << ")) { break; }";
         }
 
         if (!EmitStatements(stmt->body->statements)) {
@@ -2239,7 +2128,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
     } else {
         // For-loop can be generated.
         {
-            auto out = line();
+            auto out = Line();
             out << "for";
             {
                 ScopedParen sp(out);
@@ -2265,7 +2154,7 @@ bool GeneratorImpl::EmitForLoop(const ast::ForLoopStatement* stmt) {
                 return false;
             }
         }
-        line() << "}";
+        Line() << "}";
     }
 
     return true;
@@ -2283,29 +2172,29 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
         }
     }
 
-    auto emit_continuing = [&]() { return true; };
+    auto emit_continuing = [&] { return true; };
     TINT_SCOPED_ASSIGNMENT(emit_continuing_, emit_continuing);
 
     // If the while has a multi-statement conditional, then we cannot emit this
     // as a regular while in MSL. Instead we need to generate a `while(true)` loop.
     bool emit_as_loop = cond_pre.lines.size() > 0;
     if (emit_as_loop) {
-        line() << "while (true) {";
-        increment_indent();
+        Line() << "while (true) {";
+        IncrementIndent();
         TINT_DEFER({
-            decrement_indent();
-            line() << "}";
+            DecrementIndent();
+            Line() << "}";
         });
 
         current_buffer_->Append(cond_pre);
-        line() << "if (!(" << cond_buf.str() << ")) { break; }";
+        Line() << "if (!(" << cond_buf.str() << ")) { break; }";
         if (!EmitStatements(stmt->body->statements)) {
             return false;
         }
     } else {
         // While can be generated.
         {
-            auto out = line();
+            auto out = Line();
             out << "while";
             {
                 ScopedParen sp(out);
@@ -2316,7 +2205,7 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
         if (!EmitStatementsWithIndent(stmt->body->statements)) {
             return false;
         }
-        line() << "}";
+        Line() << "}";
     }
     return true;
 }
@@ -2324,13 +2213,13 @@ bool GeneratorImpl::EmitWhile(const ast::WhileStatement* stmt) {
 bool GeneratorImpl::EmitDiscard(const ast::DiscardStatement*) {
     // TODO(dsinclair): Verify this is correct when the discard semantics are
     // defined for WGSL (https://github.com/gpuweb/gpuweb/issues/361)
-    line() << "discard_fragment();";
+    Line() << "discard_fragment();";
     return true;
 }
 
 bool GeneratorImpl::EmitIf(const ast::IfStatement* stmt) {
     {
-        auto out = line();
+        auto out = Line();
         out << "if (";
         if (!EmitExpression(out, stmt->condition)) {
             return false;
@@ -2343,7 +2232,7 @@ bool GeneratorImpl::EmitIf(const ast::IfStatement* stmt) {
     }
 
     if (stmt->else_statement) {
-        line() << "} else {";
+        Line() << "} else {";
         if (auto* block = stmt->else_statement->As<ast::BlockStatement>()) {
             if (!EmitStatementsWithIndent(block->statements)) {
                 return false;
@@ -2354,7 +2243,7 @@ bool GeneratorImpl::EmitIf(const ast::IfStatement* stmt) {
             }
         }
     }
-    line() << "}";
+    Line() << "}";
 
     return true;
 }
@@ -2413,7 +2302,7 @@ bool GeneratorImpl::EmitMemberAccessor(utils::StringStream& out,
 }
 
 bool GeneratorImpl::EmitReturn(const ast::ReturnStatement* stmt) {
-    auto out = line();
+    auto out = Line();
     out << "return";
     if (stmt->value) {
         out << " ";
@@ -2426,13 +2315,13 @@ bool GeneratorImpl::EmitReturn(const ast::ReturnStatement* stmt) {
 }
 
 bool GeneratorImpl::EmitBlock(const ast::BlockStatement* stmt) {
-    line() << "{";
+    Line() << "{";
 
     if (!EmitStatementsWithIndent(stmt->statements)) {
         return false;
     }
 
-    line() << "}";
+    Line() << "}";
 
     return true;
 }
@@ -2453,7 +2342,7 @@ bool GeneratorImpl::EmitStatement(const ast::Statement* stmt) {
             return EmitBreakIf(b);
         },
         [&](const ast::CallStatement* c) {  //
-            auto out = line();
+            auto out = Line();
             if (!EmitCall(out, c->expr)) {  //
                 return false;
             }
@@ -2524,7 +2413,7 @@ bool GeneratorImpl::EmitStatementsWithIndent(utils::VectorRef<const ast::Stateme
 
 bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
     {
-        auto out = line();
+        auto out = Line();
         out << "switch(";
         if (!EmitExpression(out, stmt->condition)) {
             return false;
@@ -2541,19 +2430,12 @@ bool GeneratorImpl::EmitSwitch(const ast::SwitchStatement* stmt) {
         }
     }
 
-    line() << "}";
+    Line() << "}";
 
     return true;
 }
 
-bool GeneratorImpl::EmitType(utils::StringStream& out,
-                             const type::Type* type,
-                             const std::string& name,
-                             bool* name_printed /* = nullptr */) {
-    if (name_printed) {
-        *name_printed = false;
-    }
-
+bool GeneratorImpl::EmitType(utils::StringStream& out, const type::Type* type) {
     return Switch(
         type,
         [&](const type::Atomic* atomic) {
@@ -2571,7 +2453,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
         },
         [&](const type::Array* arr) {
             out << ArrayType() << "<";
-            if (!EmitType(out, arr->ElemType(), "")) {
+            if (!EmitType(out, arr->ElemType())) {
                 return false;
             }
             out << ", ";
@@ -2607,7 +2489,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
             return true;
         },
         [&](const type::Matrix* mat) {
-            if (!EmitType(out, mat->type(), "")) {
+            if (!EmitType(out, mat->type())) {
                 return false;
             }
             out << mat->columns() << "x" << mat->rows();
@@ -2621,13 +2503,10 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
                 return false;
             }
             out << " ";
-            if (!EmitType(out, ptr->StoreType(), "")) {
+            if (!EmitType(out, ptr->StoreType())) {
                 return false;
             }
-            out << "* " << name;
-            if (name_printed) {
-                *name_printed = true;
-            }
+            out << "*";
             return true;
         },
         [&](const type::Sampler*) {
@@ -2693,7 +2572,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
                     return true;
                 },
                 [&](const type::StorageTexture* storage) {
-                    if (!EmitType(out, storage->type(), "")) {
+                    if (!EmitType(out, storage->type())) {
                         return false;
                     }
 
@@ -2710,14 +2589,14 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
                     return true;
                 },
                 [&](const type::MultisampledTexture* ms) {
-                    if (!EmitType(out, ms->type(), "")) {
+                    if (!EmitType(out, ms->type())) {
                         return false;
                     }
                     out << ", access::read";
                     return true;
                 },
                 [&](const type::SampledTexture* sampled) {
-                    if (!EmitType(out, sampled->type(), "")) {
+                    if (!EmitType(out, sampled->type())) {
                         return false;
                     }
                     out << ", access::sample";
@@ -2736,7 +2615,7 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
             if (vec->Packed()) {
                 out << "packed_";
             }
-            if (!EmitType(out, vec->type(), "")) {
+            if (!EmitType(out, vec->type())) {
                 return false;
             }
             out << vec->Width();
@@ -2756,13 +2635,10 @@ bool GeneratorImpl::EmitType(utils::StringStream& out,
 bool GeneratorImpl::EmitTypeAndName(utils::StringStream& out,
                                     const type::Type* type,
                                     const std::string& name) {
-    bool name_printed = false;
-    if (!EmitType(out, type, name, &name_printed)) {
+    if (!EmitType(out, type)) {
         return false;
     }
-    if (!name_printed) {
-        out << " " << name;
-    }
+    out << " " << name;
     return true;
 }
 
@@ -2795,7 +2671,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
         return true;
     }
 
-    line(b) << "struct " << StructName(str) << " {";
+    Line(b) << "struct " << StructName(str) << " {";
 
     bool is_host_shareable = str->IsHostShareable();
 
@@ -2812,7 +2688,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
             name = UniqueIdentifier("tint_pad");
         } while (str->FindMember(program_->Symbols().Get(name)));
 
-        auto out = line(b);
+        auto out = Line(b);
         add_byte_offset_comment(out, msl_offset);
         out << ArrayType() << "<int8_t, " << size << "> " << name << ";";
     };
@@ -2821,7 +2697,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
 
     uint32_t msl_offset = 0;
     for (auto* mem : str->Members()) {
-        auto out = line(b);
+        auto out = Line(b);
         auto mem_name = mem->Name().Name();
         auto wgsl_offset = mem->Offset();
 
@@ -2842,7 +2718,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
             add_byte_offset_comment(out, msl_offset);
         }
 
-        if (!EmitType(out, mem->Type(), mem_name)) {
+        if (!EmitType(out, mem->Type())) {
             return false;
         }
 
@@ -2853,7 +2729,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
         auto& attributes = mem->Attributes();
 
         if (auto builtin = attributes.builtin) {
-            auto name = builtin_to_attribute(builtin.value());
+            auto name = BuiltinToAttribute(builtin.value());
             if (name.empty()) {
                 diagnostics_.add_error(diag::System::Writer, "unknown builtin");
                 return false;
@@ -2884,7 +2760,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
         }
 
         if (auto interpolation = attributes.interpolation) {
-            auto name = interpolation_to_attribute(interpolation->type, interpolation->sampling);
+            auto name = InterpolationToAttribute(interpolation->type, interpolation->sampling);
             if (name.empty()) {
                 diagnostics_.add_error(diag::System::Writer, "unknown interpolation attribute");
                 return false;
@@ -2901,7 +2777,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
 
         if (is_host_shareable) {
             // Calculate new MSL offset
-            auto size_align = MslPackedTypeSizeAndAlign(ty);
+            auto size_align = MslPackedTypeSizeAndAlign(diagnostics_, ty);
             if (TINT_UNLIKELY(msl_offset % size_align.align)) {
                 TINT_ICE(Writer, diagnostics_)
                     << "Misaligned MSL structure member " << ty->FriendlyName() << " " << mem_name;
@@ -2917,7 +2793,7 @@ bool GeneratorImpl::EmitStructType(TextBuffer* b, const type::Struct* str) {
 
     b->DecrementIndent();
 
-    line(b) << "};";
+    Line(b) << "};";
     return true;
 }
 
@@ -2936,12 +2812,12 @@ bool GeneratorImpl::EmitUnaryOp(utils::StringStream& out, const ast::UnaryOpExpr
 
             auto fn_name = UniqueIdentifier("tint_unary_minus");
             {
-                auto decl = line(&b);
+                auto decl = Line(&b);
                 if (!EmitTypeAndName(decl, expr_type, fn_name)) {
                     return "";
                 }
                 decl << "(const ";
-                if (!EmitType(decl, expr_type, "")) {
+                if (!EmitType(decl, expr_type)) {
                     return "";
                 }
                 decl << " v) {";
@@ -2951,10 +2827,10 @@ bool GeneratorImpl::EmitUnaryOp(utils::StringStream& out, const ast::UnaryOpExpr
                 ScopedIndent si(&b);
                 const auto largest_negative_value =
                     std::to_string(std::numeric_limits<int32_t>::min());
-                line(&b) << "return select(-v, v, v == " << largest_negative_value << ");";
+                Line(&b) << "return select(-v, v, v == " << largest_negative_value << ");";
             }
-            line(&b) << "}";
-            line(&b);
+            Line(&b) << "}";
+            Line(&b);
             return fn_name;
         });
 
@@ -2998,7 +2874,7 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
     auto* sem = program_->Sem().Get(var);
     auto* type = sem->Type()->UnwrapRef();
 
-    auto out = line();
+    auto out = Line();
 
     switch (sem->AddressSpace()) {
         case builtin::AddressSpace::kFunction:
@@ -3015,14 +2891,10 @@ bool GeneratorImpl::EmitVar(const ast::Var* var) {
             return false;
     }
 
-    std::string name = var->name->symbol.Name();
-    if (!EmitType(out, type, name)) {
+    if (!EmitType(out, type)) {
         return false;
     }
-    // Variable name is output as part of the type for pointers.
-    if (!type->Is<type::Pointer>()) {
-        out << " " << name;
-    }
+    out << " " << var->name->symbol.Name();
 
     if (var->initializer != nullptr) {
         out << " = ";
@@ -3046,7 +2918,7 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     auto* sem = program_->Sem().Get(let);
     auto* type = sem->Type();
 
-    auto out = line();
+    auto out = Line();
 
     switch (sem->AddressSpace()) {
         case builtin::AddressSpace::kFunction:
@@ -3064,15 +2936,10 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
             return false;
     }
 
-    std::string name = "const " + let->name->symbol.Name();
-    if (!EmitType(out, type, name)) {
+    if (!EmitType(out, type)) {
         return false;
     }
-
-    // Variable name is output as part of the type for pointers.
-    if (!type->Is<type::Pointer>()) {
-        out << " " << name;
-    }
+    out << " const " << let->name->symbol.Name();
 
     out << " = ";
     if (!EmitExpression(out, let->initializer)) {
@@ -3081,122 +2948,6 @@ bool GeneratorImpl::EmitLet(const ast::Let* let) {
     out << ";";
 
     return true;
-}
-
-GeneratorImpl::SizeAndAlign GeneratorImpl::MslPackedTypeSizeAndAlign(const type::Type* ty) {
-    return Switch(
-        ty,
-
-        // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
-        // 2.1 Scalar Data Types
-        [&](const type::U32*) {
-            return SizeAndAlign{4, 4};
-        },
-        [&](const type::I32*) {
-            return SizeAndAlign{4, 4};
-        },
-        [&](const type::F32*) {
-            return SizeAndAlign{4, 4};
-        },
-        [&](const type::F16*) {
-            return SizeAndAlign{2, 2};
-        },
-
-        [&](const type::Vector* vec) {
-            auto num_els = vec->Width();
-            auto* el_ty = vec->type();
-            SizeAndAlign el_size_align = MslPackedTypeSizeAndAlign(el_ty);
-            if (el_ty->IsAnyOf<type::U32, type::I32, type::F32, type::F16>()) {
-                // Use a packed_vec type for 3-element vectors only.
-                if (num_els == 3) {
-                    // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
-                    // 2.2.3 Packed Vector Types
-                    return SizeAndAlign{num_els * el_size_align.size, el_size_align.align};
-                } else {
-                    // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
-                    // 2.2 Vector Data Types
-                    // Vector data types are aligned to their size.
-                    return SizeAndAlign{num_els * el_size_align.size, num_els * el_size_align.size};
-                }
-            }
-            TINT_UNREACHABLE(Writer, diagnostics_)
-                << "Unhandled vector element type " << el_ty->TypeInfo().name;
-            return SizeAndAlign{};
-        },
-
-        [&](const type::Matrix* mat) {
-            // https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf
-            // 2.3 Matrix Data Types
-            auto cols = mat->columns();
-            auto rows = mat->rows();
-            auto* el_ty = mat->type();
-            // Metal only support half and float matrix.
-            if (el_ty->IsAnyOf<type::F32, type::F16>()) {
-                static constexpr SizeAndAlign table_f32[] = {
-                    /* float2x2 */ {16, 8},
-                    /* float2x3 */ {32, 16},
-                    /* float2x4 */ {32, 16},
-                    /* float3x2 */ {24, 8},
-                    /* float3x3 */ {48, 16},
-                    /* float3x4 */ {48, 16},
-                    /* float4x2 */ {32, 8},
-                    /* float4x3 */ {64, 16},
-                    /* float4x4 */ {64, 16},
-                };
-                static constexpr SizeAndAlign table_f16[] = {
-                    /* half2x2 */ {8, 4},
-                    /* half2x3 */ {16, 8},
-                    /* half2x4 */ {16, 8},
-                    /* half3x2 */ {12, 4},
-                    /* half3x3 */ {24, 8},
-                    /* half3x4 */ {24, 8},
-                    /* half4x2 */ {16, 4},
-                    /* half4x3 */ {32, 8},
-                    /* half4x4 */ {32, 8},
-                };
-                if (cols >= 2 && cols <= 4 && rows >= 2 && rows <= 4) {
-                    if (el_ty->Is<type::F32>()) {
-                        return table_f32[(3 * (cols - 2)) + (rows - 2)];
-                    } else {
-                        return table_f16[(3 * (cols - 2)) + (rows - 2)];
-                    }
-                }
-            }
-
-            TINT_UNREACHABLE(Writer, diagnostics_)
-                << "Unhandled matrix element type " << el_ty->TypeInfo().name;
-            return SizeAndAlign{};
-        },
-
-        [&](const type::Array* arr) {
-            if (TINT_UNLIKELY(!arr->IsStrideImplicit())) {
-                TINT_ICE(Writer, diagnostics_)
-                    << "arrays with explicit strides should not exist past the SPIR-V reader";
-                return SizeAndAlign{};
-            }
-            if (arr->Count()->Is<type::RuntimeArrayCount>()) {
-                return SizeAndAlign{arr->Stride(), arr->Align()};
-            }
-            if (auto count = arr->ConstantCount()) {
-                return SizeAndAlign{arr->Stride() * count.value(), arr->Align()};
-            }
-            diagnostics_.add_error(diag::System::Writer, type::Array::kErrExpectedConstantCount);
-            return SizeAndAlign{};
-        },
-
-        [&](const type::Struct* str) {
-            // TODO(crbug.com/tint/650): There's an assumption here that MSL's
-            // default structure size and alignment matches WGSL's. We need to
-            // confirm this.
-            return SizeAndAlign{str->Size(), str->Align()};
-        },
-
-        [&](const type::Atomic* atomic) { return MslPackedTypeSizeAndAlign(atomic->Type()); },
-
-        [&](Default) {
-            TINT_UNREACHABLE(Writer, diagnostics_) << "Unhandled type " << ty->TypeInfo().name;
-            return SizeAndAlign{};
-        });
 }
 
 template <typename F>
@@ -3212,7 +2963,7 @@ bool GeneratorImpl::CallBuiltinHelper(utils::StringStream& out,
         auto fn_name = UniqueIdentifier(std::string("tint_") + builtin::str(builtin->Type()));
         std::vector<std::string> parameter_names;
         {
-            auto decl = line(&b);
+            auto decl = Line(&b);
             if (!EmitTypeAndName(decl, builtin->ReturnType(), fn_name)) {
                 return "";
             }
@@ -3237,8 +2988,8 @@ bool GeneratorImpl::CallBuiltinHelper(utils::StringStream& out,
                 return "";
             }
         }
-        line(&b) << "}";
-        line(&b);
+        Line(&b) << "}";
+        Line(&b);
         return fn_name;
     });
 
@@ -3268,19 +3019,19 @@ const std::string& GeneratorImpl::ArrayType() {
     if (array_template_name_.empty()) {
         array_template_name_ = UniqueIdentifier("tint_array");
         auto* buf = &helpers_;
-        line(buf) << "template<typename T, size_t N>";
-        line(buf) << "struct " << array_template_name_ << " {";
-        line(buf) << "    const constant T& operator[](size_t i) const constant"
+        Line(buf) << "template<typename T, size_t N>";
+        Line(buf) << "struct " << array_template_name_ << " {";
+        Line(buf) << "    const constant T& operator[](size_t i) const constant"
                   << " { return elements[i]; }";
         for (auto* space : {"device", "thread", "threadgroup"}) {
-            line(buf) << "    " << space << " T& operator[](size_t i) " << space
+            Line(buf) << "    " << space << " T& operator[](size_t i) " << space
                       << " { return elements[i]; }";
-            line(buf) << "    const " << space << " T& operator[](size_t i) const " << space
+            Line(buf) << "    const " << space << " T& operator[](size_t i) const " << space
                       << " { return elements[i]; }";
         }
-        line(buf) << "    T elements[N];";
-        line(buf) << "};";
-        line(buf);
+        Line(buf) << "    T elements[N];";
+        Line(buf) << "};";
+        Line(buf);
     }
     return array_template_name_;
 }

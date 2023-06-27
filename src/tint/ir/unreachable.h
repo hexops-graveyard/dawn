@@ -12,14 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/ir/branch.h"
+#ifndef SRC_TINT_IR_UNREACHABLE_H_
+#define SRC_TINT_IR_UNREACHABLE_H_
 
-#include <utility>
-
-TINT_INSTANTIATE_TYPEINFO(tint::ir::Branch);
+#include "src/tint/ir/terminator.h"
 
 namespace tint::ir {
 
-Branch::~Branch() = default;
+/// An unreachable instruction in the IR.
+class Unreachable : public utils::Castable<Unreachable, Terminator> {
+  public:
+    ~Unreachable() override;
+};
 
 }  // namespace tint::ir
+
+#endif  // SRC_TINT_IR_UNREACHABLE_H_

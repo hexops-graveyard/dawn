@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "src/tint/diagnostic/diagnostic.h"
-#include "src/tint/program_builder.h"
+#include "src/tint/type/struct.h"
 #include "src/tint/utils/string_stream.h"
 
 namespace tint::writer {
@@ -29,8 +29,8 @@ namespace tint::writer {
 /// Helper methods for generators which are creating text output
 class TextGenerator {
   public:
-    /// Line holds a single line of text
-    struct Line {
+    /// LineInfo holds a single line of text
+    struct LineInfo {
         /// The indentation of the line in blankspace
         uint32_t indent = 0;
         /// The content of the line, without a trailing newline character
@@ -83,38 +83,8 @@ class TextGenerator {
         uint32_t current_indent = 0;
 
         /// The lines
-        std::vector<Line> lines;
+        std::vector<LineInfo> lines;
     };
-
-    /// Constructor
-    /// @param program the program used by the generator
-    explicit TextGenerator(const Program* program);
-    ~TextGenerator();
-
-    /// Increment the emitter indent level
-    void increment_indent() { current_buffer_->IncrementIndent(); }
-    /// Decrement the emitter indent level
-    void decrement_indent() { current_buffer_->DecrementIndent(); }
-
-    /// @returns the result data
-    std::string result() const { return main_buffer_.String(); }
-
-    /// @returns the list of diagnostics raised by the generator.
-    const diag::List& Diagnostics() const { return diagnostics_; }
-
-    /// @return a new, unique identifier with the given prefix.
-    /// @param prefix optional prefix to apply to the generated identifier. If
-    /// empty "tint_symbol" will be used.
-    std::string UniqueIdentifier(const std::string& prefix = "");
-
-    /// @param s the semantic structure
-    /// @returns the name of the structure, taking special care of builtin
-    /// structures that start with double underscores. If the structure is a
-    /// builtin, then the returned name will be a unique name without the leading
-    /// underscores.
-    std::string StructName(const type::Struct* s);
-
-  protected:
     /// LineWriter is a helper that acts as a string buffer, who's content is
     /// emitted to the TextBuffer as a single line on destruction.
     struct LineWriter {
@@ -148,6 +118,37 @@ class TextGenerator {
         TextBuffer* buffer;
     };
 
+    /// Increment the emitter indent level
+    void IncrementIndent() { current_buffer_->IncrementIndent(); }
+    /// Decrement the emitter indent level
+    void DecrementIndent() { current_buffer_->DecrementIndent(); }
+
+    /// @returns a new LineWriter, used for buffering and writing a line to
+    /// the end of #current_buffer_.
+    LineWriter Line() { return LineWriter(current_buffer_); }
+    /// @param buffer the TextBuffer to write the line to
+    /// @returns a new LineWriter, used for buffering and writing a line to
+    /// the end of `buffer`.
+    static LineWriter Line(TextBuffer* buffer) { return LineWriter(buffer); }
+
+    /// @return a new, unique identifier with the given prefix.
+    /// @param prefix optional prefix to apply to the generated identifier. If
+    /// empty "tint_symbol" will be used.
+    virtual std::string UniqueIdentifier(const std::string& prefix = "") = 0;
+
+    /// @param s the structure
+    /// @returns the name of the structure, taking special care of builtin structures that start
+    /// with double underscores. If the structure is a builtin, then the returned name will be a
+    /// unique name without the leading underscores.
+    std::string StructName(const type::Struct* s);
+
+    /// @returns the result data
+    virtual std::string Result() const { return main_buffer_.String(); }
+
+    /// @returns the list of diagnostics raised by the generator.
+    const diag::List& Diagnostics() const { return diagnostics_; }
+
+  protected:
     /// Helper for writing a '(' on construction and a ')' destruction.
     struct ScopedParen {
         /// Constructor
@@ -183,37 +184,19 @@ class TextGenerator {
         TextBuffer* buffer_;
     };
 
-    /// @returns the resolved type of the ast::Expression `expr`
-    /// @param expr the expression
-    const type::Type* TypeOf(const ast::Expression* expr) const { return builder_.TypeOf(expr); }
+    /// Constructor
+    TextGenerator();
+    virtual ~TextGenerator();
 
-    /// @returns the resolved type of the ast::TypeDecl `type_decl`
-    /// @param type_decl the type
-    const type::Type* TypeOf(const ast::TypeDecl* type_decl) const {
-        return builder_.TypeOf(type_decl);
-    }
-
-    /// @returns a new LineWriter, used for buffering and writing a line to
-    /// the end of #current_buffer_.
-    LineWriter line() { return LineWriter(current_buffer_); }
-
-    /// @param buffer the TextBuffer to write the line to
-    /// @returns a new LineWriter, used for buffering and writing a line to
-    /// the end of `buffer`.
-    static LineWriter line(TextBuffer* buffer) { return LineWriter(buffer); }
-
-    /// The program
-    Program const* const program_;
-    /// A ProgramBuilder that thinly wraps program_
-    ProgramBuilder builder_;
     /// Diagnostics generated by the generator
     diag::List diagnostics_;
     /// The buffer the TextGenerator is currently appending lines to
     TextBuffer* current_buffer_ = &main_buffer_;
 
-  private:
     /// The primary text buffer that the generator will emit
     TextBuffer main_buffer_;
+
+  private:
     /// Map of builtin structure to unique generated name
     std::unordered_map<const type::Struct*, std::string> builtin_struct_names_;
 };

@@ -21,6 +21,10 @@
 #include "src/tint/builtin/address_space.h"
 #include "src/tint/builtin/fluent_types.h"
 #include "src/tint/builtin/number.h"
+#include "src/tint/symbol.h"
+#include "src/tint/type/atomic.h"
+#include "src/tint/type/sampler.h"
+#include "src/tint/type/struct.h"
 #include "src/tint/type/type.h"
 #include "src/tint/type/unique_node.h"
 #include "src/tint/utils/hash.h"
@@ -154,6 +158,22 @@ class Manager final {
 
     /// @returns a abstract-int type
     const type::AbstractInt* AInt();
+
+    /// @param inner the inner type
+    /// @returns an atomic type with the element type @p inner
+    const type::Atomic* atomic(const type::Type* inner);
+
+    /// @tparam T the element type
+    /// @returns the atomic type
+    template <typename T>
+    const type::Atomic* atomic() {
+        return atomic(Get<T>());
+    }
+
+    /// @param inner the inner type
+    /// @param size the vector size
+    /// @returns the vector type
+    const type::Vector* packed_vec(const type::Type* inner, uint32_t size);
 
     /// @param inner the inner type
     /// @param size the vector size
@@ -385,6 +405,38 @@ class Manager final {
     template <builtin::AddressSpace SPACE, builtin::Access ACCESS = builtin::Access::kReadWrite>
     const type::Pointer* ptr(const type::Type* subtype) {
         return ptr(SPACE, subtype, ACCESS);
+    }
+
+    /// @returns the sampler type
+    const type::Sampler* sampler() { return Get<type::Sampler>(type::SamplerKind::kSampler); }
+
+    /// @returns the comparison sampler type
+    const type::Sampler* comparison_sampler() {
+        return Get<type::Sampler>(type::SamplerKind::kComparisonSampler);
+    }
+
+    /// A structure member descriptor.
+    struct StructMemberDesc {
+        /// The name of the struct member.
+        Symbol name;
+        /// The type of the struct member.
+        const type::Type* type = nullptr;
+        /// The optional struct member attributes.
+        type::StructMemberAttributes attributes = {};
+    };
+
+    /// Create a new structure declaration.
+    /// @param name the name of the structure
+    /// @param members the list of structure member descriptors
+    /// @returns the structure type
+    const type::Struct* Struct(Symbol name, utils::VectorRef<StructMemberDesc> members);
+
+    /// Create a new structure declaration.
+    /// @param name the name of the structure
+    /// @param members the list of structure member descriptors
+    /// @returns the structure type
+    const type::Struct* Struct(Symbol name, std::initializer_list<StructMemberDesc> members) {
+        return Struct(name, utils::Vector<StructMemberDesc, 4>(members));
     }
 
     /// @returns an iterator to the beginning of the types

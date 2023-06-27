@@ -165,7 +165,7 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
      {"use_dxc",
       "Use DXC instead of FXC for compiling HLSL when both dxcompiler.dll and dxil.dll is "
       "available.",
-      "https://crbug.com/dawn/402", ToggleStage::Device}},
+      "https://crbug.com/dawn/402", ToggleStage::Adapter}},
     {Toggle::DisableRobustness,
      {"disable_robustness", "Disable robust buffer access", "https://crbug.com/dawn/480",
       ToggleStage::Device}},
@@ -401,6 +401,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Use a blit instead of a copy command to copy stencil aspect of a texture to a buffer."
       "Workaround for OpenGLES.",
       "https://crbug.com/dawn/1782", ToggleStage::Device}},
+    {Toggle::UseBlitForSnormTextureToBufferCopy,
+     {"use_blit_for_snorm_texture_to_buffer_copy",
+      "Use a blit instead of a copy command to copy snorm texture to a buffer."
+      "Workaround for OpenGLES.",
+      "https://crbug.com/dawn/1781", ToggleStage::Device}},
     {Toggle::D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha,
      {"d3d12_replace_add_with_minus_when_dst_factor_is_zero_and_src_factor_is_dst_alpha",
       "Replace the blending operation 'Add' with 'Minus' when dstBlendFactor is 'Zero' and "
@@ -422,6 +427,11 @@ static constexpr ToggleEnumAndInfoList kToggleNameAndInfoList = {{
       "Use D3D12 Root Signature Version 1.1 to make additional guarantees about the descriptors in "
       "a descriptor heap and the data pointed to by the descriptors so that the drivers can make "
       "better optimizations on them.",
+      "https://crbug.com/tint/1890", ToggleStage::Device}},
+    {Toggle::VulkanUseImageRobustAccess2,
+     {"vulkan_use_image_robust_access_2",
+      "Disable Tint robustness transform on textures when VK_EXT_robustness2 is supported and "
+      "robustImageAccess2 == VK_TRUE.",
       "https://crbug.com/tint/1890", ToggleStage::Device}},
     {Toggle::NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
      {"no_workaround_sample_mask_becomes_zero_for_all_but_last_color_target",

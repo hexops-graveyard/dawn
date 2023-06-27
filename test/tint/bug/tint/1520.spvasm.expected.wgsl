@@ -19,11 +19,9 @@ var<private> sk_Clockwise : bool;
 
 var<private> vcolor_S0 : vec4f;
 
-const x_35 = vec4i(0i, 0i, 0i, 0i);
+const x_46 = vec4i(1i);
 
-const x_46 = vec4i(1i, 1i, 1i, 1i);
-
-const x_57 = vec4i(2i, 2i, 2i, 2i);
+const x_57 = vec4i(2i);
 
 fn test_int_S1_c0_b() -> bool {
   var unknown : i32;
@@ -41,11 +39,11 @@ fn test_int_S1_c0_b() -> bool {
   ok = true;
   x_41 = false;
   if (true) {
-    x_40 = all(((x_35 / vec4i(x_27, x_27, x_27, x_27)) == x_35));
+    x_40 = all(((vec4i() / vec4i(x_27)) == vec4i()));
     x_41 = x_40;
   }
   ok = x_41;
-  let x_44 = vec4i(x_27, x_27, x_27, x_27);
+  let x_44 = vec4i(x_27);
   val = x_44;
   let x_47 = (x_44 + x_46);
   val = x_47;
@@ -78,11 +76,9 @@ fn test_int_S1_c0_b() -> bool {
   return x_66;
 }
 
-const x_82 = vec4f(0.0f, 0.0f, 0.0f, 0.0f);
+const x_91 = vec4f(1.0f);
 
-const x_91 = vec4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-const x_102 = vec4f(2.0f, 2.0f, 2.0f, 2.0f);
+const x_102 = vec4f(2.0f);
 
 fn main_1() {
   var outputColor_S0 : vec4f;
@@ -106,11 +102,11 @@ fn main_1() {
   x_9_ok = true;
   x_87 = false;
   if (true) {
-    x_86 = all(((x_82 / vec4f(x_77, x_77, x_77, x_77)) == x_82));
+    x_86 = all(((vec4f() / vec4f(x_77)) == vec4f()));
     x_87 = x_86;
   }
   x_9_ok = x_87;
-  let x_89 = vec4f(x_77, x_77, x_77, x_77);
+  let x_89 = vec4f(x_77);
   x_10_val = x_89;
   let x_92 = (x_89 + x_91);
   x_10_val = x_92;

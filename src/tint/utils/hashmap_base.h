@@ -25,9 +25,7 @@
 #include "src/tint/utils/hash.h"
 #include "src/tint/utils/vector.h"
 
-#ifndef NDEBUG
 #define TINT_ASSERT_ITERATORS_NOT_INVALIDATED
-#endif
 
 namespace tint::utils {
 
@@ -478,7 +476,7 @@ class HashmapBase {
 
         const auto hash = Hash(key);
 
-        auto make_entry = [&]() {
+        auto make_entry = [&] {
             if constexpr (ValueIsVoid) {
                 return std::forward<K>(key);
             } else {

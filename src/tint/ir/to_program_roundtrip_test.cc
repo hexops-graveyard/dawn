@@ -39,12 +39,14 @@ class IRToProgramRoundtripTest : public ProgramTestHelper {
         auto ir_module = FromProgram(&input_program);
         ASSERT_TRUE(ir_module);
 
+        tint::ir::Disassembler d{ir_module.Get()};
+        auto disassembly = d.Disassemble();
+
         auto output_program = ToProgram(ir_module.Get());
         if (!output_program.IsValid()) {
-            tint::ir::Disassembler d{ir_module.Get()};
             FAIL() << output_program.Diagnostics().str() << std::endl  //
                    << "IR:" << std::endl                               //
-                   << d.Disassemble() << std::endl                     //
+                   << disassembly << std::endl                         //
                    << "AST:" << std::endl                              //
                    << Program::printer(&output_program) << std::endl;
         }
@@ -56,10 +58,7 @@ class IRToProgramRoundtripTest : public ProgramTestHelper {
 
         auto expected = expected_wgsl.empty() ? input : utils::TrimSpace(expected_wgsl);
         auto got = utils::TrimSpace(output.wgsl);
-        if (expected != got) {
-            tint::ir::Disassembler d{ir_module.Get()};
-            EXPECT_EQ(expected, got) << "IR:" << std::endl << d.Disassemble();
-        }
+        EXPECT_EQ(expected, got) << "IR:" << std::endl << disassembly;
     }
 
     void Test(std::string_view wgsl) { Test(wgsl, wgsl); }
@@ -265,9 +264,7 @@ fn f(a : i32, b : u32) -> i32 {
 ////////////////////////////////////////////////////////////////////////////////
 // Short-circuiting binary ops
 ////////////////////////////////////////////////////////////////////////////////
-
-// TODO(crbug.com/tint/1902): Pattern detect this
-TEST_F(IRToProgramRoundtripTest, DISABLED_BinaryOp_LogicalAnd) {
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Param_2) {
     Test(R"(
 fn f(a : bool, b : bool) -> bool {
   return (a && b);
@@ -275,11 +272,333 @@ fn f(a : bool, b : bool) -> bool {
 )");
 }
 
-// TODO(crbug.com/tint/1902): Pattern detect this
-TEST_F(IRToProgramRoundtripTest, DISABLED_BinaryOp_LogicalOr) {
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Param_3_ab_c) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  return ((a && b) && c);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Param_3_a_bc) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  return ((a && b) && c);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Let_2) {
     Test(R"(
 fn f(a : bool, b : bool) -> bool {
-  return (a && b);
+  let l = (a && b);
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Let_3_ab_c) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  let l = ((a && b) && c);
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Let_3_a_bc) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  let l = (a && (b && c));
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Call_2) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return (a() && b());
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Call_3_ab_c) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn c() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return ((a() && b()) && c());
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalAnd_Call_3_a_bc) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn c() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return (a() && (b() && c()));
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Param_2) {
+    Test(R"(
+fn f(a : bool, b : bool) -> bool {
+  return (a || b);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Param_3_ab_c) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  return ((a || b) || c);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Param_3_a_bc) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  return (a || (b || c));
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Let_2) {
+    Test(R"(
+fn f(a : bool, b : bool) -> bool {
+  let l = (a || b);
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Let_3_ab_c) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  let l = ((a || b) || c);
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Let_3_a_bc) {
+    Test(R"(
+fn f(a : bool, b : bool, c : bool) -> bool {
+  let l = (a || (b || c));
+  return l;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Call_2) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return (a() || b());
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Call_3_ab_c) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn c() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return ((a() || b()) || c());
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalOr_Call_3_a_bc) {
+    Test(R"(
+fn a() -> bool {
+  return true;
+}
+
+fn b() -> bool {
+  return true;
+}
+
+fn c() -> bool {
+  return true;
+}
+
+fn f() -> bool {
+  return (a() || (b() || c()));
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, BinaryOp_LogicalMixed) {
+    Test(R"(
+fn b() -> bool {
+  return true;
+}
+
+fn d() -> bool {
+  return true;
+}
+
+fn f(a : bool, c : bool) -> bool {
+  let l = ((a || b()) && (c || d()));
+  return l;
+}
+)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Compound assignment
+////////////////////////////////////////////////////////////////////////////////
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Increment) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v++;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v + 1i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Decrement) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v++;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v + 1i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Add) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v += 8i;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v + 8i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Subtract) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v -= 8i;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v - 8i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Multiply) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v *= 8i;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v * 8i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Divide) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v /= 8i;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v / 8i);
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, CompoundAssign_Xor) {
+    Test(R"(
+fn f() {
+  var v : i32;
+  v ^= 8i;
+}
+)",
+         R"(
+fn f() {
+  var v : i32;
+  v = (v ^ 8i);
 }
 )");
 }
@@ -342,8 +661,7 @@ TEST_F(IRToProgramRoundtripTest, If_CallFn) {
 fn a() {
 }
 
-fn f() {
-  var cond : bool = true;
+fn f(cond : bool) {
   if (cond) {
     a();
   }
@@ -353,8 +671,7 @@ fn f() {
 
 TEST_F(IRToProgramRoundtripTest, If_Return) {
     Test(R"(
-fn f() {
-  var cond : bool = true;
+fn f(cond : bool) {
   if (cond) {
     return;
   }
@@ -382,8 +699,7 @@ fn a() {
 fn b() {
 }
 
-fn f() {
-  var cond : bool = true;
+fn f(cond : bool) {
   if (cond) {
     a();
   } else {
@@ -439,13 +755,33 @@ fn c() {
 }
 
 fn f() {
-  var cond_a : bool = true;
-  if (cond_a) {
+  var cond : bool = true;
+  if (cond) {
     a();
   } else if (false) {
     b();
   }
   c();
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, If_Else_Chain) {
+    Test(R"(
+fn x(i : i32) -> bool {
+  return true;
+}
+
+fn f(a : bool, b : bool, c : bool, d : bool) {
+  if (a) {
+    x(0i);
+  } else if (b) {
+    x(1i);
+  } else if (c) {
+    x(2i);
+  } else {
+    x(3i);
+  }
 }
 )");
 }
@@ -568,6 +904,299 @@ fn f() {
     }
     case 2i: {
       c();
+    }
+  }
+}
+)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// For
+////////////////////////////////////////////////////////////////////////////////
+TEST_F(IRToProgramRoundtripTest, For_Empty) {
+    Test(R"(
+fn f() {
+  for(var i : i32 = 0i; (i < 5i); i = (i + 1i)) {
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_Empty_NoInit) {
+    Test(R"(
+fn f() {
+  var i : i32 = 0i;
+  for(; (i < 5i); i = (i + 1i)) {
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_Empty_NoCond) {
+    Test(R"(
+fn f() {
+  for(var i : i32 = 0i; ; i = (i + 1i)) {
+    break;
+  }
+}
+)",
+         R"(
+fn f() {
+  {
+    var i : i32 = 0i;
+    loop {
+      break;
+
+      continuing {
+        i = (i + 1i);
+      }
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_Empty_NoCont) {
+    Test(R"(
+fn f() {
+  for(var i : i32 = 0i; (i < 5i); ) {
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_ComplexBody) {
+    Test(R"(
+fn a(v : i32) -> bool {
+  return (v == 1i);
+}
+
+fn f() -> i32 {
+  for(var i : i32 = 0i; (i < 5i); i = (i + 1i)) {
+    if (a(42i)) {
+      return 1i;
+    } else {
+      return 2i;
+    }
+  }
+  return 3i;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_ComplexBody_NoInit) {
+    Test(R"(
+fn a(v : i32) -> bool {
+  return (v == 1i);
+}
+
+fn f() -> i32 {
+  var i : i32 = 0i;
+  for(; (i < 5i); i = (i + 1i)) {
+    if (a(42i)) {
+      return 1i;
+    } else {
+      return 2i;
+    }
+  }
+  return 3i;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_ComplexBody_NoCond) {
+    Test(R"(
+fn a(v : i32) -> bool {
+  return (v == 1i);
+}
+
+fn f() -> i32 {
+  for(var i : i32 = 0i; ; i = (i + 1i)) {
+    if (a(42i)) {
+      return 1i;
+    } else {
+      return 2i;
+    }
+  }
+}
+)",
+         R"(
+fn a(v : i32) -> bool {
+  return (v == 1i);
+}
+
+fn f() -> i32 {
+  {
+    var i : i32 = 0i;
+    loop {
+      if (a(42i)) {
+        return 1i;
+      } else {
+        return 2i;
+      }
+
+      continuing {
+        i = (i + 1i);
+      }
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_ComplexBody_NoCont) {
+    Test(R"(
+fn a(v : i32) -> bool {
+  return (v == 1i);
+}
+
+fn f() -> i32 {
+  for(var i : i32 = 0i; (i < 5i); ) {
+    if (a(42i)) {
+      return 1i;
+    } else {
+      return 2i;
+    }
+  }
+  return 3i;
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, For_CallInInitCondCont) {
+    Test(R"(
+fn n(v : i32) -> i32 {
+  return (v + 1i);
+}
+
+fn f() {
+  for(var i : i32 = n(0i); (i < n(1i)); i = n(i)) {
+  }
+}
+)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// While
+////////////////////////////////////////////////////////////////////////////////
+TEST_F(IRToProgramRoundtripTest, While_Empty) {
+    Test(R"(
+fn f() {
+  while(true) {
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, While_Cond) {
+    Test(R"(
+fn f(cond : bool) {
+  while(cond) {
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, While_Break) {
+    Test(R"(
+fn f() {
+  while(true) {
+    break;
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, While_IfBreak) {
+    Test(R"(
+fn f(cond : bool) {
+  while(true) {
+    if (cond) {
+      break;
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, While_IfReturn) {
+    Test(R"(
+fn f(cond : bool) {
+  while(true) {
+    if (cond) {
+      return;
+    }
+  }
+}
+)");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Loop
+////////////////////////////////////////////////////////////////////////////////
+TEST_F(IRToProgramRoundtripTest, Loop_Break) {
+    Test(R"(
+fn f() {
+  loop {
+    break;
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, Loop_IfBreak) {
+    Test(R"(
+fn f(cond : bool) {
+  loop {
+    if (cond) {
+      break;
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, Loop_IfReturn) {
+    Test(R"(
+fn f(cond : bool) {
+  loop {
+    if (cond) {
+      return;
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, Loop_IfContinuing) {
+    Test(R"(
+fn f() {
+  var cond : bool = false;
+  loop {
+    if (cond) {
+      return;
+    }
+
+    continuing {
+      cond = true;
+    }
+  }
+}
+)");
+}
+
+TEST_F(IRToProgramRoundtripTest, Loop_VarsDeclaredOutsideAndInside) {
+    Test(R"(
+fn f() {
+  var b : i32 = 1i;
+  loop {
+    var a : i32 = 2i;
+    if ((a == b)) {
+      return;
+    }
+
+    continuing {
+      b = (a + b);
     }
   }
 }

@@ -14,36 +14,40 @@
 
 #include "dawn/native/Adapter.h"
 
+#include <algorithm>
 #include <memory>
+#include <tuple>
 #include <utility>
+#include <vector>
 
-#include "dawn/native/ChainUtils_autogen.h"
+#include "dawn/native/ChainUtils.h"
 #include "dawn/native/Device.h"
 #include "dawn/native/Instance.h"
 #include "dawn/native/PhysicalDevice.h"
 
 namespace dawn::native {
 
-AdapterBase::AdapterBase(Ref<PhysicalDeviceBase> physicalDevice, FeatureLevel featureLevel)
-    : AdapterBase(physicalDevice,
-                  featureLevel,
-                  TogglesState(ToggleStage::Adapter)
-                      .InheritFrom(physicalDevice->GetInstance()->GetTogglesState())) {}
-
 AdapterBase::AdapterBase(Ref<PhysicalDeviceBase> physicalDevice,
                          FeatureLevel featureLevel,
-                         const TogglesState& adapterToggles)
+                         const TogglesState& requiredAdapterToggles)
     : mPhysicalDevice(std::move(physicalDevice)),
       mFeatureLevel(featureLevel),
-      mTogglesState(adapterToggles) {
+      mTogglesState(requiredAdapterToggles) {
     ASSERT(mPhysicalDevice->SupportsFeatureLevel(featureLevel));
     ASSERT(mTogglesState.GetStage() == ToggleStage::Adapter);
+    // Cache the supported features of this adapter. Note that with device toggles overriding, a
+    // device created by this adapter may support features not in this set and vice versa.
+    mSupportedFeatures = mPhysicalDevice->GetSupportedFeatures(mTogglesState);
 }
 
 AdapterBase::~AdapterBase() = default;
 
 void AdapterBase::SetUseTieredLimits(bool useTieredLimits) {
     mUseTieredLimits = useTieredLimits;
+}
+
+FeaturesSet AdapterBase::GetSupportedFeatures() const {
+    return mSupportedFeatures;
 }
 
 PhysicalDeviceBase* AdapterBase::GetPhysicalDevice() {
@@ -98,11 +102,11 @@ void AdapterBase::APIGetProperties(AdapterProperties* properties) const {
 }
 
 bool AdapterBase::APIHasFeature(wgpu::FeatureName feature) const {
-    return mPhysicalDevice->HasFeature(feature);
+    return mSupportedFeatures.IsEnabled(feature);
 }
 
 size_t AdapterBase::APIEnumerateFeatures(wgpu::FeatureName* features) const {
-    return mPhysicalDevice->EnumerateFeatures(features);
+    return mSupportedFeatures.EnumerateFeatures(features);
 }
 
 DeviceBase* AdapterBase::APICreateDevice(const DeviceDescriptor* descriptor) {
@@ -137,11 +141,12 @@ ResultOrError<Ref<DeviceBase>> AdapterBase::CreateDevice(const DeviceDescriptor*
     // Backend-specific forced and default device toggles
     mPhysicalDevice->SetupBackendDeviceToggles(&deviceToggles);
 
-    // Validate all required features are supported by the adapter and suitable under given toggles.
-    // Note that certain toggles in device toggles state may be overriden by user and different from
-    // the adapter toggles state.
-    // TODO(dawn:1495): After implementing adapter toggles, decide whether we should validate
-    // supported features using adapter toggles or device toggles.
+    // Validate all required features are supported by the adapter and suitable under device
+    // toggles. Note that certain toggles in device toggles state may be overriden by user and
+    // different from the adapter toggles state, and in this case a device may support features
+    // that not supported by the adapter. We allow such toggles overriding for the convinience e.g.
+    // creating a deivce for internal usage with AllowUnsafeAPI enabled from an adapter that
+    // disabled AllowUnsafeAPIS.
     for (uint32_t i = 0; i < descriptor->requiredFeaturesCount; ++i) {
         wgpu::FeatureName feature = descriptor->requiredFeatures[i];
         DAWN_TRY(mPhysicalDevice->ValidateFeatureSupportedWithToggles(feature, deviceToggles));
@@ -190,6 +195,57 @@ const TogglesState& AdapterBase::GetTogglesState() const {
 
 FeatureLevel AdapterBase::GetFeatureLevel() const {
     return mFeatureLevel;
+}
+
+std::vector<Ref<AdapterBase>> SortAdapters(std::vector<Ref<AdapterBase>> adapters,
+                                           const RequestAdapterOptions* options) {
+    const bool highPerformance =
+        options != nullptr && options->powerPreference == wgpu::PowerPreference::HighPerformance;
+
+    const auto ComputeAdapterTypeRank = [&](const Ref<AdapterBase>& a) {
+        switch (a->GetPhysicalDevice()->GetAdapterType()) {
+            case wgpu::AdapterType::DiscreteGPU:
+                return highPerformance ? 0 : 1;
+            case wgpu::AdapterType::IntegratedGPU:
+                return highPerformance ? 1 : 0;
+            case wgpu::AdapterType::CPU:
+                return 2;
+            case wgpu::AdapterType::Unknown:
+                return 3;
+        }
+    };
+
+    const auto ComputeBackendTypeRank = [](const Ref<AdapterBase>& a) {
+        switch (a->GetPhysicalDevice()->GetBackendType()) {
+            // Sort backends generally in order of Core -> Compat -> Testing,
+            // while preferring OS-specific backends like Metal/D3D.
+            case wgpu::BackendType::Metal:
+            case wgpu::BackendType::D3D12:
+                return 0;
+            case wgpu::BackendType::Vulkan:
+                return 1;
+            case wgpu::BackendType::D3D11:
+                return 2;
+            case wgpu::BackendType::OpenGLES:
+                return 3;
+            case wgpu::BackendType::OpenGL:
+                return 4;
+            case wgpu::BackendType::WebGPU:
+                return 5;
+            case wgpu::BackendType::Null:
+                return 6;
+            case wgpu::BackendType::Undefined:
+                UNREACHABLE();
+        }
+    };
+
+    std::sort(adapters.begin(), adapters.end(),
+              [&](const Ref<AdapterBase>& a, const Ref<AdapterBase>& b) -> bool {
+                  return std::tuple(ComputeAdapterTypeRank(a), ComputeBackendTypeRank(a)) <
+                         std::tuple(ComputeAdapterTypeRank(b), ComputeBackendTypeRank(b));
+              });
+
+    return adapters;
 }
 
 }  // namespace dawn::native

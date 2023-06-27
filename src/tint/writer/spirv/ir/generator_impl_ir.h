@@ -33,8 +33,12 @@ class Access;
 class Binary;
 class Block;
 class BlockParam;
-class Branch;
 class BuiltinCall;
+class Construct;
+class ControlInstruction;
+class ExitIf;
+class ExitLoop;
+class ExitSwitch;
 class Function;
 class If;
 class Load;
@@ -43,6 +47,7 @@ class Module;
 class MultiInBlock;
 class Store;
 class Switch;
+class Terminator;
 class UserCall;
 class Value;
 class Var;
@@ -70,7 +75,7 @@ class GeneratorImplIr {
     spirv::Module& Module() { return module_; }
 
     /// @returns the generated SPIR-V binary data
-    const std::vector<uint32_t>& Result() const { return writer_.result(); }
+    const std::vector<uint32_t>& Result() const { return writer_.Result(); }
 
     /// @returns the list of diagnostics raised by the generator
     diag::List Diagnostics() const { return diagnostics_; }
@@ -94,6 +99,11 @@ class GeneratorImplIr {
     /// @param value the value to get the ID for
     /// @returns the result ID of the value
     uint32_t Value(ir::Value* value);
+
+    /// Get the result ID of the instruction result `value`, emitting its instruction if necessary.
+    /// @param inst the instruction to get the ID for
+    /// @returns the result ID of the instruction
+    uint32_t Value(ir::Instruction* inst);
 
     /// Get the ID of the label for `block`.
     /// @param block the block to get the label ID for
@@ -146,6 +156,10 @@ class GeneratorImplIr {
     /// @param call the builtin call instruction to emit
     void EmitBuiltinCall(ir::BuiltinCall* call);
 
+    /// Emit a construct instruction.
+    /// @param construct the construct instruction to emit
+    void EmitConstruct(ir::Construct* construct);
+
     /// Emit a load instruction.
     /// @param load the load instruction to emit
     void EmitLoad(ir::Load* load);
@@ -170,9 +184,13 @@ class GeneratorImplIr {
     /// @param var the var instruction to emit
     void EmitVar(ir::Var* var);
 
-    /// Emit a branch instruction.
-    /// @param b the branch instruction to emit
-    void EmitBranch(ir::Branch* b);
+    /// Emit a terminator instruction.
+    /// @param term the terminator instruction to emit
+    void EmitTerminator(ir::Terminator* term);
+
+    /// Emit the OpPhis for the given flow control instruction.
+    /// @param inst the flow control instruction
+    void EmitExitPhis(ir::ControlInstruction* inst);
 
   private:
     /// Get the result ID of the constant `constant`, emitting its instruction if necessary.
@@ -233,6 +251,15 @@ class GeneratorImplIr {
 
     /// The current function that is being emitted.
     Function current_function_;
+
+    /// The merge block for the current if statement
+    uint32_t if_merge_label_ = 0;
+
+    /// The merge block for the current loop statement
+    uint32_t loop_merge_label_ = 0;
+
+    /// The merge block for the current switch statement
+    uint32_t switch_merge_label_ = 0;
 
     bool zero_init_workgroup_memory_ = false;
 };

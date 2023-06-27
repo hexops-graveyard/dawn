@@ -54,6 +54,16 @@ uint32_t GetVendorIdFromVendors(const char* vendor) {
 
 }  // anonymous namespace
 
+// static
+ResultOrError<Ref<PhysicalDevice>> PhysicalDevice::Create(InstanceBase* instance,
+                                                          wgpu::BackendType backendType,
+                                                          void* (*getProc)(const char*)) {
+    Ref<PhysicalDevice> physicalDevice = AcquireRef(new PhysicalDevice(instance, backendType));
+    DAWN_TRY(physicalDevice->InitializeGLFunctions(getProc));
+    DAWN_TRY(physicalDevice->Initialize());
+    return physicalDevice;
+}
+
 PhysicalDevice::PhysicalDevice(InstanceBase* instance, wgpu::BackendType backendType)
     : PhysicalDeviceBase(instance, backendType) {}
 
@@ -216,6 +226,8 @@ MaybeError PhysicalDevice::InitializeSupportedLimitsImpl(CombinedLimits* limits)
     return {};
 }
 
+void PhysicalDevice::SetupBackendAdapterToggles(TogglesState* adpterToggles) const {}
+
 void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     const OpenGLFunctions& gl = mFunctions;
 
@@ -287,6 +299,10 @@ void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) cons
 
     // For OpenGL ES, use compute shader blit to emulate stencil texture to buffer copies.
     deviceToggles->Default(Toggle::UseBlitForStencilTextureToBufferCopy, gl.GetVersion().IsES());
+
+    // For OpenGL ES, use compute shader blit to emulate snorm texture to buffer copies.
+    deviceToggles->Default(Toggle::UseBlitForSnormTextureToBufferCopy,
+                           gl.GetVersion().IsES() || !supportsSnormRead);
 }
 
 ResultOrError<Ref<DeviceBase>> PhysicalDevice::CreateDeviceImpl(AdapterBase* adapter,
