@@ -50,6 +50,7 @@ Function* Builder::Function(std::string_view name,
     auto* ir_func = ir.values.Create<ir::Function>(return_type, stage, wg_size);
     ir_func->SetBlock(Block());
     ir.SetName(ir_func, name);
+    ir.functions.Push(ir_func);
     return ir_func;
 }
 
@@ -82,6 +83,12 @@ ir::BlockParam* Builder::BlockParam(const type::Type* type) {
 
 ir::FunctionParam* Builder::FunctionParam(const type::Type* type) {
     return ir.values.Create<ir::FunctionParam>(type);
+}
+
+ir::FunctionParam* Builder::FunctionParam(std::string_view name, const type::Type* type) {
+    auto* param = ir.values.Create<ir::FunctionParam>(type);
+    ir.SetName(param, name);
+    return param;
 }
 
 ir::Unreachable* Builder::Unreachable() {

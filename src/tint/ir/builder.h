@@ -574,6 +574,11 @@ class Builder {
     /// @returns the instruction
     template <typename ARG>
     ir::Return* Return(ir::Function* func, ARG&& value) {
+        if constexpr (std::is_same_v<std::decay_t<ARG>, ir::Value*>) {
+            if (value == nullptr) {
+                return Append(ir.instructions.Create<ir::Return>(func));
+            }
+        }
         return Append(ir.instructions.Create<ir::Return>(func, Value(std::forward<ARG>(value))));
     }
 
@@ -659,6 +664,12 @@ class Builder {
     /// @param type the parameter type
     /// @returns the value
     ir::FunctionParam* FunctionParam(const type::Type* type);
+
+    /// Creates a new `FunctionParam` with a name.
+    /// @param name the parameter name
+    /// @param type the parameter type
+    /// @returns the value
+    ir::FunctionParam* FunctionParam(std::string_view name, const type::Type* type);
 
     /// Creates a new `Access`
     /// @param type the return type

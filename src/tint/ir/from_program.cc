@@ -263,7 +263,6 @@ class Impl {
         auto* ir_func = builder_.Function(ast_func->name->symbol.NameView(),
                                           sem->ReturnType()->Clone(clone_ctx_.type_ctx));
         current_function_ = ir_func;
-        builder_.ir.functions.Push(ir_func);
 
         scopes_.Set(ast_func->name->symbol, ir_func);
 
@@ -338,7 +337,7 @@ class Impl {
         for (auto* p : ast_func->params) {
             const auto* param_sem = program_->Sem().Get(p)->As<sem::Parameter>();
             auto* ty = param_sem->Type()->Clone(clone_ctx_.type_ctx);
-            auto* param = builder_.FunctionParam(ty);
+            auto* param = builder_.FunctionParam(p->name->symbol.NameView(), ty);
 
             // Note, interpolated is only valid when paired with Location, so it will only be set
             // when the location is set.
@@ -412,7 +411,6 @@ class Impl {
             }
 
             scopes_.Set(p->name->symbol, param);
-            builder_.ir.SetName(param, p->name->symbol.NameView());
             params.Push(param);
         }
         ir_func->SetParams(params);
