@@ -465,6 +465,7 @@ fn c() -> i32 {
 
 TEST_F(IRToProgramInliningTest, LoadVar_ThenCallVoidFn_ThenUseLoad) {
     auto* fn_a = b.Function("a", ty.void_());
+    b.With(fn_a->Block(), [&] { b.Return(fn_a); });
 
     auto* fn = b.Function("f", ty.i32());
     b.With(fn->Block(), [&] {
@@ -665,7 +666,10 @@ TEST_F(IRToProgramInliningTest, LoadVar_ThenWriteToVarInIf_ThenUseLoad) {
         b.Store(var, 1_i);
         auto* load = b.Load(var);
         auto* if_ = b.If(true);
-        b.With(if_->True(), [&] { b.Store(var, 2_i); });
+        b.With(if_->True(), [&] {
+            b.Store(var, 2_i);
+            b.ExitIf(if_);
+        });
         b.Return(fn, load);
     });
 
@@ -789,7 +793,10 @@ TEST_F(IRToProgramInliningTest, LoadVar_ThenWriteToVarInSwitch_ThenUseLoad) {
         auto* load = b.Load(var);
         auto* switch_ = b.Switch(1_i);
         auto* case_ = b.Case(switch_, {Switch::CaseSelector{}});
-        b.With(case_, [&] { b.Store(var, 2_i); });
+        b.With(case_, [&] {
+            b.Store(var, 2_i);
+            b.ExitSwitch(switch_);
+        });
         b.Return(fn, load);
     });
 
@@ -817,7 +824,10 @@ TEST_F(IRToProgramInliningTest, UnsequencedOutsideLoopInitializer) {
         auto* var = b.Var(ty.ptr<function, i32>());
         auto* v = b.Add(ty.i32(), 1_i, 2_i);
         auto* loop = b.Loop();
-        b.With(loop->Initializer(), [&] { b.Store(var, v); });
+        b.With(loop->Initializer(), [&] {
+            b.Store(var, v);
+            b.NextIteration(loop);
+        });
         b.With(loop->Body(), [&] { b.ExitLoop(loop); });
         b.Return(fn, 0_i);
     });
@@ -843,7 +853,10 @@ TEST_F(IRToProgramInliningTest, SequencedOutsideLoopInitializer) {
         auto* v_1 = b.Load(var);
         auto* v_2 = b.Add(ty.i32(), v_1, 2_i);
         auto* loop = b.Loop();
-        b.With(loop->Initializer(), [&] { b.Store(var, v_2); });
+        b.With(loop->Initializer(), [&] {
+            b.Store(var, v_2);
+            b.NextIteration(loop);
+        });
         b.With(loop->Body(), [&] { b.ExitLoop(loop); });
         b.Return(fn, 0_i);
     });
@@ -870,7 +883,10 @@ TEST_F(IRToProgramInliningTest, LoadVar_ThenWriteToVarInLoopInitializer_ThenUseL
         b.Store(var, 1_i);
         auto* load = b.Load(var);
         auto* loop = b.Loop();
-        b.With(loop->Initializer(), [&] { b.Store(var, 2_i); });
+        b.With(loop->Initializer(), [&] {
+            b.Store(var, 2_i);
+            b.NextIteration(loop);
+        });
         b.With(loop->Body(), [&] { b.ExitLoop(loop); });
         b.Return(fn, load);
     });
@@ -1021,11 +1037,7 @@ TEST_F(IRToProgramInliningTest, LoadVar_ThenWriteToVarInLoopContinuing_ThenUseLo
         b.With(loop->Body(), [&] { b.Continue(loop); });
         b.With(loop->Continuing(), [&] {
             b.Store(var, 2_i);
-            b.NextIteration(loop);
-        });
-        b.With(loop->Body(), [&] {
-            b.Store(var, 2_i);
-            b.ExitLoop(loop);
+            b.BreakIf(loop, true);
         });
         b.Return(fn, load);
     });
@@ -1036,11 +1048,10 @@ fn f() -> i32 {
   v = 1i;
   let v_1 = v;
   loop {
-    v = 2i;
-    break;
 
     continuing {
       v = 2i;
+      break if true;
     }
   }
   return v_1;
@@ -1056,6 +1067,7 @@ TEST_F(IRToProgramInliningTest, LoadVarInLoopInitializer_ThenReadAndWriteToVarIn
         auto* loop = b.Loop();
         b.With(loop->Initializer(), [&] {
             auto* load = b.Load(var);
+            b.NextIteration(loop);
             b.With(loop->Body(), [&] {
                 b.Store(var, b.Add(ty.i32(), load, 1_i));
                 b.ExitLoop(loop);
@@ -1088,6 +1100,7 @@ TEST_F(IRToProgramInliningTest, LoadVarInLoopInitializer_ThenReadAndWriteToVarIn
         auto* loop = b.Loop();
         b.With(loop->Initializer(), [&] {
             auto* load = b.Load(var);
+            b.NextIteration(loop);
             b.With(loop->Body(), [&] { b.Continue(loop); });
             b.With(loop->Continuing(), [&] {
                 b.Store(var, b.Add(ty.i32(), load, 1_i));

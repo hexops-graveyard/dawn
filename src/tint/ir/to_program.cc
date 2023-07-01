@@ -18,13 +18,17 @@
 #include <tuple>
 #include <utility>
 
+#include "src/tint/constant/splat.h"
 #include "src/tint/ir/access.h"
 #include "src/tint/ir/binary.h"
 #include "src/tint/ir/block.h"
 #include "src/tint/ir/break_if.h"
+#include "src/tint/ir/builtin_call.h"
 #include "src/tint/ir/call.h"
 #include "src/tint/ir/constant.h"
+#include "src/tint/ir/construct.h"
 #include "src/tint/ir/continue.h"
+#include "src/tint/ir/convert.h"
 #include "src/tint/ir/exit_if.h"
 #include "src/tint/ir/exit_loop.h"
 #include "src/tint/ir/exit_switch.h"
@@ -39,7 +43,9 @@
 #include "src/tint/ir/store.h"
 #include "src/tint/ir/switch.h"
 #include "src/tint/ir/unary.h"
+#include "src/tint/ir/unreachable.h"
 #include "src/tint/ir/user_call.h"
+#include "src/tint/ir/validate.h"
 #include "src/tint/ir/var.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/switch.h"
@@ -82,7 +88,15 @@ class State {
     explicit State(Module& m) : mod(m) {}
 
     Program Run() {
-        // TODO(crbug.com/tint/1902): Emit root block
+        if (auto res = Validate(mod); !res) {
+            // IR module failed validation.
+            b.Diagnostics() = res.Failure();
+            return Program{std::move(b)};
+        }
+
+        if (mod.root_block) {
+            RootBlock(mod.root_block);
+        }
         // TODO(crbug.com/tint/1902): Emit user-declared types
         for (auto* fn : mod.functions) {
             Fn(fn);
@@ -119,9 +133,23 @@ class State {
     /// The current switch case block
     ir::Block* current_switch_case_ = nullptr;
 
-    // Values that can be inlined.
+    /// Values that can be inlined.
     utils::Hashset<ir::Value*, 64> can_inline_;
 
+    /// Set of enable directives emitted.
+    utils::Hashset<builtin::Extension, 4> enables_;
+
+    /// Map of struct to output program name.
+    utils::Hashmap<const type::Struct*, Symbol, 8> structs_;
+
+    void RootBlock(ir::Block* root) {
+        for (auto* inst : *root) {
+            tint::Switch(
+                inst,                             //
+                [&](ir::Var* var) { Var(var); },  //
+                [&](Default) { UNHANDLED_CASE(inst); });
+        }
+    }
     const ast::Function* Fn(ir::Function* fn) {
         SCOPED_NESTING();
 
@@ -231,22 +259,24 @@ class State {
     void Instruction(ir::Instruction* inst) {
         tint::Switch(
             inst,                                       //
+            [&](ir::Access* i) { Access(i); },          //
             [&](ir::Binary* i) { Binary(i); },          //
             [&](ir::BreakIf* i) { BreakIf(i); },        //
             [&](ir::Call* i) { Call(i); },              //
+            [&](ir::Continue*) {},                      //
             [&](ir::ExitIf*) {},                        //
-            [&](ir::ExitSwitch* i) { ExitSwitch(i); },  //
             [&](ir::ExitLoop* i) { ExitLoop(i); },      //
+            [&](ir::ExitSwitch* i) { ExitSwitch(i); },  //
             [&](ir::If* i) { If(i); },                  //
             [&](ir::Load* l) { Load(l); },              //
             [&](ir::Loop* l) { Loop(l); },              //
+            [&](ir::NextIteration*) {},                 //
             [&](ir::Return* i) { Return(i); },          //
             [&](ir::Store* i) { Store(i); },            //
             [&](ir::Switch* i) { Switch(i); },          //
             [&](ir::Unary* u) { Unary(u); },            //
+            [&](ir::Unreachable*) {},                   //
             [&](ir::Var* i) { Var(i); },                //
-            [&](ir::NextIteration*) {},                 //
-            [&](ir::Continue*) {},                      //
             [&](Default) { UNHANDLED_CASE(inst); });
     }
 
@@ -396,19 +426,26 @@ class State {
         Symbol name = BindName(val);
         auto* ptr = As<type::Pointer>(val->Type());
         auto ty = Type(ptr->StoreType());
+
+        utils::Vector<const ast::Attribute*, 4> attrs;
+        if (auto bp = var->BindingPoint()) {
+            attrs.Push(b.Group(AInt(bp->group)));
+            attrs.Push(b.Binding(AInt(bp->binding)));
+        }
+
         const ast::Expression* init = nullptr;
         if (var->Initializer()) {
             init = Expr(var->Initializer());
         }
         switch (ptr->AddressSpace()) {
             case builtin::AddressSpace::kFunction:
-                Append(b.Decl(b.Var(name, ty, init)));
+                Append(b.Decl(b.Var(name, ty, init, std::move(attrs))));
                 return;
             case builtin::AddressSpace::kStorage:
-                Append(b.Decl(b.Var(name, ty, init, ptr->Access(), ptr->AddressSpace())));
+                b.GlobalVar(name, ty, init, ptr->Access(), ptr->AddressSpace(), std::move(attrs));
                 return;
             default:
-                Append(b.Decl(b.Var(name, ty, init, ptr->AddressSpace())));
+                b.GlobalVar(name, ty, init, ptr->AddressSpace(), std::move(attrs));
                 return;
         }
     }
@@ -420,7 +457,7 @@ class State {
     }
 
     void Call(ir::Call* call) {
-        auto args = utils::Transform<2>(call->Args(), [&](ir::Value* arg) { return Expr(arg); });
+        auto args = utils::Transform<4>(call->Args(), [&](ir::Value* arg) { return Expr(arg); });
         tint::Switch(
             call,  //
             [&](ir::UserCall* c) {
@@ -430,6 +467,22 @@ class State {
                     return;
                 }
                 Bind(c->Result(), expr);
+            },
+            [&](ir::BuiltinCall* c) {
+                auto* expr = b.Call(c->Func(), std::move(args));
+                if (!call->HasResults() || call->Result()->Usages().IsEmpty()) {
+                    Append(b.CallStmt(expr));
+                    return;
+                }
+                Bind(c->Result(), expr);
+            },
+            [&](ir::Construct* c) {
+                auto ty = Type(c->Result()->Type());
+                Bind(c->Result(), b.Call(ty, std::move(args)));
+            },
+            [&](ir::Convert* c) {
+                auto ty = Type(c->Result()->Type());
+                Bind(c->Result(), b.Call(ty, std::move(args)));
             },
             [&](Default) { UNHANDLED_CASE(call); });
     }
@@ -447,6 +500,57 @@ class State {
                 break;
         }
         Bind(u->Result(), expr);
+    }
+
+    void Access(ir::Access* a) {
+        auto* expr = Expr(a->Object());
+        auto* obj_ty = a->Object()->Type()->UnwrapPtr();
+        for (auto* index : a->Indices()) {
+            tint::Switch(
+                obj_ty,
+                [&](const type::Vector* vec) {
+                    TINT_DEFER(obj_ty = vec->type());
+                    if (auto* c = index->As<ir::Constant>()) {
+                        switch (c->Value()->ValueAs<int>()) {
+                            case 0:
+                                expr = b.MemberAccessor(expr, "x");
+                                return;
+                            case 1:
+                                expr = b.MemberAccessor(expr, "y");
+                                return;
+                            case 2:
+                                expr = b.MemberAccessor(expr, "z");
+                                return;
+                            case 3:
+                                expr = b.MemberAccessor(expr, "w");
+                                return;
+                        }
+                    }
+                    expr = b.IndexAccessor(expr, Expr(index));
+                },
+                [&](const type::Matrix* mat) {
+                    obj_ty = mat->ColumnType();
+                    expr = b.IndexAccessor(expr, Expr(index));
+                },
+                [&](const type::Array* arr) {
+                    obj_ty = arr->ElemType();
+                    expr = b.IndexAccessor(expr, Expr(index));
+                },
+                [&](const type::Struct* s) {
+                    if (auto* c = index->As<ir::Constant>()) {
+                        auto i = c->Value()->ValueAs<uint32_t>();
+                        TINT_ASSERT_OR_RETURN(IR, i < s->Members().Length());
+                        auto* member = s->Members()[i];
+                        obj_ty = member->Type();
+                        expr = b.IndexAccessor(expr, member->Name().NameView());
+                    } else {
+                        TINT_ICE(IR, b.Diagnostics())
+                            << "invalid index for struct type: " << index->TypeInfo().name;
+                    }
+                },
+                [&](Default) { UNHANDLED_CASE(obj_ty); });
+        }
+        Bind(a->Result(), expr);
     }
 
     void Binary(ir::Binary* e) {
@@ -558,18 +662,48 @@ class State {
 
     TINT_END_DISABLE_WARNING(UNREACHABLE_CODE);
 
-    const ast::Expression* Constant(ir::Constant* c) {
+    const ast::Expression* Constant(ir::Constant* c) { return Constant(c->Value()); }
+
+    const ast::Expression* Constant(const constant::Value* c) {
+        auto composite = [&](bool can_splat) {
+            auto ty = Type(c->Type());
+            if (c->AllZero()) {
+                return b.Call(ty);
+            }
+            if (can_splat && c->Is<constant::Splat>()) {
+                return b.Call(ty, Constant(c->Index(0)));
+            }
+
+            utils::Vector<const ast::Expression*, 8> els;
+            for (size_t i = 0, n = c->NumElements(); i < n; i++) {
+                els.Push(Constant(c->Index(i)));
+            }
+            return b.Call(ty, std::move(els));
+        };
         return tint::Switch(
             c->Type(),  //
-            [&](const type::I32*) { return b.Expr(c->Value()->ValueAs<i32>()); },
-            [&](const type::U32*) { return b.Expr(c->Value()->ValueAs<u32>()); },
-            [&](const type::F32*) { return b.Expr(c->Value()->ValueAs<f32>()); },
-            [&](const type::F16*) { return b.Expr(c->Value()->ValueAs<f16>()); },
-            [&](const type::Bool*) { return b.Expr(c->Value()->ValueAs<bool>()); },
+            [&](const type::I32*) { return b.Expr(c->ValueAs<i32>()); },
+            [&](const type::U32*) { return b.Expr(c->ValueAs<u32>()); },
+            [&](const type::F32*) { return b.Expr(c->ValueAs<f32>()); },
+            [&](const type::F16*) {
+                Enable(builtin::Extension::kF16);
+                return b.Expr(c->ValueAs<f16>());
+            },
+            [&](const type::Bool*) { return b.Expr(c->ValueAs<bool>()); },
+            [&](const type::Array*) { return composite(/* can_splat */ false); },
+            [&](const type::Vector*) { return composite(/* can_splat */ true); },
+            [&](const type::Matrix*) { return composite(/* can_splat */ false); },
+            [&](const type::Struct*) { return composite(/* can_splat */ false); },
             [&](Default) {
-                UNHANDLED_CASE(c);
+                UNHANDLED_CASE(c->Type());
                 return b.Expr("<error>");
             });
+    }
+
+    void Enable(builtin::Extension ext) {
+        if (enables_.Add(ext)) {
+            b.Enable(ext);
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -591,8 +725,11 @@ class State {
             [&](const type::Void*) { return ast::Type{}; },  //
             [&](const type::I32*) { return b.ty.i32(); },    //
             [&](const type::U32*) { return b.ty.u32(); },    //
-            [&](const type::F16*) { return b.ty.f16(); },    //
-            [&](const type::F32*) { return b.ty.f32(); },    //
+            [&](const type::F16*) {
+                Enable(builtin::Extension::kF16);
+                return b.ty.f16();
+            },
+            [&](const type::F32*) { return b.ty.f32(); },  //
             [&](const type::Bool*) { return b.ty.bool_(); },
             [&](const type::Matrix* m) {
                 return b.ty.mat(Type(m->type()), m->columns(), m->rows());
@@ -622,7 +759,7 @@ class State {
                 }
                 return b.ty.array(el, u32(count.value()), std::move(attrs));
             },
-            [&](const type::Struct* s) { return b.ty(s->Name().NameView()); },
+            [&](const type::Struct* s) { return Struct(s); },
             [&](const type::Atomic* a) { return b.ty.atomic(Type(a->Type())); },
             [&](const type::DepthTexture* t) { return b.ty.depth_texture(t->dim()); },
             [&](const type::DepthMultisampledTexture* t) {
@@ -659,6 +796,26 @@ class State {
                 UNHANDLED_CASE(ty);
                 return b.ty.i32();
             });
+    }
+
+    ast::Type Struct(const type::Struct* s) {
+        auto n = structs_.GetOrCreate(s, [&] {
+            auto members = utils::Transform<8>(s->Members(), [&](const type::StructMember* m) {
+                auto ty = Type(m->Type());
+                // TODO(crbug.com/tint/1902): Emit structure member attributes
+                utils::Vector<const ast::Attribute*, 2> attrs;
+                return b.Member(m->Name().NameView(), ty, std::move(attrs));
+            });
+
+            // TODO(crbug.com/tint/1902): Emit structure attributes
+            utils::Vector<const ast::Attribute*, 2> attrs;
+
+            auto name = b.Symbols().New(s->Name().NameView());
+            b.Structure(name, std::move(members), std::move(attrs));
+            return name;
+        });
+
+        return b.ty(n);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////

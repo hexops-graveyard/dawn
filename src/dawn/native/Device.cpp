@@ -61,7 +61,7 @@ namespace dawn::native {
 // DeviceBase sub-structures
 
 struct DeviceBase::Caches {
-    ContentLessObjectCache<AttachmentState, AttachmentStateBlueprint> attachmentStates;
+    ContentLessObjectCache<AttachmentState> attachmentStates;
     ContentLessObjectCache<BindGroupLayoutBase> bindGroupLayouts;
     ContentLessObjectCache<ComputePipelineBase> computePipelines;
     ContentLessObjectCache<PipelineLayoutBase> pipelineLayouts;
@@ -70,10 +70,10 @@ struct DeviceBase::Caches {
     ContentLessObjectCache<ShaderModuleBase> shaderModules;
 };
 
-// Tries to find the blueprint in the cache, creating and inserting into the cache if not found.
-template <typename RefCountedT, typename BlueprintT, typename CreateFn>
-auto GetOrCreate(ContentLessObjectCache<RefCountedT, BlueprintT>& cache,
-                 BlueprintT* blueprint,
+// Tries to find an object in the cache, creating and inserting into the cache if not found.
+template <typename RefCountedT, typename CreateFn>
+auto GetOrCreate(ContentLessObjectCache<RefCountedT>& cache,
+                 RefCountedT* blueprint,
                  CreateFn createFn) {
     using ReturnType = decltype(createFn());
 
@@ -1060,29 +1060,28 @@ void DeviceBase::UncacheShaderModule(ShaderModuleBase* obj) {
     mCaches->shaderModules.Erase(obj);
 }
 
-Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(AttachmentStateBlueprint* blueprint) {
+Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(AttachmentState* blueprint) {
     return GetOrCreate(mCaches->attachmentStates, blueprint, [&]() -> Ref<AttachmentState> {
-        Ref<AttachmentState> attachmentState = AcquireRef(new AttachmentState(this, *blueprint));
-        attachmentState->SetContentHash(attachmentState->ComputeContentHash());
+        Ref<AttachmentState> attachmentState = AcquireRef(new AttachmentState(*blueprint));
         return attachmentState;
     });
 }
 
 Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(
     const RenderBundleEncoderDescriptor* descriptor) {
-    AttachmentStateBlueprint blueprint(descriptor);
+    AttachmentState blueprint(this, descriptor);
     return GetOrCreateAttachmentState(&blueprint);
 }
 
 Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(
     const RenderPipelineDescriptor* descriptor) {
-    AttachmentStateBlueprint blueprint(descriptor);
+    AttachmentState blueprint(this, descriptor);
     return GetOrCreateAttachmentState(&blueprint);
 }
 
 Ref<AttachmentState> DeviceBase::GetOrCreateAttachmentState(
     const RenderPassDescriptor* descriptor) {
-    AttachmentStateBlueprint blueprint(descriptor);
+    AttachmentState blueprint(this, descriptor);
     return GetOrCreateAttachmentState(&blueprint);
 }
 
