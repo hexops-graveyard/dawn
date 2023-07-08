@@ -71,33 +71,43 @@ INSTANTIATE_TEST_SUITE_P(
                     BinaryTestCase{kI32, ir::Binary::Kind::kSubtract, "OpISub", "int"},
                     BinaryTestCase{kI32, ir::Binary::Kind::kMultiply, "OpIMul", "int"},
                     BinaryTestCase{kI32, ir::Binary::Kind::kDivide, "OpSDiv", "int"},
+                    BinaryTestCase{kI32, ir::Binary::Kind::kModulo, "OpSRem", "int"},
                     BinaryTestCase{kI32, ir::Binary::Kind::kAnd, "OpBitwiseAnd", "int"},
                     BinaryTestCase{kI32, ir::Binary::Kind::kOr, "OpBitwiseOr", "int"},
-                    BinaryTestCase{kI32, ir::Binary::Kind::kXor, "OpBitwiseXor", "int"}));
+                    BinaryTestCase{kI32, ir::Binary::Kind::kXor, "OpBitwiseXor", "int"},
+                    BinaryTestCase{kI32, ir::Binary::Kind::kShiftLeft, "OpShiftLeftLogical", "int"},
+                    BinaryTestCase{kI32, ir::Binary::Kind::kShiftRight, "OpShiftRightArithmetic",
+                                   "int"}));
 INSTANTIATE_TEST_SUITE_P(
     SpvGeneratorImplTest_Binary_U32,
     Arithmetic_Bitwise,
-    testing::Values(BinaryTestCase{kU32, ir::Binary::Kind::kAdd, "OpIAdd", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kSubtract, "OpISub", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kMultiply, "OpIMul", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kDivide, "OpUDiv", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kAnd, "OpBitwiseAnd", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kOr, "OpBitwiseOr", "uint"},
-                    BinaryTestCase{kU32, ir::Binary::Kind::kXor, "OpBitwiseXor", "uint"}));
+    testing::Values(
+        BinaryTestCase{kU32, ir::Binary::Kind::kAdd, "OpIAdd", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kSubtract, "OpISub", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kMultiply, "OpIMul", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kDivide, "OpUDiv", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kModulo, "OpUMod", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kAnd, "OpBitwiseAnd", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kOr, "OpBitwiseOr", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kXor, "OpBitwiseXor", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kShiftLeft, "OpShiftLeftLogical", "uint"},
+        BinaryTestCase{kU32, ir::Binary::Kind::kShiftRight, "OpShiftRightLogical", "uint"}));
 INSTANTIATE_TEST_SUITE_P(
     SpvGeneratorImplTest_Binary_F32,
     Arithmetic_Bitwise,
     testing::Values(BinaryTestCase{kF32, ir::Binary::Kind::kAdd, "OpFAdd", "float"},
                     BinaryTestCase{kF32, ir::Binary::Kind::kSubtract, "OpFSub", "float"},
                     BinaryTestCase{kF32, ir::Binary::Kind::kMultiply, "OpFMul", "float"},
-                    BinaryTestCase{kF32, ir::Binary::Kind::kDivide, "OpFDiv", "float"}));
+                    BinaryTestCase{kF32, ir::Binary::Kind::kDivide, "OpFDiv", "float"},
+                    BinaryTestCase{kF32, ir::Binary::Kind::kModulo, "OpFRem", "float"}));
 INSTANTIATE_TEST_SUITE_P(
     SpvGeneratorImplTest_Binary_F16,
     Arithmetic_Bitwise,
     testing::Values(BinaryTestCase{kF16, ir::Binary::Kind::kAdd, "OpFAdd", "half"},
                     BinaryTestCase{kF16, ir::Binary::Kind::kSubtract, "OpFSub", "half"},
                     BinaryTestCase{kF16, ir::Binary::Kind::kMultiply, "OpFMul", "half"},
-                    BinaryTestCase{kF16, ir::Binary::Kind::kDivide, "OpFDiv", "half"}));
+                    BinaryTestCase{kF16, ir::Binary::Kind::kDivide, "OpFDiv", "half"},
+                    BinaryTestCase{kF16, ir::Binary::Kind::kModulo, "OpFRem", "half"}));
 
 TEST_F(SpvGeneratorImplTest, Binary_ScalarTimesVector_F32) {
     auto* scalar = b.FunctionParam("scalar", ty.f32());

@@ -65,15 +65,9 @@ config("internal") {
   ]
 }
 
-config("weak_framework") {
-  if (is_mac && dawn_enable_metal) {
-    weak_frameworks = [ "Metal.framework" ]
-  }
-}
-
 # Config that adds the @executable_path rpath if needed so that Swiftshader or the Vulkan loader are found.
 config("vulkan_rpath") {
-  if (is_mac && dawn_enable_vulkan &&
+  if (is_apple && dawn_enable_vulkan &&
       (use_swiftshader || enable_vulkan_loader)) {
     ldflags = [
       "-rpath",
@@ -486,9 +480,9 @@ source_set("sources") {
   }
 
   if (dawn_enable_d3d12) {
-    if (is_win && dawn_build_dxc) {
+    if (dawn_use_built_dxc) {
       deps += [ "$dawn_root/third_party/gn/dxc:dxcompiler" ]
-      defines += [ "DAWN_BUILD_DXC" ]
+      defines += [ "DAWN_USE_BUILT_DXC" ]
       data_deps += [ "$dawn_root/third_party/gn/dxc:copy_dxil_dll" ]
     }
     libs += [ "dxguid.lib" ]
@@ -574,12 +568,11 @@ source_set("sources") {
     frameworks = [
       "IOKit.framework",
       "IOSurface.framework",
+      "Metal.framework",
+      "QuartzCore.framework",
     ]
     if (is_mac) {
-      frameworks += [
-        "QuartzCore.framework",
-        "Cocoa.framework",
-      ]
+      frameworks += [ "Cocoa.framework" ]
     }
     sources += [
       "Surface_metal.mm",
@@ -855,10 +848,7 @@ dawn_component("native") {
   ]
   sources = [ "DawnNative.cpp" ]
   configs = [ ":internal" ]
-  public_configs = [
-    ":weak_framework",
-    ":vulkan_rpath",
-  ]
+  public_configs = [ ":vulkan_rpath" ]
 
   if (dawn_enable_d3d11 || dawn_enable_d3d12) {
     sources += [ "d3d/D3DBackend.cpp" ]

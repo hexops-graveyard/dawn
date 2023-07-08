@@ -738,6 +738,7 @@ void GeneratorImplIr::EmitBlockInstructions(ir::Block* block) {
             inst,                                             //
             [&](ir::Access* a) { EmitAccess(a); },            //
             [&](ir::Binary* b) { EmitBinary(b); },            //
+            [&](ir::Bitcast* b) { EmitBitcast(b); },          //
             [&](ir::BuiltinCall* b) { EmitBuiltinCall(b); },  //
             [&](ir::Construct* c) { EmitConstruct(c); },      //
             [&](ir::Convert* c) { EmitConvert(c); },          //
@@ -747,6 +748,7 @@ void GeneratorImplIr::EmitBlockInstructions(ir::Block* block) {
             [&](ir::Swizzle* s) { EmitSwizzle(s); },          //
             [&](ir::Store* s) { EmitStore(s); },              //
             [&](ir::UserCall* c) { EmitUserCall(c); },        //
+            [&](ir::Unary* u) { EmitUnary(u); },              //
             [&](ir::Var* v) { EmitVar(v); },                  //
             [&](ir::If* i) { EmitIf(i); },                    //
             [&](ir::Terminator* t) { EmitTerminator(t); },    //
@@ -965,6 +967,16 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
             op = ty->is_integer_scalar_or_vector() ? spv::Op::OpISub : spv::Op::OpFSub;
             break;
         }
+        case ir::Binary::Kind::kModulo: {
+            if (ty->is_signed_integer_scalar_or_vector()) {
+                op = spv::Op::OpSRem;
+            } else if (ty->is_unsigned_integer_scalar_or_vector()) {
+                op = spv::Op::OpUMod;
+            } else if (ty->is_float_scalar_or_vector()) {
+                op = spv::Op::OpFRem;
+            }
+            break;
+        }
 
         case ir::Binary::Kind::kAnd: {
             op = spv::Op::OpBitwiseAnd;
@@ -976,6 +988,19 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
         }
         case ir::Binary::Kind::kXor: {
             op = spv::Op::OpBitwiseXor;
+            break;
+        }
+
+        case ir::Binary::Kind::kShiftLeft: {
+            op = spv::Op::OpShiftLeftLogical;
+            break;
+        }
+        case ir::Binary::Kind::kShiftRight: {
+            if (ty->is_signed_integer_scalar_or_vector()) {
+                op = spv::Op::OpShiftRightArithmetic;
+            } else if (ty->is_unsigned_integer_scalar_or_vector()) {
+                op = spv::Op::OpShiftRightLogical;
+            }
             break;
         }
 
@@ -1039,15 +1064,20 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
             }
             break;
         }
-
-        default: {
-            TINT_ICE(Writer, diagnostics_)
-                << "unimplemented binary instruction: " << static_cast<uint32_t>(binary->Kind());
-        }
     }
 
     // Emit the instruction.
     current_function_.push_inst(op, {Type(ty), id, lhs, rhs});
+}
+
+void GeneratorImplIr::EmitBitcast(ir::Bitcast* bitcast) {
+    auto* ty = bitcast->Result()->Type();
+    if (ty == bitcast->Val()->Type()) {
+        values_.Add(bitcast->Result(), Value(bitcast->Val()));
+        return;
+    }
+    current_function_.push_inst(spv::Op::OpBitcast,
+                                {Type(ty), Value(bitcast), Value(bitcast->Val())});
 }
 
 void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
@@ -1056,6 +1086,12 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
     if (builtin->Func() == builtin::Function::kAbs &&
         result_ty->is_unsigned_integer_scalar_or_vector()) {
         // abs() is a no-op for unsigned integers.
+        values_.Add(builtin->Result(), Value(builtin->Args()[0]));
+        return;
+    }
+    if (builtin->Func() == builtin::Function::kAny &&
+        builtin->Args()[0]->Type()->Is<type::Bool>()) {
+        // any() is a passthrough for a scalar argument.
         values_.Add(builtin->Result(), Value(builtin->Args()[0]));
         return;
     }
@@ -1086,6 +1122,9 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
             } else if (result_ty->is_signed_integer_scalar_or_vector()) {
                 glsl_ext_inst(GLSLstd450SAbs);
             }
+            break;
+        case builtin::Function::kAny:
+            op = spv::Op::OpAny;
             break;
         case builtin::Function::kAcos:
             glsl_ext_inst(GLSLstd450Acos);
@@ -1123,8 +1162,35 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kCosh:
             glsl_ext_inst(GLSLstd450Cosh);
             break;
+        case builtin::Function::kCross:
+            glsl_ext_inst(GLSLstd450Cross);
+            break;
         case builtin::Function::kDistance:
             glsl_ext_inst(GLSLstd450Distance);
+            break;
+        case builtin::Function::kDpdx:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdx;
+            break;
+        case builtin::Function::kDpdxCoarse:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdxCoarse;
+            break;
+        case builtin::Function::kDpdxFine:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdxFine;
+            break;
+        case builtin::Function::kDpdy:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdy;
+            break;
+        case builtin::Function::kDpdyCoarse:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdyCoarse;
+            break;
+        case builtin::Function::kDpdyFine:
+            module_.PushCapability(SpvCapabilityDerivativeControl);
+            op = spv::Op::OpDPdyFine;
             break;
         case builtin::Function::kLength:
             glsl_ext_inst(GLSLstd450Length);
@@ -1376,6 +1442,25 @@ void GeneratorImplIr::EmitSwizzle(ir::Swizzle* swizzle) {
 
 void GeneratorImplIr::EmitStore(ir::Store* store) {
     current_function_.push_inst(spv::Op::OpStore, {Value(store->To()), Value(store->From())});
+}
+
+void GeneratorImplIr::EmitUnary(ir::Unary* unary) {
+    auto id = Value(unary);
+    auto* ty = unary->Result()->Type();
+    spv::Op op = spv::Op::Max;
+    switch (unary->Kind()) {
+        case ir::Unary::Kind::kComplement:
+            op = spv::Op::OpNot;
+            break;
+        case ir::Unary::Kind::kNegation:
+            if (ty->is_float_scalar_or_vector()) {
+                op = spv::Op::OpFNegate;
+            } else if (ty->is_signed_integer_scalar_or_vector()) {
+                op = spv::Op::OpSNegate;
+            }
+            break;
+    }
+    current_function_.push_inst(op, {Type(ty), id, Value(unary->Val())});
 }
 
 void GeneratorImplIr::EmitUserCall(ir::UserCall* call) {

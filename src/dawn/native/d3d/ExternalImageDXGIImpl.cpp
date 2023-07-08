@@ -57,6 +57,7 @@ ExternalImageDXGIImpl::ExternalImageDXGIImpl(Device* backendDevice,
       mSampleCount(textureDescriptor->sampleCount),
       mViewFormats(textureDescriptor->viewFormats,
                    textureDescriptor->viewFormats + textureDescriptor->viewFormatCount) {
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
     ASSERT(mBackendDevice != nullptr);
     ASSERT(!textureDescriptor->nextInChain || textureDescriptor->nextInChain->sType ==
                                                   wgpu::SType::DawnTextureInternalUsageDescriptor);
@@ -65,34 +66,33 @@ ExternalImageDXGIImpl::ExternalImageDXGIImpl(Device* backendDevice,
                              textureDescriptor->nextInChain)
                              ->internalUsage;
     }
+
+    // If the resource has IDXGIKeyedMutex interface, it will be used for synchronization.
+    // TODO(dawn:1906): remove the mDXGIKeyedMutex when it is not used in chrome.
+    mD3DResource.As(&mDXGIKeyedMutex);
 }
 
 ExternalImageDXGIImpl::~ExternalImageDXGIImpl() {
-    auto deviceLock(GetScopedDeviceLock());
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
+    mDXGIKeyedMutexReleaser.reset();
     DestroyInternal();
 }
 
 Mutex::AutoLock ExternalImageDXGIImpl::GetScopedDeviceLock() const {
-    if (mBackendDevice != nullptr) {
-        return mBackendDevice->GetScopedLock();
-    }
-    return Mutex::AutoLock();
+    return mBackendDevice->GetScopedLock();
 }
 
 bool ExternalImageDXGIImpl::IsValid() const {
-    auto deviceLock(GetScopedDeviceLock());
-
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
     return IsInList();
 }
 
 void ExternalImageDXGIImpl::DestroyInternal() {
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
     if (IsInList()) {
         mD3DResource = nullptr;
     }
 
-    // Linked list is not thread safe. A mutex must already be locked before
-    // endtering this method. Either via Device::DestroyImpl() or ~ExternalImageDXGIImpl.
-    ASSERT(mBackendDevice == nullptr || mBackendDevice->IsLockedByCurrentThreadIfNeeded());
     if (IsInList()) {
         RemoveFromList();
     }
@@ -100,9 +100,8 @@ void ExternalImageDXGIImpl::DestroyInternal() {
 
 WGPUTexture ExternalImageDXGIImpl::BeginAccess(
     const d3d::ExternalImageDXGIBeginAccessDescriptor* descriptor) {
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
     ASSERT(descriptor != nullptr);
-
-    auto deviceLock(GetScopedDeviceLock());
 
     if (!IsInList()) {
         dawn::ErrorLog() << "Cannot use external image after device destruction";
@@ -132,7 +131,7 @@ WGPUTexture ExternalImageDXGIImpl::BeginAccess(
     textureDescriptor.mipLevelCount = mMipLevelCount;
     textureDescriptor.sampleCount = mSampleCount;
     textureDescriptor.viewFormats = mViewFormats.data();
-    textureDescriptor.viewFormatCount = static_cast<uint32_t>(mViewFormats.size());
+    textureDescriptor.viewFormatCount = mViewFormats.size();
 
     DawnTextureInternalUsageDescriptor internalDesc = {};
     if (mUsageInternal != wgpu::TextureUsage::None) {
@@ -156,12 +155,22 @@ WGPUTexture ExternalImageDXGIImpl::BeginAccess(
             ->CreateD3DExternalTexture(&textureDescriptor, mD3DResource, std::move(waitFences),
                                        descriptor->isSwapChainTexture, descriptor->isInitialized);
 
+    if (mDXGIKeyedMutex && mAccessCount == 0) {
+        HRESULT hr = mDXGIKeyedMutex->AcquireSync(kDXGIKeyedMutexAcquireKey, INFINITE);
+        if (FAILED(hr)) {
+            dawn::ErrorLog() << "Failed to acquire keyed mutex for external image";
+            return nullptr;
+        }
+        mDXGIKeyedMutexReleaser.emplace(mDXGIKeyedMutex);
+    }
+    ++mAccessCount;
+
     return ToAPI(texture.Detach());
 }
 
 void ExternalImageDXGIImpl::EndAccess(WGPUTexture texture,
                                       d3d::ExternalImageDXGIFenceDescriptor* signalFence) {
-    auto deviceLock(GetScopedDeviceLock());
+    ASSERT(mBackendDevice->IsLockedByCurrentThreadIfNeeded());
 
     if (!IsInList()) {
         dawn::ErrorLog() << "Cannot use external image after device destruction";
@@ -181,6 +190,11 @@ void ExternalImageDXGIImpl::EndAccess(WGPUTexture texture,
     }
     signalFence->fenceHandle = ToBackend(mBackendDevice.Get())->GetFenceHandle();
     signalFence->fenceValue = static_cast<uint64_t>(fenceValue);
+
+    --mAccessCount;
+    if (mDXGIKeyedMutexReleaser && mAccessCount == 0) {
+        mDXGIKeyedMutexReleaser.reset();
+    }
 }
 
 }  // namespace dawn::native::d3d

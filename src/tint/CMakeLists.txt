@@ -389,6 +389,8 @@ list(APPEND TINT_LIB_SRCS
   ast/transform/expand_compound_assignment.h
   ast/transform/first_index_offset.cc
   ast/transform/first_index_offset.h
+  ast/transform/fold_trivial_lets.cc
+  ast/transform/fold_trivial_lets.h
   ast/transform/for_loop_to_loop.cc
   ast/transform/for_loop_to_loop.h
   ast/transform/localize_struct_array_assignment.cc
@@ -1313,6 +1315,7 @@ if(TINT_BUILD_TESTS)
       list(APPEND TINT_TEST_SRCS
         writer/spirv/ir/generator_impl_ir_access_test.cc
         writer/spirv/ir/generator_impl_ir_binary_test.cc
+        writer/spirv/ir/generator_impl_ir_bitcast_test.cc
         writer/spirv/ir/generator_impl_ir_builtin_test.cc
         writer/spirv/ir/generator_impl_ir_constant_test.cc
         writer/spirv/ir/generator_impl_ir_construct_test.cc
@@ -1324,6 +1327,7 @@ if(TINT_BUILD_TESTS)
         writer/spirv/ir/generator_impl_ir_swizzle_test.cc
         writer/spirv/ir/generator_impl_ir_test.cc
         writer/spirv/ir/generator_impl_ir_type_test.cc
+        writer/spirv/ir/generator_impl_ir_unary_test.cc
         writer/spirv/ir/generator_impl_ir_var_test.cc
         writer/spirv/ir/test_helper_ir.h
       )
@@ -1386,6 +1390,7 @@ if(TINT_BUILD_TESTS)
       ast/transform/disable_uniformity_analysis_test.cc
       ast/transform/expand_compound_assignment_test.cc
       ast/transform/first_index_offset_test.cc
+      ast/transform/fold_trivial_lets_test.cc
       ast/transform/for_loop_to_loop_test.cc
       ast/transform/expand_compound_assignment_test.cc
       ast/transform/localize_struct_array_assignment_test.cc

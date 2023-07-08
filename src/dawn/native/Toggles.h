@@ -46,11 +46,9 @@ enum class Toggle {
     DisableBaseVertex,
     DisableBaseInstance,
     DisableIndexedDrawBuffers,
-    DisableSnormRead,
     DisableDepthRead,
     DisableStencilRead,
     DisableDepthStencilRead,
-    DisableBGRARead,
     DisableSampleVariables,
     UseD3D12SmallShaderVisibleHeapForTesting,
     UseDXC,
@@ -96,11 +94,13 @@ enum class Toggle {
     UseBlitForDepth32FloatTextureToBufferCopy,
     UseBlitForStencilTextureToBufferCopy,
     UseBlitForSnormTextureToBufferCopy,
+    UseBlitForBGRA8UnormTextureToBufferCopy,
     D3D12ReplaceAddWithMinusWhenDstFactorIsZeroAndSrcFactorIsDstAlpha,
     D3D12PolyfillReflectVec2F32,
     VulkanClearGen12TextureWithCCSAmbiguateOnCreation,
     D3D12UseRootSignatureVersion1_1,
     VulkanUseImageRobustAccess2,
+    VulkanUseBufferRobustAccess2,
 
     // Unresolved issues.
     NoWorkaroundSampleMaskBecomesZeroForAllButLastColorTarget,
@@ -128,8 +128,13 @@ class Sink;
 }
 
 // TogglesState hold the actual state of toggles for instances, adapters and devices. Each toggle
-// is of one of these states: set/default to enabled/disabled, force set to enabled/disabled, or
-// left unset without default value (and thus implicitly disabled).
+// is in of one of these states:
+//    - set
+//    - defaulted to enable
+//    - disabled
+//    - force set to enabled
+//    - force set to disabled
+//    - unset without default (and thus implicitly disabled).
 class TogglesState {
   public:
     // Create an empty toggles state of given stage

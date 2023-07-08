@@ -31,6 +31,7 @@
 namespace tint::ir {
 class Access;
 class Binary;
+class Bitcast;
 class Block;
 class BlockParam;
 class BuiltinCall;
@@ -50,6 +51,7 @@ class Store;
 class Switch;
 class Swizzle;
 class Terminator;
+class Unary;
 class UserCall;
 class Value;
 class Var;
@@ -188,6 +190,10 @@ class GeneratorImplIr {
     /// @param binary the binary instruction to emit
     void EmitBinary(ir::Binary* binary);
 
+    /// Emit a bitcast instruction.
+    /// @param bitcast the bitcast instruction to emit
+    void EmitBitcast(ir::Bitcast* bitcast);
+
     /// Emit a builtin function call instruction.
     /// @param call the builtin call instruction to emit
     void EmitBuiltinCall(ir::BuiltinCall* call);
@@ -219,6 +225,10 @@ class GeneratorImplIr {
     /// Emit a swizzle instruction.
     /// @param swizzle the swizzle instruction to emit
     void EmitSwizzle(ir::Swizzle* swizzle);
+
+    /// Emit a unary instruction.
+    /// @param unary the unary instruction to emit
+    void EmitUnary(ir::Unary* unary);
 
     /// Emit a user call instruction.
     /// @param call the user call instruction to emit

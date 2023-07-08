@@ -654,9 +654,9 @@ MaybeError ValidateQuerySetResolve(const QuerySetBase* querySet,
         "(%u) in %s.",
         firstQuery, queryCount, querySet->GetQueryCount(), querySet);
 
-    DAWN_INVALID_IF(destinationOffset % 256 != 0,
-                    "The destination buffer %s offset (%u) is not a multiple of 256.", destination,
-                    destinationOffset);
+    DAWN_INVALID_IF(destinationOffset % kQueryResolveAlignment != 0,
+                    "The destination buffer %s offset (%u) is not a multiple of %u.", destination,
+                    destinationOffset, kQueryResolveAlignment);
 
     uint64_t bufferSize = destination->GetSize();
     // The destination buffer must have enough storage, from destination offset, to contain
@@ -757,6 +757,34 @@ struct TemporaryResolveAttachment {
     Ref<TextureViewBase> copySrc;
     Ref<TextureViewBase> copyDst;
 };
+
+bool ShouldUseTextureToBufferBlit(const DeviceBase* device,
+                                  const Format& format,
+                                  const Aspect& aspect) {
+    // Snorm
+    if (format.IsSnorm() && device->IsToggleEnabled(Toggle::UseBlitForSnormTextureToBufferCopy)) {
+        return true;
+    }
+    // BGRA8Unorm
+    if (format.format == wgpu::TextureFormat::BGRA8Unorm &&
+        device->IsToggleEnabled(Toggle::UseBlitForBGRA8UnormTextureToBufferCopy)) {
+        return true;
+    }
+    // Depth
+    if (aspect == Aspect::Depth &&
+        ((format.format == wgpu::TextureFormat::Depth16Unorm &&
+          device->IsToggleEnabled(Toggle::UseBlitForDepth16UnormTextureToBufferCopy)) ||
+         (format.format == wgpu::TextureFormat::Depth32Float &&
+          device->IsToggleEnabled(Toggle::UseBlitForDepth32FloatTextureToBufferCopy)))) {
+        return true;
+    }
+    // Stencil
+    if (aspect == Aspect::Stencil &&
+        device->IsToggleEnabled(Toggle::UseBlitForStencilTextureToBufferCopy)) {
+        return true;
+    }
+    return false;
+}
 
 }  // namespace
 
@@ -1493,8 +1521,8 @@ void CommandEncoder::APICopyTextureToBuffer(const ImageCopyTexture* source,
             auto format = source->texture->GetFormat();
             auto aspect = ConvertAspect(format, source->aspect);
 
-            if (format.IsSnorm() &&
-                GetDevice()->IsToggleEnabled(Toggle::UseBlitForSnormTextureToBufferCopy)) {
+            // Workaround to use compute pass to emulate texture to buffer copy
+            if (ShouldUseTextureToBufferBlit(GetDevice(), format, aspect)) {
                 // This function might create new resources. Need to lock the Device.
                 // TODO(crbug.com/dawn/1618): In future, all temp resources should be created at
                 // Command Submit time, so the locking would be removed from here at that point.
@@ -1512,65 +1540,10 @@ void CommandEncoder::APICopyTextureToBuffer(const ImageCopyTexture* source,
                 dst.rowsPerImage = destination->layout.rowsPerImage;
                 dst.offset = destination->layout.offset;
                 DAWN_TRY_CONTEXT(BlitTextureToBuffer(GetDevice(), this, src, dst, *copySize),
-                                 "copying snorm texture %s to %s using blit workaround.",
+                                 "copying texture %s to %s using blit workaround.",
                                  src.texture.Get(), destination->buffer);
 
                 return {};
-            }
-
-            if (aspect == Aspect::Depth) {
-                if ((format.format == wgpu::TextureFormat::Depth16Unorm &&
-                     GetDevice()->IsToggleEnabled(
-                         Toggle::UseBlitForDepth16UnormTextureToBufferCopy)) ||
-                    (format.format == wgpu::TextureFormat::Depth32Float &&
-                     GetDevice()->IsToggleEnabled(
-                         Toggle::UseBlitForDepth32FloatTextureToBufferCopy))) {
-                    // This function might create new resources. Need to lock the Device.
-                    // TODO(crbug.com/dawn/1618): In future, all temp resources should be created at
-                    // Command Submit time, so the locking would be removed from here at that point.
-                    auto deviceLock(GetDevice()->GetScopedLock());
-
-                    TextureCopy src;
-                    src.texture = source->texture;
-                    src.origin = source->origin;
-                    src.mipLevel = source->mipLevel;
-                    src.aspect = aspect;
-
-                    BufferCopy dst;
-                    dst.buffer = destination->buffer;
-                    dst.bytesPerRow = destination->layout.bytesPerRow;
-                    dst.rowsPerImage = destination->layout.rowsPerImage;
-                    dst.offset = destination->layout.offset;
-                    DAWN_TRY_CONTEXT(BlitTextureToBuffer(GetDevice(), this, src, dst, *copySize),
-                                     "copying depth aspect from %s to %s using blit workaround.",
-                                     src.texture.Get(), destination->buffer);
-
-                    return {};
-                }
-            } else if (aspect == Aspect::Stencil) {
-                if (GetDevice()->IsToggleEnabled(Toggle::UseBlitForStencilTextureToBufferCopy)) {
-                    // This function might create new resources. Need to lock the Device.
-                    // TODO(crbug.com/dawn/1618): In future, all temp resources should be created at
-                    // Command Submit time, so the locking would be removed from here at that point.
-                    auto deviceLock(GetDevice()->GetScopedLock());
-
-                    TextureCopy src;
-                    src.texture = source->texture;
-                    src.origin = source->origin;
-                    src.mipLevel = source->mipLevel;
-                    src.aspect = aspect;
-
-                    BufferCopy dst;
-                    dst.buffer = destination->buffer;
-                    dst.bytesPerRow = destination->layout.bytesPerRow;
-                    dst.rowsPerImage = destination->layout.rowsPerImage;
-                    dst.offset = destination->layout.offset;
-                    DAWN_TRY_CONTEXT(BlitTextureToBuffer(GetDevice(), this, src, dst, *copySize),
-                                     "copying stencil aspect from %s to %s using blit workaround.",
-                                     src.texture.Get(), destination->buffer);
-
-                    return {};
-                }
             }
 
             CopyTextureToBufferCmd* t2b =

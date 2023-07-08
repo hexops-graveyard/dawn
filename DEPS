@@ -21,7 +21,6 @@ vars = {
   # https://chrome-infra-packages.appspot.com/p/infra/3pp/tools/ninja
   'dawn_ninja_version': 'version:2@1.11.1.chromium.6',
   'dawn_go_version': 'version:2@1.18.4',
-  'dawn_build_dxc': True,
 
   'node_darwin_arm64_sha': '31859fc1fa0994a95f44f09c367d6ff63607cfde',
   'node_darwin_x64_sha': '16dfd094763b71988933a31735f9dea966f9abd6',
@@ -137,17 +136,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@25ce3dfec69bccb212dba1f0a2510b38952377a9',
+    'url': '{chromium_git}/angle/angle@66c2e4fca248124d9d669f65f60d89bb4a47b271',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@222e07b368b179529b7dddf9069bc83e56988e8e',
+    'url': '{swiftshader_git}/SwiftShader@3e73cce1c4706a1727077572a06643cd998bd615',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@f430486c0938a457d94184eb447bd9e8aeeeeaf9',
+    'url': '{chromium_git}/vulkan-deps@c421d230f1c16eae7fc83ca8c3bf82e0b702d1c4',
     'condition': 'dawn_standalone',
   },
 
@@ -163,12 +162,11 @@ deps = {
 
   'third_party/dxc': {
     'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@5e080a772910f147cc447fc34e8eb489f0761144',
-    'condition': 'dawn_build_dxc',
   },
   'third_party/dxheaders': {
     # The non-Windows build of DXC depends on DirectX-Headers, and at a specific commit (not ToT)
     'url': '{chromium_git}/external/github.com/microsoft/DirectX-Headers@980971e835876dc0cde415e8f9bc646e64667bf7',
-    'condition': 'dawn_build_dxc and host_os != "win"',
+    'condition': 'host_os != "win"',
   },
 
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
