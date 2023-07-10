@@ -1156,6 +1156,9 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
                 glsl_ext_inst(GLSLstd450SClamp);
             }
             break;
+        case builtin::Function::kCeil:
+            glsl_ext_inst(GLSLstd450Ceil);
+            break;
         case builtin::Function::kCos:
             glsl_ext_inst(GLSLstd450Cos);
             break;
@@ -1192,8 +1195,26 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
             module_.PushCapability(SpvCapabilityDerivativeControl);
             op = spv::Op::OpDPdyFine;
             break;
+        case builtin::Function::kExp:
+            glsl_ext_inst(GLSLstd450Exp);
+            break;
+        case builtin::Function::kExp2:
+            glsl_ext_inst(GLSLstd450Exp2);
+            break;
+        case builtin::Function::kFloor:
+            glsl_ext_inst(GLSLstd450Floor);
+            break;
+        case builtin::Function::kInverseSqrt:
+            glsl_ext_inst(GLSLstd450InverseSqrt);
+            break;
         case builtin::Function::kLength:
             glsl_ext_inst(GLSLstd450Length);
+            break;
+        case builtin::Function::kLog:
+            glsl_ext_inst(GLSLstd450Log);
+            break;
+        case builtin::Function::kLog2:
+            glsl_ext_inst(GLSLstd450Log2);
             break;
         case builtin::Function::kMax:
             if (result_ty->is_float_scalar_or_vector()) {
@@ -1222,11 +1243,17 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kSinh:
             glsl_ext_inst(GLSLstd450Sinh);
             break;
+        case builtin::Function::kSqrt:
+            glsl_ext_inst(GLSLstd450Sqrt);
+            break;
         case builtin::Function::kTan:
             glsl_ext_inst(GLSLstd450Tan);
             break;
         case builtin::Function::kTanh:
             glsl_ext_inst(GLSLstd450Tanh);
+            break;
+        case builtin::Function::kTrunc:
+            glsl_ext_inst(GLSLstd450Trunc);
             break;
         default:
             TINT_ICE(Writer, diagnostics_) << "unimplemented builtin function: " << builtin->Func();
