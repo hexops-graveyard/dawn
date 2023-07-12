@@ -1,0 +1,10 @@
+
+# Common
+is_debug=true
+use_cxx11=true
+target_os="linux"
+target_cpu="x64"
+
+
+use_swiftshader_with_subzero=false
+dawn_use_x11=true
