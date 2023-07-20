@@ -30,7 +30,7 @@
 #endif  // TINT_BUILD_GLSL_WRITER
 
 #if TINT_BUILD_SYNTAX_TREE_WRITER
-#include "src/tint/writer/syntax_tree/generator.h"  // nogncheck
+#include "src/tint/lang/wgsl/syntax_tree_writer/generator.h"  // nogncheck
 
 #endif  // TINT_BUILD_SYNTAX_TREE_WRITER
 
@@ -38,9 +38,9 @@
 #include "spirv-tools/libspirv.hpp"
 #endif  // TINT_BUILD_SPV_READER || TINT_BUILD_SPV_WRITER
 
-#include "src/tint/ast/module.h"
 #include "src/tint/cmd/generate_external_texture_bindings.h"
 #include "src/tint/cmd/helper.h"
+#include "src/tint/lang/wgsl/ast/module.h"
 #include "src/tint/utils/cli.h"
 #include "src/tint/utils/defer.h"
 #include "src/tint/utils/io/command.h"

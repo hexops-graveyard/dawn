@@ -18,18 +18,19 @@
 #include <tuple>
 #include <utility>
 
+#include "src/tint/builtin/builtin.h"
 #include "src/tint/constant/splat.h"
 #include "src/tint/ir/access.h"
 #include "src/tint/ir/binary.h"
 #include "src/tint/ir/bitcast.h"
 #include "src/tint/ir/block.h"
 #include "src/tint/ir/break_if.h"
-#include "src/tint/ir/builtin_call.h"
 #include "src/tint/ir/call.h"
 #include "src/tint/ir/constant.h"
 #include "src/tint/ir/construct.h"
 #include "src/tint/ir/continue.h"
 #include "src/tint/ir/convert.h"
+#include "src/tint/ir/core_builtin_call.h"
 #include "src/tint/ir/discard.h"
 #include "src/tint/ir/exit_if.h"
 #include "src/tint/ir/exit_loop.h"
@@ -47,10 +48,11 @@
 #include "src/tint/ir/store.h"
 #include "src/tint/ir/store_vector_element.h"
 #include "src/tint/ir/switch.h"
+#include "src/tint/ir/swizzle.h"
 #include "src/tint/ir/unary.h"
 #include "src/tint/ir/unreachable.h"
 #include "src/tint/ir/user_call.h"
-#include "src/tint/ir/validate.h"
+#include "src/tint/ir/validator.h"
 #include "src/tint/ir/var.h"
 #include "src/tint/program_builder.h"
 #include "src/tint/switch.h"
@@ -63,6 +65,7 @@
 #include "src/tint/type/sampler.h"
 #include "src/tint/type/texture.h"
 #include "src/tint/utils/hashmap.h"
+#include "src/tint/utils/math.h"
 #include "src/tint/utils/predicates.h"
 #include "src/tint/utils/reverse.h"
 #include "src/tint/utils/scoped_assignment.h"
@@ -164,6 +167,9 @@ class State {
 
     /// Map of struct to output program name.
     utils::Hashmap<const type::Struct*, Symbol, 8> structs_;
+
+    /// True if 'diagnostic(off, derivative_uniformity)' has been emitted
+    bool disabled_derivative_uniformity_ = false;
 
     void RootBlock(ir::Block* root) {
         for (auto* inst : *root) {
@@ -301,7 +307,8 @@ class State {
             [&](ir::Store* i) { Store(i); },                            //
             [&](ir::StoreVectorElement* i) { StoreVectorElement(i); },  //
             [&](ir::Switch* i) { Switch(i); },                          //
-            [&](ir::Unary* u) { Unary(u); },                            //
+            [&](ir::Swizzle* i) { Swizzle(i); },                        //
+            [&](ir::Unary* i) { Unary(i); },                            //
             [&](ir::Unreachable*) {},                                   //
             [&](ir::Var* i) { Var(i); },                                //
             [&](Default) { UNHANDLED_CASE(inst); });
@@ -336,6 +343,8 @@ class State {
     }
 
     void Loop(ir::Loop* l) {
+        SCOPED_NESTING();
+
         // Build all the initializer statements
         auto init_stmts = Statements(l->Initializer());
 
@@ -467,13 +476,7 @@ class State {
 
     void ExitLoop(const ir::ExitLoop*) { Append(b.Break()); }
 
-    void BreakIf(ir::BreakIf* i) {
-        auto* cond = i->Condition();
-        if (IsConstant(cond, false)) {
-            return;
-        }
-        Append(b.BreakIf(Expr(cond)));
-    }
+    void BreakIf(ir::BreakIf* i) { Append(b.BreakIf(Expr(i->Condition()))); }
 
     void Return(ir::Return* ret) {
         if (ret->Args().IsEmpty()) {
@@ -563,7 +566,14 @@ class State {
                 }
                 Bind(c->Result(), expr, PtrKind::kPtr);
             },
-            [&](ir::BuiltinCall* c) {
+            [&](ir::CoreBuiltinCall* c) {
+                if (!disabled_derivative_uniformity_ && RequiresDerivativeUniformity(c->Func())) {
+                    // TODO(crbug.com/tint/1985): Be smarter about disabling derivative uniformity.
+                    b.DiagnosticDirective(builtin::DiagnosticSeverity::kOff,
+                                          builtin::CoreDiagnosticRule::kDerivativeUniformity);
+                    disabled_derivative_uniformity_ = true;
+                }
+
                 auto* expr = b.Call(c->Func(), std::move(args));
                 if (!call->HasResults() || call->Result()->Type()->Is<type::Void>()) {
                     Append(b.CallStmt(expr));
@@ -640,6 +650,21 @@ class State {
                 [&](Default) { UNHANDLED_CASE(obj_ty); });
         }
         Bind(a->Result(), expr);
+    }
+
+    void Swizzle(ir::Swizzle* s) {
+        auto* vec = Expr(s->Object());
+        utils::Vector<char, 4> components;
+        for (uint32_t i : s->Indices()) {
+            if (TINT_UNLIKELY(i >= 4)) {
+                TINT_ICE(IR, b.Diagnostics()) << "invalid swizzle index: " << i;
+                return;
+            }
+            components.Push("xyzw"[i]);
+        }
+        auto* swizzle =
+            b.MemberAccessor(vec, std::string_view(components.begin(), components.Length()));
+        Bind(s->Result(), swizzle);
     }
 
     void Binary(ir::Binary* e) {
@@ -905,9 +930,31 @@ class State {
         auto n = structs_.GetOrCreate(s, [&] {
             auto members = utils::Transform<8>(s->Members(), [&](const type::StructMember* m) {
                 auto ty = Type(m->Type());
-                // TODO(crbug.com/tint/1902): Emit structure member attributes
-                utils::Vector<const ast::Attribute*, 2> attrs;
-                return b.Member(m->Name().NameView(), ty, std::move(attrs));
+                const auto& ir_attrs = m->Attributes();
+                utils::Vector<const ast::Attribute*, 4> ast_attrs;
+                if (m->Type()->Align() != m->Align()) {
+                    ast_attrs.Push(b.MemberAlign(u32(m->Align())));
+                }
+                if (m->Type()->Size() != m->Size()) {
+                    ast_attrs.Push(b.MemberSize(u32(m->Size())));
+                }
+                if (auto location = ir_attrs.location) {
+                    ast_attrs.Push(b.Location(u32(*location)));
+                }
+                if (auto index = ir_attrs.index) {
+                    Enable(builtin::Extension::kChromiumInternalDualSourceBlending);
+                    ast_attrs.Push(b.Index(u32(*index)));
+                }
+                if (auto builtin = ir_attrs.builtin) {
+                    ast_attrs.Push(b.Builtin(*builtin));
+                }
+                if (auto interpolation = ir_attrs.interpolation) {
+                    ast_attrs.Push(b.Interpolate(interpolation->type, interpolation->sampling));
+                }
+                if (ir_attrs.invariant) {
+                    ast_attrs.Push(b.Invariant());
+                }
+                return b.Member(m->Name().NameView(), ty, std::move(ast_attrs));
             });
 
             // TODO(crbug.com/tint/1902): Emit structure attributes
@@ -1080,6 +1127,26 @@ class State {
             }
         }
         return b.IndexAccessor(expr, Expr(index));
+    }
+
+    bool RequiresDerivativeUniformity(builtin::Function fn) {
+        switch (fn) {
+            case builtin::Function::kDpdxCoarse:
+            case builtin::Function::kDpdyCoarse:
+            case builtin::Function::kFwidthCoarse:
+            case builtin::Function::kDpdxFine:
+            case builtin::Function::kDpdyFine:
+            case builtin::Function::kFwidthFine:
+            case builtin::Function::kDpdx:
+            case builtin::Function::kDpdy:
+            case builtin::Function::kFwidth:
+            case builtin::Function::kTextureSample:
+            case builtin::Function::kTextureSampleBias:
+            case builtin::Function::kTextureSampleCompare:
+                return true;
+            default:
+                return false;
+        }
     }
 };
 

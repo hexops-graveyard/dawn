@@ -14,9 +14,9 @@
 
 #include "src/tint/ir/program_test_helper.h"
 
-#include "src/tint/ast/case_selector.h"
-#include "src/tint/ast/int_literal_expression.h"
 #include "src/tint/constant/scalar.h"
+#include "src/tint/lang/wgsl/ast/case_selector.h"
+#include "src/tint/lang/wgsl/ast/int_literal_expression.h"
 
 namespace tint::ir {
 namespace {
@@ -42,6 +42,30 @@ TEST_F(IR_FromProgramUnaryTest, EmitExpression_Unary_Not) {
   %b2 = block {
     %3:bool = call %my_func
     %tint_symbol:bool = eq %3, false
+    ret
+  }
+}
+)");
+}
+
+TEST_F(IR_FromProgramUnaryTest, EmitExpression_Unary_Not_Vector) {
+    Func("my_func", utils::Empty, ty.vec4<bool>(),
+         utils::Vector{Return(vec(ty.bool_(), 4, false))});
+    auto* expr = Not(Call("my_func"));
+    WrapInFunction(expr);
+
+    auto m = Build();
+    ASSERT_TRUE(m) << (!m ? m.Failure() : "");
+
+    EXPECT_EQ(Disassemble(m.Get()), R"(%my_func = func():vec4<bool> -> %b1 {
+  %b1 = block {
+    ret vec4<bool>(false)
+  }
+}
+%test_function = @compute @workgroup_size(1, 1, 1) func():void -> %b2 {
+  %b2 = block {
+    %3:vec4<bool> = call %my_func
+    %tint_symbol:vec4<bool> = eq %3, vec4<bool>(false)
     ret
   }
 }

@@ -18,42 +18,42 @@
 #include <limits>
 #include <utility>
 
-#include "src/tint/ast/alias.h"
-#include "src/tint/ast/assignment_statement.h"
-#include "src/tint/ast/bitcast_expression.h"
-#include "src/tint/ast/break_statement.h"
-#include "src/tint/ast/call_statement.h"
-#include "src/tint/ast/continue_statement.h"
-#include "src/tint/ast/disable_validation_attribute.h"
-#include "src/tint/ast/discard_statement.h"
-#include "src/tint/ast/for_loop_statement.h"
-#include "src/tint/ast/id_attribute.h"
-#include "src/tint/ast/if_statement.h"
-#include "src/tint/ast/index_attribute.h"
-#include "src/tint/ast/internal_attribute.h"
-#include "src/tint/ast/interpolate_attribute.h"
-#include "src/tint/ast/loop_statement.h"
-#include "src/tint/ast/return_statement.h"
-#include "src/tint/ast/switch_statement.h"
-#include "src/tint/ast/traverse_expressions.h"
-#include "src/tint/ast/unary_op_expression.h"
-#include "src/tint/ast/variable_decl_statement.h"
-#include "src/tint/ast/workgroup_attribute.h"
-#include "src/tint/sem/break_if_statement.h"
-#include "src/tint/sem/call.h"
-#include "src/tint/sem/for_loop_statement.h"
-#include "src/tint/sem/function.h"
-#include "src/tint/sem/if_statement.h"
-#include "src/tint/sem/loop_statement.h"
-#include "src/tint/sem/materialize.h"
-#include "src/tint/sem/member_accessor_expression.h"
-#include "src/tint/sem/statement.h"
-#include "src/tint/sem/struct.h"
-#include "src/tint/sem/switch_statement.h"
-#include "src/tint/sem/value_constructor.h"
-#include "src/tint/sem/value_conversion.h"
-#include "src/tint/sem/variable.h"
-#include "src/tint/sem/while_statement.h"
+#include "src/tint/lang/wgsl/ast/alias.h"
+#include "src/tint/lang/wgsl/ast/assignment_statement.h"
+#include "src/tint/lang/wgsl/ast/bitcast_expression.h"
+#include "src/tint/lang/wgsl/ast/break_statement.h"
+#include "src/tint/lang/wgsl/ast/call_statement.h"
+#include "src/tint/lang/wgsl/ast/continue_statement.h"
+#include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
+#include "src/tint/lang/wgsl/ast/discard_statement.h"
+#include "src/tint/lang/wgsl/ast/for_loop_statement.h"
+#include "src/tint/lang/wgsl/ast/id_attribute.h"
+#include "src/tint/lang/wgsl/ast/if_statement.h"
+#include "src/tint/lang/wgsl/ast/index_attribute.h"
+#include "src/tint/lang/wgsl/ast/internal_attribute.h"
+#include "src/tint/lang/wgsl/ast/interpolate_attribute.h"
+#include "src/tint/lang/wgsl/ast/loop_statement.h"
+#include "src/tint/lang/wgsl/ast/return_statement.h"
+#include "src/tint/lang/wgsl/ast/switch_statement.h"
+#include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/ast/unary_op_expression.h"
+#include "src/tint/lang/wgsl/ast/variable_decl_statement.h"
+#include "src/tint/lang/wgsl/ast/workgroup_attribute.h"
+#include "src/tint/lang/wgsl/sem/break_if_statement.h"
+#include "src/tint/lang/wgsl/sem/call.h"
+#include "src/tint/lang/wgsl/sem/for_loop_statement.h"
+#include "src/tint/lang/wgsl/sem/function.h"
+#include "src/tint/lang/wgsl/sem/if_statement.h"
+#include "src/tint/lang/wgsl/sem/loop_statement.h"
+#include "src/tint/lang/wgsl/sem/materialize.h"
+#include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
+#include "src/tint/lang/wgsl/sem/statement.h"
+#include "src/tint/lang/wgsl/sem/struct.h"
+#include "src/tint/lang/wgsl/sem/switch_statement.h"
+#include "src/tint/lang/wgsl/sem/value_constructor.h"
+#include "src/tint/lang/wgsl/sem/value_conversion.h"
+#include "src/tint/lang/wgsl/sem/variable.h"
+#include "src/tint/lang/wgsl/sem/while_statement.h"
 #include "src/tint/type/abstract_numeric.h"
 #include "src/tint/type/array.h"
 #include "src/tint/type/atomic.h"
@@ -1411,14 +1411,8 @@ bool Validator::Bitcast(const ast::BitcastExpression* cast, const type::Type* to
         return false;
     }
 
-    auto width = [&](const type::Type* ty) {
-        if (auto* vec = ty->As<type::Vector>()) {
-            return vec->Width();
-        }
-        return 1u;
-    };
-
-    if (width(from) != width(to)) {
+    // Only bitcasts between scalar/vector types of the same bit width are allowed.
+    if (from->Size() != to->Size()) {
         AddError(
             "cannot bitcast from '" + sem_.TypeNameOf(from) + "' to '" + sem_.TypeNameOf(to) + "'",
             cast->source);

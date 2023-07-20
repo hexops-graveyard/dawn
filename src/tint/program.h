@@ -18,10 +18,10 @@
 #include <string>
 #include <unordered_set>
 
-#include "src/tint/ast/function.h"
 #include "src/tint/constant/manager.h"
+#include "src/tint/lang/wgsl/ast/function.h"
+#include "src/tint/lang/wgsl/sem/info.h"
 #include "src/tint/program_id.h"
-#include "src/tint/sem/info.h"
 #include "src/tint/symbol_table.h"
 #include "src/tint/type/manager.h"
 

@@ -15,7 +15,7 @@
 #include "src/tint/writer/spirv/ir/test_helper_ir.h"
 
 #include "src/tint/builtin/function.h"
-#include "src/tint/resolver/builtin_structs.h"
+#include "src/tint/type/builtin_structs.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -80,6 +80,8 @@ INSTANTIATE_TEST_SUITE_P(
                     BuiltinTestCase{kF16, builtin::Function::kCeil, "Ceil"},
                     BuiltinTestCase{kF32, builtin::Function::kCos, "Cos"},
                     BuiltinTestCase{kF16, builtin::Function::kCos, "Cos"},
+                    BuiltinTestCase{kI32, builtin::Function::kCountOneBits, "OpBitCount"},
+                    BuiltinTestCase{kU32, builtin::Function::kCountOneBits, "OpBitCount"},
                     BuiltinTestCase{kF32, builtin::Function::kDpdx, "OpDPdx"},
                     BuiltinTestCase{kF32, builtin::Function::kDpdxCoarse, "OpDPdxCoarse"},
                     BuiltinTestCase{kF32, builtin::Function::kDpdxFine, "OpDPdxFine"},
@@ -100,6 +102,10 @@ INSTANTIATE_TEST_SUITE_P(
                     BuiltinTestCase{kF16, builtin::Function::kLog, "Log"},
                     BuiltinTestCase{kF32, builtin::Function::kLog2, "Log2"},
                     BuiltinTestCase{kF16, builtin::Function::kLog2, "Log2"},
+                    BuiltinTestCase{kI32, builtin::Function::kReverseBits, "OpBitReverse"},
+                    BuiltinTestCase{kU32, builtin::Function::kReverseBits, "OpBitReverse"},
+                    BuiltinTestCase{kF32, builtin::Function::kRound, "RoundEven"},
+                    BuiltinTestCase{kF16, builtin::Function::kRound, "RoundEven"},
                     BuiltinTestCase{kF32, builtin::Function::kSin, "Sin"},
                     BuiltinTestCase{kF16, builtin::Function::kSin, "Sin"},
                     BuiltinTestCase{kF32, builtin::Function::kSqrt, "Sqrt"},
@@ -152,7 +158,35 @@ TEST_F(SpvGeneratorImplTest, Builtin_Abs_vec2u) {
 )");
 }
 
-// Test that any of an scalar just folds away.
+// Test that all of a scalar just folds away.
+TEST_F(SpvGeneratorImplTest, Builtin_All_Scalar) {
+    auto* arg = b.FunctionParam("arg", ty.bool_());
+    auto* func = b.Function("foo", ty.bool_());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.bool_(), builtin::Function::kAll, arg);
+        b.Return(func, result);
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("OpReturnValue %arg");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_All_Vector) {
+    auto* arg = b.FunctionParam("arg", ty.vec4<bool>());
+    auto* func = b.Function("foo", ty.bool_());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.bool_(), builtin::Function::kAll, arg);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpAll %bool %arg");
+}
+
+// Test that any of a scalar just folds away.
 TEST_F(SpvGeneratorImplTest, Builtin_Any_Scalar) {
     auto* arg = b.FunctionParam("arg", ty.bool_());
     auto* func = b.Function("foo", ty.bool_());
@@ -181,7 +215,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Any_Vector) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Frexp_F32) {
-    auto* str = resolver::CreateFrexpResult(ty, mod.symbols, ty.f32());
+    auto* str = type::CreateFrexpResult(ty, mod.symbols, ty.f32());
     auto* arg = b.FunctionParam("arg", ty.f32());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -196,7 +230,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Frexp_F32) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Frexp_F16) {
-    auto* str = resolver::CreateFrexpResult(ty, mod.symbols, ty.f16());
+    auto* str = type::CreateFrexpResult(ty, mod.symbols, ty.f16());
     auto* arg = b.FunctionParam("arg", ty.f16());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -211,7 +245,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Frexp_F16) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Frexp_Vec2f) {
-    auto* str = resolver::CreateFrexpResult(ty, mod.symbols, ty.vec2<f32>());
+    auto* str = type::CreateFrexpResult(ty, mod.symbols, ty.vec2<f32>());
     auto* arg = b.FunctionParam("arg", ty.vec2<f32>());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -226,7 +260,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Frexp_Vec2f) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Frexp_Vec3h) {
-    auto* str = resolver::CreateFrexpResult(ty, mod.symbols, ty.vec3<f16>());
+    auto* str = type::CreateFrexpResult(ty, mod.symbols, ty.vec3<f16>());
     auto* arg = b.FunctionParam("arg", ty.vec3<f16>());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -255,7 +289,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Length_vec4f) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Modf_F32) {
-    auto* str = resolver::CreateModfResult(ty, mod.symbols, ty.f32());
+    auto* str = type::CreateModfResult(ty, mod.symbols, ty.f32());
     auto* arg = b.FunctionParam("arg", ty.f32());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -270,7 +304,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Modf_F32) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Modf_F16) {
-    auto* str = resolver::CreateModfResult(ty, mod.symbols, ty.f16());
+    auto* str = type::CreateModfResult(ty, mod.symbols, ty.f16());
     auto* arg = b.FunctionParam("arg", ty.f16());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -285,7 +319,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Modf_F16) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Modf_Vec2f) {
-    auto* str = resolver::CreateModfResult(ty, mod.symbols, ty.vec2<f32>());
+    auto* str = type::CreateModfResult(ty, mod.symbols, ty.vec2<f32>());
     auto* arg = b.FunctionParam("arg", ty.vec2<f32>());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -300,7 +334,7 @@ TEST_F(SpvGeneratorImplTest, Builtin_Modf_Vec2f) {
 }
 
 TEST_F(SpvGeneratorImplTest, Builtin_Modf_Vec3h) {
-    auto* str = resolver::CreateModfResult(ty, mod.symbols, ty.vec3<f16>());
+    auto* str = type::CreateModfResult(ty, mod.symbols, ty.vec3<f16>());
     auto* arg = b.FunctionParam("arg", ty.vec3<f16>());
     auto* func = b.Function("foo", str);
     func->SetParams({arg});
@@ -326,6 +360,62 @@ TEST_F(SpvGeneratorImplTest, Builtin_Normalize_vec4f) {
 
     ASSERT_TRUE(Generate()) << Error() << output_;
     EXPECT_INST("%result = OpExtInst %v4float %8 Normalize %arg");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Transpose_Mat2x3f) {
+    auto* arg = b.FunctionParam("arg", ty.mat2x3<f32>());
+    auto* func = b.Function("foo", ty.mat3x2<f32>());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.mat3x2<f32>(), builtin::Function::kTranspose, arg);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpTranspose %mat3v2float %arg");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Transpose_Mat4x4f) {
+    auto* arg = b.FunctionParam("arg", ty.mat4x4<f32>());
+    auto* func = b.Function("foo", ty.mat4x4<f32>());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.mat4x4<f32>(), builtin::Function::kTranspose, arg);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpTranspose %mat4v4float %arg");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Transpose_Mat4x3h) {
+    auto* arg = b.FunctionParam("arg", ty.mat4x3<f16>());
+    auto* func = b.Function("foo", ty.mat3x4<f16>());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.mat3x4<f16>(), builtin::Function::kTranspose, arg);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpTranspose %mat3v4half %arg");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Transpose_Mat2x2h) {
+    auto* arg = b.FunctionParam("arg", ty.mat2x2<f16>());
+    auto* func = b.Function("foo", ty.mat2x2<f16>());
+    func->SetParams({arg});
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.mat2x2<f16>(), builtin::Function::kTranspose, arg);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpTranspose %mat2v2half %arg");
 }
 
 // Tests for builtins with the signature: T = func(T, T)
@@ -364,7 +454,11 @@ INSTANTIATE_TEST_SUITE_P(SpvGeneratorImplTest,
                                          BuiltinTestCase{kU32, builtin::Function::kMax, "UMax"},
                                          BuiltinTestCase{kF32, builtin::Function::kMin, "FMin"},
                                          BuiltinTestCase{kI32, builtin::Function::kMin, "SMin"},
-                                         BuiltinTestCase{kU32, builtin::Function::kMin, "UMin"}));
+                                         BuiltinTestCase{kU32, builtin::Function::kMin, "UMin"},
+                                         BuiltinTestCase{kF32, builtin::Function::kPow, "Pow"},
+                                         BuiltinTestCase{kF16, builtin::Function::kPow, "Pow"},
+                                         BuiltinTestCase{kF32, builtin::Function::kStep, "Step"},
+                                         BuiltinTestCase{kF16, builtin::Function::kStep, "Step"}));
 
 TEST_F(SpvGeneratorImplTest, Builtin_Cross_vec3f) {
     auto* arg1 = b.FunctionParam("arg1", ty.vec3<f32>());
@@ -508,12 +602,197 @@ TEST_P(Builtin_3arg, Vector) {
     ASSERT_TRUE(Generate()) << Error() << output_;
     EXPECT_INST(params.spirv_inst);
 }
-INSTANTIATE_TEST_SUITE_P(SpvGeneratorImplTest,
-                         Builtin_3arg,
-                         testing::Values(BuiltinTestCase{kF32, builtin::Function::kClamp, "NClamp"},
-                                         BuiltinTestCase{kI32, builtin::Function::kClamp, "SClamp"},
-                                         BuiltinTestCase{kU32, builtin::Function::kClamp,
-                                                         "UClamp"}));
+INSTANTIATE_TEST_SUITE_P(
+    SpvGeneratorImplTest,
+    Builtin_3arg,
+    testing::Values(BuiltinTestCase{kF32, builtin::Function::kClamp, "NClamp"},
+                    BuiltinTestCase{kI32, builtin::Function::kClamp, "SClamp"},
+                    BuiltinTestCase{kU32, builtin::Function::kClamp, "UClamp"},
+                    BuiltinTestCase{kF32, builtin::Function::kFma, "Fma"},
+                    BuiltinTestCase{kF16, builtin::Function::kFma, "Fma"},
+                    BuiltinTestCase{kF32, builtin::Function::kMix, "Mix"},
+                    BuiltinTestCase{kF16, builtin::Function::kMix, "Mix"},
+                    BuiltinTestCase{kF32, builtin::Function::kSmoothstep, "SmoothStep"},
+                    BuiltinTestCase{kF16, builtin::Function::kSmoothstep, "SmoothStep"}));
+
+TEST_F(SpvGeneratorImplTest, Builtin_ExtractBits_Scalar_I32) {
+    auto* arg = b.FunctionParam("arg", ty.i32());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.i32());
+    func->SetParams({arg, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.i32(), builtin::Function::kExtractBits, arg, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldSExtract %int %arg %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_ExtractBits_Scalar_U32) {
+    auto* arg = b.FunctionParam("arg", ty.u32());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.u32());
+    func->SetParams({arg, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.u32(), builtin::Function::kExtractBits, arg, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldUExtract %uint %arg %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_ExtractBits_Vector_I32) {
+    auto* arg = b.FunctionParam("arg", ty.vec4<i32>());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.vec4<i32>());
+    func->SetParams({arg, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.vec4<i32>(), builtin::Function::kExtractBits, arg, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldSExtract %v4int %arg %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_ExtractBits_Vector_U32) {
+    auto* arg = b.FunctionParam("arg", ty.vec2<u32>());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.vec2<u32>());
+    func->SetParams({arg, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.vec2<u32>(), builtin::Function::kExtractBits, arg, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldUExtract %v2uint %arg %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_InsertBits_Scalar_I32) {
+    auto* arg = b.FunctionParam("arg", ty.i32());
+    auto* newbits = b.FunctionParam("newbits", ty.i32());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.i32());
+    func->SetParams({arg, newbits, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result =
+            b.Call(ty.i32(), builtin::Function::kInsertBits, arg, newbits, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldInsert %int %arg %newbits %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_InsertBits_Scalar_U32) {
+    auto* arg = b.FunctionParam("arg", ty.u32());
+    auto* newbits = b.FunctionParam("newbits", ty.u32());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.u32());
+    func->SetParams({arg, newbits, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result =
+            b.Call(ty.u32(), builtin::Function::kInsertBits, arg, newbits, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldInsert %uint %arg %newbits %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_InsertBits_Vector_I32) {
+    auto* arg = b.FunctionParam("arg", ty.vec4<i32>());
+    auto* newbits = b.FunctionParam("newbits", ty.vec4<i32>());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.vec4<i32>());
+    func->SetParams({arg, newbits, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result =
+            b.Call(ty.vec4<i32>(), builtin::Function::kInsertBits, arg, newbits, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldInsert %v4int %arg %newbits %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_InsertBits_Vector_U32) {
+    auto* arg = b.FunctionParam("arg", ty.vec2<u32>());
+    auto* newbits = b.FunctionParam("newbits", ty.vec2<u32>());
+    auto* offset = b.FunctionParam("offset", ty.u32());
+    auto* count = b.FunctionParam("count", ty.u32());
+    auto* func = b.Function("foo", ty.vec2<u32>());
+    func->SetParams({arg, newbits, offset, count});
+
+    b.With(func->Block(), [&] {
+        auto* result =
+            b.Call(ty.vec2<u32>(), builtin::Function::kInsertBits, arg, newbits, offset, count);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpBitFieldInsert %v2uint %arg %newbits %offset %count");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Mix_VectorOperands_ScalarFactor) {
+    auto* arg1 = b.FunctionParam("arg1", ty.vec4<f32>());
+    auto* arg2 = b.FunctionParam("arg2", ty.vec4<f32>());
+    auto* factor = b.FunctionParam("factor", ty.f32());
+    auto* func = b.Function("foo", ty.vec4<f32>());
+    func->SetParams({arg1, arg2, factor});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.vec4<f32>(), builtin::Function::kMix, arg1, arg2, factor);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%9 = OpCompositeConstruct %v4float %factor %factor %factor %factor");
+    EXPECT_INST("%result = OpExtInst %v4float %11 FMix %arg1 %arg2 %9");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_Mix_VectorOperands_VectorFactor) {
+    auto* arg1 = b.FunctionParam("arg1", ty.vec4<f32>());
+    auto* arg2 = b.FunctionParam("arg2", ty.vec4<f32>());
+    auto* factor = b.FunctionParam("factor", ty.vec4<f32>());
+    auto* func = b.Function("foo", ty.vec4<f32>());
+    func->SetParams({arg1, arg2, factor});
+
+    b.With(func->Block(), [&] {
+        auto* result = b.Call(ty.vec4<f32>(), builtin::Function::kMix, arg1, arg2, factor);
+        b.Return(func, result);
+        mod.SetName(result, "result");
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%result = OpExtInst %v4float %10 FMix %arg1 %arg2 %factor");
+}
 
 TEST_F(SpvGeneratorImplTest, Builtin_Select_ScalarCondition_ScalarOperands) {
     auto* argf = b.FunctionParam("argf", ty.i32());
@@ -565,6 +844,28 @@ TEST_F(SpvGeneratorImplTest, Builtin_Select_ScalarCondition_VectorOperands) {
     ASSERT_TRUE(Generate()) << Error() << output_;
     EXPECT_INST("%11 = OpCompositeConstruct %v4bool %cond %cond %cond %cond");
     EXPECT_INST("%result = OpSelect %v4int %11 %argt %argf");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_StorageBarrier) {
+    auto* func = b.Function("foo", ty.void_());
+    b.With(func->Block(), [&] {
+        b.Call(ty.void_(), builtin::Function::kStorageBarrier);
+        b.Return(func);
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("OpControlBarrier %uint_2 %uint_2 %uint_72");
+}
+
+TEST_F(SpvGeneratorImplTest, Builtin_WorkgroupBarrier) {
+    auto* func = b.Function("foo", ty.void_());
+    b.With(func->Block(), [&] {
+        b.Call(ty.void_(), builtin::Function::kWorkgroupBarrier);
+        b.Return(func);
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("OpControlBarrier %uint_2 %uint_2 %uint_264");
 }
 
 }  // namespace

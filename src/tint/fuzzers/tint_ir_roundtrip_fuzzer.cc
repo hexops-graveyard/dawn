@@ -19,8 +19,8 @@
 #include "src/tint/fuzzers/apply_substitute_overrides.h"
 #include "src/tint/ir/from_program.h"
 #include "src/tint/ir/to_program.h"
-#include "src/tint/reader/wgsl/parser_impl.h"
-#include "src/tint/writer/wgsl/generator.h"
+#include "src/tint/lang/wgsl/ast_writer/generator.h"
+#include "src/tint/lang/wgsl/reader/parser_impl.h"
 
 [[noreturn]] void TintInternalCompilerErrorReporter(const tint::diag::List& diagnostics) {
     auto printer = tint::diag::Printer::create(stderr, true);
@@ -43,6 +43,26 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     }
     auto src = parser.program();
     if (!src.IsValid()) {
+        return 0;
+    }
+
+    auto is_unsupported = [](const tint::ast::Enable* enable) {
+        for (auto ext : enable->extensions) {
+            switch (ext->name) {
+                case tint::builtin::Extension::kChromiumExperimentalDp4A:
+                case tint::builtin::Extension::kChromiumExperimentalFullPtrParameters:
+                case tint::builtin::Extension::kChromiumExperimentalPushConstant:
+                case tint::builtin::Extension::kChromiumInternalDualSourceBlending:
+                case tint::builtin::Extension::kChromiumInternalRelaxedUniformLayout:
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return false;
+    };
+
+    if (src.AST().Enables().Any(is_unsupported)) {
         return 0;
     }
 

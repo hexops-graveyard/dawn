@@ -13,13 +13,13 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
-#include "src/tint/ast/case_selector.h"
-#include "src/tint/ast/int_literal_expression.h"
 #include "src/tint/constant/scalar.h"
 #include "src/tint/ir/block.h"
 #include "src/tint/ir/constant.h"
 #include "src/tint/ir/program_test_helper.h"
 #include "src/tint/ir/var.h"
+#include "src/tint/lang/wgsl/ast/case_selector.h"
+#include "src/tint/lang/wgsl/ast/int_literal_expression.h"
 
 namespace tint::ir {
 namespace {
@@ -46,6 +46,32 @@ TEST_F(IR_FromProgramAccessorTest, Accessor_Var_ArraySingleIndex) {
     %a:ptr<function, array<u32, 3>, read_write> = var
     %3:ptr<function, u32, read_write> = access %a, 2u
     %b:u32 = load %3
+    ret
+  }
+}
+)");
+}
+
+TEST_F(IR_FromProgramAccessorTest, Accessor_Multiple) {
+    // let a: vec4<u32> = vec4();
+    // let b = a[2]
+    // let c = a[1]
+
+    auto* a = Let("a", ty.vec3<u32>(), vec(ty.u32(), 3));
+    auto* expr = Decl(Let("b", IndexAccessor(a, 2_u)));
+    auto* expr2 = Decl(Let("c", IndexAccessor(a, 1_u)));
+
+    WrapInFunction(Decl(a), expr, expr2);
+
+    auto m = Build();
+    ASSERT_TRUE(m) << (!m ? m.Failure() : "");
+
+    EXPECT_EQ(Disassemble(m.Get()),
+              R"(%test_function = @compute @workgroup_size(1, 1, 1) func():void -> %b1 {
+  %b1 = block {
+    %a:vec3<u32> = let vec3<u32>(0u)
+    %b:u32 = access %a, 2u
+    %c:u32 = access %a, 1u
     ret
   }
 }
@@ -676,6 +702,33 @@ TEST_F(IR_FromProgramAccessorTest, Accessor_Const_AbstractVectorWithSwizzleAndIn
     %i:i32 = let 1i
     %3:i32 = access vec2<i32>(1i, 2i), %i
     %b:ptr<function, i32, read_write> = var, %3
+    ret
+  }
+}
+)");
+}
+
+TEST_F(IR_FromProgramAccessorTest, Accessor_Const_ExpressionIndex) {
+    // const v = vec3(1, 2, 3);
+    // let i = 1;
+    // var b = v.rg[i + 2 - 3];
+
+    auto* v = Const("v", Call<vec3<Infer>>(1_a, 2_a, 3_a));
+    auto* i = Let("i", Expr(1_i));
+    auto* b = Var("b", IndexAccessor(MemberAccessor("v", "rg"), Sub(Add("i", 2_i), 3_i)));
+    WrapInFunction(v, i, b);
+
+    auto m = Build();
+    ASSERT_TRUE(m) << (!m ? m.Failure() : "");
+
+    EXPECT_EQ(Disassemble(m.Get()),
+              R"(%test_function = @compute @workgroup_size(1, 1, 1) func():void -> %b1 {
+  %b1 = block {
+    %i:i32 = let 1i
+    %3:i32 = add %i, 2i
+    %4:i32 = sub %3, 3i
+    %5:i32 = access vec2<i32>(1i, 2i), %4
+    %b:ptr<function, i32, read_write> = var, %5
     ret
   }
 }

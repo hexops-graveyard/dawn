@@ -21,13 +21,13 @@
 // TODO(tint:88): When implementing support for an install target, all of these
 //                headers will need to be moved to include/tint/.
 
-#include "src/tint/ast/transform/first_index_offset.h"
-#include "src/tint/ast/transform/renamer.h"
-#include "src/tint/ast/transform/single_entry_point.h"
-#include "src/tint/ast/transform/substitute_override.h"
-#include "src/tint/ast/transform/vertex_pulling.h"
 #include "src/tint/diagnostic/printer.h"
 #include "src/tint/inspector/inspector.h"
+#include "src/tint/lang/wgsl/ast/transform/first_index_offset.h"
+#include "src/tint/lang/wgsl/ast/transform/renamer.h"
+#include "src/tint/lang/wgsl/ast/transform/single_entry_point.h"
+#include "src/tint/lang/wgsl/ast/transform/substitute_override.h"
+#include "src/tint/lang/wgsl/ast/transform/vertex_pulling.h"
 #include "src/tint/reader/reader.h"
 #include "src/tint/transform/manager.h"
 #include "src/tint/type/manager.h"
@@ -40,11 +40,11 @@
 #include "src/tint/writer/writer.h"
 
 #if TINT_BUILD_SPV_READER
-#include "src/tint/reader/spirv/parser.h"
+#include "src/tint/lang/spirv/reader/parser.h"
 #endif  // TINT_BUILD_SPV_READER
 
 #if TINT_BUILD_WGSL_READER
-#include "src/tint/reader/wgsl/parser.h"
+#include "src/tint/lang/wgsl/reader/parser.h"
 #endif  // TINT_BUILD_WGSL_READER
 
 #if TINT_BUILD_SPV_WRITER
@@ -52,19 +52,19 @@
 #endif  // TINT_BUILD_SPV_WRITER
 
 #if TINT_BUILD_WGSL_WRITER
-#include "src/tint/writer/wgsl/generator.h"
+#include "src/tint/lang/wgsl/ast_writer/generator.h"
 #endif  // TINT_BUILD_WGSL_WRITER
 
 #if TINT_BUILD_MSL_WRITER
-#include "src/tint/writer/msl/generator.h"
+#include "src/tint/lang/msl/ast_writer/generator.h"
 #endif  // TINT_BUILD_MSL_WRITER
 
 #if TINT_BUILD_HLSL_WRITER
-#include "src/tint/writer/hlsl/generator.h"
+#include "src/tint/lang/hlsl/ast_writer/generator.h"
 #endif  // TINT_BUILD_HLSL_WRITER
 
 #if TINT_BUILD_GLSL_WRITER
-#include "src/tint/writer/glsl/generator.h"
+#include "src/tint/lang/glsl/ast_writer/generator.h"
 #endif  // TINT_BUILD_GLSL_WRITER
 
 namespace tint {

@@ -17,6 +17,9 @@
 
 #include <vector>
 
+#include "src/tint/builtin/address_space.h"
+#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/builtin/texel_format.h"
 #include "src/tint/constant/value.h"
 #include "src/tint/diagnostic/diagnostic.h"
 #include "src/tint/ir/constant.h"
@@ -34,10 +37,10 @@ class Binary;
 class Bitcast;
 class Block;
 class BlockParam;
-class BuiltinCall;
 class Construct;
 class ControlInstruction;
 class Convert;
+class CoreBuiltinCall;
 class ExitIf;
 class ExitLoop;
 class ExitSwitch;
@@ -200,7 +203,7 @@ class GeneratorImplIr {
 
     /// Emit a builtin function call instruction.
     /// @param call the builtin call instruction to emit
-    void EmitBuiltinCall(ir::BuiltinCall* call);
+    void EmitCoreBuiltinCall(ir::CoreBuiltinCall* call);
 
     /// Emit a construct instruction.
     /// @param construct the construct instruction to emit

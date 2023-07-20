@@ -24,9 +24,9 @@
 #include "src/tint/ir/block.h"
 #include "src/tint/ir/block_param.h"
 #include "src/tint/ir/break_if.h"
-#include "src/tint/ir/builtin_call.h"
 #include "src/tint/ir/construct.h"
 #include "src/tint/ir/continue.h"
+#include "src/tint/ir/core_builtin_call.h"
 #include "src/tint/ir/exit_if.h"
 #include "src/tint/ir/exit_loop.h"
 #include "src/tint/ir/exit_switch.h"
@@ -46,16 +46,19 @@
 #include "src/tint/ir/transform/block_decorated_structs.h"
 #include "src/tint/ir/transform/builtin_polyfill_spirv.h"
 #include "src/tint/ir/transform/demote_to_helper.h"
+#include "src/tint/ir/transform/expand_implicit_splats.h"
+#include "src/tint/ir/transform/handle_matrix_arithmetic.h"
 #include "src/tint/ir/transform/merge_return.h"
 #include "src/tint/ir/transform/shader_io_spirv.h"
 #include "src/tint/ir/transform/var_for_dynamic_index.h"
 #include "src/tint/ir/unreachable.h"
 #include "src/tint/ir/user_call.h"
-#include "src/tint/ir/validate.h"
+#include "src/tint/ir/validator.h"
 #include "src/tint/ir/var.h"
 #include "src/tint/switch.h"
 #include "src/tint/transform/manager.h"
 #include "src/tint/type/array.h"
+#include "src/tint/type/atomic.h"
 #include "src/tint/type/bool.h"
 #include "src/tint/type/depth_multisampled_texture.h"
 #include "src/tint/type/depth_texture.h"
@@ -94,6 +97,8 @@ void Sanitize(ir::Module* module) {
     manager.Add<ir::transform::BlockDecoratedStructs>();
     manager.Add<ir::transform::BuiltinPolyfillSpirv>();
     manager.Add<ir::transform::DemoteToHelper>();
+    manager.Add<ir::transform::ExpandImplicitSplats>();
+    manager.Add<ir::transform::HandleMatrixArithmetic>();
     manager.Add<ir::transform::MergeReturn>();
     manager.Add<ir::transform::ShaderIOSpirv>();
     manager.Add<ir::transform::VarForDynamicIndex>();
@@ -125,6 +130,41 @@ SpvStorageClass StorageClass(builtin::AddressSpace addrspace) {
         default:
             return SpvStorageClassMax;
     }
+}
+
+const type::Type* DedupType(const type::Type* ty, type::Manager& types) {
+    return Switch(
+        ty,
+
+        // Atomics are not a distinct type in SPIR-V.
+        [&](const type::Atomic* atomic) { return atomic->Type(); },
+
+        // Depth textures are always declared as sampled textures.
+        [&](const type::DepthTexture* depth) {
+            return types.Get<type::SampledTexture>(depth->dim(), types.f32());
+        },
+        [&](const type::DepthMultisampledTexture* depth) {
+            return types.Get<type::MultisampledTexture>(depth->dim(), types.f32());
+        },
+
+        // Both sampler types are the same in SPIR-V.
+        [&](const type::Sampler* s) -> const type::Type* {
+            if (s->IsComparison()) {
+                return types.Get<type::Sampler>(type::SamplerKind::kSampler);
+            }
+            return s;
+        },
+
+        // Dedup a SampledImage if its underlying image will be deduped.
+        [&](const ir::transform::BuiltinPolyfillSpirv::SampledImage* si) -> const type::Type* {
+            auto* img = DedupType(si->Image(), types);
+            if (img != si->Image()) {
+                return types.Get<ir::transform::BuiltinPolyfillSpirv::SampledImage>(img);
+            }
+            return si;
+        },
+
+        [&](Default) { return ty; });
 }
 
 }  // namespace
@@ -213,6 +253,11 @@ uint32_t GeneratorImplIr::Builtin(builtin::BuiltinValue builtin, builtin::Addres
 }
 
 uint32_t GeneratorImplIr::Constant(ir::Constant* constant) {
+    // If it is a literal operand, just return the value.
+    if (auto* literal = constant->As<ir::transform::BuiltinPolyfillSpirv::LiteralOperand>()) {
+        return literal->Value()->ValueAs<uint32_t>();
+    }
+
     auto id = Constant(constant->Value());
 
     // Set the name for the SPIR-V result ID if provided in the module.
@@ -303,6 +348,7 @@ uint32_t GeneratorImplIr::Undef(const type::Type* type) {
 
 uint32_t GeneratorImplIr::Type(const type::Type* ty,
                                builtin::AddressSpace addrspace /* = kUndefined */) {
+    ty = DedupType(ty, ir_->Types());
     return types_.GetOrCreate(ty, [&] {
         auto id = module_.NextId();
         Switch(
@@ -351,16 +397,9 @@ uint32_t GeneratorImplIr::Type(const type::Type* ty,
             },
             [&](const type::Struct* str) { EmitStructType(id, str, addrspace); },
             [&](const type::Texture* tex) { EmitTextureType(id, tex); },
-            [&](const type::Sampler* s) {
-                module_.PushType(spv::Op::OpTypeSampler, {id});
-
-                // Register both of the sampler types, as they're the same in SPIR-V.
-                if (s->kind() == type::SamplerKind::kSampler) {
-                    types_.Add(
-                        ir_->Types().Get<type::Sampler>(type::SamplerKind::kComparisonSampler), id);
-                } else {
-                    types_.Add(ir_->Types().Get<type::Sampler>(type::SamplerKind::kSampler), id);
-                }
+            [&](const type::Sampler*) { module_.PushType(spv::Op::OpTypeSampler, {id}); },
+            [&](const ir::transform::BuiltinPolyfillSpirv::SampledImage* s) {
+                module_.PushType(spv::Op::OpTypeSampledImage, {id, Type(s->Image())});
             },
             [&](Default) {
                 TINT_ICE(Writer, diagnostics_) << "unhandled type: " << ty->FriendlyName();
@@ -485,8 +524,6 @@ void GeneratorImplIr::EmitStructType(uint32_t id,
 void GeneratorImplIr::EmitTextureType(uint32_t id, const type::Texture* texture) {
     uint32_t sampled_type = Switch(
         texture,  //
-        [&](const type::DepthTexture*) { return Type(ir_->Types().f32()); },
-        [&](const type::DepthMultisampledTexture*) { return Type(ir_->Types().f32()); },
         [&](const type::SampledTexture* t) { return Type(t->type()); },
         [&](const type::MultisampledTexture* t) { return Type(t->type()); },
         [&](const type::StorageTexture* t) { return Type(t->type()); });
@@ -526,7 +563,7 @@ void GeneratorImplIr::EmitTextureType(uint32_t id, const type::Texture* texture)
         case type::TextureDimension::kCubeArray: {
             dim = SpvDimCube;
             array = 1u;
-            if (texture->IsAnyOf<type::SampledTexture, type::DepthTexture>()) {
+            if (texture->Is<type::SampledTexture>()) {
                 module_.PushCapability(SpvCapabilitySampledCubeArray);
             }
             break;
@@ -539,13 +576,12 @@ void GeneratorImplIr::EmitTextureType(uint32_t id, const type::Texture* texture)
     uint32_t depth = 0u;
 
     uint32_t ms = 0u;
-    if (texture->IsAnyOf<type::MultisampledTexture, type::DepthMultisampledTexture>()) {
+    if (texture->Is<type::MultisampledTexture>()) {
         ms = 1u;
     }
 
     uint32_t sampled = 2u;
-    if (texture->IsAnyOf<type::MultisampledTexture, type::SampledTexture, type::DepthTexture,
-                         type::DepthMultisampledTexture>()) {
+    if (texture->IsAnyOf<type::MultisampledTexture, type::SampledTexture>()) {
         sampled = 1u;
     }
 
@@ -745,7 +781,7 @@ void GeneratorImplIr::EmitBlockInstructions(ir::Block* block) {
             [&](ir::Access* a) { EmitAccess(a); },                          //
             [&](ir::Binary* b) { EmitBinary(b); },                          //
             [&](ir::Bitcast* b) { EmitBitcast(b); },                        //
-            [&](ir::BuiltinCall* b) { EmitBuiltinCall(b); },                //
+            [&](ir::CoreBuiltinCall* b) { EmitCoreBuiltinCall(b); },        //
             [&](ir::Construct* c) { EmitConstruct(c); },                    //
             [&](ir::Convert* c) { EmitConvert(c); },                        //
             [&](ir::IntrinsicCall* i) { EmitIntrinsicCall(i); },            //
@@ -919,7 +955,6 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
     auto rhs = Value(binary->RHS());
     auto* ty = binary->Result()->Type();
     auto* lhs_ty = binary->LHS()->Type();
-    auto* rhs_ty = binary->RHS()->Type();
 
     // Determine the opcode.
     spv::Op op = spv::Op::Max;
@@ -940,37 +975,9 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
         }
         case ir::Binary::Kind::kMultiply: {
             if (ty->is_integer_scalar_or_vector()) {
-                // If the result is an integer then we can only use OpIMul.
                 op = spv::Op::OpIMul;
-            } else if (lhs_ty->is_float_scalar() && rhs_ty->is_float_scalar()) {
-                // Two float scalars multiply with OpFMul.
+            } else if (ty->is_float_scalar_or_vector()) {
                 op = spv::Op::OpFMul;
-            } else if (lhs_ty->is_float_vector() && rhs_ty->is_float_vector()) {
-                // Two float vectors multiply with OpFMul.
-                op = spv::Op::OpFMul;
-            } else if (lhs_ty->is_float_scalar() && rhs_ty->is_float_vector()) {
-                // Use OpVectorTimesScalar for scalar * vector, and swap the operand order.
-                std::swap(lhs, rhs);
-                op = spv::Op::OpVectorTimesScalar;
-            } else if (lhs_ty->is_float_vector() && rhs_ty->is_float_scalar()) {
-                // Use OpVectorTimesScalar for scalar * vector.
-                op = spv::Op::OpVectorTimesScalar;
-            } else if (lhs_ty->is_float_scalar() && rhs_ty->is_float_matrix()) {
-                // Use OpMatrixTimesScalar for scalar * matrix, and swap the operand order.
-                std::swap(lhs, rhs);
-                op = spv::Op::OpMatrixTimesScalar;
-            } else if (lhs_ty->is_float_matrix() && rhs_ty->is_float_scalar()) {
-                // Use OpMatrixTimesScalar for scalar * matrix.
-                op = spv::Op::OpMatrixTimesScalar;
-            } else if (lhs_ty->is_float_vector() && rhs_ty->is_float_matrix()) {
-                // Use OpVectorTimesMatrix for vector * matrix.
-                op = spv::Op::OpVectorTimesMatrix;
-            } else if (lhs_ty->is_float_matrix() && rhs_ty->is_float_vector()) {
-                // Use OpMatrixTimesVector for matrix * vector.
-                op = spv::Op::OpMatrixTimesVector;
-            } else if (lhs_ty->is_float_matrix() && rhs_ty->is_float_matrix()) {
-                // Use OpMatrixTimesMatrix for matrix * vector.
-                op = spv::Op::OpMatrixTimesMatrix;
             }
             break;
         }
@@ -990,11 +997,19 @@ void GeneratorImplIr::EmitBinary(ir::Binary* binary) {
         }
 
         case ir::Binary::Kind::kAnd: {
-            op = spv::Op::OpBitwiseAnd;
+            if (ty->is_integer_scalar_or_vector()) {
+                op = spv::Op::OpBitwiseAnd;
+            } else if (ty->is_bool_scalar_or_vector()) {
+                op = spv::Op::OpLogicalAnd;
+            }
             break;
         }
         case ir::Binary::Kind::kOr: {
-            op = spv::Op::OpBitwiseOr;
+            if (ty->is_integer_scalar_or_vector()) {
+                op = spv::Op::OpBitwiseOr;
+            } else if (ty->is_bool_scalar_or_vector()) {
+                op = spv::Op::OpLogicalOr;
+            }
             break;
         }
         case ir::Binary::Kind::kXor: {
@@ -1091,7 +1106,7 @@ void GeneratorImplIr::EmitBitcast(ir::Bitcast* bitcast) {
                                 {Type(ty), Value(bitcast), Value(bitcast->Val())});
 }
 
-void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
+void GeneratorImplIr::EmitCoreBuiltinCall(ir::CoreBuiltinCall* builtin) {
     auto* result_ty = builtin->Result()->Type();
 
     if (builtin->Func() == builtin::Function::kAbs &&
@@ -1100,9 +1115,10 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         values_.Add(builtin->Result(), Value(builtin->Args()[0]));
         return;
     }
-    if (builtin->Func() == builtin::Function::kAny &&
+    if ((builtin->Func() == builtin::Function::kAll ||
+         builtin->Func() == builtin::Function::kAny) &&
         builtin->Args()[0]->Type()->Is<type::Bool>()) {
-        // any() is a passthrough for a scalar argument.
+        // all() and any() are passthroughs for scalar arguments.
         values_.Add(builtin->Result(), Value(builtin->Args()[0]));
         return;
     }
@@ -1133,6 +1149,9 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
             } else if (result_ty->is_signed_integer_scalar_or_vector()) {
                 glsl_ext_inst(GLSLstd450SAbs);
             }
+            break;
+        case builtin::Function::kAll:
+            op = spv::Op::OpAll;
             break;
         case builtin::Function::kAny:
             op = spv::Op::OpAny;
@@ -1176,6 +1195,9 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kCosh:
             glsl_ext_inst(GLSLstd450Cosh);
             break;
+        case builtin::Function::kCountOneBits:
+            op = spv::Op::OpBitCount;
+            break;
         case builtin::Function::kCross:
             glsl_ext_inst(GLSLstd450Cross);
             break;
@@ -1212,14 +1234,24 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kExp2:
             glsl_ext_inst(GLSLstd450Exp2);
             break;
+        case builtin::Function::kExtractBits:
+            op = result_ty->is_signed_integer_scalar_or_vector() ? spv::Op::OpBitFieldSExtract
+                                                                 : spv::Op::OpBitFieldUExtract;
+            break;
         case builtin::Function::kFloor:
             glsl_ext_inst(GLSLstd450Floor);
+            break;
+        case builtin::Function::kFma:
+            glsl_ext_inst(GLSLstd450Fma);
             break;
         case builtin::Function::kFract:
             glsl_ext_inst(GLSLstd450Fract);
             break;
         case builtin::Function::kFrexp:
             glsl_ext_inst(GLSLstd450FrexpStruct);
+            break;
+        case builtin::Function::kInsertBits:
+            op = spv::Op::OpBitFieldInsert;
             break;
         case builtin::Function::kInverseSqrt:
             glsl_ext_inst(GLSLstd450InverseSqrt);
@@ -1251,11 +1283,23 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
                 glsl_ext_inst(GLSLstd450UMin);
             }
             break;
+        case builtin::Function::kMix:
+            glsl_ext_inst(GLSLstd450FMix);
+            break;
         case builtin::Function::kModf:
             glsl_ext_inst(GLSLstd450ModfStruct);
             break;
         case builtin::Function::kNormalize:
             glsl_ext_inst(GLSLstd450Normalize);
+            break;
+        case builtin::Function::kPow:
+            glsl_ext_inst(GLSLstd450Pow);
+            break;
+        case builtin::Function::kReverseBits:
+            op = spv::Op::OpBitReverse;
+            break;
+        case builtin::Function::kRound:
+            glsl_ext_inst(GLSLstd450RoundEven);
             break;
         case builtin::Function::kSin:
             glsl_ext_inst(GLSLstd450Sin);
@@ -1263,8 +1307,23 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kSinh:
             glsl_ext_inst(GLSLstd450Sinh);
             break;
+        case builtin::Function::kSmoothstep:
+            glsl_ext_inst(GLSLstd450SmoothStep);
+            break;
         case builtin::Function::kSqrt:
             glsl_ext_inst(GLSLstd450Sqrt);
+            break;
+        case builtin::Function::kStep:
+            glsl_ext_inst(GLSLstd450Step);
+            break;
+        case builtin::Function::kStorageBarrier:
+            op = spv::Op::OpControlBarrier;
+            operands.clear();
+            operands.push_back(Constant(ir_->constant_values.Get(u32(spv::Scope::Workgroup))));
+            operands.push_back(Constant(ir_->constant_values.Get(u32(spv::Scope::Workgroup))));
+            operands.push_back(
+                Constant(ir_->constant_values.Get(u32(spv::MemorySemanticsMask::UniformMemory |
+                                                      spv::MemorySemanticsMask::AcquireRelease))));
             break;
         case builtin::Function::kTan:
             glsl_ext_inst(GLSLstd450Tan);
@@ -1272,8 +1331,24 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
         case builtin::Function::kTanh:
             glsl_ext_inst(GLSLstd450Tanh);
             break;
+        case builtin::Function::kTextureNumLevels:
+            module_.PushCapability(SpvCapabilityImageQuery);
+            op = spv::Op::OpImageQueryLevels;
+            break;
+        case builtin::Function::kTranspose:
+            op = spv::Op::OpTranspose;
+            break;
         case builtin::Function::kTrunc:
             glsl_ext_inst(GLSLstd450Trunc);
+            break;
+        case builtin::Function::kWorkgroupBarrier:
+            op = spv::Op::OpControlBarrier;
+            operands.clear();
+            operands.push_back(Constant(ir_->constant_values.Get(u32(spv::Scope::Workgroup))));
+            operands.push_back(Constant(ir_->constant_values.Get(u32(spv::Scope::Workgroup))));
+            operands.push_back(
+                Constant(ir_->constant_values.Get(u32(spv::MemorySemanticsMask::WorkgroupMemory |
+                                                      spv::MemorySemanticsMask::AcquireRelease))));
             break;
         default:
             TINT_ICE(Writer, diagnostics_) << "unimplemented builtin function: " << builtin->Func();
@@ -1290,6 +1365,14 @@ void GeneratorImplIr::EmitBuiltinCall(ir::BuiltinCall* builtin) {
 }
 
 void GeneratorImplIr::EmitConstruct(ir::Construct* construct) {
+    // If there is just a single argument with the same type as the result, this is an identity
+    // constructor and we can just pass through the ID of the argument.
+    if (construct->Args().Length() == 1 &&
+        construct->Result()->Type() == construct->Args()[0]->Type()) {
+        values_.Add(construct->Result(), Value(construct->Args()[0]));
+        return;
+    }
+
     OperandList operands = {Type(construct->Result()->Type()), Value(construct)};
     for (auto* arg : construct->Args()) {
         operands.push_back(Value(arg));
@@ -1384,15 +1467,107 @@ void GeneratorImplIr::EmitIntrinsicCall(ir::IntrinsicCall* call) {
 
     spv::Op op = spv::Op::Max;
     switch (call->Kind()) {
+        case ir::IntrinsicCall::Kind::kSpirvAtomicIAdd:
+            op = spv::Op::OpAtomicIAdd;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicISub:
+            op = spv::Op::OpAtomicISub;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicAnd:
+            op = spv::Op::OpAtomicAnd;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicCompareExchange:
+            op = spv::Op::OpAtomicCompareExchange;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicExchange:
+            op = spv::Op::OpAtomicExchange;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicLoad:
+            op = spv::Op::OpAtomicLoad;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicOr:
+            op = spv::Op::OpAtomicOr;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicSMax:
+            op = spv::Op::OpAtomicSMax;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicSMin:
+            op = spv::Op::OpAtomicSMin;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicStore:
+            op = spv::Op::OpAtomicStore;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicUMax:
+            op = spv::Op::OpAtomicUMax;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicUMin:
+            op = spv::Op::OpAtomicUMin;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvAtomicXor:
+            op = spv::Op::OpAtomicXor;
+            break;
         case ir::IntrinsicCall::Kind::kSpirvDot:
             op = spv::Op::OpDot;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageFetch:
+            op = spv::Op::OpImageFetch;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageGather:
+            op = spv::Op::OpImageGather;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageDrefGather:
+            op = spv::Op::OpImageDrefGather;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageQuerySize:
+            module_.PushCapability(SpvCapabilityImageQuery);
+            op = spv::Op::OpImageQuerySize;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageQuerySizeLod:
+            module_.PushCapability(SpvCapabilityImageQuery);
+            op = spv::Op::OpImageQuerySizeLod;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageSampleImplicitLod:
+            op = spv::Op::OpImageSampleImplicitLod;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageSampleExplicitLod:
+            op = spv::Op::OpImageSampleExplicitLod;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageSampleDrefImplicitLod:
+            op = spv::Op::OpImageSampleDrefImplicitLod;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageSampleDrefExplicitLod:
+            op = spv::Op::OpImageSampleDrefExplicitLod;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvImageWrite:
+            op = spv::Op::OpImageWrite;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvMatrixTimesMatrix:
+            op = spv::Op::OpMatrixTimesMatrix;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvMatrixTimesScalar:
+            op = spv::Op::OpMatrixTimesScalar;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvMatrixTimesVector:
+            op = spv::Op::OpMatrixTimesVector;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvSampledImage:
+            op = spv::Op::OpSampledImage;
             break;
         case ir::IntrinsicCall::Kind::kSpirvSelect:
             op = spv::Op::OpSelect;
             break;
+        case ir::IntrinsicCall::Kind::kSpirvVectorTimesMatrix:
+            op = spv::Op::OpVectorTimesMatrix;
+            break;
+        case ir::IntrinsicCall::Kind::kSpirvVectorTimesScalar:
+            op = spv::Op::OpVectorTimesScalar;
+            break;
     }
 
-    OperandList operands = {Type(call->Result()->Type()), id};
+    OperandList operands;
+    if (!call->Result()->Type()->Is<type::Void>()) {
+        operands = {Type(call->Result()->Type()), id};
+    }
     for (auto* arg : call->Args()) {
         operands.push_back(Value(arg));
     }

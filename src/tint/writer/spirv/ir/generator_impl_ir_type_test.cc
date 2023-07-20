@@ -201,6 +201,13 @@ TEST_F(SpvGeneratorImplTest, Type_Struct_MatrixLayout) {
     EXPECT_INST("%MyStruct = OpTypeStruct %mat3v3float %_arr__arr_mat2v4half_uint_4_uint_4");
 }
 
+TEST_F(SpvGeneratorImplTest, Type_Atomic) {
+    generator_.Type(ty.atomic(ty.i32()));
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("%int = OpTypeInt 32 1");
+}
+
 TEST_F(SpvGeneratorImplTest, Type_Sampler) {
     generator_.Type(ty.sampler());
 
@@ -291,11 +298,35 @@ INSTANTIATE_TEST_SUITE_P(
                     TextureCase{"%1 = OpTypeImage %float Cube 0 0 0 1 Unknown", Dim::kCube},
                     TextureCase{"%1 = OpTypeImage %float Cube 0 1 0 1 Unknown", Dim::kCubeArray}));
 
+TEST_F(SpvGeneratorImplTest, Type_DepthTexture_DedupWithSampledTexture) {
+    generator_.Type(ty.Get<type::SampledTexture>(Dim::k2d, ty.f32()));
+    generator_.Type(ty.Get<type::DepthTexture>(Dim::k2d));
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_EQ(DumpTypes(), R"(%2 = OpTypeFloat 32
+%1 = OpTypeImage %2 2D 0 0 0 1 Unknown
+%4 = OpTypeVoid
+%5 = OpTypeFunction %4
+)");
+}
+
 TEST_F(SpvGeneratorImplTest, Type_DepthMultiSampledTexture) {
     generator_.Type(ty.Get<type::DepthMultisampledTexture>(Dim::k2d));
 
     ASSERT_TRUE(Generate()) << Error() << output_;
     EXPECT_INST("%1 = OpTypeImage %float 2D 0 0 1 1 Unknown");
+}
+
+TEST_F(SpvGeneratorImplTest, Type_DepthMultisampledTexture_DedupWithMultisampledTexture) {
+    generator_.Type(ty.Get<type::MultisampledTexture>(Dim::k2d, ty.f32()));
+    generator_.Type(ty.Get<type::DepthMultisampledTexture>(Dim::k2d));
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_EQ(DumpTypes(), R"(%2 = OpTypeFloat 32
+%1 = OpTypeImage %2 2D 0 0 1 1 Unknown
+%4 = OpTypeVoid
+%5 = OpTypeFunction %4
+)");
 }
 
 using Format = builtin::TexelFormat;

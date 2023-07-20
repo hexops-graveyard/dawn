@@ -109,6 +109,17 @@ constexpr SkippedMessage kSkippedMessages[] = {
      "(usage: SYNC_LATE_FRAGMENT_TESTS_DEPTH_STENCIL_ATTACHMENT_WRITE, prior_usage: "
      "SYNC_FRAGMENT_SHADER_SHADER_SAMPLED_READ, read_barriers: VkPipelineStageFlags2(0)"},
 
+    // http://crbug.com/dawn/1916
+    {"SYNC-HAZARD-WRITE-AFTER-WRITE",
+     "Access info (usage: SYNC_COPY_TRANSFER_WRITE, prior_usage: SYNC_COPY_TRANSFER_WRITE, "
+     "write_barriers: 0, command: vkCmdCopyBufferToImage"},
+    {"SYNC-HAZARD-READ-AFTER-WRITE",
+     "Access info (usage: SYNC_COPY_TRANSFER_READ, prior_usage: SYNC_COPY_TRANSFER_WRITE, "
+     "write_barriers: 0, command: vkCmdCopyBufferToImage"},
+    {"SYNC-HAZARD-WRITE-AFTER-WRITE",
+     "Access info (usage: SYNC_IMAGE_LAYOUT_TRANSITION, prior_usage: SYNC_COPY_TRANSFER_WRITE, "
+     "write_barriers: 0, command: vkCmdCopyBufferToImage"},
+
     // http://anglebug.com/7513
     {"VUID-VkGraphicsPipelineCreateInfo-pStages-06896",
      "contains fragment shader state, but stages"},
@@ -140,6 +151,15 @@ bool ShouldReportDebugMessage(const char* messageId, const char* message) {
     // pMessageIdName may be NULL
     if (messageId == nullptr) {
         return true;
+    }
+
+    // Some Vulkan drivers send "error" messages of "VK_SUCCESS" when zero devices are
+    // available; seen in crbug.com/1464122. This is not a real error that we care about.
+    // The messageId is ignored because drivers may report
+    // __FILE__: __LINE__ info here.
+    // https://github.com/Mesa3D/mesa/blob/22.2/src/amd/vulkan/radv_device.c#L1201
+    if (strcmp(message, "VK_SUCCESS") == 0) {
+        return false;
     }
 
     for (const SkippedMessage& msg : kSkippedMessages) {

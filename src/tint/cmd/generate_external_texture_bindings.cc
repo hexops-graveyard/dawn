@@ -18,10 +18,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "src/tint/ast/module.h"
+#include "src/tint/lang/wgsl/ast/module.h"
+#include "src/tint/lang/wgsl/sem/binding_point.h"
+#include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/program.h"
-#include "src/tint/sem/binding_point.h"
-#include "src/tint/sem/variable.h"
 #include "src/tint/type/external_texture.h"
 
 namespace tint::cmd {

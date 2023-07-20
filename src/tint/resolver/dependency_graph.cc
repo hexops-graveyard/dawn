@@ -16,51 +16,52 @@
 
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
-#include "src/tint/ast/alias.h"
-#include "src/tint/ast/assignment_statement.h"
-#include "src/tint/ast/block_statement.h"
-#include "src/tint/ast/break_if_statement.h"
-#include "src/tint/ast/break_statement.h"
-#include "src/tint/ast/call_statement.h"
-#include "src/tint/ast/compound_assignment_statement.h"
-#include "src/tint/ast/const.h"
-#include "src/tint/ast/continue_statement.h"
-#include "src/tint/ast/diagnostic_attribute.h"
-#include "src/tint/ast/discard_statement.h"
-#include "src/tint/ast/for_loop_statement.h"
-#include "src/tint/ast/id_attribute.h"
-#include "src/tint/ast/identifier.h"
-#include "src/tint/ast/if_statement.h"
-#include "src/tint/ast/increment_decrement_statement.h"
-#include "src/tint/ast/index_attribute.h"
-#include "src/tint/ast/internal_attribute.h"
-#include "src/tint/ast/interpolate_attribute.h"
-#include "src/tint/ast/invariant_attribute.h"
-#include "src/tint/ast/let.h"
-#include "src/tint/ast/location_attribute.h"
-#include "src/tint/ast/loop_statement.h"
-#include "src/tint/ast/must_use_attribute.h"
-#include "src/tint/ast/override.h"
-#include "src/tint/ast/return_statement.h"
-#include "src/tint/ast/stage_attribute.h"
-#include "src/tint/ast/stride_attribute.h"
-#include "src/tint/ast/struct.h"
-#include "src/tint/ast/struct_member_align_attribute.h"
-#include "src/tint/ast/struct_member_offset_attribute.h"
-#include "src/tint/ast/struct_member_size_attribute.h"
-#include "src/tint/ast/switch_statement.h"
-#include "src/tint/ast/templated_identifier.h"
-#include "src/tint/ast/traverse_expressions.h"
-#include "src/tint/ast/var.h"
-#include "src/tint/ast/variable_decl_statement.h"
-#include "src/tint/ast/while_statement.h"
-#include "src/tint/ast/workgroup_attribute.h"
 #include "src/tint/builtin/builtin.h"
 #include "src/tint/builtin/builtin_value.h"
+#include "src/tint/lang/wgsl/ast/alias.h"
+#include "src/tint/lang/wgsl/ast/assignment_statement.h"
+#include "src/tint/lang/wgsl/ast/block_statement.h"
+#include "src/tint/lang/wgsl/ast/break_if_statement.h"
+#include "src/tint/lang/wgsl/ast/break_statement.h"
+#include "src/tint/lang/wgsl/ast/call_statement.h"
+#include "src/tint/lang/wgsl/ast/compound_assignment_statement.h"
+#include "src/tint/lang/wgsl/ast/const.h"
+#include "src/tint/lang/wgsl/ast/continue_statement.h"
+#include "src/tint/lang/wgsl/ast/diagnostic_attribute.h"
+#include "src/tint/lang/wgsl/ast/discard_statement.h"
+#include "src/tint/lang/wgsl/ast/for_loop_statement.h"
+#include "src/tint/lang/wgsl/ast/id_attribute.h"
+#include "src/tint/lang/wgsl/ast/identifier.h"
+#include "src/tint/lang/wgsl/ast/if_statement.h"
+#include "src/tint/lang/wgsl/ast/increment_decrement_statement.h"
+#include "src/tint/lang/wgsl/ast/index_attribute.h"
+#include "src/tint/lang/wgsl/ast/internal_attribute.h"
+#include "src/tint/lang/wgsl/ast/interpolate_attribute.h"
+#include "src/tint/lang/wgsl/ast/invariant_attribute.h"
+#include "src/tint/lang/wgsl/ast/let.h"
+#include "src/tint/lang/wgsl/ast/location_attribute.h"
+#include "src/tint/lang/wgsl/ast/loop_statement.h"
+#include "src/tint/lang/wgsl/ast/must_use_attribute.h"
+#include "src/tint/lang/wgsl/ast/override.h"
+#include "src/tint/lang/wgsl/ast/return_statement.h"
+#include "src/tint/lang/wgsl/ast/stage_attribute.h"
+#include "src/tint/lang/wgsl/ast/stride_attribute.h"
+#include "src/tint/lang/wgsl/ast/struct.h"
+#include "src/tint/lang/wgsl/ast/struct_member_align_attribute.h"
+#include "src/tint/lang/wgsl/ast/struct_member_offset_attribute.h"
+#include "src/tint/lang/wgsl/ast/struct_member_size_attribute.h"
+#include "src/tint/lang/wgsl/ast/switch_statement.h"
+#include "src/tint/lang/wgsl/ast/templated_identifier.h"
+#include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/ast/var.h"
+#include "src/tint/lang/wgsl/ast/variable_decl_statement.h"
+#include "src/tint/lang/wgsl/ast/while_statement.h"
+#include "src/tint/lang/wgsl/ast/workgroup_attribute.h"
+#include "src/tint/lang/wgsl/sem/builtin.h"
 #include "src/tint/scope_stack.h"
-#include "src/tint/sem/builtin.h"
 #include "src/tint/switch.h"
 #include "src/tint/utils/block_allocator.h"
 #include "src/tint/utils/compiler_macros.h"
@@ -438,46 +439,131 @@ class DependencyScanner {
         UnhandledNode(diagnostics_, attr);
     }
 
+    /// The type of builtin that a symbol could represent.
+    enum class BuiltinType {
+        /// No builtin matched
+        kNone = 0,
+        /// Builtin function
+        kFunction,
+        /// Builtin
+        kBuiltin,
+        /// Builtin value
+        kBuiltinValue,
+        /// Address space
+        kAddressSpace,
+        /// Texel format
+        kTexelFormat,
+        /// Access
+        kAccess,
+        /// Interpolation Type
+        kInterpolationType,
+        /// Interpolation Sampling
+        kInterpolationSampling,
+    };
+
+    /// BuiltinInfo stores information about the builtin that a symbol represents.
+    struct BuiltinInfo {
+        /// @returns the builtin value
+        template <typename T>
+        T Value() const {
+            return std::get<T>(value);
+        }
+
+        BuiltinType type = BuiltinType::kNone;
+        std::variant<std::monostate,
+                     builtin::Function,
+                     builtin::Builtin,
+                     builtin::BuiltinValue,
+                     builtin::AddressSpace,
+                     builtin::TexelFormat,
+                     builtin::Access,
+                     builtin::InterpolationType,
+                     builtin::InterpolationSampling>
+            value = {};
+    };
+
+    /// Get the builtin info for a given symbol.
+    /// @param symbol the symbol
+    /// @returns the builtin info
+    DependencyScanner::BuiltinInfo GetBuiltinInfo(Symbol symbol) {
+        return builtin_info_map.GetOrCreate(symbol, [&] {
+            if (auto builtin_fn = builtin::ParseFunction(symbol.NameView());
+                builtin_fn != builtin::Function::kNone) {
+                return BuiltinInfo{BuiltinType::kFunction, builtin_fn};
+            }
+            if (auto builtin_ty = builtin::ParseBuiltin(symbol.NameView());
+                builtin_ty != builtin::Builtin::kUndefined) {
+                return BuiltinInfo{BuiltinType::kBuiltin, builtin_ty};
+            }
+            if (auto builtin_val = builtin::ParseBuiltinValue(symbol.NameView());
+                builtin_val != builtin::BuiltinValue::kUndefined) {
+                return BuiltinInfo{BuiltinType::kBuiltinValue, builtin_val};
+            }
+            if (auto addr = builtin::ParseAddressSpace(symbol.NameView());
+                addr != builtin::AddressSpace::kUndefined) {
+                return BuiltinInfo{BuiltinType::kAddressSpace, addr};
+            }
+            if (auto fmt = builtin::ParseTexelFormat(symbol.NameView());
+                fmt != builtin::TexelFormat::kUndefined) {
+                return BuiltinInfo{BuiltinType::kTexelFormat, fmt};
+            }
+            if (auto access = builtin::ParseAccess(symbol.NameView());
+                access != builtin::Access::kUndefined) {
+                return BuiltinInfo{BuiltinType::kAccess, access};
+            }
+            if (auto i_type = builtin::ParseInterpolationType(symbol.NameView());
+                i_type != builtin::InterpolationType::kUndefined) {
+                return BuiltinInfo{BuiltinType::kInterpolationType, i_type};
+            }
+            if (auto i_smpl = builtin::ParseInterpolationSampling(symbol.NameView());
+                i_smpl != builtin::InterpolationSampling::kUndefined) {
+                return BuiltinInfo{BuiltinType::kInterpolationSampling, i_smpl};
+            }
+            return BuiltinInfo{};
+        });
+    }
+
     /// Adds the dependency from @p from to @p to, erroring if @p to cannot be resolved.
     void AddDependency(const ast::Identifier* from, Symbol to) {
         auto* resolved = scope_stack_.Get(to);
         if (!resolved) {
-            switch (to.Type()) {
-                case Symbol::BuiltinType::kNone:
+            auto builtin_info = GetBuiltinInfo(to);
+            switch (builtin_info.type) {
+                case BuiltinType::kNone:
                     graph_.resolved_identifiers.Add(from, UnresolvedIdentifier{to.Name()});
                     break;
-                case Symbol::BuiltinType::kFunction:
+                case BuiltinType::kFunction:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::Function>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::Function>()));
                     break;
-                case Symbol::BuiltinType::kBuiltin:
+                case BuiltinType::kBuiltin:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::Builtin>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::Builtin>()));
                     break;
-                case Symbol::BuiltinType::kBuiltinValue:
+                case BuiltinType::kBuiltinValue:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::BuiltinValue>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::BuiltinValue>()));
                     break;
-                case Symbol::BuiltinType::kAddressSpace:
+                case BuiltinType::kAddressSpace:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::AddressSpace>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::AddressSpace>()));
                     break;
-                case Symbol::BuiltinType::kTexelFormat:
+                case BuiltinType::kTexelFormat:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::TexelFormat>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::TexelFormat>()));
                     break;
-                case Symbol::BuiltinType::kAccess:
+                case BuiltinType::kAccess:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::Access>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::Access>()));
                     break;
-                case Symbol::BuiltinType::kInterpolationType:
+                case BuiltinType::kInterpolationType:
                     graph_.resolved_identifiers.Add(
-                        from, ResolvedIdentifier(to.BuiltinValue<builtin::InterpolationType>()));
+                        from, ResolvedIdentifier(builtin_info.Value<builtin::InterpolationType>()));
                     break;
-                case Symbol::BuiltinType::kInterpolationSampling:
+                case BuiltinType::kInterpolationSampling:
                     graph_.resolved_identifiers.Add(
                         from,
-                        ResolvedIdentifier(to.BuiltinValue<builtin::InterpolationSampling>()));
+                        ResolvedIdentifier(builtin_info.Value<builtin::InterpolationSampling>()));
                     break;
             }
             return;
@@ -501,6 +587,8 @@ class DependencyScanner {
 
     ScopeStack<Symbol, const ast::Node*> scope_stack_;
     Global* current_global_ = nullptr;
+
+    utils::Hashmap<Symbol, BuiltinInfo, 64> builtin_info_map;
 };
 
 /// The global dependency analysis system

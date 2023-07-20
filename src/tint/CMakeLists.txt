@@ -80,160 +80,160 @@ endif()
 
 list(APPEND TINT_LIB_SRCS
   ../../include/tint/tint.h
-  ast/accessor_expression.cc
-  ast/accessor_expression.h
-  ast/alias.cc
-  ast/alias.h
-  ast/assignment_statement.cc
-  ast/assignment_statement.h
-  ast/attribute.cc
-  ast/attribute.h
-  ast/binary_expression.cc
-  ast/binary_expression.h
-  ast/binding_attribute.cc
-  ast/binding_attribute.h
-  ast/bitcast_expression.cc
-  ast/bitcast_expression.h
-  ast/block_statement.cc
-  ast/block_statement.h
-  ast/bool_literal_expression.cc
-  ast/bool_literal_expression.h
-  ast/break_if_statement.cc
-  ast/break_if_statement.h
-  ast/break_statement.cc
-  ast/break_statement.h
-  ast/builtin_attribute.cc
-  ast/builtin_attribute.h
-  ast/call_expression.cc
-  ast/call_expression.h
-  ast/call_statement.cc
-  ast/call_statement.h
-  ast/case_selector.cc
-  ast/case_selector.h
-  ast/case_statement.cc
-  ast/case_statement.h
-  ast/compound_assignment_statement.cc
-  ast/compound_assignment_statement.h
-  ast/const.cc
-  ast/const.h
-  ast/const_assert.cc
-  ast/const_assert.h
-  ast/continue_statement.cc
-  ast/continue_statement.h
-  ast/diagnostic_attribute.cc
-  ast/diagnostic_attribute.h
-  ast/diagnostic_control.cc
-  ast/diagnostic_control.h
-  ast/diagnostic_directive.cc
-  ast/diagnostic_directive.h
-  ast/diagnostic_rule_name.cc
-  ast/diagnostic_rule_name.h
-  ast/disable_validation_attribute.cc
-  ast/disable_validation_attribute.h
-  ast/discard_statement.cc
-  ast/discard_statement.h
-  ast/enable.cc
-  ast/enable.h
-  ast/expression.cc
-  ast/expression.h
-  ast/extension.cc
-  ast/extension.h
-  ast/float_literal_expression.cc
-  ast/float_literal_expression.h
-  ast/for_loop_statement.cc
-  ast/for_loop_statement.h
-  ast/function.cc
-  ast/function.h
-  ast/group_attribute.cc
-  ast/group_attribute.h
-  ast/id_attribute.cc
-  ast/id_attribute.h
-  ast/identifier.cc
-  ast/identifier.h
-  ast/identifier_expression.cc
-  ast/identifier_expression.h
-  ast/if_statement.cc
-  ast/if_statement.h
-  ast/increment_decrement_statement.cc
-  ast/increment_decrement_statement.h
-  ast/index_accessor_expression.cc
-  ast/index_accessor_expression.h
-  ast/index_attribute.cc
-  ast/index_attribute.h
-  ast/int_literal_expression.cc
-  ast/int_literal_expression.h
-  ast/internal_attribute.cc
-  ast/internal_attribute.h
-  ast/interpolate_attribute.cc
-  ast/interpolate_attribute.h
-  ast/invariant_attribute.cc
-  ast/invariant_attribute.h
-  ast/let.cc
-  ast/let.h
-  ast/literal_expression.cc
-  ast/literal_expression.h
-  ast/location_attribute.cc
-  ast/location_attribute.h
-  ast/loop_statement.cc
-  ast/loop_statement.h
-  ast/member_accessor_expression.cc
-  ast/member_accessor_expression.h
-  ast/module.cc
-  ast/module.h
-  ast/must_use_attribute.cc
-  ast/must_use_attribute.h
-  ast/node_id.h
-  ast/node.cc
-  ast/node.h
-  ast/override.cc
-  ast/override.h
-  ast/parameter.cc
-  ast/parameter.h
-  ast/phony_expression.cc
-  ast/phony_expression.h
-  ast/pipeline_stage.cc
-  ast/pipeline_stage.h
-  ast/return_statement.cc
-  ast/return_statement.h
-  ast/stage_attribute.cc
-  ast/stage_attribute.h
-  ast/statement.cc
-  ast/statement.h
-  ast/stride_attribute.cc
-  ast/stride_attribute.h
-  ast/struct_member_align_attribute.cc
-  ast/struct_member_align_attribute.h
-  ast/struct_member_offset_attribute.cc
-  ast/struct_member_offset_attribute.h
-  ast/struct_member_size_attribute.cc
-  ast/struct_member_size_attribute.h
-  ast/struct_member.cc
-  ast/struct_member.h
-  ast/struct.cc
-  ast/struct.h
-  ast/switch_statement.cc
-  ast/switch_statement.h
-  ast/templated_identifier.cc
-  ast/templated_identifier.h
-  ast/traverse_expressions.h
-  ast/type.cc
-  ast/type.h
-  ast/type_decl.cc
-  ast/type_decl.h
-  ast/unary_op_expression.cc
-  ast/unary_op_expression.h
-  ast/unary_op.cc
-  ast/unary_op.h
-  ast/var.cc
-  ast/var.h
-  ast/variable_decl_statement.cc
-  ast/variable_decl_statement.h
-  ast/variable.cc
-  ast/variable.h
-  ast/while_statement.cc
-  ast/while_statement.h
-  ast/workgroup_attribute.cc
-  ast/workgroup_attribute.h
+  lang/wgsl/ast/accessor_expression.cc
+  lang/wgsl/ast/accessor_expression.h
+  lang/wgsl/ast/alias.cc
+  lang/wgsl/ast/alias.h
+  lang/wgsl/ast/assignment_statement.cc
+  lang/wgsl/ast/assignment_statement.h
+  lang/wgsl/ast/attribute.cc
+  lang/wgsl/ast/attribute.h
+  lang/wgsl/ast/binary_expression.cc
+  lang/wgsl/ast/binary_expression.h
+  lang/wgsl/ast/binding_attribute.cc
+  lang/wgsl/ast/binding_attribute.h
+  lang/wgsl/ast/bitcast_expression.cc
+  lang/wgsl/ast/bitcast_expression.h
+  lang/wgsl/ast/block_statement.cc
+  lang/wgsl/ast/block_statement.h
+  lang/wgsl/ast/bool_literal_expression.cc
+  lang/wgsl/ast/bool_literal_expression.h
+  lang/wgsl/ast/break_if_statement.cc
+  lang/wgsl/ast/break_if_statement.h
+  lang/wgsl/ast/break_statement.cc
+  lang/wgsl/ast/break_statement.h
+  lang/wgsl/ast/builtin_attribute.cc
+  lang/wgsl/ast/builtin_attribute.h
+  lang/wgsl/ast/call_expression.cc
+  lang/wgsl/ast/call_expression.h
+  lang/wgsl/ast/call_statement.cc
+  lang/wgsl/ast/call_statement.h
+  lang/wgsl/ast/case_selector.cc
+  lang/wgsl/ast/case_selector.h
+  lang/wgsl/ast/case_statement.cc
+  lang/wgsl/ast/case_statement.h
+  lang/wgsl/ast/compound_assignment_statement.cc
+  lang/wgsl/ast/compound_assignment_statement.h
+  lang/wgsl/ast/const.cc
+  lang/wgsl/ast/const.h
+  lang/wgsl/ast/const_assert.cc
+  lang/wgsl/ast/const_assert.h
+  lang/wgsl/ast/continue_statement.cc
+  lang/wgsl/ast/continue_statement.h
+  lang/wgsl/ast/diagnostic_attribute.cc
+  lang/wgsl/ast/diagnostic_attribute.h
+  lang/wgsl/ast/diagnostic_control.cc
+  lang/wgsl/ast/diagnostic_control.h
+  lang/wgsl/ast/diagnostic_directive.cc
+  lang/wgsl/ast/diagnostic_directive.h
+  lang/wgsl/ast/diagnostic_rule_name.cc
+  lang/wgsl/ast/diagnostic_rule_name.h
+  lang/wgsl/ast/disable_validation_attribute.cc
+  lang/wgsl/ast/disable_validation_attribute.h
+  lang/wgsl/ast/discard_statement.cc
+  lang/wgsl/ast/discard_statement.h
+  lang/wgsl/ast/enable.cc
+  lang/wgsl/ast/enable.h
+  lang/wgsl/ast/expression.cc
+  lang/wgsl/ast/expression.h
+  lang/wgsl/ast/extension.cc
+  lang/wgsl/ast/extension.h
+  lang/wgsl/ast/float_literal_expression.cc
+  lang/wgsl/ast/float_literal_expression.h
+  lang/wgsl/ast/for_loop_statement.cc
+  lang/wgsl/ast/for_loop_statement.h
+  lang/wgsl/ast/function.cc
+  lang/wgsl/ast/function.h
+  lang/wgsl/ast/group_attribute.cc
+  lang/wgsl/ast/group_attribute.h
+  lang/wgsl/ast/id_attribute.cc
+  lang/wgsl/ast/id_attribute.h
+  lang/wgsl/ast/identifier.cc
+  lang/wgsl/ast/identifier.h
+  lang/wgsl/ast/identifier_expression.cc
+  lang/wgsl/ast/identifier_expression.h
+  lang/wgsl/ast/if_statement.cc
+  lang/wgsl/ast/if_statement.h
+  lang/wgsl/ast/increment_decrement_statement.cc
+  lang/wgsl/ast/increment_decrement_statement.h
+  lang/wgsl/ast/index_accessor_expression.cc
+  lang/wgsl/ast/index_accessor_expression.h
+  lang/wgsl/ast/index_attribute.cc
+  lang/wgsl/ast/index_attribute.h
+  lang/wgsl/ast/int_literal_expression.cc
+  lang/wgsl/ast/int_literal_expression.h
+  lang/wgsl/ast/internal_attribute.cc
+  lang/wgsl/ast/internal_attribute.h
+  lang/wgsl/ast/interpolate_attribute.cc
+  lang/wgsl/ast/interpolate_attribute.h
+  lang/wgsl/ast/invariant_attribute.cc
+  lang/wgsl/ast/invariant_attribute.h
+  lang/wgsl/ast/let.cc
+  lang/wgsl/ast/let.h
+  lang/wgsl/ast/literal_expression.cc
+  lang/wgsl/ast/literal_expression.h
+  lang/wgsl/ast/location_attribute.cc
+  lang/wgsl/ast/location_attribute.h
+  lang/wgsl/ast/loop_statement.cc
+  lang/wgsl/ast/loop_statement.h
+  lang/wgsl/ast/member_accessor_expression.cc
+  lang/wgsl/ast/member_accessor_expression.h
+  lang/wgsl/ast/module.cc
+  lang/wgsl/ast/module.h
+  lang/wgsl/ast/must_use_attribute.cc
+  lang/wgsl/ast/must_use_attribute.h
+  lang/wgsl/ast/node_id.h
+  lang/wgsl/ast/node.cc
+  lang/wgsl/ast/node.h
+  lang/wgsl/ast/override.cc
+  lang/wgsl/ast/override.h
+  lang/wgsl/ast/parameter.cc
+  lang/wgsl/ast/parameter.h
+  lang/wgsl/ast/phony_expression.cc
+  lang/wgsl/ast/phony_expression.h
+  lang/wgsl/ast/pipeline_stage.cc
+  lang/wgsl/ast/pipeline_stage.h
+  lang/wgsl/ast/return_statement.cc
+  lang/wgsl/ast/return_statement.h
+  lang/wgsl/ast/stage_attribute.cc
+  lang/wgsl/ast/stage_attribute.h
+  lang/wgsl/ast/statement.cc
+  lang/wgsl/ast/statement.h
+  lang/wgsl/ast/stride_attribute.cc
+  lang/wgsl/ast/stride_attribute.h
+  lang/wgsl/ast/struct_member_align_attribute.cc
+  lang/wgsl/ast/struct_member_align_attribute.h
+  lang/wgsl/ast/struct_member_offset_attribute.cc
+  lang/wgsl/ast/struct_member_offset_attribute.h
+  lang/wgsl/ast/struct_member_size_attribute.cc
+  lang/wgsl/ast/struct_member_size_attribute.h
+  lang/wgsl/ast/struct_member.cc
+  lang/wgsl/ast/struct_member.h
+  lang/wgsl/ast/struct.cc
+  lang/wgsl/ast/struct.h
+  lang/wgsl/ast/switch_statement.cc
+  lang/wgsl/ast/switch_statement.h
+  lang/wgsl/ast/templated_identifier.cc
+  lang/wgsl/ast/templated_identifier.h
+  lang/wgsl/ast/traverse_expressions.h
+  lang/wgsl/ast/type.cc
+  lang/wgsl/ast/type.h
+  lang/wgsl/ast/type_decl.cc
+  lang/wgsl/ast/type_decl.h
+  lang/wgsl/ast/unary_op_expression.cc
+  lang/wgsl/ast/unary_op_expression.h
+  lang/wgsl/ast/unary_op.cc
+  lang/wgsl/ast/unary_op.h
+  lang/wgsl/ast/var.cc
+  lang/wgsl/ast/var.h
+  lang/wgsl/ast/variable_decl_statement.cc
+  lang/wgsl/ast/variable_decl_statement.h
+  lang/wgsl/ast/variable.cc
+  lang/wgsl/ast/variable.h
+  lang/wgsl/ast/while_statement.cc
+  lang/wgsl/ast/while_statement.h
+  lang/wgsl/ast/workgroup_attribute.cc
+  lang/wgsl/ast/workgroup_attribute.h
   builtin/fluent_types.h
   builtin/number.cc
   builtin/number.h
@@ -269,8 +269,6 @@ list(APPEND TINT_LIB_SRCS
   reflection.h
   reader/reader.cc
   reader/reader.h
-  resolver/builtin_structs.cc
-  resolver/builtin_structs.h
   resolver/const_eval.cc
   resolver/const_eval.h
   resolver/dependency_graph.cc
@@ -288,177 +286,177 @@ list(APPEND TINT_LIB_SRCS
   resolver/validator.h
   scope_stack.h
   switch.h
-  sem/accessor_expression.cc
-  sem/accessor_expression.h
-  sem/array_count.cc
-  sem/array_count.h
-  sem/behavior.cc
-  sem/behavior.h
-  sem/binding_point.h
-  sem/block_statement.cc
-  sem/block_statement.h
-  sem/break_if_statement.cc
-  sem/break_if_statement.h
-  sem/builtin.cc
-  sem/builtin.h
-  sem/builtin_enum_expression.cc
-  sem/builtin_enum_expression.h
-  sem/call_target.cc
-  sem/call_target.h
-  sem/call.cc
-  sem/call.h
-  sem/evaluation_stage.h
-  sem/expression.cc
-  sem/expression.h
-  sem/external_texture.h
-  sem/for_loop_statement.cc
-  sem/for_loop_statement.h
-  sem/function_expression.cc
-  sem/function_expression.h
-  sem/function.cc
-  sem/if_statement.cc
-  sem/if_statement.h
-  sem/index_accessor_expression.cc
-  sem/index_accessor_expression.h
-  sem/info.cc
-  sem/info.h
-  sem/load.cc
-  sem/load.h
-  sem/loop_statement.cc
-  sem/loop_statement.h
-  sem/materialize.cc
-  sem/materialize.h
-  sem/member_accessor_expression.cc
-  sem/module.cc
-  sem/module.h
-  sem/node.cc
-  sem/node.h
-  sem/pipeline_stage_set.h
-  sem/sampler_texture_pair.h
-  sem/statement.cc
-  sem/struct.cc
-  sem/struct.h
-  sem/switch_statement.cc
-  sem/switch_statement.h
-  sem/type_expression.cc
-  sem/type_expression.h
-  sem/type_mappings.h
-  sem/variable.cc
-  sem/value_constructor.cc
-  sem/value_constructor.h
-  sem/value_conversion.cc
-  sem/value_conversion.h
-  sem/value_expression.cc
-  sem/value_expression.h
-  sem/while_statement.cc
-  sem/while_statement.h
+  lang/wgsl/sem/accessor_expression.cc
+  lang/wgsl/sem/accessor_expression.h
+  lang/wgsl/sem/array_count.cc
+  lang/wgsl/sem/array_count.h
+  lang/wgsl/sem/behavior.cc
+  lang/wgsl/sem/behavior.h
+  lang/wgsl/sem/binding_point.h
+  lang/wgsl/sem/block_statement.cc
+  lang/wgsl/sem/block_statement.h
+  lang/wgsl/sem/break_if_statement.cc
+  lang/wgsl/sem/break_if_statement.h
+  lang/wgsl/sem/builtin.cc
+  lang/wgsl/sem/builtin.h
+  lang/wgsl/sem/builtin_enum_expression.cc
+  lang/wgsl/sem/builtin_enum_expression.h
+  lang/wgsl/sem/call_target.cc
+  lang/wgsl/sem/call_target.h
+  lang/wgsl/sem/call.cc
+  lang/wgsl/sem/call.h
+  lang/wgsl/sem/evaluation_stage.h
+  lang/wgsl/sem/expression.cc
+  lang/wgsl/sem/expression.h
+  lang/wgsl/sem/external_texture.h
+  lang/wgsl/sem/for_loop_statement.cc
+  lang/wgsl/sem/for_loop_statement.h
+  lang/wgsl/sem/function_expression.cc
+  lang/wgsl/sem/function_expression.h
+  lang/wgsl/sem/function.cc
+  lang/wgsl/sem/if_statement.cc
+  lang/wgsl/sem/if_statement.h
+  lang/wgsl/sem/index_accessor_expression.cc
+  lang/wgsl/sem/index_accessor_expression.h
+  lang/wgsl/sem/info.cc
+  lang/wgsl/sem/info.h
+  lang/wgsl/sem/load.cc
+  lang/wgsl/sem/load.h
+  lang/wgsl/sem/loop_statement.cc
+  lang/wgsl/sem/loop_statement.h
+  lang/wgsl/sem/materialize.cc
+  lang/wgsl/sem/materialize.h
+  lang/wgsl/sem/member_accessor_expression.cc
+  lang/wgsl/sem/module.cc
+  lang/wgsl/sem/module.h
+  lang/wgsl/sem/node.cc
+  lang/wgsl/sem/node.h
+  lang/wgsl/sem/pipeline_stage_set.h
+  lang/wgsl/sem/sampler_texture_pair.h
+  lang/wgsl/sem/statement.cc
+  lang/wgsl/sem/struct.cc
+  lang/wgsl/sem/struct.h
+  lang/wgsl/sem/switch_statement.cc
+  lang/wgsl/sem/switch_statement.h
+  lang/wgsl/sem/type_expression.cc
+  lang/wgsl/sem/type_expression.h
+  lang/wgsl/sem/type_mappings.h
+  lang/wgsl/sem/variable.cc
+  lang/wgsl/sem/value_constructor.cc
+  lang/wgsl/sem/value_constructor.h
+  lang/wgsl/sem/value_conversion.cc
+  lang/wgsl/sem/value_conversion.h
+  lang/wgsl/sem/value_expression.cc
+  lang/wgsl/sem/value_expression.h
+  lang/wgsl/sem/while_statement.cc
+  lang/wgsl/sem/while_statement.h
   symbol_table.cc
   symbol_table.h
   symbol.cc
   symbol.h
   tint.cc
-  ast/transform/add_empty_entry_point.cc
-  ast/transform/add_empty_entry_point.h
-  ast/transform/add_block_attribute.cc
-  ast/transform/add_block_attribute.h
-  ast/transform/array_length_from_uniform.cc
-  ast/transform/array_length_from_uniform.h
-  ast/transform/binding_remapper.cc
-  ast/transform/binding_remapper.h
-  ast/transform/builtin_polyfill.cc
-  ast/transform/builtin_polyfill.h
-  ast/transform/calculate_array_length.cc
-  ast/transform/calculate_array_length.h
-  ast/transform/clamp_frag_depth.cc
-  ast/transform/clamp_frag_depth.h
-  ast/transform/canonicalize_entry_point_io.cc
-  ast/transform/canonicalize_entry_point_io.h
-  ast/transform/combine_samplers.cc
-  ast/transform/combine_samplers.h
-  ast/transform/decompose_memory_access.cc
-  ast/transform/decompose_memory_access.h
-  ast/transform/decompose_strided_array.cc
-  ast/transform/decompose_strided_array.h
-  ast/transform/decompose_strided_matrix.cc
-  ast/transform/decompose_strided_matrix.h
-  ast/transform/demote_to_helper.cc
-  ast/transform/demote_to_helper.h
-  ast/transform/direct_variable_access.cc
-  ast/transform/direct_variable_access.h
-  ast/transform/disable_uniformity_analysis.cc
-  ast/transform/disable_uniformity_analysis.h
-  ast/transform/expand_compound_assignment.cc
-  ast/transform/expand_compound_assignment.h
-  ast/transform/first_index_offset.cc
-  ast/transform/first_index_offset.h
-  ast/transform/fold_trivial_lets.cc
-  ast/transform/fold_trivial_lets.h
-  ast/transform/for_loop_to_loop.cc
-  ast/transform/for_loop_to_loop.h
-  ast/transform/localize_struct_array_assignment.cc
-  ast/transform/localize_struct_array_assignment.h
-  ast/transform/merge_return.cc
-  ast/transform/merge_return.h
-  ast/transform/module_scope_var_to_entry_point_param.cc
-  ast/transform/module_scope_var_to_entry_point_param.h
-  ast/transform/multiplanar_external_texture.cc
-  ast/transform/multiplanar_external_texture.h
-  ast/transform/num_workgroups_from_uniform.cc
-  ast/transform/num_workgroups_from_uniform.h
-  ast/transform/packed_vec3.cc
-  ast/transform/packed_vec3.h
-  ast/transform/pad_structs.cc
-  ast/transform/pad_structs.h
-  ast/transform/preserve_padding.cc
-  ast/transform/preserve_padding.h
-  ast/transform/promote_initializers_to_let.cc
-  ast/transform/promote_initializers_to_let.h
-  ast/transform/promote_side_effects_to_decl.cc
-  ast/transform/promote_side_effects_to_decl.h
-  ast/transform/remove_continue_in_switch.cc
-  ast/transform/remove_continue_in_switch.h
-  ast/transform/remove_phonies.cc
-  ast/transform/remove_phonies.h
-  ast/transform/remove_unreachable_statements.cc
-  ast/transform/remove_unreachable_statements.h
-  ast/transform/renamer.cc
-  ast/transform/renamer.h
-  ast/transform/robustness.cc
-  ast/transform/robustness.h
-  ast/transform/simplify_pointers.cc
-  ast/transform/simplify_pointers.h
-  ast/transform/single_entry_point.cc
-  ast/transform/single_entry_point.h
-  ast/transform/spirv_atomic.cc
-  ast/transform/spirv_atomic.h
-  ast/transform/std140.cc
-  ast/transform/std140.h
-  ast/transform/substitute_override.cc
-  ast/transform/substitute_override.h
-  ast/transform/texture_1d_to_2d.cc
-  ast/transform/texture_1d_to_2d.h
-  ast/transform/transform.cc
-  ast/transform/transform.h
-  ast/transform/truncate_interstage_variables.cc
-  ast/transform/truncate_interstage_variables.h
-  ast/transform/unshadow.cc
-  ast/transform/unshadow.h
-  ast/transform/utils/get_insertion_point.cc
-  ast/transform/utils/get_insertion_point.h
-  ast/transform/utils/hoist_to_decl_before.cc
-  ast/transform/utils/hoist_to_decl_before.h
-  ast/transform/var_for_dynamic_index.cc
-  ast/transform/var_for_dynamic_index.h
-  ast/transform/vectorize_matrix_conversions.cc
-  ast/transform/vectorize_matrix_conversions.h
-  ast/transform/vectorize_scalar_matrix_initializers.cc
-  ast/transform/vectorize_scalar_matrix_initializers.h
-  ast/transform/vertex_pulling.cc
-  ast/transform/vertex_pulling.h
-  ast/transform/while_to_loop.cc
-  ast/transform/while_to_loop.h
-  ast/transform/zero_init_workgroup_memory.cc
-  ast/transform/zero_init_workgroup_memory.h
+  lang/wgsl/ast/transform/add_empty_entry_point.cc
+  lang/wgsl/ast/transform/add_empty_entry_point.h
+  lang/wgsl/ast/transform/add_block_attribute.cc
+  lang/wgsl/ast/transform/add_block_attribute.h
+  lang/wgsl/ast/transform/array_length_from_uniform.cc
+  lang/wgsl/ast/transform/array_length_from_uniform.h
+  lang/wgsl/ast/transform/binding_remapper.cc
+  lang/wgsl/ast/transform/binding_remapper.h
+  lang/wgsl/ast/transform/builtin_polyfill.cc
+  lang/wgsl/ast/transform/builtin_polyfill.h
+  lang/wgsl/ast/transform/calculate_array_length.cc
+  lang/wgsl/ast/transform/calculate_array_length.h
+  lang/wgsl/ast/transform/clamp_frag_depth.cc
+  lang/wgsl/ast/transform/clamp_frag_depth.h
+  lang/wgsl/ast/transform/canonicalize_entry_point_io.cc
+  lang/wgsl/ast/transform/canonicalize_entry_point_io.h
+  lang/wgsl/ast/transform/combine_samplers.cc
+  lang/wgsl/ast/transform/combine_samplers.h
+  lang/wgsl/ast/transform/decompose_memory_access.cc
+  lang/wgsl/ast/transform/decompose_memory_access.h
+  lang/wgsl/ast/transform/decompose_strided_array.cc
+  lang/wgsl/ast/transform/decompose_strided_array.h
+  lang/wgsl/ast/transform/decompose_strided_matrix.cc
+  lang/wgsl/ast/transform/decompose_strided_matrix.h
+  lang/wgsl/ast/transform/demote_to_helper.cc
+  lang/wgsl/ast/transform/demote_to_helper.h
+  lang/wgsl/ast/transform/direct_variable_access.cc
+  lang/wgsl/ast/transform/direct_variable_access.h
+  lang/wgsl/ast/transform/disable_uniformity_analysis.cc
+  lang/wgsl/ast/transform/disable_uniformity_analysis.h
+  lang/wgsl/ast/transform/expand_compound_assignment.cc
+  lang/wgsl/ast/transform/expand_compound_assignment.h
+  lang/wgsl/ast/transform/first_index_offset.cc
+  lang/wgsl/ast/transform/first_index_offset.h
+  lang/wgsl/ast/transform/fold_trivial_lets.cc
+  lang/wgsl/ast/transform/fold_trivial_lets.h
+  lang/wgsl/ast/transform/for_loop_to_loop.cc
+  lang/wgsl/ast/transform/for_loop_to_loop.h
+  lang/wgsl/ast/transform/localize_struct_array_assignment.cc
+  lang/wgsl/ast/transform/localize_struct_array_assignment.h
+  lang/wgsl/ast/transform/merge_return.cc
+  lang/wgsl/ast/transform/merge_return.h
+  lang/wgsl/ast/transform/module_scope_var_to_entry_point_param.cc
+  lang/wgsl/ast/transform/module_scope_var_to_entry_point_param.h
+  lang/wgsl/ast/transform/multiplanar_external_texture.cc
+  lang/wgsl/ast/transform/multiplanar_external_texture.h
+  lang/wgsl/ast/transform/num_workgroups_from_uniform.cc
+  lang/wgsl/ast/transform/num_workgroups_from_uniform.h
+  lang/wgsl/ast/transform/packed_vec3.cc
+  lang/wgsl/ast/transform/packed_vec3.h
+  lang/wgsl/ast/transform/pad_structs.cc
+  lang/wgsl/ast/transform/pad_structs.h
+  lang/wgsl/ast/transform/preserve_padding.cc
+  lang/wgsl/ast/transform/preserve_padding.h
+  lang/wgsl/ast/transform/promote_initializers_to_let.cc
+  lang/wgsl/ast/transform/promote_initializers_to_let.h
+  lang/wgsl/ast/transform/promote_side_effects_to_decl.cc
+  lang/wgsl/ast/transform/promote_side_effects_to_decl.h
+  lang/wgsl/ast/transform/remove_continue_in_switch.cc
+  lang/wgsl/ast/transform/remove_continue_in_switch.h
+  lang/wgsl/ast/transform/remove_phonies.cc
+  lang/wgsl/ast/transform/remove_phonies.h
+  lang/wgsl/ast/transform/remove_unreachable_statements.cc
+  lang/wgsl/ast/transform/remove_unreachable_statements.h
+  lang/wgsl/ast/transform/renamer.cc
+  lang/wgsl/ast/transform/renamer.h
+  lang/wgsl/ast/transform/robustness.cc
+  lang/wgsl/ast/transform/robustness.h
+  lang/wgsl/ast/transform/simplify_pointers.cc
+  lang/wgsl/ast/transform/simplify_pointers.h
+  lang/wgsl/ast/transform/single_entry_point.cc
+  lang/wgsl/ast/transform/single_entry_point.h
+  lang/wgsl/ast/transform/spirv_atomic.cc
+  lang/wgsl/ast/transform/spirv_atomic.h
+  lang/wgsl/ast/transform/std140.cc
+  lang/wgsl/ast/transform/std140.h
+  lang/wgsl/ast/transform/substitute_override.cc
+  lang/wgsl/ast/transform/substitute_override.h
+  lang/wgsl/ast/transform/texture_1d_to_2d.cc
+  lang/wgsl/ast/transform/texture_1d_to_2d.h
+  lang/wgsl/ast/transform/transform.cc
+  lang/wgsl/ast/transform/transform.h
+  lang/wgsl/ast/transform/truncate_interstage_variables.cc
+  lang/wgsl/ast/transform/truncate_interstage_variables.h
+  lang/wgsl/ast/transform/unshadow.cc
+  lang/wgsl/ast/transform/unshadow.h
+  lang/wgsl/ast/transform/utils/get_insertion_point.cc
+  lang/wgsl/ast/transform/utils/get_insertion_point.h
+  lang/wgsl/ast/transform/utils/hoist_to_decl_before.cc
+  lang/wgsl/ast/transform/utils/hoist_to_decl_before.h
+  lang/wgsl/ast/transform/var_for_dynamic_index.cc
+  lang/wgsl/ast/transform/var_for_dynamic_index.h
+  lang/wgsl/ast/transform/vectorize_matrix_conversions.cc
+  lang/wgsl/ast/transform/vectorize_matrix_conversions.h
+  lang/wgsl/ast/transform/vectorize_scalar_matrix_initializers.cc
+  lang/wgsl/ast/transform/vectorize_scalar_matrix_initializers.h
+  lang/wgsl/ast/transform/vertex_pulling.cc
+  lang/wgsl/ast/transform/vertex_pulling.h
+  lang/wgsl/ast/transform/while_to_loop.cc
+  lang/wgsl/ast/transform/while_to_loop.h
+  lang/wgsl/ast/transform/zero_init_workgroup_memory.cc
+  lang/wgsl/ast/transform/zero_init_workgroup_memory.h
   transform/manager.cc
   transform/manager.h
   transform/transform.cc
@@ -477,6 +475,8 @@ list(APPEND TINT_LIB_SRCS
   type/atomic.h
   type/bool.cc
   type/bool.h
+  type/builtin_structs.cc
+  type/builtin_structs.h
   type/clone_context.h
   type/depth_multisampled_texture.cc
   type/depth_multisampled_texture.h
@@ -603,7 +603,7 @@ tint_generated(builtin/interpolation_type BENCH TEST)
 tint_generated(builtin/texel_format BENCH TEST)
 
 tint_generated(resolver/ctor_conv_intrinsic)
-tint_generated(sem/parameter_usage)
+tint_generated(lang/wgsl/sem/parameter_usage)
 
 if(UNIX)
   list(APPEND TINT_LIB_SRCS diagnostic/printer_posix.cc)
@@ -615,42 +615,42 @@ endif()
 
 if(${TINT_BUILD_SPV_READER})
   list(APPEND TINT_LIB_SRCS
-    reader/spirv/attributes.h
-    reader/spirv/construct.h
-    reader/spirv/construct.cc
-    reader/spirv/entry_point_info.h
-    reader/spirv/entry_point_info.cc
-    reader/spirv/enum_converter.h
-    reader/spirv/enum_converter.cc
-    reader/spirv/fail_stream.h
-    reader/spirv/function.cc
-    reader/spirv/function.h
-    reader/spirv/namer.cc
-    reader/spirv/namer.h
-    reader/spirv/parser_type.cc
-    reader/spirv/parser_type.h
-    reader/spirv/parser.cc
-    reader/spirv/parser.h
-    reader/spirv/parser_impl.cc
-    reader/spirv/parser_impl.h
-    reader/spirv/usage.cc
-    reader/spirv/usage.h
+    lang/spirv/reader/attributes.h
+    lang/spirv/reader/construct.h
+    lang/spirv/reader/construct.cc
+    lang/spirv/reader/entry_point_info.h
+    lang/spirv/reader/entry_point_info.cc
+    lang/spirv/reader/enum_converter.h
+    lang/spirv/reader/enum_converter.cc
+    lang/spirv/reader/fail_stream.h
+    lang/spirv/reader/function.cc
+    lang/spirv/reader/function.h
+    lang/spirv/reader/namer.cc
+    lang/spirv/reader/namer.h
+    lang/spirv/reader/parser_type.cc
+    lang/spirv/reader/parser_type.h
+    lang/spirv/reader/parser.cc
+    lang/spirv/reader/parser.h
+    lang/spirv/reader/parser_impl.cc
+    lang/spirv/reader/parser_impl.h
+    lang/spirv/reader/usage.cc
+    lang/spirv/reader/usage.h
   )
 endif()
 
 if(${TINT_BUILD_WGSL_READER})
   list(APPEND TINT_LIB_SRCS
-    reader/wgsl/classify_template_args.cc
-    reader/wgsl/classify_template_args.h
-    reader/wgsl/lexer.cc
-    reader/wgsl/lexer.h
-    reader/wgsl/parser.cc
-    reader/wgsl/parser.h
-    reader/wgsl/parser_impl.cc
-    reader/wgsl/parser_impl.h
-    reader/wgsl/parser_impl_detail.h
-    reader/wgsl/token.cc
-    reader/wgsl/token.h
+    lang/wgsl/reader/classify_template_args.cc
+    lang/wgsl/reader/classify_template_args.h
+    lang/wgsl/reader/lexer.cc
+    lang/wgsl/reader/lexer.h
+    lang/wgsl/reader/parser.cc
+    lang/wgsl/reader/parser.h
+    lang/wgsl/reader/parser_impl.cc
+    lang/wgsl/reader/parser_impl.h
+    lang/wgsl/reader/parser_impl_detail.h
+    lang/wgsl/reader/token.cc
+    lang/wgsl/reader/token.h
   )
 endif()
 
@@ -679,6 +679,10 @@ if(${TINT_BUILD_SPV_WRITER})
     list(APPEND TINT_LIB_SRCS
       ir/transform/builtin_polyfill_spirv.cc
       ir/transform/builtin_polyfill_spirv.h
+      ir/transform/expand_implicit_splats.cc
+      ir/transform/expand_implicit_splats.h
+      ir/transform/handle_matrix_arithmetic.cc
+      ir/transform/handle_matrix_arithmetic.h
       ir/transform/merge_return.cc
       ir/transform/merge_return.h
       ir/transform/shader_io_spirv.cc
@@ -693,56 +697,56 @@ endif()
 
 if(${TINT_BUILD_WGSL_WRITER})
   list(APPEND TINT_LIB_SRCS
-    writer/wgsl/generator.cc
-    writer/wgsl/generator.h
-    writer/wgsl/generator_impl.cc
-    writer/wgsl/generator_impl.h
+    lang/wgsl/ast_writer/generator.cc
+    lang/wgsl/ast_writer/generator.h
+    lang/wgsl/ast_writer/generator_impl.cc
+    lang/wgsl/ast_writer/generator_impl.h
   )
 endif()
 
 if(${TINT_BUILD_MSL_WRITER})
   list(APPEND TINT_LIB_SRCS
-    writer/msl/generator.cc
-    writer/msl/generator.h
-    writer/msl/generator_impl.cc
-    writer/msl/generator_impl.h
-    writer/msl/generator_support.cc
-    writer/msl/generator_support.h
+    lang/msl/ast_writer/generator.cc
+    lang/msl/ast_writer/generator.h
+    lang/msl/ast_writer/generator_impl.cc
+    lang/msl/ast_writer/generator_impl.h
+    lang/msl/ast_writer/generator_support.cc
+    lang/msl/ast_writer/generator_support.h
   )
 
   if(${TINT_BUILD_IR})
     list(APPEND TINT_LIB_SRCS
-      writer/msl/ir/generator_impl_ir.cc
-      writer/msl/ir/generator_impl_ir.h
+      lang/msl/writer/generator_impl_ir.cc
+      lang/msl/writer/generator_impl_ir.h
     )
   endif()
 endif()
 
 if(${TINT_BUILD_GLSL_WRITER})
   list(APPEND TINT_LIB_SRCS
-    writer/glsl/generator.cc
-    writer/glsl/generator.h
-    writer/glsl/generator_impl.cc
-    writer/glsl/generator_impl.h
-    writer/glsl/version.h
+    lang/glsl/ast_writer/generator.cc
+    lang/glsl/ast_writer/generator.h
+    lang/glsl/ast_writer/generator_impl.cc
+    lang/glsl/ast_writer/generator_impl.h
+    lang/glsl/ast_writer/version.h
   )
 endif()
 
 if(${TINT_BUILD_HLSL_WRITER})
   list(APPEND TINT_LIB_SRCS
-    writer/hlsl/generator.cc
-    writer/hlsl/generator.h
-    writer/hlsl/generator_impl.cc
-    writer/hlsl/generator_impl.h
+    lang/hlsl/ast_writer/generator.cc
+    lang/hlsl/ast_writer/generator.h
+    lang/hlsl/ast_writer/generator_impl.cc
+    lang/hlsl/ast_writer/generator_impl.h
   )
 endif()
 
 if(${TINT_BUILD_SYNTAX_TREE_WRITER})
     list(APPEND TINT_LIB_SRCS
-      writer/syntax_tree/generator.cc
-      writer/syntax_tree/generator.h
-      writer/syntax_tree/generator_impl.cc
-      writer/syntax_tree/generator_impl.h
+      lang/wgsl/syntax_tree_writer/generator.cc
+      lang/wgsl/syntax_tree_writer/generator.h
+      lang/wgsl/syntax_tree_writer/generator_impl.cc
+      lang/wgsl/syntax_tree_writer/generator_impl.h
     )
 endif()
 
@@ -777,6 +781,8 @@ if(${TINT_BUILD_IR})
     ir/control_instruction.h
     ir/convert.cc
     ir/convert.h
+    ir/core_builtin_call.cc
+    ir/core_builtin_call.h
     ir/disassembler.cc
     ir/disassembler.h
     ir/discard.cc
@@ -842,8 +848,8 @@ if(${TINT_BUILD_IR})
     ir/unreachable.h
     ir/user_call.cc
     ir/user_call.h
-    ir/validate.cc
-    ir/validate.h
+    ir/validator.cc
+    ir/validator.h
     ir/value.cc
     ir/value.h
     ir/var.cc
@@ -941,67 +947,67 @@ endif()
 ################################################################################
 if(TINT_BUILD_TESTS)
   list(APPEND TINT_TEST_SRCS
-    ast/alias_test.cc
-    ast/assignment_statement_test.cc
-    ast/binary_expression_test.cc
-    ast/binding_attribute_test.cc
-    ast/bitcast_expression_test.cc
-    ast/block_statement_test.cc
-    ast/bool_literal_expression_test.cc
-    ast/break_if_statement_test.cc
-    ast/break_statement_test.cc
-    ast/builtin_attribute_test.cc
-    ast/builtin_texture_helper_test.cc
-    ast/builtin_texture_helper_test.h
-    ast/call_expression_test.cc
-    ast/call_statement_test.cc
-    ast/case_selector_test.cc
-    ast/case_statement_test.cc
-    ast/compound_assignment_statement_test.cc
-    ast/const_assert_test.cc
-    ast/continue_statement_test.cc
-    ast/diagnostic_attribute_test.cc
-    ast/diagnostic_control_test.cc
-    ast/diagnostic_directive_test.cc
-    ast/diagnostic_rule_name_test.cc
-    ast/discard_statement_test.cc
-    ast/enable_test.cc
-    ast/float_literal_expression_test.cc
-    ast/for_loop_statement_test.cc
-    ast/function_test.cc
-    ast/group_attribute_test.cc
-    ast/id_attribute_test.cc
-    ast/identifier_test.cc
-    ast/identifier_expression_test.cc
-    ast/if_statement_test.cc
-    ast/increment_decrement_statement_test.cc
-    ast/index_accessor_expression_test.cc
-    ast/index_attribute_test.cc
-    ast/int_literal_expression_test.cc
-    ast/interpolate_attribute_test.cc
-    ast/location_attribute_test.cc
-    ast/loop_statement_test.cc
-    ast/member_accessor_expression_test.cc
-    ast/module_test.cc
-    ast/phony_expression_test.cc
-    ast/return_statement_test.cc
-    ast/stage_attribute_test.cc
-    ast/stride_attribute_test.cc
-    ast/struct_member_align_attribute_test.cc
-    ast/struct_member_offset_attribute_test.cc
-    ast/struct_member_size_attribute_test.cc
-    ast/struct_member_test.cc
-    ast/struct_test.cc
-    ast/switch_statement_test.cc
-    ast/templated_identifier_test.cc
-    ast/test_helper.h
-    ast/test_helper_test.cc
-    ast/traverse_expressions_test.cc
-    ast/unary_op_expression_test.cc
-    ast/variable_decl_statement_test.cc
-    ast/variable_test.cc
-    ast/while_statement_test.cc
-    ast/workgroup_attribute_test.cc
+    lang/wgsl/ast/alias_test.cc
+    lang/wgsl/ast/assignment_statement_test.cc
+    lang/wgsl/ast/binary_expression_test.cc
+    lang/wgsl/ast/binding_attribute_test.cc
+    lang/wgsl/ast/bitcast_expression_test.cc
+    lang/wgsl/ast/block_statement_test.cc
+    lang/wgsl/ast/bool_literal_expression_test.cc
+    lang/wgsl/ast/break_if_statement_test.cc
+    lang/wgsl/ast/break_statement_test.cc
+    lang/wgsl/ast/builtin_attribute_test.cc
+    lang/wgsl/ast/builtin_texture_helper_test.cc
+    lang/wgsl/ast/builtin_texture_helper_test.h
+    lang/wgsl/ast/call_expression_test.cc
+    lang/wgsl/ast/call_statement_test.cc
+    lang/wgsl/ast/case_selector_test.cc
+    lang/wgsl/ast/case_statement_test.cc
+    lang/wgsl/ast/compound_assignment_statement_test.cc
+    lang/wgsl/ast/const_assert_test.cc
+    lang/wgsl/ast/continue_statement_test.cc
+    lang/wgsl/ast/diagnostic_attribute_test.cc
+    lang/wgsl/ast/diagnostic_control_test.cc
+    lang/wgsl/ast/diagnostic_directive_test.cc
+    lang/wgsl/ast/diagnostic_rule_name_test.cc
+    lang/wgsl/ast/discard_statement_test.cc
+    lang/wgsl/ast/enable_test.cc
+    lang/wgsl/ast/float_literal_expression_test.cc
+    lang/wgsl/ast/for_loop_statement_test.cc
+    lang/wgsl/ast/function_test.cc
+    lang/wgsl/ast/group_attribute_test.cc
+    lang/wgsl/ast/id_attribute_test.cc
+    lang/wgsl/ast/identifier_test.cc
+    lang/wgsl/ast/identifier_expression_test.cc
+    lang/wgsl/ast/if_statement_test.cc
+    lang/wgsl/ast/increment_decrement_statement_test.cc
+    lang/wgsl/ast/index_accessor_expression_test.cc
+    lang/wgsl/ast/index_attribute_test.cc
+    lang/wgsl/ast/int_literal_expression_test.cc
+    lang/wgsl/ast/interpolate_attribute_test.cc
+    lang/wgsl/ast/location_attribute_test.cc
+    lang/wgsl/ast/loop_statement_test.cc
+    lang/wgsl/ast/member_accessor_expression_test.cc
+    lang/wgsl/ast/module_test.cc
+    lang/wgsl/ast/phony_expression_test.cc
+    lang/wgsl/ast/return_statement_test.cc
+    lang/wgsl/ast/stage_attribute_test.cc
+    lang/wgsl/ast/stride_attribute_test.cc
+    lang/wgsl/ast/struct_member_align_attribute_test.cc
+    lang/wgsl/ast/struct_member_offset_attribute_test.cc
+    lang/wgsl/ast/struct_member_size_attribute_test.cc
+    lang/wgsl/ast/struct_member_test.cc
+    lang/wgsl/ast/struct_test.cc
+    lang/wgsl/ast/switch_statement_test.cc
+    lang/wgsl/ast/templated_identifier_test.cc
+    lang/wgsl/ast/test_helper.h
+    lang/wgsl/ast/test_helper_test.cc
+    lang/wgsl/ast/traverse_expressions_test.cc
+    lang/wgsl/ast/unary_op_expression_test.cc
+    lang/wgsl/ast/variable_decl_statement_test.cc
+    lang/wgsl/ast/variable_test.cc
+    lang/wgsl/ast/while_statement_test.cc
+    lang/wgsl/ast/workgroup_attribute_test.cc
     builtin/number_test.cc
     clone_context_test.cc
     constant/composite_test.cc
@@ -1082,20 +1088,21 @@ if(TINT_BUILD_TESTS)
     resolver/variable_test.cc
     resolver/variable_validation_test.cc
     scope_stack_test.cc
-    sem/builtin_test.cc
-    sem/diagnostic_severity_test.cc
-    sem/struct_test.cc
-    sem/value_expression_test.cc
+    lang/wgsl/sem/builtin_test.cc
+    lang/wgsl/sem/diagnostic_severity_test.cc
+    lang/wgsl/sem/struct_test.cc
+    lang/wgsl/sem/value_expression_test.cc
     source_test.cc
     switch_test.cc
     symbol_table_test.cc
     symbol_test.cc
     test_main.cc
-    ast/transform/transform_test.cc
+    lang/wgsl/ast/transform/transform_test.cc
     transform/manager_test.cc
     type/array_test.cc
     type/atomic_test.cc
     type/bool_test.cc
+    type/builtin_structs_test.cc
     type/depth_multisampled_texture_test.cc
     type/depth_texture_test.cc
     type/external_texture_test.cc
@@ -1179,113 +1186,113 @@ if(TINT_BUILD_TESTS)
 
   if(${TINT_BUILD_SPV_READER} AND ${TINT_BUILD_WGSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      reader/spirv/enum_converter_test.cc
-      reader/spirv/fail_stream_test.cc
-      reader/spirv/function_arithmetic_test.cc
-      reader/spirv/function_bit_test.cc
-      reader/spirv/function_cfg_test.cc
-      reader/spirv/function_call_test.cc
-      reader/spirv/function_composite_test.cc
-      reader/spirv/function_conversion_test.cc
-      reader/spirv/function_decl_test.cc
-      reader/spirv/function_glsl_std_450_test.cc
-      reader/spirv/function_logical_test.cc
-      reader/spirv/function_memory_test.cc
-      reader/spirv/function_misc_test.cc
-      reader/spirv/function_var_test.cc
-      reader/spirv/namer_test.cc
-      reader/spirv/parser_impl_barrier_test.cc
-      reader/spirv/parser_impl_constant_test.cc
-      reader/spirv/parser_impl_convert_member_decoration_test.cc
-      reader/spirv/parser_impl_convert_type_test.cc
-      reader/spirv/parser_impl_function_decl_test.cc
-      reader/spirv/parser_impl_get_decorations_test.cc
-      reader/spirv/parser_impl_handle_test.cc
-      reader/spirv/parser_impl_import_test.cc
-      reader/spirv/parser_impl_module_var_test.cc
-      reader/spirv/parser_impl_named_types_test.cc
-      reader/spirv/parser_impl_test_helper.cc
-      reader/spirv/parser_impl_test_helper.h
-      reader/spirv/parser_impl_test.cc
-      reader/spirv/parser_impl_user_name_test.cc
-      reader/spirv/parser_type_test.cc
-      reader/spirv/parser_test.cc
-      reader/spirv/spirv_tools_helpers_test.cc
-      reader/spirv/spirv_tools_helpers_test.h
-      reader/spirv/usage_test.cc
+      lang/spirv/reader/enum_converter_test.cc
+      lang/spirv/reader/fail_stream_test.cc
+      lang/spirv/reader/function_arithmetic_test.cc
+      lang/spirv/reader/function_bit_test.cc
+      lang/spirv/reader/function_cfg_test.cc
+      lang/spirv/reader/function_call_test.cc
+      lang/spirv/reader/function_composite_test.cc
+      lang/spirv/reader/function_conversion_test.cc
+      lang/spirv/reader/function_decl_test.cc
+      lang/spirv/reader/function_glsl_std_450_test.cc
+      lang/spirv/reader/function_logical_test.cc
+      lang/spirv/reader/function_memory_test.cc
+      lang/spirv/reader/function_misc_test.cc
+      lang/spirv/reader/function_var_test.cc
+      lang/spirv/reader/namer_test.cc
+      lang/spirv/reader/parser_impl_barrier_test.cc
+      lang/spirv/reader/parser_impl_constant_test.cc
+      lang/spirv/reader/parser_impl_convert_member_decoration_test.cc
+      lang/spirv/reader/parser_impl_convert_type_test.cc
+      lang/spirv/reader/parser_impl_function_decl_test.cc
+      lang/spirv/reader/parser_impl_get_decorations_test.cc
+      lang/spirv/reader/parser_impl_handle_test.cc
+      lang/spirv/reader/parser_impl_import_test.cc
+      lang/spirv/reader/parser_impl_module_var_test.cc
+      lang/spirv/reader/parser_impl_named_types_test.cc
+      lang/spirv/reader/parser_impl_test_helper.cc
+      lang/spirv/reader/parser_impl_test_helper.h
+      lang/spirv/reader/parser_impl_test.cc
+      lang/spirv/reader/parser_impl_user_name_test.cc
+      lang/spirv/reader/parser_type_test.cc
+      lang/spirv/reader/parser_test.cc
+      lang/spirv/reader/spirv_tools_helpers_test.cc
+      lang/spirv/reader/spirv_tools_helpers_test.h
+      lang/spirv/reader/usage_test.cc
     )
   endif()
 
   if(${TINT_BUILD_WGSL_READER})
     list(APPEND TINT_TEST_SRCS
-      reader/wgsl/classify_template_args_test.cc
-      reader/wgsl/lexer_test.cc
-      reader/wgsl/parser_test.cc
-      reader/wgsl/parser_impl_additive_expression_test.cc
-      reader/wgsl/parser_impl_argument_expression_list_test.cc
-      reader/wgsl/parser_impl_assignment_stmt_test.cc
-      reader/wgsl/parser_impl_bitwise_expression_test.cc
-      reader/wgsl/parser_impl_break_stmt_test.cc
-      reader/wgsl/parser_impl_bug_cases_test.cc
-      reader/wgsl/parser_impl_call_stmt_test.cc
-      reader/wgsl/parser_impl_compound_stmt_test.cc
-      reader/wgsl/parser_impl_const_literal_test.cc
-      reader/wgsl/parser_impl_continue_stmt_test.cc
-      reader/wgsl/parser_impl_continuing_stmt_test.cc
-      reader/wgsl/parser_impl_core_lhs_expression_test.cc
-      reader/wgsl/parser_impl_diagnostic_attribute_test.cc
-      reader/wgsl/parser_impl_diagnostic_control_test.cc
-      reader/wgsl/parser_impl_diagnostic_directive_test.cc
-      reader/wgsl/parser_impl_enable_directive_test.cc
-      reader/wgsl/parser_impl_error_msg_test.cc
-      reader/wgsl/parser_impl_error_resync_test.cc
-      reader/wgsl/parser_impl_expression_test.cc
-      reader/wgsl/parser_impl_for_stmt_test.cc
-      reader/wgsl/parser_impl_function_decl_test.cc
-      reader/wgsl/parser_impl_function_attribute_list_test.cc
-      reader/wgsl/parser_impl_function_attribute_test.cc
-      reader/wgsl/parser_impl_function_header_test.cc
-      reader/wgsl/parser_impl_global_constant_decl_test.cc
-      reader/wgsl/parser_impl_global_decl_test.cc
-      reader/wgsl/parser_impl_global_variable_decl_test.cc
-      reader/wgsl/parser_impl_if_stmt_test.cc
-      reader/wgsl/parser_impl_increment_decrement_stmt_test.cc
-      reader/wgsl/parser_impl_lhs_expression_test.cc
-      reader/wgsl/parser_impl_loop_stmt_test.cc
-      reader/wgsl/parser_impl_math_expression_test.cc
-      reader/wgsl/parser_impl_multiplicative_expression_test.cc
-      reader/wgsl/parser_impl_param_list_test.cc
-      reader/wgsl/parser_impl_paren_expression_test.cc
-      reader/wgsl/parser_impl_primary_expression_test.cc
-      reader/wgsl/parser_impl_relational_expression_test.cc
-      reader/wgsl/parser_impl_reserved_keyword_test.cc
-      reader/wgsl/parser_impl_require_directive_test.cc
-      reader/wgsl/parser_impl_shift_expression_test.cc
-      reader/wgsl/parser_impl_singular_expression_test.cc
-      reader/wgsl/parser_impl_statement_test.cc
-      reader/wgsl/parser_impl_statements_test.cc
-      reader/wgsl/parser_impl_struct_body_decl_test.cc
-      reader/wgsl/parser_impl_struct_decl_test.cc
-      reader/wgsl/parser_impl_struct_attribute_decl_test.cc
-      reader/wgsl/parser_impl_struct_member_attribute_decl_test.cc
-      reader/wgsl/parser_impl_struct_member_attribute_test.cc
-      reader/wgsl/parser_impl_struct_member_test.cc
-      reader/wgsl/parser_impl_switch_body_test.cc
-      reader/wgsl/parser_impl_switch_stmt_test.cc
-      reader/wgsl/parser_impl_test.cc
-      reader/wgsl/parser_impl_test_helper.cc
-      reader/wgsl/parser_impl_test_helper.h
-      reader/wgsl/parser_impl_type_alias_test.cc
-      reader/wgsl/parser_impl_type_decl_test.cc
-      reader/wgsl/parser_impl_unary_expression_test.cc
-      reader/wgsl/parser_impl_variable_decl_test.cc
-      reader/wgsl/parser_impl_variable_attribute_list_test.cc
-      reader/wgsl/parser_impl_variable_attribute_test.cc
-      reader/wgsl/parser_impl_variable_ident_decl_test.cc
-      reader/wgsl/parser_impl_variable_stmt_test.cc
-      reader/wgsl/parser_impl_variable_qualifier_test.cc
-      reader/wgsl/parser_impl_while_stmt_test.cc
-      reader/wgsl/token_test.cc
+      lang/wgsl/reader/classify_template_args_test.cc
+      lang/wgsl/reader/lexer_test.cc
+      lang/wgsl/reader/parser_test.cc
+      lang/wgsl/reader/parser_impl_additive_expression_test.cc
+      lang/wgsl/reader/parser_impl_argument_expression_list_test.cc
+      lang/wgsl/reader/parser_impl_assignment_stmt_test.cc
+      lang/wgsl/reader/parser_impl_bitwise_expression_test.cc
+      lang/wgsl/reader/parser_impl_break_stmt_test.cc
+      lang/wgsl/reader/parser_impl_bug_cases_test.cc
+      lang/wgsl/reader/parser_impl_call_stmt_test.cc
+      lang/wgsl/reader/parser_impl_compound_stmt_test.cc
+      lang/wgsl/reader/parser_impl_const_literal_test.cc
+      lang/wgsl/reader/parser_impl_continue_stmt_test.cc
+      lang/wgsl/reader/parser_impl_continuing_stmt_test.cc
+      lang/wgsl/reader/parser_impl_core_lhs_expression_test.cc
+      lang/wgsl/reader/parser_impl_diagnostic_attribute_test.cc
+      lang/wgsl/reader/parser_impl_diagnostic_control_test.cc
+      lang/wgsl/reader/parser_impl_diagnostic_directive_test.cc
+      lang/wgsl/reader/parser_impl_enable_directive_test.cc
+      lang/wgsl/reader/parser_impl_error_msg_test.cc
+      lang/wgsl/reader/parser_impl_error_resync_test.cc
+      lang/wgsl/reader/parser_impl_expression_test.cc
+      lang/wgsl/reader/parser_impl_for_stmt_test.cc
+      lang/wgsl/reader/parser_impl_function_decl_test.cc
+      lang/wgsl/reader/parser_impl_function_attribute_list_test.cc
+      lang/wgsl/reader/parser_impl_function_attribute_test.cc
+      lang/wgsl/reader/parser_impl_function_header_test.cc
+      lang/wgsl/reader/parser_impl_global_constant_decl_test.cc
+      lang/wgsl/reader/parser_impl_global_decl_test.cc
+      lang/wgsl/reader/parser_impl_global_variable_decl_test.cc
+      lang/wgsl/reader/parser_impl_if_stmt_test.cc
+      lang/wgsl/reader/parser_impl_increment_decrement_stmt_test.cc
+      lang/wgsl/reader/parser_impl_lhs_expression_test.cc
+      lang/wgsl/reader/parser_impl_loop_stmt_test.cc
+      lang/wgsl/reader/parser_impl_math_expression_test.cc
+      lang/wgsl/reader/parser_impl_multiplicative_expression_test.cc
+      lang/wgsl/reader/parser_impl_param_list_test.cc
+      lang/wgsl/reader/parser_impl_paren_expression_test.cc
+      lang/wgsl/reader/parser_impl_primary_expression_test.cc
+      lang/wgsl/reader/parser_impl_relational_expression_test.cc
+      lang/wgsl/reader/parser_impl_reserved_keyword_test.cc
+      lang/wgsl/reader/parser_impl_require_directive_test.cc
+      lang/wgsl/reader/parser_impl_shift_expression_test.cc
+      lang/wgsl/reader/parser_impl_singular_expression_test.cc
+      lang/wgsl/reader/parser_impl_statement_test.cc
+      lang/wgsl/reader/parser_impl_statements_test.cc
+      lang/wgsl/reader/parser_impl_struct_body_decl_test.cc
+      lang/wgsl/reader/parser_impl_struct_decl_test.cc
+      lang/wgsl/reader/parser_impl_struct_attribute_decl_test.cc
+      lang/wgsl/reader/parser_impl_struct_member_attribute_decl_test.cc
+      lang/wgsl/reader/parser_impl_struct_member_attribute_test.cc
+      lang/wgsl/reader/parser_impl_struct_member_test.cc
+      lang/wgsl/reader/parser_impl_switch_body_test.cc
+      lang/wgsl/reader/parser_impl_switch_stmt_test.cc
+      lang/wgsl/reader/parser_impl_test.cc
+      lang/wgsl/reader/parser_impl_test_helper.cc
+      lang/wgsl/reader/parser_impl_test_helper.h
+      lang/wgsl/reader/parser_impl_type_alias_test.cc
+      lang/wgsl/reader/parser_impl_type_decl_test.cc
+      lang/wgsl/reader/parser_impl_unary_expression_test.cc
+      lang/wgsl/reader/parser_impl_variable_decl_test.cc
+      lang/wgsl/reader/parser_impl_variable_attribute_list_test.cc
+      lang/wgsl/reader/parser_impl_variable_attribute_test.cc
+      lang/wgsl/reader/parser_impl_variable_ident_decl_test.cc
+      lang/wgsl/reader/parser_impl_variable_stmt_test.cc
+      lang/wgsl/reader/parser_impl_variable_qualifier_test.cc
+      lang/wgsl/reader/parser_impl_while_stmt_test.cc
+      lang/wgsl/reader/token_test.cc
     )
   endif()
 
@@ -1330,10 +1337,13 @@ if(TINT_BUILD_TESTS)
     if(${TINT_BUILD_IR})
       list(APPEND TINT_TEST_SRCS
         ir/transform/builtin_polyfill_spirv_test.cc
+        ir/transform/handle_matrix_arithmetic_test.cc
+        ir/transform/expand_implicit_splats_test.cc
         ir/transform/merge_return_test.cc
         ir/transform/shader_io_spirv_test.cc
         ir/transform/var_for_dynamic_index_test.cc
         writer/spirv/ir/generator_impl_ir_access_test.cc
+        writer/spirv/ir/generator_impl_ir_atomic_builtin_test.cc
         writer/spirv/ir/generator_impl_ir_binary_test.cc
         writer/spirv/ir/generator_impl_ir_bitcast_test.cc
         writer/spirv/ir/generator_impl_ir_builtin_test.cc
@@ -1348,6 +1358,7 @@ if(TINT_BUILD_TESTS)
         writer/spirv/ir/generator_impl_ir_switch_test.cc
         writer/spirv/ir/generator_impl_ir_swizzle_test.cc
         writer/spirv/ir/generator_impl_ir_test.cc
+        writer/spirv/ir/generator_impl_ir_texture_builtin_test.cc
         writer/spirv/ir/generator_impl_ir_type_test.cc
         writer/spirv/ir/generator_impl_ir_unary_test.cc
         writer/spirv/ir/generator_impl_ir_var_test.cc
@@ -1358,216 +1369,216 @@ if(TINT_BUILD_TESTS)
 
   if(${TINT_BUILD_WGSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      writer/wgsl/generator_impl_test.cc
-      writer/wgsl/generator_impl_alias_type_test.cc
-      writer/wgsl/generator_impl_array_accessor_test.cc
-      writer/wgsl/generator_impl_assign_test.cc
-      writer/wgsl/generator_impl_binary_test.cc
-      writer/wgsl/generator_impl_bitcast_test.cc
-      writer/wgsl/generator_impl_block_test.cc
-      writer/wgsl/generator_impl_break_test.cc
-      writer/wgsl/generator_impl_call_test.cc
-      writer/wgsl/generator_impl_case_test.cc
-      writer/wgsl/generator_impl_cast_test.cc
-      writer/wgsl/generator_impl_const_assert_test.cc
-      writer/wgsl/generator_impl_constructor_test.cc
-      writer/wgsl/generator_impl_continue_test.cc
-      writer/wgsl/generator_impl_diagnostic_test.cc
-      writer/wgsl/generator_impl_discard_test.cc
-      writer/wgsl/generator_impl_enable_test.cc
-      writer/wgsl/generator_impl_function_test.cc
-      writer/wgsl/generator_impl_global_decl_test.cc
-      writer/wgsl/generator_impl_identifier_test.cc
-      writer/wgsl/generator_impl_if_test.cc
-      writer/wgsl/generator_impl_loop_test.cc
-      writer/wgsl/generator_impl_literal_test.cc
-      writer/wgsl/generator_impl_member_accessor_test.cc
-      writer/wgsl/generator_impl_return_test.cc
-      writer/wgsl/generator_impl_switch_test.cc
-      writer/wgsl/generator_impl_type_test.cc
-      writer/wgsl/generator_impl_unary_op_test.cc
-      writer/wgsl/generator_impl_variable_decl_statement_test.cc
-      writer/wgsl/generator_impl_variable_test.cc
-      writer/wgsl/test_helper.h
+      lang/wgsl/ast_writer/generator_impl_test.cc
+      lang/wgsl/ast_writer/generator_impl_alias_type_test.cc
+      lang/wgsl/ast_writer/generator_impl_array_accessor_test.cc
+      lang/wgsl/ast_writer/generator_impl_assign_test.cc
+      lang/wgsl/ast_writer/generator_impl_binary_test.cc
+      lang/wgsl/ast_writer/generator_impl_bitcast_test.cc
+      lang/wgsl/ast_writer/generator_impl_block_test.cc
+      lang/wgsl/ast_writer/generator_impl_break_test.cc
+      lang/wgsl/ast_writer/generator_impl_call_test.cc
+      lang/wgsl/ast_writer/generator_impl_case_test.cc
+      lang/wgsl/ast_writer/generator_impl_cast_test.cc
+      lang/wgsl/ast_writer/generator_impl_const_assert_test.cc
+      lang/wgsl/ast_writer/generator_impl_constructor_test.cc
+      lang/wgsl/ast_writer/generator_impl_continue_test.cc
+      lang/wgsl/ast_writer/generator_impl_diagnostic_test.cc
+      lang/wgsl/ast_writer/generator_impl_discard_test.cc
+      lang/wgsl/ast_writer/generator_impl_enable_test.cc
+      lang/wgsl/ast_writer/generator_impl_function_test.cc
+      lang/wgsl/ast_writer/generator_impl_global_decl_test.cc
+      lang/wgsl/ast_writer/generator_impl_identifier_test.cc
+      lang/wgsl/ast_writer/generator_impl_if_test.cc
+      lang/wgsl/ast_writer/generator_impl_loop_test.cc
+      lang/wgsl/ast_writer/generator_impl_literal_test.cc
+      lang/wgsl/ast_writer/generator_impl_member_accessor_test.cc
+      lang/wgsl/ast_writer/generator_impl_return_test.cc
+      lang/wgsl/ast_writer/generator_impl_switch_test.cc
+      lang/wgsl/ast_writer/generator_impl_type_test.cc
+      lang/wgsl/ast_writer/generator_impl_unary_op_test.cc
+      lang/wgsl/ast_writer/generator_impl_variable_decl_statement_test.cc
+      lang/wgsl/ast_writer/generator_impl_variable_test.cc
+      lang/wgsl/ast_writer/test_helper.h
     )
   endif()
 
   if(${TINT_BUILD_WGSL_READER} AND ${TINT_BUILD_WGSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      ast/module_clone_test.cc
-      ast/transform/add_empty_entry_point_test.cc
-      ast/transform/add_block_attribute_test.cc
-      ast/transform/array_length_from_uniform_test.cc
-      ast/transform/binding_remapper_test.cc
-      ast/transform/builtin_polyfill_test.cc
-      ast/transform/calculate_array_length_test.cc
-      ast/transform/clamp_frag_depth_test.cc
-      ast/transform/canonicalize_entry_point_io_test.cc
-      ast/transform/combine_samplers_test.cc
-      ast/transform/decompose_memory_access_test.cc
-      ast/transform/decompose_strided_array_test.cc
-      ast/transform/decompose_strided_matrix_test.cc
-      ast/transform/demote_to_helper_test.cc
-      ast/transform/direct_variable_access_test.cc
-      ast/transform/disable_uniformity_analysis_test.cc
-      ast/transform/expand_compound_assignment_test.cc
-      ast/transform/first_index_offset_test.cc
-      ast/transform/fold_trivial_lets_test.cc
-      ast/transform/for_loop_to_loop_test.cc
-      ast/transform/expand_compound_assignment_test.cc
-      ast/transform/localize_struct_array_assignment_test.cc
-      ast/transform/merge_return_test.cc
-      ast/transform/module_scope_var_to_entry_point_param_test.cc
-      ast/transform/multiplanar_external_texture_test.cc
-      ast/transform/num_workgroups_from_uniform_test.cc
-      ast/transform/packed_vec3_test.cc
-      ast/transform/pad_structs_test.cc
-      ast/transform/preserve_padding_test.cc
-      ast/transform/promote_initializers_to_let_test.cc
-      ast/transform/promote_side_effects_to_decl_test.cc
-      ast/transform/remove_continue_in_switch_test.cc
-      ast/transform/remove_phonies_test.cc
-      ast/transform/remove_unreachable_statements_test.cc
-      ast/transform/renamer_test.cc
-      ast/transform/robustness_test.cc
-      ast/transform/simplify_pointers_test.cc
-      ast/transform/single_entry_point_test.cc
-      ast/transform/spirv_atomic_test.cc
-      ast/transform/std140_exhaustive_test.cc
-      ast/transform/std140_f16_test.cc
-      ast/transform/std140_f32_test.cc
-      ast/transform/std140_test.cc
-      ast/transform/substitute_override_test.cc
-      ast/transform/test_helper.h
-      ast/transform/texture_1d_to_2d_test.cc
-      ast/transform/truncate_interstage_variables_test.cc
-      ast/transform/unshadow_test.cc
-      ast/transform/var_for_dynamic_index_test.cc
-      ast/transform/vectorize_matrix_conversions_test.cc
-      ast/transform/vectorize_scalar_matrix_initializers_test.cc
-      ast/transform/vertex_pulling_test.cc
-      ast/transform/while_to_loop_test.cc
-      ast/transform/zero_init_workgroup_memory_test.cc
-      ast/transform/utils/get_insertion_point_test.cc
-      ast/transform/utils/hoist_to_decl_before_test.cc
+      lang/wgsl/ast/module_clone_test.cc
+      lang/wgsl/ast/transform/add_empty_entry_point_test.cc
+      lang/wgsl/ast/transform/add_block_attribute_test.cc
+      lang/wgsl/ast/transform/array_length_from_uniform_test.cc
+      lang/wgsl/ast/transform/binding_remapper_test.cc
+      lang/wgsl/ast/transform/builtin_polyfill_test.cc
+      lang/wgsl/ast/transform/calculate_array_length_test.cc
+      lang/wgsl/ast/transform/clamp_frag_depth_test.cc
+      lang/wgsl/ast/transform/canonicalize_entry_point_io_test.cc
+      lang/wgsl/ast/transform/combine_samplers_test.cc
+      lang/wgsl/ast/transform/decompose_memory_access_test.cc
+      lang/wgsl/ast/transform/decompose_strided_array_test.cc
+      lang/wgsl/ast/transform/decompose_strided_matrix_test.cc
+      lang/wgsl/ast/transform/demote_to_helper_test.cc
+      lang/wgsl/ast/transform/direct_variable_access_test.cc
+      lang/wgsl/ast/transform/disable_uniformity_analysis_test.cc
+      lang/wgsl/ast/transform/expand_compound_assignment_test.cc
+      lang/wgsl/ast/transform/first_index_offset_test.cc
+      lang/wgsl/ast/transform/fold_trivial_lets_test.cc
+      lang/wgsl/ast/transform/for_loop_to_loop_test.cc
+      lang/wgsl/ast/transform/expand_compound_assignment_test.cc
+      lang/wgsl/ast/transform/localize_struct_array_assignment_test.cc
+      lang/wgsl/ast/transform/merge_return_test.cc
+      lang/wgsl/ast/transform/module_scope_var_to_entry_point_param_test.cc
+      lang/wgsl/ast/transform/multiplanar_external_texture_test.cc
+      lang/wgsl/ast/transform/num_workgroups_from_uniform_test.cc
+      lang/wgsl/ast/transform/packed_vec3_test.cc
+      lang/wgsl/ast/transform/pad_structs_test.cc
+      lang/wgsl/ast/transform/preserve_padding_test.cc
+      lang/wgsl/ast/transform/promote_initializers_to_let_test.cc
+      lang/wgsl/ast/transform/promote_side_effects_to_decl_test.cc
+      lang/wgsl/ast/transform/remove_continue_in_switch_test.cc
+      lang/wgsl/ast/transform/remove_phonies_test.cc
+      lang/wgsl/ast/transform/remove_unreachable_statements_test.cc
+      lang/wgsl/ast/transform/renamer_test.cc
+      lang/wgsl/ast/transform/robustness_test.cc
+      lang/wgsl/ast/transform/simplify_pointers_test.cc
+      lang/wgsl/ast/transform/single_entry_point_test.cc
+      lang/wgsl/ast/transform/spirv_atomic_test.cc
+      lang/wgsl/ast/transform/std140_exhaustive_test.cc
+      lang/wgsl/ast/transform/std140_f16_test.cc
+      lang/wgsl/ast/transform/std140_f32_test.cc
+      lang/wgsl/ast/transform/std140_test.cc
+      lang/wgsl/ast/transform/substitute_override_test.cc
+      lang/wgsl/ast/transform/test_helper.h
+      lang/wgsl/ast/transform/texture_1d_to_2d_test.cc
+      lang/wgsl/ast/transform/truncate_interstage_variables_test.cc
+      lang/wgsl/ast/transform/unshadow_test.cc
+      lang/wgsl/ast/transform/var_for_dynamic_index_test.cc
+      lang/wgsl/ast/transform/vectorize_matrix_conversions_test.cc
+      lang/wgsl/ast/transform/vectorize_scalar_matrix_initializers_test.cc
+      lang/wgsl/ast/transform/vertex_pulling_test.cc
+      lang/wgsl/ast/transform/while_to_loop_test.cc
+      lang/wgsl/ast/transform/zero_init_workgroup_memory_test.cc
+      lang/wgsl/ast/transform/utils/get_insertion_point_test.cc
+      lang/wgsl/ast/transform/utils/hoist_to_decl_before_test.cc
     )
   endif()
 
   if(${TINT_BUILD_MSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      writer/msl/generator_impl_array_accessor_test.cc
-      writer/msl/generator_impl_assign_test.cc
-      writer/msl/generator_impl_binary_test.cc
-      writer/msl/generator_impl_bitcast_test.cc
-      writer/msl/generator_impl_block_test.cc
-      writer/msl/generator_impl_break_test.cc
-      writer/msl/generator_impl_builtin_test.cc
-      writer/msl/generator_impl_builtin_texture_test.cc
-      writer/msl/generator_impl_call_test.cc
-      writer/msl/generator_impl_case_test.cc
-      writer/msl/generator_impl_cast_test.cc
-      writer/msl/generator_impl_const_assert_test.cc
-      writer/msl/generator_impl_constructor_test.cc
-      writer/msl/generator_impl_continue_test.cc
-      writer/msl/generator_impl_discard_test.cc
-      writer/msl/generator_impl_function_test.cc
-      writer/msl/generator_impl_identifier_test.cc
-      writer/msl/generator_impl_if_test.cc
-      writer/msl/generator_impl_import_test.cc
-      writer/msl/generator_impl_loop_test.cc
-      writer/msl/generator_impl_member_accessor_test.cc
-      writer/msl/generator_impl_module_constant_test.cc
-      writer/msl/generator_impl_return_test.cc
-      writer/msl/generator_impl_sanitizer_test.cc
-      writer/msl/generator_impl_switch_test.cc
-      writer/msl/generator_impl_test.cc
-      writer/msl/generator_impl_type_test.cc
-      writer/msl/generator_impl_unary_op_test.cc
-      writer/msl/generator_impl_variable_decl_statement_test.cc
-      writer/msl/generator_support_test.cc
-      writer/msl/test_helper.h
+      lang/msl/ast_writer/generator_impl_array_accessor_test.cc
+      lang/msl/ast_writer/generator_impl_assign_test.cc
+      lang/msl/ast_writer/generator_impl_binary_test.cc
+      lang/msl/ast_writer/generator_impl_bitcast_test.cc
+      lang/msl/ast_writer/generator_impl_block_test.cc
+      lang/msl/ast_writer/generator_impl_break_test.cc
+      lang/msl/ast_writer/generator_impl_builtin_test.cc
+      lang/msl/ast_writer/generator_impl_builtin_texture_test.cc
+      lang/msl/ast_writer/generator_impl_call_test.cc
+      lang/msl/ast_writer/generator_impl_case_test.cc
+      lang/msl/ast_writer/generator_impl_cast_test.cc
+      lang/msl/ast_writer/generator_impl_const_assert_test.cc
+      lang/msl/ast_writer/generator_impl_constructor_test.cc
+      lang/msl/ast_writer/generator_impl_continue_test.cc
+      lang/msl/ast_writer/generator_impl_discard_test.cc
+      lang/msl/ast_writer/generator_impl_function_test.cc
+      lang/msl/ast_writer/generator_impl_identifier_test.cc
+      lang/msl/ast_writer/generator_impl_if_test.cc
+      lang/msl/ast_writer/generator_impl_import_test.cc
+      lang/msl/ast_writer/generator_impl_loop_test.cc
+      lang/msl/ast_writer/generator_impl_member_accessor_test.cc
+      lang/msl/ast_writer/generator_impl_module_constant_test.cc
+      lang/msl/ast_writer/generator_impl_return_test.cc
+      lang/msl/ast_writer/generator_impl_sanitizer_test.cc
+      lang/msl/ast_writer/generator_impl_switch_test.cc
+      lang/msl/ast_writer/generator_impl_test.cc
+      lang/msl/ast_writer/generator_impl_type_test.cc
+      lang/msl/ast_writer/generator_impl_unary_op_test.cc
+      lang/msl/ast_writer/generator_impl_variable_decl_statement_test.cc
+      lang/msl/ast_writer/generator_support_test.cc
+      lang/msl/ast_writer/test_helper.h
     )
 
     if(${TINT_BUILD_IR})
       list(APPEND TINT_TEST_SRCS
-        writer/msl/ir/generator_impl_ir_constant_test.cc
-        writer/msl/ir/generator_impl_ir_function_test.cc
-        writer/msl/ir/generator_impl_ir_type_test.cc
-        writer/msl/ir/test_helper_ir.h
+        lang/msl/writer/generator_impl_ir_constant_test.cc
+        lang/msl/writer/generator_impl_ir_function_test.cc
+        lang/msl/writer/generator_impl_ir_type_test.cc
+        lang/msl/writer/test_helper_ir.h
       )
     endif()
   endif()
 
   if (${TINT_BUILD_GLSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      writer/glsl/generator_impl_array_accessor_test.cc
-      writer/glsl/generator_impl_assign_test.cc
-      writer/glsl/generator_impl_binary_test.cc
-      writer/glsl/generator_impl_bitcast_test.cc
-      writer/glsl/generator_impl_block_test.cc
-      writer/glsl/generator_impl_break_test.cc
-      writer/glsl/generator_impl_builtin_test.cc
-      writer/glsl/generator_impl_builtin_texture_test.cc
-      writer/glsl/generator_impl_call_test.cc
-      writer/glsl/generator_impl_case_test.cc
-      writer/glsl/generator_impl_cast_test.cc
-      writer/glsl/generator_impl_constructor_test.cc
-      writer/glsl/generator_impl_continue_test.cc
-      writer/glsl/generator_impl_discard_test.cc
-      writer/glsl/generator_impl_function_test.cc
-      writer/glsl/generator_impl_identifier_test.cc
-      writer/glsl/generator_impl_if_test.cc
-      writer/glsl/generator_impl_import_test.cc
-      writer/glsl/generator_impl_loop_test.cc
-      writer/glsl/generator_impl_member_accessor_test.cc
-      writer/glsl/generator_impl_module_constant_test.cc
-      writer/glsl/generator_impl_return_test.cc
-      writer/glsl/generator_impl_sanitizer_test.cc
-      writer/glsl/generator_impl_storage_buffer_test.cc
-      writer/glsl/generator_impl_switch_test.cc
-      writer/glsl/generator_impl_test.cc
-      writer/glsl/generator_impl_type_test.cc
-      writer/glsl/generator_impl_unary_op_test.cc
-      writer/glsl/generator_impl_uniform_buffer_test.cc
-      writer/glsl/generator_impl_variable_decl_statement_test.cc
-      writer/glsl/generator_impl_workgroup_var_test.cc
-      writer/glsl/test_helper.h
+      lang/glsl/ast_writer/generator_impl_array_accessor_test.cc
+      lang/glsl/ast_writer/generator_impl_assign_test.cc
+      lang/glsl/ast_writer/generator_impl_binary_test.cc
+      lang/glsl/ast_writer/generator_impl_bitcast_test.cc
+      lang/glsl/ast_writer/generator_impl_block_test.cc
+      lang/glsl/ast_writer/generator_impl_break_test.cc
+      lang/glsl/ast_writer/generator_impl_builtin_test.cc
+      lang/glsl/ast_writer/generator_impl_builtin_texture_test.cc
+      lang/glsl/ast_writer/generator_impl_call_test.cc
+      lang/glsl/ast_writer/generator_impl_case_test.cc
+      lang/glsl/ast_writer/generator_impl_cast_test.cc
+      lang/glsl/ast_writer/generator_impl_constructor_test.cc
+      lang/glsl/ast_writer/generator_impl_continue_test.cc
+      lang/glsl/ast_writer/generator_impl_discard_test.cc
+      lang/glsl/ast_writer/generator_impl_function_test.cc
+      lang/glsl/ast_writer/generator_impl_identifier_test.cc
+      lang/glsl/ast_writer/generator_impl_if_test.cc
+      lang/glsl/ast_writer/generator_impl_import_test.cc
+      lang/glsl/ast_writer/generator_impl_loop_test.cc
+      lang/glsl/ast_writer/generator_impl_member_accessor_test.cc
+      lang/glsl/ast_writer/generator_impl_module_constant_test.cc
+      lang/glsl/ast_writer/generator_impl_return_test.cc
+      lang/glsl/ast_writer/generator_impl_sanitizer_test.cc
+      lang/glsl/ast_writer/generator_impl_storage_buffer_test.cc
+      lang/glsl/ast_writer/generator_impl_switch_test.cc
+      lang/glsl/ast_writer/generator_impl_test.cc
+      lang/glsl/ast_writer/generator_impl_type_test.cc
+      lang/glsl/ast_writer/generator_impl_unary_op_test.cc
+      lang/glsl/ast_writer/generator_impl_uniform_buffer_test.cc
+      lang/glsl/ast_writer/generator_impl_variable_decl_statement_test.cc
+      lang/glsl/ast_writer/generator_impl_workgroup_var_test.cc
+      lang/glsl/ast_writer/test_helper.h
     )
   endif()
 
   if (${TINT_BUILD_HLSL_WRITER})
     list(APPEND TINT_TEST_SRCS
-      writer/hlsl/generator_impl_array_accessor_test.cc
-      writer/hlsl/generator_impl_assign_test.cc
-      writer/hlsl/generator_impl_binary_test.cc
-      writer/hlsl/generator_impl_bitcast_test.cc
-      writer/hlsl/generator_impl_block_test.cc
-      writer/hlsl/generator_impl_break_test.cc
-      writer/hlsl/generator_impl_builtin_test.cc
-      writer/hlsl/generator_impl_builtin_texture_test.cc
-      writer/hlsl/generator_impl_call_test.cc
-      writer/hlsl/generator_impl_case_test.cc
-      writer/hlsl/generator_impl_cast_test.cc
-      writer/hlsl/generator_impl_const_assert_test.cc
-      writer/hlsl/generator_impl_constructor_test.cc
-      writer/hlsl/generator_impl_continue_test.cc
-      writer/hlsl/generator_impl_discard_test.cc
-      writer/hlsl/generator_impl_function_test.cc
-      writer/hlsl/generator_impl_identifier_test.cc
-      writer/hlsl/generator_impl_if_test.cc
-      writer/hlsl/generator_impl_import_test.cc
-      writer/hlsl/generator_impl_loop_test.cc
-      writer/hlsl/generator_impl_member_accessor_test.cc
-      writer/hlsl/generator_impl_module_constant_test.cc
-      writer/hlsl/generator_impl_return_test.cc
-      writer/hlsl/generator_impl_sanitizer_test.cc
-      writer/hlsl/generator_impl_switch_test.cc
-      writer/hlsl/generator_impl_test.cc
-      writer/hlsl/generator_impl_type_test.cc
-      writer/hlsl/generator_impl_unary_op_test.cc
-      writer/hlsl/generator_impl_variable_decl_statement_test.cc
-      writer/hlsl/generator_impl_workgroup_var_test.cc
-      writer/hlsl/test_helper.h
+      lang/hlsl/ast_writer/generator_impl_array_accessor_test.cc
+      lang/hlsl/ast_writer/generator_impl_assign_test.cc
+      lang/hlsl/ast_writer/generator_impl_binary_test.cc
+      lang/hlsl/ast_writer/generator_impl_bitcast_test.cc
+      lang/hlsl/ast_writer/generator_impl_block_test.cc
+      lang/hlsl/ast_writer/generator_impl_break_test.cc
+      lang/hlsl/ast_writer/generator_impl_builtin_test.cc
+      lang/hlsl/ast_writer/generator_impl_builtin_texture_test.cc
+      lang/hlsl/ast_writer/generator_impl_call_test.cc
+      lang/hlsl/ast_writer/generator_impl_case_test.cc
+      lang/hlsl/ast_writer/generator_impl_cast_test.cc
+      lang/hlsl/ast_writer/generator_impl_const_assert_test.cc
+      lang/hlsl/ast_writer/generator_impl_constructor_test.cc
+      lang/hlsl/ast_writer/generator_impl_continue_test.cc
+      lang/hlsl/ast_writer/generator_impl_discard_test.cc
+      lang/hlsl/ast_writer/generator_impl_function_test.cc
+      lang/hlsl/ast_writer/generator_impl_identifier_test.cc
+      lang/hlsl/ast_writer/generator_impl_if_test.cc
+      lang/hlsl/ast_writer/generator_impl_import_test.cc
+      lang/hlsl/ast_writer/generator_impl_loop_test.cc
+      lang/hlsl/ast_writer/generator_impl_member_accessor_test.cc
+      lang/hlsl/ast_writer/generator_impl_module_constant_test.cc
+      lang/hlsl/ast_writer/generator_impl_return_test.cc
+      lang/hlsl/ast_writer/generator_impl_sanitizer_test.cc
+      lang/hlsl/ast_writer/generator_impl_switch_test.cc
+      lang/hlsl/ast_writer/generator_impl_test.cc
+      lang/hlsl/ast_writer/generator_impl_type_test.cc
+      lang/hlsl/ast_writer/generator_impl_unary_op_test.cc
+      lang/hlsl/ast_writer/generator_impl_variable_decl_statement_test.cc
+      lang/hlsl/ast_writer/generator_impl_workgroup_var_test.cc
+      lang/hlsl/ast_writer/test_helper.h
     )
   endif()
 
@@ -1579,11 +1590,11 @@ if(TINT_BUILD_TESTS)
       ir/block_param_test.cc
       ir/block_test.cc
       ir/break_if_test.cc
-      ir/builtin_call_test.cc
       ir/constant_test.cc
       ir/construct_test.cc
       ir/continue_test.cc
       ir/convert_test.cc
+      ir/core_builtin_call_test.cc
       ir/discard_test.cc
       ir/exit_if_test.cc
       ir/exit_loop_test.cc
@@ -1626,7 +1637,7 @@ if(TINT_BUILD_TESTS)
       ir/transform/demote_to_helper_test.cc
       ir/unary_test.cc
       ir/user_call_test.cc
-      ir/validate_test.cc
+      ir/validator_test.cc
       ir/value_test.cc
       ir/var_test.cc
     )
@@ -1699,23 +1710,23 @@ if(TINT_BUILD_BENCHMARKS)
   list(APPEND TINT_BENCHMARK_SRCS
     "switch_bench.cc"
     "bench/benchmark.cc"
-    "reader/wgsl/parser_bench.cc"
+    "lang/wgsl/reader/parser_bench.cc"
   )
 
   if (${TINT_BUILD_GLSL_WRITER})
-    list(APPEND TINT_BENCHMARK_SRCS writer/glsl/generator_bench.cc)
+    list(APPEND TINT_BENCHMARK_SRCS lang/glsl/ast_writer/generator_bench.cc)
   endif()
   if (${TINT_BUILD_HLSL_WRITER})
-    list(APPEND TINT_BENCHMARK_SRCS writer/hlsl/generator_bench.cc)
+    list(APPEND TINT_BENCHMARK_SRCS lang/hlsl/ast_writer/generator_bench.cc)
   endif()
   if (${TINT_BUILD_MSL_WRITER})
-    list(APPEND TINT_BENCHMARK_SRCS writer/msl/generator_bench.cc)
+    list(APPEND TINT_BENCHMARK_SRCS lang/msl/ast_writer/generator_bench.cc)
   endif()
   if (${TINT_BUILD_SPV_WRITER})
     list(APPEND TINT_BENCHMARK_SRCS writer/spirv/generator_bench.cc)
   endif()
   if (${TINT_BUILD_WGSL_WRITER})
-    list(APPEND TINT_BENCHMARK_SRCS writer/wgsl/generator_bench.cc)
+    list(APPEND TINT_BENCHMARK_SRCS lang/wgsl/ast_writer/generator_bench.cc)
   endif()
 
   add_executable(tint-benchmark ${TINT_BENCHMARK_SRCS})

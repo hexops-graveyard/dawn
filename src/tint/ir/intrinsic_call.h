@@ -29,8 +29,37 @@ class IntrinsicCall : public utils::Castable<IntrinsicCall, Call> {
     /// The kind of instruction.
     enum class Kind {
         // SPIR-V backend intrinsics.
+        kSpirvAtomicAnd,
+        kSpirvAtomicCompareExchange,
+        kSpirvAtomicExchange,
+        kSpirvAtomicIAdd,
+        kSpirvAtomicISub,
+        kSpirvAtomicLoad,
+        kSpirvAtomicOr,
+        kSpirvAtomicSMax,
+        kSpirvAtomicSMin,
+        kSpirvAtomicStore,
+        kSpirvAtomicUMax,
+        kSpirvAtomicUMin,
+        kSpirvAtomicXor,
         kSpirvDot,
+        kSpirvImageFetch,
+        kSpirvImageGather,
+        kSpirvImageDrefGather,
+        kSpirvImageQuerySize,
+        kSpirvImageQuerySizeLod,
+        kSpirvImageSampleImplicitLod,
+        kSpirvImageSampleExplicitLod,
+        kSpirvImageSampleDrefImplicitLod,
+        kSpirvImageSampleDrefExplicitLod,
+        kSpirvImageWrite,
+        kSpirvMatrixTimesMatrix,
+        kSpirvMatrixTimesScalar,
+        kSpirvMatrixTimesVector,
+        kSpirvSampledImage,
         kSpirvSelect,
+        kSpirvVectorTimesMatrix,
+        kSpirvVectorTimesScalar,
     };
 
     /// Constructor
@@ -44,6 +73,9 @@ class IntrinsicCall : public utils::Castable<IntrinsicCall, Call> {
 
     /// @returns the builtin function
     enum Kind Kind() { return kind_; }
+
+    /// @returns the friendly name for the instruction
+    std::string_view FriendlyName() override { return "intrinsic-call"; }
 
   private:
     enum Kind kind_;

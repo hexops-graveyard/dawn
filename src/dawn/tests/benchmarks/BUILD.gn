@@ -23,13 +23,14 @@ test("dawn_benchmarks") {
     "${dawn_root}/src/dawn/common",
     "${dawn_root}/src/dawn/native:sources",
     "${dawn_root}/src/dawn/native:static",
+    "${dawn_root}/src/dawn/utils",
     "//third_party/google_benchmark",
     "//third_party/google_benchmark:benchmark_main",
   ]
   sources = [
-    "BGLCreation.cpp",
     "NullDeviceSetup.cpp",
     "NullDeviceSetup.h",
+    "ObjectCreation.cpp",
   ]
   configs += [ "${dawn_root}/include/dawn:public" ]
 }

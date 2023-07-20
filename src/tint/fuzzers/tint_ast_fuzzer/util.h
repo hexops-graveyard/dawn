@@ -17,13 +17,13 @@
 
 #include <vector>
 
-#include "src/tint/ast/module.h"
-#include "src/tint/ast/variable_decl_statement.h"
+#include "src/tint/lang/wgsl/ast/module.h"
+#include "src/tint/lang/wgsl/ast/variable_decl_statement.h"
+#include "src/tint/lang/wgsl/sem/block_statement.h"
+#include "src/tint/lang/wgsl/sem/function.h"
+#include "src/tint/lang/wgsl/sem/statement.h"
+#include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/program.h"
-#include "src/tint/sem/block_statement.h"
-#include "src/tint/sem/function.h"
-#include "src/tint/sem/statement.h"
-#include "src/tint/sem/variable.h"
 #include "src/tint/utils/castable.h"
 
 namespace tint::fuzzers::ast_fuzzer::util {
