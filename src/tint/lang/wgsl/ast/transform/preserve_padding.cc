@@ -17,12 +17,12 @@
 #include <unordered_set>
 #include <utility>
 
+#include "src/tint/lang/core/type/reference.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/reference.h"
-#include "src/tint/utils/map.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/map.h"
+#include "src/tint/utils/containers/vector.h"
+#include "src/tint/utils/rtti/switch.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::PreservePadding);
 

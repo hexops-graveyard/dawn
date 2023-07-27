@@ -794,8 +794,6 @@ TEST_P(TextureZeroInitTest, IndependentDepthStencilLoadAfterDiscard) {
 TEST_P(TextureZeroInitTest, StencilCopyThenDiscardAndReadBySampling) {
     // Copies to a single aspect are unsupported on OpenGL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
-    // TODO(dawn:1848): support depth-stencil texture write on D3D11.
-    DAWN_SUPPRESS_TEST_IF(IsD3D11());
 
     for (wgpu::TextureFormat format :
          {wgpu::TextureFormat::Stencil8, wgpu::TextureFormat::Depth24PlusStencil8}) {
@@ -827,8 +825,6 @@ TEST_P(TextureZeroInitTest, StencilCopyThenDiscardAndReadBySampling) {
 TEST_P(TextureZeroInitTest, StencilCopyThenDiscardAndReadByCopy) {
     // Copies to a single aspect are unsupported on OpenGL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
-    // TODO(dawn:1848): support depth-stencil texture write on D3D11.
-    DAWN_SUPPRESS_TEST_IF(IsD3D11());
 
     for (wgpu::TextureFormat format :
          {wgpu::TextureFormat::Stencil8, wgpu::TextureFormat::Depth24PlusStencil8}) {
@@ -862,8 +858,6 @@ TEST_P(TextureZeroInitTest, StencilCopyThenDiscardAndReadByCopy) {
 TEST_P(TextureZeroInitTest, StencilCopyThenDiscardAndCopyToTextureThenReadByCopy) {
     // Copies to a single aspect are unsupported on OpenGL.
     DAWN_SUPPRESS_TEST_IF(IsOpenGL() || IsOpenGLES());
-    // TODO(dawn:1848): support depth-stencil texture write on D3D11.
-    DAWN_SUPPRESS_TEST_IF(IsD3D11());
 
     for (wgpu::TextureFormat format :
          {wgpu::TextureFormat::Stencil8, wgpu::TextureFormat::Depth24PlusStencil8}) {
@@ -2328,8 +2322,7 @@ TEST_P(CompressedTextureZeroInitTest, Copy2DArrayCompressedB2T2B) {
 }
 
 DAWN_INSTANTIATE_TEST(CompressedTextureZeroInitTest,
-                      // TODO(dawn:1802): Support clearing non-renderable textures on D3D11.
-                      // D3D11Backend({"nonzero_clear_resources_on_creation_for_testing"}),
+                      D3D11Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       D3D12Backend({"nonzero_clear_resources_on_creation_for_testing"}),
                       MetalBackend({"nonzero_clear_resources_on_creation_for_testing"}),
                       OpenGLBackend({"nonzero_clear_resources_on_creation_for_testing"}),

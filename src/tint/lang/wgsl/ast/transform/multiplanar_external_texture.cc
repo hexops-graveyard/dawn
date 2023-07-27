@@ -17,12 +17,12 @@
 #include <string>
 #include <vector>
 
+#include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/wgsl/ast/function.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/type/texture_dimension.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::MultiplanarExternalTexture);
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::MultiplanarExternalTexture::NewBindingPoints);
@@ -116,7 +116,7 @@ struct MultiplanarExternalTexture::State {
             // The binding points for the newly introduced bindings must have been provided to this
             // transform. We fetch the new binding points by providing the original texture_external
             // binding points into the passed map.
-            sem::BindingPoint bp = *sem_var->BindingPoint();
+            BindingPoint bp = *sem_var->BindingPoint();
 
             BindingsMap::const_iterator it = new_binding_points->bindings_map.find(bp);
             if (it == new_binding_points->bindings_map.end()) {

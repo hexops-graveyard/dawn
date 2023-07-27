@@ -85,13 +85,19 @@ class Texture final : public d3d::Texture {
   private:
     using Base = d3d::Texture;
 
-    static ResultOrError<Ref<Texture>> CreateStaging(Device* device,
-                                                     const TextureDescriptor* descriptor);
+    enum class Kind { Normal, Staging, Interim };
 
-    Texture(Device* device,
-            const TextureDescriptor* descriptor,
-            TextureState state,
-            bool isStaging);
+    struct D3D11ClearValue {
+        float color[4];
+        float depth;
+        uint8_t stencil;
+    };
+
+    static ResultOrError<Ref<Texture>> CreateInternal(Device* device,
+                                                      const TextureDescriptor* descriptor,
+                                                      Kind kind);
+
+    Texture(Device* device, const TextureDescriptor* descriptor, TextureState state, Kind kind);
     ~Texture() override;
 
     template <typename T>
@@ -111,6 +117,17 @@ class Texture final : public d3d::Texture {
     MaybeError Clear(CommandRecordingContext* commandContext,
                      const SubresourceRange& range,
                      TextureBase::ClearValue clearValue);
+    MaybeError ClearRenderable(CommandRecordingContext* commandContext,
+                               const SubresourceRange& range,
+                               TextureBase::ClearValue clearValue,
+                               const D3D11ClearValue& d3d11ClearValue);
+    MaybeError ClearNonRenderable(CommandRecordingContext* commandContext,
+                                  const SubresourceRange& range,
+                                  TextureBase::ClearValue clearValue);
+    MaybeError ClearCompressed(CommandRecordingContext* commandContext,
+                               const SubresourceRange& range,
+                               TextureBase::ClearValue clearValue);
+
     MaybeError ReadStaging(CommandRecordingContext* commandContext,
                            const SubresourceRange& subresources,
                            const Origin3D& origin,
@@ -118,6 +135,8 @@ class Texture final : public d3d::Texture {
                            uint32_t bytesPerRow,
                            uint32_t rowsPerImage,
                            ReadCallback callback);
+
+    // Write the texture without the content initialization bookkeeping.
     MaybeError WriteInternal(CommandRecordingContext* commandContext,
                              const SubresourceRange& subresources,
                              const Origin3D& origin,
@@ -126,7 +145,20 @@ class Texture final : public d3d::Texture {
                              uint32_t bytesPerRow,
                              uint32_t rowsPerImage);
 
-    const bool mIsStaging = false;
+    // Write the depth-stencil texture without the content initialization bookkeeping.
+    MaybeError WriteDepthStencilInternal(CommandRecordingContext* commandContext,
+                                         const SubresourceRange& subresources,
+                                         const Origin3D& origin,
+                                         const Extent3D& size,
+                                         const uint8_t* data,
+                                         uint32_t bytesPerRow,
+                                         uint32_t rowsPerImage);
+
+    // Copy the textures without the content initialization bookkeeping.
+    static MaybeError CopyInternal(CommandRecordingContext* commandContext,
+                                   CopyTextureToTextureCmd* copy);
+
+    const Kind mKind = Kind::Normal;
     ComPtr<ID3D11Resource> mD3d11Resource;
 };
 

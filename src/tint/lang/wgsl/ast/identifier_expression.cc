@@ -14,19 +14,19 @@
 
 #include "src/tint/lang/wgsl/ast/identifier_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::IdentifierExpression);
 
 namespace tint::ast {
 
-IdentifierExpression::IdentifierExpression(ProgramID pid,
+IdentifierExpression::IdentifierExpression(GenerationID pid,
                                            NodeID nid,
                                            const Source& src,
                                            const Identifier* ident)
     : Base(pid, nid, src), identifier(ident) {
     TINT_ASSERT(AST, identifier != nullptr);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL(AST, identifier, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL(AST, identifier, generation_id);
 }
 
 IdentifierExpression::~IdentifierExpression() = default;

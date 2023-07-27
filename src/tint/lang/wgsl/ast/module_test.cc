@@ -14,7 +14,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
-#include "src/tint/clone_context.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 #include "src/tint/lang/wgsl/ast/test_helper.h"
 
 namespace tint::ast {
@@ -56,7 +56,7 @@ TEST_F(ModuleTest, Assert_Null_TypeDecl) {
         "internal compiler error");
 }
 
-TEST_F(ModuleTest, Assert_DifferentProgramID_Function) {
+TEST_F(ModuleTest, Assert_DifferentGenerationID_Function) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b1;
@@ -67,7 +67,7 @@ TEST_F(ModuleTest, Assert_DifferentProgramID_Function) {
         "internal compiler error");
 }
 
-TEST_F(ModuleTest, Assert_DifferentProgramID_GlobalVariable) {
+TEST_F(ModuleTest, Assert_DifferentGenerationID_GlobalVariable) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b1;

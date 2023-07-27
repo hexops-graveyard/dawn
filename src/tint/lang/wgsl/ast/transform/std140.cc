@@ -19,16 +19,16 @@
 #include <utility>
 #include <variant>
 
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/index_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/module.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/utils/compiler_macros.h"
-#include "src/tint/utils/hashmap.h"
-#include "src/tint/utils/transform.h"
+#include "src/tint/utils/containers/hashmap.h"
+#include "src/tint/utils/containers/transform.h"
+#include "src/tint/utils/macros/compiler.h"
+#include "src/tint/utils/rtti/switch.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::Std140);
 
@@ -328,7 +328,7 @@ struct Std140::State {
                 if (fork_std140) {
                     // Clone any members that have not already been cloned.
                     for (auto& member : members) {
-                        if (member->program_id == src->ID()) {
+                        if (member->generation_id == src->ID()) {
                             member = ctx.Clone(member);
                         }
                     }

@@ -16,13 +16,13 @@
 
 #include <limits>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::FloatLiteralExpression);
 
 namespace tint::ast {
 
-FloatLiteralExpression::FloatLiteralExpression(ProgramID pid,
+FloatLiteralExpression::FloatLiteralExpression(GenerationID pid,
                                                NodeID nid,
                                                const Source& src,
                                                double val,

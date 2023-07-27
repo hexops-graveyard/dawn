@@ -17,15 +17,15 @@
 #include <random>
 #include <utility>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 namespace tint::fuzzers {
 
 ShuffleTransform::ShuffleTransform(size_t seed) : seed_(seed) {}
 
 ast::transform::Transform::ApplyResult ShuffleTransform::Apply(const Program* src,
-                                                               const transform::DataMap&,
-                                                               transform::DataMap&) const {
+                                                               const ast::transform::DataMap&,
+                                                               ast::transform::DataMap&) const {
     ProgramBuilder b;
     CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 

@@ -16,7 +16,7 @@
 #define SRC_TINT_LANG_WGSL_SEM_MEMBER_ACCESSOR_EXPRESSION_H_
 
 #include "src/tint/lang/wgsl/sem/accessor_expression.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/vector.h"
 
 // Forward declarations
 namespace tint::ast {

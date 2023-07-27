@@ -25,10 +25,10 @@
 #include "src/tint/lang/wgsl/ast/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/ast/phony_expression.h"
 #include "src/tint/lang/wgsl/ast/unary_op_expression.h"
-#include "src/tint/switch.h"
-#include "src/tint/utils/compiler_macros.h"
-#include "src/tint/utils/reverse.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/reverse.h"
+#include "src/tint/utils/containers/vector.h"
+#include "src/tint/utils/macros/compiler.h"
+#include "src/tint/utils/rtti/switch.h"
 
 namespace tint::ast {
 

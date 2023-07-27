@@ -16,13 +16,13 @@
 
 #include <utility>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Parameter);
 
 namespace tint::ast {
 
-Parameter::Parameter(ProgramID pid,
+Parameter::Parameter(GenerationID pid,
                      NodeID nid,
                      const Source& src,
                      const Identifier* n,

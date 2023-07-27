@@ -40,9 +40,9 @@ using OptionalVertexPullingTransformConfig =
 #define MSL_COMPILATION_REQUEST_MEMBERS(X)                                                       \
     X(SingleShaderStage, stage)                                                                  \
     X(const tint::Program*, inputProgram)                                                        \
-    X(tint::writer::ArrayLengthFromUniformOptions, arrayLengthFromUniform)                       \
-    X(tint::writer::BindingRemapperOptions, bindingRemapper)                                     \
-    X(tint::writer::ExternalTextureOptions, externalTextureOptions)                              \
+    X(tint::ArrayLengthFromUniformOptions, arrayLengthFromUniform)                               \
+    X(tint::BindingRemapperOptions, bindingRemapper)                                             \
+    X(tint::ExternalTextureOptions, externalTextureOptions)                                      \
     X(OptionalVertexPullingTransformConfig, vertexPullingTransformConfig)                        \
     X(std::optional<tint::ast::transform::SubstituteOverride::Config>, substituteOverrideConfig) \
     X(LimitsForCompilationRequest, limits)                                                       \
@@ -113,12 +113,12 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
     errorStream << "Tint MSL failure:" << std::endl;
 
     // Remap BindingNumber to BindingIndex in WGSL shader
-    using BindingPoint = tint::writer::BindingPoint;
+    using BindingPoint = tint::BindingPoint;
 
-    tint::writer::BindingRemapperOptions bindingRemapper;
+    tint::BindingRemapperOptions bindingRemapper;
     bindingRemapper.allow_collisions = true;
 
-    tint::writer::ArrayLengthFromUniformOptions arrayLengthFromUniform;
+    tint::ArrayLengthFromUniformOptions arrayLengthFromUniform;
     arrayLengthFromUniform.ubo_binding = {0, kBufferLengthBufferSlot};
 
     for (BindGroupIndex group : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
@@ -206,8 +206,8 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
     DAWN_TRY_LOAD_OR_RUN(
         mslCompilation, device, std::move(req), MslCompilation::FromBlob,
         [](MslCompilationRequest r) -> ResultOrError<MslCompilation> {
-            tint::transform::Manager transformManager;
-            tint::transform::DataMap transformInputs;
+            tint::ast::transform::Manager transformManager;
+            tint::ast::transform::DataMap transformInputs;
 
             // We only remap bindings for the target entry point, so we need to strip all other
             // entry points to avoid generating invalid bindings for them.
@@ -238,7 +238,7 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
             }
 
             tint::Program program;
-            tint::transform::DataMap transformOutputs;
+            tint::ast::transform::DataMap transformOutputs;
             {
                 TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "RunTransforms");
                 DAWN_TRY_ASSIGN(program,
@@ -268,7 +268,7 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
                                                program, remappedEntryPointName.data(), r.limits));
             }
 
-            tint::writer::msl::Options options;
+            tint::msl::writer::Options options;
             options.disable_robustness = !r.isRobustnessEnabled;
             options.buffer_size_ubo_index = kBufferLengthBufferSlot;
             options.fixed_sample_mask = r.sampleMask;
@@ -278,8 +278,8 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
             options.binding_remapper_options = r.bindingRemapper;
             options.external_texture_options = r.externalTextureOptions;
 
-            TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "tint::writer::msl::Generate");
-            auto result = tint::writer::msl::Generate(&program, options);
+            TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "tint::msl::writer::Generate");
+            auto result = tint::msl::writer::Generate(&program, options);
             DAWN_INVALID_IF(!result.success, "An error occured while generating MSL: %s.",
                             result.error);
 

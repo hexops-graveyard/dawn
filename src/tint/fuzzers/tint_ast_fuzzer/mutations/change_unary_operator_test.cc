@@ -21,9 +21,9 @@
 #include "src/tint/fuzzers/tint_ast_fuzzer/node_id_map.h"
 #include "src/tint/fuzzers/tint_ast_fuzzer/probability_context.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
-#include "src/tint/lang/wgsl/ast_writer/generator.h"
-#include "src/tint/lang/wgsl/reader/parser.h"
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/reader/reader.h"
+#include "src/tint/lang/wgsl/writer/writer.h"
 
 namespace tint::fuzzers::ast_fuzzer {
 namespace {
@@ -43,7 +43,7 @@ TEST(ChangeUnaryOperatorTest, Operator_Not_Applicable) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -135,7 +135,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable1) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -157,8 +157,8 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable1) {
                                    node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -176,7 +176,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable2) {
       var comp_b : vec3<i32> = ~b;
     })";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -198,8 +198,8 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable2) {
                                    node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -219,7 +219,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable3) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -241,8 +241,8 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable3) {
                                    node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -261,7 +261,7 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable4) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -283,8 +283,8 @@ TEST(ChangeUnaryOperatorTest, Signed_Integer_Types_Applicable4) {
                                    node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {

@@ -16,13 +16,16 @@
 
 #include <string>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::IndexAttribute);
 
 namespace tint::ast {
 
-IndexAttribute::IndexAttribute(ProgramID pid, NodeID nid, const Source& src, const Expression* exp)
+IndexAttribute::IndexAttribute(GenerationID pid,
+                               NodeID nid,
+                               const Source& src,
+                               const Expression* exp)
     : Base(pid, nid, src), expr(exp) {}
 
 IndexAttribute::~IndexAttribute() = default;

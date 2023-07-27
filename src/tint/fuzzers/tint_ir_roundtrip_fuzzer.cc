@@ -17,10 +17,10 @@
 #include <unordered_set>
 
 #include "src/tint/fuzzers/apply_substitute_overrides.h"
-#include "src/tint/ir/from_program.h"
-#include "src/tint/ir/to_program.h"
-#include "src/tint/lang/wgsl/ast_writer/generator.h"
-#include "src/tint/lang/wgsl/reader/parser_impl.h"
+#include "src/tint/lang/core/ir/from_program.h"
+#include "src/tint/lang/core/ir/to_program.h"
+#include "src/tint/lang/wgsl/reader/parser/parser.h"
+#include "src/tint/lang/wgsl/writer/writer.h"
 
 [[noreturn]] void TintInternalCompilerErrorReporter(const tint::diag::List& diagnostics) {
     auto printer = tint::diag::Printer::create(stderr, true);
@@ -36,7 +36,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     tint::Source::File file("test.wgsl", str);
 
     // Parse the wgsl, create the src program
-    tint::reader::wgsl::ParserImpl parser(&file);
+    tint::wgsl::reader::Parser parser(&file);
     parser.set_max_errors(1);
     if (!parser.Parse()) {
         return 0;
@@ -80,7 +80,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     auto dst = tint::ir::ToProgram(ir.Get());
     if (!dst.IsValid()) {
 #if TINT_BUILD_WGSL_WRITER
-        if (auto result = tint::writer::wgsl::Generate(&dst, {}); result.success) {
+        if (auto result = tint::wgsl::writer::Generate(&dst, {}); result.success) {
             std::cerr << result.wgsl << std::endl << std::endl;
         }
 #endif

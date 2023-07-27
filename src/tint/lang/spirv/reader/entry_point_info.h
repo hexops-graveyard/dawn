@@ -18,7 +18,7 @@
 #include <string>
 
 #include "src/tint/lang/wgsl/ast/pipeline_stage.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/vector.h"
 
 namespace tint::reader::spirv {
 

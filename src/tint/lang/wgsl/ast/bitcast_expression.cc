@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/bitcast_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BitcastExpression);
 
 namespace tint::ast {
 
-BitcastExpression::BitcastExpression(ProgramID pid,
+BitcastExpression::BitcastExpression(GenerationID pid,
                                      NodeID nid,
                                      const Source& src,
                                      Type t,
@@ -28,7 +28,7 @@ BitcastExpression::BitcastExpression(ProgramID pid,
     : Base(pid, nid, src), type(t), expr(e) {
     TINT_ASSERT(AST, type);
     TINT_ASSERT(AST, expr);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, expr, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, expr, generation_id);
 }
 
 BitcastExpression::~BitcastExpression() = default;

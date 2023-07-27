@@ -29,32 +29,28 @@
 #include "glslang/Public/ShaderLang.h"
 #endif  // TINT_BUILD_GLSL_WRITER
 
-#if TINT_BUILD_SYNTAX_TREE_WRITER
-#include "src/tint/lang/wgsl/syntax_tree_writer/generator.h"  // nogncheck
-
-#endif  // TINT_BUILD_SYNTAX_TREE_WRITER
-
 #if TINT_BUILD_SPV_READER || TINT_BUILD_SPV_WRITER
 #include "spirv-tools/libspirv.hpp"
 #endif  // TINT_BUILD_SPV_READER || TINT_BUILD_SPV_WRITER
 
 #include "src/tint/cmd/generate_external_texture_bindings.h"
 #include "src/tint/cmd/helper.h"
+#include "src/tint/lang/hlsl/validate/val.h"
+#include "src/tint/lang/msl/validate/val.h"
 #include "src/tint/lang/wgsl/ast/module.h"
-#include "src/tint/utils/cli.h"
-#include "src/tint/utils/defer.h"
-#include "src/tint/utils/io/command.h"
-#include "src/tint/utils/string.h"
-#include "src/tint/utils/string_stream.h"
-#include "src/tint/utils/transform.h"
-#include "src/tint/val/val.h"
+#include "src/tint/utils/cli/cli.h"
+#include "src/tint/utils/command/command.h"
+#include "src/tint/utils/containers/transform.h"
+#include "src/tint/utils/macros/defer.h"
+#include "src/tint/utils/text/string.h"
+#include "src/tint/utils/text/string_stream.h"
 #include "tint/tint.h"
 
 #if TINT_BUILD_IR
-#include "src/tint/ir/disassembler.h"  // nogncheck
-#include "src/tint/ir/from_program.h"  // nogncheck
-#include "src/tint/ir/module.h"        // nogncheck
-#endif                                 // TINT_BUILD_IR
+#include "src/tint/lang/core/ir/disassembler.h"  // nogncheck
+#include "src/tint/lang/core/ir/from_program.h"  // nogncheck
+#include "src/tint/lang/core/ir/module.h"        // nogncheck
+#endif                                           // TINT_BUILD_IR
 
 #if TINT_BUILD_SPV_WRITER
 #define SPV_WRITER_ONLY(x) x
@@ -136,7 +132,7 @@ struct Options {
     std::string dxc_path;
     std::string xcrun_path;
     tint::utils::Hashmap<std::string, double, 8> overrides;
-    std::optional<tint::sem::BindingPoint> hlsl_root_constant_binding_point;
+    std::optional<tint::BindingPoint> hlsl_root_constant_binding_point;
 
 #if TINT_BUILD_IR
     bool dump_ir = false;
@@ -402,8 +398,7 @@ Options:
                       << std::endl;
             return false;
         }
-        opts->hlsl_root_constant_binding_point =
-            tint::sem::BindingPoint{group.Get(), binding.Get()};
+        opts->hlsl_root_constant_binding_point = tint::BindingPoint{group.Get(), binding.Get()};
     }
 
     auto files = result.Get();
@@ -507,7 +502,7 @@ std::string Disassemble(const std::vector<uint32_t>& data) {
 bool GenerateSpirv(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_SPV_WRITER
     // TODO(jrprice): Provide a way for the user to set non-default options.
-    tint::writer::spirv::Options gen_options;
+    tint::spirv::writer::Options gen_options;
     gen_options.disable_robustness = !options.enable_robustness;
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.external_texture_options.bindings_map =
@@ -515,7 +510,7 @@ bool GenerateSpirv(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_IR
     gen_options.use_tint_ir = options.use_ir;
 #endif
-    auto result = tint::writer::spirv::Generate(program, gen_options);
+    auto result = tint::spirv::writer::Generate(program, gen_options);
     if (!result.success) {
         tint::cmd::PrintWGSL(std::cerr, *program);
         std::cerr << "Failed to generate: " << result.error << std::endl;
@@ -566,8 +561,8 @@ bool GenerateSpirv(const tint::Program* program, const Options& options) {
 bool GenerateWgsl(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_WGSL_WRITER
     // TODO(jrprice): Provide a way for the user to set non-default options.
-    tint::writer::wgsl::Options gen_options;
-    auto result = tint::writer::wgsl::Generate(program, gen_options);
+    tint::wgsl::writer::Options gen_options;
+    auto result = tint::wgsl::writer::Generate(program, gen_options);
     if (!result.success) {
         std::cerr << "Failed to generate: " << result.error << std::endl;
         return false;
@@ -585,7 +580,7 @@ bool GenerateWgsl(const tint::Program* program, const Options& options) {
     if (options.validate && options.skip_hash.count(hash) == 0) {
         // Attempt to re-parse the output program with Tint's WGSL reader.
         auto source = std::make_unique<tint::Source::File>(options.input_filename, result.wgsl);
-        auto reparsed_program = tint::reader::wgsl::Parse(source.get());
+        auto reparsed_program = tint::wgsl::reader::Parse(source.get());
         if (!reparsed_program.IsValid()) {
             auto diag_printer = tint::diag::Printer::create(stderr, true);
             tint::diag::Formatter diag_formatter;
@@ -618,7 +613,7 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
     }
 
     // TODO(jrprice): Provide a way for the user to set non-default options.
-    tint::writer::msl::Options gen_options;
+    tint::msl::writer::Options gen_options;
 #if TINT_BUILD_IR
     gen_options.use_tint_ir = options.use_ir;
 #endif
@@ -626,12 +621,12 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.external_texture_options.bindings_map =
         tint::cmd::GenerateExternalTextureBindings(input_program);
-    gen_options.array_length_from_uniform.ubo_binding = tint::writer::BindingPoint{0, 30};
-    gen_options.array_length_from_uniform.bindpoint_to_size_index.emplace(
-        tint::writer::BindingPoint{0, 0}, 0);
-    gen_options.array_length_from_uniform.bindpoint_to_size_index.emplace(
-        tint::writer::BindingPoint{0, 1}, 1);
-    auto result = tint::writer::msl::Generate(input_program, gen_options);
+    gen_options.array_length_from_uniform.ubo_binding = tint::BindingPoint{0, 30};
+    gen_options.array_length_from_uniform.bindpoint_to_size_index.emplace(tint::BindingPoint{0, 0},
+                                                                          0);
+    gen_options.array_length_from_uniform.bindpoint_to_size_index.emplace(tint::BindingPoint{0, 1},
+                                                                          1);
+    auto result = tint::msl::writer::Generate(input_program, gen_options);
     if (!result.success) {
         tint::cmd::PrintWGSL(std::cerr, *program);
         std::cerr << "Failed to generate: " << result.error << std::endl;
@@ -648,9 +643,9 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
     }
 
     if (options.validate && options.skip_hash.count(hash) == 0) {
-        tint::val::Result res;
+        tint::msl::validate::Result res;
 #ifdef TINT_ENABLE_MSL_VALIDATION_USING_METAL_API
-        res = tint::val::MslUsingMetalAPI(result.msl);
+        res = tint::msl::validate::UsingMetalAPI(result.msl);
 #else
 #ifdef _WIN32
         const char* default_xcrun_exe = "metal.exe";
@@ -660,7 +655,7 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
         auto xcrun = tint::utils::Command::LookPath(
             options.xcrun_path.empty() ? default_xcrun_exe : std::string(options.xcrun_path));
         if (xcrun.Found()) {
-            res = tint::val::Msl(xcrun.Path(), result.msl);
+            res = tint::msl::validate::Msl(xcrun.Path(), result.msl);
         } else {
             res.output = "xcrun executable not found. Cannot validate.";
             res.failed = true;
@@ -688,13 +683,13 @@ bool GenerateMsl(const tint::Program* program, const Options& options) {
 bool GenerateHlsl(const tint::Program* program, const Options& options) {
 #if TINT_BUILD_HLSL_WRITER
     // TODO(jrprice): Provide a way for the user to set non-default options.
-    tint::writer::hlsl::Options gen_options;
+    tint::hlsl::writer::Options gen_options;
     gen_options.disable_robustness = !options.enable_robustness;
     gen_options.disable_workgroup_init = options.disable_workgroup_init;
     gen_options.external_texture_options.bindings_map =
         tint::cmd::GenerateExternalTextureBindings(program);
     gen_options.root_constant_binding_point = options.hlsl_root_constant_binding_point;
-    auto result = tint::writer::hlsl::Generate(program, gen_options);
+    auto result = tint::hlsl::writer::Generate(program, gen_options);
     if (!result.success) {
         tint::cmd::PrintWGSL(std::cerr, *program);
         std::cerr << "Failed to generate: " << result.error << std::endl;
@@ -716,7 +711,7 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
     const bool must_validate_fxc = !options.fxc_path.empty();
     if ((options.validate || must_validate_dxc || must_validate_fxc) &&
         (options.skip_hash.count(hash) == 0)) {
-        tint::val::Result dxc_res;
+        tint::hlsl::validate::Result dxc_res;
         bool dxc_found = false;
         if (options.validate || must_validate_dxc) {
             auto dxc = tint::utils::Command::LookPath(
@@ -733,8 +728,8 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
                     }
                 }
 
-                dxc_res = tint::val::HlslUsingDXC(dxc.Path(), result.hlsl, result.entry_points,
-                                                  dxc_require_16bit_types);
+                dxc_res = tint::hlsl::validate::UsingDXC(
+                    dxc.Path(), result.hlsl, result.entry_points, dxc_require_16bit_types);
             } else if (must_validate_dxc) {
                 // DXC was explicitly requested. Error if it could not be found.
                 dxc_res.failed = true;
@@ -743,16 +738,18 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
             }
         }
 
-        tint::val::Result fxc_res;
+        tint::hlsl::validate::Result fxc_res;
         bool fxc_found = false;
         if (options.validate || must_validate_fxc) {
-            auto fxc = tint::utils::Command::LookPath(
-                options.fxc_path.empty() ? tint::val::kFxcDLLName : std::string(options.fxc_path));
+            auto fxc = tint::utils::Command::LookPath(options.fxc_path.empty()
+                                                          ? tint::hlsl::validate::kFxcDLLName
+                                                          : std::string(options.fxc_path));
 
 #ifdef _WIN32
             if (fxc.Found()) {
                 fxc_found = true;
-                fxc_res = tint::val::HlslUsingFXC(fxc.Path(), result.hlsl, result.entry_points);
+                fxc_res =
+                    tint::hlsl::validate::UsingFXC(fxc.Path(), result.hlsl, result.entry_points);
             } else if (must_validate_fxc) {
                 // FXC was explicitly requested. Error if it could not be found.
                 fxc_res.failed = true;
@@ -829,11 +826,11 @@ bool GenerateGlsl(const tint::Program* program, const Options& options) {
     }
 
     auto generate = [&](const tint::Program* prg, const std::string entry_point_name) -> bool {
-        tint::writer::glsl::Options gen_options;
+        tint::glsl::writer::Options gen_options;
         gen_options.disable_robustness = !options.enable_robustness;
         gen_options.external_texture_options.bindings_map =
             tint::cmd::GenerateExternalTextureBindings(prg);
-        auto result = tint::writer::glsl::Generate(prg, gen_options, entry_point_name);
+        auto result = tint::glsl::writer::Generate(prg, gen_options, entry_point_name);
         if (!result.success) {
             tint::cmd::PrintWGSL(std::cerr, *prg);
             std::cerr << "Failed to generate: " << result.error << std::endl;
@@ -908,7 +905,7 @@ int main(int argc, const char** argv) {
 
 #if TINT_BUILD_WGSL_WRITER
     tint::Program::printer = [](const tint::Program* program) {
-        auto result = tint::writer::wgsl::Generate(program, {});
+        auto result = tint::wgsl::writer::Generate(program, {});
         if (!result.error.empty()) {
             return "error: " + result.error;
         }
@@ -925,31 +922,33 @@ int main(int argc, const char** argv) {
         ///   inputs    - the input data to the transform manager. Add inputs to this.
         /// Returns true on success, false on error (program will immediately exit)
         std::function<bool(tint::inspector::Inspector& inspector,
-                           tint::transform::Manager& manager,
-                           tint::transform::DataMap& inputs)>
+                           tint::ast::transform::Manager& manager,
+                           tint::ast::transform::DataMap& inputs)>
             make;
     };
     std::vector<TransformFactory> transforms = {
         {"first_index_offset",
-         [](tint::inspector::Inspector&, tint::transform::Manager& m, tint::transform::DataMap& i) {
+         [](tint::inspector::Inspector&, tint::ast::transform::Manager& m,
+            tint::ast::transform::DataMap& i) {
              i.Add<tint::ast::transform::FirstIndexOffset::BindingPoint>(0, 0);
              m.Add<tint::ast::transform::FirstIndexOffset>();
              return true;
          }},
         {"renamer",
-         [](tint::inspector::Inspector&, tint::transform::Manager& m, tint::transform::DataMap&) {
+         [](tint::inspector::Inspector&, tint::ast::transform::Manager& m,
+            tint::ast::transform::DataMap&) {
              m.Add<tint::ast::transform::Renamer>();
              return true;
          }},
         {"robustness",
-         [&](tint::inspector::Inspector&, tint::transform::Manager&,
-             tint::transform::DataMap&) {  // enabled via writer option
+         [&](tint::inspector::Inspector&, tint::ast::transform::Manager&,
+             tint::ast::transform::DataMap&) {  // enabled via writer option
              options.enable_robustness = true;
              return true;
          }},
         {"substitute_override",
-         [&](tint::inspector::Inspector& inspector, tint::transform::Manager& m,
-             tint::transform::DataMap& i) {
+         [&](tint::inspector::Inspector& inspector, tint::ast::transform::Manager& m,
+             tint::ast::transform::DataMap& i) {
              tint::ast::transform::SubstituteOverride::Config cfg;
 
              std::unordered_map<tint::OverrideId, double> values;
@@ -1029,12 +1028,13 @@ int main(int argc, const char** argv) {
 
 #if TINT_BUILD_SYNTAX_TREE_WRITER
     if (options.dump_ast) {
-        tint::writer::syntax_tree::Options gen_options;
-        auto result = tint::writer::syntax_tree::Generate(program.get(), gen_options);
+        tint::wgsl::writer::Options gen_options;
+        gen_options.use_syntax_tree_writer = true;
+        auto result = tint::wgsl::writer::Generate(program.get(), gen_options);
         if (!result.success) {
             std::cerr << "Failed to dump AST: " << result.error << std::endl;
         } else {
-            std::cout << result.ast << std::endl;
+            std::cout << result.wgsl << std::endl;
         }
     }
 #endif  // TINT_BUILD_SYNTAX_TREE_WRITER
@@ -1059,8 +1059,8 @@ int main(int argc, const char** argv) {
         tint::cmd::PrintInspectorBindings(inspector);
     }
 
-    tint::transform::Manager transform_manager;
-    tint::transform::DataMap transform_inputs;
+    tint::ast::transform::Manager transform_manager;
+    tint::ast::transform::DataMap transform_inputs;
 
     // Renaming must always come first
     switch (options.format) {
@@ -1135,7 +1135,7 @@ int main(int argc, const char** argv) {
         transform_inputs.Add<tint::ast::transform::SingleEntryPoint::Config>(options.ep_name);
     }
 
-    tint::transform::DataMap outputs;
+    tint::ast::transform::DataMap outputs;
     auto out = transform_manager.Run(program.get(), std::move(transform_inputs), outputs);
     if (!out.IsValid()) {
         tint::cmd::PrintWGSL(std::cerr, out);

@@ -16,13 +16,13 @@
 
 #include <string>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BindingAttribute);
 
 namespace tint::ast {
 
-BindingAttribute::BindingAttribute(ProgramID pid,
+BindingAttribute::BindingAttribute(GenerationID pid,
                                    NodeID nid,
                                    const Source& src,
                                    const Expression* exp)

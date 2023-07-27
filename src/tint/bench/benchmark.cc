@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/utils/string.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/utils/text/string.h"
+#include "src/tint/utils/text/string_stream.h"
 
 namespace tint::bench {
 namespace {
@@ -105,7 +105,7 @@ std::variant<tint::Source::File, Error> LoadInputFile(std::string name) {
             if (!program.IsValid()) {
                 return Error{program.Diagnostics().str()};
             }
-            auto result = tint::writer::wgsl::Generate(&program, {});
+            auto result = tint::wgsl::writer::Generate(&program, {});
             if (!result.success) {
                 return Error{result.error};
             }
@@ -122,7 +122,7 @@ std::variant<ProgramAndFile, Error> LoadProgram(std::string name) {
         return *err;
     }
     auto file = std::make_unique<Source::File>(std::move(std::get<Source::File>(res)));
-    auto program = reader::wgsl::Parse(file.get());
+    auto program = wgsl::reader::Parse(file.get());
     if (program.Diagnostics().contains_errors()) {
         return Error{program.Diagnostics().str()};
     }

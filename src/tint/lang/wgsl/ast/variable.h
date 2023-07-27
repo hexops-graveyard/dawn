@@ -18,8 +18,8 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/builtin/access.h"
-#include "src/tint/builtin/address_space.h"
+#include "src/tint/lang/core/builtin/access.h"
+#include "src/tint/lang/core/builtin/address_space.h"
 #include "src/tint/lang/wgsl/ast/attribute.h"
 #include "src/tint/lang/wgsl/ast/binding_attribute.h"
 #include "src/tint/lang/wgsl/ast/expression.h"
@@ -50,7 +50,7 @@ class Variable : public utils::Castable<Variable, Node> {
     /// @param type the declared variable type
     /// @param initializer the initializer expression
     /// @param attributes the variable attributes
-    Variable(ProgramID pid,
+    Variable(GenerationID pid,
              NodeID nid,
              const Source& src,
              const Identifier* name,

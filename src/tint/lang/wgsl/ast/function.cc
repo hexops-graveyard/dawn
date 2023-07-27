@@ -16,13 +16,13 @@
 
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
 #include "src/tint/lang/wgsl/ast/workgroup_attribute.h"
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Function);
 
 namespace tint::ast {
 
-Function::Function(ProgramID pid,
+Function::Function(GenerationID pid,
                    NodeID nid,
                    const Source& src,
                    const Identifier* n,
@@ -42,18 +42,18 @@ Function::Function(ProgramID pid,
     if (name) {
         TINT_ASSERT(AST, !name->Is<TemplatedIdentifier>());
     }
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, name, program_id);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, return_ty, program_id);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, body, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, name, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, return_ty, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
     for (auto* param : params) {
         TINT_ASSERT(AST, tint::Is<Parameter>(param));
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, param, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, param, generation_id);
     }
     for (auto* attr : attributes) {
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, attr, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
     }
     for (auto* attr : return_type_attributes) {
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, attr, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
     }
 }
 

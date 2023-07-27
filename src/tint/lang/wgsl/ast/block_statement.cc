@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/block_statement.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BlockStatement);
 
 namespace tint::ast {
 
-BlockStatement::BlockStatement(ProgramID pid,
+BlockStatement::BlockStatement(GenerationID pid,
                                NodeID nid,
                                const Source& src,
                                utils::VectorRef<const Statement*> stmts,
@@ -28,11 +28,11 @@ BlockStatement::BlockStatement(ProgramID pid,
     : Base(pid, nid, src), statements(std::move(stmts)), attributes(attrs) {
     for (auto* stmt : statements) {
         TINT_ASSERT(AST, stmt);
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, stmt, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, stmt, generation_id);
     }
     for (auto* attr : attributes) {
         TINT_ASSERT(AST, attr);
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, attr, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
     }
 }
 

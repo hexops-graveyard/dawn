@@ -19,15 +19,15 @@
 #include <unordered_map>
 #include <utility>
 
+#include "src/tint/lang/core/type/storage_texture.h"
+#include "src/tint/lang/core/type/texture_dimension.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/builtin.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/type_expression.h"
 #include "src/tint/lang/wgsl/sem/value_conversion.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/storage_texture.h"
-#include "src/tint/type/texture_dimension.h"
-#include "src/tint/utils/map.h"
+#include "src/tint/utils/containers/map.h"
+#include "src/tint/utils/rtti/switch.h"
 
 using namespace tint::builtin::fluent_types;  // NOLINT
 using namespace tint::number_suffixes;        // NOLINT

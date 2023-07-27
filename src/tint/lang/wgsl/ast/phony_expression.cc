@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/phony_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::PhonyExpression);
 
 namespace tint::ast {
 
-PhonyExpression::PhonyExpression(ProgramID pid, NodeID nid, const Source& src)
+PhonyExpression::PhonyExpression(GenerationID pid, NodeID nid, const Source& src)
     : Base(pid, nid, src) {}
 
 PhonyExpression::~PhonyExpression() = default;

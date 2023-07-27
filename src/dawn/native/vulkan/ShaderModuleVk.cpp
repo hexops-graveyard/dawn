@@ -166,8 +166,8 @@ ShaderModule::~ShaderModule() = default;
 #define SPIRV_COMPILATION_REQUEST_MEMBERS(X)                                                     \
     X(SingleShaderStage, stage)                                                                  \
     X(const tint::Program*, inputProgram)                                                        \
-    X(tint::writer::BindingRemapperOptions, bindingRemapper)                                     \
-    X(tint::writer::ExternalTextureOptions, externalTextureOptions)                              \
+    X(tint::BindingRemapperOptions, bindingRemapper)                                             \
+    X(tint::ExternalTextureOptions, externalTextureOptions)                                      \
     X(std::optional<tint::ast::transform::SubstituteOverride::Config>, substituteOverrideConfig) \
     X(LimitsForCompilationRequest, limits)                                                       \
     X(std::string_view, entryPointName)                                                          \
@@ -206,9 +206,9 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
     // Creation of module and spirv is deferred to this point when using tint generator
 
     // Remap BindingNumber to BindingIndex in WGSL shader
-    using BindingPoint = tint::writer::BindingPoint;
+    using BindingPoint = tint::BindingPoint;
 
-    tint::writer::BindingRemapperOptions bindingRemapper;
+    tint::BindingRemapperOptions bindingRemapper;
 
     const BindingInfoArray& moduleBindingInfo =
         GetEntryPoint(programmableStage.entryPoint.c_str()).bindings;
@@ -231,7 +231,7 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
 
     // Transform external textures into the binding locations specified in the bgl
     // TODO(dawn:1082): Replace this block with BuildExternalTextureTransformBindings.
-    tint::writer::ExternalTextureOptions externalTextureOptions;
+    tint::ExternalTextureOptions externalTextureOptions;
     for (BindGroupIndex i : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
         const BindGroupLayoutBase* bgl = layout->GetBindGroupLayout(i);
 
@@ -279,8 +279,8 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
     DAWN_TRY_LOAD_OR_RUN(
         compilation, GetDevice(), std::move(req), CompiledSpirv::FromBlob,
         [](SpirvCompilationRequest r) -> ResultOrError<CompiledSpirv> {
-            tint::transform::Manager transformManager;
-            tint::transform::DataMap transformInputs;
+            tint::ast::transform::Manager transformManager;
+            tint::ast::transform::DataMap transformInputs;
 
             // Many Vulkan drivers can't handle multi-entrypoint shader modules.
             // Run before the renamer so that the entry point name matches `entryPointName` still.
@@ -302,7 +302,7 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
             }
 
             tint::Program program;
-            tint::transform::DataMap transformOutputs;
+            tint::ast::transform::DataMap transformOutputs;
             {
                 TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "RunTransforms");
                 DAWN_TRY_ASSIGN(program,
@@ -331,7 +331,7 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
                                        program, remappedEntryPoint.c_str(), r.limits));
             }
 
-            tint::writer::spirv::Options options;
+            tint::spirv::writer::Options options;
             options.clamp_frag_depth = r.clampFragDepth;
             options.disable_robustness = !r.isRobustnessEnabled;
             options.emit_vertex_point_size = true;
@@ -345,8 +345,8 @@ ResultOrError<ShaderModule::ModuleAndSpirv> ShaderModule::GetHandleAndSpirv(
                 r.disableRuntimeSizedArrayIndexClamping;
 
             TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General,
-                         "tint::writer::spirv::Generate()");
-            auto tintResult = tint::writer::spirv::Generate(&program, options);
+                         "tint::spirv::writer::Generate()");
+            auto tintResult = tint::spirv::writer::Generate(&program, options);
             DAWN_INVALID_IF(!tintResult.success, "An error occured while generating SPIR-V: %s.",
                             tintResult.error);
 

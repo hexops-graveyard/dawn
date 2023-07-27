@@ -121,6 +121,17 @@ static constexpr FeatureEnumAndInfoList kFeatureNameAndInfoList = {{
      {"msaa-render-to-single-sampled",
       "Support multisampled rendering on single-sampled attachments efficiently.",
       "https://bugs.chromium.org/p/dawn/issues/detail?id=1710", FeatureInfo::FeatureState::Stable}},
+    {Feature::DualSourceBlending,
+     {"dual-source-blending",
+      "Support dual source blending. Enables Src1, OneMinusSrc1, Src1Alpha, and OneMinusSrc1Alpha "
+      "blend factors along with @index WGSL output attribute.",
+      "https://dawn.googlesource.com/dawn/+/refs/heads/main/docs/dawn/features/"
+      "dual_source_blending.md",
+      FeatureInfo::FeatureState::Experimental}},
+    {Feature::D3D11MultithreadProtected,
+     {"d3d11-multithread-protected",
+      "Enable ID3D11Multithread protection for interop with external users of the D3D11 device.",
+      "https://bugs.chromium.org/p/dawn/issues/detail?id=1927", FeatureInfo::FeatureState::Stable}},
 }};
 
 Feature FromAPIFeature(wgpu::FeatureName feature) {
@@ -173,6 +184,10 @@ Feature FromAPIFeature(wgpu::FeatureName feature) {
             return Feature::Float32Filterable;
         case wgpu::FeatureName::MSAARenderToSingleSampled:
             return Feature::MSAARenderToSingleSampled;
+        case wgpu::FeatureName::DualSourceBlending:
+            return Feature::DualSourceBlending;
+        case wgpu::FeatureName::D3D11MultithreadProtected:
+            return Feature::D3D11MultithreadProtected;
     }
     return Feature::InvalidEnum;
 }
@@ -221,7 +236,10 @@ wgpu::FeatureName ToAPIFeature(Feature feature) {
             return wgpu::FeatureName::Float32Filterable;
         case Feature::MSAARenderToSingleSampled:
             return wgpu::FeatureName::MSAARenderToSingleSampled;
-
+        case Feature::DualSourceBlending:
+            return wgpu::FeatureName::DualSourceBlending;
+        case Feature::D3D11MultithreadProtected:
+            return wgpu::FeatureName::D3D11MultithreadProtected;
         case Feature::EnumCount:
             break;
     }

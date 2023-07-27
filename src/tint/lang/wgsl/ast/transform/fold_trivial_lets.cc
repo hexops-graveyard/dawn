@@ -17,9 +17,9 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/value_expression.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/utils/hashmap.h"
+#include "src/tint/utils/containers/hashmap.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::FoldTrivialLets);
 

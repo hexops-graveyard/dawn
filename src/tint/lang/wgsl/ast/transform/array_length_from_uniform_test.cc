@@ -29,9 +29,9 @@ TEST_F(ArrayLengthFromUniformTest, ShouldRunEmptyModule) {
     auto* src = R"()";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     EXPECT_FALSE(ShouldRun<ArrayLengthFromUniform>(src, data));
@@ -52,9 +52,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     EXPECT_FALSE(ShouldRun<ArrayLengthFromUniform>(src, data));
@@ -76,9 +76,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     EXPECT_TRUE(ShouldRun<ArrayLengthFromUniform>(src, data));
@@ -132,9 +132,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -181,9 +181,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -269,13 +269,13 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 2u}, 0);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{1u, 2u}, 1);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{2u, 2u}, 2);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{3u, 2u}, 3);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{4u, 2u}, 4);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 2u}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{1u, 2u}, 1);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{2u, 2u}, 2);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{3u, 2u}, 3);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{4u, 2u}, 4);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -355,13 +355,13 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 2u}, 0);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{1u, 2u}, 1);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{2u, 2u}, 2);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{3u, 2u}, 3);
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{4u, 2u}, 4);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 2u}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{1u, 2u}, 1);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{2u, 2u}, 2);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{3u, 2u}, 3);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{4u, 2u}, 4);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -387,9 +387,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -452,9 +452,9 @@ fn main() {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 2}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 2}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);
@@ -500,9 +500,9 @@ struct SB {
 )";
 
     ArrayLengthFromUniform::Config cfg({0, 30u});
-    cfg.bindpoint_to_size_index.emplace(sem::BindingPoint{0, 0}, 0);
+    cfg.bindpoint_to_size_index.emplace(BindingPoint{0, 0}, 0);
 
-    Transform::DataMap data;
+    DataMap data;
     data.Add<ArrayLengthFromUniform::Config>(std::move(cfg));
 
     auto got = Run<Unshadow, SimplifyPointers, ArrayLengthFromUniform>(src, data);

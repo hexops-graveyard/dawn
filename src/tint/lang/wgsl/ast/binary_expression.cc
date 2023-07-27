@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/binary_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BinaryExpression);
 
 namespace tint::ast {
 
-BinaryExpression::BinaryExpression(ProgramID pid,
+BinaryExpression::BinaryExpression(GenerationID pid,
                                    NodeID nid,
                                    const Source& src,
                                    BinaryOp o,
@@ -28,9 +28,9 @@ BinaryExpression::BinaryExpression(ProgramID pid,
                                    const Expression* r)
     : Base(pid, nid, src), op(o), lhs(l), rhs(r) {
     TINT_ASSERT(AST, lhs);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, lhs, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, lhs, generation_id);
     TINT_ASSERT(AST, rhs);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, rhs, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, rhs, generation_id);
     TINT_ASSERT(AST, op != BinaryOp::kNone);
 }
 

@@ -27,8 +27,8 @@
 #include "src/tint/lang/spirv/reader/attributes.h"
 #include "src/tint/lang/spirv/reader/construct.h"
 #include "src/tint/lang/spirv/reader/parser_impl.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/utils/text/string_stream.h"
 
 namespace tint::reader::spirv {
 
@@ -410,7 +410,7 @@ inline utils::StringStream& operator<<(utils::StringStream& o, const DefInfo& di
 class StatementBuilder : public utils::Castable<StatementBuilder, ast::Statement> {
   public:
     /// Constructor
-    StatementBuilder() : Base(ProgramID(), ast::NodeID(), Source{}) {}
+    StatementBuilder() : Base(GenerationID(), ast::NodeID(), Source{}) {}
 
     /// @param builder the program builder
     /// @returns the build AST node

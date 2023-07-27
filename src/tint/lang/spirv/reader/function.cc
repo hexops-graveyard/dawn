@@ -17,8 +17,11 @@
 #include <algorithm>
 #include <array>
 
-#include "src/tint/builtin/builtin_value.h"
-#include "src/tint/builtin/function.h"
+#include "src/tint/lang/core/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin/function.h"
+#include "src/tint/lang/core/type/depth_texture.h"
+#include "src/tint/lang/core/type/sampled_texture.h"
+#include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
 #include "src/tint/lang/wgsl/ast/bitcast_expression.h"
 #include "src/tint/lang/wgsl/ast/break_statement.h"
@@ -34,12 +37,9 @@
 #include "src/tint/lang/wgsl/ast/transform/spirv_atomic.h"
 #include "src/tint/lang/wgsl/ast/unary_op_expression.h"
 #include "src/tint/lang/wgsl/ast/variable_decl_statement.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/depth_texture.h"
-#include "src/tint/type/sampled_texture.h"
-#include "src/tint/type/texture_dimension.h"
-#include "src/tint/utils/hashmap.h"
-#include "src/tint/utils/hashset.h"
+#include "src/tint/utils/containers/hashmap.h"
+#include "src/tint/utils/containers/hashset.h"
+#include "src/tint/utils/rtti/switch.h"
 
 // Terms:
 //    CFG: the control flow graph of the function, where basic blocks are the

@@ -18,11 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "src/tint/builtin/extension.h"
-#include "src/tint/builtin/function.h"
+#include "src/tint/lang/core/builtin/extension.h"
+#include "src/tint/lang/core/builtin/function.h"
 #include "src/tint/lang/wgsl/sem/call_target.h"
 #include "src/tint/lang/wgsl/sem/pipeline_stage_set.h"
-#include "src/tint/utils/hash.h"
+#include "src/tint/utils/math/hash.h"
 
 namespace tint::sem {
 

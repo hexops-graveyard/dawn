@@ -23,8 +23,8 @@
 #include "src/tint/lang/wgsl/ast/diagnostic_control.h"
 #include "src/tint/lang/wgsl/ast/variable.h"
 #include "src/tint/lang/wgsl/sem/call.h"
-#include "src/tint/utils/unique_vector.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/unique_vector.h"
+#include "src/tint/utils/containers/vector.h"
 
 // Forward declarations
 namespace tint::ast {
@@ -49,8 +49,8 @@ using WorkgroupSize = std::array<std::optional<uint32_t>, 3>;
 /// Function holds the semantic information for function nodes.
 class Function final : public utils::Castable<Function, CallTarget> {
   public:
-    /// A vector of [Variable*, sem::BindingPoint] pairs
-    using VariableBindings = std::vector<std::pair<const Variable*, sem::BindingPoint>>;
+    /// A vector of [Variable*, BindingPoint] pairs
+    using VariableBindings = std::vector<std::pair<const Variable*, BindingPoint>>;
 
     /// Constructor
     /// @param declaration the ast::Function

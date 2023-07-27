@@ -17,11 +17,11 @@
 
 #include <vector>
 
+#include "src/tint/lang/core/type/sampler.h"
 #include "src/tint/lang/wgsl/sem/node.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/type/sampler.h"
-#include "src/tint/utils/hash.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/vector.h"
+#include "src/tint/utils/math/hash.h"
 
 namespace tint::sem {
 

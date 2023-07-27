@@ -20,24 +20,24 @@
 #include <utility>
 #include <vector>
 
+#include "src/tint/lang/core/type/array.h"
+#include "src/tint/lang/core/type/atomic.h"
+#include "src/tint/lang/core/type/reference.h"
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
 #include "src/tint/lang/wgsl/ast/unary_op.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/array.h"
-#include "src/tint/type/atomic.h"
-#include "src/tint/type/reference.h"
-#include "src/tint/utils/block_allocator.h"
-#include "src/tint/utils/hash.h"
-#include "src/tint/utils/map.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/utils/containers/map.h"
+#include "src/tint/utils/math/hash.h"
+#include "src/tint/utils/memory/block_allocator.h"
+#include "src/tint/utils/rtti/switch.h"
+#include "src/tint/utils/text/string_stream.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -669,7 +669,7 @@ struct DecomposeMemoryAccess::State {
     }
 };
 
-DecomposeMemoryAccess::Intrinsic::Intrinsic(ProgramID pid,
+DecomposeMemoryAccess::Intrinsic::Intrinsic(GenerationID pid,
                                             NodeID nid,
                                             Op o,
                                             DataType ty,

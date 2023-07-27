@@ -20,11 +20,11 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
 #include "src/tint/lang/wgsl/ast/transform/unshadow.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/function.h"
-#include "src/tint/program_builder.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -180,7 +180,7 @@ struct CanonicalizeEntryPointIO::State {
     /// @param attr the input attribute
     /// @returns the builtin value of the attribute
     builtin::BuiltinValue BuiltinOf(const BuiltinAttribute* attr) {
-        if (attr->program_id == ctx.dst->ID()) {
+        if (attr->generation_id == ctx.dst->ID()) {
             // attr belongs to the target program.
             // Obtain the builtin value from #builtin_attrs.
             if (auto b = builtin_attrs.Get(attr)) {

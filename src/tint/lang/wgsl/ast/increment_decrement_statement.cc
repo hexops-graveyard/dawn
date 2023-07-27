@@ -14,19 +14,19 @@
 
 #include "src/tint/lang/wgsl/ast/increment_decrement_statement.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::IncrementDecrementStatement);
 
 namespace tint::ast {
 
-IncrementDecrementStatement::IncrementDecrementStatement(ProgramID pid,
+IncrementDecrementStatement::IncrementDecrementStatement(GenerationID pid,
                                                          NodeID nid,
                                                          const Source& src,
                                                          const Expression* l,
                                                          bool inc)
     : Base(pid, nid, src), lhs(l), increment(inc) {
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, lhs, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, lhs, generation_id);
 }
 
 IncrementDecrementStatement::~IncrementDecrementStatement() = default;

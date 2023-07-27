@@ -17,15 +17,15 @@
 #include <algorithm>
 #include <string>
 
-#include "src/tint/builtin/builtin.h"
+#include "src/tint/lang/core/builtin/builtin.h"
+#include "src/tint/lang/core/type/atomic.h"
+#include "src/tint/lang/core/type/depth_multisampled_texture.h"
+#include "src/tint/lang/core/type/reference.h"
+#include "src/tint/lang/core/type/sampler.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/for_loop_statement.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/type/atomic.h"
-#include "src/tint/type/depth_multisampled_texture.h"
-#include "src/tint/type/reference.h"
-#include "src/tint/type/sampler.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::Transform);
 

@@ -137,6 +137,7 @@ void PhysicalDevice::InitializeSupportedFeaturesImpl() {
     EnableFeature(Feature::DepthClipControl);
     EnableFeature(Feature::TextureCompressionBC);
     EnableFeature(Feature::SurfaceCapabilities);
+    EnableFeature(Feature::D3D11MultithreadProtected);
 
     // To import multi planar textures, we need to at least tier 2 support.
     if (mDeviceInfo.supportsSharedResourceCapabilityTier2) {
@@ -232,7 +233,6 @@ void PhysicalDevice::SetupBackendAdapterToggles(TogglesState* adpterToggles) con
 void PhysicalDevice::SetupBackendDeviceToggles(TogglesState* deviceToggles) const {
     // D3D11 can only clear RTV with float values.
     deviceToggles->Default(Toggle::ApplyClearBigIntegerColorValueWithDraw, true);
-    // TODO(dawn:1848): Support depth-stencil texture write.
     deviceToggles->Default(Toggle::UseBlitForBufferToStencilTextureCopy, true);
 }
 

@@ -44,11 +44,6 @@ vars = {
   'reclient_package': 'infra/rbe/client/',
   # reclient CIPD package version
   'reclient_version': 're_client_version:0.108.0.7cdbbe9-gomaip',
-
-  # Fetch siso CIPD package
-  'checkout_siso': False,
-  # siso CIPD package version.
-  'siso_version': 'git_revision:06bae0e9d7265e972358b23f77d9867930061db0',
 }
 
 deps = {
@@ -90,12 +85,24 @@ deps = {
     'condition': 'dawn_standalone and host_os == "win"',
   },
 
+  # TODO(chromium:1458042): Remove these paths, when chromium builds files
+  # have moved to third_party/libcxx/lib*/trunk paths.
   'buildtools/third_party/libc++/trunk': {
     'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@0e4617cf8c09a8e2b6704a51a8a0a9560715cf70',
     'condition': 'dawn_standalone',
   },
 
   'buildtools/third_party/libc++abi/trunk': {
+    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxxabi.git@307bd163607c315d46103ebe1d68aab44bf93986',
+    'condition': 'dawn_standalone',
+  },
+
+  'third_party/libcxx/libc++/trunk': {
+    'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@0e4617cf8c09a8e2b6704a51a8a0a9560715cf70',
+    'condition': 'dawn_standalone',
+  },
+
+  'third_party/libcxx/libc++abi/trunk': {
     'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxxabi.git@307bd163607c315d46103ebe1d68aab44bf93986',
     'condition': 'dawn_standalone',
   },
@@ -153,17 +160,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@ef4327f6aaedd20704a79a690bca354b33498265',
+    'url': '{chromium_git}/angle/angle@58cb5c8396a330ed6d81257b17dea63dc018825f',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@4e401427f8dd799b17ac6c805391e2da1e017672',
+    'url': '{swiftshader_git}/SwiftShader@9fbca2df22a8e71e3116a576e26cf9b3d7915c08',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@7f74d379edd8b6381e230ee3ac6a823d0f41c893',
+    'url': '{chromium_git}/vulkan-deps@1b02b38215242185e701d0da6f3cf84bc9cef2be',
     'condition': 'dawn_standalone',
   },
 
@@ -178,7 +185,7 @@ deps = {
   },
 
   'third_party/dxc': {
-    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@5d796bf3f777ef263863de390fbb6fcc22041c80',
+    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@b97f9b9388072cf0581c4e0e5ea8d9d586203b1b',
   },
   'third_party/dxheaders': {
     # The non-Windows build of DXC depends on DirectX-Headers, and at a specific commit (not ToT)
@@ -188,7 +195,7 @@ deps = {
 
   # WebGPU CTS - not used directly by Dawn, only transitively by Chromium.
   'third_party/webgpu-cts': {
-    'url': '{chromium_git}/external/github.com/gpuweb/cts@82a512494491d0e22a166d5291c86a4bf5a27172',
+    'url': '{chromium_git}/external/github.com/gpuweb/cts@02f3426192fcb2c84f757d2d1887fd982a974dca',
     'condition': 'build_with_chromium',
   },
 
@@ -243,16 +250,6 @@ deps = {
     ],
     'dep_type': 'cipd',
     'condition': 'dawn_standalone',
-  },
-  'third_party/siso': {
-    'packages': [
-      {
-        'package': 'infra/build/siso/${{platform}}',
-        'version': Var('siso_version'),
-      }
-    ],
-    'dep_type': 'cipd',
-    'condition': 'checkout_siso and dawn_standalone',
   },
 
   # Misc dependencies inherited from Tint
@@ -476,34 +473,23 @@ hooks = [
                 '-o', 'third_party/node/node.exe',
     ],
   },
-#  {
-#    # Download remote exec cfg files
-#    'name': 'fetch_reclient_cfgs',
-#    'pattern': '.',
-#    'condition': 'download_remoteexec_cfg',
-#    'action': ['python3',
-#               'buildtools/reclient_cfgs/fetch_reclient_cfgs.py',
-#               '--rbe_instance',
-#               Var('rbe_instance'),
-#               '--reproxy_cfg_template',
-#               'reproxy.cfg.template',
-#               '--rewrapper_cfg_project',
-#               Var('rewrapper_cfg_project'),
-#               '--quiet',
-#               '--hook',
-#               ],
-#  },
-  # Configure Siso
-  {
-    'name': 'configure_siso',
-    'pattern': '.',
-    'condition': 'checkout_siso and dawn_standalone',
-    'action': ['python3',
-               'build/config/siso/configure_siso.py',
-               '--rbe_instance',
-               Var('rbe_instance'),
-               ],
-  },
+ {
+   # Download remote exec cfg files
+   'name': 'fetch_reclient_cfgs',
+   'pattern': '.',
+   'condition': 'download_remoteexec_cfg and dawn_standalone',
+   'action': ['python3',
+              'buildtools/reclient_cfgs/fetch_reclient_cfgs.py',
+              '--rbe_instance',
+              Var('rbe_instance'),
+              '--reproxy_cfg_template',
+              'reproxy.cfg.template',
+              '--rewrapper_cfg_project',
+              Var('rewrapper_cfg_project'),
+              '--quiet',
+              '--hook',
+              ],
+ },
 ]
 
 recursedeps = [

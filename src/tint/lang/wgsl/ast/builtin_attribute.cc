@@ -16,18 +16,18 @@
 
 #include <string>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BuiltinAttribute);
 
 namespace tint::ast {
 
-BuiltinAttribute::BuiltinAttribute(ProgramID pid,
+BuiltinAttribute::BuiltinAttribute(GenerationID pid,
                                    NodeID nid,
                                    const Source& src,
                                    const Expression* b)
     : Base(pid, nid, src), builtin(b) {
-    TINT_ASSERT_PROGRAM_IDS_EQUAL(AST, b, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL(AST, b, generation_id);
 }
 
 BuiltinAttribute::~BuiltinAttribute() = default;

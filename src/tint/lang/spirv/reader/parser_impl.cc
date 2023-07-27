@@ -20,18 +20,18 @@
 #include <utility>
 
 #include "source/opt/build_module.h"
+#include "src/tint/lang/core/type/depth_texture.h"
+#include "src/tint/lang/core/type/multisampled_texture.h"
+#include "src/tint/lang/core/type/sampled_texture.h"
+#include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/spirv/reader/function.h"
 #include "src/tint/lang/wgsl/ast/bitcast_expression.h"
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
 #include "src/tint/lang/wgsl/ast/id_attribute.h"
 #include "src/tint/lang/wgsl/ast/interpolate_attribute.h"
 #include "src/tint/lang/wgsl/ast/unary_op_expression.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/depth_texture.h"
-#include "src/tint/type/multisampled_texture.h"
-#include "src/tint/type/sampled_texture.h"
-#include "src/tint/type/texture_dimension.h"
-#include "src/tint/utils/unique_vector.h"
+#include "src/tint/utils/containers/unique_vector.h"
+#include "src/tint/utils/rtti/switch.h"
 
 namespace tint::reader::spirv {
 
@@ -277,8 +277,7 @@ TypedExpression::TypedExpression(const Type* type_in, const ast::Expression* exp
     : type(type_in), expr(expr_in) {}
 
 ParserImpl::ParserImpl(const std::vector<uint32_t>& spv_binary)
-    : Reader(),
-      spv_binary_(spv_binary),
+    : spv_binary_(spv_binary),
       fail_stream_(&success_, &errors_),
       namer_(fail_stream_),
       enum_converter_(fail_stream_),
@@ -331,7 +330,7 @@ bool ParserImpl::Parse() {
     return success_;
 }
 
-Program ParserImpl::program() {
+Program ParserImpl::Program() {
     // TODO(dneto): Should we clear out spv_binary_ here, to reduce
     // memory usage?
     return tint::Program(std::move(builder_));

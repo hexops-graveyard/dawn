@@ -272,7 +272,23 @@ MaybeError ValidateMultisampleState(const DeviceBase* device, const MultisampleS
     return {};
 }
 
-MaybeError ValidateBlendComponent(BlendComponent blendComponent) {
+MaybeError ValidateBlendComponent(BlendComponent blendComponent, bool dualSourceBlendingEnabled) {
+    if (!dualSourceBlendingEnabled) {
+        DAWN_INVALID_IF(blendComponent.srcFactor == wgpu::BlendFactor::Src1 ||
+                            blendComponent.srcFactor == wgpu::BlendFactor::OneMinusSrc1 ||
+                            blendComponent.srcFactor == wgpu::BlendFactor::Src1Alpha ||
+                            blendComponent.srcFactor == wgpu::BlendFactor::OneMinusSrc1Alpha,
+                        "Source blend factor is %s while dualSourceBlending is not enabled.",
+                        blendComponent.srcFactor);
+
+        DAWN_INVALID_IF(blendComponent.dstFactor == wgpu::BlendFactor::Src1 ||
+                            blendComponent.dstFactor == wgpu::BlendFactor::OneMinusSrc1 ||
+                            blendComponent.dstFactor == wgpu::BlendFactor::Src1Alpha ||
+                            blendComponent.dstFactor == wgpu::BlendFactor::OneMinusSrc1Alpha,
+                        "Destination blend factor is %s while dualSourceBlending is not enabled.",
+                        blendComponent.dstFactor);
+    }
+
     if (blendComponent.operation == wgpu::BlendOperation::Min ||
         blendComponent.operation == wgpu::BlendOperation::Max) {
         DAWN_INVALID_IF(blendComponent.srcFactor != wgpu::BlendFactor::One ||
@@ -291,8 +307,10 @@ MaybeError ValidateBlendState(DeviceBase* device, const BlendState* descriptor) 
     DAWN_TRY(ValidateBlendOperation(descriptor->color.operation));
     DAWN_TRY(ValidateBlendFactor(descriptor->color.srcFactor));
     DAWN_TRY(ValidateBlendFactor(descriptor->color.dstFactor));
-    DAWN_TRY(ValidateBlendComponent(descriptor->alpha));
-    DAWN_TRY(ValidateBlendComponent(descriptor->color));
+
+    bool dualSourceBlendingEnabled = device->HasFeature(Feature::DualSourceBlending);
+    DAWN_TRY(ValidateBlendComponent(descriptor->alpha, dualSourceBlendingEnabled));
+    DAWN_TRY(ValidateBlendComponent(descriptor->color, dualSourceBlendingEnabled));
 
     return {};
 }
@@ -807,10 +825,7 @@ RenderPipelineBase::RenderPipelineBase(DeviceBase* device,
 RenderPipelineBase::~RenderPipelineBase() = default;
 
 void RenderPipelineBase::DestroyImpl() {
-    if (IsCachedReference()) {
-        // Do not uncache the actual cached object if we are a blueprint.
-        GetDevice()->UncacheRenderPipeline(this);
-    }
+    Uncache();
 
     // Remove reference to the attachment state so that we don't have lingering references to
     // it preventing it from being uncached in the device.

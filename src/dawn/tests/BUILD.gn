@@ -653,17 +653,14 @@ source_set("white_box_tests_sources") {
   if (dawn_enable_vulkan) {
     deps += [ "${dawn_vulkan_headers_dir}:vulkan_headers" ]
 
-    if (is_chromeos) {
+    if (is_chromeos || is_linux) {
       sources += [
         "white_box/VulkanImageWrappingTests.cpp",
         "white_box/VulkanImageWrappingTests.h",
         "white_box/VulkanImageWrappingTests_DmaBuf.cpp",
-      ]
-    } else if (is_linux) {
-      sources += [
-        "white_box/VulkanImageWrappingTests.cpp",
-        "white_box/VulkanImageWrappingTests.h",
+        "white_box/VulkanImageWrappingTests_DmaBuf.h",
         "white_box/VulkanImageWrappingTests_OpaqueFD.cpp",
+        "white_box/VulkanImageWrappingTests_OpaqueFD.h",
       ]
     }
 
@@ -702,6 +699,18 @@ source_set("white_box_tests_sources") {
       "white_box/GPUTimestampCalibrationTests_Metal.mm",
       "white_box/MetalAutoreleasePoolTests.mm",
     ]
+
+    # If a "build with ARC" config is present, remove it.
+    # TODO(https://crbug.com/1280317): Remove the "enable_arc2" variant
+    # when ARC migration in the Chromium repo is complete.
+    if (filter_include(configs, [ "//build/config/compiler:enable_arc" ]) !=
+        []) {
+      configs -= [ "//build/config/compiler:enable_arc" ]
+    }
+    if (filter_include(configs, [ "//build/config/compiler:enable_arc2" ]) !=
+        []) {
+      configs -= [ "//build/config/compiler:enable_arc2" ]
+    }
   }
 
   if (dawn_enable_opengles) {
@@ -730,7 +739,7 @@ dawn_test("dawn_end2end_tests") {
     sources += [ "End2EndTestsMain.cpp" ]
   }
 
-  if (is_chromeos) {
+  if (is_chromeos || is_linux) {
     libs += [ "gbm" ]
   }
 }

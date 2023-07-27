@@ -22,7 +22,7 @@
 #include "spirv-tools/libspirv.hpp"
 #endif
 
-#include "src/tint/utils/string.h"
+#include "src/tint/utils/text/string.h"
 
 namespace tint::cmd {
 namespace {
@@ -86,8 +86,8 @@ void PrintBindings(tint::inspector::Inspector& inspector, const std::string& ep_
 
 void PrintWGSL(std::ostream& out, const tint::Program& program) {
 #if TINT_BUILD_WGSL_WRITER
-    tint::writer::wgsl::Options options;
-    auto result = tint::writer::wgsl::Generate(&program, options);
+    tint::wgsl::writer::Options options;
+    auto result = tint::wgsl::writer::Generate(&program, options);
     out << std::endl << result.wgsl << std::endl;
 #else
     (void)out;
@@ -113,7 +113,7 @@ ProgramInfo LoadProgramInfo(const LoadProgramOptions& opts) {
             }
             source_file = std::make_unique<tint::Source::File>(
                 opts.filename, std::string(data.begin(), data.end()));
-            program = std::make_unique<tint::Program>(tint::reader::wgsl::Parse(source_file.get()));
+            program = std::make_unique<tint::Program>(tint::wgsl::reader::Parse(source_file.get()));
             break;
 #else
             std::cerr << "Tint not built with the WGSL reader enabled" << std::endl;

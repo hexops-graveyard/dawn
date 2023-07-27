@@ -14,7 +14,7 @@
 
 #include "gtest/gtest-spi.h"
 
-#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/wgsl/ast/test_helper.h"
 
 namespace tint::ast {
@@ -36,7 +36,7 @@ TEST_F(BuiltinAttributeTest, Assert_Null_Builtin) {
         "internal compiler error");
 }
 
-TEST_F(BuiltinAttributeTest, Assert_DifferentProgramID_Builtin) {
+TEST_F(BuiltinAttributeTest, Assert_DifferentGenerationID_Builtin) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b1;

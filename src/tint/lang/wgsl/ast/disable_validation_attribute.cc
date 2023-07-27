@@ -13,14 +13,14 @@
 // limitations under the License.
 
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
-#include "src/tint/clone_context.h"
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::DisableValidationAttribute);
 
 namespace tint::ast {
 
-DisableValidationAttribute::DisableValidationAttribute(ProgramID pid,
+DisableValidationAttribute::DisableValidationAttribute(GenerationID pid,
                                                        NodeID nid,
                                                        DisabledValidation val)
     : Base(pid, nid, utils::Empty), validation(val) {}

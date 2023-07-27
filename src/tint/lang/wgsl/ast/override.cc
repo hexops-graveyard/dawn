@@ -16,13 +16,13 @@
 
 #include <utility>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Override);
 
 namespace tint::ast {
 
-Override::Override(ProgramID pid,
+Override::Override(GenerationID pid,
                    NodeID nid,
                    const Source& src,
                    const Identifier* n,

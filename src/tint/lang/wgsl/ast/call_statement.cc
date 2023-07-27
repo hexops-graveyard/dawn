@@ -14,19 +14,19 @@
 
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CallStatement);
 
 namespace tint::ast {
 
-CallStatement::CallStatement(ProgramID pid,
+CallStatement::CallStatement(GenerationID pid,
                              NodeID nid,
                              const Source& src,
                              const CallExpression* call)
     : Base(pid, nid, src), expr(call) {
     TINT_ASSERT(AST, expr);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, expr, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, expr, generation_id);
 }
 
 CallStatement::~CallStatement() = default;

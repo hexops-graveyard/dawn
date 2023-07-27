@@ -18,27 +18,27 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/transform/test_helper.h"
-#include "src/tint/utils/string.h"
+#include "src/tint/utils/text/string.h"
 
 namespace tint::ast::transform {
 namespace {
 
-/// @returns a Transform::DataMap with DirectVariableAccess::Config::transform_private enabled.
-static Transform::DataMap EnablePrivate() {
+/// @returns a DataMap with DirectVariableAccess::Config::transform_private enabled.
+static DataMap EnablePrivate() {
     DirectVariableAccess::Options opts;
     opts.transform_private = true;
 
-    Transform::DataMap inputs;
+    DataMap inputs;
     inputs.Add<DirectVariableAccess::Config>(opts);
     return inputs;
 }
 
-/// @returns a Transform::DataMap with DirectVariableAccess::Config::transform_function enabled.
-static Transform::DataMap EnableFunction() {
+/// @returns a DataMap with DirectVariableAccess::Config::transform_function enabled.
+static DataMap EnableFunction() {
     DirectVariableAccess::Options opts;
     opts.transform_function = true;
 
-    Transform::DataMap inputs;
+    DataMap inputs;
     inputs.Add<DirectVariableAccess::Config>(opts);
     return inputs;
 }

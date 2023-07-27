@@ -14,7 +14,7 @@
 
 #include "gtest/gtest-spi.h"
 
-#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/wgsl/ast/id_attribute.h"
 #include "src/tint/lang/wgsl/ast/test_helper.h"
 
@@ -73,7 +73,7 @@ TEST_F(VariableTest, Assert_Null_Name) {
         "internal compiler error");
 }
 
-TEST_F(VariableTest, Assert_DifferentProgramID_Symbol) {
+TEST_F(VariableTest, Assert_DifferentGenerationID_Symbol) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b1;
@@ -83,7 +83,7 @@ TEST_F(VariableTest, Assert_DifferentProgramID_Symbol) {
         "internal compiler error");
 }
 
-TEST_F(VariableTest, Assert_DifferentProgramID_Initializer) {
+TEST_F(VariableTest, Assert_DifferentGenerationID_Initializer) {
     EXPECT_FATAL_FAILURE(
         {
             ProgramBuilder b1;

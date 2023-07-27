@@ -15,8 +15,8 @@
 #include "src/tint/lang/spirv/reader/namer.h"
 
 #include "gmock/gmock.h"
-#include "src/tint/builtin/function.h"
-#include "src/tint/utils/string_stream.h"
+#include "src/tint/lang/core/builtin/function.h"
+#include "src/tint/utils/text/string_stream.h"
 
 namespace tint::reader::spirv {
 namespace {

@@ -18,8 +18,8 @@
 #include "src/tint/lang/wgsl/ast/diagnostic_control.h"
 #include "src/tint/lang/wgsl/sem/behavior.h"
 #include "src/tint/lang/wgsl/sem/node.h"
-#include "src/tint/symbol.h"
-#include "src/tint/utils/hashmap.h"
+#include "src/tint/utils/containers/hashmap.h"
+#include "src/tint/utils/text/symbol.h"
 
 // Forward declarations
 namespace tint::ast {

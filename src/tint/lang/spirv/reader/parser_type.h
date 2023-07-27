@@ -19,15 +19,15 @@
 #include <string>
 #include <vector>
 
-#include "src/tint/builtin/access.h"
-#include "src/tint/builtin/address_space.h"
-#include "src/tint/builtin/texel_format.h"
+#include "src/tint/lang/core/builtin/access.h"
+#include "src/tint/lang/core/builtin/address_space.h"
+#include "src/tint/lang/core/builtin/texel_format.h"
+#include "src/tint/lang/core/type/sampler_kind.h"
+#include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/wgsl/ast/type.h"
-#include "src/tint/symbol.h"
-#include "src/tint/type/sampler_kind.h"
-#include "src/tint/type/texture_dimension.h"
-#include "src/tint/utils/block_allocator.h"
-#include "src/tint/utils/castable.h"
+#include "src/tint/utils/memory/block_allocator.h"
+#include "src/tint/utils/rtti/castable.h"
+#include "src/tint/utils/text/symbol.h"
 
 // Forward declarations
 namespace tint {

@@ -17,20 +17,20 @@
 #include <unordered_map>
 #include <utility>
 
+#include "src/tint/lang/core/type/reference.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/reference.h"
-#include "src/tint/utils/hash.h"
-#include "src/tint/utils/map.h"
+#include "src/tint/utils/containers/map.h"
+#include "src/tint/utils/math/hash.h"
+#include "src/tint/utils/rtti/switch.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::CalculateArrayLength);
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::CalculateArrayLength::BufferSizeIntrinsic);
@@ -71,7 +71,7 @@ struct ArrayUsage {
 
 }  // namespace
 
-CalculateArrayLength::BufferSizeIntrinsic::BufferSizeIntrinsic(ProgramID pid, NodeID nid)
+CalculateArrayLength::BufferSizeIntrinsic::BufferSizeIntrinsic(GenerationID pid, NodeID nid)
     : Base(pid, nid, utils::Empty) {}
 CalculateArrayLength::BufferSizeIntrinsic::~BufferSizeIntrinsic() = default;
 std::string CalculateArrayLength::BufferSizeIntrinsic::InternalName() const {

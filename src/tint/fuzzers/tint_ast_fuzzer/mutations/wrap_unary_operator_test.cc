@@ -20,9 +20,9 @@
 #include "src/tint/fuzzers/tint_ast_fuzzer/mutator.h"
 #include "src/tint/fuzzers/tint_ast_fuzzer/node_id_map.h"
 #include "src/tint/fuzzers/tint_ast_fuzzer/probability_context.h"
-#include "src/tint/lang/wgsl/ast_writer/generator.h"
-#include "src/tint/lang/wgsl/reader/parser.h"
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/reader/reader.h"
+#include "src/tint/lang/wgsl/writer/writer.h"
 
 namespace tint::fuzzers::ast_fuzzer {
 namespace {
@@ -37,7 +37,7 @@ TEST(WrapUnaryOperatorTest, Applicable1) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -54,8 +54,8 @@ TEST(WrapUnaryOperatorTest, Applicable1) {
         node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -75,7 +75,7 @@ TEST(WrapUnaryOperatorTest, Applicable2) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -95,8 +95,8 @@ TEST(WrapUnaryOperatorTest, Applicable2) {
         node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -114,7 +114,7 @@ TEST(WrapUnaryOperatorTest, Applicable3) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -133,8 +133,8 @@ TEST(WrapUnaryOperatorTest, Applicable3) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -153,7 +153,7 @@ TEST(WrapUnaryOperatorTest, Applicable4) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -175,8 +175,8 @@ TEST(WrapUnaryOperatorTest, Applicable4) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() -> vec2<bool> {
@@ -194,7 +194,7 @@ TEST(WrapUnaryOperatorTest, Applicable5) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -216,8 +216,8 @@ TEST(WrapUnaryOperatorTest, Applicable5) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -234,7 +234,7 @@ TEST(WrapUnaryOperatorTest, Applicable6) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -255,8 +255,8 @@ TEST(WrapUnaryOperatorTest, Applicable6) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -276,7 +276,7 @@ TEST(WrapUnaryOperatorTest, Applicable7) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -298,8 +298,8 @@ TEST(WrapUnaryOperatorTest, Applicable7) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -319,7 +319,7 @@ TEST(WrapUnaryOperatorTest, Applicable8) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -340,8 +340,8 @@ TEST(WrapUnaryOperatorTest, Applicable8) {
                            node_id_map, &program, &node_id_map, nullptr));
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
-    writer::wgsl::Options options;
-    auto result = writer::wgsl::Generate(&program, options);
+    wgsl::writer::Options options;
+    auto result = wgsl::writer::Generate(&program, options);
     ASSERT_TRUE(result.success) << result.error;
 
     std::string expected_shader = R"(fn main() {
@@ -358,7 +358,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable1) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -387,7 +387,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable2) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -415,7 +415,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable3) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -444,7 +444,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable4) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -473,7 +473,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable5) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -500,7 +500,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable6) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);
@@ -529,7 +529,7 @@ TEST(WrapUnaryOperatorTest, NotApplicable_CallStmt) {
     }
   )";
     Source::File file("test.wgsl", content);
-    auto program = reader::wgsl::Parse(&file);
+    auto program = wgsl::reader::Parse(&file);
     ASSERT_TRUE(program.IsValid()) << program.Diagnostics().str();
 
     NodeIdMap node_id_map(program);

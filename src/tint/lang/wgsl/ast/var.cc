@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/var.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Var);
 
 namespace tint::ast {
 
-Var::Var(ProgramID pid,
+Var::Var(GenerationID pid,
          NodeID nid,
          const Source& src,
          const Identifier* n,

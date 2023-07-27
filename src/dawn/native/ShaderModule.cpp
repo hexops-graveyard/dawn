@@ -301,7 +301,7 @@ EntryPointMetadata::Override::Type FromTintOverrideType(tint::inspector::Overrid
 ResultOrError<tint::Program> ParseWGSL(const tint::Source::File* file,
                                        OwnedCompilationMessages* outMessages) {
 #if TINT_BUILD_WGSL_READER
-    tint::Program program = tint::reader::wgsl::Parse(file);
+    tint::Program program = tint::wgsl::reader::Parse(file);
     if (outMessages != nullptr) {
         DAWN_TRY(outMessages->AddMessages(program.Diagnostics()));
     }
@@ -958,8 +958,8 @@ MaybeError ValidateAndParseShaderModule(DeviceBase* device,
         tint::Program program;
         DAWN_TRY_ASSIGN(program, ParseSPIRV(spirv, outMessages, spirvOptions));
 
-        tint::writer::wgsl::Options options;
-        auto result = tint::writer::wgsl::Generate(&program, options);
+        tint::wgsl::writer::Options options;
+        auto result = tint::wgsl::writer::Generate(&program, options);
         DAWN_INVALID_IF(!result.success, "Tint WGSL failure: Generator: %s", result.error);
 
         newWgslCode = std::move(result.wgsl);
@@ -1015,12 +1015,12 @@ RequiredBufferSizes ComputeRequiredBufferSizesForLayout(const EntryPointMetadata
     return bufferSizes;
 }
 
-ResultOrError<tint::Program> RunTransforms(tint::transform::Manager* transformManager,
+ResultOrError<tint::Program> RunTransforms(tint::ast::transform::Manager* transformManager,
                                            const tint::Program* program,
-                                           const tint::transform::DataMap& inputs,
-                                           tint::transform::DataMap* outputs,
+                                           const tint::ast::transform::DataMap& inputs,
+                                           tint::ast::transform::DataMap* outputs,
                                            OwnedCompilationMessages* outMessages) {
-    tint::transform::DataMap transform_outputs;
+    tint::ast::transform::DataMap transform_outputs;
     tint::Program result = transformManager->Run(program, inputs, transform_outputs);
     if (outMessages != nullptr) {
         DAWN_TRY(outMessages->AddMessages(result.Diagnostics()));
@@ -1124,10 +1124,7 @@ ShaderModuleBase::ShaderModuleBase(DeviceBase* device, ObjectBase::ErrorTag tag,
 ShaderModuleBase::~ShaderModuleBase() = default;
 
 void ShaderModuleBase::DestroyImpl() {
-    if (IsCachedReference()) {
-        // Do not uncache the actual cached object if we are a blueprint.
-        GetDevice()->UncacheShaderModule(this);
-    }
+    Uncache();
 }
 
 // static

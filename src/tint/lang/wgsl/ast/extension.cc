@@ -14,7 +14,7 @@
 
 #include "src/tint/lang/wgsl/ast/extension.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 //! @cond Doxygen_Suppress
 // Doxygen gets confused with tint::ast::Extension and tint::builtin::Extension
@@ -23,7 +23,7 @@ TINT_INSTANTIATE_TYPEINFO(tint::ast::Extension);
 
 namespace tint::ast {
 
-Extension::Extension(ProgramID pid, NodeID nid, const Source& src, builtin::Extension ext)
+Extension::Extension(GenerationID pid, NodeID nid, const Source& src, builtin::Extension ext)
     : Base(pid, nid, src), name(ext) {}
 
 Extension::~Extension() = default;

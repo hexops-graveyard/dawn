@@ -14,13 +14,16 @@
 
 #include "src/tint/lang/wgsl/ast/bool_literal_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BoolLiteralExpression);
 
 namespace tint::ast {
 
-BoolLiteralExpression::BoolLiteralExpression(ProgramID pid, NodeID nid, const Source& src, bool val)
+BoolLiteralExpression::BoolLiteralExpression(GenerationID pid,
+                                             NodeID nid,
+                                             const Source& src,
+                                             bool val)
     : Base(pid, nid, src), value(val) {}
 
 BoolLiteralExpression::~BoolLiteralExpression() = default;

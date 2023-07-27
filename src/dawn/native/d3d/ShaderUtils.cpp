@@ -142,8 +142,8 @@ MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
     std::ostringstream errorStream;
     errorStream << "Tint HLSL failure:" << std::endl;
 
-    tint::transform::Manager transformManager;
-    tint::transform::DataMap transformInputs;
+    tint::ast::transform::Manager transformManager;
+    tint::ast::transform::DataMap transformInputs;
 
     // Run before the renamer so that the entry point name matches `entryPointName` still.
     transformManager.Add<tint::ast::transform::SingleEntryPoint>();
@@ -172,7 +172,7 @@ MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
     }
 
     tint::Program transformedProgram;
-    tint::transform::DataMap transformOutputs;
+    tint::ast::transform::DataMap transformOutputs;
     {
         TRACE_EVENT0(tracePlatform.UnsafeGetValue(), General, "RunTransforms");
         DAWN_TRY_ASSIGN(transformedProgram,
@@ -212,7 +212,7 @@ MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
         }
     }
 
-    tint::writer::hlsl::Options options;
+    tint::hlsl::writer::Options options;
     options.disable_robustness = !r.isRobustnessEnabled;
     options.disable_workgroup_init = r.disableWorkgroupInit;
     options.binding_remapper_options = r.bindingRemapper;
@@ -220,7 +220,7 @@ MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
 
     if (r.usesNumWorkgroups) {
         options.root_constant_binding_point =
-            tint::writer::BindingPoint{r.numWorkgroupsRegisterSpace, r.numWorkgroupsShaderRegister};
+            tint::BindingPoint{r.numWorkgroupsRegisterSpace, r.numWorkgroupsShaderRegister};
     }
     // TODO(dawn:549): HLSL generation outputs the indices into the
     // array_length_from_uniform buffer that were actually used. When the blob cache can
@@ -242,8 +242,8 @@ MaybeError TranslateToHLSL(d3d::HlslCompilationRequest r,
     options.binding_points_ignored_in_robustness_transform =
         std::move(r.bindingPointsIgnoredInRobustnessTransform);
 
-    TRACE_EVENT0(tracePlatform.UnsafeGetValue(), General, "tint::writer::hlsl::Generate");
-    auto result = tint::writer::hlsl::Generate(&transformedProgram, options);
+    TRACE_EVENT0(tracePlatform.UnsafeGetValue(), General, "tint::hlsl::writer::Generate");
+    auto result = tint::hlsl::writer::Generate(&transformedProgram, options);
     DAWN_INVALID_IF(!result.success, "An error occured while generating HLSL: %s", result.error);
 
     compiledShader->usesVertexIndex = usesVertexIndex;

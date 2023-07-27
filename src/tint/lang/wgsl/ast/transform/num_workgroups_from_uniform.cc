@@ -19,11 +19,11 @@
 #include <unordered_set>
 #include <utility>
 
-#include "src/tint/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/wgsl/ast/transform/canonicalize_entry_point_io.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/function.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/utils/hash.h"
+#include "src/tint/utils/math/hash.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::NumWorkgroupsFromUniform);
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::NumWorkgroupsFromUniform::Config);
@@ -185,7 +185,7 @@ Transform::ApplyResult NumWorkgroupsFromUniform::Apply(const Program* src,
     return Program(std::move(b));
 }
 
-NumWorkgroupsFromUniform::Config::Config(std::optional<sem::BindingPoint> ubo_bp)
+NumWorkgroupsFromUniform::Config::Config(std::optional<BindingPoint> ubo_bp)
     : ubo_binding(ubo_bp) {}
 NumWorkgroupsFromUniform::Config::Config(const Config&) = default;
 NumWorkgroupsFromUniform::Config::~Config() = default;

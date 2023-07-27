@@ -16,13 +16,13 @@
 
 #include <utility>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CaseStatement);
 
 namespace tint::ast {
 
-CaseStatement::CaseStatement(ProgramID pid,
+CaseStatement::CaseStatement(GenerationID pid,
                              NodeID nid,
                              const Source& src,
                              utils::VectorRef<const CaseSelector*> s,
@@ -30,10 +30,10 @@ CaseStatement::CaseStatement(ProgramID pid,
     : Base(pid, nid, src), selectors(std::move(s)), body(b) {
     TINT_ASSERT(AST, body);
     TINT_ASSERT(AST, !selectors.IsEmpty());
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, body, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
     for (auto* selector : selectors) {
         TINT_ASSERT(AST, selector);
-        TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, selector, program_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, selector, generation_id);
     }
 }
 

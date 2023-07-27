@@ -21,7 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/utils/compiler_macros.h"
+#include "src/tint/utils/macros/compiler.h"
 
 TINT_BEGIN_DISABLE_WARNING(NEWLINE_EOF);
 TINT_BEGIN_DISABLE_WARNING(OLD_STYLE_CAST);
@@ -77,7 +77,7 @@ class ParserImplWrapperForTest {
 
     /// @returns the program. The program builder in the parser will be reset
     /// after this.
-    Program program() { return impl_.program(); }
+    Program program() { return impl_.Program(); }
 
     /// @returns the namer object
     Namer& namer() { return impl_.namer(); }

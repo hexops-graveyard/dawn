@@ -17,13 +17,13 @@
 #include <string>
 #include <utility>
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::DiagnosticAttribute);
 
 namespace tint::ast {
 
-DiagnosticAttribute::DiagnosticAttribute(ProgramID pid,
+DiagnosticAttribute::DiagnosticAttribute(GenerationID pid,
                                          NodeID nid,
                                          const Source& src,
                                          DiagnosticControl&& dc)

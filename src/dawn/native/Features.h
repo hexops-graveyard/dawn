@@ -50,6 +50,8 @@ enum class Feature {
     SurfaceCapabilities,
     TransientAttachments,
     MSAARenderToSingleSampled,
+    DualSourceBlending,
+    D3D11MultithreadProtected,
 
     EnumCount,
     InvalidEnum = EnumCount,

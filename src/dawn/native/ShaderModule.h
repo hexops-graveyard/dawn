@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "dawn/common/Constants.h"
+#include "dawn/common/ContentLessObjectCacheable.h"
 #include "dawn/common/ityp_array.h"
 #include "dawn/native/BindingInfo.h"
 #include "dawn/native/CachedObject.h"
@@ -45,14 +46,11 @@ namespace tint {
 class Program;
 
 namespace ast::transform {
+class DataMap;
+class Manager;
 class Transform;
 class VertexPulling;
 }  // namespace ast::transform
-
-namespace transform {
-class DataMap;
-class Manager;
-}  // namespace transform
 
 }  // namespace tint
 
@@ -121,10 +119,10 @@ ResultOrError<Extent3D> ValidateComputeStageWorkgroupSize(
 
 RequiredBufferSizes ComputeRequiredBufferSizesForLayout(const EntryPointMetadata& entryPoint,
                                                         const PipelineLayoutBase* layout);
-ResultOrError<tint::Program> RunTransforms(tint::transform::Manager* transformManager,
+ResultOrError<tint::Program> RunTransforms(tint::ast::transform::Manager* transformManager,
                                            const tint::Program* program,
-                                           const tint::transform::DataMap& inputs,
-                                           tint::transform::DataMap* outputs,
+                                           const tint::ast::transform::DataMap& inputs,
+                                           tint::ast::transform::DataMap* outputs,
                                            OwnedCompilationMessages* messages);
 
 // Mirrors wgpu::SamplerBindingLayout but instead stores a single boolean
@@ -253,7 +251,9 @@ struct EntryPointMetadata {
     bool usesSampleMaskOutput = false;
 };
 
-class ShaderModuleBase : public ApiObjectBase, public CachedObject {
+class ShaderModuleBase : public ApiObjectBase,
+                         public CachedObject,
+                         public ContentLessObjectCacheable<ShaderModuleBase> {
   public:
     ShaderModuleBase(DeviceBase* device,
                      const ShaderModuleDescriptor* descriptor,

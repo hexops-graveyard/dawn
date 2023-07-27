@@ -14,19 +14,19 @@
 
 #include "src/tint/lang/wgsl/ast/accessor_expression.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::AccessorExpression);
 
 namespace tint::ast {
 
-AccessorExpression::AccessorExpression(ProgramID pid,
+AccessorExpression::AccessorExpression(GenerationID pid,
                                        NodeID nid,
                                        const Source& src,
                                        const Expression* obj)
     : Base(pid, nid, src), object(obj) {
     TINT_ASSERT(AST, object);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, object, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, object, generation_id);
 }
 
 AccessorExpression::~AccessorExpression() = default;

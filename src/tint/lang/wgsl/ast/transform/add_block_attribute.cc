@@ -17,10 +17,10 @@
 #include <unordered_set>
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/utils/hashmap.h"
-#include "src/tint/utils/hashset.h"
+#include "src/tint/utils/containers/hashmap.h"
+#include "src/tint/utils/containers/hashset.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::AddBlockAttribute);
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::AddBlockAttribute::BlockAttribute);
@@ -101,7 +101,7 @@ Transform::ApplyResult AddBlockAttribute::Apply(const Program* src,
     return Program(std::move(b));
 }
 
-AddBlockAttribute::BlockAttribute::BlockAttribute(ProgramID pid, NodeID nid)
+AddBlockAttribute::BlockAttribute::BlockAttribute(GenerationID pid, NodeID nid)
     : Base(pid, nid, utils::Empty) {}
 AddBlockAttribute::BlockAttribute::~BlockAttribute() = default;
 std::string AddBlockAttribute::BlockAttribute::InternalName() const {

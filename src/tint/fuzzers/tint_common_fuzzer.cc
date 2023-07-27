@@ -30,15 +30,15 @@
 #include "spirv-tools/libspirv.hpp"
 #endif  // TINT_BUILD_SPV_READER || TINT_BUILD_SPV_WRITER
 
-#include "src/tint/diagnostic/formatter.h"
 #include "src/tint/fuzzers/apply_substitute_overrides.h"
+#include "src/tint/lang/core/type/external_texture.h"
 #include "src/tint/lang/wgsl/ast/module.h"
-#include "src/tint/lang/wgsl/sem/binding_point.h"
+#include "src/tint/lang/wgsl/helpers/flatten_bindings.h"
+#include "src/tint/lang/wgsl/program/program.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program.h"
-#include "src/tint/type/external_texture.h"
-#include "src/tint/utils/hash.h"
-#include "src/tint/writer/flatten_bindings.h"
+#include "src/tint/utils/diagnostic/formatter.h"
+#include "src/tint/utils/math/hash.h"
+#include "tint/binding_point.h"
 
 namespace tint::fuzzers {
 
@@ -104,20 +104,20 @@ bool SPIRVToolsValidationCheck(const tint::Program& program, const std::vector<u
 
 }  // namespace
 
-void GenerateSpirvOptions(DataBuilder* b, writer::spirv::Options* options) {
-    *options = b->build<writer::spirv::Options>();
+void GenerateSpirvOptions(DataBuilder* b, spirv::writer::Options* options) {
+    *options = b->build<spirv::writer::Options>();
 }
 
-void GenerateWgslOptions(DataBuilder* b, writer::wgsl::Options* options) {
-    *options = b->build<writer::wgsl::Options>();
+void GenerateWgslOptions(DataBuilder* b, wgsl::writer::Options* options) {
+    *options = b->build<wgsl::writer::Options>();
 }
 
-void GenerateHlslOptions(DataBuilder* b, writer::hlsl::Options* options) {
-    *options = b->build<writer::hlsl::Options>();
+void GenerateHlslOptions(DataBuilder* b, hlsl::writer::Options* options) {
+    *options = b->build<hlsl::writer::Options>();
 }
 
-void GenerateMslOptions(DataBuilder* b, writer::msl::Options* options) {
-    *options = b->build<writer::msl::Options>();
+void GenerateMslOptions(DataBuilder* b, msl::writer::Options* options) {
+    *options = b->build<msl::writer::Options>();
 }
 
 CommonFuzzer::CommonFuzzer(InputFormat input, OutputFormat output)
@@ -130,7 +130,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
 
 #if TINT_BUILD_WGSL_WRITER
     tint::Program::printer = [](const tint::Program* program) {
-        auto result = tint::writer::wgsl::Generate(program, {});
+        auto result = tint::wgsl::writer::Generate(program, {});
         if (!result.error.empty()) {
             return "error: " + result.error;
         }
@@ -166,7 +166,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
             if (dump_input_) {
                 dump_input_data(str, ".wgsl");
             }
-            program = reader::wgsl::Parse(file_.get());
+            program = wgsl::reader::Parse(file_.get());
 #endif  // TINT_BUILD_WGSL_READER
             break;
         }
@@ -226,7 +226,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
     };
 
     if (transform_manager_) {
-        transform::DataMap outputs;
+        ast::transform::DataMap outputs;
         auto out = transform_manager_->Run(&program, *transform_inputs_, outputs);
         if (!validate_program(out)) {  // Will move: program <- out on success
             return 0;
@@ -246,7 +246,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
         // Gather external texture binding information
         // Collect next valid binding number per group
         std::unordered_map<uint32_t, uint32_t> group_to_next_binding_number;
-        std::vector<sem::BindingPoint> ext_tex_bps;
+        std::vector<BindingPoint> ext_tex_bps;
         for (auto* var : program.AST().GlobalVariables()) {
             if (auto* sem_var = program.Sem().Get(var)->As<sem::GlobalVariable>()) {
                 if (auto bp = sem_var->BindingPoint()) {
@@ -260,12 +260,11 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
             }
         }
 
-        writer::ExternalTextureOptions::BindingsMap new_bindings_map;
+        ExternalTextureOptions::BindingsMap new_bindings_map;
         for (auto bp : ext_tex_bps) {
             uint32_t g = bp.group;
             uint32_t& next_num = group_to_next_binding_number[g];
-            auto new_bps =
-                writer::ExternalTextureOptions::BindingPoints{{g, next_num++}, {g, next_num++}};
+            auto new_bps = ExternalTextureOptions::BindingPoints{{g, next_num++}, {g, next_num++}};
 
             new_bindings_map[bp] = new_bps;
         }
@@ -291,13 +290,13 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
     switch (output_) {
         case OutputFormat::kWGSL: {
 #if TINT_BUILD_WGSL_WRITER
-            writer::wgsl::Generate(&program, options_wgsl_);
+            wgsl::writer::Generate(&program, options_wgsl_);
 #endif  // TINT_BUILD_WGSL_WRITER
             break;
         }
         case OutputFormat::kSpv: {
 #if TINT_BUILD_SPV_WRITER
-            auto result = writer::spirv::Generate(&program, options_spirv_);
+            auto result = spirv::writer::Generate(&program, options_spirv_);
             generated_spirv_ = std::move(result.spirv);
 
             if (!SPIRVToolsValidationCheck(program, generated_spirv_)) {
@@ -310,7 +309,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
         }
         case OutputFormat::kHLSL: {
 #if TINT_BUILD_HLSL_WRITER
-            writer::hlsl::Generate(&program, options_hlsl_);
+            hlsl::writer::Generate(&program, options_hlsl_);
 #endif  // TINT_BUILD_HLSL_WRITER
             break;
         }
@@ -324,7 +323,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
                 input_program = &*flattened;
             }
 
-            writer::msl::Generate(input_program, options_msl_);
+            msl::writer::Generate(input_program, options_msl_);
 #endif  // TINT_BUILD_MSL_WRITER
             break;
         }

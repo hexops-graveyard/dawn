@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/break_statement.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::BreakStatement);
 
 namespace tint::ast {
 
-BreakStatement::BreakStatement(ProgramID pid, NodeID nid, const Source& src)
+BreakStatement::BreakStatement(GenerationID pid, NodeID nid, const Source& src)
     : Base(pid, nid, src) {}
 
 BreakStatement::~BreakStatement() = default;

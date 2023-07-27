@@ -14,22 +14,22 @@
 
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::AssignmentStatement);
 
 namespace tint::ast {
 
-AssignmentStatement::AssignmentStatement(ProgramID pid,
+AssignmentStatement::AssignmentStatement(GenerationID pid,
                                          NodeID nid,
                                          const Source& src,
                                          const Expression* l,
                                          const Expression* r)
     : Base(pid, nid, src), lhs(l), rhs(r) {
     TINT_ASSERT(AST, lhs);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, lhs, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, lhs, generation_id);
     TINT_ASSERT(AST, rhs);
-    TINT_ASSERT_PROGRAM_IDS_EQUAL_IF_VALID(AST, rhs, program_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, rhs, generation_id);
 }
 
 AssignmentStatement::~AssignmentStatement() = default;

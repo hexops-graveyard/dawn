@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <cassert>
 
-#include "src/tint/utils/hash.h"
+#include "src/tint/utils/math/hash.h"
 
 namespace tint::fuzzers {
 

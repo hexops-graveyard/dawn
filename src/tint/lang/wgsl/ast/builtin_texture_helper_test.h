@@ -17,11 +17,11 @@
 
 #include <vector>
 
-#include "src/tint/builtin/access.h"
-#include "src/tint/builtin/texel_format.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/type/storage_texture.h"
-#include "src/tint/type/texture_dimension.h"
+#include "src/tint/lang/core/builtin/access.h"
+#include "src/tint/lang/core/builtin/texel_format.h"
+#include "src/tint/lang/core/type/storage_texture.h"
+#include "src/tint/lang/core/type/texture_dimension.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 namespace tint::ast::test {
 

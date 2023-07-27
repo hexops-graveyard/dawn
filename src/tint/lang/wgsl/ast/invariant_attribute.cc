@@ -14,13 +14,13 @@
 
 #include "src/tint/lang/wgsl/ast/invariant_attribute.h"
 
-#include "src/tint/program_builder.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::InvariantAttribute);
 
 namespace tint::ast {
 
-InvariantAttribute::InvariantAttribute(ProgramID pid, NodeID nid, const Source& src)
+InvariantAttribute::InvariantAttribute(GenerationID pid, NodeID nid, const Source& src)
     : Base(pid, nid, src) {}
 
 InvariantAttribute::~InvariantAttribute() = default;

@@ -18,22 +18,22 @@
 #include <string>
 #include <utility>
 
-#include "src/tint/builtin/builtin.h"
+#include "src/tint/lang/core/builtin/builtin.h"
+#include "src/tint/lang/core/type/array.h"
+#include "src/tint/lang/core/type/reference.h"
+#include "src/tint/lang/core/type/vector.h"
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 #include "src/tint/lang/wgsl/sem/array_count.h"
 #include "src/tint/lang/wgsl/sem/index_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/load.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/lang/wgsl/sem/type_expression.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
-#include "src/tint/program_builder.h"
-#include "src/tint/switch.h"
-#include "src/tint/type/array.h"
-#include "src/tint/type/reference.h"
-#include "src/tint/type/vector.h"
-#include "src/tint/utils/hashmap.h"
-#include "src/tint/utils/hashset.h"
-#include "src/tint/utils/vector.h"
+#include "src/tint/utils/containers/hashmap.h"
+#include "src/tint/utils/containers/hashset.h"
+#include "src/tint/utils/containers/vector.h"
+#include "src/tint/utils/rtti/switch.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::PackedVec3);
 

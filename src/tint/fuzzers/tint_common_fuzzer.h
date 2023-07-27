@@ -32,16 +32,16 @@ namespace tint::fuzzers {
 //                            that are potentially valid for Generate*Options
 //                            functions.
 /// Generates random set of options for SPIRV generation
-void GenerateSpirvOptions(DataBuilder* b, writer::spirv::Options* options);
+void GenerateSpirvOptions(DataBuilder* b, spirv::writer::Options* options);
 
 /// Generates random set of options for WGSL generation
-void GenerateWgslOptions(DataBuilder* b, writer::wgsl::Options* options);
+void GenerateWgslOptions(DataBuilder* b, wgsl::writer::Options* options);
 
 /// Generates random set of options for HLSL generation
-void GenerateHlslOptions(DataBuilder* b, writer::hlsl::Options* options);
+void GenerateHlslOptions(DataBuilder* b, hlsl::writer::Options* options);
 
 /// Generates random set of options for MSL generation
-void GenerateMslOptions(DataBuilder* b, writer::msl::Options* options);
+void GenerateMslOptions(DataBuilder* b, msl::writer::Options* options);
 
 /// Shader language the fuzzer is reading
 enum class InputFormat { kWGSL, kSpv };
@@ -63,7 +63,7 @@ class CommonFuzzer {
 
     /// @param tm manager for transforms to run
     /// @param inputs data for transforms to run
-    void SetTransformManager(transform::Manager* tm, transform::DataMap* inputs) {
+    void SetTransformManager(ast::transform::Manager* tm, ast::transform::DataMap* inputs) {
         assert((!tm || inputs) && "DataMap must be !nullptr if Manager !nullptr");
         transform_manager_ = tm;
         transform_inputs_ = inputs;
@@ -106,22 +106,22 @@ class CommonFuzzer {
     const std::string& GetGeneratedMsl() const { return generated_msl_; }
 
     /// @param options SPIR-V emission options
-    void SetOptionsSpirv(const writer::spirv::Options& options) { options_spirv_ = options; }
+    void SetOptionsSpirv(const spirv::writer::Options& options) { options_spirv_ = options; }
 
     /// @param options WGSL emission options
-    void SetOptionsWgsl(const writer::wgsl::Options& options) { options_wgsl_ = options; }
+    void SetOptionsWgsl(const wgsl::writer::Options& options) { options_wgsl_ = options; }
 
     /// @param options HLSL emission options
-    void SetOptionsHlsl(const writer::hlsl::Options& options) { options_hlsl_ = options; }
+    void SetOptionsHlsl(const hlsl::writer::Options& options) { options_hlsl_ = options; }
 
     /// @param options MSL emission options
-    void SetOptionsMsl(const writer::msl::Options& options) { options_msl_ = options; }
+    void SetOptionsMsl(const msl::writer::Options& options) { options_msl_ = options; }
 
   private:
     InputFormat input_;
     OutputFormat output_;
-    transform::Manager* transform_manager_ = nullptr;
-    transform::DataMap* transform_inputs_ = nullptr;
+    ast::transform::Manager* transform_manager_ = nullptr;
+    ast::transform::DataMap* transform_inputs_ = nullptr;
     bool dump_input_ = false;
     tint::diag::List diagnostics_;
     bool enforce_validity = false;
@@ -131,10 +131,10 @@ class CommonFuzzer {
     std::string generated_hlsl_;
     std::string generated_msl_;
 
-    writer::spirv::Options options_spirv_;
-    writer::wgsl::Options options_wgsl_;
-    writer::hlsl::Options options_hlsl_;
-    writer::msl::Options options_msl_;
+    spirv::writer::Options options_spirv_;
+    wgsl::writer::Options options_wgsl_;
+    hlsl::writer::Options options_hlsl_;
+    msl::writer::Options options_msl_;
 
 #if TINT_BUILD_WGSL_READER
     /// The source file needs to live at least as long as #diagnostics_
