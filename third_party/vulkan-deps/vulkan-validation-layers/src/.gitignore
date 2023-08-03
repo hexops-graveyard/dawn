@@ -1,0 +1,59 @@
+# By default we install dependencies to the external directory
+/external/*
+
+# Instead of using the existing build directory
+# CI scripts will use build-ci to not conflict with existing builds
+build-ci/
+
+# TODO: Once the ndk-build is fully removed just ignore the entire build-android directory
+build-android/external
+build-android/bin
+build-android/libs
+build-android/obj
+build-android/third_party
+
+CMakeCache.txt
+CMakeLists.txt.user
+CMakeFiles/
+cmake_install.cmake
+CMakeUserPresets.json
+Makefile
+__pycache__
+.cache/
+*.so
+*.so.*
+_out64
+out32/*
+out64/*
+*.pyc
+*.vcproj
+*.sln
+*.suo
+*.vcxproj
+*.sdf
+*.filters
+build
+build32
+dbuild
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+.vscode/
+.DS_Store
+.editorconfig
+scripts/.vs
+.*.sw[op]
+*~
+# BUILD.gn artifacts
+.cipd/
+.gclient
+.gclient_entries
+.gclient_previous_sync_commits
+out/
+third_party/
+buildtools/
+depot_tools/
+testing/
+tools/
