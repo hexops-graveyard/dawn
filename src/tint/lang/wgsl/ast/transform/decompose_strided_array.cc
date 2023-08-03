@@ -19,7 +19,9 @@
 #include <vector>
 
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/type_expression.h"
@@ -60,7 +62,7 @@ Transform::ApplyResult DecomposeStridedArray::Apply(const Program* src,
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     const auto& sem = src->Sem();
 
     static constexpr const char* kMemberName = "el";
@@ -88,14 +90,14 @@ Transform::ApplyResult DecomposeStridedArray::Apply(const Program* src,
             return nullptr;
         }
         if (!arr->IsStrideImplicit()) {
-            auto el_ty = utils::GetOrCreate(decomposed, arr, [&] {
+            auto el_ty = tint::GetOrCreate(decomposed, arr, [&] {
                 auto name = b.Symbols().New("strided_arr");
                 auto* member_ty = ctx.Clone(ident->arguments[0]->As<IdentifierExpression>());
                 auto* member = b.Member(kMemberName, Type{member_ty},
-                                        utils::Vector{
+                                        tint::Vector{
                                             b.MemberSize(AInt(arr->Stride())),
                                         });
-                b.Structure(name, utils::Vector{member});
+                b.Structure(name, tint::Vector{member});
                 return name;
             });
             if (ident->arguments.Length() > 1) {
@@ -153,7 +155,7 @@ Transform::ApplyResult DecomposeStridedArray::Apply(const Program* src,
 
                         auto* target = ctx.Clone(expr->target);
 
-                        utils::Vector<const Expression*, 8> args;
+                        tint::Vector<const Expression*, 8> args;
                         if (auto it = decomposed.find(arr); it != decomposed.end()) {
                             args.Reserve(expr->args.Length());
                             for (auto* arg : expr->args) {
@@ -172,7 +174,7 @@ Transform::ApplyResult DecomposeStridedArray::Apply(const Program* src,
     });
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

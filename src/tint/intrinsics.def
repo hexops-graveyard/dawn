@@ -37,6 +37,8 @@ enum builtin_value {
   num_workgroups
   sample_index
   sample_mask
+  subgroup_invocation_id
+  subgroup_size
   __point_size
 }
 
@@ -74,6 +76,8 @@ enum extension {
   // A Chromium-specific extension that enables passing of uniform, storage and workgroup
   // address-spaced pointers as parameters, as well as pointers into sub-objects.
   chromium_experimental_full_ptr_parameters
+  // A Chromium-specific extension that adds basic subgroup functionality.
+  chromium_experimental_subgroups
   // A Chromium-specific extension that relaxes memory layout requirements for uniform storage.
   chromium_internal_relaxed_uniform_layout
   // A Chromium-specific extension that enables dual source blending.
@@ -881,6 +885,8 @@ fn textureStore<C: iu32>(texture: texture_storage_3d<u32_texel_format, write>, c
 @stage("fragment", "compute") fn atomicExchange<T: iu32, S: workgroup_or_storage>(ptr<S, atomic<T>, read_write>, T) -> T
 @stage("fragment", "compute") fn atomicCompareExchangeWeak<T: iu32, S: workgroup_or_storage>(ptr<S, atomic<T>, read_write>, T, T) -> __atomic_compare_exchange_result<T>
 
+@must_use @stage("compute") fn subgroupBallot() -> vec4<u32>
+
 ////////////////////////////////////////////////////////////////////////////////
 // Value constructors                                                         //
 ////////////////////////////////////////////////////////////////////////////////
@@ -1136,7 +1142,7 @@ ctor mat4x4<T: fa_f32_f16>(T, T, T, T,
 @must_use @const op <= <T: fia_fiu32_f16, N: num> (vec<N, T>, vec<N, T>) -> vec<N, bool>
 
 @must_use @const op >= <T: fia_fiu32_f16>(T, T) -> bool
-@must_use @const op >= <T: fiu32_f16, N: num> (vec<N, T>, vec<N, T>) -> vec<N, bool>
+@must_use @const op >= <T: fia_fiu32_f16, N: num> (vec<N, T>, vec<N, T>) -> vec<N, bool>
 
 @must_use @const op << <T: ia_iu32>(T, u32) -> T
 @must_use @const op << <T: ia_iu32, N: num> (vec<N, T>, vec<N, u32>) -> vec<N, T>

@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A location attribute
-class LocationAttribute final : public utils::Castable<LocationAttribute, Attribute> {
+class LocationAttribute final : public Castable<LocationAttribute, Attribute> {
   public:
     /// constructor
     /// @param pid the identifier of the program that owns this node
@@ -40,7 +40,7 @@ class LocationAttribute final : public utils::Castable<LocationAttribute, Attrib
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const LocationAttribute* Clone(CloneContext* ctx) const override;
+    const LocationAttribute* Clone(CloneContext& ctx) const override;
 
     /// The location expression
     const Expression* const expr;

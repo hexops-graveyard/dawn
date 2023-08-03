@@ -19,8 +19,10 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/reference.h"
-#include "src/tint/lang/wgsl/ast/transform/utils/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/ast/transform/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
@@ -78,7 +80,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     // Create a module-scope flag that indicates whether the current invocation has been discarded.
     auto flag = b.Symbols().New("tint_discarded");
@@ -134,7 +136,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
                         // Skip these.
                         return;
                     default:
-                        TINT_UNREACHABLE(Transform, b.Diagnostics())
+                        TINT_UNREACHABLE()
                             << "write to unhandled address space: " << ref->AddressSpace();
                 }
 
@@ -187,12 +189,12 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
                             // Declare a struct to hold the result values.
                             auto* result_struct = sem_call->Type()->As<type::Struct>();
                             auto* atomic_ty = result_struct->Members()[0]->Type();
-                            result_ty = b.ty(
-                                utils::GetOrCreate(atomic_cmpxchg_result_types, atomic_ty, [&] {
+                            result_ty =
+                                b.ty(tint::GetOrCreate(atomic_cmpxchg_result_types, atomic_ty, [&] {
                                     auto name = b.Sym();
                                     b.Structure(
                                         name,
-                                        utils::Vector{
+                                        tint::Vector{
                                             b.Member("old_value", CreateASTTypeFor(ctx, atomic_ty)),
                                             b.Member("exchanged", b.ty.bool_()),
                                         });
@@ -208,7 +210,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
                             auto tmp_result = b.Sym();
                             masked_call =
                                 b.If(b.Not(flag),
-                                     b.Block(utils::Vector{
+                                     b.Block(tint::Vector{
                                          b.Decl(b.Let(tmp_result, ctx.CloneWithoutTransform(call))),
                                          b.Assign(b.MemberAccessor(result, "old_value"),
                                                   b.MemberAccessor(tmp_result, "old_value")),
@@ -242,7 +244,7 @@ Transform::ApplyResult DemoteToHelper::Apply(const Program* src, const DataMap&,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

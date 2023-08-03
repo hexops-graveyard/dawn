@@ -20,22 +20,17 @@
 #include "src/tint/lang/wgsl/ast/internal_attribute.h"
 #include "src/tint/lang/wgsl/ast/transform/transform.h"
 
-// Forward declarations
-namespace tint {
-class CloneContext;
-}  // namespace tint
-
 namespace tint::ast::transform {
 
 /// DecomposeMemoryAccess is a transform used to replace storage and uniform buffer accesses with a
 /// combination of load, store or atomic functions on primitive types.
-class DecomposeMemoryAccess final : public utils::Castable<DecomposeMemoryAccess, Transform> {
+class DecomposeMemoryAccess final : public Castable<DecomposeMemoryAccess, Transform> {
   public:
     /// Intrinsic is an InternalAttribute that's used to decorate a stub function so that the HLSL
     /// transforms this into calls to
     /// `[RW]ByteAddressBuffer.Load[N]()` or `[RW]ByteAddressBuffer.Store[N]()`,
     /// with a possible cast.
-    class Intrinsic final : public utils::Castable<Intrinsic, InternalAttribute> {
+    class Intrinsic final : public Castable<Intrinsic, InternalAttribute> {
       public:
         /// Intrinsic op
         enum class Op {
@@ -94,10 +89,10 @@ class DecomposeMemoryAccess final : public utils::Castable<DecomposeMemoryAccess
         /// displayed as `@internal(<name>)`
         std::string InternalName() const override;
 
-        /// Performs a deep clone of this object using the CloneContext `ctx`.
+        /// Performs a deep clone of this object using the program::CloneContext `ctx`.
         /// @param ctx the clone context
         /// @return the newly cloned object
-        const Intrinsic* Clone(CloneContext* ctx) const override;
+        const Intrinsic* Clone(CloneContext& ctx) const override;
 
         /// @return true if op is atomic
         bool IsAtomic() const;

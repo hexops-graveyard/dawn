@@ -21,7 +21,7 @@
 namespace tint::ast {
 
 /// A unary op expression
-class UnaryOpExpression final : public utils::Castable<UnaryOpExpression, Expression> {
+class UnaryOpExpression final : public Castable<UnaryOpExpression, Expression> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -42,7 +42,7 @@ class UnaryOpExpression final : public utils::Castable<UnaryOpExpression, Expres
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const UnaryOpExpression* Clone(CloneContext* ctx) const override;
+    const UnaryOpExpression* Clone(CloneContext& ctx) const override;
 
     /// The op
     const UnaryOp op;

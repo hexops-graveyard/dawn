@@ -21,7 +21,7 @@
 namespace tint::ast {
 
 /// A `const_assert` statement
-class ConstAssert final : public utils::Castable<ConstAssert, Statement> {
+class ConstAssert final : public Castable<ConstAssert, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -36,7 +36,7 @@ class ConstAssert final : public utils::Castable<ConstAssert, Statement> {
     /// Clones this node and all transitive child nodes using the `CloneContext` `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const ConstAssert* Clone(CloneContext* ctx) const override;
+    const ConstAssert* Clone(CloneContext& ctx) const override;
 
     /// The assertion condition
     const Expression* const condition;

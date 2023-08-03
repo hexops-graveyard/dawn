@@ -14,7 +14,7 @@
 
 #include <cstring>
 
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 #include "src/tint/utils/text/string_stream.h"
 
 #include "gmock/gmock.h"
@@ -114,10 +114,9 @@ using WgslGenerator_F32LiteralTest = TestParamHelper<F32Data>;
 TEST_P(WgslGenerator_F32LiteralTest, Emit) {
     auto* v = Expr(GetParam().value);
 
-    SetResolveOnBuild(false);
-    ASTPrinter& gen = Build();
+    ASTPrinter& gen = Build(/* resolve */ false);
 
-    utils::StringStream out;
+    StringStream out;
     gen.EmitLiteral(out, v);
     EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), GetParam().expected);
@@ -163,10 +162,9 @@ TEST_P(WgslGenerator_F16LiteralTest, Emit) {
 
     auto* v = Expr(GetParam().value);
 
-    SetResolveOnBuild(false);
-    ASTPrinter& gen = Build();
+    ASTPrinter& gen = Build(/* resolve */ false);
 
-    utils::StringStream out;
+    StringStream out;
     gen.EmitLiteral(out, v);
     EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), GetParam().expected);

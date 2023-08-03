@@ -19,7 +19,9 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
@@ -68,8 +70,8 @@ struct ArrayLengthFromUniform::State {
             b.Diagnostics().add_error(
                 diag::System::Transform,
                 "missing transform data for " +
-                    std::string(utils::TypeInfo::Of<ArrayLengthFromUniform>().name));
-            return Program(std::move(b));
+                    std::string(tint::TypeInfo::Of<ArrayLengthFromUniform>().name));
+            return resolver::Resolve(b);
         }
 
         if (!ShouldRun(ctx.src)) {
@@ -103,7 +105,7 @@ struct ArrayLengthFromUniform::State {
                 // We do this because UBOs require an element stride that is 16-byte
                 // aligned.
                 auto* buffer_size_struct = b.Structure(
-                    b.Sym(), utils::Vector{
+                    b.Sym(), tint::Vector{
                                  b.Member(kBufferSizeMemberName,
                                           b.ty.array(b.ty.vec4(b.ty.u32()),
                                                      u32((max_buffer_size_index / 4) + 1))),
@@ -156,9 +158,8 @@ struct ArrayLengthFromUniform::State {
             } else if (auto* arr = storage_buffer_type->As<type::Array>()) {
                 array_type = arr;
             } else {
-                TINT_ICE(Transform, b.Diagnostics())
-                    << "expected form of arrayLength argument to be &array_var or "
-                       "&struct_var.array_member";
+                TINT_ICE() << "expected form of arrayLength argument to be &array_var or "
+                              "&struct_var.array_member";
                 return;
             }
             auto* array_length = b.Div(total_size, u32(array_type->Stride()));
@@ -169,7 +170,7 @@ struct ArrayLengthFromUniform::State {
         outputs.Add<Result>(used_size_indices);
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -182,7 +183,7 @@ struct ArrayLengthFromUniform::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Iterate over all arrayLength() builtins that operate on
     /// storage buffer variables.
@@ -224,9 +225,8 @@ struct ArrayLengthFromUniform::State {
             //   arrayLength(&array_var)
             auto* param = call_expr->args[0]->As<UnaryOpExpression>();
             if (TINT_UNLIKELY(!param || param->op != UnaryOp::kAddressOf)) {
-                TINT_ICE(Transform, b.Diagnostics())
-                    << "expected form of arrayLength argument to be &array_var or "
-                       "&struct_var.array_member";
+                TINT_ICE() << "expected form of arrayLength argument to be &array_var or "
+                              "&struct_var.array_member";
                 break;
             }
             auto* storage_buffer_expr = param->expr;
@@ -235,16 +235,15 @@ struct ArrayLengthFromUniform::State {
             }
             auto* storage_buffer_sem = sem.Get<sem::VariableUser>(storage_buffer_expr);
             if (TINT_UNLIKELY(!storage_buffer_sem)) {
-                TINT_ICE(Transform, b.Diagnostics())
-                    << "expected form of arrayLength argument to be &array_var or "
-                       "&struct_var.array_member";
+                TINT_ICE() << "expected form of arrayLength argument to be &array_var or "
+                              "&struct_var.array_member";
                 break;
             }
 
             // Get the index to use for the buffer size array.
             auto* var = tint::As<sem::GlobalVariable>(storage_buffer_sem->Variable());
             if (TINT_UNLIKELY(!var)) {
-                TINT_ICE(Transform, b.Diagnostics()) << "storage buffer is not a global variable";
+                TINT_ICE() << "storage buffer is not a global variable";
                 break;
             }
             functor(call_expr, storage_buffer_sem, var);

@@ -14,53 +14,44 @@
 
 #include "src/tint/lang/core/ir/function_param.h"
 
+#include "src/tint/utils/ice/ice.h"
+
 TINT_INSTANTIATE_TYPEINFO(tint::ir::FunctionParam);
 
 namespace tint::ir {
 
 FunctionParam::FunctionParam(const type::Type* ty) : type_(ty) {
-    TINT_ASSERT(IR, ty != nullptr);
+    TINT_ASSERT(ty != nullptr);
 }
 
 FunctionParam::~FunctionParam() = default;
 
-utils::StringStream& operator<<(utils::StringStream& out, enum FunctionParam::Builtin value) {
+std::string_view ToString(enum FunctionParam::Builtin value) {
     switch (value) {
         case FunctionParam::Builtin::kVertexIndex:
-            out << "vertex_index";
-            break;
+            return "vertex_index";
         case FunctionParam::Builtin::kInstanceIndex:
-            out << "instance_index";
-            break;
+            return "instance_index";
         case FunctionParam::Builtin::kPosition:
-            out << "position";
-            break;
+            return "position";
         case FunctionParam::Builtin::kFrontFacing:
-            out << "front_facing";
-            break;
+            return "front_facing";
         case FunctionParam::Builtin::kLocalInvocationId:
-            out << "local_invocation_id";
-            break;
+            return "local_invocation_id";
         case FunctionParam::Builtin::kLocalInvocationIndex:
-            out << "local_invocation_index";
-            break;
+            return "local_invocation_index";
         case FunctionParam::Builtin::kGlobalInvocationId:
-            out << "global_invocation_id";
-            break;
+            return "global_invocation_id";
         case FunctionParam::Builtin::kWorkgroupId:
-            out << "workgroup_id";
-            break;
+            return "workgroup_id";
         case FunctionParam::Builtin::kNumWorkgroups:
-            out << "num_workgroups";
-            break;
+            return "num_workgroups";
         case FunctionParam::Builtin::kSampleIndex:
-            out << "sample_index";
-            break;
+            return "sample_index";
         case FunctionParam::Builtin::kSampleMask:
-            out << "sample_mask";
-            break;
+            return "sample_mask";
     }
-    return out;
+    return "<unknown>";
 }
 
 }  // namespace tint::ir

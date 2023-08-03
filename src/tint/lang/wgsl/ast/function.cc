@@ -14,9 +14,11 @@
 
 #include "src/tint/lang/wgsl/ast/function.h"
 
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
+#include "src/tint/lang/wgsl/ast/type.h"
 #include "src/tint/lang/wgsl/ast/workgroup_attribute.h"
-#include "src/tint/lang/wgsl/program/program_builder.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Function);
 
@@ -26,11 +28,11 @@ Function::Function(GenerationID pid,
                    NodeID nid,
                    const Source& src,
                    const Identifier* n,
-                   utils::VectorRef<const Parameter*> parameters,
+                   VectorRef<const Parameter*> parameters,
                    Type return_ty,
                    const BlockStatement* b,
-                   utils::VectorRef<const Attribute*> attrs,
-                   utils::VectorRef<const Attribute*> return_type_attrs)
+                   VectorRef<const Attribute*> attrs,
+                   VectorRef<const Attribute*> return_type_attrs)
     : Base(pid, nid, src),
       name(n),
       params(std::move(parameters)),
@@ -38,22 +40,22 @@ Function::Function(GenerationID pid,
       body(b),
       attributes(std::move(attrs)),
       return_type_attributes(std::move(return_type_attrs)) {
-    TINT_ASSERT(AST, name);
+    TINT_ASSERT(name);
     if (name) {
-        TINT_ASSERT(AST, !name->Is<TemplatedIdentifier>());
+        TINT_ASSERT(!name->Is<TemplatedIdentifier>());
     }
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, name, generation_id);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, return_ty, generation_id);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(name, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(return_ty, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(body, generation_id);
     for (auto* param : params) {
-        TINT_ASSERT(AST, tint::Is<Parameter>(param));
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, param, generation_id);
+        TINT_ASSERT(tint::Is<Parameter>(param));
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(param, generation_id);
     }
     for (auto* attr : attributes) {
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
     for (auto* attr : return_type_attributes) {
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
 }
 
@@ -66,16 +68,16 @@ PipelineStage Function::PipelineStage() const {
     return PipelineStage::kNone;
 }
 
-const Function* Function::Clone(CloneContext* ctx) const {
+const Function* Function::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto n = ctx->Clone(name);
-    auto p = ctx->Clone(params);
-    auto ret = ctx->Clone(return_type);
-    auto* b = ctx->Clone(body);
-    auto attrs = ctx->Clone(attributes);
-    auto ret_attrs = ctx->Clone(return_type_attributes);
-    return ctx->dst->create<Function>(src, n, p, ret, b, attrs, ret_attrs);
+    auto src = ctx.Clone(source);
+    auto n = ctx.Clone(name);
+    auto p = ctx.Clone(params);
+    auto ret = ctx.Clone(return_type);
+    auto* b = ctx.Clone(body);
+    auto attrs = ctx.Clone(attributes);
+    auto ret_attrs = ctx.Clone(return_type_attributes);
+    return ctx.dst->create<Function>(src, n, p, ret, b, attrs, ret_attrs);
 }
 
 const Function* FunctionList::Find(Symbol sym) const {

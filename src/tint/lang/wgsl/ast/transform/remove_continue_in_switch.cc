@@ -20,8 +20,10 @@
 
 #include "src/tint/lang/wgsl/ast/continue_statement.h"
 #include "src/tint/lang/wgsl/ast/switch_statement.h"
-#include "src/tint/lang/wgsl/ast/transform/utils/get_insertion_point.h"
+#include "src/tint/lang/wgsl/ast/transform/get_insertion_point.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/for_loop_statement.h"
 #include "src/tint/lang/wgsl/sem/loop_statement.h"
@@ -58,23 +60,22 @@ struct RemoveContinueInSwitch::State {
 
             made_changes = true;
 
-            auto cont_var_name =
-                tint::utils::GetOrCreate(switch_to_cont_var_name, switch_stmt, [&] {
-                    // Create and insert 'var tint_continue : bool = false;' before the
-                    // switch.
-                    auto var_name = b.Symbols().New("tint_continue");
-                    auto* decl = b.Decl(b.Var(var_name, b.ty.bool_(), b.Expr(false)));
-                    auto ip = utils::GetInsertionPoint(ctx, switch_stmt);
-                    ctx.InsertBefore(ip.first->Declaration()->statements, ip.second, decl);
+            auto cont_var_name = tint::GetOrCreate(switch_to_cont_var_name, switch_stmt, [&] {
+                // Create and insert 'var tint_continue : bool = false;' before the
+                // switch.
+                auto var_name = b.Symbols().New("tint_continue");
+                auto* decl = b.Decl(b.Var(var_name, b.ty.bool_(), b.Expr(false)));
+                auto ip = utils::GetInsertionPoint(ctx, switch_stmt);
+                ctx.InsertBefore(ip.first->Declaration()->statements, ip.second, decl);
 
-                    // Create and insert 'if (tint_continue) { continue; }' after
-                    // switch.
-                    auto* if_stmt = b.If(b.Expr(var_name), b.Block(b.Continue()));
-                    ctx.InsertAfter(ip.first->Declaration()->statements, ip.second, if_stmt);
+                // Create and insert 'if (tint_continue) { continue; }' after
+                // switch.
+                auto* if_stmt = b.If(b.Expr(var_name), b.Block(b.Continue()));
+                ctx.InsertAfter(ip.first->Declaration()->statements, ip.second, if_stmt);
 
-                    // Return the new var name
-                    return var_name;
-                });
+                // Return the new var name
+                return var_name;
+            });
 
             // Replace 'continue;' with '{ tint_continue = true; break; }'
             auto* new_stmt = b.Block(                   //
@@ -89,7 +90,7 @@ struct RemoveContinueInSwitch::State {
         }
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -98,7 +99,7 @@ struct RemoveContinueInSwitch::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
     /// Alias to src->sem
     const sem::Info& sem = src->Sem();
 

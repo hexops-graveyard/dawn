@@ -15,7 +15,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
 #include "src/tint/lang/wgsl/ast/binary_expression.h"
-#include "src/tint/lang/wgsl/ast/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -55,7 +55,7 @@ TEST_F(ForLoopStatementTest, Creation_WithAttributes) {
     auto* attr1 = DiagnosticAttribute(builtin::DiagnosticSeverity::kOff, "foo");
     auto* attr2 = DiagnosticAttribute(builtin::DiagnosticSeverity::kOff, "bar");
     auto* body = Block(Return());
-    auto* l = For(nullptr, nullptr, nullptr, body, utils::Vector{attr1, attr2});
+    auto* l = For(nullptr, nullptr, nullptr, body, tint::Vector{attr1, attr2});
 
     EXPECT_THAT(l->attributes, testing::ElementsAre(attr1, attr2));
 }

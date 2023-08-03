@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/ast_printer/test_helper.h"
-#include "src/tint/lang/spirv/writer/spv_dump.h"
+#include "src/tint/lang/spirv/writer/ast_printer/helper_test.h"
+#include "src/tint/lang/spirv/writer/common/spv_dump.h"
 
 namespace tint::spirv::writer {
 namespace {
@@ -23,8 +23,7 @@ using SpirvASTPrinterTest = TestHelper;
 TEST_F(SpirvASTPrinterTest, Discard) {
     auto* stmt = Discard();
 
-    Func("F", utils::Empty, ty.void_(), utils::Vector{stmt},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("F", tint::Empty, ty.void_(), Vector{stmt}, Vector{Stage(ast::PipelineStage::kFragment)});
 
     Builder& b = Build();
 

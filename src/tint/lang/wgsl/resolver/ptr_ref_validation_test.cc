@@ -17,7 +17,7 @@
 #include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/wgsl/ast/bitcast_expression.h"
 #include "src/tint/lang/wgsl/resolver/resolver.h"
-#include "src/tint/lang/wgsl/resolver/resolver_test_helper.h"
+#include "src/tint/lang/wgsl/resolver/resolver_helper_test.h"
 
 namespace tint::resolver {
 namespace {
@@ -142,8 +142,8 @@ TEST_F(ResolverPtrRefValidationTest, InferredPtrAccessMismatch) {
     // fn f() {
     //   let p : pointer<storage, i32> = &s.inner.arr[2i];
     // }
-    auto* inner = Structure("Inner", utils::Vector{Member("arr", ty.array<i32, 4>())});
-    auto* buf = Structure("S", utils::Vector{Member("inner", ty.Of(inner))});
+    auto* inner = Structure("Inner", Vector{Member("arr", ty.array<i32, 4>())});
+    auto* buf = Structure("S", Vector{Member("inner", ty.Of(inner))});
     auto* var = GlobalVar("s", ty.Of(buf), builtin::AddressSpace::kStorage,
                           builtin::Access::kReadWrite, Binding(0_a), Group(0_a));
 

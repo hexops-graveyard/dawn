@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// An id attribute for pipeline-overridable constants
-class IndexAttribute final : public utils::Castable<IndexAttribute, Attribute> {
+class IndexAttribute final : public Castable<IndexAttribute, Attribute> {
   public:
     /// Create an index attribute.
     /// @param pid the identifier of the program that owns this node
@@ -40,7 +40,7 @@ class IndexAttribute final : public utils::Castable<IndexAttribute, Attribute> {
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const IndexAttribute* Clone(CloneContext* ctx) const override;
+    const IndexAttribute* Clone(CloneContext& ctx) const override;
 
     /// The id expression
     const Expression* const expr;

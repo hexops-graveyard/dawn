@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/glsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/glsl/writer/ast_printer/helper_test.h"
 #include "src/tint/lang/wgsl/ast/id_attribute.h"
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
 
@@ -30,8 +30,8 @@ using GlslASTPrinterTest_WorkgroupVar = TestHelper;
 TEST_F(GlslASTPrinterTest_WorkgroupVar, Basic) {
     GlobalVar("wg", ty.f32(), builtin::AddressSpace::kWorkgroup);
 
-    Func("main", utils::Empty, ty.void_(), utils::Vector{Assign("wg", 1.2_f)},
-         utils::Vector{
+    Func("main", tint::Empty, ty.void_(), Vector{Assign("wg", 1.2_f)},
+         Vector{
              Stage(ast::PipelineStage::kCompute),
              WorkgroupSize(1_i),
          });
@@ -46,8 +46,8 @@ TEST_F(GlslASTPrinterTest_WorkgroupVar, Aliased) {
 
     GlobalVar("wg", ty.Of(alias), builtin::AddressSpace::kWorkgroup);
 
-    Func("main", utils::Empty, ty.void_(), utils::Vector{Assign("wg", 1.2_f)},
-         utils::Vector{
+    Func("main", tint::Empty, ty.void_(), Vector{Assign("wg", 1.2_f)},
+         Vector{
              Stage(ast::PipelineStage::kCompute),
              WorkgroupSize(1_i),
          });

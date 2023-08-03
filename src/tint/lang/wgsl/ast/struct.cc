@@ -16,7 +16,8 @@
 
 #include <string>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Struct);
 
@@ -26,28 +27,28 @@ Struct::Struct(GenerationID pid,
                NodeID nid,
                const Source& src,
                const Identifier* n,
-               utils::VectorRef<const StructMember*> m,
-               utils::VectorRef<const Attribute*> attrs)
+               VectorRef<const StructMember*> m,
+               VectorRef<const Attribute*> attrs)
     : Base(pid, nid, src, n), members(std::move(m)), attributes(std::move(attrs)) {
     for (auto* mem : members) {
-        TINT_ASSERT(AST, mem);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, mem, generation_id);
+        TINT_ASSERT(mem);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(mem, generation_id);
     }
     for (auto* attr : attributes) {
-        TINT_ASSERT(AST, attr);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT(attr);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
 }
 
 Struct::~Struct() = default;
 
-const Struct* Struct::Clone(CloneContext* ctx) const {
+const Struct* Struct::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto n = ctx->Clone(name);
-    auto mem = ctx->Clone(members);
-    auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Struct>(src, n, std::move(mem), std::move(attrs));
+    auto src = ctx.Clone(source);
+    auto n = ctx.Clone(name);
+    auto mem = ctx.Clone(members);
+    auto attrs = ctx.Clone(attributes);
+    return ctx.dst->create<Struct>(src, n, std::move(mem), std::move(attrs));
 }
 
 }  // namespace tint::ast

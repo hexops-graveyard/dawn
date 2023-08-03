@@ -18,7 +18,6 @@
 
 #include "src/tint/utils/containers/hashmap.h"
 #include "src/tint/utils/containers/vector.h"
-#include "src/tint/utils/text/symbol.h"
 
 namespace tint {
 
@@ -67,7 +66,7 @@ class ScopeStack {
 
     /// Return the top scope of the stack.
     /// @returns the top scope of the stack
-    const utils::Hashmap<K, V, 4>& Top() const { return stack_.Back(); }
+    const Hashmap<K, V, 4>& Top() const { return stack_.Back(); }
 
     /// Clear the scope stack.
     void Clear() {
@@ -76,7 +75,7 @@ class ScopeStack {
     }
 
   private:
-    utils::Vector<utils::Hashmap<K, V, 4>, 8> stack_ = {{}};
+    Vector<Hashmap<K, V, 4>, 8> stack_ = {{}};
 };
 
 }  // namespace tint

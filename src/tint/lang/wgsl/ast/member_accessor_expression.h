@@ -22,7 +22,7 @@ namespace tint::ast {
 
 /// A member accessor expression
 class MemberAccessorExpression final
-    : public utils::Castable<MemberAccessorExpression, AccessorExpression> {
+    : public Castable<MemberAccessorExpression, AccessorExpression> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -43,7 +43,7 @@ class MemberAccessorExpression final
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const MemberAccessorExpression* Clone(CloneContext* ctx) const override;
+    const MemberAccessorExpression* Clone(CloneContext& ctx) const override;
 
     /// The member expression
     const Identifier* const member;

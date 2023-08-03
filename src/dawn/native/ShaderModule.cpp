@@ -319,11 +319,11 @@ ResultOrError<tint::Program> ParseWGSL(const tint::Source::File* file,
 ResultOrError<tint::Program> ParseSPIRV(const std::vector<uint32_t>& spirv,
                                         OwnedCompilationMessages* outMessages,
                                         const DawnShaderModuleSPIRVOptionsDescriptor* optionsDesc) {
-    tint::reader::spirv::Options options;
+    tint::spirv::reader::Options options;
     if (optionsDesc) {
         options.allow_non_uniform_derivatives = optionsDesc->allowNonUniformDerivatives;
     }
-    tint::Program program = tint::reader::spirv::Parse(spirv, options);
+    tint::Program program = tint::spirv::reader::Parse(spirv, options);
     if (outMessages != nullptr) {
         DAWN_TRY(outMessages->AddMessages(program.Diagnostics()));
     }
@@ -369,7 +369,7 @@ MaybeError ValidateCompatibilityOfSingleBindingWithLayout(const DeviceBase* devi
                                                           SingleShaderStage entryPointStage,
                                                           BindingNumber bindingNumber,
                                                           const ShaderBindingInfo& shaderInfo) {
-    const BindGroupLayoutBase::BindingMap& layoutBindings = layout->GetBindingMap();
+    const BindGroupLayoutInternalBase::BindingMap& layoutBindings = layout->GetBindingMap();
 
     // An external texture binding found in the shader will later be expanded into multiple
     // bindings at compile time. This expansion will have already happened in the bgl - so
@@ -960,9 +960,9 @@ MaybeError ValidateAndParseShaderModule(DeviceBase* device,
 
         tint::wgsl::writer::Options options;
         auto result = tint::wgsl::writer::Generate(&program, options);
-        DAWN_INVALID_IF(!result.success, "Tint WGSL failure: Generator: %s", result.error);
+        DAWN_INVALID_IF(!result, "Tint WGSL failure: Generator: %s", result.Failure());
 
-        newWgslCode = std::move(result.wgsl);
+        newWgslCode = std::move(result->wgsl);
         newWgslDesc.code = newWgslCode.c_str();
 
         spirvDesc = nullptr;

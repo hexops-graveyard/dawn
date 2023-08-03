@@ -18,6 +18,7 @@
 #include <string_view>
 #include <utility>
 
+#include "src/tint/utils/text/string_stream.h"
 #include "src/tint/utils/text/unicode.h"
 
 namespace tint {
@@ -27,19 +28,19 @@ bool ParseLineBreak(std::string_view str, size_t i, bool* is_line_break, size_t*
     // See https://www.w3.org/TR/WGSL/#blankspace
 
     auto* utf8 = reinterpret_cast<const uint8_t*>(&str[i]);
-    auto [cp, n] = utils::utf8::Decode(utf8, str.size() - i);
+    auto [cp, n] = tint::utf8::Decode(utf8, str.size() - i);
 
     if (n == 0) {
         return false;
     }
 
-    static const auto kLF = utils::CodePoint(0x000A);    // line feed
-    static const auto kVTab = utils::CodePoint(0x000B);  // vertical tab
-    static const auto kFF = utils::CodePoint(0x000C);    // form feed
-    static const auto kNL = utils::CodePoint(0x0085);    // next line
-    static const auto kCR = utils::CodePoint(0x000D);    // carriage return
-    static const auto kLS = utils::CodePoint(0x2028);    // line separator
-    static const auto kPS = utils::CodePoint(0x2029);    // parargraph separator
+    static const auto kLF = tint::CodePoint(0x000A);    // line feed
+    static const auto kVTab = tint::CodePoint(0x000B);  // vertical tab
+    static const auto kFF = tint::CodePoint(0x000C);    // form feed
+    static const auto kNL = tint::CodePoint(0x0085);    // next line
+    static const auto kCR = tint::CodePoint(0x000D);    // carriage return
+    static const auto kLS = tint::CodePoint(0x2028);    // line separator
+    static const auto kPS = tint::CodePoint(0x2029);    // parargraph separator
 
     if (cp == kLF || cp == kVTab || cp == kFF || cp == kNL || cp == kPS || cp == kLS) {
         *is_line_break = true;
@@ -54,7 +55,7 @@ bool ParseLineBreak(std::string_view str, size_t i, bool* is_line_break, size_t*
 
         if (auto next_i = i + n; next_i < str.size()) {
             auto* next_utf8 = reinterpret_cast<const uint8_t*>(&str[next_i]);
-            auto [next_cp, next_n] = utils::utf8::Decode(next_utf8, str.size() - next_i);
+            auto [next_cp, next_n] = tint::utf8::Decode(next_utf8, str.size() - next_i);
 
             if (next_n == 0) {
                 return false;
@@ -121,7 +122,9 @@ Source::FileContent::~FileContent() = default;
 
 Source::File::~File() = default;
 
-utils::StringStream& operator<<(utils::StringStream& out, const Source& source) {
+std::string ToString(const Source& source) {
+    StringStream out;
+
     auto rng = source.range;
 
     if (source.file) {
@@ -171,7 +174,7 @@ utils::StringStream& operator<<(utils::StringStream& out, const Source& source) 
             }
         }
     }
-    return out;
+    return out.str();
 }
 
 }  // namespace tint

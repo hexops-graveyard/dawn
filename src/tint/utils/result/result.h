@@ -18,14 +18,22 @@
 #include <utility>
 #include <variant>
 
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/text/string_stream.h"
+#include "src/tint/utils/traits/traits.h"
 
-namespace tint::utils {
+namespace tint {
+
+/// Empty structure that can be used as the SUCCESS_TYPE for a Result.
+struct SuccessType {};
+
+/// An instance of SuccessType that can be used as a generic success value for a Result.
+static constexpr const SuccessType Success;
 
 /// Empty structure used as the default FAILURE_TYPE for a Result.
 struct FailureType {};
 
+/// An instance of FailureType which can be used as a generic failure value by Result
 static constexpr const FailureType Failure;
 
 /// Result is a helper for functions that need to return a value, or an failure value.
@@ -146,7 +154,7 @@ struct [[nodiscard]] Result {
     }
 
   private:
-    void Validate() const { TINT_ASSERT(Utils, !std::holds_alternative<std::monostate>(value)); }
+    void Validate() const { TINT_ASSERT(!std::holds_alternative<std::monostate>(value)); }
 
     /// The result. Either a success of failure value.
     std::variant<std::monostate, SUCCESS_TYPE, FAILURE_TYPE> value;
@@ -156,11 +164,14 @@ struct [[nodiscard]] Result {
 /// @param out the stream to write to
 /// @param res the result
 /// @return the stream so calls can be chained
-template <typename SUCCESS, typename FAILURE>
-inline utils::StringStream& operator<<(utils::StringStream& out, Result<SUCCESS, FAILURE> res) {
+template <typename STREAM,
+          typename SUCCESS,
+          typename FAILURE,
+          typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, Result<SUCCESS, FAILURE> res) {
     return res ? (out << "success: " << res.Get()) : (out << "failure: " << res.Failure());
 }
 
-}  // namespace tint::utils
+}  // namespace tint
 
 #endif  // SRC_TINT_UTILS_RESULT_RESULT_H_

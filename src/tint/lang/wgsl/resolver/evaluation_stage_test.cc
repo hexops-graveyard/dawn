@@ -15,7 +15,7 @@
 #include "src/tint/lang/wgsl/resolver/resolver.h"
 
 #include "gmock/gmock.h"
-#include "src/tint/lang/wgsl/resolver/resolver_test_helper.h"
+#include "src/tint/lang/wgsl/resolver/resolver_helper_test.h"
 
 namespace tint::resolver {
 namespace {
@@ -270,7 +270,7 @@ TEST_F(ResolverEvaluationStageTest, MemberAccessor_Const) {
     // struct S { m : i32 };
     // const str = S();
     // str.m
-    Structure("S", utils::Vector{Member("m", ty.i32())});
+    Structure("S", Vector{Member("m", ty.i32())});
     auto* str = Const("str", Call("S"));
     auto* expr = MemberAccessor(str, "m");
     WrapInFunction(str, expr);
@@ -284,7 +284,7 @@ TEST_F(ResolverEvaluationStageTest, MemberAccessor_Runtime) {
     // struct S { m : i32 };
     // var str = S();
     // str.m
-    Structure("S", utils::Vector{Member("m", ty.i32())});
+    Structure("S", Vector{Member("m", ty.i32())});
     auto* str = Var("str", Call("S"));
     auto* expr = MemberAccessor(str, "m");
     WrapInFunction(str, expr);

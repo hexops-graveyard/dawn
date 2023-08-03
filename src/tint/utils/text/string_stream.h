@@ -25,7 +25,7 @@
 
 #include "src/tint/utils/text/unicode.h"
 
-namespace tint::utils {
+namespace tint {
 
 /// Stringstream wrapper which automatically resets the locale and sets floating point emission
 /// settings needed for Tint.
@@ -41,6 +41,9 @@ class StringStream {
                                       std::is_same_v<SetFillRetTy, std::decay_t<T>>;
 
   public:
+    /// @see tint::traits::IsOStream
+    static constexpr bool IsStreamWriter = true;
+
     /// Constructor
     StringStream();
     /// Destructor
@@ -190,8 +193,8 @@ class StringStream {
 /// @param out the stream to write to
 /// @param codepoint the CodePoint to write
 /// @returns out so calls can be chained
-utils::StringStream& operator<<(utils::StringStream& out, CodePoint codepoint);
+StringStream& operator<<(StringStream& out, CodePoint codepoint);
 
-}  // namespace tint::utils
+}  // namespace tint
 
 #endif  // SRC_TINT_UTILS_TEXT_STRING_STREAM_H_

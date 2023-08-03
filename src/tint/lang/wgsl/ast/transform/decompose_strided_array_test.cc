@@ -18,10 +18,12 @@
 #include <utility>
 #include <vector>
 
+#include "src/tint/lang/wgsl/ast/transform/helper_test.h"
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
-#include "src/tint/lang/wgsl/ast/transform/test_helper.h"
 #include "src/tint/lang/wgsl/ast/transform/unshadow.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -32,7 +34,7 @@ using DecomposeStridedArrayTest = TransformTest;
 
 TEST_F(DecomposeStridedArrayTest, ShouldRunEmptyModule) {
     ProgramBuilder b;
-    EXPECT_FALSE(ShouldRun<DecomposeStridedArray>(Program(std::move(b))));
+    EXPECT_FALSE(ShouldRun<DecomposeStridedArray>(resolver::Resolve(b)));
 }
 
 TEST_F(DecomposeStridedArrayTest, ShouldRunNonStridedArray) {
@@ -40,7 +42,7 @@ TEST_F(DecomposeStridedArrayTest, ShouldRunNonStridedArray) {
 
     ProgramBuilder b;
     b.GlobalVar("arr", b.ty.array<f32, 4u>(), builtin::AddressSpace::kPrivate);
-    EXPECT_FALSE(ShouldRun<DecomposeStridedArray>(Program(std::move(b))));
+    EXPECT_FALSE(ShouldRun<DecomposeStridedArray>(resolver::Resolve(b)));
 }
 
 TEST_F(DecomposeStridedArrayTest, ShouldRunDefaultStridedArray) {
@@ -48,11 +50,11 @@ TEST_F(DecomposeStridedArrayTest, ShouldRunDefaultStridedArray) {
 
     ProgramBuilder b;
     b.GlobalVar("arr",
-                b.ty.array<f32, 4u>(utils::Vector{
+                b.ty.array<f32, 4u>(tint::Vector{
                     b.Stride(4),
                 }),
                 builtin::AddressSpace::kPrivate);
-    EXPECT_TRUE(ShouldRun<DecomposeStridedArray>(Program(std::move(b))));
+    EXPECT_TRUE(ShouldRun<DecomposeStridedArray>(resolver::Resolve(b)));
 }
 
 TEST_F(DecomposeStridedArrayTest, ShouldRunExplicitStridedArray) {
@@ -60,11 +62,11 @@ TEST_F(DecomposeStridedArrayTest, ShouldRunExplicitStridedArray) {
 
     ProgramBuilder b;
     b.GlobalVar("arr",
-                b.ty.array<f32, 4u>(utils::Vector{
+                b.ty.array<f32, 4u>(tint::Vector{
                     b.Stride(16),
                 }),
                 builtin::AddressSpace::kPrivate);
-    EXPECT_TRUE(ShouldRun<DecomposeStridedArray>(Program(std::move(b))));
+    EXPECT_TRUE(ShouldRun<DecomposeStridedArray>(resolver::Resolve(b)));
 }
 
 TEST_F(DecomposeStridedArrayTest, Empty) {
@@ -87,20 +89,20 @@ TEST_F(DecomposeStridedArrayTest, PrivateDefaultStridedArray) {
 
     ProgramBuilder b;
     b.GlobalVar("arr",
-                b.ty.array<f32, 4u>(utils::Vector{
+                b.ty.array<f32, 4u>(tint::Vector{
                     b.Stride(4),
                 }),
                 builtin::AddressSpace::kPrivate);
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a",
-                            b.ty.array<f32, 4u>(utils::Vector{
+                            b.ty.array<f32, 4u>(tint::Vector{
                                 b.Stride(4),
                             }),
                             b.Expr("arr"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor("arr", 1_i))),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -115,7 +117,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -131,20 +133,20 @@ TEST_F(DecomposeStridedArrayTest, PrivateStridedArray) {
 
     ProgramBuilder b;
     b.GlobalVar("arr",
-                b.ty.array<f32, 4u>(utils::Vector{
+                b.ty.array<f32, 4u>(tint::Vector{
                     b.Stride(32),
                 }),
                 builtin::AddressSpace::kPrivate);
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a",
-                            b.ty.array<f32, 4u>(utils::Vector{
+                            b.ty.array<f32, 4u>(tint::Vector{
                                 b.Stride(32),
                             }),
                             b.Expr("arr"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor("arr", 1_i))),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -164,7 +166,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -181,20 +183,20 @@ TEST_F(DecomposeStridedArrayTest, ReadUniformStridedArray) {
     //   let b : f32 = s.a[1];
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
-                                                               b.Stride(32),
-                                                           }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
+                                                              b.Stride(32),
+                                                          }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a",
-                            b.ty.array<f32, 4u>(utils::Vector{
+                            b.ty.array<f32, 4u>(tint::Vector{
                                 b.Stride(32),
                             }),
                             b.MemberAccessor("s", "a"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i))),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -218,7 +220,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -235,24 +237,24 @@ TEST_F(DecomposeStridedArrayTest, ReadUniformDefaultStridedArray) {
     //   let b : f32 = s.a[1][2];
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array(b.ty.vec4<f32>(), 4_u,
-                                                                      utils::Vector{
-                                                                          b.Stride(16),
-                                                                      }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array(b.ty.vec4<f32>(), 4_u,
+                                                                     tint::Vector{
+                                                                         b.Stride(16),
+                                                                     }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kUniform, b.Group(0_a), b.Binding(0_a));
     b.Func(
-        "f", utils::Empty, b.ty.void_(),
-        utils::Vector{
+        "f", tint::Empty, b.ty.void_(),
+        tint::Vector{
             b.Decl(b.Let("a",
                          b.ty.array(b.ty.vec4<f32>(), 4_u,
-                                    utils::Vector{
+                                    tint::Vector{
                                         b.Stride(16),
                                     }),
                          b.MemberAccessor("s", "a"))),
             b.Decl(b.Let("b", b.ty.f32(),
                          b.IndexAccessor(b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i), 2_i))),
         },
-        utils::Vector{
+        tint::Vector{
             b.Stage(PipelineStage::kCompute),
             b.WorkgroupSize(1_i),
         });
@@ -272,7 +274,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -289,20 +291,20 @@ TEST_F(DecomposeStridedArrayTest, ReadStorageStridedArray) {
     //   let b : f32 = s.a[1];
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
-                                                               b.Stride(32),
-                                                           }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
+                                                              b.Stride(32),
+                                                          }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a",
-                            b.ty.array<f32, 4u>(utils::Vector{
+                            b.ty.array<f32, 4u>(tint::Vector{
                                 b.Stride(32),
                             }),
                             b.MemberAccessor("s", "a"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i))),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -326,7 +328,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -343,20 +345,20 @@ TEST_F(DecomposeStridedArrayTest, ReadStorageDefaultStridedArray) {
     //   let b : f32 = s.a[1];
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
-                                                               b.Stride(4),
-                                                           }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
+                                                              b.Stride(4),
+                                                          }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a",
-                            b.ty.array<f32, 4u>(utils::Vector{
+                            b.ty.array<f32, 4u>(tint::Vector{
                                 b.Stride(4),
                             }),
                             b.MemberAccessor("s", "a"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i))),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -375,7 +377,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -393,23 +395,23 @@ TEST_F(DecomposeStridedArrayTest, WriteStorageStridedArray) {
     //   s.a[1i] = 5.0;
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
-                                                               b.Stride(32),
-                                                           }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
+                                                              b.Stride(32),
+                                                          }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
                 b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
-               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
+               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(tint::Vector{
                                                         b.Stride(32),
                                                     }))),
-               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(utils::Vector{
+               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(tint::Vector{
                                                                b.Stride(32),
                                                            }),
                                                            1_f, 2_f, 3_f, 4_f)),
                b.Assign(b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i), 5_f),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -435,7 +437,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -453,25 +455,25 @@ TEST_F(DecomposeStridedArrayTest, WriteStorageDefaultStridedArray) {
     //   s.a[1] = 5.0;
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{
-                                   b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
+    auto* S = b.Structure("S", tint::Vector{
+                                   b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
                                                      b.Stride(4),
                                                  })),
                                });
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
                 b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
-               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
+               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(tint::Vector{
                                                         b.Stride(4),
                                                     }))),
-               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(utils::Vector{
+               b.Assign(b.MemberAccessor("s", "a"), b.Call(b.ty.array<f32, 4u>(tint::Vector{
                                                                b.Stride(4),
                                                            }),
                                                            1_f, 2_f, 3_f, 4_f)),
                b.Assign(b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i), 5_f),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -492,7 +494,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -513,24 +515,24 @@ TEST_F(DecomposeStridedArrayTest, ReadWriteViaPointerLets) {
     //   (*b)[1] = 5.0;
     // }
     ProgramBuilder b;
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty.array<f32, 4u>(utils::Vector{
-                                                               b.Stride(32),
-                                                           }))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty.array<f32, 4u>(tint::Vector{
+                                                              b.Stride(32),
+                                                          }))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
                 b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a", b.AddressOf(b.MemberAccessor("s", "a")))),
                b.Decl(b.Let("b", b.AddressOf(b.Deref(b.AddressOf(b.Deref("a")))))),
                b.Decl(b.Let("c", b.Deref("b"))),
                b.Decl(b.Let("d", b.IndexAccessor(b.Deref("b"), 1_i))),
-               b.Assign(b.Deref("b"), b.Call(b.ty.array<f32, 4u>(utils::Vector{
+               b.Assign(b.Deref("b"), b.Call(b.ty.array<f32, 4u>(tint::Vector{
                                                  b.Stride(32),
                                              }),
                                              1_f, 2_f, 3_f, 4_f)),
                b.Assign(b.IndexAccessor(b.Deref("b"), 1_i), 5_f),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -557,7 +559,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -578,21 +580,21 @@ TEST_F(DecomposeStridedArrayTest, PrivateAliasedStridedArray) {
     //   s.a[1] = 5.0;
     // }
     ProgramBuilder b;
-    b.Alias("ARR", b.ty.array<f32, 4u>(utils::Vector{
+    b.Alias("ARR", b.ty.array<f32, 4u>(tint::Vector{
                        b.Stride(32),
                    }));
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty("ARR"))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty("ARR"))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
                 b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a", b.ty("ARR"), b.MemberAccessor("s", "a"))),
                b.Decl(b.Let("b", b.ty.f32(), b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i))),
                b.Assign(b.MemberAccessor("s", "a"), b.Call("ARR")),
                b.Assign(b.MemberAccessor("s", "a"), b.Call("ARR", 1_f, 2_f, 3_f, 4_f)),
                b.Assign(b.IndexAccessor(b.MemberAccessor("s", "a"), 1_i), 5_f),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -621,7 +623,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }
@@ -645,27 +647,27 @@ TEST_F(DecomposeStridedArrayTest, PrivateNestedStridedArray) {
     // }
 
     ProgramBuilder b;
-    b.Alias("ARR_A", b.ty.array<f32, 2>(utils::Vector{
+    b.Alias("ARR_A", b.ty.array<f32, 2>(tint::Vector{
                          b.Stride(8),
                      }));
     b.Alias("ARR_B", b.ty.array(  //
                          b.ty.array(b.ty("ARR_A"), 3_u,
-                                    utils::Vector{
+                                    tint::Vector{
                                         b.Stride(16),
                                     }),
                          4_u,
-                         utils::Vector{
+                         tint::Vector{
                              b.Stride(128),
                          }));
-    auto* S = b.Structure("S", utils::Vector{b.Member("a", b.ty("ARR_B"))});
+    auto* S = b.Structure("S", tint::Vector{b.Member("a", b.ty("ARR_B"))});
     b.GlobalVar("s", b.ty.Of(S), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
                 b.Group(0_a), b.Binding(0_a));
-    b.Func("f", utils::Empty, b.ty.void_(),
-           utils::Vector{
+    b.Func("f", tint::Empty, b.ty.void_(),
+           tint::Vector{
                b.Decl(b.Let("a", b.ty("ARR_B"), b.MemberAccessor("s", "a"))),
                b.Decl(b.Let("b",
                             b.ty.array(b.ty("ARR_A"), 3_u,
-                                       utils::Vector{
+                                       tint::Vector{
                                            b.Stride(16),
                                        }),
                             b.IndexAccessor(                 //
@@ -695,7 +697,7 @@ TEST_F(DecomposeStridedArrayTest, PrivateNestedStridedArray) {
                             1_i),
                         5_f),
            },
-           utils::Vector{
+           tint::Vector{
                b.Stage(PipelineStage::kCompute),
                b.WorkgroupSize(1_i),
            });
@@ -733,7 +735,7 @@ fn f() {
 }
 )";
 
-    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(Program(std::move(b)));
+    auto got = Run<Unshadow, SimplifyPointers, DecomposeStridedArray>(resolver::Resolve(b));
 
     EXPECT_EQ(expect, str(got));
 }

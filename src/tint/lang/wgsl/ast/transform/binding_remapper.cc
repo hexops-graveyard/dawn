@@ -19,7 +19,9 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/utils/text/string.h"
@@ -44,13 +46,13 @@ Transform::ApplyResult BindingRemapper::Apply(const Program* src,
                                               const DataMap& inputs,
                                               DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     auto* remappings = inputs.Get<Remappings>();
     if (!remappings) {
         b.Diagnostics().add_error(diag::System::Transform,
                                   "missing transform data for " + std::string(TypeInfo().name));
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
     if (remappings->binding_points.empty() && remappings->access_controls.empty()) {
@@ -126,15 +128,15 @@ Transform::ApplyResult BindingRemapper::Apply(const Program* src,
                                               "invalid access mode (" +
                                                   std::to_string(static_cast<uint32_t>(access)) +
                                                   ")");
-                    return Program(std::move(b));
+                    return resolver::Resolve(b);
                 }
                 auto* sem = src->Sem().Get(var);
                 if (sem->AddressSpace() != builtin::AddressSpace::kStorage) {
                     b.Diagnostics().add_error(
                         diag::System::Transform,
                         "cannot apply access control to variable with address space " +
-                            std::string(utils::ToString(sem->AddressSpace())));
-                    return Program(std::move(b));
+                            std::string(tint::ToString(sem->AddressSpace())));
+                    return resolver::Resolve(b);
                 }
                 auto* ty = sem->Type()->UnwrapRef();
                 auto inner_ty = CreateASTTypeFor(ctx, ty);
@@ -158,7 +160,7 @@ Transform::ApplyResult BindingRemapper::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

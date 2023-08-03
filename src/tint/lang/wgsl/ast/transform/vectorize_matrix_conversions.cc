@@ -19,7 +19,9 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/abstract_numeric.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/value_conversion.h"
 #include "src/tint/lang/wgsl/sem/value_expression.h"
@@ -63,10 +65,10 @@ Transform::ApplyResult VectorizeMatrixConversions::Apply(const Program* src,
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     using HelperFunctionKey =
-        utils::UnorderedKeyWrapper<std::tuple<const type::Matrix*, const type::Matrix*>>;
+        tint::UnorderedKeyWrapper<std::tuple<const type::Matrix*, const type::Matrix*>>;
 
     std::unordered_map<HelperFunctionKey, Symbol> matrix_convs;
 
@@ -96,13 +98,12 @@ Transform::ApplyResult VectorizeMatrixConversions::Apply(const Program* src,
         // The source and destination type of a matrix conversion must have a same shape.
         if (TINT_UNLIKELY(!(src_type->rows() == dst_type->rows() &&
                             src_type->columns() == dst_type->columns()))) {
-            TINT_ICE(Transform, b.Diagnostics())
-                << "source and destination matrix has different shape in matrix conversion";
+            TINT_ICE() << "source and destination matrix has different shape in matrix conversion";
             return nullptr;
         }
 
         auto build_vectorized_conversion_expression = [&](auto&& src_expression_builder) {
-            utils::Vector<const Expression*, 4> columns;
+            tint::Vector<const Expression*, 4> columns;
             for (uint32_t c = 0; c < dst_type->columns(); c++) {
                 auto* src_matrix_expr = src_expression_builder();
                 auto* src_column_expr = b.IndexAccessor(src_matrix_expr, b.Expr(tint::AInt(c)));
@@ -120,30 +121,29 @@ Transform::ApplyResult VectorizeMatrixConversions::Apply(const Program* src,
             });
         } else {
             // If has side effects, use a helper function.
-            auto fn =
-                utils::GetOrCreate(matrix_convs, HelperFunctionKey{{src_type, dst_type}}, [&] {
-                    auto name = b.Symbols().New(
-                        "convert_mat" + std::to_string(src_type->columns()) + "x" +
-                        std::to_string(src_type->rows()) + "_" + src_type->type()->FriendlyName() +
-                        "_" + dst_type->type()->FriendlyName());
-                    b.Func(name,
-                           utils::Vector{
-                               b.Param("value", CreateASTTypeFor(ctx, src_type)),
-                           },
-                           CreateASTTypeFor(ctx, dst_type),
-                           utils::Vector{
-                               b.Return(build_vectorized_conversion_expression([&] {  //
-                                   return b.Expr("value");
-                               })),
-                           });
-                    return name;
-                });
+            auto fn = tint::GetOrCreate(matrix_convs, HelperFunctionKey{{src_type, dst_type}}, [&] {
+                auto name = b.Symbols().New("convert_mat" + std::to_string(src_type->columns()) +
+                                            "x" + std::to_string(src_type->rows()) + "_" +
+                                            src_type->type()->FriendlyName() + "_" +
+                                            dst_type->type()->FriendlyName());
+                b.Func(name,
+                       tint::Vector{
+                           b.Param("value", CreateASTTypeFor(ctx, src_type)),
+                       },
+                       CreateASTTypeFor(ctx, dst_type),
+                       tint::Vector{
+                           b.Return(build_vectorized_conversion_expression([&] {  //
+                               return b.Expr("value");
+                           })),
+                       });
+                return name;
+            });
             return b.Call(fn, ctx.Clone(args[0]->Declaration()));
         }
     });
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

@@ -16,7 +16,9 @@
 
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
@@ -72,10 +74,10 @@ namespace {
 class State {
   private:
     /// The clone context.
-    CloneContext& ctx;
+    program::CloneContext& ctx;
 
-    /// The program builder.
-    ProgramBuilder& b;
+    /// Alias to `*ctx.dst`
+    ast::Builder& b;
 
     /// The function.
     const Function* function;
@@ -92,7 +94,7 @@ class State {
   public:
     /// Constructor
     /// @param context the clone context
-    State(CloneContext& context, const Function* func)
+    State(program::CloneContext& context, const Function* func)
         : ctx(context), b(*ctx.dst), function(func) {}
 
     /// Process a statement (recursively).
@@ -117,7 +119,7 @@ class State {
                 ProcessStatement(l->body);
             },
             [&](const ReturnStatement* r) {
-                utils::Vector<const Statement*, 3> stmts;
+                tint::Vector<const Statement*, 3> stmts;
                 // Set the return flag to signal that we have hit a return.
                 stmts.Push(b.Assign(b.Expr(flag), true));
                 if (r->value) {
@@ -140,7 +142,7 @@ class State {
                 TINT_SCOPED_ASSIGNMENT(is_in_loop_or_switch, true);
                 ProcessStatement(w->body);
             },
-            [&](Default) { TINT_ICE(Transform, b.Diagnostics()) << "unhandled statement type"; });
+            [&](Default) { TINT_ICE() << "unhandled statement type"; });
     }
 
     void ProcessBlock(const BlockStatement* block) {
@@ -148,7 +150,7 @@ class State {
         // We may introduce conditionals around statements that follow a statement with the
         // `Return` behavior, so build a stack of statement lists that represent the new
         // (potentially nested) conditional blocks.
-        utils::Vector<utils::Vector<const Statement*, 8>, 8> new_stmts({{}});
+        tint::Vector<tint::Vector<const Statement*, 8>, 8> new_stmts({{}});
 
         // Insert variables for the return flag and return value at the top of the function.
         if (block == function->body) {
@@ -178,7 +180,7 @@ class State {
                         // break. Otherwise check the return flag.
                         if (HasBehavior(ctx.src, s, sem::Behavior::kNext)) {
                             new_stmts.Back().Push(
-                                b.If(b.Expr(flag), b.Block(utils::Vector{b.Break()})));
+                                b.If(b.Expr(flag), b.Block(tint::Vector{b.Break()})));
                         } else {
                             new_stmts.Back().Push(b.Break());
                         }
@@ -216,7 +218,7 @@ class State {
 
 Transform::ApplyResult MergeReturn::Apply(const Program* src, const DataMap&, DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     bool made_changes = false;
 
@@ -235,7 +237,7 @@ Transform::ApplyResult MergeReturn::Apply(const Program* src, const DataMap&, Da
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

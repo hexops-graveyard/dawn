@@ -19,38 +19,36 @@
 #include "spirv/unified1/GLSL.std.450.h"
 #include "spirv/unified1/spirv.h"
 #include "src/tint/lang/core/constant/scalar.h"
+#include "src/tint/lang/core/constant/splat.h"
 #include "src/tint/lang/core/ir/access.h"
 #include "src/tint/lang/core/ir/binary.h"
+#include "src/tint/lang/core/ir/bitcast.h"
 #include "src/tint/lang/core/ir/block.h"
 #include "src/tint/lang/core/ir/block_param.h"
 #include "src/tint/lang/core/ir/break_if.h"
 #include "src/tint/lang/core/ir/construct.h"
 #include "src/tint/lang/core/ir/continue.h"
+#include "src/tint/lang/core/ir/convert.h"
 #include "src/tint/lang/core/ir/core_builtin_call.h"
 #include "src/tint/lang/core/ir/exit_if.h"
 #include "src/tint/lang/core/ir/exit_loop.h"
 #include "src/tint/lang/core/ir/exit_switch.h"
 #include "src/tint/lang/core/ir/if.h"
+#include "src/tint/lang/core/ir/intrinsic_call.h"
 #include "src/tint/lang/core/ir/let.h"
 #include "src/tint/lang/core/ir/load.h"
+#include "src/tint/lang/core/ir/load_vector_element.h"
 #include "src/tint/lang/core/ir/loop.h"
 #include "src/tint/lang/core/ir/module.h"
 #include "src/tint/lang/core/ir/multi_in_block.h"
 #include "src/tint/lang/core/ir/next_iteration.h"
 #include "src/tint/lang/core/ir/return.h"
 #include "src/tint/lang/core/ir/store.h"
+#include "src/tint/lang/core/ir/store_vector_element.h"
 #include "src/tint/lang/core/ir/switch.h"
+#include "src/tint/lang/core/ir/swizzle.h"
 #include "src/tint/lang/core/ir/terminate_invocation.h"
 #include "src/tint/lang/core/ir/terminator.h"
-#include "src/tint/lang/core/ir/transform/add_empty_entry_point.h"
-#include "src/tint/lang/core/ir/transform/block_decorated_structs.h"
-#include "src/tint/lang/core/ir/transform/builtin_polyfill_spirv.h"
-#include "src/tint/lang/core/ir/transform/demote_to_helper.h"
-#include "src/tint/lang/core/ir/transform/expand_implicit_splats.h"
-#include "src/tint/lang/core/ir/transform/handle_matrix_arithmetic.h"
-#include "src/tint/lang/core/ir/transform/merge_return.h"
-#include "src/tint/lang/core/ir/transform/shader_io_spirv.h"
-#include "src/tint/lang/core/ir/transform/var_for_dynamic_index.h"
 #include "src/tint/lang/core/ir/unreachable.h"
 #include "src/tint/lang/core/ir/user_call.h"
 #include "src/tint/lang/core/ir/validator.h"
@@ -76,7 +74,8 @@
 #include "src/tint/lang/core/type/vector.h"
 #include "src/tint/lang/core/type/void.h"
 #include "src/tint/lang/spirv/writer/ast_printer/ast_printer.h"
-#include "src/tint/lang/spirv/writer/module.h"
+#include "src/tint/lang/spirv/writer/common/module.h"
+#include "src/tint/lang/spirv/writer/raise/builtin_polyfill.h"
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
 
@@ -87,18 +86,6 @@ namespace {
 using namespace tint::number_suffixes;  // NOLINT
 
 constexpr uint32_t kWriterVersion = 1;
-
-void Sanitize(ir::Module* module) {
-    ir::transform::AddEmptyEntryPoint{}.Run(module);
-    ir::transform::BlockDecoratedStructs{}.Run(module);
-    ir::transform::BuiltinPolyfillSpirv{}.Run(module);
-    ir::transform::DemoteToHelper{}.Run(module);
-    ir::transform::ExpandImplicitSplats{}.Run(module);
-    ir::transform::HandleMatrixArithmetic{}.Run(module);
-    ir::transform::MergeReturn{}.Run(module);
-    ir::transform::ShaderIOSpirv{}.Run(module);
-    ir::transform::VarForDynamicIndex{}.Run(module);
-}
 
 SpvStorageClass StorageClass(builtin::AddressSpace addrspace) {
     switch (addrspace) {
@@ -149,10 +136,10 @@ const type::Type* DedupType(const type::Type* ty, type::Manager& types) {
         },
 
         // Dedup a SampledImage if its underlying image will be deduped.
-        [&](const ir::transform::BuiltinPolyfillSpirv::SampledImage* si) -> const type::Type* {
+        [&](const raise::SampledImage* si) -> const type::Type* {
             auto* img = DedupType(si->Image(), types);
             if (img != si->Image()) {
-                return types.Get<ir::transform::BuiltinPolyfillSpirv::SampledImage>(img);
+                return types.Get<raise::SampledImage>(img);
             }
             return si;
         },
@@ -165,15 +152,11 @@ const type::Type* DedupType(const type::Type* ty, type::Manager& types) {
 Printer::Printer(ir::Module* module, bool zero_init_workgroup_mem)
     : ir_(module), zero_init_workgroup_memory_(zero_init_workgroup_mem) {}
 
-bool Printer::Generate() {
-    auto valid = ir::Validate(*ir_);
+Result<std::vector<uint32_t>, std::string> Printer::Generate() {
+    auto valid = ir::ValidateAndDumpIfNeeded(*ir_, "SPIR-V writer");
     if (!valid) {
-        diagnostics_ = valid.Failure();
-        return false;
+        return std::move(valid.Failure());
     }
-
-    // Run the IR transformations to prepare for SPIR-V emission.
-    Sanitize(ir_);
 
     // TODO(crbug.com/tint/1906): Check supported extensions.
 
@@ -193,15 +176,11 @@ bool Printer::Generate() {
         EmitFunction(func);
     }
 
-    if (diagnostics_.contains_errors()) {
-        return false;
-    }
-
     // Serialize the module into binary SPIR-V.
-    writer_.WriteHeader(module_.IdBound(), kWriterVersion);
-    writer_.WriteModule(&module_);
-
-    return true;
+    BinaryWriter writer;
+    writer.WriteHeader(module_.IdBound(), kWriterVersion);
+    writer.WriteModule(&module_);
+    return std::move(writer.Result());
 }
 
 uint32_t Printer::Builtin(builtin::BuiltinValue builtin, builtin::AddressSpace addrspace) {
@@ -235,6 +214,12 @@ uint32_t Printer::Builtin(builtin::BuiltinValue builtin, builtin::AddressSpace a
             return SpvBuiltInSampleId;
         case builtin::BuiltinValue::kSampleMask:
             return SpvBuiltInSampleMask;
+        case builtin::BuiltinValue::kSubgroupInvocationId:
+            module_.PushCapability(SpvCapabilityGroupNonUniform);
+            return SpvBuiltInSubgroupLocalInvocationId;
+        case builtin::BuiltinValue::kSubgroupSize:
+            module_.PushCapability(SpvCapabilityGroupNonUniform);
+            return SpvBuiltInSubgroupSize;
         case builtin::BuiltinValue::kVertexIndex:
             return SpvBuiltInVertexIndex;
         case builtin::BuiltinValue::kWorkgroupId:
@@ -247,7 +232,7 @@ uint32_t Printer::Builtin(builtin::BuiltinValue builtin, builtin::AddressSpace a
 
 uint32_t Printer::Constant(ir::Constant* constant) {
     // If it is a literal operand, just return the value.
-    if (auto* literal = constant->As<ir::transform::BuiltinPolyfillSpirv::LiteralOperand>()) {
+    if (auto* literal = constant->As<raise::LiteralOperand>()) {
         return literal->Value()->ValueAs<uint32_t>();
     }
 
@@ -302,7 +287,7 @@ uint32_t Printer::Constant(const constant::Value* constant) {
                 module_.PushType(spv::Op::OpConstantComposite, operands);
             },
             [&](const type::Array* arr) {
-                TINT_ASSERT(Writer, arr->ConstantCount());
+                TINT_ASSERT(arr->ConstantCount());
                 OperandList operands = {Type(ty), id};
                 for (uint32_t i = 0; i < arr->ConstantCount(); i++) {
                     operands.push_back(Constant(constant->Index(i)));
@@ -316,9 +301,7 @@ uint32_t Printer::Constant(const constant::Value* constant) {
                 }
                 module_.PushType(spv::Op::OpConstantComposite, operands);
             },
-            [&](Default) {
-                TINT_ICE(Writer, diagnostics_) << "unhandled constant type: " << ty->FriendlyName();
-            });
+            [&](Default) { TINT_ICE() << "unhandled constant type: " << ty->FriendlyName(); });
         return id;
     });
 }
@@ -376,7 +359,7 @@ uint32_t Printer::Type(const type::Type* ty, builtin::AddressSpace addrspace /* 
                     module_.PushType(spv::Op::OpTypeArray,
                                      {id, Type(arr->ElemType()), Constant(count)});
                 } else {
-                    TINT_ASSERT(Writer, arr->Count()->Is<type::RuntimeArrayCount>());
+                    TINT_ASSERT(arr->Count()->Is<type::RuntimeArrayCount>());
                     module_.PushType(spv::Op::OpTypeRuntimeArray, {id, Type(arr->ElemType())});
                 }
                 module_.PushAnnot(spv::Op::OpDecorate,
@@ -390,12 +373,10 @@ uint32_t Printer::Type(const type::Type* ty, builtin::AddressSpace addrspace /* 
             [&](const type::Struct* str) { EmitStructType(id, str, addrspace); },
             [&](const type::Texture* tex) { EmitTextureType(id, tex); },
             [&](const type::Sampler*) { module_.PushType(spv::Op::OpTypeSampler, {id}); },
-            [&](const ir::transform::BuiltinPolyfillSpirv::SampledImage* s) {
+            [&](const raise::SampledImage* s) {
                 module_.PushType(spv::Op::OpTypeSampledImage, {id, Type(s->Image())});
             },
-            [&](Default) {
-                TINT_ICE(Writer, diagnostics_) << "unhandled type: " << ty->FriendlyName();
-            });
+            [&](Default) { TINT_ICE() << "unhandled type: " << ty->FriendlyName(); });
         return id;
     });
 }
@@ -663,7 +644,7 @@ void Printer::EmitEntryPoint(ir::Function* func, uint32_t id) {
             break;
         }
         case ir::Function::PipelineStage::kUndefined:
-            TINT_ICE(Writer, diagnostics_) << "undefined pipeline stage for entry point";
+            TINT_ICE() << "undefined pipeline stage for entry point";
             return;
     }
 
@@ -721,8 +702,7 @@ void Printer::EmitRootBlock(ir::Block* root_block) {
             inst,  //
             [&](ir::Var* v) { return EmitVar(v); },
             [&](Default) {
-                TINT_ICE(Writer, diagnostics_)
-                    << "unimplemented root block instruction: " << inst->TypeInfo().name;
+                TINT_ICE() << "unimplemented root block instruction: " << inst->TypeInfo().name;
             });
     }
 }
@@ -790,10 +770,7 @@ void Printer::EmitBlockInstructions(ir::Block* block) {
             [&](ir::Let* l) { EmitLet(l); },                                //
             [&](ir::If* i) { EmitIf(i); },                                  //
             [&](ir::Terminator* t) { EmitTerminator(t); },                  //
-            [&](Default) {
-                TINT_ICE(Writer, diagnostics_)
-                    << "unimplemented instruction: " << inst->TypeInfo().name;
-            });
+            [&](Default) { TINT_ICE() << "unimplemented instruction: " << inst->TypeInfo().name; });
 
         // Set the name for the SPIR-V result ID if provided in the module.
         if (inst->Result() && !inst->Is<ir::Var>()) {
@@ -814,7 +791,7 @@ void Printer::EmitTerminator(ir::Terminator* t) {
         t,         //
         [&](ir::Return*) {
             if (!t->Args().IsEmpty()) {
-                TINT_ASSERT(Writer, t->Args().Length() == 1u);
+                TINT_ASSERT(t->Args().Length() == 1u);
                 OperandList operands;
                 operands.push_back(Value(t->Args()[0]));
                 current_function_.push_inst(spv::Op::OpReturnValue, operands);
@@ -845,9 +822,7 @@ void Printer::EmitTerminator(ir::Terminator* t) {
         [&](ir::TerminateInvocation*) { current_function_.push_inst(spv::Op::OpKill, {}); },
         [&](ir::Unreachable*) { current_function_.push_inst(spv::Op::OpUnreachable, {}); },
 
-        [&](Default) {
-            TINT_ICE(Writer, diagnostics_) << "unimplemented branch: " << t->TypeInfo().name;
-        });
+        [&](Default) { TINT_ICE() << "unimplemented branch: " << t->TypeInfo().name; });
 }
 
 void Printer::EmitIf(ir::If* i) {
@@ -920,7 +895,7 @@ void Printer::EmitAccess(ir::Access* access) {
         } else {
             // The VarForDynamicIndex transform ensures that only value types that are vectors
             // will be dynamically indexed, as we can use OpVectorExtractDynamic for this case.
-            TINT_ASSERT(Writer, source_ty->Is<type::Vector>());
+            TINT_ASSERT(source_ty->Is<type::Vector>());
 
             // If this wasn't the first access in the chain then emit the chain so far as an
             // OpCompositeExtract, creating a new result ID for the resulting vector.
@@ -1372,6 +1347,12 @@ void Printer::EmitCoreBuiltinCall(ir::CoreBuiltinCall* builtin) {
                 Constant(ir_->constant_values.Get(u32(spv::MemorySemanticsMask::UniformMemory |
                                                       spv::MemorySemanticsMask::AcquireRelease))));
             break;
+        case builtin::Function::kSubgroupBallot:
+            module_.PushCapability(SpvCapabilityGroupNonUniformBallot);
+            op = spv::Op::OpGroupNonUniformBallot;
+            operands.push_back(Constant(ir_->constant_values.Get(u32(spv::Scope::Subgroup))));
+            operands.push_back(Constant(ir_->constant_values.Get(true)));
+            break;
         case builtin::Function::kTan:
             glsl_ext_inst(GLSLstd450Tan);
             break;
@@ -1417,9 +1398,9 @@ void Printer::EmitCoreBuiltinCall(ir::CoreBuiltinCall* builtin) {
                                                       spv::MemorySemanticsMask::AcquireRelease))));
             break;
         default:
-            TINT_ICE(Writer, diagnostics_) << "unimplemented builtin function: " << builtin->Func();
+            TINT_ICE() << "unimplemented builtin function: " << builtin->Func();
     }
-    TINT_ASSERT(Writer, op != spv::Op::Max);
+    TINT_ASSERT(op != spv::Op::Max);
 
     // Add the arguments to the builtin call.
     for (auto* arg : builtin->Args()) {
@@ -1510,7 +1491,7 @@ void Printer::EmitConvert(ir::Convert* convert) {
                 one = ir_->constant_values.Get(1_u);
                 zero = ir_->constant_values.Get(0_u);
             });
-        TINT_ASSERT_OR_RETURN(Writer, one && zero);
+        TINT_ASSERT_OR_RETURN(one && zero);
 
         if (auto* vec = res_ty->As<type::Vector>()) {
             // Splat the scalars into vectors.
@@ -1522,7 +1503,7 @@ void Printer::EmitConvert(ir::Convert* convert) {
         operands.push_back(Constant(one));
         operands.push_back(Constant(zero));
     } else {
-        TINT_ICE(Writer, diagnostics_) << "unhandled convert instruction";
+        TINT_ICE() << "unhandled convert instruction";
     }
 
     current_function_.push_inst(op, std::move(operands));
@@ -1718,7 +1699,7 @@ void Printer::EmitSwitch(ir::Switch* swtch) {
             }
         }
     }
-    TINT_ASSERT(Writer, default_label != 0u);
+    TINT_ASSERT(default_label != 0u);
 
     // Build the operands to the OpSwitch instruction.
     OperandList switch_operands = {Value(swtch->Condition()), default_label};
@@ -1813,7 +1794,7 @@ void Printer::EmitVar(ir::Var* var) {
 
     switch (ptr->AddressSpace()) {
         case builtin::AddressSpace::kFunction: {
-            TINT_ASSERT(Writer, current_function_);
+            TINT_ASSERT(current_function_);
             current_function_.push_var({ty, id, U32Operand(SpvStorageClassFunction)});
             if (var->Initializer()) {
                 current_function_.push_inst(spv::Op::OpStore, {id, Value(var->Initializer())});
@@ -1821,35 +1802,35 @@ void Printer::EmitVar(ir::Var* var) {
             break;
         }
         case builtin::AddressSpace::kIn: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             module_.PushType(spv::Op::OpVariable, {ty, id, U32Operand(SpvStorageClassInput)});
             break;
         }
         case builtin::AddressSpace::kPrivate: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             OperandList operands = {ty, id, U32Operand(SpvStorageClassPrivate)};
             if (var->Initializer()) {
-                TINT_ASSERT(Writer, var->Initializer()->Is<ir::Constant>());
+                TINT_ASSERT(var->Initializer()->Is<ir::Constant>());
                 operands.push_back(Value(var->Initializer()));
             }
             module_.PushType(spv::Op::OpVariable, operands);
             break;
         }
         case builtin::AddressSpace::kPushConstant: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             module_.PushType(spv::Op::OpVariable,
                              {ty, id, U32Operand(SpvStorageClassPushConstant)});
             break;
         }
         case builtin::AddressSpace::kOut: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             module_.PushType(spv::Op::OpVariable, {ty, id, U32Operand(SpvStorageClassOutput)});
             break;
         }
         case builtin::AddressSpace::kHandle:
         case builtin::AddressSpace::kStorage:
         case builtin::AddressSpace::kUniform: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             module_.PushType(spv::Op::OpVariable,
                              {ty, id, U32Operand(StorageClass(ptr->AddressSpace()))});
             auto bp = var->BindingPoint().value();
@@ -1860,7 +1841,7 @@ void Printer::EmitVar(ir::Var* var) {
             break;
         }
         case builtin::AddressSpace::kWorkgroup: {
-            TINT_ASSERT(Writer, !current_function_);
+            TINT_ASSERT(!current_function_);
             OperandList operands = {ty, id, U32Operand(SpvStorageClassWorkgroup)};
             if (zero_init_workgroup_memory_) {
                 // If requested, use the VK_KHR_zero_initialize_workgroup_memory to zero-initialize
@@ -1871,8 +1852,7 @@ void Printer::EmitVar(ir::Var* var) {
             break;
         }
         default: {
-            TINT_ICE(Writer, diagnostics_)
-                << "unimplemented variable address space " << ptr->AddressSpace();
+            TINT_ICE() << "unimplemented variable address space " << ptr->AddressSpace();
         }
     }
 
@@ -1899,7 +1879,7 @@ void Printer::EmitExitPhis(ir::ControlInstruction* inst) {
         auto* result = results[index];
         auto* ty = result->Type();
 
-        utils::Vector<Branch, 8> branches;
+        Vector<Branch, 8> branches;
         branches.Reserve(inst->Exits().Count());
         for (auto& exit : inst->Exits()) {
             branches.Push(Branch{Label(exit->Block()), exit->Args()[index]});
@@ -1922,8 +1902,7 @@ void Printer::EmitExitPhis(ir::ControlInstruction* inst) {
 uint32_t Printer::TexelFormat(const builtin::TexelFormat format) {
     switch (format) {
         case builtin::TexelFormat::kBgra8Unorm:
-            TINT_ICE(Writer, diagnostics_)
-                << "bgra8unorm should have been polyfilled to rgba8unorm";
+            TINT_ICE() << "bgra8unorm should have been polyfilled to rgba8unorm";
             return SpvImageFormatUnknown;
         case builtin::TexelFormat::kR32Uint:
             return SpvImageFormatR32ui;

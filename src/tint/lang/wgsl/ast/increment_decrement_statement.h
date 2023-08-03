@@ -21,8 +21,7 @@
 namespace tint::ast {
 
 /// An increment or decrement statement
-class IncrementDecrementStatement final
-    : public utils::Castable<IncrementDecrementStatement, Statement> {
+class IncrementDecrementStatement final : public Castable<IncrementDecrementStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -43,7 +42,7 @@ class IncrementDecrementStatement final
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const IncrementDecrementStatement* Clone(CloneContext* ctx) const override;
+    const IncrementDecrementStatement* Clone(CloneContext& ctx) const override;
 
     /// The LHS expression.
     const Expression* const lhs;

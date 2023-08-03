@@ -16,7 +16,8 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::LoopStatement);
 
@@ -27,26 +28,26 @@ LoopStatement::LoopStatement(GenerationID pid,
                              const Source& src,
                              const BlockStatement* b,
                              const BlockStatement* cont,
-                             utils::VectorRef<const ast::Attribute*> attrs)
+                             VectorRef<const ast::Attribute*> attrs)
     : Base(pid, nid, src), body(b), continuing(cont), attributes(std::move(attrs)) {
-    TINT_ASSERT(AST, body);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, continuing, generation_id);
+    TINT_ASSERT(body);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(body, generation_id);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(continuing, generation_id);
     for (auto* attr : attributes) {
-        TINT_ASSERT(AST, attr);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT(attr);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
 }
 
 LoopStatement::~LoopStatement() = default;
 
-const LoopStatement* LoopStatement::Clone(CloneContext* ctx) const {
+const LoopStatement* LoopStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto* b = ctx->Clone(body);
-    auto* cont = ctx->Clone(continuing);
-    auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<LoopStatement>(src, b, cont, std::move(attrs));
+    auto src = ctx.Clone(source);
+    auto* b = ctx.Clone(body);
+    auto* cont = ctx.Clone(continuing);
+    auto attrs = ctx.Clone(attributes);
+    return ctx.dst->create<LoopStatement>(src, b, cont, std::move(attrs));
 }
 
 }  // namespace tint::ast

@@ -18,7 +18,7 @@
 #include <cmath>
 #include <cstring>
 
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/memory/bitcast.h"
 #include "src/tint/utils/text/string_stream.h"
 
@@ -50,16 +50,6 @@ constexpr uint32_t kMinF32BiasedExpForF16SubnormalNumber = 103;
 
 }  // namespace
 
-utils::StringStream& operator<<(utils::StringStream& out, ConversionFailure failure) {
-    switch (failure) {
-        case ConversionFailure::kExceedsPositiveLimit:
-            return out << "value exceeds positive limit for type";
-        case ConversionFailure::kExceedsNegativeLimit:
-            return out << "value exceeds negative limit for type";
-    }
-    return out << "<unknown>";
-}
-
 f16::type f16::Quantize(f16::type value) {
     if (value > kHighestValue) {
         return std::numeric_limits<f16::type>::infinity();
@@ -72,7 +62,7 @@ f16::type f16::Quantize(f16::type value) {
     // Assert we use binary32 (i.e. float) as underlying type, which has 4 bytes.
     static_assert(std::is_same<f16::type, float>());
 
-    uint32_t u32 = utils::Bitcast<uint32_t>(value);
+    uint32_t u32 = tint::Bitcast<uint32_t>(value);
     if ((u32 & ~kF32SignMask) == 0) {
         return value;  // +/- zero
     }
@@ -244,14 +234,13 @@ f16::type f16::Quantize(f16::type value) {
         // Since we ensure that kSmallestValue = 0x1f-14 > abs(value) >= kSmallestSubnormalValue =
         // 0x1f-24, value will have a unbiased exponent in range -24 to -15 (inclusive), and the
         // corresponding biased exponent in f32 is in range 103 to 112 (inclusive).
-        TINT_ASSERT(Semantic,
-                    (kMinF32BiasedExpForF16SubnormalNumber <= biased_exponent_original) &&
-                        (biased_exponent_original <= kMaxF32BiasedExpForF16SubnormalNumber));
+        TINT_ASSERT((kMinF32BiasedExpForF16SubnormalNumber <= biased_exponent_original) &&
+                    (biased_exponent_original <= kMaxF32BiasedExpForF16SubnormalNumber));
 
         // As we have proved, masking out the lowest 126-e mantissa bits of input value will result
         // in a valid subnormal f16 value, which is exactly the required quantization result.
         uint32_t discard_bits = 126 - biased_exponent_original;  // In range 14 to 23 (inclusive)
-        TINT_ASSERT(Semantic, (14 <= discard_bits) && (discard_bits <= kF32MantissaBits));
+        TINT_ASSERT((14 <= discard_bits) && (discard_bits <= kF32MantissaBits));
         uint32_t discard_mask = (1u << discard_bits) - 1;
         u32 = u32 & ~discard_mask;
     } else {
@@ -260,7 +249,7 @@ f16::type f16::Quantize(f16::type value) {
         return value > 0 ? 0.0 : -0.0;
     }
 
-    return utils::Bitcast<f16::type>(u32);
+    return tint::Bitcast<f16::type>(u32);
 }
 
 uint16_t f16::BitsRepresentation() const {
@@ -288,12 +277,12 @@ uint16_t f16::BitsRepresentation() const {
     // |    Normal f16    |   [-14,  15]   |      [1, 30]     |    [113, 142]    |
     // ---------------------------------------------------------------------------
 
-    uint32_t f32_bit_pattern = utils::Bitcast<uint32_t>(value);
+    uint32_t f32_bit_pattern = tint::Bitcast<uint32_t>(value);
     uint32_t f32_biased_exponent = (f32_bit_pattern & kF32ExponentMask) >> kF32MantissaBits;
     uint32_t f32_mantissa = f32_bit_pattern & kF32MantissaMask;
 
     uint16_t f16_sign_part = static_cast<uint16_t>((f32_bit_pattern & kF32SignMask) >> 16);
-    TINT_ASSERT(Semantic, (f16_sign_part & ~kF16SignMask) == 0);
+    TINT_ASSERT((f16_sign_part & ~kF16SignMask) == 0);
 
     if ((f32_bit_pattern & ~kF32SignMask) == 0) {
         // +/- zero
@@ -308,8 +297,8 @@ uint16_t f16::BitsRepresentation() const {
         uint16_t f16_mantissa_part =
             static_cast<uint16_t>(f32_mantissa >> (kF32MantissaBits - kF16MantissaBits));
 
-        TINT_ASSERT(Semantic, (f16_exp_part & ~kF16ExponentMask) == 0);
-        TINT_ASSERT(Semantic, (f16_mantissa_part & ~kF16MantissaMask) == 0);
+        TINT_ASSERT((f16_exp_part & ~kF16ExponentMask) == 0);
+        TINT_ASSERT((f16_mantissa_part & ~kF16MantissaMask) == 0);
 
         return f16_sign_part | f16_exp_part | f16_mantissa_part;
     }
@@ -330,17 +319,16 @@ uint16_t f16::BitsRepresentation() const {
             static_cast<uint16_t>((f32_mantissa | (kF32MantissaMask + 1)) >>
                                   (kF32MantissaBits + 1 - f16_valid_mantissa_bits));
 
-        TINT_ASSERT(Semantic, (1 <= f16_valid_mantissa_bits) &&
-                                  (f16_valid_mantissa_bits <= kF16MantissaBits));
-        TINT_ASSERT(Semantic, (f16_mantissa_part & ~((1u << f16_valid_mantissa_bits) - 1)) == 0);
-        TINT_ASSERT(Semantic, (f16_mantissa_part != 0));
+        TINT_ASSERT((1 <= f16_valid_mantissa_bits) &&
+                    (f16_valid_mantissa_bits <= kF16MantissaBits));
+        TINT_ASSERT((f16_mantissa_part & ~((1u << f16_valid_mantissa_bits) - 1)) == 0);
+        TINT_ASSERT((f16_mantissa_part != 0));
 
         return f16_sign_part | f16_exp_part | f16_mantissa_part;
     }
 
     // Neither zero, subnormal f16 or normal f16, shall never hit.
-    tint::diag::List diag;
-    TINT_UNREACHABLE(Semantic, diag);
+    TINT_UNREACHABLE();
     return kF16Nan;
 }
 
@@ -410,7 +398,7 @@ Number<tint::detail::NumberKindF16> f16::FromBits(uint16_t bits) {
     uint32_t val = f32_sign_bit | f32_biased_exponent | f32_mantissa;
 
     // Bitcast to a F32 and then store into the F16 Number
-    return f16(utils::Bitcast<f16::type>(val));
+    return f16(tint::Bitcast<f16::type>(val));
 }
 
 }  // namespace tint

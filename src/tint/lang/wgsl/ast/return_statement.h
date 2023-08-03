@@ -21,7 +21,7 @@
 namespace tint::ast {
 
 /// A return statement
-class ReturnStatement final : public utils::Castable<ReturnStatement, Statement> {
+class ReturnStatement final : public Castable<ReturnStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -43,7 +43,7 @@ class ReturnStatement final : public utils::Castable<ReturnStatement, Statement>
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const ReturnStatement* Clone(CloneContext* ctx) const override;
+    const ReturnStatement* Clone(CloneContext& ctx) const override;
 
     /// The value returned. May be null.
     const Expression* const value;

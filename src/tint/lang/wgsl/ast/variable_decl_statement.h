@@ -21,7 +21,7 @@
 namespace tint::ast {
 
 /// A variable declaration statement
-class VariableDeclStatement final : public utils::Castable<VariableDeclStatement, Statement> {
+class VariableDeclStatement final : public Castable<VariableDeclStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -40,7 +40,7 @@ class VariableDeclStatement final : public utils::Castable<VariableDeclStatement
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const VariableDeclStatement* Clone(CloneContext* ctx) const override;
+    const VariableDeclStatement* Clone(CloneContext& ctx) const override;
 
     /// The variable
     const Variable* const variable;

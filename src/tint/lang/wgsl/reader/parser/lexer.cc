@@ -26,8 +26,8 @@
 #include <utility>
 
 #include "src/tint/lang/core/builtin/number.h"
-#include "src/tint/utils/debug/debug.h"
-#include "src/tint/utils/text/parse_num.h"
+#include "src/tint/utils/ice/ice.h"
+#include "src/tint/utils/strconv/parse_num.h"
 #include "src/tint/utils/text/unicode.h"
 
 namespace tint::wgsl::reader {
@@ -47,16 +47,16 @@ bool read_blankspace(std::string_view str, size_t i, bool* is_blankspace, size_t
     // See https://www.w3.org/TR/WGSL/#blankspace
 
     auto* utf8 = reinterpret_cast<const uint8_t*>(&str[i]);
-    auto [cp, n] = utils::utf8::Decode(utf8, str.size() - i);
+    auto [cp, n] = tint::utf8::Decode(utf8, str.size() - i);
 
     if (n == 0) {
         return false;
     }
 
-    static const auto kSpace = utils::CodePoint(0x0020);  // space
-    static const auto kHTab = utils::CodePoint(0x0009);   // horizontal tab
-    static const auto kL2R = utils::CodePoint(0x200E);    // left-to-right mark
-    static const auto kR2L = utils::CodePoint(0x200F);    // right-to-left mark
+    static const auto kSpace = tint::CodePoint(0x0020);  // space
+    static const auto kHTab = tint::CodePoint(0x0009);   // horizontal tab
+    static const auto kL2R = tint::CodePoint(0x200E);    // left-to-right mark
+    static const auto kR2L = tint::CodePoint(0x200F);    // right-to-left mark
 
     if (cp == kSpace || cp == kHTab || cp == kL2R || cp == kR2L) {
         *is_blankspace = true;
@@ -414,9 +414,9 @@ std::optional<Token> Lexer::try_float() {
         end_ptr = &at(length() - 1) + 1;
     }
 
-    auto ret = utils::ParseDouble(std::string_view(&at(start), end - start));
+    auto ret = tint::ParseDouble(std::string_view(&at(start), end - start));
     double value = ret ? ret.Get() : 0.0;
-    bool overflow = !ret && ret.Failure() == utils::ParseNumberError::kResultOutOfRange;
+    bool overflow = !ret && ret.Failure() == tint::ParseNumberError::kResultOutOfRange;
 
     // If the value didn't fit in a double, check for underflow as that is 0.0 in WGSL and not an
     // error.
@@ -637,7 +637,7 @@ std::optional<Token> Lexer::try_hex_float() {
     // Note: it's not enough to check mantissa == 0 as we drop the initial bit,
     // whether it's in the integer part or the fractional part.
     const bool is_zero = !seen_prior_one_bits;
-    TINT_ASSERT(Reader, !is_zero || mantissa == 0);
+    TINT_ASSERT(!is_zero || mantissa == 0);
 
     // Parse the optional exponent.
     // ((p|P)(\+|-)?[0-9]+)?
@@ -800,10 +800,10 @@ std::optional<Token> Lexer::try_hex_float() {
             // 2^-148 > v >= 2^-149, binary32 s_00000000_00000000000000000000001, 0 arbitrary bit.
 
             // signed_exponent must be in range -149 + 1023 = 874 to -127 + 1023 = 896, inclusive
-            TINT_ASSERT(Reader, (874 <= signed_exponent) && (signed_exponent <= 896));
+            TINT_ASSERT((874 <= signed_exponent) && (signed_exponent <= 896));
             int unbiased_exponent =
                 static_cast<int>(signed_exponent) - static_cast<int>(kExponentBias);
-            TINT_ASSERT(Reader, (-149 <= unbiased_exponent) && (unbiased_exponent <= -127));
+            TINT_ASSERT((-149 <= unbiased_exponent) && (unbiased_exponent <= -127));
             valid_mantissa_bits = unbiased_exponent + 149;  // 0 for -149, and 22 for -127
         } else if (abs_result_f64 != 0.0) {
             // The result is smaller than the smallest subnormal f32 value, but not equal to zero.
@@ -812,7 +812,7 @@ std::optional<Token> Lexer::try_hex_float() {
                          "value cannot be exactly represented as 'f32'"};
         }
         // Check the low 52-valid_mantissa_bits mantissa bits must be 0.
-        TINT_ASSERT(Reader, (0 <= valid_mantissa_bits) && (valid_mantissa_bits <= 23));
+        TINT_ASSERT((0 <= valid_mantissa_bits) && (valid_mantissa_bits <= 23));
         if (result_u64 & ((uint64_t(1) << (52 - valid_mantissa_bits)) - 1)) {
             return Token{Token::Type::kError, source,
                          "value cannot be exactly represented as 'f32'"};
@@ -853,10 +853,10 @@ std::optional<Token> Lexer::try_hex_float() {
             // 2^-23 > v >= 2^-24, binary16 s_00000_0000000001, 0 arbitrary bits.
 
             // signed_exponent must be in range -24 + 1023 = 999 to -15 + 1023 = 1008, inclusive
-            TINT_ASSERT(Reader, (999 <= signed_exponent) && (signed_exponent <= 1008));
+            TINT_ASSERT((999 <= signed_exponent) && (signed_exponent <= 1008));
             int unbiased_exponent =
                 static_cast<int>(signed_exponent) - static_cast<int>(kExponentBias);
-            TINT_ASSERT(Reader, (-24 <= unbiased_exponent) && (unbiased_exponent <= -15));
+            TINT_ASSERT((-24 <= unbiased_exponent) && (unbiased_exponent <= -15));
             valid_mantissa_bits = unbiased_exponent + 24;  // 0 for -24, and 9 for -15
         } else if (abs_result_f64 != 0.0) {
             // The result is smaller than the smallest subnormal f16 value, but not equal to zero.
@@ -865,7 +865,7 @@ std::optional<Token> Lexer::try_hex_float() {
                          "value cannot be exactly represented as 'f16'"};
         }
         // Check the low 52-valid_mantissa_bits mantissa bits must be 0.
-        TINT_ASSERT(Reader, (0 <= valid_mantissa_bits) && (valid_mantissa_bits <= 10));
+        TINT_ASSERT((0 <= valid_mantissa_bits) && (valid_mantissa_bits <= 10));
         if (result_u64 & ((uint64_t(1) << (52 - valid_mantissa_bits)) - 1)) {
             return Token{Token::Type::kError, source,
                          "value cannot be exactly represented as 'f16'"};
@@ -968,12 +968,12 @@ std::optional<Token> Lexer::try_ident() {
     // Must begin with an XID_Source unicode character, or underscore
     {
         auto* utf8 = reinterpret_cast<const uint8_t*>(&at(pos()));
-        auto [code_point, n] = utils::utf8::Decode(utf8, length() - pos());
+        auto [code_point, n] = tint::utf8::Decode(utf8, length() - pos());
         if (n == 0) {
             advance();  // Skip the bad byte.
             return Token{Token::Type::kError, source, "invalid UTF-8"};
         }
-        if (code_point != utils::CodePoint('_') && !code_point.IsXIDStart()) {
+        if (code_point != tint::CodePoint('_') && !code_point.IsXIDStart()) {
             return {};
         }
         // Consume start codepoint
@@ -983,7 +983,7 @@ std::optional<Token> Lexer::try_ident() {
     while (!is_eol()) {
         // Must continue with an XID_Continue unicode character
         auto* utf8 = reinterpret_cast<const uint8_t*>(&at(pos()));
-        auto [code_point, n] = utils::utf8::Decode(utf8, line().size() - pos());
+        auto [code_point, n] = tint::utf8::Decode(utf8, line().size() - pos());
         if (n == 0) {
             advance();  // Skip the bad byte.
             return Token{Token::Type::kError, source, "invalid UTF-8"};

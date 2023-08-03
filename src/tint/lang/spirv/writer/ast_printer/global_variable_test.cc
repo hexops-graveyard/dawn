@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "src/tint/lang/core/type/texture_dimension.h"
-#include "src/tint/lang/spirv/writer/ast_printer/test_helper.h"
-#include "src/tint/lang/spirv/writer/spv_dump.h"
+#include "src/tint/lang/spirv/writer/ast_printer/helper_test.h"
+#include "src/tint/lang/spirv/writer/common/spv_dump.h"
 #include "src/tint/lang/wgsl/ast/id_attribute.h"
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
 
@@ -257,7 +257,7 @@ struct BuiltinData {
     SpvBuiltIn result;
 };
 inline std::ostream& operator<<(std::ostream& out, BuiltinData data) {
-    utils::StringStream str;
+    StringStream str;
     str << data.builtin;
     out << str.str();
     return out;
@@ -313,7 +313,7 @@ TEST_F(SpirvASTPrinterTest, GlobalVar_DeclReadOnly) {
     // };
     // var b<storage, read> : A
 
-    auto* A = Structure("A", utils::Vector{
+    auto* A = Structure("A", Vector{
                                  Member("a", ty.i32()),
                                  Member("b", ty.i32()),
                              });
@@ -358,7 +358,7 @@ TEST_F(SpirvASTPrinterTest, GlobalVar_TypeAliasDeclReadOnly) {
     // type B = A;
     // var b<storage, read> : B
 
-    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
+    auto* A = Structure("A", Vector{Member("a", ty.i32())});
     auto* B = Alias("B", ty.Of(A));
     GlobalVar("b", ty.Of(B), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(0_a),
               Group(0_a));
@@ -398,7 +398,7 @@ TEST_F(SpirvASTPrinterTest, GlobalVar_TypeAliasAssignReadOnly) {
     // type B = A;
     // var<storage, read> b : B
 
-    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
+    auto* A = Structure("A", Vector{Member("a", ty.i32())});
     auto* B = Alias("B", ty.Of(A));
     GlobalVar("b", ty.Of(B), builtin::AddressSpace::kStorage, builtin::Access::kRead, Binding(0_a),
               Group(0_a));
@@ -438,7 +438,7 @@ TEST_F(SpirvASTPrinterTest, GlobalVar_TwoVarDeclReadOnly) {
     // var<storage, read> b : A
     // var<storage, read_write> c : A
 
-    auto* A = Structure("A", utils::Vector{Member("a", ty.i32())});
+    auto* A = Structure("A", Vector{Member("a", ty.i32())});
     GlobalVar("b", ty.Of(A), builtin::AddressSpace::kStorage, builtin::Access::kRead, Group(0_a),
               Binding(0_a));
     GlobalVar("c", ty.Of(A), builtin::AddressSpace::kStorage, builtin::Access::kReadWrite,
@@ -507,13 +507,13 @@ TEST_F(SpirvASTPrinterTest, GlobalVar_WorkgroupWithZeroInit) {
     auto type_array = ty.array<f32, 16>();
     auto* var_array = GlobalVar("b", type_array, builtin::AddressSpace::kWorkgroup);
 
-    auto* type_struct = Structure("C", utils::Vector{
+    auto* type_struct = Structure("C", Vector{
                                            Member("a", ty.i32()),
                                            Member("b", ty.i32()),
                                        });
     auto* var_struct = GlobalVar("c", ty.Of(type_struct), builtin::AddressSpace::kWorkgroup);
 
-    program = std::make_unique<Program>(std::move(*this));
+    program = std::make_unique<Program>(resolver::Resolve(*this));
 
     constexpr bool kZeroInitializeWorkgroupMemory = true;
     std::unique_ptr<Builder> b =

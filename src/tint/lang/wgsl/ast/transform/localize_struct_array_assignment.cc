@@ -21,7 +21,9 @@
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
 #include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/lang/wgsl/sem/value_expression.h"
@@ -43,8 +45,8 @@ struct LocalizeStructArrayAssignment::State {
     ApplyResult Run() {
         struct Shared {
             bool process_nested_nodes = false;
-            utils::Vector<const Statement*, 4> insert_before_stmts;
-            utils::Vector<const Statement*, 4> insert_after_stmts;
+            tint::Vector<const Statement*, 4> insert_before_stmts;
+            tint::Vector<const Statement*, 4> insert_after_stmts;
         } s;
 
         bool made_changes = false;
@@ -135,7 +137,7 @@ struct LocalizeStructArrayAssignment::State {
             // e.g. *(tint_symbol) = tint_symbol_1;
             auto* assign_rhs_to_temp = b.Assign(b.Deref(mem_access_ptr), tmp_var);
             {
-                utils::Vector<const Statement*, 8> stmts{assign_rhs_to_temp};
+                tint::Vector<const Statement*, 8> stmts{assign_rhs_to_temp};
                 for (auto* stmt : s.insert_after_stmts) {
                     stmts.Push(stmt);
                 }
@@ -146,7 +148,7 @@ struct LocalizeStructArrayAssignment::State {
         });
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -155,13 +157,13 @@ struct LocalizeStructArrayAssignment::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Returns true if `expr` contains an index accessor expression to a
     /// structure member of array type.
     bool ContainsStructArrayIndex(const Expression* expr) {
         bool result = false;
-        TraverseExpressions(expr, b.Diagnostics(), [&](const IndexAccessorExpression* ia) {
+        TraverseExpressions(expr, [&](const IndexAccessorExpression* ia) {
             // Indexing using a runtime value?
             auto* idx_sem = src->Sem().GetVal(ia->index);
             if (!idx_sem->ConstantValue()) {
@@ -187,9 +189,8 @@ struct LocalizeStructArrayAssignment::State {
         const AssignmentStatement* assign_stmt) {
         auto* root_ident = src->Sem().GetVal(assign_stmt->lhs)->RootIdentifier();
         if (TINT_UNLIKELY(!root_ident)) {
-            TINT_ICE(Transform, b.Diagnostics())
-                << "Unable to determine originating variable for lhs of assignment "
-                   "statement";
+            TINT_ICE() << "Unable to determine originating variable for lhs of assignment "
+                          "statement";
             return {};
         }
 
@@ -202,9 +203,8 @@ struct LocalizeStructArrayAssignment::State {
                 return std::make_pair(ptr->StoreType(), ptr->AddressSpace());
             },
             [&](Default) {
-                TINT_ICE(Transform, b.Diagnostics())
-                    << "Expecting to find variable of type pointer or reference on lhs "
-                       "of assignment statement";
+                TINT_ICE() << "Expecting to find variable of type pointer or reference on lhs "
+                              "of assignment statement";
                 return std::pair<const type::Type*, builtin::AddressSpace>{};
             });
     }

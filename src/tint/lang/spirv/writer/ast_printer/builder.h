@@ -25,8 +25,8 @@
 #include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/core/type/storage_texture.h"
 #include "src/tint/lang/spirv/writer/ast_printer/scalar_constant.h"
-#include "src/tint/lang/spirv/writer/function.h"
-#include "src/tint/lang/spirv/writer/module.h"
+#include "src/tint/lang/spirv/writer/common/function.h"
+#include "src/tint/lang/spirv/writer/common/module.h"
 #include "src/tint/lang/wgsl/ast/assignment_statement.h"
 #include "src/tint/lang/wgsl/ast/bitcast_expression.h"
 #include "src/tint/lang/wgsl/ast/break_statement.h"
@@ -116,8 +116,7 @@ class Builder {
     /// @param operands the variable operands
     void push_function_var(const OperandList& operands) {
         if (TINT_UNLIKELY(!current_function_)) {
-            TINT_ICE(Writer, builder_.Diagnostics())
-                << "push_function_var() called without a function";
+            TINT_ICE() << "push_function_var() called without a function";
         }
         current_function_.push_var(operands);
     }

@@ -21,8 +21,6 @@
 #include "src/tint/lang/core/ir/module.h"
 #include "src/tint/lang/core/type/struct.h"
 
-TINT_INSTANTIATE_TYPEINFO(tint::ir::transform::ShaderIO);
-
 using namespace tint::builtin::fluent_types;  // NOLINT
 using namespace tint::number_suffixes;        // NOLINT
 
@@ -70,14 +68,8 @@ builtin::BuiltinValue ReturnBuiltin(enum Function::ReturnBuiltin builtin) {
     return builtin::BuiltinValue::kUndefined;
 }
 
-}  // namespace
-
-ShaderIO::ShaderIO() = default;
-
-ShaderIO::~ShaderIO() = default;
-
-/// PIMPL state for the transform, for a single entry point function.
-struct ShaderIO::State {
+/// PIMPL state for the transform.
+struct State {
     /// The IR module.
     Module* ir = nullptr;
     /// The IR builder.
@@ -85,13 +77,13 @@ struct ShaderIO::State {
     /// The type manager.
     type::Manager& ty{ir->Types()};
     /// The set of struct members that need to have their IO attributes stripped.
-    utils::Hashset<const type::StructMember*, 8> members_to_strip;
+    Hashset<const type::StructMember*, 8> members_to_strip;
 
     /// The entry point currently being processed.
     Function* func = nullptr;
 
     /// The backend state object for the current entry point.
-    std::unique_ptr<ShaderIO::BackendState> backend;
+    std::unique_ptr<ShaderIOBackendState> backend;
 
     /// Constructor
     /// @param mod the module
@@ -100,7 +92,7 @@ struct ShaderIO::State {
     /// Process an entry point.
     /// @param f the original entry point function
     /// @param bs the backend state object
-    void Process(Function* f, std::unique_ptr<ShaderIO::BackendState> bs) {
+    void Process(Function* f, std::unique_ptr<ShaderIOBackendState> bs) {
         TINT_SCOPED_ASSIGNMENT(func, f);
         backend = std::move(bs);
         TINT_DEFER(backend = nullptr);
@@ -202,12 +194,12 @@ struct ShaderIO::State {
     /// Build the argument list to call the original entry point function.
     /// @param builder the IR builder for new instructions
     /// @returns the argument list
-    utils::Vector<Value*, 4> BuildInnerCallArgs(Builder& builder) {
+    Vector<Value*, 4> BuildInnerCallArgs(Builder& builder) {
         uint32_t input_idx = 0;
-        utils::Vector<Value*, 4> args;
+        Vector<Value*, 4> args;
         for (auto* param : func->Params()) {
             if (auto* str = param->Type()->As<type::Struct>()) {
-                utils::Vector<Value*, 4> construct_args;
+                Vector<Value*, 4> construct_args;
                 for (uint32_t i = 0; i < str->Members().Length(); i++) {
                     construct_args.Push(backend->GetInput(builder, input_idx++));
                 }
@@ -245,9 +237,11 @@ struct ShaderIO::State {
     }
 };
 
-void ShaderIO::Run(Module* ir) const {
-    ShaderIO::State state(ir);
-    for (auto* func : ir->functions) {
+}  // namespace
+
+void RunShaderIOBase(Module* module, std::function<MakeBackendStateFunc> make_backend_state) {
+    State state(module);
+    for (auto* func : module->functions) {
         // Only process entry points.
         if (func->Stage() == Function::PipelineStage::kUndefined) {
             continue;
@@ -258,11 +252,11 @@ void ShaderIO::Run(Module* ir) const {
             continue;
         }
 
-        state.Process(func, MakeBackendState(ir, func));
+        state.Process(func, make_backend_state(module, func));
     }
     state.Finalize();
 }
 
-ShaderIO::BackendState::~BackendState() = default;
+ShaderIOBackendState::~ShaderIOBackendState() = default;
 
 }  // namespace tint::ir::transform

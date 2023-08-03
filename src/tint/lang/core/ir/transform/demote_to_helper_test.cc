@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include "src/tint/lang/core/ir/transform/test_helper.h"
+#include "src/tint/lang/core/ir/transform/helper_test.h"
 #include "src/tint/lang/core/type/builtin_structs.h"
 #include "src/tint/lang/core/type/f32.h"
 #include "src/tint/lang/core/type/storage_texture.h"
@@ -58,7 +58,7 @@ TEST_F(IR_DemoteToHelperTest, NoModify_NoDiscard) {
 
     auto* expect = src;
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -136,7 +136,7 @@ TEST_F(IR_DemoteToHelperTest, DiscardInEntryPoint_WriteInEntryPoint) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -232,7 +232,7 @@ TEST_F(IR_DemoteToHelperTest, DiscardInEntryPoint_WriteInHelper) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -330,7 +330,7 @@ TEST_F(IR_DemoteToHelperTest, DiscardInHelper_WriteInEntryPoint) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -428,7 +428,7 @@ TEST_F(IR_DemoteToHelperTest, DiscardInHelper_WriteInHelper) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -503,7 +503,7 @@ TEST_F(IR_DemoteToHelperTest, WriteToInvocationPrivateAddressSpace) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -587,7 +587,7 @@ TEST_F(IR_DemoteToHelperTest, TextureStore) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -665,7 +665,7 @@ TEST_F(IR_DemoteToHelperTest, AtomicStore) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -747,7 +747,7 @@ TEST_F(IR_DemoteToHelperTest, AtomicAdd) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }
@@ -842,7 +842,7 @@ __atomic_compare_exchange_result_i32 = struct @align(4) {
 }
 )";
 
-    Run<DemoteToHelper>();
+    Run(DemoteToHelper);
 
     EXPECT_EQ(expect, str());
 }

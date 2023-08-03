@@ -24,7 +24,7 @@ namespace tint::sem {
 Call::Call(const ast::CallExpression* declaration,
            const CallTarget* target,
            EvaluationStage stage,
-           utils::VectorRef<const sem::ValueExpression*> arguments,
+           VectorRef<const sem::ValueExpression*> arguments,
            const Statement* statement,
            const constant::Value* constant,
            bool has_side_effects)
@@ -32,8 +32,7 @@ Call::Call(const ast::CallExpression* declaration,
       target_(target),
       arguments_(std::move(arguments)) {
     // Check that the stage is no earlier than the target supports
-    TINT_ASSERT(Semantic,
-                (target->Stage() <= stage) || (stage == sem::EvaluationStage::kNotEvaluated));
+    TINT_ASSERT((target->Stage() <= stage) || (stage == sem::EvaluationStage::kNotEvaluated));
 }
 
 Call::~Call() = default;

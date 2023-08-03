@@ -16,8 +16,8 @@
 
 #include "src/tint/lang/core/type/manager.h"
 #include "src/tint/lang/core/type/reference.h"
-#include "src/tint/utils/debug/debug.h"
 #include "src/tint/utils/diagnostic/diagnostic.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/math/hash.h"
 #include "src/tint/utils/text/string_stream.h"
 
@@ -26,13 +26,13 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::Atomic);
 namespace tint::type {
 
 Atomic::Atomic(const type::Type* subtype)
-    : Base(utils::Hash(utils::TypeInfo::Of<Atomic>().full_hashcode, subtype),
+    : Base(Hash(tint::TypeInfo::Of<Atomic>().full_hashcode, subtype),
            type::Flags{
                Flag::kCreationFixedFootprint,
                Flag::kFixedFootprint,
            }),
       subtype_(subtype) {
-    TINT_ASSERT(AST, !subtype->Is<Reference>());
+    TINT_ASSERT(!subtype->Is<Reference>());
 }
 
 bool Atomic::Equals(const type::UniqueNode& other) const {
@@ -43,7 +43,7 @@ bool Atomic::Equals(const type::UniqueNode& other) const {
 }
 
 std::string Atomic::FriendlyName() const {
-    utils::StringStream out;
+    StringStream out;
     out << "atomic<" << subtype_->FriendlyName() << ">";
     return out.str();
 }

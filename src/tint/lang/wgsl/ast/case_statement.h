@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A case statement
-class CaseStatement final : public utils::Castable<CaseStatement, Statement> {
+class CaseStatement final : public Castable<CaseStatement, Statement> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -34,7 +34,7 @@ class CaseStatement final : public utils::Castable<CaseStatement, Statement> {
     CaseStatement(GenerationID pid,
                   NodeID nid,
                   const Source& src,
-                  utils::VectorRef<const CaseSelector*> selectors,
+                  VectorRef<const CaseSelector*> selectors,
                   const BlockStatement* body);
 
     /// Destructor
@@ -44,13 +44,13 @@ class CaseStatement final : public utils::Castable<CaseStatement, Statement> {
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const CaseStatement* Clone(CloneContext* ctx) const override;
+    const CaseStatement* Clone(CloneContext& ctx) const override;
 
     /// @returns true if this item contains a default selector
     bool ContainsDefault() const;
 
     /// The case selectors, empty if none set
-    const utils::Vector<const CaseSelector*, 4> selectors;
+    const tint::Vector<const CaseSelector*, 4> selectors;
 
     /// The case body
     const BlockStatement* const body;

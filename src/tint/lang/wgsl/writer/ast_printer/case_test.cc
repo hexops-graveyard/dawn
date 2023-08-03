@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -43,7 +43,7 @@ TEST_F(WgslASTPrinterTest, Emit_Case) {
 TEST_F(WgslASTPrinterTest, Emit_Case_MultipleSelectors) {
     auto* s = Switch(1_i,
                      Case(
-                         utils::Vector{
+                         Vector{
                              CaseSelector(5_i),
                              CaseSelector(6_i),
                          },

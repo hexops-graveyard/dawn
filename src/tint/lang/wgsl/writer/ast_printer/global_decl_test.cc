@@ -16,7 +16,7 @@
 #include "src/tint/lang/core/type/texture_dimension.h"
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
 #include "src/tint/lang/wgsl/ast/variable_decl_statement.h"
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -50,29 +50,29 @@ TEST_F(WgslASTPrinterTest, Emit_GlobalDeclAfterFunction) {
 TEST_F(WgslASTPrinterTest, Emit_GlobalsInterleaved) {
     GlobalVar("a0", ty.f32(), builtin::AddressSpace::kPrivate);
 
-    auto* s0 = Structure("S0", utils::Vector{
+    auto* s0 = Structure("S0", Vector{
                                    Member("a", ty.i32()),
                                });
 
     Func("func", {}, ty.f32(),
-         utils::Vector{
+         Vector{
              Return("a0"),
          },
-         utils::Empty);
+         tint::Empty);
 
     GlobalVar("a1", ty.f32(), builtin::AddressSpace::kPrivate);
 
-    auto* s1 = Structure("S1", utils::Vector{
+    auto* s1 = Structure("S1", Vector{
                                    Member("a", ty.i32()),
                                });
 
     Func("main", {}, ty.void_(),
-         utils::Vector{
+         Vector{
              Decl(Var("s0", ty.Of(s0))),
              Decl(Var("s1", ty.Of(s1))),
              Assign("a1", Call("func")),
          },
-         utils::Vector{
+         Vector{
              Stage(ast::PipelineStage::kCompute),
              WorkgroupSize(1_i),
          });

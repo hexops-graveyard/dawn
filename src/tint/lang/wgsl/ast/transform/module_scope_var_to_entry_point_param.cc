@@ -20,11 +20,14 @@
 #include <vector>
 
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/module.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
+#include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/utils/text/string.h"
 
@@ -35,7 +38,7 @@ using namespace tint::builtin::fluent_types;  // NOLINT
 namespace tint::ast::transform {
 namespace {
 
-using StructMemberList = utils::Vector<const StructMember*, 8>;
+using StructMemberList = tint::Vector<const StructMember*, 8>;
 
 // The name of the struct member for arrays that are wrapped in structures.
 const char* kWrappedArrayMemberName = "arr";
@@ -70,11 +73,11 @@ bool ContainsMatrix(const type::Type* type) {
 /// PIMPL state for the transform
 struct ModuleScopeVarToEntryPointParam::State {
     /// The clone context.
-    CloneContext& ctx;
+    program::CloneContext& ctx;
 
     /// Constructor
     /// @param context the clone context
-    explicit State(CloneContext& context) : ctx(context) {}
+    explicit State(program::CloneContext& context) : ctx(context) {}
 
     /// Clone any struct types that are contained in `ty` (including `ty` itself),
     /// and add it to the global declarations now, so that they precede new global
@@ -154,7 +157,7 @@ struct ModuleScopeVarToEntryPointParam::State {
                     // representable in Tint's AST.
                     CloneStructTypes(ty);
                     auto* wrapper = ctx.dst->Structure(
-                        ctx.dst->Sym(), utils::Vector{
+                        ctx.dst->Sym(), tint::Vector{
                                             ctx.dst->Member(kWrappedArrayMemberName, param_type),
                                         });
                     param_type = ctx.dst->ty.Of(wrapper);
@@ -193,7 +196,7 @@ struct ModuleScopeVarToEntryPointParam::State {
                         ctx.dst->Disable(DisabledValidation::kIgnoreAddressSpace);
                     auto* initializer = ctx.Clone(var->Declaration()->initializer);
                     auto* local_var = ctx.dst->Var(new_var_symbol, store_type(), sc, initializer,
-                                                   utils::Vector{disable_validation});
+                                                   tint::Vector{disable_validation});
                     ctx.InsertFront(func->body->statements, ctx.dst->Decl(local_var));
                 }
                 break;
@@ -201,12 +204,11 @@ struct ModuleScopeVarToEntryPointParam::State {
             case builtin::AddressSpace::kPushConstant: {
                 ctx.dst->Diagnostics().add_error(
                     diag::System::Transform,
-                    "unhandled module-scope address space (" + utils::ToString(sc) + ")");
+                    "unhandled module-scope address space (" + tint::ToString(sc) + ")");
                 break;
             }
             default: {
-                TINT_ICE(Transform, ctx.dst->Diagnostics())
-                    << "unhandled module-scope address space (" << sc << ")";
+                TINT_ICE() << "unhandled module-scope address space (" << sc << ")";
                 break;
             }
         }
@@ -237,17 +239,16 @@ struct ModuleScopeVarToEntryPointParam::State {
             case builtin::AddressSpace::kPushConstant: {
                 ctx.dst->Diagnostics().add_error(
                     diag::System::Transform,
-                    "unhandled module-scope address space (" + utils::ToString(sc) + ")");
+                    "unhandled module-scope address space (" + tint::ToString(sc) + ")");
                 break;
             }
             default: {
-                TINT_ICE(Transform, ctx.dst->Diagnostics())
-                    << "unhandled module-scope address space (" << sc << ")";
+                TINT_ICE() << "unhandled module-scope address space (" << sc << ")";
             }
         }
 
         // Use a pointer for non-handle types.
-        utils::Vector<const Attribute*, 2> attributes;
+        tint::Vector<const Attribute*, 2> attributes;
         if (!ty->is_handle()) {
             param_type = sc == builtin::AddressSpace::kStorage
                              ? ctx.dst->ty.ptr(sc, param_type, var->Access())
@@ -301,14 +302,14 @@ struct ModuleScopeVarToEntryPointParam::State {
     /// Process the module.
     void Process() {
         // Predetermine the list of function calls that need to be replaced.
-        using CallList = utils::Vector<const CallExpression*, 8>;
+        using CallList = tint::Vector<const CallExpression*, 8>;
         std::unordered_map<const Function*, CallList> calls_to_replace;
 
-        utils::Vector<const Function*, 8> functions_to_process;
+        tint::Vector<const Function*, 8> functions_to_process;
 
         // Collect private variables into a single structure.
         StructMemberList private_struct_members;
-        utils::Vector<std::function<const AssignmentStatement*()>, 4> private_initializers;
+        tint::Vector<std::function<const AssignmentStatement*()>, 4> private_initializers;
         std::unordered_set<const Function*> uses_privates;
 
         // Build a list of functions that transitively reference any module-scope variables.
@@ -416,7 +417,7 @@ struct ModuleScopeVarToEntryPointParam::State {
                     auto* var =
                         ctx.dst->Var(PrivateStructVariableName(), ctx.dst->ty(PrivateStructName()),
                                      builtin::AddressSpace::kPrivate,
-                                     utils::Vector{
+                                     tint::Vector{
                                          ctx.dst->Disable(DisabledValidation::kIgnoreAddressSpace),
                                      });
                     ctx.InsertFront(func_ast->body->statements, ctx.dst->Decl(var));
@@ -491,7 +492,7 @@ struct ModuleScopeVarToEntryPointParam::State {
                 auto param_type = ctx.dst->ty.ptr(workgroup, ctx.dst->ty.Of(str));
                 auto* param =
                     ctx.dst->Param(workgroup_param(), param_type,
-                                   utils::Vector{
+                                   tint::Vector{
                                        ctx.dst->Disable(DisabledValidation::kEntryPointParameter),
                                        ctx.dst->Disable(DisabledValidation::kIgnoreAddressSpace),
                                    });
@@ -595,12 +596,12 @@ Transform::ApplyResult ModuleScopeVarToEntryPointParam::Apply(const Program* src
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     State state{ctx};
     state.Process();
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

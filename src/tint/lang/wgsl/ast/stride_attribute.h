@@ -24,7 +24,7 @@ namespace tint::ast {
 
 /// A stride attribute used by the SPIR-V reader for strided arrays and
 /// matrices.
-class StrideAttribute final : public utils::Castable<StrideAttribute, Attribute> {
+class StrideAttribute final : public Castable<StrideAttribute, Attribute> {
   public:
     /// constructor
     /// @param pid the identifier of the program that owns this node
@@ -41,7 +41,7 @@ class StrideAttribute final : public utils::Castable<StrideAttribute, Attribute>
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const StrideAttribute* Clone(CloneContext* ctx) const override;
+    const StrideAttribute* Clone(CloneContext& ctx) const override;
 
     /// The stride value
     const uint32_t stride;

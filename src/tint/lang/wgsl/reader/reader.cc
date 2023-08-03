@@ -17,13 +17,14 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/reader/parser/parser.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 namespace tint::wgsl::reader {
 
 Program Parse(Source::File const* file) {
     Parser parser(file);
     parser.Parse();
-    return Program(std::move(parser.builder()));
+    return resolver::Resolve(parser.builder());
 }
 
 }  // namespace tint::wgsl::reader

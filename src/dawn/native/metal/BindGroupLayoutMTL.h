@@ -16,26 +16,23 @@
 #define SRC_DAWN_NATIVE_METAL_BINDGROUPLAYOUTMTL_H_
 
 #include "dawn/common/SlabAllocator.h"
-#include "dawn/native/BindGroupLayout.h"
+#include "dawn/native/BindGroupLayoutInternal.h"
 
 namespace dawn::native::metal {
 
 class BindGroup;
 class Device;
 
-class BindGroupLayout final : public BindGroupLayoutBase {
+class BindGroupLayout final : public BindGroupLayoutInternalBase {
   public:
     static Ref<BindGroupLayout> Create(DeviceBase* device,
-                                       const BindGroupLayoutDescriptor* descriptor,
-                                       PipelineCompatibilityToken pipelineCompatibilityToken);
+                                       const BindGroupLayoutDescriptor* descriptor);
 
     Ref<BindGroup> AllocateBindGroup(Device* device, const BindGroupDescriptor* descriptor);
     void DeallocateBindGroup(BindGroup* bindGroup);
 
   private:
-    BindGroupLayout(DeviceBase* device,
-                    const BindGroupLayoutDescriptor* descriptor,
-                    PipelineCompatibilityToken pipelineCompatibilityToken);
+    BindGroupLayout(DeviceBase* device, const BindGroupLayoutDescriptor* descriptor);
     ~BindGroupLayout() override;
 
     SlabAllocator<BindGroup> mBindGroupAllocator;

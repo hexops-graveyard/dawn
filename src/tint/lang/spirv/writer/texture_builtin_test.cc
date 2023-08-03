@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/test_helper.h"
-
 #include "src/tint/lang/core/builtin/function.h"
 #include "src/tint/lang/core/type/depth_multisampled_texture.h"
+#include "src/tint/lang/spirv/writer/common/helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -55,14 +54,15 @@ struct TextureBuiltinTestCase {
     /// The texel type of the texture.
     TestElementType texel_type;
     /// The builtin function arguments.
-    utils::Vector<NameAndType, 4> args;
+    Vector<NameAndType, 4> args;
     /// The result type.
     NameAndType result;
     /// The expected SPIR-V instruction strings.
-    utils::Vector<const char*, 2> instructions;
+    Vector<const char*, 2> instructions;
 };
 
-inline utils::StringStream& operator<<(utils::StringStream& out, TextureType type) {
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, TextureType type) {
     switch (type) {
         case kSampledTexture:
             out << "SampleTexture";
@@ -84,7 +84,7 @@ inline utils::StringStream& operator<<(utils::StringStream& out, TextureType typ
 }
 
 std::string PrintCase(testing::TestParamInfo<TextureBuiltinTestCase> cc) {
-    utils::StringStream ss;
+    StringStream ss;
     ss << cc.param.texture_type << cc.param.dim << "_" << cc.param.texel_type;
     for (const auto& arg : cc.param.args) {
         ss << "_" << arg.name;
@@ -138,7 +138,7 @@ class TextureBuiltinTest : public SpirvWriterTestWithParam<TextureBuiltinTestCas
             result_ty = ty.vec(result_ty, params.result.width);
         }
 
-        utils::Vector<ir::FunctionParam*, 4> func_params;
+        Vector<ir::FunctionParam*, 4> func_params;
 
         auto* t = b.FunctionParam(
             "t", MakeTextureType(params.texture_type, params.dim, params.texel_type));
@@ -158,7 +158,7 @@ class TextureBuiltinTest : public SpirvWriterTestWithParam<TextureBuiltinTestCas
         b.Append(func->Block(), [&] {
             uint32_t arg_value = 1;
 
-            utils::Vector<ir::Value*, 4> args;
+            Vector<ir::Value*, 4> args;
             if (function == builtin::Function::kTextureGather &&
                 params.texture_type != kDepthTexture) {
                 // Special case for textureGather, which has a component argument first.

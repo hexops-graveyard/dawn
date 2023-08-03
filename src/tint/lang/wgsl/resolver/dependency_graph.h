@@ -163,9 +163,8 @@ class ResolvedIdentifier {
         return !(*this == other);
     }
 
-    /// @param diagnostics diagnostics used to report ICEs
     /// @return a description of the resolved symbol
-    std::string String(diag::List& diagnostics) const;
+    std::string String() const;
 
   private:
     std::variant<UnresolvedIdentifier,
@@ -200,16 +199,16 @@ struct DependencyGraph {
     static bool Build(const ast::Module& module, diag::List& diagnostics, DependencyGraph& output);
 
     /// All globals in dependency-sorted order.
-    utils::Vector<const ast::Node*, 32> ordered_globals;
+    Vector<const ast::Node*, 32> ordered_globals;
 
     /// Map of ast::Identifier to a ResolvedIdentifier
-    utils::Hashmap<const ast::Identifier*, ResolvedIdentifier, 64> resolved_identifiers;
+    Hashmap<const ast::Identifier*, ResolvedIdentifier, 64> resolved_identifiers;
 
     /// Map of ast::Variable to a type, function, or variable that is shadowed by
     /// the variable key. A declaration (X) shadows another (Y) if X and Y use
     /// the same symbol, and X is declared in a sub-scope of the scope that
     /// declares Y.
-    utils::Hashmap<const ast::Variable*, const ast::Node*, 16> shadows;
+    Hashmap<const ast::Variable*, const ast::Node*, 16> shadows;
 };
 
 }  // namespace tint::resolver

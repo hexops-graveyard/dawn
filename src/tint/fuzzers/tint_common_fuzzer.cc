@@ -37,6 +37,7 @@
 #include "src/tint/lang/wgsl/program/program.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/utils/diagnostic/formatter.h"
+#include "src/tint/utils/diagnostic/printer.h"
 #include "src/tint/utils/math/hash.h"
 #include "tint/binding_point.h"
 
@@ -59,21 +60,22 @@ namespace {
         __builtin_trap();                                          \
     } while (false)
 
-[[noreturn]] void TintInternalCompilerErrorReporter(const tint::diag::List& diagnostics) {
-    FATAL_ERROR(diagnostics, "");
+[[noreturn]] void TintInternalCompilerErrorReporter(const InternalCompilerError& err) {
+    std::cerr << err.Error() << std::endl;
+    __builtin_trap();
 }
 
 // Wrapping in a macro, so it can be a one-liner in the code, but not
 // introduce another level in the stack trace. This will help with de-duping
 // ClusterFuzz issues.
-#define CHECK_INSPECTOR(program, inspector)                                                    \
-    do {                                                                                       \
-        if ((inspector).has_error()) {                                                         \
-            if (!enforce_validity) {                                                           \
-                return;                                                                        \
-            }                                                                                  \
-            FATAL_ERROR((program)->Diagnostics(), "Inspector failed: " + (inspector).error()); \
-        }                                                                                      \
+#define CHECK_INSPECTOR(program, inspector)                                                  \
+    do {                                                                                     \
+        if ((inspector).has_error()) {                                                       \
+            if (!enforce_validity) {                                                         \
+                return;                                                                      \
+            }                                                                                \
+            FATAL_ERROR(program->Diagnostics(), "Inspector failed: " + (inspector).error()); \
+        }                                                                                    \
     } while (false)
 
 // Wrapping in a macro to make code more readable and help with issue de-duping.
@@ -126,17 +128,8 @@ CommonFuzzer::CommonFuzzer(InputFormat input, OutputFormat output)
 CommonFuzzer::~CommonFuzzer() = default;
 
 int CommonFuzzer::Run(const uint8_t* data, size_t size) {
+    tint::Initialize();
     tint::SetInternalCompilerErrorReporter(&TintInternalCompilerErrorReporter);
-
-#if TINT_BUILD_WGSL_WRITER
-    tint::Program::printer = [](const tint::Program* program) {
-        auto result = tint::wgsl::writer::Generate(program, {});
-        if (!result.error.empty()) {
-            return "error: " + result.error;
-        }
-        return result.wgsl;
-    };
-#endif  // TINT_BUILD_WGSL_WRITER
 
     Program program;
 
@@ -147,7 +140,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
 
 #if TINT_BUILD_WGSL_READER || TINT_BUILD_SPV_READER
     auto dump_input_data = [&](auto& content, const char* extension) {
-        size_t hash = utils::Hash(content);
+        size_t hash = Hash(content);
         auto filename = "fuzzer_input_" + std::to_string(hash) + extension;  //
         std::ofstream fout(filename, std::ios::binary);
         fout.write(reinterpret_cast<const char*>(data), static_cast<std::streamsize>(size));
@@ -184,7 +177,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
             if (dump_input_) {
                 dump_input_data(spirv_input, ".spv");
             }
-            program = reader::spirv::Parse(spirv_input);
+            program = spirv::reader::Parse(spirv_input);
 #endif  // TINT_BUILD_SPV_READER
             break;
         }
@@ -290,18 +283,20 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
     switch (output_) {
         case OutputFormat::kWGSL: {
 #if TINT_BUILD_WGSL_WRITER
-            wgsl::writer::Generate(&program, options_wgsl_);
+            (void)wgsl::writer::Generate(&program, options_wgsl_);
 #endif  // TINT_BUILD_WGSL_WRITER
             break;
         }
         case OutputFormat::kSpv: {
 #if TINT_BUILD_SPV_WRITER
             auto result = spirv::writer::Generate(&program, options_spirv_);
-            generated_spirv_ = std::move(result.spirv);
+            if (result) {
+                generated_spirv_ = std::move(result->spirv);
 
-            if (!SPIRVToolsValidationCheck(program, generated_spirv_)) {
-                VALIDITY_ERROR(program.Diagnostics(),
-                               "Fuzzing detected invalid spirv being emitted by Tint");
+                if (!SPIRVToolsValidationCheck(program, generated_spirv_)) {
+                    VALIDITY_ERROR(program.Diagnostics(),
+                                   "Fuzzing detected invalid spirv being emitted by Tint");
+                }
             }
 
 #endif  // TINT_BUILD_SPV_WRITER
@@ -309,7 +304,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
         }
         case OutputFormat::kHLSL: {
 #if TINT_BUILD_HLSL_WRITER
-            hlsl::writer::Generate(&program, options_hlsl_);
+            (void)hlsl::writer::Generate(&program, options_hlsl_);
 #endif  // TINT_BUILD_HLSL_WRITER
             break;
         }
@@ -323,7 +318,7 @@ int CommonFuzzer::Run(const uint8_t* data, size_t size) {
                 input_program = &*flattened;
             }
 
-            msl::writer::Generate(input_program, options_msl_);
+            (void)msl::writer::Generate(input_program, options_msl_);
 #endif  // TINT_BUILD_MSL_WRITER
             break;
         }

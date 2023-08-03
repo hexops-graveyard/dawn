@@ -22,13 +22,10 @@
 #include "src/tint/lang/core/type/manager.h"
 #include "src/tint/lang/wgsl/ast/function.h"
 #include "src/tint/lang/wgsl/sem/info.h"
-#include "src/tint/utils/generation_id.h"
-#include "src/tint/utils/text/symbol_table.h"
+#include "src/tint/utils/id/generation_id.h"
+#include "src/tint/utils/symbol/symbol_table.h"
 
 // Forward Declarations
-namespace tint {
-class CloneContext;
-}  // namespace tint
 namespace tint::ast {
 class Module;
 }  // namespace tint::ast
@@ -39,10 +36,10 @@ namespace tint {
 class Program {
   public:
     /// ASTNodeAllocator is an alias to BlockAllocator<ast::Node>
-    using ASTNodeAllocator = utils::BlockAllocator<ast::Node>;
+    using ASTNodeAllocator = BlockAllocator<ast::Node>;
 
     /// SemNodeAllocator is an alias to BlockAllocator<sem::Node>
-    using SemNodeAllocator = utils::BlockAllocator<sem::Node>;
+    using SemNodeAllocator = BlockAllocator<sem::Node>;
 
     /// Constructor
     Program();

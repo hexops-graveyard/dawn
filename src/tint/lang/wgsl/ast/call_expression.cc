@@ -16,7 +16,8 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CallExpression);
 
@@ -26,24 +27,24 @@ CallExpression::CallExpression(GenerationID pid,
                                NodeID nid,
                                const Source& src,
                                const IdentifierExpression* t,
-                               utils::VectorRef<const Expression*> a)
+                               VectorRef<const Expression*> a)
     : Base(pid, nid, src), target(t), args(std::move(a)) {
-    TINT_ASSERT(AST, target);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, target, generation_id);
+    TINT_ASSERT(target);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(target, generation_id);
     for (auto* arg : args) {
-        TINT_ASSERT(AST, arg);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, arg, generation_id);
+        TINT_ASSERT(arg);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(arg, generation_id);
     }
 }
 
 CallExpression::~CallExpression() = default;
 
-const CallExpression* CallExpression::Clone(CloneContext* ctx) const {
+const CallExpression* CallExpression::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto p = ctx->Clone(args);
-    auto t = ctx->Clone(target);
-    return ctx->dst->create<CallExpression>(src, t, std::move(p));
+    auto src = ctx.Clone(source);
+    auto p = ctx.Clone(args);
+    auto t = ctx.Clone(target);
+    return ctx.dst->create<CallExpression>(src, t, std::move(p));
 }
 
 }  // namespace tint::ast

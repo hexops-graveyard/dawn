@@ -18,7 +18,9 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/reference.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/utils/containers/map.h"
 #include "src/tint/utils/containers/vector.h"
@@ -88,7 +90,7 @@ struct PreservePadding::State {
         });
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
     /// Create a statement that will perform the assignment `lhs = rhs`, creating and using helper
@@ -121,7 +123,7 @@ struct PreservePadding::State {
             EnableExtension();
             auto helper = helpers.GetOrCreate(ty, [&] {
                 auto helper_name = b.Symbols().New("assign_and_preserve_padding");
-                utils::Vector<const Parameter*, 2> params = {
+                tint::Vector<const Parameter*, 2> params = {
                     b.Param(kDestParamName,
                             b.ty.ptr<storage, read_write>(CreateASTTypeFor(ctx, ty))),
                     b.Param(kValueParamName, CreateASTTypeFor(ctx, ty)),
@@ -137,7 +139,7 @@ struct PreservePadding::State {
             [&](const type::Array* arr) {
                 // Call a helper function that uses a loop to assigns each element separately.
                 return call_helper([&] {
-                    utils::Vector<const Statement*, 8> body;
+                    tint::Vector<const Statement*, 8> body;
                     auto* idx = b.Var("i", b.Expr(0_u));
                     body.Push(
                         b.For(b.Decl(idx), b.LessThan(idx, u32(arr->ConstantCount().value())),
@@ -151,7 +153,7 @@ struct PreservePadding::State {
             [&](const type::Matrix* mat) {
                 // Call a helper function that assigns each column separately.
                 return call_helper([&] {
-                    utils::Vector<const Statement*, 4> body;
+                    tint::Vector<const Statement*, 4> body;
                     for (uint32_t i = 0; i < mat->columns(); i++) {
                         body.Push(MakeAssignment(mat->ColumnType(),
                                                  b.IndexAccessor(b.Deref(kDestParamName), u32(i)),
@@ -163,7 +165,7 @@ struct PreservePadding::State {
             [&](const type::Struct* str) {
                 // Call a helper function that assigns each member separately.
                 return call_helper([&] {
-                    utils::Vector<const Statement*, 8> body;
+                    tint::Vector<const Statement*, 8> body;
                     for (auto member : str->Members()) {
                         auto name = member->Name().Name();
                         body.Push(MakeAssignment(member->Type(),
@@ -174,7 +176,7 @@ struct PreservePadding::State {
                 });
             },
             [&](Default) {
-                TINT_ICE(Transform, b.Diagnostics()) << "unhandled type with padding";
+                TINT_ICE() << "unhandled type with padding";
                 return nullptr;
             });
     }
@@ -227,7 +229,7 @@ struct PreservePadding::State {
     /// The program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx;
+    program::CloneContext ctx;
     /// Alias to the semantic info in ctx.src
     const sem::Info& sem = ctx.src->Sem();
     /// Alias to the symbols in ctx.src
@@ -235,7 +237,7 @@ struct PreservePadding::State {
     /// Flag to track whether we have already enabled the full pointer parameters extension.
     bool ext_enabled = false;
     /// Map of semantic types to their assignment helper functions.
-    utils::Hashmap<const type::Type*, Symbol, 8> helpers;
+    Hashmap<const type::Type*, Symbol, 8> helpers;
 };
 
 Transform::ApplyResult PreservePadding::Apply(const Program* program,

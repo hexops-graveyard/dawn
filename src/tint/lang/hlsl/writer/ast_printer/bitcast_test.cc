@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 #include "src/tint/utils/text/string_stream.h"
 
 #include "gmock/gmock.h"
@@ -32,7 +32,7 @@ TEST_F(HlslASTPrinterTest_Bitcast, EmitExpression_Bitcast_Float) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, bitcast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "asfloat(a)");
 }
@@ -44,7 +44,7 @@ TEST_F(HlslASTPrinterTest_Bitcast, EmitExpression_Bitcast_Int) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, bitcast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "asint(a)");
 }
@@ -56,7 +56,7 @@ TEST_F(HlslASTPrinterTest_Bitcast, EmitExpression_Bitcast_Uint) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, bitcast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "asuint(a)");
 }

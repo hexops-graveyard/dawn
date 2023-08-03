@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "src/tint/lang/wgsl/ast/transform/test_helper.h"
+#include "src/tint/lang/wgsl/ast/transform/helper_test.h"
 #include "src/tint/utils/text/string.h"
 
 // This file contains the should-run tests and a trival empty module test for Std140 transform.
@@ -89,7 +89,7 @@ struct MatrixCase {
     // Replace predefined field `${mat}` with the matrix shape. E.g. for a matrix mat4x3<f32>, would
     // replace "${mat}" with "mat4x3<f32>".
     std::string ReplaceMatInString(std::string str) const {
-        str = utils::ReplaceAll(str, "${mat}", Mat());
+        str = tint::ReplaceAll(str, "${mat}", Mat());
         return str;
     }
 };

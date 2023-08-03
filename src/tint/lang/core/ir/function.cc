@@ -15,6 +15,7 @@
 #include "src/tint/lang/core/ir/function.h"
 
 #include "src/tint/utils/containers/predicates.h"
+#include "src/tint/utils/ice/ice.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Function);
 
@@ -24,47 +25,47 @@ Function::Function(const type::Type* rt,
                    PipelineStage stage,
                    std::optional<std::array<uint32_t, 3>> wg_size)
     : pipeline_stage_(stage), workgroup_size_(wg_size) {
-    TINT_ASSERT(IR, rt != nullptr);
+    TINT_ASSERT(rt != nullptr);
 
     return_.type = rt;
 }
 
 Function::~Function() = default;
 
-void Function::SetParams(utils::VectorRef<FunctionParam*> params) {
+void Function::SetParams(VectorRef<FunctionParam*> params) {
     params_ = std::move(params);
-    TINT_ASSERT(IR, !params_.Any(utils::IsNull));
+    TINT_ASSERT(!params_.Any(IsNull));
 }
 
 void Function::SetParams(std::initializer_list<FunctionParam*> params) {
     params_ = params;
-    TINT_ASSERT(IR, !params_.Any(utils::IsNull));
+    TINT_ASSERT(!params_.Any(IsNull));
 }
 
-utils::StringStream& operator<<(utils::StringStream& out, Function::PipelineStage value) {
+std::string_view ToString(Function::PipelineStage value) {
     switch (value) {
         case Function::PipelineStage::kVertex:
-            return out << "vertex";
+            return "vertex";
         case Function::PipelineStage::kFragment:
-            return out << "fragment";
+            return "fragment";
         case Function::PipelineStage::kCompute:
-            return out << "compute";
+            return "compute";
         default:
             break;
     }
-    return out << "<unknown>";
+    return "<unknown>";
 }
 
-utils::StringStream& operator<<(utils::StringStream& out, enum Function::ReturnBuiltin value) {
+std::string_view ToString(enum Function::ReturnBuiltin value) {
     switch (value) {
         case Function::ReturnBuiltin::kFragDepth:
-            return out << "frag_depth";
+            return "frag_depth";
         case Function::ReturnBuiltin::kSampleMask:
-            return out << "sample_mask";
+            return "sample_mask";
         case Function::ReturnBuiltin::kPosition:
-            return out << "position";
+            return "position";
     }
-    return out << "<unknown>";
+    return "<unknown>";
 }
 
 }  // namespace tint::ir

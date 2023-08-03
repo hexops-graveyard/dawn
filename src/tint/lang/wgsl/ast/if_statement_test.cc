@@ -17,7 +17,7 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
 #include "src/tint/lang/wgsl/ast/discard_statement.h"
-#include "src/tint/lang/wgsl/ast/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
 
 namespace tint::ast {
 namespace {
@@ -36,7 +36,7 @@ TEST_F(IfStatementTest, Creation_WithAttributes) {
     auto* attr1 = DiagnosticAttribute(builtin::DiagnosticSeverity::kOff, "foo");
     auto* attr2 = DiagnosticAttribute(builtin::DiagnosticSeverity::kOff, "bar");
     auto* cond = Expr("cond");
-    auto* stmt = If(cond, Block(), ElseStmt(), utils::Vector{attr1, attr2});
+    auto* stmt = If(cond, Block(), ElseStmt(), tint::Vector{attr1, attr2});
 
     EXPECT_THAT(stmt->attributes, testing::ElementsAre(attr1, attr2));
 }

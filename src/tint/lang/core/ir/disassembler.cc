@@ -52,6 +52,7 @@
 #include "src/tint/lang/core/ir/var.h"
 #include "src/tint/lang/core/type/struct.h"
 #include "src/tint/lang/core/type/type.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
 #include "src/tint/utils/text/string.h"
@@ -75,7 +76,7 @@ Disassembler::Disassembler(Module& mod) : mod_(mod) {}
 
 Disassembler::~Disassembler() = default;
 
-utils::StringStream& Disassembler::Indent() {
+StringStream& Disassembler::Indent() {
     for (uint32_t i = 0; i < indent_size_; i++) {
         out_ << " ";
     }
@@ -89,12 +90,12 @@ void Disassembler::EmitLine() {
 }
 
 size_t Disassembler::IdOf(Block* node) {
-    TINT_ASSERT(IR, node);
+    TINT_ASSERT(node);
     return block_ids_.GetOrCreate(node, [&] { return block_ids_.Count(); });
 }
 
 std::string Disassembler::IdOf(Value* value) {
-    TINT_ASSERT(IR, value);
+    TINT_ASSERT(value);
     return value_ids_.GetOrCreate(value, [&] {
         if (auto sym = mod_.NameOf(value)) {
             if (ids_.Add(sym.Name())) {
@@ -309,7 +310,7 @@ void Disassembler::EmitFunction(Function* func) {
     out_ << " -> %b" << IdOf(func->Block()) << " {";
 
     {  // Add a comment if the function IDs or parameter IDs doesn't match their name
-        utils::Vector<std::string, 4> names;
+        Vector<std::string, 4> names;
         if (auto name = mod_.NameOf(func); name.IsValid()) {
             if (name.NameView() != fn_id) {
                 names.Push("%" + std::string(fn_id) + ": '" + name.Name() + "'");
@@ -324,7 +325,7 @@ void Disassembler::EmitFunction(Function* func) {
             }
         }
         if (!names.IsEmpty()) {
-            out_ << "  # " << utils::Join(names, ", ");
+            out_ << "  # " << tint::Join(names, ", ");
         }
     }
 
@@ -427,7 +428,7 @@ void Disassembler::EmitInstruction(Instruction* inst) {
 
     if (!inst->Alive()) {
         SourceMarker sm(this);
-        out_ << "<destroyed " << inst->TypeInfo().name << " " << utils::ToString(inst) << ">";
+        out_ << "<destroyed " << inst->TypeInfo().name << " " << tint::ToString(inst) << ">";
         sm.Store(inst);
         return;
     }
@@ -472,7 +473,7 @@ void Disassembler::EmitInstruction(Instruction* inst) {
         [&](IntrinsicCall* i) {
             EmitValueWithType(i);
             out_ << " = ";
-            EmitInstructionName(utils::ToString(i->Kind()), i);
+            EmitInstructionName(tint::ToString(i->Kind()), i);
             out_ << " ";
             EmitOperandList(i);
         },
@@ -567,7 +568,7 @@ void Disassembler::EmitInstruction(Instruction* inst) {
         [&](Default) { out_ << "Unknown instruction: " << inst->TypeInfo().name; });
 
     {  // Add a comment if the result IDs don't match their names
-        utils::Vector<std::string, 4> names;
+        Vector<std::string, 4> names;
         for (auto* result : inst->Results()) {
             if (result) {
                 if (auto name = mod_.NameOf(result); name.IsValid()) {
@@ -579,7 +580,7 @@ void Disassembler::EmitInstruction(Instruction* inst) {
             }
         }
         if (!names.IsEmpty()) {
-            out_ << "  # " << utils::Join(names, ", ");
+            out_ << "  # " << tint::Join(names, ", ");
         }
     }
 }
@@ -652,7 +653,7 @@ void Disassembler::EmitIf(If* if_) {
 }
 
 void Disassembler::EmitLoop(Loop* l) {
-    utils::Vector<std::string, 3> parts;
+    Vector<std::string, 3> parts;
     if (!l->Initializer()->IsEmpty()) {
         parts.Push("i: %b" + std::to_string(IdOf(l->Initializer())));
     }
@@ -674,7 +675,7 @@ void Disassembler::EmitLoop(Loop* l) {
         }
         out_ << " = ";
     }
-    out_ << "loop [" << utils::Join(parts, ", ") << "]";
+    out_ << "loop [" << tint::Join(parts, ", ") << "]";
     sm.Store(l);
 
     out_ << " {  # " << NameOf(l);
@@ -803,7 +804,7 @@ void Disassembler::EmitTerminator(Terminator* b) {
     );
 }
 
-void Disassembler::EmitValueList(utils::Slice<Value* const> values) {
+void Disassembler::EmitValueList(tint::Slice<Value* const> values) {
     for (size_t i = 0, n = values.Length(); i < n; i++) {
         if (i > 0) {
             out_ << ", ";

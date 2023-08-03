@@ -18,7 +18,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
@@ -36,7 +38,7 @@ struct Unshadow::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Constructor
     /// @param program the source program
@@ -48,7 +50,7 @@ struct Unshadow::State {
         auto& sem = src->Sem();
 
         // Maps a variable to its new name.
-        utils::Hashmap<const sem::Variable*, Symbol, 8> renamed_to;
+        Hashmap<const sem::Variable*, Symbol, 8> renamed_to;
 
         auto rename = [&](const sem::Variable* v) -> const Variable* {
             auto* decl = v->Declaration();
@@ -74,8 +76,7 @@ struct Unshadow::State {
                     return b.Param(source, symbol, type, attributes);
                 },
                 [&](Default) {
-                    TINT_ICE(Transform, b.Diagnostics())
-                        << "unexpected variable type: " << decl->TypeInfo().name;
+                    TINT_ICE() << "unexpected variable type: " << decl->TypeInfo().name;
                     return nullptr;
                 });
         };
@@ -115,7 +116,7 @@ struct Unshadow::State {
         });
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 };
 

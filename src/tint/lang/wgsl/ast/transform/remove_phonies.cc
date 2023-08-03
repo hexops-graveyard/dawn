@@ -20,7 +20,9 @@
 #include <vector>
 
 #include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
@@ -43,11 +45,11 @@ RemovePhonies::~RemovePhonies() = default;
 
 Transform::ApplyResult RemovePhonies::Apply(const Program* src, const DataMap&, DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     auto& sem = src->Sem();
 
-    utils::Hashmap<SinkSignature, Symbol, 8, utils::Hasher<SinkSignature>> sinks;
+    Hashmap<SinkSignature, Symbol, 8, Hasher<SinkSignature>> sinks;
 
     bool made_changes = false;
     for (auto* node : src->ASTNodes().Objects()) {
@@ -58,25 +60,24 @@ Transform::ApplyResult RemovePhonies::Apply(const Program* src, const DataMap&, 
                     made_changes = true;
 
                     std::vector<const Expression*> side_effects;
-                    if (!TraverseExpressions(
-                            stmt->rhs, b.Diagnostics(), [&](const CallExpression* expr) {
-                                // CallExpression may map to a function or builtin call
-                                // (both may have side-effects), or a value constructor or value
-                                // conversion (both do not have side effects).
-                                auto* call = sem.Get<sem::Call>(expr);
-                                if (!call) {
-                                    // Semantic node must be a Materialize, in which case the
-                                    // expression was creation-time (compile time), so could not
-                                    // have side effects. Just skip.
-                                    return TraverseAction::Skip;
-                                }
-                                if (call->Target()->IsAnyOf<sem::Function, sem::Builtin>() &&
-                                    call->HasSideEffects()) {
-                                    side_effects.push_back(expr);
-                                    return TraverseAction::Skip;
-                                }
-                                return TraverseAction::Descend;
-                            })) {
+                    if (!TraverseExpressions(stmt->rhs, [&](const CallExpression* expr) {
+                            // CallExpression may map to a function or builtin call
+                            // (both may have side-effects), or a value constructor or value
+                            // conversion (both do not have side effects).
+                            auto* call = sem.Get<sem::Call>(expr);
+                            if (!call) {
+                                // Semantic node must be a Materialize, in which case the
+                                // expression was creation-time (compile time), so could not
+                                // have side effects. Just skip.
+                                return TraverseAction::Skip;
+                            }
+                            if (call->Target()->IsAnyOf<sem::Function, sem::Builtin>() &&
+                                call->HasSideEffects()) {
+                                side_effects.push_back(expr);
+                                return TraverseAction::Skip;
+                            }
+                            return TraverseAction::Descend;
+                        })) {
                         return;
                     }
 
@@ -118,7 +119,7 @@ Transform::ApplyResult RemovePhonies::Apply(const Program* src, const DataMap&, 
                         }
                         auto sink = sinks.GetOrCreate(sig, [&] {
                             auto name = b.Symbols().New("phony_sink");
-                            utils::Vector<const Parameter*, 8> params;
+                            tint::Vector<const Parameter*, 8> params;
                             for (auto* ty : sig) {
                                 auto ast_ty = CreateASTTypeFor(ctx, ty);
                                 params.Push(b.Param("p" + std::to_string(params.Length()), ast_ty));
@@ -126,7 +127,7 @@ Transform::ApplyResult RemovePhonies::Apply(const Program* src, const DataMap&, 
                             b.Func(name, params, b.ty.void_(), {});
                             return name;
                         });
-                        utils::Vector<const Expression*, 8> args;
+                        tint::Vector<const Expression*, 8> args;
                         for (auto* arg : side_effects) {
                             args.Push(ctx.Clone(arg));
                         }
@@ -150,7 +151,7 @@ Transform::ApplyResult RemovePhonies::Apply(const Program* src, const DataMap&, 
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/test_helper.h"
+#include "src/tint/lang/spirv/writer/common/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -22,8 +22,9 @@ namespace {
 using namespace tint::number_suffixes;  // NOLINT
 
 TEST_F(SpirvWriterTest, ModuleHeader) {
-    ASSERT_TRUE(writer_.Generate()) << writer_.Diagnostics().str();
-    auto got = Disassemble(writer_.Result());
+    auto spirv = writer_.Generate();
+    ASSERT_TRUE(spirv) << spirv.Failure();
+    auto got = Disassemble(spirv.Get());
     EXPECT_THAT(got, testing::StartsWith(R"(OpCapability Shader
 OpMemoryModel Logical GLSL450
 )"));

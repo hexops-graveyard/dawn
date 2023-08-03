@@ -14,7 +14,8 @@
 
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CallStatement);
 
@@ -25,17 +26,17 @@ CallStatement::CallStatement(GenerationID pid,
                              const Source& src,
                              const CallExpression* call)
     : Base(pid, nid, src), expr(call) {
-    TINT_ASSERT(AST, expr);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, expr, generation_id);
+    TINT_ASSERT(expr);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(expr, generation_id);
 }
 
 CallStatement::~CallStatement() = default;
 
-const CallStatement* CallStatement::Clone(CloneContext* ctx) const {
+const CallStatement* CallStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto* call = ctx->Clone(expr);
-    return ctx->dst->create<CallStatement>(src, call);
+    auto src = ctx.Clone(source);
+    auto* call = ctx.Clone(expr);
+    return ctx.dst->create<CallStatement>(src, call);
 }
 
 }  // namespace tint::ast

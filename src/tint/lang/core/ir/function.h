@@ -23,6 +23,7 @@
 #include "src/tint/lang/core/ir/location.h"
 #include "src/tint/lang/core/ir/value.h"
 #include "src/tint/lang/core/type/type.h"
+#include "src/tint/utils/ice/ice.h"
 
 // Forward declarations
 namespace tint::ir {
@@ -33,7 +34,7 @@ class FunctionTerminator;
 namespace tint::ir {
 
 /// An IR representation of a function
-class Function : public utils::Castable<Function, Value> {
+class Function : public Castable<Function, Value> {
   public:
     /// The pipeline stage for an entry point
     enum class PipelineStage {
@@ -91,7 +92,7 @@ class Function : public utils::Castable<Function, Value> {
     /// Sets the return attributes
     /// @param builtin the builtin to set
     void SetReturnBuiltin(ReturnBuiltin builtin) {
-        TINT_ASSERT(IR, !return_.builtin.has_value());
+        TINT_ASSERT(!return_.builtin.has_value());
         return_.builtin = builtin;
     }
     /// @returns the return builtin attribute
@@ -118,19 +119,19 @@ class Function : public utils::Castable<Function, Value> {
 
     /// Sets the function parameters
     /// @param params the function parameters
-    void SetParams(utils::VectorRef<FunctionParam*> params);
+    void SetParams(VectorRef<FunctionParam*> params);
 
     /// Sets the function parameters
     /// @param params the function parameters
     void SetParams(std::initializer_list<FunctionParam*> params);
 
     /// @returns the function parameters
-    const utils::VectorRef<FunctionParam*> Params() { return params_; }
+    const VectorRef<FunctionParam*> Params() { return params_; }
 
     /// Sets the root block for the function
     /// @param target the root block
     void SetBlock(Block* target) {
-        TINT_ASSERT(IR, target != nullptr);
+        TINT_ASSERT(target != nullptr);
         block_ = target;
     }
     /// @returns the function root block
@@ -147,12 +148,33 @@ class Function : public utils::Castable<Function, Value> {
         bool invariant = false;
     } return_;
 
-    utils::Vector<FunctionParam*, 1> params_;
+    Vector<FunctionParam*, 1> params_;
     ir::Block* block_ = nullptr;
 };
 
-utils::StringStream& operator<<(utils::StringStream& out, Function::PipelineStage value);
-utils::StringStream& operator<<(utils::StringStream& out, enum Function::ReturnBuiltin value);
+/// @param value the enum value
+/// @returns the string for the given enum value
+std::string_view ToString(Function::PipelineStage value);
+
+/// @param out the stream to write to
+/// @param value the Function::PipelineStage
+/// @returns @p out so calls can be chained
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, Function::PipelineStage value) {
+    return out << ToString(value);
+}
+
+/// @param value the enum value
+/// @returns the string for the given enum value
+std::string_view ToString(enum Function::ReturnBuiltin value);
+
+/// @param out the stream to write to
+/// @param value the Function::ReturnBuiltin
+/// @returns @p out so calls can be chained
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, enum Function::ReturnBuiltin value) {
+    return out << ToString(value);
+}
 
 }  // namespace tint::ir
 

@@ -24,7 +24,7 @@ namespace tint::ast {
 /// ```
 ///   enable f16;
 /// ```
-class Extension final : public utils::Castable<Extension, Node> {
+class Extension final : public Castable<Extension, Node> {
   public:
     /// Create a extension
     /// @param pid the identifier of the program that owns this node
@@ -40,7 +40,7 @@ class Extension final : public utils::Castable<Extension, Node> {
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const Extension* Clone(CloneContext* ctx) const override;
+    const Extension* Clone(CloneContext& ctx) const override;
 
     /// The extension name
     const builtin::Extension name;

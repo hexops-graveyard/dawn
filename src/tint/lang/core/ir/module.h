@@ -26,10 +26,11 @@
 #include "src/tint/lang/core/ir/value.h"
 #include "src/tint/lang/core/type/manager.h"
 #include "src/tint/utils/containers/vector.h"
-#include "src/tint/utils/generation_id.h"
+#include "src/tint/utils/diagnostic/source.h"
+#include "src/tint/utils/id/generation_id.h"
 #include "src/tint/utils/memory/block_allocator.h"
 #include "src/tint/utils/result/result.h"
-#include "src/tint/utils/text/symbol_table.h"
+#include "src/tint/utils/symbol/symbol_table.h"
 
 namespace tint::ir {
 
@@ -39,7 +40,7 @@ class Module {
     GenerationID prog_id_;
 
     /// Map of value to name
-    utils::Hashmap<Value*, Symbol, 32> value_to_name_;
+    Hashmap<Value*, Symbol, 32> value_to_name_;
 
   public:
     /// Constructor
@@ -81,19 +82,19 @@ class Module {
     type::Manager& Types() { return constant_values.types; }
 
     /// The block allocator
-    utils::BlockAllocator<Block> blocks;
+    BlockAllocator<Block> blocks;
 
     /// The constant value manager
     constant::Manager constant_values;
 
     /// The instruction allocator
-    utils::BlockAllocator<Instruction> instructions;
+    BlockAllocator<Instruction> instructions;
 
     /// The value allocator
-    utils::BlockAllocator<Value> values;
+    BlockAllocator<Value> values;
 
     /// List of functions in the program
-    utils::Vector<Function*, 8> functions;
+    Vector<Function*, 8> functions;
 
     /// The block containing module level declarations, if any exist.
     Block* root_block = nullptr;
@@ -102,7 +103,7 @@ class Module {
     SymbolTable symbols{prog_id_};
 
     /// The map of constant::Value to their ir::Constant.
-    utils::Hashmap<const constant::Value*, ir::Constant*, 16> constants;
+    Hashmap<const constant::Value*, ir::Constant*, 16> constants;
 
     /// If the module generated a validation error, will store the file for the disassembly text.
     std::unique_ptr<Source::File> disassembly_file;

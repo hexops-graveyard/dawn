@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/ast/test_helper.h"
-#include "src/tint/lang/wgsl/reader/parser/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
+#include "src/tint/lang/wgsl/reader/parser/helper_test.h"
 
 namespace tint::wgsl::reader {
 namespace {
@@ -39,12 +39,12 @@ TEST_P(VariableQualifierTest, ParsesAddressSpace) {
     EXPECT_FALSE(sc.errored);
     EXPECT_TRUE(sc.matched);
     if (params.address_space != builtin::AddressSpace::kUndefined) {
-        ast::CheckIdentifier(sc->address_space, utils::ToString(params.address_space));
+        ast::CheckIdentifier(sc->address_space, tint::ToString(params.address_space));
     } else {
         EXPECT_EQ(sc->address_space, nullptr);
     }
     if (params.access != builtin::Access::kUndefined) {
-        ast::CheckIdentifier(sc->access, utils::ToString(params.access));
+        ast::CheckIdentifier(sc->access, tint::ToString(params.access));
     } else {
         EXPECT_EQ(sc->access, nullptr);
     }

@@ -27,6 +27,7 @@
 #include "src/tint/fuzzers/tint_ast_fuzzer/mutation_finders/wrap_unary_operators.h"
 #include "src/tint/fuzzers/tint_ast_fuzzer/node_id_map.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 namespace tint::fuzzers::ast_fuzzer {
 namespace {
@@ -76,23 +77,23 @@ bool MaybeApplyMutation(const tint::Program& program,
 
     // The mutated `program` will be copied into the `mutated` program builder.
     tint::ProgramBuilder mutated;
-    tint::CloneContext clone_context(&mutated, &program);
+    tint::program::CloneContext clone_context(&mutated, &program);
     NodeIdMap new_node_id_map;
     clone_context.ReplaceAll(
         [&node_id_map, &new_node_id_map, &clone_context](const ast::Node* node) {
             // Make sure all `tint::ast::` nodes' ids are preserved.
-            auto* cloned = tint::As<ast::Node>(node->Clone(&clone_context));
+            auto* cloned = tint::As<ast::Node>(node->Clone(clone_context));
             new_node_id_map.Add(cloned, node_id_map.GetId(node));
             return cloned;
         });
 
-    mutation.Apply(node_id_map, &clone_context, &new_node_id_map);
+    mutation.Apply(node_id_map, clone_context, &new_node_id_map);
     if (mutation_sequence) {
         *mutation_sequence->add_mutation() = mutation.ToMessage();
     }
 
     clone_context.Clone();
-    *out_program = tint::Program(std::move(mutated));
+    *out_program = tint::resolver::Resolve(mutated);
     *out_node_id_map = std::move(new_node_id_map);
     return true;
 }

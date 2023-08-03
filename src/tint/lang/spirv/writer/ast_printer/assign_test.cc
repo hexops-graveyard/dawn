@@ -14,8 +14,8 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
-#include "src/tint/lang/spirv/writer/ast_printer/test_helper.h"
-#include "src/tint/lang/spirv/writer/spv_dump.h"
+#include "src/tint/lang/spirv/writer/ast_printer/helper_test.h"
+#include "src/tint/lang/spirv/writer/common/spv_dump.h"
 
 namespace tint::spirv::writer {
 namespace {
@@ -64,7 +64,7 @@ TEST_F(SpirvASTPrinterTest, Assign_Var_OutsideFunction_IsError) {
 
             pb.WrapInFunction(assign);
 
-            auto program = std::make_unique<Program>(std::move(pb));
+            auto program = std::make_unique<Program>(resolver::Resolve(pb));
             auto b = std::make_unique<Builder>(program.get());
 
             b->GenerateGlobalVariable(v);
@@ -176,7 +176,7 @@ TEST_F(SpirvASTPrinterTest, Assign_StructMember) {
     // var ident : my_struct
     // ident.b = 4.0;
 
-    auto* s = Structure("my_struct", utils::Vector{
+    auto* s = Structure("my_struct", Vector{
                                          Member("a", ty.f32()),
                                          Member("b", ty.f32()),
                                      });

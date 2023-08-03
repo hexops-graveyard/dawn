@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A diagnostic attribute
-class DiagnosticAttribute final : public utils::Castable<DiagnosticAttribute, Attribute> {
+class DiagnosticAttribute final : public Castable<DiagnosticAttribute, Attribute> {
   public:
     /// constructor
     /// @param pid the identifier of the program that owns this node
@@ -39,7 +39,7 @@ class DiagnosticAttribute final : public utils::Castable<DiagnosticAttribute, At
     /// Clones this node and all transitive child nodes using the `CloneContext` `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const DiagnosticAttribute* Clone(CloneContext* ctx) const override;
+    const DiagnosticAttribute* Clone(CloneContext& ctx) const override;
 
     /// The diagnostic control.
     const DiagnosticControl control;

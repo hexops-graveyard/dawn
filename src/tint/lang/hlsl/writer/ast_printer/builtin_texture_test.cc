@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 #include "src/tint/lang/wgsl/ast/builtin_texture_helper_test.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 #include "src/tint/lang/wgsl/ast/stage_attribute.h"
@@ -375,8 +375,8 @@ TEST_P(HlslGeneratorBuiltinTextureTest, Call) {
     auto* stmt = param.returns_value ? static_cast<const ast::Statement*>(Decl(Var("v", call)))
                                      : static_cast<const ast::Statement*>(CallStmt(call));
 
-    Func("main", utils::Empty, ty.void_(), utils::Vector{stmt},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("main", tint::Empty, ty.void_(), Vector{stmt},
+         Vector{Stage(ast::PipelineStage::kFragment)});
 
     ASTPrinter& gen = SanitizeAndBuild();
 

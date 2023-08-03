@@ -17,7 +17,9 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/break_statement.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::ForLoopToLoop);
 
@@ -45,10 +47,10 @@ Transform::ApplyResult ForLoopToLoop::Apply(const Program* src, const DataMap&, 
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     ctx.ReplaceAll([&](const ForLoopStatement* for_loop) -> const Statement* {
-        utils::Vector<const Statement*, 8> stmts;
+        tint::Vector<const Statement*, 8> stmts;
         if (auto* cond = for_loop->condition) {
             // !condition
             auto* not_cond = b.Not(ctx.Clone(cond));
@@ -79,7 +81,7 @@ Transform::ApplyResult ForLoopToLoop::Apply(const Program* src, const DataMap&, 
     });
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

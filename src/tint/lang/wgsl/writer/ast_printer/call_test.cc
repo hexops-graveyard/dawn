@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "src/tint/lang/wgsl/ast/call_statement.h"
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 #include "src/tint/utils/text/string_stream.h"
 
 #include "gmock/gmock.h"
@@ -26,8 +26,8 @@ namespace {
 using WgslASTPrinterTest = TestHelper;
 
 TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithoutParams) {
-    Func("my_func", utils::Empty, ty.f32(),
-         utils::Vector{
+    Func("my_func", tint::Empty, ty.f32(),
+         Vector{
              Return(1.23_f),
          });
 
@@ -36,7 +36,7 @@ TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithoutParams) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     gen.EmitExpression(out, call);
     EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "my_func()");
@@ -44,12 +44,12 @@ TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithoutParams) {
 
 TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithParams) {
     Func("my_func",
-         utils::Vector{
+         Vector{
              Param(Sym(), ty.f32()),
              Param(Sym(), ty.f32()),
          },
          ty.f32(),
-         utils::Vector{
+         Vector{
              Return(1.23_f),
          });
     GlobalVar("param1", ty.f32(), builtin::AddressSpace::kPrivate);
@@ -60,7 +60,7 @@ TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithParams) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     gen.EmitExpression(out, call);
     EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
     EXPECT_EQ(out.str(), "my_func(param1, param2)");
@@ -68,11 +68,11 @@ TEST_F(WgslASTPrinterTest, EmitExpression_Call_WithParams) {
 
 TEST_F(WgslASTPrinterTest, EmitStatement_Call) {
     Func("my_func",
-         utils::Vector{
+         Vector{
              Param(Sym(), ty.f32()),
              Param(Sym(), ty.f32()),
          },
-         ty.void_(), utils::Empty, utils::Empty);
+         ty.void_(), tint::Empty, tint::Empty);
     GlobalVar("param1", ty.f32(), builtin::AddressSpace::kPrivate);
     GlobalVar("param2", ty.f32(), builtin::AddressSpace::kPrivate);
 

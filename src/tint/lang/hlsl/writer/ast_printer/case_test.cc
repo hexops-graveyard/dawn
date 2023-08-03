@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -53,10 +53,10 @@ TEST_F(HlslASTPrinterTest_Case, Emit_Case_BreaksByDefault) {
 }
 
 TEST_F(HlslASTPrinterTest_Case, Emit_Case_MultipleSelectors) {
-    auto* s = Switch(1_i,
-                     Case(utils::Vector{CaseSelector(5_i), CaseSelector(6_i)},
-                          Block(create<ast::BreakStatement>())),
-                     DefaultCase());
+    auto* s = Switch(
+        1_i,
+        Case(Vector{CaseSelector(5_i), CaseSelector(6_i)}, Block(create<ast::BreakStatement>())),
+        DefaultCase());
     WrapInFunction(s);
 
     ASTPrinter& gen = Build();

@@ -14,7 +14,7 @@
 
 #include "gmock/gmock.h"
 
-#include "src/tint/lang/wgsl/resolver/resolver_test_helper.h"
+#include "src/tint/lang/wgsl/resolver/resolver_helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -30,7 +30,7 @@ TEST_F(ResolverUnresolvedIdentifierSuggestions, AddressSpace) {
         Expr(Source{{12, 34}}, "privte"),  // declared_address_space
         nullptr,                           // declared_access
         nullptr,                           // initializer
-        utils::Empty                       // attributes
+        tint::Empty                        // attributes
         ));
 
     EXPECT_FALSE(r()->Resolve());
@@ -40,15 +40,13 @@ Possible values: 'function', 'private', 'push_constant', 'storage', 'uniform', '
 }
 
 TEST_F(ResolverUnresolvedIdentifierSuggestions, BuiltinValue) {
-    Func("f",
-         utils::Vector{
-             Param("p", ty.i32(), utils::Vector{Builtin(Expr(Source{{12, 34}}, "positon"))})},
-         ty.void_(), utils::Empty, utils::Vector{Stage(ast::PipelineStage::kVertex)});
+    Func("f", Vector{Param("p", ty.i32(), Vector{Builtin(Expr(Source{{12, 34}}, "positon"))})},
+         ty.void_(), tint::Empty, Vector{Stage(ast::PipelineStage::kVertex)});
 
     EXPECT_FALSE(r()->Resolve());
     EXPECT_EQ(r()->error(), R"(12:34 error: unresolved builtin value 'positon'
 12:34 note: Did you mean 'position'?
-Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'vertex_index', 'workgroup_id')");
+Possible values: 'frag_depth', 'front_facing', 'global_invocation_id', 'instance_index', 'local_invocation_id', 'local_invocation_index', 'num_workgroups', 'position', 'sample_index', 'sample_mask', 'subgroup_invocation_id', 'subgroup_size', 'vertex_index', 'workgroup_id')");
 }
 
 TEST_F(ResolverUnresolvedIdentifierSuggestions, TexelFormat) {
@@ -66,7 +64,7 @@ TEST_F(ResolverUnresolvedIdentifierSuggestions, AccessMode) {
                                              Expr("private"),  // declared_address_space
                                              Expr(Source{{12, 34}}, "reed"),  // declared_access
                                              nullptr,                         // initializer
-                                             utils::Empty                     // attributes
+                                             tint::Empty                      // attributes
                                              ));
 
     EXPECT_FALSE(r()->Resolve());
@@ -76,9 +74,9 @@ Possible values: 'read', 'read_write', 'write')");
 }
 
 TEST_F(ResolverUnresolvedIdentifierSuggestions, InterpolationSampling) {
-    Structure("s", utils::Vector{
+    Structure("s", Vector{
                        Member("m", ty.vec4<f32>(),
-                              utils::Vector{
+                              Vector{
                                   Interpolate(builtin::InterpolationType::kLinear,
                                               Expr(Source{{12, 34}}, "centre")),
                               }),
@@ -91,9 +89,9 @@ Possible values: 'center', 'centroid', 'sample')");
 }
 
 TEST_F(ResolverUnresolvedIdentifierSuggestions, InterpolationType) {
-    Structure("s", utils::Vector{
+    Structure("s", Vector{
                        Member("m", ty.vec4<f32>(),
-                              utils::Vector{
+                              Vector{
                                   Interpolate(Expr(Source{{12, 34}}, "liner")),
                               }),
                    });

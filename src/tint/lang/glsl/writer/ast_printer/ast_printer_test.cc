@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/glsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/glsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -24,14 +24,15 @@ using GlslASTPrinterTest = TestHelper;
 TEST_F(GlslASTPrinterTest, InvalidProgram) {
     Diagnostics().add_error(diag::System::Writer, "make the program invalid");
     ASSERT_FALSE(IsValid());
-    auto program = std::make_unique<Program>(std::move(*this));
+    auto program = std::make_unique<Program>(resolver::Resolve(*this));
     ASSERT_FALSE(program->IsValid());
     auto result = Generate(program.get(), Options{}, "");
-    EXPECT_EQ(result.error, "input program is not valid");
+    EXPECT_FALSE(result);
+    EXPECT_EQ(result.Failure(), "input program is not valid");
 }
 
 TEST_F(GlslASTPrinterTest, Generate) {
-    Func("my_func", utils::Empty, ty.void_(), utils::Empty);
+    Func("my_func", tint::Empty, ty.void_(), tint::Empty);
 
     ASTPrinter& gen = Build();
     gen.Generate();
@@ -45,7 +46,7 @@ void my_func() {
 }
 
 TEST_F(GlslASTPrinterTest, GenerateDesktop) {
-    Func("my_func", utils::Empty, ty.void_(), utils::Empty);
+    Func("my_func", tint::Empty, ty.void_(), tint::Empty);
 
     ASTPrinter& gen = Build(Version(Version::Standard::kDesktop, 4, 4));
     gen.Generate();
@@ -60,13 +61,13 @@ void my_func() {
 
 TEST_F(GlslASTPrinterTest, GenerateSampleIndexES) {
     GlobalVar("gl_SampleID", ty.i32(),
-              utils::Vector{
+              Vector{
                   Builtin(builtin::BuiltinValue::kSampleIndex),
                   Disable(ast::DisabledValidation::kIgnoreAddressSpace),
               },
               builtin::AddressSpace::kIn);
-    Func("my_func", utils::Empty, ty.i32(),
-         utils::Vector{
+    Func("my_func", tint::Empty, ty.i32(),
+         Vector{
              Return(Expr("gl_SampleID")),
          });
 
@@ -85,13 +86,13 @@ int my_func() {
 
 TEST_F(GlslASTPrinterTest, GenerateSampleIndexDesktop) {
     GlobalVar("gl_SampleID", ty.i32(),
-              utils::Vector{
+              Vector{
                   Builtin(builtin::BuiltinValue::kSampleIndex),
                   Disable(ast::DisabledValidation::kIgnoreAddressSpace),
               },
               builtin::AddressSpace::kIn);
-    Func("my_func", utils::Empty, ty.i32(),
-         utils::Vector{
+    Func("my_func", tint::Empty, ty.i32(),
+         Vector{
              Return(Expr("gl_SampleID")),
          });
 

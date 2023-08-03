@@ -32,6 +32,7 @@
 #include "dawn/native/d3d11/PlatformFunctionsD3D11.h"
 #include "dawn/native/d3d11/UtilsD3D11.h"
 #include "dawn/platform/DawnPlatform.h"
+#include "dawn/platform/metrics/HistogramMacros.h"
 #include "dawn/platform/tracing/TraceEvent.h"
 
 #include "tint/tint.h"
@@ -112,7 +113,8 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
     const BindingInfoArray& moduleBindingInfo = entryPoint.bindings;
 
     for (BindGroupIndex group : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
-        const BindGroupLayout* groupLayout = ToBackend(layout->GetBindGroupLayout(group));
+        const BindGroupLayout* groupLayout =
+            ToBackend(layout->GetBindGroupLayout(group)->GetInternalBindGroupLayout());
         const auto& indices = layout->GetBindingIndexInfo()[group];
         const auto& groupBindingInfo = moduleBindingInfo[group];
 
@@ -190,7 +192,7 @@ ResultOrError<d3d::CompiledShader> ShaderModule::Compile(
     CacheResult<d3d::CompiledShader> compiledShader;
     MaybeError compileError = [&]() -> MaybeError {
         DAWN_TRY_LOAD_OR_RUN(compiledShader, device, std::move(req), d3d::CompiledShader::FromBlob,
-                             d3d::CompileShader);
+                             d3d::CompileShader, "D3D11.CompileShader");
         return {};
     }();
 

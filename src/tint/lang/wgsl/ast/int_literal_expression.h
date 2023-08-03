@@ -20,7 +20,7 @@
 namespace tint::ast {
 
 /// An integer literal. The literal may have an 'i', 'u' or no suffix.
-class IntLiteralExpression final : public utils::Castable<IntLiteralExpression, LiteralExpression> {
+class IntLiteralExpression final : public Castable<IntLiteralExpression, LiteralExpression> {
   public:
     /// Literal suffix
     enum class Suffix {
@@ -46,7 +46,7 @@ class IntLiteralExpression final : public utils::Castable<IntLiteralExpression, 
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const IntLiteralExpression* Clone(CloneContext* ctx) const override;
+    const IntLiteralExpression* Clone(CloneContext& ctx) const override;
 
     /// The literal value
     const int64_t value;
@@ -55,11 +55,18 @@ class IntLiteralExpression final : public utils::Castable<IntLiteralExpression, 
     const Suffix suffix;
 };
 
+/// @param suffix the enum value
+/// @returns the string for the given enum value
+std::string_view ToString(IntLiteralExpression::Suffix suffix);
+
 /// Writes the integer literal suffix to the stream.
 /// @param out the stream to write to
 /// @param suffix the suffix to write
 /// @returns out so calls can be chained
-utils::StringStream& operator<<(utils::StringStream& out, IntLiteralExpression::Suffix suffix);
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, IntLiteralExpression::Suffix suffix) {
+    return out << ToString(suffix);
+}
 
 }  // namespace tint::ast
 

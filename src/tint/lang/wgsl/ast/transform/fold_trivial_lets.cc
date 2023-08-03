@@ -17,7 +17,9 @@
 #include <utility>
 
 #include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/value_expression.h"
 #include "src/tint/utils/containers/hashmap.h"
 
@@ -32,7 +34,7 @@ struct FoldTrivialLets::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
     /// The semantic info.
     const sem::Info& sem = {ctx.src->Sem()};
 
@@ -52,15 +54,15 @@ struct FoldTrivialLets::State {
         };
 
         // A map from semantic variables to their PendingLet descriptors.
-        utils::Hashmap<const sem::Variable*, PendingLet, 16> pending_lets;
+        Hashmap<const sem::Variable*, PendingLet, 16> pending_lets;
 
         // Helper that folds pending let declarations into `expr` if possible.
         auto fold_lets = [&](const Expression* expr) {
-            TraverseExpressions(expr, b.Diagnostics(), [&](const IdentifierExpression* ident) {
+            TraverseExpressions(expr, [&](const IdentifierExpression* ident) {
                 if (auto* user = sem.Get<sem::VariableUser>(ident)) {
                     auto itr = pending_lets.Find(user->Variable());
                     if (itr) {
-                        TINT_ASSERT(Transform, itr->remaining_uses > 0);
+                        TINT_ASSERT(itr->remaining_uses > 0);
 
                         // We found a reference to a pending let, so replace it with the inlined
                         // initializer expression.
@@ -142,7 +144,7 @@ struct FoldTrivialLets::State {
             }
         }
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 };
 

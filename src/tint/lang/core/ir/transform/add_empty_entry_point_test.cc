@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include "src/tint/lang/core/ir/transform/test_helper.h"
+#include "src/tint/lang/core/ir/transform/helper_test.h"
 
 namespace tint::ir::transform {
 namespace {
@@ -32,7 +32,7 @@ TEST_F(IR_AddEmptyEntryPointTest, EmptyModule) {
 }
 )";
 
-    Run<AddEmptyEntryPoint>();
+    Run(AddEmptyEntryPoint);
 
     EXPECT_EQ(expect, str());
 }
@@ -49,7 +49,7 @@ TEST_F(IR_AddEmptyEntryPointTest, ExistingEntryPoint) {
 }
 )";
 
-    Run<AddEmptyEntryPoint>();
+    Run(AddEmptyEntryPoint);
 
     EXPECT_EQ(expect, str());
 }

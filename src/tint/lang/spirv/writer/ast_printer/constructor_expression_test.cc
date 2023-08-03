@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/ast_printer/test_helper.h"
-#include "src/tint/lang/spirv/writer/spv_dump.h"
+#include "src/tint/lang/spirv/writer/ast_printer/helper_test.h"
+#include "src/tint/lang/spirv/writer/common/spv_dump.h"
 
 namespace tint::spirv::writer {
 namespace {
@@ -3705,7 +3705,7 @@ TEST_F(SpvBuilderConstructorTest, CommonInitializer_Array_VecArray) {
 }
 
 TEST_F(SpvBuilderConstructorTest, Type_Struct) {
-    auto* s = Structure("my_struct", utils::Vector{
+    auto* s = Structure("my_struct", Vector{
                                          Member("a", ty.f32()),
                                          Member("b", ty.vec3<f32>()),
                                      });
@@ -3895,7 +3895,7 @@ TEST_F(SpvBuilderConstructorTest, Type_ZeroInit_Array) {
 }
 
 TEST_F(SpvBuilderConstructorTest, Type_ZeroInit_Struct) {
-    auto* s = Structure("my_struct", utils::Vector{Member("a", ty.f32())});
+    auto* s = Structure("my_struct", Vector{Member("a", ty.f32())});
     auto* t = Call(ty.Of(s));
     WrapInFunction(t);
 
@@ -4651,7 +4651,7 @@ TEST_F(SpvBuilderConstructorTest, IsConstructorConst_BitCastScalars) {
 }
 
 TEST_F(SpvBuilderConstructorTest, IsConstructorConst_Struct) {
-    auto* s = Structure("my_struct", utils::Vector{
+    auto* s = Structure("my_struct", Vector{
                                          Member("a", ty.f32()),
                                          Member("b", ty.vec3<f32>()),
                                      });
@@ -4666,7 +4666,7 @@ TEST_F(SpvBuilderConstructorTest, IsConstructorConst_Struct) {
 }
 
 TEST_F(SpvBuilderConstructorTest, IsConstructorConst_Struct_WithIdentSubExpression) {
-    auto* s = Structure("my_struct", utils::Vector{
+    auto* s = Structure("my_struct", Vector{
                                          Member("a", ty.f32()),
                                          Member("b", ty.vec3<f32>()),
                                      });

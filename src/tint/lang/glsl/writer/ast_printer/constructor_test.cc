@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
-#include "src/tint/lang/glsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/glsl/writer/ast_printer/helper_test.h"
 
 namespace tint::glsl::writer {
 namespace {
@@ -391,7 +391,7 @@ TEST_F(GlslASTPrinterTest_Constructor, Type_Array_Empty) {
 }
 
 TEST_F(GlslASTPrinterTest_Constructor, Type_Struct) {
-    auto* str = Structure("S", utils::Vector{
+    auto* str = Structure("S", Vector{
                                    Member("a", ty.i32()),
                                    Member("b", ty.f32()),
                                    Member("c", ty.vec3<i32>()),
@@ -406,7 +406,7 @@ TEST_F(GlslASTPrinterTest_Constructor, Type_Struct) {
 }
 
 TEST_F(GlslASTPrinterTest_Constructor, Type_Struct_Empty) {
-    auto* str = Structure("S", utils::Vector{
+    auto* str = Structure("S", Vector{
                                    Member("a", ty.i32()),
                                    Member("b", ty.f32()),
                                    Member("c", ty.vec3<i32>()),

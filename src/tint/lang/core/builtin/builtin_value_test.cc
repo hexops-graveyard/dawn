@@ -54,6 +54,8 @@ static constexpr Case kValidCases[] = {
     {"position", BuiltinValue::kPosition},
     {"sample_index", BuiltinValue::kSampleIndex},
     {"sample_mask", BuiltinValue::kSampleMask},
+    {"subgroup_invocation_id", BuiltinValue::kSubgroupInvocationId},
+    {"subgroup_size", BuiltinValue::kSubgroupSize},
     {"vertex_index", BuiltinValue::kVertexIndex},
     {"workgroup_id", BuiltinValue::kWorkgroupId},
 };
@@ -92,12 +94,18 @@ static constexpr Case kInvalidCases[] = {
     {"sample_XXask", BuiltinValue::kUndefined},
     {"samII99l55_mask", BuiltinValue::kUndefined},
     {"samaale_SSrHHYk", BuiltinValue::kUndefined},
-    {"verkkeH_de", BuiltinValue::kUndefined},
-    {"verRg_injex", BuiltinValue::kUndefined},
-    {"vrtexinbex", BuiltinValue::kUndefined},
-    {"workjroup_id", BuiltinValue::kUndefined},
-    {"wrkgroup_id", BuiltinValue::kUndefined},
-    {"qorkgro_id", BuiltinValue::kUndefined},
+    {"skkgroup_Hnvocatio_d", BuiltinValue::kUndefined},
+    {"gRbgroup_invocajionid", BuiltinValue::kUndefined},
+    {"sbgroup_nbocation_id", BuiltinValue::kUndefined},
+    {"subgroupjsize", BuiltinValue::kUndefined},
+    {"subgroup_sie", BuiltinValue::kUndefined},
+    {"sgroupqsize", BuiltinValue::kUndefined},
+    {"vertx_NNndex", BuiltinValue::kUndefined},
+    {"vvertex_dex", BuiltinValue::kUndefined},
+    {"ertex_inQQex", BuiltinValue::kUndefined},
+    {"wrkgrup_irf", BuiltinValue::kUndefined},
+    {"workgroup_jd", BuiltinValue::kUndefined},
+    {"w82wNNgrou_id", BuiltinValue::kUndefined},
 };
 
 using BuiltinValueParseTest = testing::TestWithParam<Case>;
@@ -116,7 +124,7 @@ using BuiltinValuePrintTest = testing::TestWithParam<Case>;
 TEST_P(BuiltinValuePrintTest, Print) {
     BuiltinValue value = GetParam().value;
     const char* expect = GetParam().string;
-    EXPECT_EQ(expect, utils::ToString(value));
+    EXPECT_EQ(expect, tint::ToString(value));
 }
 
 INSTANTIATE_TEST_SUITE_P(ValidCases, BuiltinValuePrintTest, testing::ValuesIn(kValidCases));

@@ -23,12 +23,12 @@ namespace tint::sem {
 
 Struct::Struct(const ast::Struct* declaration,
                Symbol name,
-               utils::VectorRef<const StructMember*> members,
+               VectorRef<const StructMember*> members,
                uint32_t align,
                uint32_t size,
                uint32_t size_no_padding)
     : Base(name, members, align, size, size_no_padding), declaration_(declaration) {
-    TINT_ASSERT(Semantic, declaration != nullptr);
+    TINT_ASSERT(declaration != nullptr);
 }
 
 Struct::~Struct() = default;
@@ -42,7 +42,7 @@ StructMember::StructMember(const ast::StructMember* declaration,
                            uint32_t size,
                            const type::StructMemberAttributes& attributes)
     : Base(name, type, index, offset, align, size, attributes), declaration_(declaration) {
-    TINT_ASSERT(Semantic, declaration != nullptr);
+    TINT_ASSERT(declaration != nullptr);
 }
 
 StructMember::~StructMember() = default;

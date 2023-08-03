@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "src/tint/lang/core/builtin/builtin_value.h"
-#include "src/tint/lang/wgsl/ast/test_helper.h"
-#include "src/tint/lang/wgsl/reader/parser/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
+#include "src/tint/lang/wgsl/reader/parser/helper_test.h"
 
 namespace tint::wgsl::reader {
 namespace {
@@ -220,7 +220,7 @@ TEST_F(WGSLParserTest, Attribute_Location_MissingInvalid) {
 class BuiltinTest : public WGSLParserTestWithParam<builtin::BuiltinValue> {};
 
 TEST_P(BuiltinTest, Attribute_Builtin) {
-    auto str = utils::ToString(GetParam());
+    auto str = tint::ToString(GetParam());
     auto p = parser("builtin(" + str + ")");
 
     auto attr = p->attribute();
@@ -236,7 +236,7 @@ TEST_P(BuiltinTest, Attribute_Builtin) {
     ast::CheckIdentifier(builtin->builtin, str);
 }
 TEST_P(BuiltinTest, Attribute_Builtin_TrailingComma) {
-    auto str = utils::ToString(GetParam());
+    auto str = tint::ToString(GetParam());
     auto p = parser("builtin(" + str + ",)");
 
     auto attr = p->attribute();

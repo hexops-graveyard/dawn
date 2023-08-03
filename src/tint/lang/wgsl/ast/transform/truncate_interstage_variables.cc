@@ -18,7 +18,9 @@
 #include <string>
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
@@ -50,23 +52,23 @@ Transform::ApplyResult TruncateInterstageVariables::Apply(const Program* src,
                                                           const DataMap& config,
                                                           DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     const auto* data = config.Get<Config>();
     if (data == nullptr) {
         b.Diagnostics().add_error(
             diag::System::Transform,
             "missing transform data for " +
-                std::string(utils::TypeInfo::Of<TruncateInterstageVariables>().name));
-        return Program(std::move(b));
+                std::string(tint::TypeInfo::Of<TruncateInterstageVariables>().name));
+        return resolver::Resolve(b);
     }
 
     auto& sem = ctx.src->Sem();
 
     bool should_run = false;
 
-    utils::Hashmap<const sem::Function*, Symbol, 4u> entry_point_functions_to_truncate_functions;
-    utils::Hashmap<const sem::Struct*, TruncatedStructAndConverter, 4u>
+    Hashmap<const sem::Function*, Symbol, 4u> entry_point_functions_to_truncate_functions;
+    Hashmap<const sem::Struct*, TruncatedStructAndConverter, 4u>
         old_shader_io_structs_to_new_struct_and_truncate_functions;
 
     for (auto* func_ast : ctx.src->AST().Functions()) {
@@ -86,16 +88,15 @@ Transform::ApplyResult TruncateInterstageVariables::Apply(const Program* src,
         // This transform is run after CanonicalizeEntryPointIO transform,
         // So it is guaranteed that entry point inputs are already grouped in a struct.
         if (TINT_UNLIKELY(!str)) {
-            TINT_ICE(Transform, ctx.dst->Diagnostics())
-                << "Entrypoint function return type is non-struct.\n"
-                << "TruncateInterstageVariables transform needs to run after "
-                   "CanonicalizeEntryPointIO transform.";
+            TINT_ICE() << "Entrypoint function return type is non-struct.\n"
+                       << "TruncateInterstageVariables transform needs to run after "
+                          "CanonicalizeEntryPointIO transform.";
             continue;
         }
 
         // A prepass to check if any interstage variable locations in the entry point needs
         // truncating. If not we don't really need to handle this entry point.
-        utils::Hashset<const sem::StructMember*, 16u> omit_members;
+        Hashset<const sem::StructMember*, 16u> omit_members;
 
         for (auto* member : str->Members()) {
             if (auto location = member->Attributes().location) {
@@ -118,8 +119,8 @@ Transform::ApplyResult TruncateInterstageVariables::Apply(const Program* src,
             old_shader_io_structs_to_new_struct_and_truncate_functions.GetOrCreate(str, [&] {
                 auto new_struct_sym = b.Symbols().New();
 
-                utils::Vector<const StructMember*, 20> truncated_members;
-                utils::Vector<const Expression*, 20> initializer_exprs;
+                tint::Vector<const StructMember*, 20> truncated_members;
+                tint::Vector<const Expression*, 20> initializer_exprs;
 
                 for (auto* member : str->Members()) {
                     if (omit_members.Contains(member)) {
@@ -136,9 +137,9 @@ Transform::ApplyResult TruncateInterstageVariables::Apply(const Program* src,
                 // Create the mapping function to truncate the shader io.
                 auto mapping_fn_sym = b.Symbols().New("truncate_shader_output");
                 b.Func(mapping_fn_sym,
-                       utils::Vector{b.Param("io", ctx.Clone(func_ast->return_type))},
+                       tint::Vector{b.Param("io", ctx.Clone(func_ast->return_type))},
                        b.ty(new_struct_sym),
-                       utils::Vector{
+                       tint::Vector{
                            b.Return(b.Call(new_struct_sym, std::move(initializer_exprs))),
                        });
                 return TruncatedStructAndConverter{new_struct_sym, mapping_fn_sym};
@@ -179,7 +180,7 @@ Transform::ApplyResult TruncateInterstageVariables::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 TruncateInterstageVariables::Config::Config() = default;

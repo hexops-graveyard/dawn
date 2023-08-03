@@ -20,11 +20,6 @@
 #include "src/tint/lang/wgsl/ast/internal_attribute.h"
 #include "src/tint/lang/wgsl/ast/transform/transform.h"
 
-// Forward declarations
-namespace tint {
-class CloneContext;
-}  // namespace tint
-
 namespace tint::ast::transform {
 
 /// CalculateArrayLength is a transform used to replace calls to arrayLength()
@@ -32,12 +27,11 @@ namespace tint::ast::transform {
 ///
 /// @note Depends on the following transforms to have been run first:
 /// * SimplifyPointers
-class CalculateArrayLength final : public utils::Castable<CalculateArrayLength, Transform> {
+class CalculateArrayLength final : public Castable<CalculateArrayLength, Transform> {
   public:
     /// BufferSizeIntrinsic is an InternalAttribute that's applied to intrinsic
     /// functions used to obtain the runtime size of a storage buffer.
-    class BufferSizeIntrinsic final
-        : public utils::Castable<BufferSizeIntrinsic, InternalAttribute> {
+    class BufferSizeIntrinsic final : public Castable<BufferSizeIntrinsic, InternalAttribute> {
       public:
         /// Constructor
         /// @param generation_id the identifier of the program that owns this node
@@ -49,10 +43,10 @@ class CalculateArrayLength final : public utils::Castable<CalculateArrayLength, 
         /// @return "buffer_size"
         std::string InternalName() const override;
 
-        /// Performs a deep clone of this object using the CloneContext `ctx`.
+        /// Performs a deep clone of this object using the program::CloneContext `ctx`.
         /// @param ctx the clone context
         /// @return the newly cloned object
-        const BufferSizeIntrinsic* Clone(CloneContext* ctx) const override;
+        const BufferSizeIntrinsic* Clone(CloneContext& ctx) const override;
     };
 
     /// Constructor

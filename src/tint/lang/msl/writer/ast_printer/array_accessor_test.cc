@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/msl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/msl/writer/ast_printer/helper_test.h"
 #include "src/tint/utils/text/string_stream.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -29,7 +29,7 @@ TEST_F(MslASTPrinterTest, IndexAccessor) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "ary[5]");
 }
@@ -43,7 +43,7 @@ TEST_F(MslASTPrinterTest, IndexAccessor_OfDref) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, expr)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "(*(p))[5]");
 }

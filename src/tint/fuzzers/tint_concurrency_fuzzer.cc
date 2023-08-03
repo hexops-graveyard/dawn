@@ -32,9 +32,8 @@
 
 static constexpr size_t kNumThreads = 8;
 
-[[noreturn]] void TintInternalCompilerErrorReporter(const tint::diag::List& diagnostics) {
-    auto printer = tint::diag::Printer::create(stderr, true);
-    tint::diag::Formatter{}.format(diagnostics, printer.get());
+[[noreturn]] void TintInternalCompilerErrorReporter(const tint::InternalCompilerError& err) {
+    std::cerr << err.Error() << std::endl;
     __builtin_trap();
 }
 
@@ -82,28 +81,28 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             switch (static_cast<Writer>(thread_idx % static_cast<size_t>(Writer::kCount))) {
 #if TINT_BUILD_WGSL_WRITER
                 case Writer::kWGSL: {
-                    tint::wgsl::writer::Generate(&program, {});
+                    (void)tint::wgsl::writer::Generate(&program, {});
                     break;
                 }
 #endif  // TINT_BUILD_WGSL_WRITER
 
 #if TINT_BUILD_SPV_WRITER
                 case Writer::kSPIRV: {
-                    tint::spirv::writer::Generate(&program, {});
+                    (void)tint::spirv::writer::Generate(&program, {});
                     break;
                 }
 #endif  // TINT_BUILD_SPV_WRITER
 
 #if TINT_BUILD_HLSL_WRITER
                 case Writer::kHLSL: {
-                    tint::hlsl::writer::Generate(&program, {});
+                    (void)tint::hlsl::writer::Generate(&program, {});
                     break;
                 }
 #endif  // TINT_BUILD_HLSL_WRITER
 
 #if TINT_BUILD_GLSL_WRITER
                 case Writer::kGLSL: {
-                    tint::glsl::writer::Generate(&program, {}, entry_point);
+                    (void)tint::glsl::writer::Generate(&program, {}, entry_point);
                     break;
                 }
 #endif  // TINT_BUILD_GLSL_WRITER
@@ -112,7 +111,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                 case Writer::kMSL: {
                     // Remap resource numbers to a flat namespace.
                     if (auto flattened = tint::writer::FlattenBindings(&program)) {
-                        tint::msl::writer::Generate(&flattened.value(), {});
+                        (void)tint::msl::writer::Generate(&flattened.value(), {});
                     }
                     break;
                 }

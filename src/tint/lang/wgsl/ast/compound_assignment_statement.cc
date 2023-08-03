@@ -14,7 +14,8 @@
 
 #include "src/tint/lang/wgsl/ast/compound_assignment_statement.h"
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CompoundAssignmentStatement);
 
@@ -27,20 +28,20 @@ CompoundAssignmentStatement::CompoundAssignmentStatement(GenerationID pid,
                                                          const Expression* r,
                                                          BinaryOp o)
     : Base(pid, nid, src), lhs(l), rhs(r), op(o) {
-    TINT_ASSERT(AST, lhs);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, lhs, generation_id);
-    TINT_ASSERT(AST, rhs);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, rhs, generation_id);
+    TINT_ASSERT(lhs);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(lhs, generation_id);
+    TINT_ASSERT(rhs);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(rhs, generation_id);
 }
 
 CompoundAssignmentStatement::~CompoundAssignmentStatement() = default;
 
-const CompoundAssignmentStatement* CompoundAssignmentStatement::Clone(CloneContext* ctx) const {
+const CompoundAssignmentStatement* CompoundAssignmentStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto* l = ctx->Clone(lhs);
-    auto* r = ctx->Clone(rhs);
-    return ctx->dst->create<CompoundAssignmentStatement>(src, l, r, op);
+    auto src = ctx.Clone(source);
+    auto* l = ctx.Clone(lhs);
+    auto* r = ctx.Clone(rhs);
+    return ctx.dst->create<CompoundAssignmentStatement>(src, l, r, op);
 }
 
 }  // namespace tint::ast

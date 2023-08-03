@@ -58,6 +58,12 @@
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
 
+/// If set to 1 then the Tint will dump the IR when validating.
+#define TINT_DUMP_IR_WHEN_VALIDATING 0
+#if TINT_DUMP_IR_WHEN_VALIDATING
+#include <iostream>
+#endif
+
 namespace tint::ir {
 
 Validator::Validator(Module& mod) : mod_(mod) {}
@@ -71,7 +77,7 @@ void Validator::DisassembleIfNeeded() {
     mod_.disassembly_file = std::make_unique<Source::File>("", dis_.Disassemble());
 }
 
-utils::Result<Success, diag::List> Validator::IsValid() {
+Result<SuccessType, diag::List> Validator::IsValid() {
     CheckRootBlock(mod_.root_block);
 
     for (auto* func : mod_.functions) {
@@ -84,7 +90,7 @@ utils::Result<Success, diag::List> Validator::IsValid() {
                               "# Disassembly\n" + mod_.disassembly_file->content.data, {});
         return std::move(diagnostics_);
     }
-    return Success{};
+    return Success;
 }
 
 std::string Validator::InstError(Instruction* inst, std::string err) {
@@ -521,7 +527,7 @@ void Validator::CheckReturn(Return* ret) {
 
 void Validator::CheckControlsAllowingIf(Exit* exit, Instruction* control) {
     bool found = false;
-    for (auto ctrl : utils::Reverse(control_stack_)) {
+    for (auto ctrl : tint::Reverse(control_stack_)) {
         if (ctrl == control) {
             found = true;
             break;
@@ -621,9 +627,32 @@ const type::Type* Validator::GetVectorPtrElementType(Instruction* inst, size_t i
     return nullptr;
 }
 
-utils::Result<Success, diag::List> Validate(Module& mod) {
+Result<SuccessType, diag::List> Validate(Module& mod) {
     Validator v(mod);
     return v.IsValid();
+}
+
+Result<SuccessType, std::string> ValidateAndDumpIfNeeded([[maybe_unused]] Module& ir,
+                                                         [[maybe_unused]] const char* msg) {
+#ifndef NDEBUG
+    auto result = Validate(ir);
+    if (!result) {
+        diag::List errors;
+        StringStream ss;
+        ss << "validating input to " << msg << " failed" << std::endl << result.Failure().str();
+        return ss.str();
+    }
+#endif
+
+#if TINT_DUMP_IR_WHEN_VALIDATING
+    Disassembler disasm(ir);
+    std::cout << "=========================================================" << std::endl;
+    std::cout << "== IR dump before " << msg << ":" << std::endl;
+    std::cout << "=========================================================" << std::endl;
+    std::cout << disasm.Disassemble();
+#endif
+
+    return Success;
 }
 
 }  // namespace tint::ir

@@ -15,6 +15,7 @@
 #ifndef SRC_TINT_LANG_SPIRV_WRITER_PRINTER_PRINTER_H_
 #define SRC_TINT_LANG_SPIRV_WRITER_PRINTER_PRINTER_H_
 
+#include <string>
 #include <vector>
 
 #include "src/tint/lang/core/builtin/address_space.h"
@@ -22,13 +23,14 @@
 #include "src/tint/lang/core/builtin/texel_format.h"
 #include "src/tint/lang/core/constant/value.h"
 #include "src/tint/lang/core/ir/constant.h"
-#include "src/tint/lang/spirv/writer/binary_writer.h"
-#include "src/tint/lang/spirv/writer/function.h"
-#include "src/tint/lang/spirv/writer/module.h"
+#include "src/tint/lang/spirv/writer/common/binary_writer.h"
+#include "src/tint/lang/spirv/writer/common/function.h"
+#include "src/tint/lang/spirv/writer/common/module.h"
 #include "src/tint/utils/containers/hashmap.h"
 #include "src/tint/utils/containers/vector.h"
 #include "src/tint/utils/diagnostic/diagnostic.h"
-#include "src/tint/utils/text/symbol.h"
+#include "src/tint/utils/result/result.h"
+#include "src/tint/utils/symbol/symbol.h"
 
 // Forward declarations
 namespace tint::ir {
@@ -80,17 +82,11 @@ class Printer {
     ///                                   storage class with OpConstantNull
     Printer(ir::Module* module, bool zero_init_workgroup_memory);
 
-    /// @returns true on successful generation; false otherwise
-    bool Generate();
+    /// @returns the generated SPIR-V binary on success, or an error string on failure
+    tint::Result<std::vector<uint32_t>, std::string> Generate();
 
     /// @returns the module that this writer has produced
     writer::Module& Module() { return module_; }
-
-    /// @returns the generated SPIR-V binary data
-    const std::vector<uint32_t>& Result() const { return writer_.Result(); }
-
-    /// @returns the list of diagnostics raised by the writer
-    diag::List Diagnostics() const { return diagnostics_; }
 
     /// Get the result ID of the constant `constant`, emitting its instruction if necessary.
     /// @param constant the constant to get the ID for
@@ -272,21 +268,20 @@ class Printer {
     ir::Module* ir_;
     writer::Module module_;
     BinaryWriter writer_;
-    diag::List diagnostics_;
 
     /// A function type used for an OpTypeFunction declaration.
     struct FunctionType {
         uint32_t return_type_id;
-        utils::Vector<uint32_t, 4> param_type_ids;
+        Vector<uint32_t, 4> param_type_ids;
 
         /// Hasher provides a hash function for the FunctionType.
         struct Hasher {
             /// @param ft the FunctionType to create a hash for
             /// @return the hash value
             inline std::size_t operator()(const FunctionType& ft) const {
-                size_t hash = utils::Hash(ft.return_type_id);
+                size_t hash = Hash(ft.return_type_id);
                 for (auto& p : ft.param_type_ids) {
-                    hash = utils::HashCombine(hash, p);
+                    hash = HashCombine(hash, p);
                 }
                 return hash;
             }
@@ -300,28 +295,28 @@ class Printer {
     };
 
     /// The map of types to their result IDs.
-    utils::Hashmap<const type::Type*, uint32_t, 8> types_;
+    Hashmap<const type::Type*, uint32_t, 8> types_;
 
     /// The map of function types to their result IDs.
-    utils::Hashmap<FunctionType, uint32_t, 8, FunctionType::Hasher> function_types_;
+    Hashmap<FunctionType, uint32_t, 8, FunctionType::Hasher> function_types_;
 
     /// The map of constants to their result IDs.
-    utils::Hashmap<const constant::Value*, uint32_t, 16> constants_;
+    Hashmap<const constant::Value*, uint32_t, 16> constants_;
 
     /// The map of types to the result IDs of their OpConstantNull instructions.
-    utils::Hashmap<const type::Type*, uint32_t, 4> constant_nulls_;
+    Hashmap<const type::Type*, uint32_t, 4> constant_nulls_;
 
     /// The map of types to the result IDs of their OpUndef instructions.
-    utils::Hashmap<const type::Type*, uint32_t, 4> undef_values_;
+    Hashmap<const type::Type*, uint32_t, 4> undef_values_;
 
     /// The map of non-constant values to their result IDs.
-    utils::Hashmap<ir::Value*, uint32_t, 8> values_;
+    Hashmap<ir::Value*, uint32_t, 8> values_;
 
     /// The map of blocks to the IDs of their label instructions.
-    utils::Hashmap<ir::Block*, uint32_t, 8> block_labels_;
+    Hashmap<ir::Block*, uint32_t, 8> block_labels_;
 
     /// The map of extended instruction set names to their result IDs.
-    utils::Hashmap<std::string_view, uint32_t, 2> imports_;
+    Hashmap<std::string_view, uint32_t, 2> imports_;
 
     /// The current function that is being emitted.
     Function current_function_;

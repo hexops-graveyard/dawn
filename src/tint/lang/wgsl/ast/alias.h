@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A type alias type. Holds a name and pointer to another type.
-class Alias final : public utils::Castable<Alias, TypeDecl> {
+class Alias final : public Castable<Alias, TypeDecl> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -39,7 +39,7 @@ class Alias final : public utils::Castable<Alias, TypeDecl> {
     /// Clones this type and all transitive types using the `CloneContext` `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned type
-    const Alias* Clone(CloneContext* ctx) const override;
+    const Alias* Clone(CloneContext& ctx) const override;
 
     /// the alias type
     const Type type;

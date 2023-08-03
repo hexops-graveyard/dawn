@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/test_helper.h"
+#include "src/tint/lang/spirv/writer/common/helper_test.h"
 
 #include "src/tint/lang/core/builtin/function.h"
 #include "src/tint/lang/core/type/builtin_structs.h"
@@ -1202,6 +1202,19 @@ TEST_F(SpirvWriterTest, Builtin_WorkgroupBarrier) {
 
     ASSERT_TRUE(Generate()) << Error() << output_;
     EXPECT_INST("OpControlBarrier %uint_2 %uint_2 %uint_264");
+}
+
+TEST_F(SpirvWriterTest, Builtin_SubgroupBallot) {
+    auto* func = b.Function("foo", ty.vec4<u32>());
+    b.Append(func->Block(), [&] {
+        auto* result = b.Call(ty.vec4<u32>(), builtin::Function::kSubgroupBallot);
+        mod.SetName(result, "result");
+        b.Return(func, result);
+    });
+
+    ASSERT_TRUE(Generate()) << Error() << output_;
+    EXPECT_INST("OpCapability GroupNonUniformBallot");
+    EXPECT_INST("%result = OpGroupNonUniformBallot %v4uint %uint_3 %true");
 }
 
 TEST_F(SpirvWriterTest, Builtin_ArrayLength) {

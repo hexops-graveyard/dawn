@@ -18,7 +18,9 @@
 #include <utility>
 
 #include "src/tint/lang/core/builtin/function.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/builtin.h"
 #include "src/tint/lang/wgsl/sem/index_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
@@ -49,12 +51,12 @@ Transform::ApplyResult SubstituteOverride::Apply(const Program* src,
                                                  const DataMap& config,
                                                  DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     const auto* data = config.Get<Config>();
     if (!data) {
         b.Diagnostics().add_error(diag::System::Transform, "Missing override substitution data");
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
     if (!ShouldRun(ctx.src)) {
@@ -116,7 +118,7 @@ Transform::ApplyResult SubstituteOverride::Apply(const Program* src,
     });
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 SubstituteOverride::Config::Config() = default;

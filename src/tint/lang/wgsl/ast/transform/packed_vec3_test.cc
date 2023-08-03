@@ -20,8 +20,9 @@
 
 #include "src/tint/lang/core/type/array.h"
 #include "src/tint/lang/wgsl/ast/module.h"
-#include "src/tint/lang/wgsl/ast/transform/test_helper.h"
+#include "src/tint/lang/wgsl/ast/transform/helper_test.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/utils/text/string.h"
@@ -4162,16 +4163,16 @@ TEST_F(PackedVec3Test, StructMember_ExistingMemberAttributes_ExplicitOffset) {
     //
     // @group(0) @binding(0) var<uniform> P : S;
     ProgramBuilder b;
-    b.Structure("S", utils::Vector{
+    b.Structure("S", tint::Vector{
                          b.Member("a", b.ty.u32()),
-                         b.Member("v", b.ty.vec3<f32>(), utils::Vector{b.MemberOffset(AInt(32))}),
+                         b.Member("v", b.ty.vec3<f32>(), tint::Vector{b.MemberOffset(AInt(32))}),
                          b.Member("b", b.ty.u32()),
                          b.Member("arr", b.ty.array(b.ty.vec3<f32>(), b.Expr(AInt(4))),
-                                  utils::Vector{b.MemberOffset(AInt(128))}),
+                                  tint::Vector{b.MemberOffset(AInt(128))}),
                      });
     b.GlobalVar("P", builtin::AddressSpace::kStorage, b.ty("S"),
-                utils::Vector{b.Group(AInt(0)), b.Binding(AInt(0))});
-    Program src(std::move(b));
+                tint::Vector{b.Group(AInt(0)), b.Binding(AInt(0))});
+    Program src(resolver::Resolve(b));
 
     auto* expect =
         R"(

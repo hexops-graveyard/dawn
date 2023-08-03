@@ -26,14 +26,14 @@ namespace tint::constant {
 
 /// ScalarBase is the base class of all Scalar<T> specializations.
 /// Used for querying whether a value is a scalar type.
-class ScalarBase : public utils::Castable<ScalarBase, Value> {
+class ScalarBase : public Castable<ScalarBase, Value> {
   public:
     ~ScalarBase() override;
 };
 
 /// Scalar holds a single scalar or abstract-numeric value.
 template <typename T>
-class Scalar : public utils::Castable<Scalar<T>, ScalarBase> {
+class Scalar : public Castable<Scalar<T>, ScalarBase> {
   public:
     static_assert(!std::is_same_v<UnwrapNumber<T>, T> || std::is_same_v<T, bool>,
                   "T must be a Number or bool");
@@ -43,7 +43,7 @@ class Scalar : public utils::Castable<Scalar<T>, ScalarBase> {
     /// @param v the scalar value
     Scalar(const type::Type* t, T v) : type(t), value(v) {
         if constexpr (IsFloatingPoint<T>) {
-            TINT_ASSERT(Constant, std::isfinite(v.value));
+            TINT_ASSERT(std::isfinite(v.value));
         }
     }
     ~Scalar() override = default;
@@ -64,7 +64,7 @@ class Scalar : public utils::Castable<Scalar<T>, ScalarBase> {
     bool AnyZero() const override { return IsPositiveZero(); }
 
     /// @copydoc Value::Hash()
-    size_t Hash() const override { return utils::Hash(type, ValueOf()); }
+    size_t Hash() const override { return tint::Hash(type, ValueOf()); }
 
     /// Clones the constant into the provided context
     /// @param ctx the clone context

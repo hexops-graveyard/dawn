@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/resolver/resolver.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/sem/type_expression.h"
 #include "src/tint/lang/wgsl/sem/value_expression.h"
 #include "src/tint/utils/rtti/switch.h"
@@ -52,14 +52,7 @@ Program::Program(Program&& program)
 Program::Program(ProgramBuilder&& builder) {
     id_ = builder.ID();
     highest_node_id_ = builder.LastAllocatedNodeID();
-
     is_valid_ = builder.IsValid();
-    if (builder.ResolveOnBuild() && builder.IsValid()) {
-        resolver::Resolver resolver(&builder);
-        if (!resolver.Resolve()) {
-            is_valid_ = false;
-        }
-    }
 
     // The above must be called *before* the calls to std::move() below
     constants_ = std::move(builder.constants);
@@ -106,7 +99,7 @@ Program Program::Clone() const {
 ProgramBuilder Program::CloneAsBuilder() const {
     AssertNotMoved();
     ProgramBuilder out;
-    CloneContext(&out, this).Clone();
+    program::CloneContext(&out, this).Clone();
     return out;
 }
 
@@ -132,7 +125,7 @@ const type::Type* Program::TypeOf(const ast::TypeDecl* type_decl) const {
 }
 
 void Program::AssertNotMoved() const {
-    TINT_ASSERT(Program, !moved_);
+    TINT_ASSERT(!moved_);
 }
 
 }  // namespace tint

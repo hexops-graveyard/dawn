@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "src/tint/utils/containers/vector.h"
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 
 namespace tint::wgsl::reader {
 
@@ -31,17 +31,17 @@ void MaybeSplit(std::vector<Token>& tokens, size_t idx) {
     Token* token = &tokens[idx];
     switch (token->type()) {
         case Token::Type::kShiftRight:  //  '>>'
-            TINT_ASSERT(Reader, token[1].type() == Token::Type::kPlaceholder);
+            TINT_ASSERT(token[1].type() == Token::Type::kPlaceholder);
             token[0].SetType(Token::Type::kGreaterThan);
             token[1].SetType(Token::Type::kGreaterThan);
             break;
         case Token::Type::kGreaterThanEqual:  //  '>='
-            TINT_ASSERT(Reader, token[1].type() == Token::Type::kPlaceholder);
+            TINT_ASSERT(token[1].type() == Token::Type::kPlaceholder);
             token[0].SetType(Token::Type::kGreaterThan);
             token[1].SetType(Token::Type::kEqual);
             break;
         case Token::Type::kShiftRightEqual:  // '>>='
-            TINT_ASSERT(Reader, token[1].type() == Token::Type::kPlaceholder);
+            TINT_ASSERT(token[1].type() == Token::Type::kPlaceholder);
             token[0].SetType(Token::Type::kGreaterThan);
             token[1].SetType(Token::Type::kGreaterThanEqual);
             break;
@@ -66,7 +66,7 @@ void ClassifyTemplateArguments(std::vector<Token>& tokens) {
         Token* token;         // A pointer to the opening '<' token
         uint64_t expr_depth;  // The value of 'expr_depth' for the opening '<'
     };
-    utils::Vector<StackEntry, 16> stack;
+    Vector<StackEntry, 16> stack;
 
     for (size_t i = 0; i < count - 1; i++) {
         switch (tokens[i].type()) {

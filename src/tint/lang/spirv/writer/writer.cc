@@ -19,61 +19,75 @@
 
 #include "src/tint/lang/spirv/writer/ast_printer/ast_printer.h"
 #if TINT_BUILD_IR
-#include "src/tint/lang/core/ir/from_program.h"          // nogncheck
-#include "src/tint/lang/spirv/writer/printer/printer.h"  // nogncheck
-#endif                                                   // TINT_BUILD_IR
+#include "src/tint/lang/core/ir/transform/binding_remapper.h"
+#include "src/tint/lang/spirv/writer/printer/printer.h"             // nogncheck
+#include "src/tint/lang/spirv/writer/raise/raise.h"                 // nogncheck
+#include "src/tint/lang/wgsl/reader/program_to_ir/program_to_ir.h"  // nogncheck
+#endif                                                              // TINT_BUILD_IR
 
 namespace tint::spirv::writer {
 
-Result::Result() = default;
-Result::~Result() = default;
-Result::Result(const Result&) = default;
+Output::Output() = default;
+Output::~Output() = default;
+Output::Output(const Output&) = default;
 
-Result Generate(const Program* program, const Options& options) {
-    Result result;
+Result<Output, std::string> Generate(const Program* program, const Options& options) {
     if (!program->IsValid()) {
-        result.error = "input program is not valid";
-        return result;
+        return std::string("input program is not valid");
     }
 
     bool zero_initialize_workgroup_memory =
         !options.disable_workgroup_init && options.use_zero_initialize_workgroup_memory_extension;
 
+    Output output;
 #if TINT_BUILD_IR
     if (options.use_tint_ir) {
         // Convert the AST program to an IR module.
-        auto converted = ir::FromProgram(program);
+        auto converted = wgsl::reader::ProgramToIR(program);
         if (!converted) {
-            result.error = "IR converter: " + converted.Failure();
-            return result;
+            return "IR converter: " + converted.Failure();
+        }
+
+        auto ir = converted.Move();
+
+        // Apply transforms as required by writer options.
+        auto remapper = ir::transform::BindingRemapper(&ir, options.binding_remapper_options);
+        if (!remapper) {
+            return remapper.Failure();
+        }
+
+        // Raise the IR to the SPIR-V dialect.
+        auto raised = raise::Raise(&ir);
+        if (!raised) {
+            return std::move(raised.Failure());
         }
 
         // Generate the SPIR-V code.
-        auto ir = converted.Move();
         auto impl = std::make_unique<Printer>(&ir, zero_initialize_workgroup_memory);
-        result.success = impl->Generate();
-        result.error = impl->Diagnostics().str();
-        result.spirv = std::move(impl->Result());
+        auto spirv = impl->Generate();
+        if (!spirv) {
+            return std::move(spirv.Failure());
+        }
+        output.spirv = std::move(spirv.Get());
     } else  // NOLINT(readability/braces)
 #endif
     {
         // Sanitize the program.
         auto sanitized_result = Sanitize(program, options);
         if (!sanitized_result.program.IsValid()) {
-            result.success = false;
-            result.error = sanitized_result.program.Diagnostics().str();
-            return result;
+            return sanitized_result.program.Diagnostics().str();
         }
 
         // Generate the SPIR-V code.
         auto impl = std::make_unique<ASTPrinter>(&sanitized_result.program,
                                                  zero_initialize_workgroup_memory);
-        result.success = impl->Generate();
-        result.error = impl->Diagnostics().str();
-        result.spirv = std::move(impl->Result());
+        if (!impl->Generate()) {
+            return impl->Diagnostics().str();
+        }
+        output.spirv = std::move(impl->Result());
     }
 
-    return result;
+    return output;
 }
 
 }  // namespace tint::spirv::writer

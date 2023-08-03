@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "gmock/gmock.h"
-#include "src/tint/lang/core/ir/ir_test_helper.h"
+#include "src/tint/lang/core/ir/ir_helper_test.h"
 
 namespace tint::ir {
 namespace {
@@ -55,7 +55,7 @@ TEST_F(IR_OperandInstructionTest, ClearOperands_WithNullOperand) {
 
 TEST_F(IR_OperandInstructionTest, SetOperands_WithNullOperand) {
     auto* inst = b.Var(ty.ptr<private_, f32>());
-    utils::Vector<Value*, 1> ops;
+    Vector<Value*, 1> ops;
     ops.Push(nullptr);
 
     inst->SetOperands(ops);

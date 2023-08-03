@@ -21,7 +21,9 @@
 #include <vector>
 
 #include "src/tint/lang/core/type/reference.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/index_accessor_expression.h"
@@ -52,10 +54,10 @@ struct SpirvAtomic::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
     std::unordered_map<const type::Struct*, ForkedStruct> forked_structs;
     std::unordered_set<const sem::Variable*> atomic_variables;
-    utils::UniqueVector<const sem::ValueExpression*, 8> atomic_expressions;
+    UniqueVector<const sem::ValueExpression*, 8> atomic_expressions;
 
   public:
     /// Constructor
@@ -128,7 +130,7 @@ struct SpirvAtomic::State {
                     const auto& forked = it->second;
 
                     // Re-create the structure swapping in the atomic-flavoured members
-                    utils::Vector<const StructMember*, 8> members;
+                    tint::Vector<const StructMember*, 8> members;
                     members.Reserve(str->members.Length());
                     for (size_t i = 0; i < str->members.Length(); i++) {
                         auto* member = str->members[i];
@@ -151,7 +153,7 @@ struct SpirvAtomic::State {
         ReplaceLoadsAndStores();
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -220,7 +222,7 @@ struct SpirvAtomic::State {
             },
             [&](const type::Reference* ref) { return AtomicTypeFor(ref->StoreType()); },
             [&](Default) {
-                TINT_ICE(Transform, b.Diagnostics()) << "unhandled type: " << ty->FriendlyName();
+                TINT_ICE() << "unhandled type: " << ty->FriendlyName();
                 return Type{};
             });
     }
@@ -294,15 +296,15 @@ SpirvAtomic::SpirvAtomic() = default;
 SpirvAtomic::~SpirvAtomic() = default;
 
 SpirvAtomic::Stub::Stub(GenerationID pid, NodeID nid, builtin::Function b)
-    : Base(pid, nid, utils::Empty), builtin(b) {}
+    : Base(pid, nid, tint::Empty), builtin(b) {}
 SpirvAtomic::Stub::~Stub() = default;
 std::string SpirvAtomic::Stub::InternalName() const {
     return "@internal(spirv-atomic " + std::string(builtin::str(builtin)) + ")";
 }
 
-const SpirvAtomic::Stub* SpirvAtomic::Stub::Clone(CloneContext* ctx) const {
-    return ctx->dst->ASTNodes().Create<SpirvAtomic::Stub>(ctx->dst->ID(),
-                                                          ctx->dst->AllocateNodeID(), builtin);
+const SpirvAtomic::Stub* SpirvAtomic::Stub::Clone(ast::CloneContext& ctx) const {
+    return ctx.dst->ASTNodes().Create<SpirvAtomic::Stub>(ctx.dst->ID(), ctx.dst->AllocateNodeID(),
+                                                         builtin);
 }
 
 Transform::ApplyResult SpirvAtomic::Apply(const Program* src, const DataMap&, DataMap&) const {

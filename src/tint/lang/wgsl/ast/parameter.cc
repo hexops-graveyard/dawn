@@ -16,7 +16,8 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::Parameter);
 
@@ -27,7 +28,7 @@ Parameter::Parameter(GenerationID pid,
                      const Source& src,
                      const Identifier* n,
                      Type ty,
-                     utils::VectorRef<const Attribute*> attrs)
+                     VectorRef<const Attribute*> attrs)
     : Base(pid, nid, src, n, ty, nullptr, std::move(attrs)) {}
 
 Parameter::~Parameter() = default;
@@ -36,12 +37,12 @@ const char* Parameter::Kind() const {
     return "parameter";
 }
 
-const Parameter* Parameter::Clone(CloneContext* ctx) const {
-    auto src = ctx->Clone(source);
-    auto* n = ctx->Clone(name);
-    auto ty = ctx->Clone(type);
-    auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<Parameter>(src, n, ty, std::move(attrs));
+const Parameter* Parameter::Clone(CloneContext& ctx) const {
+    auto src = ctx.Clone(source);
+    auto* n = ctx.Clone(name);
+    auto ty = ctx.Clone(type);
+    auto attrs = ctx.Clone(attributes);
+    return ctx.dst->create<Parameter>(src, n, ty, std::move(attrs));
 }
 
 }  // namespace tint::ast

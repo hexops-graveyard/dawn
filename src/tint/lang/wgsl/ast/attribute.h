@@ -16,14 +16,14 @@
 #define SRC_TINT_LANG_WGSL_AST_ATTRIBUTE_H_
 
 #include <string>
-#include <vector>
 
 #include "src/tint/lang/wgsl/ast/node.h"
+#include "src/tint/utils/containers/vector.h"
 
 namespace tint::ast {
 
 /// The base class for all attributes
-class Attribute : public utils::Castable<Attribute, Node> {
+class Attribute : public Castable<Attribute, Node> {
   public:
     ~Attribute() override;
 
@@ -41,7 +41,7 @@ class Attribute : public utils::Castable<Attribute, Node> {
 /// @param attributes the list of attributes to search
 /// @returns true if `attributes` includes a attribute of type `T`
 template <typename... Ts>
-bool HasAttribute(utils::VectorRef<const Attribute*> attributes) {
+bool HasAttribute(VectorRef<const Attribute*> attributes) {
     for (auto* attr : attributes) {
         if (attr->IsAnyOf<Ts...>()) {
             return true;
@@ -53,7 +53,7 @@ bool HasAttribute(utils::VectorRef<const Attribute*> attributes) {
 /// @param attributes the list of attributes to search
 /// @returns a pointer to `T` from `attributes` if found, otherwise nullptr.
 template <typename T>
-const T* GetAttribute(utils::VectorRef<const Attribute*> attributes) {
+const T* GetAttribute(VectorRef<const Attribute*> attributes) {
     for (auto* attr : attributes) {
         if (attr->Is<T>()) {
             return attr->As<T>();

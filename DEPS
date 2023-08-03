@@ -36,10 +36,10 @@ vars = {
   # Fetch configuration files required for the 'use_remoteexec' gn arg
   'download_remoteexec_cfg': False,
   # RBE instance to use for running remote builds
-  'rbe_instance': Str('projects/rbe-chrome-untrusted/instances/default_instance'),
+  'rbe_instance': 'projects/rbe-chrome-untrusted/instances/default_instance',
   # RBE project to download rewrapper config files for. Only needed if
   # different from the project used in 'rbe_instance'
-  'rewrapper_cfg_project': Str(''),
+  'rewrapper_cfg_project': '',
   # reclient CIPD package
   'reclient_package': 'infra/rbe/client/',
   # reclient CIPD package version
@@ -86,7 +86,7 @@ deps = {
   },
 
   # TODO(chromium:1458042): Remove these paths, when chromium builds files
-  # have moved to third_party/libcxx/lib*/trunk paths.
+  # have moved to third_party/lib*/src paths.
   'buildtools/third_party/libc++/trunk': {
     'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@0e4617cf8c09a8e2b6704a51a8a0a9560715cf70',
     'condition': 'dawn_standalone',
@@ -97,12 +97,12 @@ deps = {
     'condition': 'dawn_standalone',
   },
 
-  'third_party/libcxx/libc++/trunk': {
+  'third_party/libc++/src': {
     'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxx.git@0e4617cf8c09a8e2b6704a51a8a0a9560715cf70',
     'condition': 'dawn_standalone',
   },
 
-  'third_party/libcxx/libc++abi/trunk': {
+  'third_party/libc++abi/src': {
     'url': '{chromium_git}/external/github.com/llvm/llvm-project/libcxxabi.git@307bd163607c315d46103ebe1d68aab44bf93986',
     'condition': 'dawn_standalone',
   },
@@ -160,17 +160,17 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@58cb5c8396a330ed6d81257b17dea63dc018825f',
+    'url': '{chromium_git}/angle/angle@01ee134bb2233276b05b4bb122b7a7dd010b2907',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@9fbca2df22a8e71e3116a576e26cf9b3d7915c08',
+    'url': '{swiftshader_git}/SwiftShader@729e92f8ae07d7b695bdcf346318dec4d11d899e',
     'condition': 'dawn_standalone',
   },
 
   'third_party/vulkan-deps': {
-    'url': '{chromium_git}/vulkan-deps@1b02b38215242185e701d0da6f3cf84bc9cef2be',
+    'url': '{chromium_git}/vulkan-deps@e057bba499d3273b57d2b0f3780ce30a7e789727',
     'condition': 'dawn_standalone',
   },
 
@@ -185,7 +185,7 @@ deps = {
   },
 
   'third_party/dxc': {
-    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@b97f9b9388072cf0581c4e0e5ea8d9d586203b1b',
+    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@a5b0488bc5b20659662bdfdad134c13cb376189b',
   },
   'third_party/dxheaders': {
     # The non-Windows build of DXC depends on DirectX-Headers, and at a specific commit (not ToT)

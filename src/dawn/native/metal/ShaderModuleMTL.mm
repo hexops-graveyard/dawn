@@ -25,6 +25,7 @@
 #include "dawn/native/stream/BlobSource.h"
 #include "dawn/native/stream/ByteVectorSink.h"
 #include "dawn/platform/DawnPlatform.h"
+#include "dawn/platform/metrics/HistogramMacros.h"
 #include "dawn/platform/tracing/TraceEvent.h"
 
 #include <tint/tint.h>
@@ -52,7 +53,7 @@ using OptionalVertexPullingTransformConfig =
     X(bool, isRobustnessEnabled)                                                                 \
     X(bool, disableSymbolRenaming)                                                               \
     X(bool, disableWorkgroupInit)                                                                \
-    X(CacheKey::UnsafeUnkeyedValue<dawn::platform::Platform*>, tracePlatform)
+    X(CacheKey::UnsafeUnkeyedValue<dawn::platform::Platform*>, platform)
 
 DAWN_MAKE_CACHE_REQUEST(MslCompilationRequest, MSL_COMPILATION_REQUEST_MEMBERS);
 #undef MSL_COMPILATION_REQUEST_MEMBERS
@@ -122,7 +123,7 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
     arrayLengthFromUniform.ubo_binding = {0, kBufferLengthBufferSlot};
 
     for (BindGroupIndex group : IterateBitSet(layout->GetBindGroupLayoutsMask())) {
-        const BindGroupLayoutBase::BindingMap& bindingMap =
+        const BindGroupLayoutInternalBase::BindingMap& bindingMap =
             layout->GetBindGroupLayout(group)->GetBindingMap();
         for (const auto [bindingNumber, bindingIndex] : bindingMap) {
             const BindingInfo& bindingInfo =
@@ -196,7 +197,7 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
         renderPipeline->GetPrimitiveTopology() == wgpu::PrimitiveTopology::PointList;
     req.isRobustnessEnabled = device->IsRobustnessEnabled();
     req.disableSymbolRenaming = device->IsToggleEnabled(Toggle::DisableSymbolRenaming);
-    req.tracePlatform = UnsafeUnkeyedValue(device->GetPlatform());
+    req.platform = UnsafeUnkeyedValue(device->GetPlatform());
     req.arrayLengthFromUniform = std::move(arrayLengthFromUniform);
 
     const CombinedLimits& limits = device->GetLimits();
@@ -240,7 +241,7 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
             tint::Program program;
             tint::ast::transform::DataMap transformOutputs;
             {
-                TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "RunTransforms");
+                TRACE_EVENT0(r.platform.UnsafeGetValue(), General, "RunTransforms");
                 DAWN_TRY_ASSIGN(program,
                                 RunTransforms(&transformManager, r.inputProgram, transformInputs,
                                               &transformOutputs, nullptr));
@@ -278,32 +279,34 @@ ResultOrError<CacheResult<MslCompilation>> TranslateToMSL(
             options.binding_remapper_options = r.bindingRemapper;
             options.external_texture_options = r.externalTextureOptions;
 
-            TRACE_EVENT0(r.tracePlatform.UnsafeGetValue(), General, "tint::msl::writer::Generate");
+            TRACE_EVENT0(r.platform.UnsafeGetValue(), General, "tint::msl::writer::Generate");
             auto result = tint::msl::writer::Generate(&program, options);
-            DAWN_INVALID_IF(!result.success, "An error occured while generating MSL: %s.",
-                            result.error);
+            DAWN_INVALID_IF(!result, "An error occured while generating MSL: %s.",
+                            result.Failure());
 
             // Metal uses Clang to compile the shader as C++14. Disable everything in the -Wall
             // category. -Wunused-variable in particular comes up a lot in generated code, and some
             // (old?) Metal drivers accidentally treat it as a MTLLibraryErrorCompileError instead
             // of a warning.
-            result.msl = R"(
+            auto msl = std::move(result->msl);
+            msl = R"(
                 #ifdef __clang__
                 #pragma clang diagnostic ignored "-Wall"
                 #endif
-            )" + result.msl;
+            )" + msl;
 
             auto workgroupAllocations =
-                std::move(result.workgroup_allocations[remappedEntryPointName]);
+                std::move(result->workgroup_allocations.at(remappedEntryPointName));
             return MslCompilation{{
-                std::move(result.msl),
+                std::move(msl),
                 std::move(remappedEntryPointName),
-                result.needs_storage_buffer_sizes,
-                result.has_invariant_attribute,
+                result->needs_storage_buffer_sizes,
+                result->has_invariant_attribute,
                 std::move(workgroupAllocations),
                 localSize,
             }};
-        });
+        },
+        "Metal.CompileShaderToMSL");
 
     if (device->IsToggleEnabled(Toggle::DumpShaders)) {
         std::ostringstream dumpedMsg;

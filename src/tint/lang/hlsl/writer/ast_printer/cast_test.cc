@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 #include "src/tint/utils/text/string_stream.h"
 
 namespace tint::hlsl::writer {
@@ -29,7 +29,7 @@ TEST_F(HlslASTPrinterTest_Cast, EmitExpression_Cast_Scalar) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "1.0f");
 }
@@ -40,7 +40,7 @@ TEST_F(HlslASTPrinterTest_Cast, EmitExpression_Cast_Vector) {
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, cast)) << gen.Diagnostics();
     EXPECT_EQ(out.str(), "float3(1.0f, 2.0f, 3.0f)");
 }

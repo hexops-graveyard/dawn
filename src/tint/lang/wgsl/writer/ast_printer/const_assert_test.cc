@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -34,7 +34,7 @@ TEST_F(WgslASTPrinterTest, Emit_GlobalConstAssert) {
 }
 
 TEST_F(WgslASTPrinterTest, Emit_FunctionConstAssert) {
-    Func("f", utils::Empty, ty.void_(), utils::Vector{ConstAssert(true)});
+    Func("f", tint::Empty, ty.void_(), Vector{ConstAssert(true)});
 
     ASTPrinter& gen = Build();
     gen.Generate();

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -32,7 +32,7 @@ TEST_F(HlslASTPrinterTest, Emit_GlobalConstAssert) {
 }
 
 TEST_F(HlslASTPrinterTest, Emit_FunctionConstAssert) {
-    Func("f", utils::Empty, ty.void_(), utils::Vector{ConstAssert(true)});
+    Func("f", tint::Empty, ty.void_(), Vector{ConstAssert(true)});
 
     ASTPrinter& gen = Build();
 

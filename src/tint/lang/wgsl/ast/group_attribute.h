@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A group attribute
-class GroupAttribute final : public utils::Castable<GroupAttribute, Attribute> {
+class GroupAttribute final : public Castable<GroupAttribute, Attribute> {
   public:
     /// constructor
     /// @param pid the identifier of the program that owns this node
@@ -40,7 +40,7 @@ class GroupAttribute final : public utils::Castable<GroupAttribute, Attribute> {
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const GroupAttribute* Clone(CloneContext* ctx) const override;
+    const GroupAttribute* Clone(CloneContext& ctx) const override;
 
     /// The group expression
     const Expression* const expr;

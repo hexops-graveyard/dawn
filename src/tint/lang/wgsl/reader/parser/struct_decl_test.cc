@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/reader/parser/test_helper.h"
+#include "src/tint/lang/wgsl/reader/parser/helper_test.h"
 #include "src/tint/utils/text/string.h"
 
 namespace tint::wgsl::reader {
@@ -52,9 +52,9 @@ struct $struct {
   $member_a : i32,
   $member_b : f32,
 })";
-    src = utils::ReplaceAll(src, "$struct", struct_ident);
-    src = utils::ReplaceAll(src, "$member_a", member_a_ident);
-    src = utils::ReplaceAll(src, "$member_b", member_b_ident);
+    src = tint::ReplaceAll(src, "$struct", struct_ident);
+    src = tint::ReplaceAll(src, "$member_a", member_a_ident);
+    src = tint::ReplaceAll(src, "$member_b", member_b_ident);
 
     auto p = parser(src);
 

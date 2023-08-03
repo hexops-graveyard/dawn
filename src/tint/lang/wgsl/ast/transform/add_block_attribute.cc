@@ -17,7 +17,9 @@
 #include <unordered_set>
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/variable.h"
 #include "src/tint/utils/containers/hashmap.h"
 #include "src/tint/utils/containers/hashset.h"
@@ -35,13 +37,13 @@ Transform::ApplyResult AddBlockAttribute::Apply(const Program* src,
                                                 const DataMap&,
                                                 DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     auto& sem = src->Sem();
 
     // A map from a type in the source program to a block-decorated wrapper that contains it in the
     // destination program.
-    utils::Hashmap<const type::Type*, const Struct*, 8> wrapper_structs;
+    Hashmap<const type::Type*, const Struct*, 8> wrapper_structs;
 
     // Process global 'var' declarations that are buffers.
     bool made_changes = false;
@@ -71,10 +73,10 @@ Transform::ApplyResult AddBlockAttribute::Apply(const Program* src,
             auto* wrapper = wrapper_structs.GetOrCreate(ty, [&] {
                 auto* block = b.ASTNodes().Create<BlockAttribute>(b.ID(), b.AllocateNodeID());
                 auto wrapper_name = global->name->symbol.Name() + "_block";
-                auto* ret = b.create<Struct>(
-                    b.Ident(b.Symbols().New(wrapper_name)),
-                    utils::Vector{b.Member(kMemberName, CreateASTTypeFor(ctx, ty))},
-                    utils::Vector{block});
+                auto* ret =
+                    b.create<Struct>(b.Ident(b.Symbols().New(wrapper_name)),
+                                     tint::Vector{b.Member(kMemberName, CreateASTTypeFor(ctx, ty))},
+                                     tint::Vector{block});
                 ctx.InsertBefore(src->AST().GlobalDeclarations(), global, ret);
                 return ret;
             });
@@ -98,20 +100,20 @@ Transform::ApplyResult AddBlockAttribute::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 AddBlockAttribute::BlockAttribute::BlockAttribute(GenerationID pid, NodeID nid)
-    : Base(pid, nid, utils::Empty) {}
+    : Base(pid, nid, tint::Empty) {}
 AddBlockAttribute::BlockAttribute::~BlockAttribute() = default;
 std::string AddBlockAttribute::BlockAttribute::InternalName() const {
     return "block";
 }
 
 const AddBlockAttribute::BlockAttribute* AddBlockAttribute::BlockAttribute::Clone(
-    CloneContext* ctx) const {
-    return ctx->dst->ASTNodes().Create<AddBlockAttribute::BlockAttribute>(
-        ctx->dst->ID(), ctx->dst->AllocateNodeID());
+    ast::CloneContext& ctx) const {
+    return ctx.dst->ASTNodes().Create<AddBlockAttribute::BlockAttribute>(ctx.dst->ID(),
+                                                                         ctx.dst->AllocateNodeID());
 }
 
 }  // namespace tint::ast::transform

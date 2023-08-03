@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/hlsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/hlsl/writer/ast_printer/helper_test.h"
 
 using namespace tint::number_suffixes;  // NOLINT
 
@@ -49,7 +49,7 @@ TEST_F(HlslASTPrinterTest_Switch, Emit_Switch_MixedDefault) {
     GlobalVar("cond", ty.i32(), builtin::AddressSpace::kPrivate);
     auto* s = Switch(  //
         Expr("cond"),  //
-        Case(utils::Vector{CaseSelector(5_i), DefaultCaseSelector()}, Block(Break())));
+        Case(Vector{CaseSelector(5_i), DefaultCaseSelector()}, Block(Break())));
     WrapInFunction(s);
 
     ASTPrinter& gen = Build();
@@ -111,9 +111,9 @@ TEST_F(HlslASTPrinterTest_Switch, Emit_Switch_OnlyDefaultCase_SideEffectsConditi
     // }
     GlobalVar("global", ty.i32(), builtin::AddressSpace::kPrivate);
     Func("bar", {}, ty.i32(),
-         utils::Vector{                               //
-                       Assign("global", Expr(84_i)),  //
-                       Return("global")});
+         Vector{                               //
+                Assign("global", Expr(84_i)),  //
+                Return("global")});
 
     GlobalVar("a", ty.i32(), builtin::AddressSpace::kPrivate);
     auto* s = Switch(  //

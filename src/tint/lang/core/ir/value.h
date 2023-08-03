@@ -33,12 +33,12 @@ struct Usage {
     /// The index of the operand that is the value being used.
     size_t operand_index = 0u;
 
-    /// A specialization of utils::Hasher for Usage.
+    /// A specialization of Hasher for Usage.
     struct Hasher {
         /// @param u the usage to hash
         /// @returns a hash of the usage
         inline std::size_t operator()(const Usage& u) const {
-            return utils::Hash(u.instruction, u.operand_index);
+            return Hash(u.instruction, u.operand_index);
         }
     };
 
@@ -51,7 +51,7 @@ struct Usage {
 };
 
 /// Value in the IR.
-class Value : public utils::Castable<Value> {
+class Value : public Castable<Value> {
   public:
     /// Destructor
     ~Value() override;
@@ -76,7 +76,11 @@ class Value : public utils::Castable<Value> {
 
     /// @returns the set of usages of this value. An instruction may appear multiple times if it
     /// uses the value for multiple different operands.
-    const utils::Hashset<Usage, 4, Usage::Hasher>& Usages() { return uses_; }
+    const Hashset<Usage, 4, Usage::Hasher>& Usages() { return uses_; }
+
+    /// Apply a function to all uses of the value that exist prior to calling this method.
+    /// @param func the function will be applied to each use
+    void ForEachUse(std::function<void(Usage use)> func);
 
     /// Replace all uses of the value.
     /// @param replacer a function which returns a replacement for a given use
@@ -97,10 +101,10 @@ class Value : public utils::Castable<Value> {
         kDead,
     };
 
-    utils::Hashset<Usage, 4, Usage::Hasher> uses_;
+    Hashset<Usage, 4, Usage::Hasher> uses_;
 
     /// Bitset of value flags
-    utils::EnumSet<Flag> flags_;
+    tint::EnumSet<Flag> flags_;
 };
 }  // namespace tint::ir
 

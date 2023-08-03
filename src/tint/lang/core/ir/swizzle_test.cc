@@ -16,7 +16,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
-#include "src/tint/lang/core/ir/ir_test_helper.h"
+#include "src/tint/lang/core/ir/ir_helper_test.h"
 
 using namespace tint::builtin::fluent_types;  // NOLINT
 
@@ -59,7 +59,7 @@ TEST_F(IR_SwizzleTest, Fail_EmptyIndices) {
             Module mod;
             Builder b{mod};
             auto* var = b.Var(mod.Types().ptr<function, i32>());
-            b.Swizzle(mod.Types().i32(), var, utils::Empty);
+            b.Swizzle(mod.Types().i32(), var, tint::Empty);
         },
         "");
 }

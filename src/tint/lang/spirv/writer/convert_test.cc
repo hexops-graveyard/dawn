@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/test_helper.h"
+#include "src/tint/lang/spirv/writer/common/helper_test.h"
 
 namespace tint::spirv::writer {
 namespace {
@@ -32,7 +32,7 @@ struct ConvertCase {
     std::string spirv_type_name;
 };
 std::string PrintCase(testing::TestParamInfo<ConvertCase> cc) {
-    utils::StringStream ss;
+    StringStream ss;
     ss << cc.param.in << "_to_" << cc.param.out;
     return ss.str();
 }

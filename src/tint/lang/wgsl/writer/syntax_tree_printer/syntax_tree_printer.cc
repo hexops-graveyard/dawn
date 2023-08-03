@@ -71,7 +71,7 @@
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/math/math.h"
 #include "src/tint/utils/rtti/switch.h"
-#include "src/tint/utils/text/float_to_string.h"
+#include "src/tint/utils/strconv/float_to_string.h"
 #include "src/tint/utils/text/string.h"
 
 namespace tint::wgsl::writer {
@@ -91,7 +91,7 @@ void SyntaxTreePrinter::Generate() {
             [&](const ast::Function* func) { EmitFunction(func); },
             [&](const ast::Variable* var) { EmitVariable(var); },
             [&](const ast::ConstAssert* ca) { EmitConstAssert(ca); },
-            [&](Default) { TINT_UNREACHABLE(Writer, diagnostics_); });
+            [&](Default) { TINT_UNREACHABLE(); });
 
         if (decl != program_->AST().GlobalDeclarations().Back()) {
             Line();
@@ -485,9 +485,7 @@ void SyntaxTreePrinter::EmitVariable(const ast::Variable* v) {
             [&](const ast::Let*) { Line() << "Let []"; },
             [&](const ast::Override*) { Line() << "Override []"; },
             [&](const ast::Const*) { Line() << "Const []"; },
-            [&](Default) {
-                TINT_ICE(Writer, diagnostics_) << "unhandled variable type " << v->TypeInfo().name;
-            });
+            [&](Default) { TINT_ICE() << "unhandled variable type " << v->TypeInfo().name; });
 
         Line() << "name: " << v->name->symbol.Name();
 
@@ -512,7 +510,7 @@ void SyntaxTreePrinter::EmitVariable(const ast::Variable* v) {
     Line() << "]";
 }
 
-void SyntaxTreePrinter::EmitAttributes(utils::VectorRef<const ast::Attribute*> attrs) {
+void SyntaxTreePrinter::EmitAttributes(VectorRef<const ast::Attribute*> attrs) {
     for (auto* attr : attrs) {
         Switch(
             attr,  //
@@ -637,8 +635,7 @@ void SyntaxTreePrinter::EmitAttributes(utils::VectorRef<const ast::Attribute*> a
                 Line() << "InternalAttribute [" << internal->InternalName() << "]";
             },
             [&](Default) {
-                TINT_ICE(Writer, diagnostics_)
-                    << "Unsupported attribute '" << attr->TypeInfo().name << "'";
+                TINT_ICE() << "Unsupported attribute '" << attr->TypeInfo().name << "'";
             });
     }
 }
@@ -810,13 +807,13 @@ void SyntaxTreePrinter::EmitStatement(const ast::Statement* stmt) {
         });
 }
 
-void SyntaxTreePrinter::EmitStatements(utils::VectorRef<const ast::Statement*> stmts) {
+void SyntaxTreePrinter::EmitStatements(VectorRef<const ast::Statement*> stmts) {
     for (auto* s : stmts) {
         EmitStatement(s);
     }
 }
 
-void SyntaxTreePrinter::EmitStatementsWithIndent(utils::VectorRef<const ast::Statement*> stmts) {
+void SyntaxTreePrinter::EmitStatementsWithIndent(VectorRef<const ast::Statement*> stmts) {
     ScopedIndent si(this);
     EmitStatements(stmts);
 }
@@ -1020,14 +1017,14 @@ void SyntaxTreePrinter::EmitForLoop(const ast::ForLoopStatement* stmt) {
                 case 0:  // No initializer
                     break;
                 case 1:  // Single line initializer statement
-                    Line() << utils::TrimSuffix(init_buf.lines[0].content, ";");
+                    Line() << tint::TrimSuffix(init_buf.lines[0].content, ";");
                     break;
                 default:  // Block initializer statement
                     for (size_t i = 1; i < init_buf.lines.size(); i++) {
                         // Indent all by the first line
                         init_buf.lines[i].indent += current_buffer_->current_indent;
                     }
-                    Line() << utils::TrimSuffix(init_buf.String(), "\n");
+                    Line() << tint::TrimSuffix(init_buf.String(), "\n");
                     break;
             }
         }
@@ -1048,14 +1045,14 @@ void SyntaxTreePrinter::EmitForLoop(const ast::ForLoopStatement* stmt) {
                 case 0:  // No continuing
                     break;
                 case 1:  // Single line continuing statement
-                    Line() << utils::TrimSuffix(cont_buf.lines[0].content, ";");
+                    Line() << tint::TrimSuffix(cont_buf.lines[0].content, ";");
                     break;
                 default:  // Block continuing statement
                     for (size_t i = 1; i < cont_buf.lines.size(); i++) {
                         // Indent all by the first line
                         cont_buf.lines[i].indent += current_buffer_->current_indent;
                     }
-                    Line() << utils::TrimSuffix(cont_buf.String(), "\n");
+                    Line() << tint::TrimSuffix(cont_buf.String(), "\n");
                     break;
             }
         }

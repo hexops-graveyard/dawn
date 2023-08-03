@@ -16,14 +16,12 @@
 
 #include <utility>
 
-#include "src/tint/utils/debug/debug.h"
-
 TINT_INSTANTIATE_TYPEINFO(tint::ir::Access);
 
 namespace tint::ir {
 
 //! @cond Doxygen_Suppress
-Access::Access(InstructionResult* result, Value* object, utils::VectorRef<Value*> indices) {
+Access::Access(InstructionResult* result, Value* object, VectorRef<Value*> indices) {
     AddOperand(Access::kObjectOperandOffset, object);
     AddOperands(Access::kIndicesOperandOffset, std::move(indices));
     AddResult(result);

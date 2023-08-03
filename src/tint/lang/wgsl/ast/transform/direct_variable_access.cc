@@ -19,9 +19,11 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/abstract_int.h"
-#include "src/tint/lang/wgsl/ast/transform/utils/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/ast/transform/hoist_to_decl_before.h"
 #include "src/tint/lang/wgsl/ast/traverse_expressions.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/index_accessor_expression.h"
@@ -124,7 +126,7 @@ struct AccessShape {
     // The originating variable.
     AccessRoot root;
     /// The chain of access ops.
-    tint::utils::Vector<AccessOp, 8> ops;
+    tint::Vector<AccessOp, 8> ops;
 
     /// @returns the number of DynamicIndex operations in #ops.
     uint32_t NumDynamicIndices() const {
@@ -152,14 +154,14 @@ bool operator!=(const AccessShape& a, const AccessShape& b) {
 struct AccessChain : AccessShape {
     /// The array accessor index expressions. This vector is indexed by the `DynamicIndex`s in
     /// #indices.
-    tint::utils::Vector<const tint::sem::ValueExpression*, 8> dynamic_indices;
+    tint::Vector<const tint::sem::ValueExpression*, 8> dynamic_indices;
     /// If true, then this access chain is used as an argument to call a variant.
     bool used_in_call = false;
 };
 
 }  // namespace
 
-namespace tint::utils {
+namespace tint {
 
 /// Hasher specialization for AccessRoot
 template <>
@@ -167,7 +169,7 @@ struct Hasher<AccessRoot> {
     /// The hash function for the AccessRoot
     /// @param d the AccessRoot to hash
     /// @return the hash for the given AccessRoot
-    size_t operator()(const AccessRoot& d) const { return utils::Hash(d.type, d.variable); }
+    size_t operator()(const AccessRoot& d) const { return Hash(d.type, d.variable); }
 };
 
 /// Hasher specialization for DynamicIndex
@@ -176,7 +178,7 @@ struct Hasher<DynamicIndex> {
     /// The hash function for the DynamicIndex
     /// @param d the DynamicIndex to hash
     /// @return the hash for the given DynamicIndex
-    size_t operator()(const DynamicIndex& d) const { return utils::Hash(d.slot); }
+    size_t operator()(const DynamicIndex& d) const { return Hash(d.slot); }
 };
 
 /// Hasher specialization for AccessShape
@@ -185,10 +187,10 @@ struct Hasher<AccessShape> {
     /// The hash function for the AccessShape
     /// @param s the AccessShape to hash
     /// @return the hash for the given AccessShape
-    size_t operator()(const AccessShape& s) const { return utils::Hash(s.root, s.ops); }
+    size_t operator()(const AccessShape& s) const { return Hash(s.root, s.ops); }
 };
 
-}  // namespace tint::utils
+}  // namespace tint
 
 namespace tint::ast::transform {
 
@@ -230,7 +232,7 @@ struct DirectVariableAccess::State {
         // pointer indexing in the variant.
         // Function call pointer arguments are replaced with an array of these dynamic indices.
         auto decls = sem.Module()->DependencyOrderedDeclarations();
-        for (auto* decl : utils::Reverse(decls)) {
+        for (auto* decl : tint::Reverse(decls)) {
             if (auto* fn = sem.Get<sem::Function>(decl)) {
                 auto* fn_info = FnInfoFor(fn);
                 ProcessFunction(fn, fn_info);
@@ -254,7 +256,7 @@ struct DirectVariableAccess::State {
         CloneState state;
         clone_state = &state;
         ctx.Clone();
-        return Program(std::move(*ctx.dst));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -339,17 +341,17 @@ struct DirectVariableAccess::State {
     struct FnVariant {
         /// The signature of the variant is a map of each of the function's 'uniform', 'storage' and
         /// 'workgroup' pointer parameters to the caller's AccessShape.
-        using Signature = utils::Hashmap<const sem::Parameter*, AccessShape, 4>;
+        using Signature = Hashmap<const sem::Parameter*, AccessShape, 4>;
 
         /// The unique name of the variant.
         /// The symbol is in the `ctx.dst` program namespace.
         Symbol name;
 
         /// A map of direct calls made by this variant to the name of other function variants.
-        utils::Hashmap<const sem::Call*, Symbol, 4> calls;
+        Hashmap<const sem::Call*, Symbol, 4> calls;
 
         /// A map of input program parameter to output parameter symbols.
-        utils::Hashmap<const sem::Parameter*, PtrParamSymbols, 4> ptr_param_symbols;
+        Hashmap<const sem::Parameter*, PtrParamSymbols, 4> ptr_param_symbols;
 
         /// The declaration order of the variant, in relation to other variants of the same
         /// function. Used to ensure deterministic ordering of the transform, as map iteration is
@@ -360,13 +362,13 @@ struct DirectVariableAccess::State {
     /// FnInfo holds information about a function in the input program.
     struct FnInfo {
         /// A map of variant signature to the variant data.
-        utils::Hashmap<FnVariant::Signature, FnVariant, 8> variants;
+        Hashmap<FnVariant::Signature, FnVariant, 8> variants;
         /// A map of expressions that have been hoisted to a 'let' declaration in the function.
-        utils::Hashmap<const sem::ValueExpression*, Symbol, 8> hoisted_exprs;
+        Hashmap<const sem::ValueExpression*, Symbol, 8> hoisted_exprs;
 
         /// @returns the variants of the function in a deterministically ordered vector.
-        utils::Vector<std::pair<const FnVariant::Signature*, FnVariant*>, 8> SortedVariants() {
-            utils::Vector<std::pair<const FnVariant::Signature*, FnVariant*>, 8> out;
+        tint::Vector<std::pair<const FnVariant::Signature*, FnVariant*>, 8> SortedVariants() {
+            tint::Vector<std::pair<const FnVariant::Signature*, FnVariant*>, 8> out;
             out.Reserve(variants.Count());
             for (auto it : variants) {
                 out.Push({&it.key, &it.value});
@@ -379,7 +381,7 @@ struct DirectVariableAccess::State {
     /// The program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx;
+    program::CloneContext ctx;
     /// The transform options
     const Options& opts;
     /// Alias to the semantic info in ctx.src
@@ -387,21 +389,21 @@ struct DirectVariableAccess::State {
     /// Alias to the symbols in ctx.src
     const SymbolTable& sym = ctx.src->Symbols();
     /// Map of semantic function to the function info
-    utils::Hashmap<const sem::Function*, FnInfo*, 8> fns;
+    Hashmap<const sem::Function*, FnInfo*, 8> fns;
     /// Map of AccessShape to the name of a type alias for the an array<u32, N> used for the
     /// dynamic indices of an access chain, passed down as the transformed type of a variant's
     /// pointer parameter.
-    utils::Hashmap<AccessShape, Symbol, 8> dynamic_index_array_aliases;
+    Hashmap<AccessShape, Symbol, 8> dynamic_index_array_aliases;
     /// Map of semantic expression to AccessChain
-    utils::Hashmap<const sem::ValueExpression*, AccessChain*, 32> access_chains;
+    Hashmap<const sem::ValueExpression*, AccessChain*, 32> access_chains;
     /// Allocator for FnInfo
-    utils::BlockAllocator<FnInfo> fn_info_allocator;
+    BlockAllocator<FnInfo> fn_info_allocator;
     /// Allocator for AccessChain
-    utils::BlockAllocator<AccessChain> access_chain_allocator;
+    BlockAllocator<AccessChain> access_chain_allocator;
     /// Helper used for hoisting expressions to lets
     HoistToDeclBefore hoist{ctx};
     /// Map of string to unique symbol (no collisions in output program).
-    utils::Hashmap<std::string, Symbol, 8> unique_symbols;
+    Hashmap<std::string, Symbol, 8> unique_symbols;
 
     /// CloneState holds pointers to the current function, variant and variant's parameters.
     struct CloneState {
@@ -414,7 +416,7 @@ struct DirectVariableAccess::State {
     };
 
     /// The clone state.
-    /// Only valid during the lifetime of the CloneContext::Clone().
+    /// Only valid during the lifetime of the program::CloneContext::Clone().
     CloneState* clone_state = nullptr;
 
     /// AppendAccessChain creates or extends an existing AccessChain for the given expression,
@@ -687,7 +689,7 @@ struct DirectVariableAccess::State {
                 // Build an appropriate variant function name.
                 // This is derived from the original function name and the pointer parameter
                 // chains.
-                utils::StringStream ss;
+                StringStream ss;
                 ss << target->Declaration()->name->symbol.Name();
                 for (auto* param : target->Parameters()) {
                     if (auto indices = target_signature.Find(param)) {
@@ -696,7 +698,7 @@ struct DirectVariableAccess::State {
                 }
 
                 // Build the pointer parameter symbols.
-                utils::Hashmap<const sem::Parameter*, PtrParamSymbols, 4> ptr_param_symbols;
+                Hashmap<const sem::Parameter*, PtrParamSymbols, 4> ptr_param_symbols;
                 for (auto param_it : target_signature) {
                     auto* param = param_it.key;
                     auto& shape = param_it.value;
@@ -826,7 +828,7 @@ struct DirectVariableAccess::State {
                 // Pointer parameters in the 'uniform', 'storage' or 'workgroup' address space are
                 // either replaced with an array of dynamic indices, or are dropped (if there are no
                 // dynamic indices).
-                utils::Vector<const Parameter*, 8> params;
+                tint::Vector<const Parameter*, 8> params;
                 for (auto* param : fn->Parameters()) {
                     if (auto incoming_shape = variant_sig.Find(param)) {
                         auto& symbols = *variant.ptr_param_symbols.Find(param);
@@ -876,7 +878,7 @@ struct DirectVariableAccess::State {
             }
 
             // Build the new call expressions's arguments.
-            utils::Vector<const Expression*, 8> new_args;
+            tint::Vector<const Expression*, 8> new_args;
             for (size_t arg_idx = 0; arg_idx < call->Arguments().Length(); arg_idx++) {
                 auto* arg = call->Arguments()[arg_idx];
                 auto* param = call->Target()->Parameters()[arg_idx];
@@ -914,7 +916,7 @@ struct DirectVariableAccess::State {
                 // Get or create the dynamic indices array.
                 if (auto dyn_idx_arr_ty = DynamicIndexArrayType(full_indices)) {
                     // Build an array of dynamic indices to pass as the replacement for the pointer.
-                    utils::Vector<const Expression*, 8> dyn_idx_args;
+                    tint::Vector<const Expression*, 8> dyn_idx_args;
                     if (auto* root_param = chain->root.variable->As<sem::Parameter>()) {
                         // Access chain originates from a pointer parameter.
                         if (auto incoming_chain =
@@ -1080,7 +1082,7 @@ struct DirectVariableAccess::State {
 
     /// @returns a name describing the given shape
     std::string AccessShapeName(const AccessShape& shape) {
-        utils::StringStream ss;
+        StringStream ss;
 
         if (IsPrivateOrFunction(shape.root.address_space)) {
             ss << "F";
@@ -1103,7 +1105,7 @@ struct DirectVariableAccess::State {
                 continue;
             }
 
-            TINT_ICE(Transform, b.Diagnostics()) << "unhandled variant for access chain";
+            TINT_ICE() << "unhandled variant for access chain";
             break;
         }
         return ss.str();
@@ -1151,7 +1153,7 @@ struct DirectVariableAccess::State {
             return b.MemberAccessor(expr, ctx.Clone(*member));
         }
 
-        TINT_ICE(Transform, b.Diagnostics()) << "unhandled variant type for access chain";
+        TINT_ICE() << "unhandled variant type for access chain";
         return nullptr;
     }
 

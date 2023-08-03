@@ -19,6 +19,7 @@
 #include "src/tint/lang/core/type/multisampled_texture.h"
 #include "src/tint/lang/core/type/sampled_texture.h"
 #include "src/tint/lang/core/type/texture_dimension.h"
+#include "src/tint/lang/wgsl/program/program_builder.h"
 
 namespace tint::ast::test {
 namespace {
@@ -26,7 +27,7 @@ namespace {
 using namespace tint::builtin::fluent_types;  // NOLINT
 using namespace tint::number_suffixes;        // NOLINT
 
-utils::StringStream& operator<<(utils::StringStream& out, const TextureKind& kind) {
+StringStream& operator<<(StringStream& out, const TextureKind& kind) {
     switch (kind) {
         case TextureKind::kRegular:
             out << "regular";
@@ -47,7 +48,7 @@ utils::StringStream& operator<<(utils::StringStream& out, const TextureKind& kin
     return out;
 }
 
-utils::StringStream& operator<<(utils::StringStream& out, const TextureDataType& ty) {
+StringStream& operator<<(StringStream& out, const TextureDataType& ty) {
     switch (ty) {
         case TextureDataType::kF32:
             out << "f32";
@@ -121,7 +122,7 @@ TextureOverloadCase::TextureOverloadCase(const TextureOverloadCase&) = default;
 TextureOverloadCase::~TextureOverloadCase() = default;
 
 std::ostream& operator<<(std::ostream& out, const TextureOverloadCase& data) {
-    utils::StringStream str;
+    StringStream str;
     str << "TextureOverloadCase " << static_cast<int>(data.overload) << "\n";
     str << data.description << "\n";
     str << "texture_kind:      " << data.texture_kind << "\n";
@@ -151,12 +152,12 @@ Type TextureOverloadCase::BuildResultVectorComponentType(ProgramBuilder* b) cons
             return b->ty.i32();
     }
 
-    TINT_UNREACHABLE(AST, b->Diagnostics());
+    TINT_UNREACHABLE();
     return {};
 }
 
 const Variable* TextureOverloadCase::BuildTextureVariable(ProgramBuilder* b) const {
-    utils::Vector attrs{
+    tint::Vector attrs{
         b->Group(0_u),
         b->Binding(0_a),
     };
@@ -185,12 +186,12 @@ const Variable* TextureOverloadCase::BuildTextureVariable(ProgramBuilder* b) con
         }
     }
 
-    TINT_UNREACHABLE(AST, b->Diagnostics());
+    TINT_UNREACHABLE();
     return nullptr;
 }
 
 const Variable* TextureOverloadCase::BuildSamplerVariable(ProgramBuilder* b) const {
-    utils::Vector attrs = {b->Group(0_a), b->Binding(1_a)};
+    tint::Vector attrs = {b->Group(0_a), b->Binding(1_a)};
     return b->GlobalVar(kSamplerName, b->ty.sampler(sampler_kind), attrs);
 }
 

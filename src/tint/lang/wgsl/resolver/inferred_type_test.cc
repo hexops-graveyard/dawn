@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "src/tint/lang/wgsl/resolver/resolver.h"
-#include "src/tint/lang/wgsl/resolver/resolver_test_helper.h"
+#include "src/tint/lang/wgsl/resolver/resolver_helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -137,12 +137,12 @@ TEST_F(ResolverInferredTypeTest, InferArray_Pass) {
 
 TEST_F(ResolverInferredTypeTest, InferStruct_Pass) {
     auto* member = Member("x", ty.i32());
-    auto* str = Structure("S", utils::Vector{member});
+    auto* str = Structure("S", Vector{member});
 
     auto* expected_type = create<sem::Struct>(
         str, str->name->symbol,
-        utils::Vector{create<sem::StructMember>(member, member->name->symbol, create<type::I32>(),
-                                                0u, 0u, 0u, 4u, type::StructMemberAttributes{})},
+        Vector{create<sem::StructMember>(member, member->name->symbol, create<type::I32>(), 0u, 0u,
+                                         0u, 4u, type::StructMemberAttributes{})},
         0u, 4u, 4u);
 
     auto* ctor_expr = Call(ty.Of(str));

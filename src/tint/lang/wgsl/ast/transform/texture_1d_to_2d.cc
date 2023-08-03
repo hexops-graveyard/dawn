@@ -17,7 +17,9 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/texture_dimension.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
 #include "src/tint/lang/wgsl/sem/type_expression.h"
@@ -70,7 +72,7 @@ struct Texture1DTo2D::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Constructor
     /// @param program the source program
@@ -153,7 +155,7 @@ struct Texture1DTo2D::State {
                 return nullptr;
             }
 
-            utils::Vector<const Expression*, 8> args;
+            tint::Vector<const Expression*, 8> args;
             int index = 0;
             for (auto* arg : c->args) {
                 if (index == coords_index) {
@@ -177,7 +179,7 @@ struct Texture1DTo2D::State {
         });
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 };
 

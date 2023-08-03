@@ -57,14 +57,17 @@
 #include "src/tint/lang/core/ir/user_call.h"
 #include "src/tint/lang/core/ir/value.h"
 #include "src/tint/lang/core/ir/var.h"
+#include "src/tint/lang/core/type/array.h"
 #include "src/tint/lang/core/type/bool.h"
 #include "src/tint/lang/core/type/f16.h"
 #include "src/tint/lang/core/type/f32.h"
 #include "src/tint/lang/core/type/i32.h"
+#include "src/tint/lang/core/type/matrix.h"
 #include "src/tint/lang/core/type/pointer.h"
 #include "src/tint/lang/core/type/u32.h"
 #include "src/tint/lang/core/type/vector.h"
 #include "src/tint/lang/core/type/void.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
 
@@ -89,17 +92,17 @@ class Builder {
                       "Consider hoisting Builder call arguments to separate statements.");
     }
 
-    /// A helper used to enable overloads if the first type in `TYPES` is a utils::Vector or
-    /// utils::VectorRef.
+    /// A helper used to enable overloads if the first type in `TYPES` is a Vector or
+    /// VectorRef.
     template <typename... TYPES>
-    using EnableIfVectorLike = utils::traits::EnableIf<
-        utils::IsVectorLike<utils::traits::Decay<utils::traits::NthTypeOf<0, TYPES..., void>>>>;
+    using EnableIfVectorLike = tint::traits::EnableIf<
+        tint::IsVectorLike<tint::traits::Decay<tint::traits::NthTypeOf<0, TYPES..., void>>>>;
 
-    /// A helper used to disable overloads if the first type in `TYPES` is a utils::Vector or
-    /// utils::VectorRef.
+    /// A helper used to disable overloads if the first type in `TYPES` is a Vector or
+    /// VectorRef.
     template <typename... TYPES>
-    using DisableIfVectorLike = utils::traits::EnableIf<
-        !utils::IsVectorLike<utils::traits::Decay<utils::traits::NthTypeOf<0, TYPES..., void>>>>;
+    using DisableIfVectorLike = tint::traits::EnableIf<
+        !tint::IsVectorLike<tint::traits::Decay<tint::traits::NthTypeOf<0, TYPES..., void>>>>;
 
     /// If set, any created instruction will be auto-appended to the block.
     ir::Block* current_block_ = nullptr;
@@ -200,7 +203,7 @@ class Builder {
     /// @param s the switch to create the case into
     /// @param selectors the case selectors for the case statement
     /// @returns the start block for the case instruction
-    ir::Block* Case(ir::Switch* s, utils::VectorRef<Switch::CaseSelector> selectors);
+    ir::Block* Case(ir::Switch* s, VectorRef<Switch::CaseSelector> selectors);
 
     /// Creates a case for the switch @p s with the given selectors
     /// @param s the switch to create the case into
@@ -218,29 +221,72 @@ class Builder {
     /// Creates a ir::Constant for an i32 Scalar
     /// @param v the value
     /// @returns the new constant
-    ir::Constant* Constant(i32 v) { return Constant(ir.constant_values.Get(v)); }
+    ir::Constant* Constant(i32 v) { return Constant(ConstantValue(v)); }
 
     /// Creates a ir::Constant for a u32 Scalar
     /// @param v the value
     /// @returns the new constant
-    ir::Constant* Constant(u32 v) { return Constant(ir.constant_values.Get(v)); }
+    ir::Constant* Constant(u32 v) { return Constant(ConstantValue(v)); }
 
     /// Creates a ir::Constant for a f32 Scalar
     /// @param v the value
     /// @returns the new constant
-    ir::Constant* Constant(f32 v) { return Constant(ir.constant_values.Get(v)); }
+    ir::Constant* Constant(f32 v) { return Constant(ConstantValue(v)); }
 
     /// Creates a ir::Constant for a f16 Scalar
     /// @param v the value
     /// @returns the new constant
-    ir::Constant* Constant(f16 v) { return Constant(ir.constant_values.Get(v)); }
+    ir::Constant* Constant(f16 v) { return Constant(ConstantValue(v)); }
 
     /// Creates a ir::Constant for a bool Scalar
     /// @param v the value
     /// @returns the new constant
     template <typename BOOL, typename = std::enable_if_t<std::is_same_v<BOOL, bool>>>
     ir::Constant* Constant(BOOL v) {
-        return Constant(ir.constant_values.Get(v));
+        return Constant(ConstantValue(v));
+    }
+
+    /// Retrieves the inner constant from an ir::Constant
+    /// @param constant the ir constant
+    /// @returns the constant::Value inside the constant
+    const constant::Value* ConstantValue(ir::Constant* constant) { return constant->Value(); }
+
+    /// Creates a constant::Value for an i32 Scalar
+    /// @param v the value
+    /// @returns the new constant
+    const constant::Value* ConstantValue(i32 v) { return ir.constant_values.Get(v); }
+
+    /// Creates a constant::Value for a u32 Scalar
+    /// @param v the value
+    /// @returns the new constant
+    const constant::Value* ConstantValue(u32 v) { return ir.constant_values.Get(v); }
+
+    /// Creates a constant::Value for a f32 Scalar
+    /// @param v the value
+    /// @returns the new constant
+    const constant::Value* ConstantValue(f32 v) { return ir.constant_values.Get(v); }
+
+    /// Creates a constant::Value for a f16 Scalar
+    /// @param v the value
+    /// @returns the new constant
+    const constant::Value* ConstantValue(f16 v) { return ir.constant_values.Get(v); }
+
+    /// Creates a constant::Value for a bool Scalar
+    /// @param v the value
+    /// @returns the new constant
+    template <typename BOOL, typename = std::enable_if_t<std::is_same_v<BOOL, bool>>>
+    const constant::Value* ConstantValue(BOOL v) {
+        return ir.constant_values.Get(v);
+    }
+
+    /// Creates a new ir::Constant
+    /// @param ty the constant type
+    /// @param values the composite values
+    /// @returns the new constant
+    template <typename... ARGS, typename = DisableIfVectorLike<ARGS...>>
+    ir::Constant* Composite(const type::Type* ty, ARGS&&... values) {
+        return Constant(
+            ir.constant_values.Composite(ty, Vector{ConstantValue(std::forward<ARGS>(values))...}));
     }
 
     /// @param in the input value. One of: nullptr, ir::Value*, ir::Instruction* or a numeric value.
@@ -265,7 +311,7 @@ class Builder {
                 return in;  /// Pass-through
             } else if constexpr (is_instruction) {
                 /// Extract the first result from the instruction
-                TINT_ASSERT(IR, in->HasResults() && !in->HasMultiResults());
+                TINT_ASSERT(in->HasResults() && !in->HasMultiResults());
                 return in->Result();
             }
         } else if constexpr (is_numeric) {
@@ -277,25 +323,25 @@ class Builder {
     /// Pass-through overload for Values() with vector-like argument
     /// @param vec the vector of ir::Value*
     /// @return @p vec
-    template <typename VEC, typename = EnableIfVectorLike<utils::traits::Decay<VEC>>>
+    template <typename VEC, typename = EnableIfVectorLike<tint::traits::Decay<VEC>>>
     auto Values(VEC&& vec) {
         return std::forward<VEC>(vec);
     }
 
-    /// Overload for Values() with utils::Empty argument
-    /// @return utils::Empty
-    utils::EmptyType Values(utils::EmptyType) { return utils::Empty; }
+    /// Overload for Values() with tint::Empty argument
+    /// @return tint::Empty
+    tint::EmptyType Values(tint::EmptyType) { return tint::Empty; }
 
     /// Overload for Values() with no arguments
-    /// @return utils::Empty
-    utils::EmptyType Values() { return utils::Empty; }
+    /// @return tint::Empty
+    tint::EmptyType Values() { return tint::Empty; }
 
     /// @param args the arguments to pass to Value()
     /// @returns a vector of ir::Value* built from transforming the arguments with Value()
     template <typename... ARGS, typename = DisableIfVectorLike<ARGS...>>
     auto Values(ARGS&&... args) {
         CheckForNonDeterministicEvaluation<ARGS...>();
-        return utils::Vector{Value(std::forward<ARGS>(args))...};
+        return Vector{Value(std::forward<ARGS>(args))...};
     }
 
     /// Creates an op for `lhs kind rhs`
@@ -664,7 +710,7 @@ class Builder {
     ir::Let* Let(std::string_view name, VALUE&& value) {
         auto* val = Value(std::forward<VALUE>(value));
         if (TINT_UNLIKELY(!val)) {
-            TINT_ASSERT(IR, val);
+            TINT_ASSERT(val);
             return nullptr;
         }
         auto* let = Append(ir.instructions.Create<ir::Let>(InstructionResult(val->Type()), val));
@@ -775,6 +821,12 @@ class Builder {
     /// @returns the value
     ir::BlockParam* BlockParam(const type::Type* type);
 
+    /// Creates a new `BlockParam` with a name.
+    /// @param name the parameter name
+    /// @param type the parameter type
+    /// @returns the value
+    ir::BlockParam* BlockParam(std::string_view name, const type::Type* type);
+
     /// Creates a new `FunctionParam`
     /// @param type the parameter type
     /// @returns the value
@@ -805,7 +857,7 @@ class Builder {
     /// @param indices the swizzle indices
     /// @returns the instruction
     template <typename OBJ>
-    ir::Swizzle* Swizzle(const type::Type* type, OBJ&& object, utils::VectorRef<uint32_t> indices) {
+    ir::Swizzle* Swizzle(const type::Type* type, OBJ&& object, VectorRef<uint32_t> indices) {
         auto* obj_val = Value(std::forward<OBJ>(object));
         return Append(ir.instructions.Create<ir::Swizzle>(InstructionResult(type), obj_val,
                                                           std::move(indices)));
@@ -822,7 +874,7 @@ class Builder {
                          std::initializer_list<uint32_t> indices) {
         auto* obj_val = Value(std::forward<OBJ>(object));
         return Append(ir.instructions.Create<ir::Swizzle>(InstructionResult(type), obj_val,
-                                                          utils::Vector<uint32_t, 4>(indices)));
+                                                          Vector<uint32_t, 4>(indices)));
     }
 
     /// Creates a terminate invocation instruction
@@ -842,6 +894,43 @@ class Builder {
     /// @returns the value
     ir::InstructionResult* InstructionResult(const type::Type* type) {
         return ir.values.Create<ir::InstructionResult>(type);
+    }
+
+    /// Create a ranged loop with a callback to build the loop body.
+    /// @param ty the type manager to use for new types
+    /// @param start the first loop index
+    /// @param end one past the last loop index
+    /// @param step the loop index step amount
+    /// @param cb the callback to call for the loop body
+    template <typename START, typename END, typename STEP, typename FUNCTION>
+    void LoopRange(type::Manager& ty, START&& start, END&& end, STEP&& step, FUNCTION&& cb) {
+        auto* start_value = Value(std::forward<START>(start));
+        auto* end_value = Value(std::forward<END>(end));
+        auto* step_value = Value(std::forward<STEP>(step));
+
+        auto* loop = Loop();
+        auto* idx = BlockParam("idx", start_value->Type());
+        loop->Body()->SetParams({idx});
+        Append(loop->Initializer(), [&] {
+            // Start the loop with `idx = start`.
+            NextIteration(loop, start_value);
+        });
+        Append(loop->Body(), [&] {
+            // Loop until `idx == end`.
+            auto* breakif = If(GreaterThanEqual(ty.bool_(), idx, end_value));
+            Append(breakif->True(), [&] {  //
+                ExitLoop(loop);
+            });
+
+            cb(idx);
+
+            Continue(loop);
+        });
+        Append(loop->Continuing(), [&] {
+            // Update the index with `idx += step` and go to the next iteration.
+            auto* new_idx = Add(idx->Type(), idx, step_value);
+            NextIteration(loop, new_idx);
+        });
     }
 
     /// The IR module.

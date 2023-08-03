@@ -192,6 +192,8 @@ source_set("sources") {
     "BindGroup.h",
     "BindGroupLayout.cpp",
     "BindGroupLayout.h",
+    "BindGroupLayoutInternal.cpp",
+    "BindGroupLayoutInternal.h",
     "BindGroupTracker.h",
     "BindingInfo.cpp",
     "BindingInfo.h",
@@ -261,6 +263,8 @@ source_set("sources") {
     "ErrorInjector.h",
     "ErrorScope.cpp",
     "ErrorScope.h",
+    "ExecutionQueue.cpp",
+    "ExecutionQueue.h",
     "ExternalTexture.cpp",
     "ExternalTexture.h",
     "Features.cpp",
@@ -614,15 +618,9 @@ source_set("sources") {
     ]
 
     # If a "build with ARC" config is present, remove it.
-    # TODO(https://crbug.com/1280317): Remove the "enable_arc2" variant
-    # when ARC migration in the Chromium repo is complete.
     if (filter_include(configs, [ "//build/config/compiler:enable_arc" ]) !=
         []) {
       configs -= [ "//build/config/compiler:enable_arc" ]
-    }
-    if (filter_include(configs, [ "//build/config/compiler:enable_arc2" ]) !=
-        []) {
-      configs -= [ "//build/config/compiler:enable_arc2" ]
     }
   }
 

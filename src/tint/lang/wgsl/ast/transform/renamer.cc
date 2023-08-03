@@ -17,7 +17,9 @@
 #include <memory>
 #include <utility>
 
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/builtin_enum_expression.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
@@ -1259,13 +1261,13 @@ Renamer::~Renamer() = default;
 Transform::ApplyResult Renamer::Apply(const Program* src,
                                       const DataMap& inputs,
                                       DataMap& outputs) const {
-    utils::Hashset<Symbol, 16> global_decls;
+    Hashset<Symbol, 16> global_decls;
     for (auto* decl : src->AST().TypeDecls()) {
         global_decls.Add(decl->name->symbol);
     }
 
     // Identifiers that need to keep their symbols preserved.
-    utils::Hashset<const Identifier*, 16> preserved_identifiers;
+    Hashset<const Identifier*, 16> preserved_identifiers;
 
     for (auto* node : src->ASTNodes().Objects()) {
         auto preserve_if_builtin_type = [&](const Identifier* ident) {
@@ -1339,7 +1341,7 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
             return true;
         }
         auto name = symbol.Name();
-        if (!utils::utf8::IsASCII(name)) {
+        if (!tint::utf8::IsASCII(name)) {
             // name is non-ascii. All of the backend keywords are ascii, so rename if we're not
             // preserving unicode symbols.
             return !preserve_unicode;
@@ -1367,10 +1369,10 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
         return true;
     };
 
-    utils::Hashmap<Symbol, Symbol, 32> remappings;
+    Hashmap<Symbol, Symbol, 32> remappings;
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ false};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ false};
 
     ctx.ReplaceAll([&](const Identifier* ident) -> const Identifier* {
         const auto symbol = ident->symbol;
@@ -1385,7 +1387,7 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
         if (auto* tmpl_ident = ident->As<TemplatedIdentifier>()) {
             auto args = ctx.Clone(tmpl_ident->arguments);
             return ctx.dst->create<TemplatedIdentifier>(ctx.Clone(ident->source), replacement,
-                                                        std::move(args), utils::Empty);
+                                                        std::move(args), tint::Empty);
         }
         return ctx.dst->create<Identifier>(ctx.Clone(ident->source), replacement);
     });
@@ -1398,7 +1400,7 @@ Transform::ApplyResult Renamer::Apply(const Program* src,
     }
     outputs.Add<Data>(std::move(out));
 
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

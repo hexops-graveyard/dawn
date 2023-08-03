@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -33,7 +33,7 @@ TEST_F(WgslASTPrinterTest, EmitAlias_F32) {
 }
 
 TEST_F(WgslASTPrinterTest, EmitTypeDecl_Struct) {
-    auto* s = Structure("A", utils::Vector{
+    auto* s = Structure("A", Vector{
                                  Member("a", ty.f32()),
                                  Member("b", ty.i32()),
                              });
@@ -55,7 +55,7 @@ alias B = A;
 }
 
 TEST_F(WgslASTPrinterTest, EmitAlias_ToStruct) {
-    auto* s = Structure("A", utils::Vector{
+    auto* s = Structure("A", Vector{
                                  Member("a", ty.f32()),
                                  Member("b", ty.i32()),
                              });

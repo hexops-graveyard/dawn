@@ -21,7 +21,9 @@
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 #include "src/tint/lang/wgsl/ast/disable_validation_attribute.h"
 #include "src/tint/lang/wgsl/ast/transform/simplify_pointers.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/call.h"
 #include "src/tint/lang/wgsl/sem/function.h"
@@ -63,25 +65,23 @@ struct ArrayUsage {
         return block == rhs.block && buffer == rhs.buffer;
     }
     struct Hasher {
-        inline std::size_t operator()(const ArrayUsage& u) const {
-            return utils::Hash(u.block, u.buffer);
-        }
+        inline std::size_t operator()(const ArrayUsage& u) const { return Hash(u.block, u.buffer); }
     };
 };
 
 }  // namespace
 
 CalculateArrayLength::BufferSizeIntrinsic::BufferSizeIntrinsic(GenerationID pid, NodeID nid)
-    : Base(pid, nid, utils::Empty) {}
+    : Base(pid, nid, tint::Empty) {}
 CalculateArrayLength::BufferSizeIntrinsic::~BufferSizeIntrinsic() = default;
 std::string CalculateArrayLength::BufferSizeIntrinsic::InternalName() const {
     return "intrinsic_buffer_size";
 }
 
 const CalculateArrayLength::BufferSizeIntrinsic* CalculateArrayLength::BufferSizeIntrinsic::Clone(
-    CloneContext* ctx) const {
-    return ctx->dst->ASTNodes().Create<CalculateArrayLength::BufferSizeIntrinsic>(
-        ctx->dst->ID(), ctx->dst->AllocateNodeID());
+    ast::CloneContext& ctx) const {
+    return ctx.dst->ASTNodes().Create<CalculateArrayLength::BufferSizeIntrinsic>(
+        ctx.dst->ID(), ctx.dst->AllocateNodeID());
 }
 
 CalculateArrayLength::CalculateArrayLength() = default;
@@ -95,7 +95,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
     auto& sem = src->Sem();
 
     // get_buffer_size_intrinsic() emits the function decorated with
@@ -103,19 +103,19 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
     // [RW]ByteAddressBuffer.GetDimensions().
     std::unordered_map<const type::Reference*, Symbol> buffer_size_intrinsics;
     auto get_buffer_size_intrinsic = [&](const type::Reference* buffer_type) {
-        return utils::GetOrCreate(buffer_size_intrinsics, buffer_type, [&] {
+        return tint::GetOrCreate(buffer_size_intrinsics, buffer_type, [&] {
             auto name = b.Sym();
             auto type = CreateASTTypeFor(ctx, buffer_type);
             auto* disable_validation = b.Disable(DisabledValidation::kFunctionParameter);
             b.Func(name,
-                   utils::Vector{
+                   tint::Vector{
                        b.Param("buffer",
                                b.ty.ptr(buffer_type->AddressSpace(), type, buffer_type->Access()),
-                               utils::Vector{disable_validation}),
+                               tint::Vector{disable_validation}),
                        b.Param("result", b.ty.ptr<function, u32>()),
                    },
                    b.ty.void_(), nullptr,
-                   utils::Vector{
+                   tint::Vector{
                        b.ASTNodes().Create<BufferSizeIntrinsic>(b.ID(), b.AllocateNodeID()),
                    });
 
@@ -152,7 +152,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                     auto* arg = call_expr->args[0];
                     auto* address_of = arg->As<UnaryOpExpression>();
                     if (TINT_UNLIKELY(!address_of || address_of->op != UnaryOp::kAddressOf)) {
-                        TINT_ICE(Transform, b.Diagnostics())
+                        TINT_ICE()
                             << "arrayLength() expected address-of, got " << arg->TypeInfo().name;
                     }
                     auto* storage_buffer_expr = address_of->expr;
@@ -161,9 +161,8 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                     }
                     auto* storage_buffer_sem = sem.Get<sem::VariableUser>(storage_buffer_expr);
                     if (TINT_UNLIKELY(!storage_buffer_sem)) {
-                        TINT_ICE(Transform, b.Diagnostics())
-                            << "expected form of arrayLength argument to be &array_var or "
-                               "&struct_var.array_member";
+                        TINT_ICE() << "expected form of arrayLength argument to be &array_var or "
+                                      "&struct_var.array_member";
                         break;
                     }
                     auto* storage_buffer_var = storage_buffer_sem->Variable();
@@ -176,7 +175,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                     auto* block = call->Stmt()->Block()->Declaration();
 
                     auto array_length =
-                        utils::GetOrCreate(array_length_by_usage, {block, storage_buffer_var}, [&] {
+                        tint::GetOrCreate(array_length_by_usage, {block, storage_buffer_var}, [&] {
                             // First time this array length is used for this block.
                             // Let's calculate it.
 
@@ -212,9 +211,8 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
                                 [&](const type::Array* arr) { return arr; });
 
                             if (TINT_UNLIKELY(!array_type)) {
-                                TINT_ICE(Transform, b.Diagnostics())
-                                    << "expected form of arrayLength argument to be "
-                                       "&array_var or &struct_var.array_member";
+                                TINT_ICE() << "expected form of arrayLength argument to be "
+                                              "&array_var or &struct_var.array_member";
                                 return name;
                             }
 
@@ -240,7 +238,7 @@ Transform::ApplyResult CalculateArrayLength::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

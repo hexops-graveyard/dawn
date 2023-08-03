@@ -21,12 +21,13 @@
 #include "src/tint/lang/core/ir/location.h"
 #include "src/tint/lang/core/ir/value.h"
 #include "src/tint/utils/containers/vector.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/rtti/castable.h"
 
 namespace tint::ir {
 
 /// A function parameter in the IR.
-class FunctionParam : public utils::Castable<FunctionParam, Value> {
+class FunctionParam : public Castable<FunctionParam, Value> {
   public:
     /// Builtin attribute
     enum class Builtin {
@@ -65,7 +66,7 @@ class FunctionParam : public utils::Castable<FunctionParam, Value> {
     /// Sets the builtin information. Note, it is currently an error if the builtin is already set.
     /// @param val the builtin to set
     void SetBuiltin(FunctionParam::Builtin val) {
-        TINT_ASSERT(IR, !builtin_.has_value());
+        TINT_ASSERT(!builtin_.has_value());
         builtin_ = val;
     }
     /// @returns the builtin set for the parameter
@@ -105,7 +106,17 @@ class FunctionParam : public utils::Castable<FunctionParam, Value> {
     bool invariant_ = false;
 };
 
-utils::StringStream& operator<<(utils::StringStream& out, enum FunctionParam::Builtin value);
+/// @param value the enum value
+/// @returns the string for the given enum value
+std::string_view ToString(enum FunctionParam::Builtin value);
+
+/// @param out the stream to write to
+/// @param value the FunctionParam::Builtin
+/// @returns @p out so calls can be chained
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, enum FunctionParam::Builtin value) {
+    return out << ToString(value);
+}
 
 }  // namespace tint::ir
 

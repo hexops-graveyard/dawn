@@ -36,11 +36,6 @@ const char* str(Function i) {
     return "<unknown>";
 }
 
-utils::StringStream& operator<<(utils::StringStream& out, Function i) {
-    out << str(i);
-    return out;
-}
-
 bool IsCoarseDerivativeBuiltin(Function f) {
     return f == Function::kDpdxCoarse || f == Function::kDpdyCoarse ||
            f == Function::kFwidthCoarse;
@@ -105,6 +100,10 @@ bool IsAtomicBuiltin(Function f) {
 
 bool IsDP4aBuiltin(Function f) {
     return f == Function::kDot4I8Packed || f == Function::kDot4U8Packed;
+}
+
+bool IsSubgroupBuiltin(Function f) {
+    return f == Function::kSubgroupBallot;
 }
 
 bool HasSideEffects(Function f) {

@@ -14,9 +14,17 @@
 
 #include "src/tint/lang/msl/writer/printer/printer.h"
 
+#include <utility>
+
 #include "src/tint/lang/core/constant/composite.h"
 #include "src/tint/lang/core/constant/splat.h"
 #include "src/tint/lang/core/ir/constant.h"
+#include "src/tint/lang/core/ir/exit_if.h"
+#include "src/tint/lang/core/ir/if.h"
+#include "src/tint/lang/core/ir/let.h"
+#include "src/tint/lang/core/ir/multi_in_block.h"
+#include "src/tint/lang/core/ir/return.h"
+#include "src/tint/lang/core/ir/unreachable.h"
 #include "src/tint/lang/core/ir/validator.h"
 #include "src/tint/lang/core/type/array.h"
 #include "src/tint/lang/core/type/atomic.h"
@@ -36,9 +44,11 @@
 #include "src/tint/lang/core/type/u32.h"
 #include "src/tint/lang/core/type/vector.h"
 #include "src/tint/lang/core/type/void.h"
-#include "src/tint/lang/msl/writer/printer_support.h"
+#include "src/tint/lang/msl/writer/common/printer_support.h"
+#include "src/tint/utils/containers/map.h"
 #include "src/tint/utils/macros/scoped_assignment.h"
 #include "src/tint/utils/rtti/switch.h"
+#include "src/tint/utils/text/string.h"
 
 namespace tint::msl::writer {
 namespace {
@@ -48,9 +58,9 @@ void Sanitize(ir::Module*) {}
 }  // namespace
 
 // Helper for calling TINT_UNIMPLEMENTED() from a Switch(object_ptr) default case.
-#define UNHANDLED_CASE(object_ptr)           \
-    TINT_UNIMPLEMENTED(Writer, diagnostics_) \
-        << "unhandled case in Switch(): " << (object_ptr ? object_ptr->TypeInfo().name : "<null>")
+#define UNHANDLED_CASE(object_ptr)                         \
+    TINT_UNIMPLEMENTED() << "unhandled case in Switch(): " \
+                         << (object_ptr ? object_ptr->TypeInfo().name : "<null>")
 
 Printer::Printer(ir::Module* module) : ir_(module) {}
 
@@ -69,7 +79,6 @@ bool Printer::Generate() {
     {
         TINT_SCOPED_ASSIGNMENT(current_buffer_, &preamble_buffer_);
         Line() << "#include <metal_stdlib>";
-        Line();
         Line() << "using namespace metal;";
     }
 
@@ -91,18 +100,9 @@ bool Printer::Generate() {
 }
 
 std::string Printer::Result() const {
-    utils::StringStream ss;
+    StringStream ss;
     ss << preamble_buffer_.String() << std::endl << main_buffer_.String();
     return ss.str();
-}
-
-void Printer::EmitFunction(ir::Function* func) {
-    {
-        auto out = Line();
-        EmitType(out, func->ReturnType());
-        out << " " << ir_->NameOf(func).Name() << "() {";
-    }
-    Line() << "}";
 }
 
 const std::string& Printer::ArrayTemplateName() {
@@ -132,7 +132,118 @@ const std::string& Printer::ArrayTemplateName() {
     return array_template_name_;
 }
 
-void Printer::EmitAddressSpace(utils::StringStream& out, builtin::AddressSpace sc) {
+void Printer::EmitFunction(ir::Function* func) {
+    TINT_SCOPED_ASSIGNMENT(current_function_, func);
+
+    {
+        auto out = Line();
+
+        // TODO(dsinclair): Emit function stage if any
+        // TODO(dsinclair): Handle return type attributes
+
+        EmitType(out, func->ReturnType());
+        out << " " << ir_->NameOf(func).Name() << "() {";
+
+        // TODO(dsinclair): Emit Function parameters
+    }
+    {
+        ScopedIndent si(current_buffer_);
+        EmitBlock(func->Block());
+    }
+
+    Line() << "}";
+}
+
+void Printer::EmitBlock(ir::Block* block) {
+    // TODO(dsinclair): Handle inline things
+    // MarkInlinable(block);
+
+    EmitBlockInstructions(block);
+}
+
+void Printer::EmitBlockInstructions(ir::Block* block) {
+    TINT_SCOPED_ASSIGNMENT(current_block_, block);
+
+    for (auto* inst : *block) {
+        Switch(
+            inst,                                          //
+            [&](ir::ExitIf* e) { EmitExitIf(e); },         //
+            [&](ir::If* if_) { EmitIf(if_); },             //
+            [&](ir::Let* l) { EmitLet(l); },               //
+            [&](ir::Return* r) { EmitReturn(r); },         //
+            [&](ir::Unreachable*) { EmitUnreachable(); },  //
+            [&](Default) { TINT_ICE() << "unimplemented instruction: " << inst->TypeInfo().name; });
+    }
+}
+
+void Printer::EmitLet(ir::Let* l) {
+    Bind(l->Result(), Expr(l->Value(), PtrKind::kPtr), PtrKind::kPtr);
+}
+
+void Printer::EmitIf(ir::If* if_) {
+    // Emit any nodes that need to be used as PHI nodes
+    for (auto* phi : if_->Results()) {
+        if (!ir_->NameOf(phi).IsValid()) {
+            ir_->SetName(phi, ir_->symbols.New());
+        }
+
+        auto name = ir_->NameOf(phi);
+
+        auto out = Line();
+        EmitType(out, phi->Type());
+        out << " " << name.Name() << ";";
+
+        Bind(phi, name);
+    }
+
+    Line() << "if (" << Expr(if_->Condition()) << ") {";
+
+    {
+        ScopedIndent si(current_buffer_);
+        EmitBlockInstructions(if_->True());
+    }
+
+    if (if_->False() && !if_->False()->IsEmpty()) {
+        Line() << "} else {";
+
+        ScopedIndent si(current_buffer_);
+        EmitBlockInstructions(if_->False());
+    }
+
+    Line() << "}";
+}
+
+void Printer::EmitExitIf(ir::ExitIf* e) {
+    auto results = e->If()->Results();
+    auto args = e->Args();
+    for (size_t i = 0; i < e->Args().Length(); ++i) {
+        auto* phi = results[i];
+        auto* val = args[i];
+
+        Line() << ir_->NameOf(phi).Name() << " = " << Expr(val) << ";";
+    }
+}
+
+void Printer::EmitReturn(ir::Return* r) {
+    // If this return has no arguments and the current block is for the function which is being
+    // returned, skip the return.
+    if (current_block_ == current_function_->Block() && r->Args().IsEmpty()) {
+        return;
+    }
+
+    auto out = Line();
+    out << "return";
+    if (!r->Args().IsEmpty()) {
+        out << " " << Expr(r->Args().Front());
+    }
+    out << ";";
+}
+
+void Printer::EmitUnreachable() {
+    Line() << "/* unreachable */";
+}
+
+void Printer::EmitAddressSpace(StringStream& out, builtin::AddressSpace sc) {
     switch (sc) {
         case builtin::AddressSpace::kFunction:
         case builtin::AddressSpace::kPrivate:
@@ -149,12 +260,12 @@ void Printer::EmitAddressSpace(utils::StringStream& out, builtin::AddressSpace s
             out << "constant";
             break;
         default:
-            TINT_ICE(Writer, diagnostics_) << "unhandled address space: " << sc;
+            TINT_ICE() << "unhandled address space: " << sc;
             break;
     }
 }
 
-void Printer::EmitType(utils::StringStream& out, const type::Type* ty) {
+void Printer::EmitType(StringStream& out, const type::Type* ty) {
     tint::Switch(
         ty,                                         //
         [&](const type::Bool*) { out << "bool"; },  //
@@ -179,7 +290,7 @@ void Printer::EmitType(utils::StringStream& out, const type::Type* ty) {
         [&](Default) { UNHANDLED_CASE(ty); });
 }
 
-void Printer::EmitPointerType(utils::StringStream& out, const type::Pointer* ptr) {
+void Printer::EmitPointerType(StringStream& out, const type::Pointer* ptr) {
     if (ptr->Access() == builtin::Access::kRead) {
         out << "const ";
     }
@@ -189,7 +300,7 @@ void Printer::EmitPointerType(utils::StringStream& out, const type::Pointer* ptr
     out << "*";
 }
 
-void Printer::EmitAtomicType(utils::StringStream& out, const type::Atomic* atomic) {
+void Printer::EmitAtomicType(StringStream& out, const type::Atomic* atomic) {
     if (atomic->Type()->Is<type::I32>()) {
         out << "atomic_int";
         return;
@@ -198,10 +309,10 @@ void Printer::EmitAtomicType(utils::StringStream& out, const type::Atomic* atomi
         out << "atomic_uint";
         return;
     }
-    TINT_ICE(Writer, diagnostics_) << "unhandled atomic type " << atomic->Type()->FriendlyName();
+    TINT_ICE() << "unhandled atomic type " << atomic->Type()->FriendlyName();
 }
 
-void Printer::EmitArrayType(utils::StringStream& out, const type::Array* arr) {
+void Printer::EmitArrayType(StringStream& out, const type::Array* arr) {
     out << ArrayTemplateName() << "<";
     EmitType(out, arr->ElemType());
     out << ", ";
@@ -218,7 +329,7 @@ void Printer::EmitArrayType(utils::StringStream& out, const type::Array* arr) {
     out << ">";
 }
 
-void Printer::EmitVectorType(utils::StringStream& out, const type::Vector* vec) {
+void Printer::EmitVectorType(StringStream& out, const type::Vector* vec) {
     if (vec->Packed()) {
         out << "packed_";
     }
@@ -226,14 +337,14 @@ void Printer::EmitVectorType(utils::StringStream& out, const type::Vector* vec) 
     out << vec->Width();
 }
 
-void Printer::EmitMatrixType(utils::StringStream& out, const type::Matrix* mat) {
+void Printer::EmitMatrixType(StringStream& out, const type::Matrix* mat) {
     EmitType(out, mat->type());
     out << mat->columns() << "x" << mat->rows();
 }
 
-void Printer::EmitTextureType(utils::StringStream& out, const type::Texture* tex) {
+void Printer::EmitTextureType(StringStream& out, const type::Texture* tex) {
     if (TINT_UNLIKELY(tex->Is<type::ExternalTexture>())) {
-        TINT_ICE(Writer, diagnostics_) << "Multiplanar external texture transform was not run.";
+        TINT_ICE() << "Multiplanar external texture transform was not run.";
         return;
     }
 
@@ -318,7 +429,7 @@ void Printer::EmitStructType(const type::Struct* str) {
     bool is_host_shareable = str->IsHostShareable();
 
     // Emits a `/* 0xnnnn */` byte offset comment for a struct member.
-    auto add_byte_offset_comment = [&](utils::StringStream& out, uint32_t offset) {
+    auto add_byte_offset_comment = [&](StringStream& out, uint32_t offset) {
         std::ios_base::fmtflags saved_flag_state(out.flags());
         out << "/* 0x" << std::hex << std::setfill('0') << std::setw(4) << offset << " */ ";
         out.flags(saved_flag_state);
@@ -346,8 +457,8 @@ void Printer::EmitStructType(const type::Struct* str) {
         if (is_host_shareable) {
             if (TINT_UNLIKELY(ir_offset < msl_offset)) {
                 // Unimplementable layout
-                TINT_ICE(Writer, diagnostics_) << "Structure member offset (" << ir_offset
-                                               << ") is behind MSL offset (" << msl_offset << ")";
+                TINT_ICE() << "Structure member offset (" << ir_offset << ") is behind MSL offset ("
+                           << msl_offset << ")";
                 return;
             }
 
@@ -380,7 +491,7 @@ void Printer::EmitStructType(const type::Struct* str) {
         if (auto location = attributes.location) {
             auto& pipeline_stage_uses = str->PipelineStageUses();
             if (TINT_UNLIKELY(pipeline_stage_uses.size() != 1)) {
-                TINT_ICE(Writer, diagnostics_) << "invalid entry point IO struct uses";
+                TINT_ICE() << "invalid entry point IO struct uses";
                 return;
             }
 
@@ -394,7 +505,7 @@ void Printer::EmitStructType(const type::Struct* str) {
                            pipeline_stage_uses.count(type::PipelineStageUsage::kFragmentOutput))) {
                 out << " [[color(" + std::to_string(location.value()) + ")]]";
             } else {
-                TINT_ICE(Writer, diagnostics_) << "invalid use of location decoration";
+                TINT_ICE() << "invalid use of location decoration";
                 return;
             }
         }
@@ -419,9 +530,9 @@ void Printer::EmitStructType(const type::Struct* str) {
             // Calculate new MSL offset
             auto size_align = MslPackedTypeSizeAndAlign(diagnostics_, ty);
             if (TINT_UNLIKELY(msl_offset % size_align.align)) {
-                TINT_ICE(Writer, diagnostics_)
-                    << "Misaligned MSL structure member " << mem_name << " : " << ty->FriendlyName()
-                    << " offset: " << msl_offset << " align: " << size_align.align;
+                TINT_ICE() << "Misaligned MSL structure member " << mem_name << " : "
+                           << ty->FriendlyName() << " offset: " << msl_offset
+                           << " align: " << size_align.align;
                 return;
             }
             msl_offset += size_align.size;
@@ -438,11 +549,11 @@ void Printer::EmitStructType(const type::Struct* str) {
     preamble_buffer_.Append(str_buf);
 }
 
-void Printer::EmitConstant(utils::StringStream& out, ir::Constant* c) {
+void Printer::EmitConstant(StringStream& out, ir::Constant* c) {
     EmitConstant(out, c->Value());
 }
 
-void Printer::EmitConstant(utils::StringStream& out, const constant::Value* c) {
+void Printer::EmitConstant(StringStream& out, const constant::Value* c) {
     auto emit_values = [&](uint32_t count) {
         for (size_t i = 0; i < count; i++) {
             if (i > 0) {
@@ -512,8 +623,129 @@ void Printer::EmitConstant(utils::StringStream& out, const constant::Value* c) {
         [&](Default) { UNHANDLED_CASE(c->Type()); });
 }
 
+std::string Printer::StructName(const type::Struct* s) {
+    auto name = s->Name().Name();
+    if (HasPrefix(name, "__")) {
+        name = tint::GetOrCreate(builtin_struct_names_, s,
+                                 [&] { return UniqueIdentifier(name.substr(2)); });
+    }
+    return name;
+}
+
 std::string Printer::UniqueIdentifier(const std::string& prefix /* = "" */) {
     return ir_->symbols.New(prefix).Name();
+}
+
+TINT_BEGIN_DISABLE_WARNING(UNREACHABLE_CODE);
+
+std::string Printer::Expr(ir::Value* value, PtrKind want_ptr_kind) {
+    using ExprAndPtrKind = std::pair<std::string, PtrKind>;
+
+    auto [expr, got_ptr_kind] = tint::Switch(
+        value,
+        [&](ir::Constant* c) -> ExprAndPtrKind {
+            StringStream str;
+            EmitConstant(str, c);
+            return {str.str(), PtrKind::kRef};
+        },
+        [&](Default) -> ExprAndPtrKind {
+            auto lookup = bindings_.Find(value);
+            if (TINT_UNLIKELY(!lookup)) {
+                TINT_ICE() << "Expr(" << (value ? value->TypeInfo().name : "null")
+                           << ") value has no expression";
+                return {};
+            }
+
+            return std::visit(
+                [&](auto&& got) -> ExprAndPtrKind {
+                    using T = std::decay_t<decltype(got)>;
+
+                    if constexpr (std::is_same_v<T, VariableValue>) {
+                        return {got.name.Name(), got.ptr_kind};
+                    }
+
+                    if constexpr (std::is_same_v<T, InlinedValue>) {
+                        // Single use (inlined) expression.
+                        // Mark the bindings_ map entry as consumed.
+                        *lookup = ConsumedValue{};
+                        return {got.expr, got.ptr_kind};
+                    }
+
+                    if constexpr (std::is_same_v<T, ConsumedValue>) {
+                        TINT_ICE() << "Expr(" << value->TypeInfo().name
+                                   << ") called twice on the same value";
+                    } else {
+                        TINT_ICE() << "Expr(" << value->TypeInfo().name << ") has unhandled value";
+                    }
+                    return {};
+                },
+                *lookup);
+        });
+    if (expr.empty()) {
+        return "<error>";
+    }
+
+    if (value->Type()->Is<type::Pointer>()) {
+        return ToPtrKind(expr, got_ptr_kind, want_ptr_kind);
+    }
+
+    return expr;
+}
+
+TINT_END_DISABLE_WARNING(UNREACHABLE_CODE);
+
+std::string Printer::ToPtrKind(const std::string& in, PtrKind got, PtrKind want) {
+    if (want == PtrKind::kRef && got == PtrKind::kPtr) {
+        return "*(" + in + ")";
+    }
+    if (want == PtrKind::kPtr && got == PtrKind::kRef) {
+        return "&(" + in + ")";
+    }
+    return in;
+}
+
+void Printer::Bind(ir::Value* value, const std::string& expr, PtrKind ptr_kind) {
+    TINT_ASSERT(value);
+
+    if (false /*can_inline_.Remove(value)*/) {
+        // Value will be inlined at its place of usage.
+        if (TINT_LIKELY(bindings_.Add(value, InlinedValue{expr, ptr_kind}))) {
+            return;
+        }
+    } else {
+        auto mod_name = ir_->NameOf(value);
+        if (value->Usages().IsEmpty() && !mod_name.IsValid()) {
+            // Drop phonies.
+        } else {
+            if (mod_name.Name().empty()) {
+                mod_name = ir_->symbols.New("v");
+            }
+
+            auto out = Line();
+            EmitType(out, value->Type());
+            out << " const " << mod_name.Name() << " = ";
+            if (value->Type()->Is<type::Pointer>()) {
+                out << ToPtrKind(expr, ptr_kind, PtrKind::kPtr);
+            } else {
+                out << expr;
+            }
+            out << ";";
+
+            Bind(value, mod_name, PtrKind::kPtr);
+        }
+        return;
+    }
+
+    TINT_ICE() << "Bind(" << value->TypeInfo().name << ") called twice for same value";
+}
+
+void Printer::Bind(ir::Value* value, Symbol name, PtrKind ptr_kind) {
+    TINT_ASSERT(value);
+
+    bool added = bindings_.Add(value, VariableValue{name, ptr_kind});
+    if (TINT_UNLIKELY(!added)) {
+        TINT_ICE() << "Bind(" << value->TypeInfo().name << ") called twice for same value";
+    }
 }
 
 }  // namespace tint::msl::writer

@@ -18,20 +18,17 @@
 
 #include "src/tint/lang/core/ir/builder.h"
 #include "src/tint/lang/core/ir/module.h"
+#include "src/tint/lang/core/ir/validator.h"
 #include "src/tint/lang/core/type/pointer.h"
 #include "src/tint/lang/core/type/struct.h"
-
-TINT_INSTANTIATE_TYPEINFO(tint::ir::transform::BlockDecoratedStructs);
 
 using namespace tint::number_suffixes;  // NOLINT
 
 namespace tint::ir::transform {
 
-BlockDecoratedStructs::BlockDecoratedStructs() = default;
+namespace {
 
-BlockDecoratedStructs::~BlockDecoratedStructs() = default;
-
-void BlockDecoratedStructs::Run(Module* ir) const {
+void Run(Module* ir) {
     Builder builder(*ir);
 
     if (!ir->root_block) {
@@ -39,7 +36,7 @@ void BlockDecoratedStructs::Run(Module* ir) const {
     }
 
     // Loop over module-scope declarations, looking for storage or uniform buffers.
-    utils::Vector<Var*, 8> buffer_variables;
+    Vector<Var*, 8> buffer_variables;
     for (auto inst : *ir->root_block) {
         auto* var = inst->As<Var>();
         if (!var) {
@@ -58,7 +55,7 @@ void BlockDecoratedStructs::Run(Module* ir) const {
         auto* store_ty = ptr->StoreType();
 
         bool wrapped = false;
-        utils::Vector<const type::StructMember*, 4> members;
+        Vector<const type::StructMember*, 4> members;
 
         // Build the member list for the block-decorated structure.
         if (auto* str = store_ty->As<type::Struct>(); str && !str->HasFixedFootprint()) {
@@ -86,7 +83,7 @@ void BlockDecoratedStructs::Run(Module* ir) const {
             /* name */ ir->symbols.New(),
             /* members */ members,
             /* align */ store_ty->Align(),
-            /* size */ utils::RoundUp(store_ty->Align(), store_ty->Size()),
+            /* size */ tint::RoundUp(store_ty->Align(), store_ty->Size()),
             /* size_no_padding */ store_ty->Size());
         block_struct->SetStructFlag(type::StructFlag::kBlock);
 
@@ -110,6 +107,19 @@ void BlockDecoratedStructs::Run(Module* ir) const {
             return new_var->Result();
         });
     }
+}
+
+}  // namespace
+
+Result<SuccessType, std::string> BlockDecoratedStructs(Module* ir) {
+    auto result = ValidateAndDumpIfNeeded(*ir, "BlockDecoratedStructs transform");
+    if (!result) {
+        return result;
+    }
+
+    Run(ir);
+
+    return Success;
 }
 
 }  // namespace tint::ir::transform

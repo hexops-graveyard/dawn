@@ -16,19 +16,21 @@
 
 namespace tint {
 
+/// Initialize initializes the Tint library. Call before using the Tint API.
 void Initialize() {
 #if TINT_BUILD_WGSL_WRITER
     // Register the Program printer. This is used for debugging purposes.
     tint::Program::printer = [](const tint::Program* program) {
         auto result = wgsl::writer::Generate(program, {});
-        if (!result.error.empty()) {
-            return "error: " + result.error;
+        if (!result) {
+            return "error: " + result.Failure();
         }
-        return result.wgsl;
+        return result->wgsl;
     };
 #endif
 }
 
+/// Shutdown uninitializes the Tint library. Call after using the Tint API.
 void Shutdown() {
     // Currently no-op, but may release tint resources in the future.
 }

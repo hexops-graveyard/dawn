@@ -14,10 +14,11 @@
 
 #include <string>
 
-#include "src/tint/lang/wgsl/ast/clone_context.h"
-#include "src/tint/lang/wgsl/ast/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
 #include "src/tint/lang/wgsl/ast/transform/transform.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 #include "gtest/gtest.h"
 
@@ -35,8 +36,8 @@ struct CreateASTTypeForTest : public testing::Test, public Transform {
     Type create(std::function<type::Type*(ProgramBuilder&)> create_sem_type) {
         ProgramBuilder sem_type_builder;
         auto* sem_type = create_sem_type(sem_type_builder);
-        Program program(std::move(sem_type_builder));
-        CloneContext ctx(&ast_type_builder, &program, false);
+        Program program = resolver::Resolve(sem_type_builder);
+        program::CloneContext ctx(&ast_type_builder, &program, false);
         return CreateASTTypeFor(ctx, sem_type);
     }
 
@@ -106,11 +107,11 @@ TEST_F(CreateASTTypeForTest, AliasedArrayWithComplexOverrideLength) {
     b.Override("O", b.Expr(123_a));
     auto* alias = b.Alias("A", b.ty.array(b.ty.i32(), arr_len));
 
-    Program program(std::move(b));
+    Program program(resolver::Resolve(b));
 
     auto* arr_ty = program.Sem().Get(alias);
 
-    CloneContext ctx(&ast_type_builder, &program, false);
+    program::CloneContext ctx(&ast_type_builder, &program, false);
     auto ast_ty = CreateASTTypeFor(ctx, arr_ty);
     CheckIdentifier(ast_ty, "A");
 }
@@ -118,7 +119,7 @@ TEST_F(CreateASTTypeForTest, AliasedArrayWithComplexOverrideLength) {
 TEST_F(CreateASTTypeForTest, Struct) {
     auto str = create([](ProgramBuilder& b) {
         auto* decl = b.Structure("S", {});
-        return b.create<sem::Struct>(decl, decl->name->symbol, utils::Empty, 4u /* align */,
+        return b.create<sem::Struct>(decl, decl->name->symbol, tint::Empty, 4u /* align */,
                                      4u /* size */, 4u /* size_no_padding */);
     });
 

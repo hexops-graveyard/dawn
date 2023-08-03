@@ -16,18 +16,28 @@
 #define SRC_TINT_LANG_MSL_WRITER_PRINTER_PRINTER_H_
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "src/tint/lang/core/ir/module.h"
 #include "src/tint/lang/core/type/texture.h"
 #include "src/tint/utils/diagnostic/diagnostic.h"
+#include "src/tint/utils/generator/text_generator.h"
 #include "src/tint/utils/text/string_stream.h"
-#include "src/tint/utils/text/text_generator.h"
+
+// Forward declarations
+namespace tint::ir {
+class ExitIf;
+class If;
+class Let;
+class Return;
+class Unreachable;
+}  // namespace tint::ir
 
 namespace tint::msl::writer {
 
 /// Implementation class for the MSL generator
-class Printer : public utils::TextGenerator {
+class Printer : public tint::TextGenerator {
   public:
     /// Constructor
     /// @param module the Tint IR module to generate
@@ -37,42 +47,66 @@ class Printer : public utils::TextGenerator {
     /// @returns true on successful generation; false otherwise
     bool Generate();
 
-    /// @copydoc utils::TextGenerator::Result
+    /// @copydoc tint::TextGenerator::Result
     std::string Result() const override;
 
     /// Emit the function
     /// @param func the function to emit
     void EmitFunction(ir::Function* func);
 
+    /// Emit a block
+    /// @param block the block to emit
+    void EmitBlock(ir::Block* block);
+    /// Emit the instructions in a block
+    /// @param block the block with the instructions to emit
+    void EmitBlockInstructions(ir::Block* block);
+
+    /// Emit an if instruction
+    /// @param if_ the if instruction
+    void EmitIf(ir::If* if_);
+    /// Emit an exit-if instruction
+    /// @param e the exit-if instruction
+    void EmitExitIf(ir::ExitIf* e);
+
+    /// Emit a let instruction
+    /// @param l the let instruction
+    void EmitLet(ir::Let* l);
+
+    /// Emit a return instruction
+    /// @param r the return instruction
+    void EmitReturn(ir::Return* r);
+    /// Emit an unreachable instruction
+    void EmitUnreachable();
+
     /// Emit a type
     /// @param out the stream to emit too
     /// @param ty the type to emit
-    void EmitType(utils::StringStream& out, const type::Type* ty);
+    void EmitType(StringStream& out, const type::Type* ty);
 
     /// Handles generating an array declaration
     /// @param out the output stream
     /// @param arr the array to emit
-    void EmitArrayType(utils::StringStream& out, const type::Array* arr);
+    void EmitArrayType(StringStream& out, const type::Array* arr);
     /// Handles generating an atomic declaration
     /// @param out the output stream
     /// @param atomic the atomic to emit
-    void EmitAtomicType(utils::StringStream& out, const type::Atomic* atomic);
+    void EmitAtomicType(StringStream& out, const type::Atomic* atomic);
     /// Handles generating a pointer declaration
     /// @param out the output stream
     /// @param ptr the pointer to emit
-    void EmitPointerType(utils::StringStream& out, const type::Pointer* ptr);
+    void EmitPointerType(StringStream& out, const type::Pointer* ptr);
     /// Handles generating a vector declaration
     /// @param out the output stream
     /// @param vec the vector to emit
-    void EmitVectorType(utils::StringStream& out, const type::Vector* vec);
+    void EmitVectorType(StringStream& out, const type::Vector* vec);
     /// Handles generating a matrix declaration
     /// @param out the output stream
     /// @param mat the matrix to emit
-    void EmitMatrixType(utils::StringStream& out, const type::Matrix* mat);
+    void EmitMatrixType(StringStream& out, const type::Matrix* mat);
     /// Handles generating a texture declaration
     /// @param out the output stream
     /// @param tex the texture to emit
-    void EmitTextureType(utils::StringStream& out, const type::Texture* tex);
+    void EmitTextureType(StringStream& out, const type::Texture* tex);
     /// Handles generating a struct declaration. If the structure has already been emitted, then
     /// this function will simply return without emitting anything.
     /// @param str the struct to generate
@@ -81,16 +115,16 @@ class Printer : public utils::TextGenerator {
     /// Handles generating a address space
     /// @param out the output of the type stream
     /// @param sc the address space to generate
-    void EmitAddressSpace(utils::StringStream& out, builtin::AddressSpace sc);
+    void EmitAddressSpace(StringStream& out, builtin::AddressSpace sc);
 
     /// Handles ir::Constant values
     /// @param out the stream to write the constant too
     /// @param c the constant to emit
-    void EmitConstant(utils::StringStream& out, ir::Constant* c);
+    void EmitConstant(StringStream& out, ir::Constant* c);
     /// Handles constant::Value values
     /// @param out the stream to write the constant too
     /// @param c the constant to emit
-    void EmitConstant(utils::StringStream& out, const constant::Value* c);
+    void EmitConstant(StringStream& out, const constant::Value* c);
 
     /// @returns the name of the templated `tint_array` helper type, generating it if needed
     const std::string& ArrayTemplateName();
@@ -100,8 +134,19 @@ class Printer : public utils::TextGenerator {
     std::string array_template_name_;
 
   private:
-    /// @copydoc utils::TextWrtiter::UniqueIdentifier
-    std::string UniqueIdentifier(const std::string& prefix = "") override;
+    /// @param s the structure
+    /// @returns the name of the structure, taking special care of builtin structures that start
+    /// with double underscores. If the structure is a builtin, then the returned name will be a
+    /// unique name without the leading underscores.
+    std::string StructName(const type::Struct* s);
+
+    /// @return a new, unique identifier with the given prefix.
+    /// @param prefix optional prefix to apply to the generated identifier. If empty "tint_symbol"
+    /// will be used.
+    std::string UniqueIdentifier(const std::string& prefix = "");
+
+    /// Map of builtin structure to unique generated name
+    std::unordered_map<const type::Struct*, std::string> builtin_struct_names_;
 
     ir::Module* const ir_;
 
@@ -113,6 +158,63 @@ class Printer : public utils::TextGenerator {
     std::string invariant_define_name_;
 
     std::unordered_set<const type::Struct*> emitted_structs_;
+
+    /// The current function being emitted
+    ir::Function* current_function_ = nullptr;
+    /// The current block being emitted
+    ir::Block* current_block_ = nullptr;
+
+    /// The representation for an IR pointer type
+    enum class PtrKind {
+        kPtr,  // IR pointer is represented in a pointer
+        kRef,  // IR pointer is represented in a reference
+    };
+
+    /// The structure for a value held by a 'let', 'var' or parameter.
+    struct VariableValue {
+        Symbol name;  // Name of the variable
+        PtrKind ptr_kind = PtrKind::kRef;
+    };
+
+    /// The structure for an inlined value
+    struct InlinedValue {
+        std::string expr;
+        PtrKind ptr_kind = PtrKind::kRef;
+    };
+
+    /// Empty struct used as a sentinel value to indicate that an string expression has been
+    /// consumed by its single place of usage. Attempting to use this value a second time should
+    /// result in an ICE.
+    struct ConsumedValue {};
+
+    using ValueBinding = std::variant<VariableValue, InlinedValue, ConsumedValue>;
+
+    /// IR values to their representation
+    Hashmap<ir::Value*, ValueBinding, 32> bindings_;
+
+    /// Returns the expression for the given value
+    /// @param value the value to lookup
+    /// @param want_ptr_kind the pointer information for the return
+    /// @returns the string expression
+    std::string Expr(ir::Value* value, PtrKind want_ptr_kind = PtrKind::kRef);
+
+    /// Returns the given expression converted to the given pointer kind
+    /// @param in the input expression
+    /// @param got the pointer kind we have
+    /// @param want the pointer kind we want
+    std::string ToPtrKind(const std::string& in, PtrKind got, PtrKind want);
+
+    /// Associates an IR value with a result expression
+    /// @param value the IR value
+    /// @param expr the result expression
+    /// @param ptr_kind defines how pointer values are represented by the expression
+    void Bind(ir::Value* value, const std::string& expr, PtrKind ptr_kind = PtrKind::kRef);
+
+    /// Associates an IR value the 'var', 'let' or parameter of the given name
+    /// @param value the IR value
+    /// @param name the name for the value
+    /// @param ptr_kind defines how pointer values are represented by @p expr.
+    void Bind(ir::Value* value, Symbol name, PtrKind ptr_kind = PtrKind::kRef);
 };
 
 }  // namespace tint::msl::writer

@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/spirv/writer/ast_printer/test_helper.h"
-#include "src/tint/lang/spirv/writer/spv_dump.h"
+#include "src/tint/lang/spirv/writer/ast_printer/helper_test.h"
+#include "src/tint/lang/spirv/writer/common/spv_dump.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -26,13 +26,13 @@ using SpirvASTPrinterTest = TestHelper;
 
 TEST_F(SpirvASTPrinterTest, Expression_Call) {
     auto* a_func = Func("a_func",
-                        utils::Vector{
+                        Vector{
                             Param("a", ty.f32()),
                             Param("b", ty.f32()),
                         },
-                        ty.f32(), utils::Vector{Return(Add("a", "b"))});
-    auto* func = Func("main", utils::Empty, ty.void_(),
-                      utils::Vector{Assign(Phony(), Call("a_func", 1_f, 1_f))});
+                        ty.f32(), Vector{Return(Add("a", "b"))});
+    auto* func =
+        Func("main", tint::Empty, ty.void_(), Vector{Assign(Phony(), Call("a_func", 1_f, 1_f))});
 
     Builder& b = Build();
 
@@ -65,14 +65,13 @@ OpFunctionEnd
 
 TEST_F(SpirvASTPrinterTest, Statement_Call) {
     auto* a_func = Func("a_func",
-                        utils::Vector{
+                        Vector{
                             Param("a", ty.f32()),
                             Param("b", ty.f32()),
                         },
-                        ty.f32(), utils::Vector{Return(Add("a", "b"))});
+                        ty.f32(), Vector{Return(Add("a", "b"))});
 
-    auto* func =
-        Func("main", utils::Empty, ty.void_(), utils::Vector{CallStmt(Call("a_func", 1_f, 1_f))});
+    auto* func = Func("main", tint::Empty, ty.void_(), Vector{CallStmt(Call("a_func", 1_f, 1_f))});
 
     Builder& b = Build();
 

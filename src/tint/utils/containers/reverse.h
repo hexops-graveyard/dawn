@@ -17,10 +17,10 @@
 
 #include <iterator>
 
-namespace tint::utils {
+namespace tint {
 
 namespace detail {
-/// Used by utils::Reverse to hold the underlying iterable.
+/// Used by tint::Reverse to hold the underlying iterable.
 /// begin(ReverseIterable<T>) and end(ReverseIterable<T>) are automatically
 /// called for range-for loops, via argument-dependent lookup.
 /// See https://en.cppreference.com/w/cpp/language/range-for
@@ -49,14 +49,16 @@ auto end(ReverseIterable<T> r_it) {
 ///  * for (auto it = vec.rbegin(); i != vec.rend(); ++it) {
 ///  *   auto v = *it;
 ///  */
-/// for (auto v : utils::Reverse(vec)) {
+/// for (auto v : tint::Reverse(vec)) {
 /// }
 /// ```
+/// @param iterable the object to iterate
+/// @returns the reverse iterable object
 template <typename T>
 detail::ReverseIterable<T> Reverse(T&& iterable) {
     return {iterable};
 }
 
-}  // namespace tint::utils
+}  // namespace tint
 
 #endif  // SRC_TINT_UTILS_CONTAINERS_REVERSE_H_

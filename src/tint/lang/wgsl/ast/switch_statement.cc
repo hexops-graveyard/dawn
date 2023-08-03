@@ -16,7 +16,8 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::SwitchStatement);
 
@@ -26,41 +27,41 @@ SwitchStatement::SwitchStatement(GenerationID pid,
                                  NodeID nid,
                                  const Source& src,
                                  const Expression* cond,
-                                 utils::VectorRef<const CaseStatement*> b,
-                                 utils::VectorRef<const Attribute*> stmt_attrs,
-                                 utils::VectorRef<const Attribute*> body_attrs)
+                                 VectorRef<const CaseStatement*> b,
+                                 VectorRef<const Attribute*> stmt_attrs,
+                                 VectorRef<const Attribute*> body_attrs)
     : Base(pid, nid, src),
       condition(cond),
       body(std::move(b)),
       attributes(std::move(stmt_attrs)),
       body_attributes(std::move(body_attrs)) {
-    TINT_ASSERT(AST, condition);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, condition, generation_id);
+    TINT_ASSERT(condition);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(condition, generation_id);
     for (auto* stmt : body) {
-        TINT_ASSERT(AST, stmt);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, stmt, generation_id);
+        TINT_ASSERT(stmt);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(stmt, generation_id);
     }
     for (auto* attr : attributes) {
-        TINT_ASSERT(AST, attr);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT(attr);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
     for (auto* attr : body_attributes) {
-        TINT_ASSERT(AST, attr);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT(attr);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
 }
 
 SwitchStatement::~SwitchStatement() = default;
 
-const SwitchStatement* SwitchStatement::Clone(CloneContext* ctx) const {
+const SwitchStatement* SwitchStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto* cond = ctx->Clone(condition);
-    auto b = ctx->Clone(body);
-    auto attrs = ctx->Clone(attributes);
-    auto body_attrs = ctx->Clone(body_attributes);
-    return ctx->dst->create<SwitchStatement>(src, cond, std::move(b), std::move(attrs),
-                                             std::move(body_attrs));
+    auto src = ctx.Clone(source);
+    auto* cond = ctx.Clone(condition);
+    auto b = ctx.Clone(body);
+    auto attrs = ctx.Clone(attributes);
+    auto body_attrs = ctx.Clone(body_attributes);
+    return ctx.dst->create<SwitchStatement>(src, cond, std::move(b), std::move(attrs),
+                                            std::move(body_attrs));
 }
 
 }  // namespace tint::ast

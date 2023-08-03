@@ -14,7 +14,8 @@
 
 #include "src/tint/lang/wgsl/ast/if_statement.h"
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::IfStatement);
 
@@ -26,36 +27,36 @@ IfStatement::IfStatement(GenerationID pid,
                          const Expression* cond,
                          const BlockStatement* b,
                          const Statement* else_stmt,
-                         utils::VectorRef<const Attribute*> attrs)
+                         VectorRef<const Attribute*> attrs)
     : Base(pid, nid, src),
       condition(cond),
       body(b),
       else_statement(else_stmt),
       attributes(std::move(attrs)) {
-    TINT_ASSERT(AST, condition);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, condition, generation_id);
-    TINT_ASSERT(AST, body);
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
+    TINT_ASSERT(condition);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(condition, generation_id);
+    TINT_ASSERT(body);
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(body, generation_id);
     if (else_statement) {
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, else_statement, generation_id);
-        TINT_ASSERT(AST, (else_statement->IsAnyOf<IfStatement, BlockStatement>()));
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(else_statement, generation_id);
+        TINT_ASSERT((else_statement->IsAnyOf<IfStatement, BlockStatement>()));
     }
     for (auto* attr : attributes) {
-        TINT_ASSERT(AST, attr);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, attr, generation_id);
+        TINT_ASSERT(attr);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(attr, generation_id);
     }
 }
 
 IfStatement::~IfStatement() = default;
 
-const IfStatement* IfStatement::Clone(CloneContext* ctx) const {
+const IfStatement* IfStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto* cond = ctx->Clone(condition);
-    auto* b = ctx->Clone(body);
-    auto* el = ctx->Clone(else_statement);
-    auto attrs = ctx->Clone(attributes);
-    return ctx->dst->create<IfStatement>(src, cond, b, el, std::move(attrs));
+    auto src = ctx.Clone(source);
+    auto* cond = ctx.Clone(condition);
+    auto* b = ctx.Clone(body);
+    auto* el = ctx.Clone(else_statement);
+    auto attrs = ctx.Clone(attributes);
+    return ctx.dst->create<IfStatement>(src, cond, b, el, std::move(attrs));
 }
 
 }  // namespace tint::ast

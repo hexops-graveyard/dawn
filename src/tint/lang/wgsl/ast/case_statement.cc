@@ -16,7 +16,8 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/ast/builder.h"
+#include "src/tint/lang/wgsl/ast/clone_context.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::CaseStatement);
 
@@ -25,15 +26,15 @@ namespace tint::ast {
 CaseStatement::CaseStatement(GenerationID pid,
                              NodeID nid,
                              const Source& src,
-                             utils::VectorRef<const CaseSelector*> s,
+                             VectorRef<const CaseSelector*> s,
                              const BlockStatement* b)
     : Base(pid, nid, src), selectors(std::move(s)), body(b) {
-    TINT_ASSERT(AST, body);
-    TINT_ASSERT(AST, !selectors.IsEmpty());
-    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, body, generation_id);
+    TINT_ASSERT(body);
+    TINT_ASSERT(!selectors.IsEmpty());
+    TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(body, generation_id);
     for (auto* selector : selectors) {
-        TINT_ASSERT(AST, selector);
-        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(AST, selector, generation_id);
+        TINT_ASSERT(selector);
+        TINT_ASSERT_GENERATION_IDS_EQUAL_IF_VALID(selector, generation_id);
     }
 }
 
@@ -48,12 +49,12 @@ bool CaseStatement::ContainsDefault() const {
     return false;
 }
 
-const CaseStatement* CaseStatement::Clone(CloneContext* ctx) const {
+const CaseStatement* CaseStatement::Clone(CloneContext& ctx) const {
     // Clone arguments outside of create() call to have deterministic ordering
-    auto src = ctx->Clone(source);
-    auto sel = ctx->Clone(selectors);
-    auto* b = ctx->Clone(body);
-    return ctx->dst->create<CaseStatement>(src, std::move(sel), b);
+    auto src = ctx.Clone(source);
+    auto sel = ctx.Clone(selectors);
+    auto* b = ctx.Clone(body);
+    return ctx.dst->create<CaseStatement>(src, std::move(sel), b);
 }
 
 }  // namespace tint::ast

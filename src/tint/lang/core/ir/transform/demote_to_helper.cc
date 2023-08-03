@@ -18,20 +18,18 @@
 
 #include "src/tint/lang/core/ir/builder.h"
 #include "src/tint/lang/core/ir/module.h"
-
-TINT_INSTANTIATE_TYPEINFO(tint::ir::transform::DemoteToHelper);
+#include "src/tint/lang/core/ir/validator.h"
+#include "src/tint/utils/ice/ice.h"
 
 using namespace tint::builtin::fluent_types;  // NOLINT
 using namespace tint::number_suffixes;        // NOLINT
 
 namespace tint::ir::transform {
 
-DemoteToHelper::DemoteToHelper() = default;
-
-DemoteToHelper::~DemoteToHelper() = default;
+namespace {
 
 /// PIMPL state for the transform.
-struct DemoteToHelper::State {
+struct State {
     /// The IR module.
     Module* ir = nullptr;
 
@@ -45,10 +43,10 @@ struct DemoteToHelper::State {
     Var* continue_execution = nullptr;
 
     /// Map from function to a flag that indicates whether it (transitively) contains a discard.
-    utils::Hashmap<Function*, bool, 4> function_discard_status;
+    Hashmap<Function*, bool, 4> function_discard_status;
 
     /// Set of functions that have been processed.
-    utils::Hashset<Function*, 4> processed_functions;
+    Hashset<Function*, 4> processed_functions;
 
     /// Constructor
     /// @param mod the module
@@ -58,7 +56,7 @@ struct DemoteToHelper::State {
     void Process() {
         // Check each fragment shader entry point for discard instruction, potentially inside
         // functions called (transitively) by the entry point.
-        utils::Vector<Function*, 4> to_process;
+        Vector<Function*, 4> to_process;
         for (auto* func : ir->functions) {
             // If the function is a fragment shader that contains a discard, we need to process it.
             if (func->Stage() == Function::PipelineStage::kFragment) {
@@ -140,10 +138,10 @@ struct DemoteToHelper::State {
             // Move the original instruction into the if-true block.
             auto* result = ifelse->True()->Append(inst);
 
-            TINT_ASSERT(Transform, !inst->HasMultiResults());
+            TINT_ASSERT(!inst->HasMultiResults());
             if (inst->HasResults() && !inst->Result()->Type()->Is<type::Void>()) {
                 // The original instruction had a result, so return it from the if instruction.
-                ifelse->SetResults(utils::Vector{b.InstructionResult(inst->Result()->Type())});
+                ifelse->SetResults(Vector{b.InstructionResult(inst->Result()->Type())});
                 inst->Result()->ReplaceAllUsesWith(ifelse->Result());
                 ifelse->True()->Append(b.ExitIf(ifelse, result));
             } else {
@@ -201,8 +199,17 @@ struct DemoteToHelper::State {
     }
 };
 
-void DemoteToHelper::Run(Module* ir) const {
+}  // namespace
+
+Result<SuccessType, std::string> DemoteToHelper(Module* ir) {
+    auto result = ValidateAndDumpIfNeeded(*ir, "DemoteToHelper transform");
+    if (!result) {
+        return result;
+    }
+
     State{ir}.Process();
+
+    return Success;
 }
 
 }  // namespace tint::ir::transform

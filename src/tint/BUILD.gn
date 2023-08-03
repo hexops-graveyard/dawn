@@ -203,13 +203,13 @@ template("libtint_source_set") {
 libtint_source_set("libtint_symbols_src") {
   sources = [
     "utils/containers/scope_stack.h",
-    "utils/generation_id.cc",
-    "utils/generation_id.h",
+    "utils/id/generation_id.cc",
+    "utils/id/generation_id.h",
     "utils/reflection/reflection.h",
-    "utils/text/symbol.cc",
-    "utils/text/symbol.h",
-    "utils/text/symbol_table.cc",
-    "utils/text/symbol_table.h",
+    "utils/symbol/symbol.cc",
+    "utils/symbol/symbol.h",
+    "utils/symbol/symbol_table.cc",
+    "utils/symbol/symbol_table.h",
   ]
   deps = [ ":libtint_utils_src" ]
 }
@@ -229,8 +229,6 @@ libtint_source_set("libtint_utils_src") {
     "utils/containers/unique_allocator.h",
     "utils/containers/unique_vector.h",
     "utils/containers/vector.h",
-    "utils/debug/debug.cc",
-    "utils/debug/debug.h",
     "utils/debug/debugger.cc",
     "utils/debug/debugger.h",
     "utils/diagnostic/diagnostic.cc",
@@ -241,6 +239,8 @@ libtint_source_set("libtint_utils_src") {
     "utils/diagnostic/printer.h",
     "utils/diagnostic/source.cc",
     "utils/diagnostic/source.h",
+    "utils/ice/ice.cc",
+    "utils/ice/ice.h",
     "utils/macros/compiler.h",
     "utils/macros/concat.h",
     "utils/macros/defer.h",
@@ -255,8 +255,8 @@ libtint_source_set("libtint_utils_src") {
     "utils/rtti/castable.cc",
     "utils/rtti/castable.h",
     "utils/rtti/switch.h",
-    "utils/text/parse_num.cc",
-    "utils/text/parse_num.h",
+    "utils/strconv/parse_num.cc",
+    "utils/strconv/parse_num.h",
     "utils/text/string.cc",
     "utils/text/string.h",
     "utils/text/string_stream.cc",
@@ -287,7 +287,7 @@ libtint_source_set("libtint_clone_context_hdrs") {
 
 libtint_source_set("libtint_program_src") {
   sources = [
-    "lang/wgsl/ast/clone_context.cc",
+    "lang/wgsl/program/clone_context.cc",
     "lang/wgsl/program/program.cc",
     "lang/wgsl/program/program_builder.cc",
     "lang/wgsl/resolver/const_eval.cc",
@@ -299,6 +299,7 @@ libtint_source_set("libtint_program_src") {
     "lang/wgsl/resolver/intrinsic_table.cc",
     "lang/wgsl/resolver/intrinsic_table.h",
     "lang/wgsl/resolver/intrinsic_table.inl",
+    "lang/wgsl/resolver/resolve.cc",
     "lang/wgsl/resolver/resolver.cc",
     "lang/wgsl/resolver/sem_helper.cc",
     "lang/wgsl/resolver/sem_helper.h",
@@ -412,6 +413,10 @@ libtint_source_set("libtint_ast_transform_src") {
     "lang/wgsl/ast/transform/fold_trivial_lets.h",
     "lang/wgsl/ast/transform/for_loop_to_loop.cc",
     "lang/wgsl/ast/transform/for_loop_to_loop.h",
+    "lang/wgsl/ast/transform/get_insertion_point.cc",
+    "lang/wgsl/ast/transform/get_insertion_point.h",
+    "lang/wgsl/ast/transform/hoist_to_decl_before.cc",
+    "lang/wgsl/ast/transform/hoist_to_decl_before.h",
     "lang/wgsl/ast/transform/localize_struct_array_assignment.cc",
     "lang/wgsl/ast/transform/localize_struct_array_assignment.h",
     "lang/wgsl/ast/transform/merge_return.cc",
@@ -458,10 +463,6 @@ libtint_source_set("libtint_ast_transform_src") {
     "lang/wgsl/ast/transform/truncate_interstage_variables.h",
     "lang/wgsl/ast/transform/unshadow.cc",
     "lang/wgsl/ast/transform/unshadow.h",
-    "lang/wgsl/ast/transform/utils/get_insertion_point.cc",
-    "lang/wgsl/ast/transform/utils/get_insertion_point.h",
-    "lang/wgsl/ast/transform/utils/hoist_to_decl_before.cc",
-    "lang/wgsl/ast/transform/utils/hoist_to_decl_before.h",
     "lang/wgsl/ast/transform/var_for_dynamic_index.cc",
     "lang/wgsl/ast/transform/var_for_dynamic_index.h",
     "lang/wgsl/ast/transform/vectorize_matrix_conversions.cc",
@@ -492,14 +493,16 @@ if (tint_build_ir) {
     sources = [
       "lang/core/ir/transform/add_empty_entry_point.cc",
       "lang/core/ir/transform/add_empty_entry_point.h",
+      "lang/core/ir/transform/binding_remapper.cc",
+      "lang/core/ir/transform/binding_remapper.h",
       "lang/core/ir/transform/block_decorated_structs.cc",
       "lang/core/ir/transform/block_decorated_structs.h",
       "lang/core/ir/transform/demote_to_helper.cc",
       "lang/core/ir/transform/demote_to_helper.h",
-      "lang/core/ir/transform/rename_conflicts_wgsl.cc",
-      "lang/core/ir/transform/rename_conflicts_wgsl.h",
       "lang/core/ir/transform/shader_io.cc",
       "lang/core/ir/transform/shader_io.h",
+      "lang/core/ir/transform/std140.cc",
+      "lang/core/ir/transform/std140.h",
     ]
     deps = [
       ":libtint_builtins_src",
@@ -508,23 +511,6 @@ if (tint_build_ir) {
       ":libtint_type_src",
       ":libtint_utils_src",
     ]
-
-    if (tint_build_spv_writer) {
-      sources += [
-        "lang/core/ir/transform/builtin_polyfill_spirv.cc",
-        "lang/core/ir/transform/builtin_polyfill_spirv.h",
-        "lang/core/ir/transform/expand_implicit_splats.cc",
-        "lang/core/ir/transform/expand_implicit_splats.h",
-        "lang/core/ir/transform/handle_matrix_arithmetic.cc",
-        "lang/core/ir/transform/handle_matrix_arithmetic.h",
-        "lang/core/ir/transform/merge_return.cc",
-        "lang/core/ir/transform/merge_return.h",
-        "lang/core/ir/transform/shader_io_spirv.cc",
-        "lang/core/ir/transform/shader_io_spirv.h",
-        "lang/core/ir/transform/var_for_dynamic_index.cc",
-        "lang/core/ir/transform/var_for_dynamic_index.h",
-      ]
-    }
   }
 }
 
@@ -631,11 +617,13 @@ libtint_source_set("libtint_ast_src") {
     "lang/wgsl/ast/bool_literal_expression.cc",
     "lang/wgsl/ast/break_if_statement.cc",
     "lang/wgsl/ast/break_statement.cc",
+    "lang/wgsl/ast/builder.cc",
     "lang/wgsl/ast/builtin_attribute.cc",
     "lang/wgsl/ast/call_expression.cc",
     "lang/wgsl/ast/call_statement.cc",
     "lang/wgsl/ast/case_selector.cc",
     "lang/wgsl/ast/case_statement.cc",
+    "lang/wgsl/ast/clone_context.cc",
     "lang/wgsl/ast/compound_assignment_statement.cc",
     "lang/wgsl/ast/const.cc",
     "lang/wgsl/ast/const_assert.cc",
@@ -929,26 +917,26 @@ libtint_source_set("libtint_constant_src") {
 
 libtint_source_set("libtint_spv_reader_src") {
   sources = [
-    "lang/spirv/reader/attributes.h",
-    "lang/spirv/reader/construct.cc",
-    "lang/spirv/reader/construct.h",
-    "lang/spirv/reader/entry_point_info.cc",
-    "lang/spirv/reader/entry_point_info.h",
-    "lang/spirv/reader/enum_converter.cc",
-    "lang/spirv/reader/enum_converter.h",
-    "lang/spirv/reader/fail_stream.h",
-    "lang/spirv/reader/function.cc",
-    "lang/spirv/reader/function.h",
-    "lang/spirv/reader/namer.cc",
-    "lang/spirv/reader/namer.h",
-    "lang/spirv/reader/parser.cc",
-    "lang/spirv/reader/parser.h",
-    "lang/spirv/reader/parser_impl.cc",
-    "lang/spirv/reader/parser_impl.h",
-    "lang/spirv/reader/parser_type.cc",
-    "lang/spirv/reader/parser_type.h",
-    "lang/spirv/reader/usage.cc",
-    "lang/spirv/reader/usage.h",
+    "lang/spirv/reader/ast_parser/ast_parser.cc",
+    "lang/spirv/reader/ast_parser/ast_parser.h",
+    "lang/spirv/reader/ast_parser/attributes.h",
+    "lang/spirv/reader/ast_parser/construct.cc",
+    "lang/spirv/reader/ast_parser/construct.h",
+    "lang/spirv/reader/ast_parser/entry_point_info.cc",
+    "lang/spirv/reader/ast_parser/entry_point_info.h",
+    "lang/spirv/reader/ast_parser/enum_converter.cc",
+    "lang/spirv/reader/ast_parser/enum_converter.h",
+    "lang/spirv/reader/ast_parser/fail_stream.h",
+    "lang/spirv/reader/ast_parser/function.cc",
+    "lang/spirv/reader/ast_parser/function.h",
+    "lang/spirv/reader/ast_parser/namer.cc",
+    "lang/spirv/reader/ast_parser/namer.h",
+    "lang/spirv/reader/ast_parser/type.cc",
+    "lang/spirv/reader/ast_parser/type.h",
+    "lang/spirv/reader/ast_parser/usage.cc",
+    "lang/spirv/reader/ast_parser/usage.h",
+    "lang/spirv/reader/reader.cc",
+    "lang/spirv/reader/reader.h",
   ]
 
   deps = [
@@ -975,10 +963,10 @@ libtint_source_set("libtint_writer_src") {
     "lang/wgsl/helpers/check_supported_extensions.h",
     "lang/wgsl/helpers/flatten_bindings.cc",
     "lang/wgsl/helpers/flatten_bindings.h",
-    "utils/text/float_to_string.cc",
-    "utils/text/float_to_string.h",
-    "utils/text/text_generator.cc",
-    "utils/text/text_generator.h",
+    "utils/generator/text_generator.cc",
+    "utils/generator/text_generator.h",
+    "utils/strconv/float_to_string.cc",
+    "utils/strconv/float_to_string.h",
   ]
 
   deps = [
@@ -1001,16 +989,16 @@ libtint_source_set("libtint_spv_writer_src") {
     "lang/spirv/writer/ast_printer/builder.cc",
     "lang/spirv/writer/ast_printer/builder.h",
     "lang/spirv/writer/ast_printer/scalar_constant.h",
-    "lang/spirv/writer/binary_writer.cc",
-    "lang/spirv/writer/binary_writer.h",
-    "lang/spirv/writer/function.cc",
-    "lang/spirv/writer/function.h",
-    "lang/spirv/writer/instruction.cc",
-    "lang/spirv/writer/instruction.h",
-    "lang/spirv/writer/module.cc",
-    "lang/spirv/writer/module.h",
-    "lang/spirv/writer/operand.cc",
-    "lang/spirv/writer/operand.h",
+    "lang/spirv/writer/common/binary_writer.cc",
+    "lang/spirv/writer/common/binary_writer.h",
+    "lang/spirv/writer/common/function.cc",
+    "lang/spirv/writer/common/function.h",
+    "lang/spirv/writer/common/instruction.cc",
+    "lang/spirv/writer/common/instruction.h",
+    "lang/spirv/writer/common/module.cc",
+    "lang/spirv/writer/common/module.h",
+    "lang/spirv/writer/common/operand.cc",
+    "lang/spirv/writer/common/operand.h",
     "lang/spirv/writer/writer.cc",
     "lang/spirv/writer/writer.h",
   ]
@@ -1033,11 +1021,26 @@ libtint_source_set("libtint_spv_writer_src") {
     sources += [
       "lang/spirv/writer/printer/printer.cc",
       "lang/spirv/writer/printer/printer.h",
+      "lang/spirv/writer/raise/builtin_polyfill.cc",
+      "lang/spirv/writer/raise/builtin_polyfill.h",
+      "lang/spirv/writer/raise/expand_implicit_splats.cc",
+      "lang/spirv/writer/raise/expand_implicit_splats.h",
+      "lang/spirv/writer/raise/handle_matrix_arithmetic.cc",
+      "lang/spirv/writer/raise/handle_matrix_arithmetic.h",
+      "lang/spirv/writer/raise/merge_return.cc",
+      "lang/spirv/writer/raise/merge_return.h",
+      "lang/spirv/writer/raise/raise.cc",
+      "lang/spirv/writer/raise/raise.h",
+      "lang/spirv/writer/raise/shader_io.cc",
+      "lang/spirv/writer/raise/shader_io.h",
+      "lang/spirv/writer/raise/var_for_dynamic_index.cc",
+      "lang/spirv/writer/raise/var_for_dynamic_index.h",
     ]
     deps += [
-      ":libtint_ir_builder_src",
       ":libtint_ir_src",
       ":libtint_ir_transform_src",
+      ":libtint_wgsl_reader_program_to_ir_src",
+      ":libtint_wgsl_writer_ir_to_program_src",
     ]
   }
 }
@@ -1067,14 +1070,57 @@ libtint_source_set("libtint_wgsl_reader_src") {
   ]
 }
 
+if (tint_build_ir) {
+  libtint_source_set("libtint_wgsl_reader_program_to_ir_src") {
+    sources = []
+    deps = []
+
+    if (tint_build_ir) {
+      sources += [
+        "lang/wgsl/reader/program_to_ir/program_to_ir.cc",
+        "lang/wgsl/reader/program_to_ir/program_to_ir.h",
+      ]
+      deps += [
+        ":libtint_ast_src",
+        ":libtint_ir_src",
+        ":libtint_program_src",
+        ":libtint_sem_src",
+        ":libtint_symbols_src",
+        ":libtint_type_src",
+        ":libtint_utils_src",
+      ]
+    }
+  }
+
+  libtint_source_set("libtint_wgsl_writer_ir_to_program_src") {
+    sources = [
+      "lang/wgsl/writer/ir_to_program/ir_to_program.cc",
+      "lang/wgsl/writer/ir_to_program/ir_to_program.h",
+      "lang/wgsl/writer/ir_to_program/rename_conflicts.cc",
+      "lang/wgsl/writer/ir_to_program/rename_conflicts.h",
+    ]
+    deps = [
+      ":libtint_ast_src",
+      ":libtint_builtins_src",
+      ":libtint_constant_src",
+      ":libtint_ir_src",
+      ":libtint_program_src",
+      ":libtint_sem_src",
+      ":libtint_symbols_src",
+      ":libtint_type_src",
+      ":libtint_utils_src",
+    ]
+  }
+}
+
 libtint_source_set("libtint_wgsl_writer_src") {
   sources = [
     "lang/wgsl/writer/ast_printer/ast_printer.cc",
     "lang/wgsl/writer/ast_printer/ast_printer.h",
     "lang/wgsl/writer/options.cc",
     "lang/wgsl/writer/options.h",
-    "lang/wgsl/writer/result.cc",
-    "lang/wgsl/writer/result.h",
+    "lang/wgsl/writer/output.cc",
+    "lang/wgsl/writer/output.h",
     "lang/wgsl/writer/writer.cc",
     "lang/wgsl/writer/writer.h",
   ]
@@ -1096,12 +1142,12 @@ libtint_source_set("libtint_msl_writer_src") {
   sources = [
     "lang/msl/writer/ast_printer/ast_printer.cc",
     "lang/msl/writer/ast_printer/ast_printer.h",
-    "lang/msl/writer/options.cc",
-    "lang/msl/writer/options.h",
-    "lang/msl/writer/printer_support.cc",
-    "lang/msl/writer/printer_support.h",
-    "lang/msl/writer/result.cc",
-    "lang/msl/writer/result.h",
+    "lang/msl/writer/common/options.cc",
+    "lang/msl/writer/common/options.h",
+    "lang/msl/writer/common/printer_support.cc",
+    "lang/msl/writer/common/printer_support.h",
+    "lang/msl/writer/output.cc",
+    "lang/msl/writer/output.h",
     "lang/msl/writer/writer.cc",
     "lang/msl/writer/writer.h",
   ]
@@ -1126,9 +1172,9 @@ libtint_source_set("libtint_msl_writer_src") {
       "lang/msl/writer/printer/printer.h",
     ]
     deps += [
-      ":libtint_ir_builder_src",
       ":libtint_ir_src",
       ":libtint_ir_transform_src",
+      ":libtint_wgsl_writer_ir_to_program_src",
     ]
   }
 }
@@ -1137,10 +1183,10 @@ libtint_source_set("libtint_hlsl_writer_src") {
   sources = [
     "lang/hlsl/writer/ast_printer/ast_printer.cc",
     "lang/hlsl/writer/ast_printer/ast_printer.h",
-    "lang/hlsl/writer/options.cc",
-    "lang/hlsl/writer/options.h",
-    "lang/hlsl/writer/result.cc",
-    "lang/hlsl/writer/result.h",
+    "lang/hlsl/writer/common/options.cc",
+    "lang/hlsl/writer/common/options.h",
+    "lang/hlsl/writer/output.cc",
+    "lang/hlsl/writer/output.h",
     "lang/hlsl/writer/writer.cc",
     "lang/hlsl/writer/writer.h",
   ]
@@ -1164,11 +1210,11 @@ libtint_source_set("libtint_glsl_writer_src") {
   sources = [
     "lang/glsl/writer/ast_printer/ast_printer.cc",
     "lang/glsl/writer/ast_printer/ast_printer.h",
-    "lang/glsl/writer/options.cc",
-    "lang/glsl/writer/options.h",
-    "lang/glsl/writer/result.cc",
-    "lang/glsl/writer/result.h",
-    "lang/glsl/writer/version.h",
+    "lang/glsl/writer/common/options.cc",
+    "lang/glsl/writer/common/options.h",
+    "lang/glsl/writer/common/version.h",
+    "lang/glsl/writer/output.cc",
+    "lang/glsl/writer/output.h",
     "lang/glsl/writer/writer.cc",
     "lang/glsl/writer/writer.h",
   ]
@@ -1206,27 +1252,6 @@ libtint_source_set("libtint_syntax_tree_writer_src") {
 }
 
 if (tint_build_ir) {
-  libtint_source_set("libtint_ir_builder_src") {
-    sources = [
-      "lang/core/ir/from_program.cc",
-      "lang/core/ir/from_program.h",
-      "lang/core/ir/to_program.cc",
-      "lang/core/ir/to_program.h",
-    ]
-    deps = [
-      ":libtint_ast_src",
-      ":libtint_builtins_src",
-      ":libtint_constant_src",
-      ":libtint_ir_src",
-      ":libtint_ir_transform_src",
-      ":libtint_program_src",
-      ":libtint_sem_src",
-      ":libtint_symbols_src",
-      ":libtint_type_src",
-      ":libtint_utils_src",
-    ]
-  }
-
   libtint_source_set("libtint_ir_src") {
     sources = [
       "lang/core/ir/access.cc",
@@ -1315,8 +1340,6 @@ if (tint_build_ir) {
       "lang/core/ir/terminate_invocation.h",
       "lang/core/ir/terminator.cc",
       "lang/core/ir/terminator.h",
-      "lang/core/ir/transform/transform.cc",
-      "lang/core/ir/transform/transform.h",
       "lang/core/ir/unary.cc",
       "lang/core/ir/unary.h",
       "lang/core/ir/unreachable.cc",
@@ -1393,8 +1416,8 @@ source_set("libtint") {
     assert(!build_with_chromium,
            "tint_build_ir cannot be used when building Chromium")
     public_deps += [
-      ":libtint_ir_builder_src",
       ":libtint_ir_src",
+      ":libtint_wgsl_writer_ir_to_program_src",
     ]
   }
 
@@ -1488,7 +1511,7 @@ if (tint_build_unittests) {
       }
 
       if (tint_build_msl_writer) {
-        deps += [ ":tint_unittests_msl_writer_src" ]
+        deps += [ ":tint_unittests_msl_writer_ast_printer_src" ]
       }
 
       if (tint_build_spv_reader) {
@@ -1540,8 +1563,8 @@ if (tint_build_unittests) {
 
   tint_unittests_source_set("libtint_unittests_ast_helper") {
     sources = [
-      "lang/wgsl/ast/test_helper.h",
-      "lang/wgsl/ast/test_helper_test.cc",
+      "lang/wgsl/ast/helper_test.cc",
+      "lang/wgsl/ast/helper_test.h",
     ]
     deps = [ ":libtint_ast_src" ]
   }
@@ -1564,6 +1587,7 @@ if (tint_build_unittests) {
       "lang/wgsl/ast/call_statement_test.cc",
       "lang/wgsl/ast/case_selector_test.cc",
       "lang/wgsl/ast/case_statement_test.cc",
+      "lang/wgsl/ast/clone_context_test.cc",
       "lang/wgsl/ast/compound_assignment_statement_test.cc",
       "lang/wgsl/ast/const_assert_test.cc",
       "lang/wgsl/ast/continue_statement_test.cc",
@@ -1651,11 +1675,11 @@ if (tint_build_unittests) {
 
   tint_unittests_source_set("tint_unittests_inspector_src") {
     sources = [
+      "lang/wgsl/inspector/inspector_builder_test.cc",
+      "lang/wgsl/inspector/inspector_builder_test.h",
+      "lang/wgsl/inspector/inspector_runner_test.cc",
+      "lang/wgsl/inspector/inspector_runner_test.h",
       "lang/wgsl/inspector/inspector_test.cc",
-      "lang/wgsl/inspector/test_inspector_builder.cc",
-      "lang/wgsl/inspector/test_inspector_builder.h",
-      "lang/wgsl/inspector/test_inspector_runner.cc",
-      "lang/wgsl/inspector/test_inspector_runner.h",
     ]
     deps = [ ":libtint_inspector_src" ]
   }
@@ -1712,9 +1736,9 @@ if (tint_build_unittests) {
       "lang/wgsl/resolver/ptr_ref_test.cc",
       "lang/wgsl/resolver/ptr_ref_validation_test.cc",
       "lang/wgsl/resolver/resolver_behavior_test.cc",
+      "lang/wgsl/resolver/resolver_helper_test.cc",
+      "lang/wgsl/resolver/resolver_helper_test.h",
       "lang/wgsl/resolver/resolver_test.cc",
-      "lang/wgsl/resolver/resolver_test_helper.cc",
-      "lang/wgsl/resolver/resolver_test_helper.h",
       "lang/wgsl/resolver/root_identifier_test.cc",
       "lang/wgsl/resolver/side_effects_test.cc",
       "lang/wgsl/resolver/struct_address_space_use_test.cc",
@@ -1804,6 +1828,9 @@ if (tint_build_unittests) {
       "lang/wgsl/ast/transform/first_index_offset_test.cc",
       "lang/wgsl/ast/transform/fold_trivial_lets_test.cc",
       "lang/wgsl/ast/transform/for_loop_to_loop_test.cc",
+      "lang/wgsl/ast/transform/get_insertion_point_test.cc",
+      "lang/wgsl/ast/transform/helper_test.h",
+      "lang/wgsl/ast/transform/hoist_to_decl_before_test.cc",
       "lang/wgsl/ast/transform/localize_struct_array_assignment_test.cc",
       "lang/wgsl/ast/transform/manager_test.cc",
       "lang/wgsl/ast/transform/merge_return_test.cc",
@@ -1828,13 +1855,10 @@ if (tint_build_unittests) {
       "lang/wgsl/ast/transform/std140_f32_test.cc",
       "lang/wgsl/ast/transform/std140_test.cc",
       "lang/wgsl/ast/transform/substitute_override_test.cc",
-      "lang/wgsl/ast/transform/test_helper.h",
       "lang/wgsl/ast/transform/texture_1d_to_2d_test.cc",
       "lang/wgsl/ast/transform/transform_test.cc",
       "lang/wgsl/ast/transform/truncate_interstage_variables_test.cc",
       "lang/wgsl/ast/transform/unshadow_test.cc",
-      "lang/wgsl/ast/transform/utils/get_insertion_point_test.cc",
-      "lang/wgsl/ast/transform/utils/hoist_to_decl_before_test.cc",
       "lang/wgsl/ast/transform/var_for_dynamic_index_test.cc",
       "lang/wgsl/ast/transform/vectorize_matrix_conversions_test.cc",
       "lang/wgsl/ast/transform/vectorize_scalar_matrix_initializers_test.cc",
@@ -1858,30 +1882,17 @@ if (tint_build_unittests) {
     tint_unittests_source_set("tint_unittests_ir_transform_src") {
       sources = [
         "lang/core/ir/transform/add_empty_entry_point_test.cc",
+        "lang/core/ir/transform/binding_remapper_test.cc",
         "lang/core/ir/transform/block_decorated_structs_test.cc",
         "lang/core/ir/transform/demote_to_helper_test.cc",
-        "lang/core/ir/transform/test_helper.h",
+        "lang/core/ir/transform/helper_test.h",
+        "lang/core/ir/transform/std140_test.cc",
       ]
 
       deps = [
         ":libtint_ir_src",
         ":libtint_ir_transform_src",
       ]
-
-      if (tint_build_spv_writer) {
-        sources += [
-          "lang/core/ir/transform/builtin_polyfill_spirv_test.cc",
-          "lang/core/ir/transform/expand_implicit_splats_test.cc",
-          "lang/core/ir/transform/handle_matrix_arithmetic_test.cc",
-          "lang/core/ir/transform/merge_return_test.cc",
-          "lang/core/ir/transform/shader_io_spirv_test.cc",
-          "lang/core/ir/transform/var_for_dynamic_index_test.cc",
-        ]
-      }
-
-      if (tint_build_wgsl_writer) {
-        sources += [ "lang/core/ir/transform/rename_conflicts_wgsl_test.cc" ]
-      }
     }
   }
 
@@ -1901,9 +1912,9 @@ if (tint_build_unittests) {
       "utils/containers/unique_allocator_test.cc",
       "utils/containers/unique_vector_test.cc",
       "utils/containers/vector_test.cc",
-      "utils/debug/debug_test.cc",
       "utils/diagnostic/source_test.cc",
       "utils/file/tmpfile_test.cc",
+      "utils/ice/ice_test.cc",
       "utils/macros/defer_test.cc",
       "utils/macros/scoped_assignment_test.cc",
       "utils/math/crc32_test.cc",
@@ -1928,7 +1939,7 @@ if (tint_build_unittests) {
       "lang/wgsl/helpers/append_vector_test.cc",
       "lang/wgsl/helpers/check_supported_extensions_test.cc",
       "lang/wgsl/helpers/flatten_bindings_test.cc",
-      "utils/text/float_to_string_test.cc",
+      "utils/strconv/float_to_string_test.cc",
     ]
     deps = [
       ":libtint_unittests_ast_helper",
@@ -1949,40 +1960,39 @@ if (tint_build_unittests) {
 
   tint_unittests_source_set("tint_unittests_spv_reader_src") {
     sources = [
-      "lang/spirv/reader/enum_converter_test.cc",
-      "lang/spirv/reader/fail_stream_test.cc",
-      "lang/spirv/reader/function_arithmetic_test.cc",
-      "lang/spirv/reader/function_bit_test.cc",
-      "lang/spirv/reader/function_call_test.cc",
-      "lang/spirv/reader/function_cfg_test.cc",
-      "lang/spirv/reader/function_composite_test.cc",
-      "lang/spirv/reader/function_conversion_test.cc",
-      "lang/spirv/reader/function_decl_test.cc",
-      "lang/spirv/reader/function_glsl_std_450_test.cc",
-      "lang/spirv/reader/function_logical_test.cc",
-      "lang/spirv/reader/function_memory_test.cc",
-      "lang/spirv/reader/function_misc_test.cc",
-      "lang/spirv/reader/function_var_test.cc",
-      "lang/spirv/reader/namer_test.cc",
-      "lang/spirv/reader/parser_impl_barrier_test.cc",
-      "lang/spirv/reader/parser_impl_constant_test.cc",
-      "lang/spirv/reader/parser_impl_convert_member_decoration_test.cc",
-      "lang/spirv/reader/parser_impl_convert_type_test.cc",
-      "lang/spirv/reader/parser_impl_function_decl_test.cc",
-      "lang/spirv/reader/parser_impl_get_decorations_test.cc",
-      "lang/spirv/reader/parser_impl_handle_test.cc",
-      "lang/spirv/reader/parser_impl_import_test.cc",
-      "lang/spirv/reader/parser_impl_module_var_test.cc",
-      "lang/spirv/reader/parser_impl_named_types_test.cc",
-      "lang/spirv/reader/parser_impl_test.cc",
-      "lang/spirv/reader/parser_impl_test_helper.cc",
-      "lang/spirv/reader/parser_impl_test_helper.h",
-      "lang/spirv/reader/parser_impl_user_name_test.cc",
-      "lang/spirv/reader/parser_test.cc",
-      "lang/spirv/reader/parser_type_test.cc",
-      "lang/spirv/reader/spirv_tools_helpers_test.cc",
-      "lang/spirv/reader/spirv_tools_helpers_test.h",
-      "lang/spirv/reader/usage_test.cc",
+      "lang/spirv/reader/ast_parser/ast_parser_test.cc",
+      "lang/spirv/reader/ast_parser/barrier_test.cc",
+      "lang/spirv/reader/ast_parser/constant_test.cc",
+      "lang/spirv/reader/ast_parser/convert_member_decoration_test.cc",
+      "lang/spirv/reader/ast_parser/convert_type_test.cc",
+      "lang/spirv/reader/ast_parser/enum_converter_test.cc",
+      "lang/spirv/reader/ast_parser/fail_stream_test.cc",
+      "lang/spirv/reader/ast_parser/function_arithmetic_test.cc",
+      "lang/spirv/reader/ast_parser/function_bit_test.cc",
+      "lang/spirv/reader/ast_parser/function_call_test.cc",
+      "lang/spirv/reader/ast_parser/function_cfg_test.cc",
+      "lang/spirv/reader/ast_parser/function_composite_test.cc",
+      "lang/spirv/reader/ast_parser/function_conversion_test.cc",
+      "lang/spirv/reader/ast_parser/function_decl_test.cc",
+      "lang/spirv/reader/ast_parser/function_glsl_std_450_test.cc",
+      "lang/spirv/reader/ast_parser/function_logical_test.cc",
+      "lang/spirv/reader/ast_parser/function_memory_test.cc",
+      "lang/spirv/reader/ast_parser/function_misc_test.cc",
+      "lang/spirv/reader/ast_parser/function_var_test.cc",
+      "lang/spirv/reader/ast_parser/get_decorations_test.cc",
+      "lang/spirv/reader/ast_parser/handle_test.cc",
+      "lang/spirv/reader/ast_parser/helper_test.cc",
+      "lang/spirv/reader/ast_parser/helper_test.h",
+      "lang/spirv/reader/ast_parser/import_test.cc",
+      "lang/spirv/reader/ast_parser/module_function_decl_test.cc",
+      "lang/spirv/reader/ast_parser/module_var_test.cc",
+      "lang/spirv/reader/ast_parser/named_types_test.cc",
+      "lang/spirv/reader/ast_parser/namer_test.cc",
+      "lang/spirv/reader/ast_parser/spirv_tools_helpers_test.cc",
+      "lang/spirv/reader/ast_parser/spirv_tools_helpers_test.h",
+      "lang/spirv/reader/ast_parser/type_test.cc",
+      "lang/spirv/reader/ast_parser/usage_test.cc",
+      "lang/spirv/reader/ast_parser/user_name_test.cc",
     ]
 
     deps = [
@@ -2017,18 +2027,18 @@ if (tint_build_unittests) {
       "lang/spirv/writer/ast_printer/function_attribute_test.cc",
       "lang/spirv/writer/ast_printer/function_variable_test.cc",
       "lang/spirv/writer/ast_printer/global_variable_test.cc",
+      "lang/spirv/writer/ast_printer/helper_test.h",
       "lang/spirv/writer/ast_printer/ident_expression_test.cc",
       "lang/spirv/writer/ast_printer/literal_test.cc",
       "lang/spirv/writer/ast_printer/return_test.cc",
       "lang/spirv/writer/ast_printer/scalar_constant_test.cc",
-      "lang/spirv/writer/ast_printer/test_helper.h",
       "lang/spirv/writer/ast_printer/unary_op_expression_test.cc",
-      "lang/spirv/writer/binary_writer_test.cc",
-      "lang/spirv/writer/instruction_test.cc",
-      "lang/spirv/writer/module_test.cc",
-      "lang/spirv/writer/operand_test.cc",
-      "lang/spirv/writer/spv_dump.cc",
-      "lang/spirv/writer/spv_dump.h",
+      "lang/spirv/writer/common/binary_writer_test.cc",
+      "lang/spirv/writer/common/instruction_test.cc",
+      "lang/spirv/writer/common/module_test.cc",
+      "lang/spirv/writer/common/operand_test.cc",
+      "lang/spirv/writer/common/spv_dump.cc",
+      "lang/spirv/writer/common/spv_dump.h",
     ]
 
     deps = [
@@ -2046,6 +2056,7 @@ if (tint_build_unittests) {
         "lang/spirv/writer/binary_test.cc",
         "lang/spirv/writer/bitcast_test.cc",
         "lang/spirv/writer/builtin_test.cc",
+        "lang/spirv/writer/common/helper_test.h",
         "lang/spirv/writer/constant_test.cc",
         "lang/spirv/writer/construct_test.cc",
         "lang/spirv/writer/convert_test.cc",
@@ -2054,16 +2065,24 @@ if (tint_build_unittests) {
         "lang/spirv/writer/if_test.cc",
         "lang/spirv/writer/let_test.cc",
         "lang/spirv/writer/loop_test.cc",
+        "lang/spirv/writer/raise/builtin_polyfill_test.cc",
+        "lang/spirv/writer/raise/expand_implicit_splats_test.cc",
+        "lang/spirv/writer/raise/handle_matrix_arithmetic_test.cc",
+        "lang/spirv/writer/raise/merge_return_test.cc",
+        "lang/spirv/writer/raise/shader_io_test.cc",
+        "lang/spirv/writer/raise/var_for_dynamic_index_test.cc",
         "lang/spirv/writer/switch_test.cc",
         "lang/spirv/writer/swizzle_test.cc",
-        "lang/spirv/writer/test_helper.h",
         "lang/spirv/writer/texture_builtin_test.cc",
         "lang/spirv/writer/type_test.cc",
         "lang/spirv/writer/unary_test.cc",
         "lang/spirv/writer/var_test.cc",
         "lang/spirv/writer/writer_test.cc",
       ]
-      deps += [ ":libtint_ir_src" ]
+      deps += [
+        ":libtint_ir_src",
+        ":tint_unittests_ir_transform_src",
+      ]
     }
   }
 
@@ -2097,6 +2116,8 @@ if (tint_build_unittests) {
       "lang/wgsl/reader/parser/global_constant_decl_test.cc",
       "lang/wgsl/reader/parser/global_decl_test.cc",
       "lang/wgsl/reader/parser/global_variable_decl_test.cc",
+      "lang/wgsl/reader/parser/helper_test.cc",
+      "lang/wgsl/reader/parser/helper_test.h",
       "lang/wgsl/reader/parser/if_stmt_test.cc",
       "lang/wgsl/reader/parser/increment_decrement_stmt_test.cc",
       "lang/wgsl/reader/parser/lexer_test.cc",
@@ -2123,8 +2144,6 @@ if (tint_build_unittests) {
       "lang/wgsl/reader/parser/struct_member_test.cc",
       "lang/wgsl/reader/parser/switch_body_test.cc",
       "lang/wgsl/reader/parser/switch_stmt_test.cc",
-      "lang/wgsl/reader/parser/test_helper.cc",
-      "lang/wgsl/reader/parser/test_helper.h",
       "lang/wgsl/reader/parser/token_test.cc",
       "lang/wgsl/reader/parser/type_alias_test.cc",
       "lang/wgsl/reader/parser/type_decl_test.cc",
@@ -2143,6 +2162,67 @@ if (tint_build_unittests) {
       ":libtint_unittests_ast_helper",
       ":libtint_wgsl_reader_src",
     ]
+  }
+
+  tint_unittests_source_set("tint_unittests_wgsl_reader_program_to_ir_src") {
+    sources = []
+    deps = []
+
+    if (tint_build_ir) {
+      sources += [
+        "lang/wgsl/reader/program_to_ir/accessor_test.cc",
+        "lang/wgsl/reader/program_to_ir/binary_test.cc",
+        "lang/wgsl/reader/program_to_ir/builtin_test.cc",
+        "lang/wgsl/reader/program_to_ir/call_test.cc",
+        "lang/wgsl/reader/program_to_ir/function_test.cc",
+        "lang/wgsl/reader/program_to_ir/let_test.cc",
+        "lang/wgsl/reader/program_to_ir/literal_test.cc",
+        "lang/wgsl/reader/program_to_ir/materialize_test.cc",
+        "lang/wgsl/reader/program_to_ir/program_to_ir_test.cc",
+        "lang/wgsl/reader/program_to_ir/shadowing_test.cc",
+        "lang/wgsl/reader/program_to_ir/store_test.cc",
+        "lang/wgsl/reader/program_to_ir/unary_test.cc",
+        "lang/wgsl/reader/program_to_ir/var_test.cc",
+      ]
+      deps += [
+        ":libtint_ir_src",
+        ":tint_unittests_ir_src",
+        ":tint_unittests_wgsl_ir_helper",
+      ]
+    }
+  }
+
+  tint_unittests_source_set("tint_unittests_wgsl_writer_ir_to_program_src") {
+    sources = []
+    deps = []
+
+    if (tint_build_ir) {
+      sources += [
+        "lang/wgsl/writer/ir_to_program/inlining_test.cc",
+        "lang/wgsl/writer/ir_to_program/ir_to_program_test.cc",
+        "lang/wgsl/writer/ir_to_program/ir_to_program_test.h",
+        "lang/wgsl/writer/ir_to_program/rename_conflicts_test.cc",
+      ]
+      deps += [
+        ":libtint_ir_src",
+        ":tint_unittests_ir_src",
+      ]
+    }
+  }
+
+  tint_unittests_source_set("tint_unittests_wgsl_ir_roundtrip_src") {
+    sources = []
+    deps = []
+
+    if (tint_build_ir) {
+      sources += [ "lang/wgsl/ir_roundtrip_test.cc" ]
+      deps += [
+        ":libtint_ir_src",
+        ":libtint_wgsl_reader_program_to_ir_src",
+        ":tint_unittests_ir_src",
+        ":tint_unittests_wgsl_ir_helper",
+      ]
+    }
   }
 
   tint_unittests_source_set("tint_unittests_wgsl_writer_src") {
@@ -2166,6 +2246,7 @@ if (tint_build_unittests) {
       "lang/wgsl/writer/ast_printer/enable_test.cc",
       "lang/wgsl/writer/ast_printer/function_test.cc",
       "lang/wgsl/writer/ast_printer/global_decl_test.cc",
+      "lang/wgsl/writer/ast_printer/helper_test.h",
       "lang/wgsl/writer/ast_printer/identifier_test.cc",
       "lang/wgsl/writer/ast_printer/if_test.cc",
       "lang/wgsl/writer/ast_printer/literal_test.cc",
@@ -2173,7 +2254,6 @@ if (tint_build_unittests) {
       "lang/wgsl/writer/ast_printer/member_accessor_test.cc",
       "lang/wgsl/writer/ast_printer/return_test.cc",
       "lang/wgsl/writer/ast_printer/switch_test.cc",
-      "lang/wgsl/writer/ast_printer/test_helper.h",
       "lang/wgsl/writer/ast_printer/type_test.cc",
       "lang/wgsl/writer/ast_printer/unary_op_test.cc",
       "lang/wgsl/writer/ast_printer/variable_decl_statement_test.cc",
@@ -2188,7 +2268,7 @@ if (tint_build_unittests) {
     ]
   }
 
-  tint_unittests_source_set("tint_unittests_msl_writer_src") {
+  tint_unittests_source_set("tint_unittests_msl_writer_ast_printer_src") {
     sources = [
       "lang/msl/writer/ast_printer/array_accessor_test.cc",
       "lang/msl/writer/ast_printer/assign_test.cc",
@@ -2208,6 +2288,7 @@ if (tint_build_unittests) {
       "lang/msl/writer/ast_printer/constructor_test.cc",
       "lang/msl/writer/ast_printer/continue_test.cc",
       "lang/msl/writer/ast_printer/discard_test.cc",
+      "lang/msl/writer/ast_printer/helper_test.h",
       "lang/msl/writer/ast_printer/identifier_test.cc",
       "lang/msl/writer/ast_printer/if_test.cc",
       "lang/msl/writer/ast_printer/import_test.cc",
@@ -2217,11 +2298,20 @@ if (tint_build_unittests) {
       "lang/msl/writer/ast_printer/return_test.cc",
       "lang/msl/writer/ast_printer/sanitizer_test.cc",
       "lang/msl/writer/ast_printer/switch_test.cc",
-      "lang/msl/writer/ast_printer/test_helper.h",
       "lang/msl/writer/ast_printer/unary_op_test.cc",
       "lang/msl/writer/ast_printer/variable_decl_statement_test.cc",
-      "lang/msl/writer/printer_support_test.cc",
+      "lang/msl/writer/common/printer_support_test.cc",
     ]
+
+    deps = [
+      ":libtint_msl_writer_src",
+      ":libtint_utils_src",
+      ":tint_unittests_ast_src",
+    ]
+  }
+
+  tint_unittests_source_set("tint_unittests_msl_writer_printer_src") {
+    sources = []
 
     deps = [
       ":libtint_msl_writer_src",
@@ -2233,10 +2323,18 @@ if (tint_build_unittests) {
       sources += [
         "lang/msl/writer/printer/constant_test.cc",
         "lang/msl/writer/printer/function_test.cc",
-        "lang/msl/writer/printer/test_helper.h",
+        "lang/msl/writer/printer/helper_test.h",
+        "lang/msl/writer/printer/if_test.cc",
+        "lang/msl/writer/printer/let_test.cc",
+        "lang/msl/writer/printer/return_test.cc",
         "lang/msl/writer/printer/type_test.cc",
       ]
-      deps += [ ":libtint_ir_src" ]
+      deps += [
+        ":libtint_ir_src",
+        ":libtint_msl_writer_src",
+        ":libtint_utils_src",
+        ":tint_unittests_ast_src",
+      ]
     }
   }
 
@@ -2259,6 +2357,7 @@ if (tint_build_unittests) {
       "lang/hlsl/writer/ast_printer/continue_test.cc",
       "lang/hlsl/writer/ast_printer/discard_test.cc",
       "lang/hlsl/writer/ast_printer/function_test.cc",
+      "lang/hlsl/writer/ast_printer/helper_test.h",
       "lang/hlsl/writer/ast_printer/identifier_test.cc",
       "lang/hlsl/writer/ast_printer/if_test.cc",
       "lang/hlsl/writer/ast_printer/import_test.cc",
@@ -2268,7 +2367,6 @@ if (tint_build_unittests) {
       "lang/hlsl/writer/ast_printer/return_test.cc",
       "lang/hlsl/writer/ast_printer/sanitizer_test.cc",
       "lang/hlsl/writer/ast_printer/switch_test.cc",
-      "lang/hlsl/writer/ast_printer/test_helper.h",
       "lang/hlsl/writer/ast_printer/type_test.cc",
       "lang/hlsl/writer/ast_printer/unary_op_test.cc",
       "lang/hlsl/writer/ast_printer/variable_decl_statement_test.cc",
@@ -2302,6 +2400,7 @@ if (tint_build_unittests) {
       "lang/glsl/writer/ast_printer/continue_test.cc",
       "lang/glsl/writer/ast_printer/discard_test.cc",
       "lang/glsl/writer/ast_printer/function_test.cc",
+      "lang/glsl/writer/ast_printer/helper_test.h",
       "lang/glsl/writer/ast_printer/identifier_test.cc",
       "lang/glsl/writer/ast_printer/if_test.cc",
       "lang/glsl/writer/ast_printer/import_test.cc",
@@ -2312,7 +2411,6 @@ if (tint_build_unittests) {
       "lang/glsl/writer/ast_printer/sanitizer_test.cc",
       "lang/glsl/writer/ast_printer/storage_buffer_test.cc",
       "lang/glsl/writer/ast_printer/switch_test.cc",
-      "lang/glsl/writer/ast_printer/test_helper.h",
       "lang/glsl/writer/ast_printer/type_test.cc",
       "lang/glsl/writer/ast_printer/unary_op_test.cc",
       "lang/glsl/writer/ast_printer/uniform_buffer_test.cc",
@@ -2335,15 +2433,15 @@ if (tint_build_unittests) {
     sources = [
       "utils/containers/scope_stack_test.cc",
       "utils/reflection/reflection_test.cc",
-      "utils/text/symbol_table_test.cc",
-      "utils/text/symbol_test.cc",
+      "utils/symbol/symbol_table_test.cc",
+      "utils/symbol/symbol_test.cc",
     ]
     deps = [ ":libtint_symbols_src" ]
   }
 
   tint_unittests_source_set("tint_unittests_core_src") {
     sources = [
-      "lang/wgsl/ast/clone_context_test.cc",
+      "lang/wgsl/program/clone_context_test.cc",
       "lang/wgsl/program/program_builder_test.cc",
       "lang/wgsl/program/program_test.cc",
     ]
@@ -2353,16 +2451,19 @@ if (tint_build_unittests) {
       ":libtint_unittests_ast_helper",
       ":tint_unittests_ast_src",
     ]
-
-    if (tint_build_ir) {
-      deps += [
-        ":libtint_ir_builder_src",
-        ":libtint_ir_src",
-      ]
-    }
   }
 
   if (tint_build_ir) {
+    tint_unittests_source_set("tint_unittests_wgsl_ir_helper") {
+      sources = [ "lang/wgsl/helpers/ir_program_test.h" ]
+      deps = [
+        ":libtint_builtins_src",
+        ":libtint_ir_src",
+        ":libtint_wgsl_reader_program_to_ir_src",
+        ":libtint_wgsl_writer_ir_to_program_src",
+      ]
+    }
+
     tint_unittests_source_set("tint_unittests_ir_src") {
       sources = [
         "lang/core/ir/access_test.cc",
@@ -2380,26 +2481,12 @@ if (tint_build_unittests) {
         "lang/core/ir/exit_if_test.cc",
         "lang/core/ir/exit_loop_test.cc",
         "lang/core/ir/exit_switch_test.cc",
-        "lang/core/ir/from_program_accessor_test.cc",
-        "lang/core/ir/from_program_binary_test.cc",
-        "lang/core/ir/from_program_builtin_test.cc",
-        "lang/core/ir/from_program_call_test.cc",
-        "lang/core/ir/from_program_function_test.cc",
-        "lang/core/ir/from_program_let_test.cc",
-        "lang/core/ir/from_program_literal_test.cc",
-        "lang/core/ir/from_program_materialize_test.cc",
-        "lang/core/ir/from_program_shadowing_test.cc",
-        "lang/core/ir/from_program_store_test.cc",
-        "lang/core/ir/from_program_test.cc",
-        "lang/core/ir/from_program_unary_test.cc",
-        "lang/core/ir/from_program_var_test.cc",
         "lang/core/ir/function_param_test.cc",
         "lang/core/ir/function_test.cc",
         "lang/core/ir/if_test.cc",
         "lang/core/ir/instruction_result_test.cc",
         "lang/core/ir/instruction_test.cc",
         "lang/core/ir/intrinsic_call_test.cc",
-        "lang/core/ir/ir_test_helper.h",
         "lang/core/ir/let_test.cc",
         "lang/core/ir/load_test.cc",
         "lang/core/ir/load_vector_element_test.cc",
@@ -2408,15 +2495,11 @@ if (tint_build_unittests) {
         "lang/core/ir/multi_in_block_test.cc",
         "lang/core/ir/next_iteration_test.cc",
         "lang/core/ir/operand_instruction_test.cc",
-        "lang/core/ir/program_test_helper.h",
         "lang/core/ir/return_test.cc",
         "lang/core/ir/store_test.cc",
         "lang/core/ir/store_vector_element_test.cc",
         "lang/core/ir/switch_test.cc",
         "lang/core/ir/swizzle_test.cc",
-        "lang/core/ir/to_program_inlining_test.cc",
-        "lang/core/ir/to_program_roundtrip_test.cc",
-        "lang/core/ir/to_program_test.cc",
         "lang/core/ir/unary_test.cc",
         "lang/core/ir/user_call_test.cc",
         "lang/core/ir/validator_test.cc",
@@ -2426,8 +2509,9 @@ if (tint_build_unittests) {
 
       deps = [
         ":libtint_builtins_src",
-        ":libtint_ir_builder_src",
         ":libtint_ir_src",
+        ":libtint_wgsl_reader_program_to_ir_src",
+        ":libtint_wgsl_writer_ir_to_program_src",
       ]
     }
   }
@@ -2482,7 +2566,10 @@ if (tint_build_unittests) {
     }
 
     if (tint_build_msl_writer) {
-      deps += [ ":tint_unittests_msl_writer_src" ]
+      deps += [
+        ":tint_unittests_msl_writer_ast_printer_src",
+        ":tint_unittests_msl_writer_printer_src",
+      ]
     }
 
     if (tint_build_hlsl_writer) {
@@ -2498,6 +2585,16 @@ if (tint_build_unittests) {
         ":tint_unittests_ir_src",
         ":tint_unittests_ir_transform_src",
       ]
+
+      if (tint_build_wgsl_reader) {
+        deps += [ ":tint_unittests_wgsl_reader_program_to_ir_src" ]
+      }
+      if (tint_build_wgsl_writer) {
+        deps += [ ":tint_unittests_wgsl_writer_ir_to_program_src" ]
+      }
+      if (tint_build_wgsl_reader && tint_build_wgsl_writer) {
+        deps += [ ":tint_unittests_wgsl_ir_roundtrip_src" ]
+      }
     }
 
     if (build_with_chromium) {

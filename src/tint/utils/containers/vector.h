@@ -24,22 +24,18 @@
 #include <vector>
 
 #include "src/tint/utils/containers/slice.h"
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/macros/compiler.h"
+#include "src/tint/utils/math/hash.h"
 #include "src/tint/utils/memory/bitcast.h"
-#include "src/tint/utils/text/string_stream.h"
-
-namespace tint::utils {
 
 /// Forward declarations
+namespace tint {
 template <typename>
 class VectorRef;
-template <typename>
-class VectorRef;
+}  // namespace tint
 
-}  // namespace tint::utils
-
-namespace tint::utils {
+namespace tint {
 
 /// Vector is a small-object-optimized, dynamically-sized vector of contigious elements of type T.
 ///
@@ -216,7 +212,7 @@ class Vector {
     /// @param i the element index. Must be less than `len`.
     /// @returns a reference to the i'th element.
     T& operator[](size_t i) {
-        TINT_ASSERT(Utils, i < Length());
+        TINT_ASSERT(i < Length());
         return impl_.slice[i];
     }
 
@@ -224,7 +220,7 @@ class Vector {
     /// @param i the element index. Must be less than `len`.
     /// @returns a reference to the i'th element.
     const T& operator[](size_t i) const {
-        TINT_ASSERT(Utils, i < Length());
+        TINT_ASSERT(i < Length());
         return impl_.slice[i];
     }
 
@@ -325,7 +321,7 @@ class Vector {
     /// Removes and returns the last element from the vector.
     /// @returns the popped element
     T Pop() {
-        TINT_ASSERT(Utils, !IsEmpty());
+        TINT_ASSERT(!IsEmpty());
         auto& el = impl_.slice.data[--impl_.slice.len];
         auto val = std::move(el);
         el.~T();
@@ -337,7 +333,7 @@ class Vector {
     /// @param element the element to insert
     template <typename EL>
     void Insert(size_t before, EL&& element) {
-        TINT_ASSERT(Utils, before <= Length());
+        TINT_ASSERT(before <= Length());
         size_t n = Length();
         Resize(Length() + 1);
         // Shuffle
@@ -354,8 +350,8 @@ class Vector {
     /// @param start the index of the first element to remove
     /// @param count the number of elements to remove
     void Erase(size_t start, size_t count = 1) {
-        TINT_ASSERT(Utils, start < Length());
-        TINT_ASSERT(Utils, (start + count) <= Length());
+        TINT_ASSERT(start < Length());
+        TINT_ASSERT((start + count) <= Length());
         // Shuffle
         for (size_t i = start + count; i < impl_.slice.len; i++) {
             auto& src = impl_.slice.data[i];
@@ -472,10 +468,10 @@ class Vector {
     }
 
     /// @returns the internal slice of the vector
-    utils::Slice<T> Slice() { return impl_.slice; }
+    tint::Slice<T> Slice() { return impl_.slice; }
 
     /// @returns the internal slice of the vector
-    utils::Slice<const T> Slice() const { return impl_.slice; }
+    tint::Slice<const T> Slice() const { return impl_.slice; }
 
   private:
     /// Friend class (differing specializations of this class)
@@ -511,7 +507,7 @@ class Vector {
 
     /// Copies all the elements from `other` to this vector, replacing the content of this vector.
     /// @param other the
-    void Copy(const utils::Slice<T>& other) {
+    void Copy(const tint::Slice<T>& other) {
         if (impl_.slice.cap < other.len) {
             ClearAndFree();
             impl_.Allocate(other.len);
@@ -548,7 +544,7 @@ class Vector {
     /// The internal structure for the vector with a small array.
     struct ImplWithSmallArray {
         TStorage small_arr[N];
-        utils::Slice<T> slice = {small_arr[0].Get(), 0, N};
+        tint::Slice<T> slice = {small_arr[0].Get(), 0, N};
 
         /// Allocates a new vector of `T` either from #small_arr, or from the heap, then assigns the
         /// pointer it to #slice.data, and updates #slice.cap.
@@ -576,7 +572,7 @@ class Vector {
 
     /// The internal structure for the vector without a small array.
     struct ImplWithoutSmallArray {
-        utils::Slice<T> slice = Empty;
+        tint::Slice<T> slice = Empty;
 
         /// Allocates a new vector of `T` and assigns it to #slice.data, and updates #slice.cap.
         void Allocate(size_t new_cap) {
@@ -631,7 +627,7 @@ struct VectorCommonType</*IS_CASTABLE*/ true, Ts...> {
 /// Helper for determining the Vector element type (`T`) from the vector's constuctor arguments
 template <typename... Ts>
 using VectorCommonType =
-    typename utils::detail::VectorCommonType<IsCastable<std::remove_pointer_t<Ts>...>, Ts...>::type;
+    typename tint::detail::VectorCommonType<IsCastable<std::remove_pointer_t<Ts>...>, Ts...>::type;
 
 /// Deduction guide for Vector
 template <typename... Ts>
@@ -661,8 +657,8 @@ Vector(Ts...) -> Vector<VectorCommonType<Ts...>, sizeof...(Ts)>;
 template <typename T>
 class VectorRef {
     /// @returns an empty slice.
-    static utils::Slice<T>& EmptySlice() {
-        static utils::Slice<T> empty;
+    static tint::Slice<T>& EmptySlice() {
+        static tint::Slice<T> empty;
         return empty;
     }
 
@@ -678,7 +674,7 @@ class VectorRef {
 
     /// Constructor from a Slice
     /// @param slice the slice
-    VectorRef(utils::Slice<T>& slice)  // NOLINT(runtime/explicit)
+    VectorRef(tint::Slice<T>& slice)  // NOLINT(runtime/explicit)
         : slice_(slice) {}
 
     /// Constructor from a Vector
@@ -691,7 +687,7 @@ class VectorRef {
     /// @param vector the vector to create a reference of
     template <size_t N>
     VectorRef(const Vector<T, N>& vector)  // NOLINT(runtime/explicit)
-        : slice_(const_cast<utils::Slice<T>&>(vector.impl_.slice)) {}
+        : slice_(const_cast<tint::Slice<T>&>(vector.impl_.slice)) {}
 
     /// Constructor from a moved Vector
     /// @param vector the vector being moved
@@ -760,7 +756,7 @@ class VectorRef {
     }
 
     /// @returns the internal slice of the vector
-    utils::Slice<T> Slice() { return slice_; }
+    tint::Slice<T> Slice() { return slice_; }
 
     /// @returns true if the vector is empty.
     bool IsEmpty() const { return slice_.len == 0; }
@@ -797,12 +793,14 @@ class VectorRef {
     friend class VectorRef;
 
     /// The slice of the vector being referenced.
-    utils::Slice<T>& slice_;
+    tint::Slice<T>& slice_;
     /// Whether the slice data is passed by r-value reference, and can be moved.
     bool can_move_ = false;
 };
 
 /// Helper for converting a Vector to a std::vector.
+/// @param vector the input vector
+/// @return the converted vector
 /// @note This helper exists to help code migration. Avoid if possible.
 template <typename T, size_t N>
 std::vector<T> ToStdVector(const Vector<T, N>& vector) {
@@ -815,6 +813,8 @@ std::vector<T> ToStdVector(const Vector<T, N>& vector) {
 }
 
 /// Helper for converting a std::vector to a Vector.
+/// @param vector the input vector
+/// @return the converted vector
 /// @note This helper exists to help code migration. Avoid if possible.
 template <typename T, size_t N = 0>
 Vector<T, N> ToVector(const std::vector<T>& vector) {
@@ -830,8 +830,8 @@ Vector<T, N> ToVector(const std::vector<T>& vector) {
 /// @param o the stream to write to
 /// @param vec the vector
 /// @return the stream so calls can be chained
-template <typename T, size_t N>
-inline StringStream& operator<<(StringStream& o, const Vector<T, N>& vec) {
+template <typename STREAM, typename T, size_t N, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& o, const Vector<T, N>& vec) {
     o << "[";
     bool first = true;
     for (auto& el : vec) {
@@ -849,8 +849,8 @@ inline StringStream& operator<<(StringStream& o, const Vector<T, N>& vec) {
 /// @param o the stream to write to
 /// @param vec the vector reference
 /// @return the stream so calls can be chained
-template <typename T>
-inline StringStream& operator<<(StringStream& o, VectorRef<T> vec) {
+template <typename STREAM, typename T, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& o, VectorRef<T> vec) {
     o << "[";
     bool first = true;
     for (auto& el : vec) {
@@ -864,34 +864,62 @@ inline StringStream& operator<<(StringStream& o, VectorRef<T> vec) {
     return o;
 }
 
+/// Hasher specialization for Vector
+template <typename T, size_t N>
+struct Hasher<Vector<T, N>> {
+    /// @param vector the Vector to hash
+    /// @returns a hash of the Vector
+    size_t operator()(const Vector<T, N>& vector) const {
+        auto hash = Hash(vector.Length());
+        for (auto& el : vector) {
+            hash = HashCombine(hash, el);
+        }
+        return hash;
+    }
+};
+
+/// Hasher specialization for VectorRef
+template <typename T>
+struct Hasher<VectorRef<T>> {
+    /// @param vector the VectorRef reference to hash
+    /// @returns a hash of the Vector
+    size_t operator()(const VectorRef<T>& vector) const {
+        auto hash = Hash(vector.Length());
+        for (auto& el : vector) {
+            hash = HashCombine(hash, el);
+        }
+        return hash;
+    }
+};
+
 namespace detail {
 
-/// IsVectorLike<T>::value is true if T is a utils::Vector or utils::VectorRef.
+/// IsVectorLike<T>::value is true if T is a Vector or VectorRef.
 template <typename T>
 struct IsVectorLike {
     /// Non-specialized form of IsVectorLike defaults to false
     static constexpr bool value = false;
 };
 
-/// IsVectorLike specialization for utils::Vector
+/// IsVectorLike specialization for Vector
 template <typename T, size_t N>
-struct IsVectorLike<utils::Vector<T, N>> {
-    /// True for the IsVectorLike specialization of utils::Vector
+struct IsVectorLike<Vector<T, N>> {
+    /// True for the IsVectorLike specialization of Vector
     static constexpr bool value = true;
 };
 
-/// IsVectorLike specialization for utils::VectorRef
+/// IsVectorLike specialization for VectorRef
 template <typename T>
-struct IsVectorLike<utils::VectorRef<T>> {
-    /// True for the IsVectorLike specialization of utils::VectorRef
+struct IsVectorLike<VectorRef<T>> {
+    /// True for the IsVectorLike specialization of VectorRef
     static constexpr bool value = true;
 };
 }  // namespace detail
 
 /// True if T is a Vector<T, N> or VectorRef<T>
 template <typename T>
-static constexpr bool IsVectorLike = utils::detail::IsVectorLike<T>::value;
+static constexpr bool IsVectorLike = tint::detail::IsVectorLike<T>::value;
 
-}  // namespace tint::utils
+}  // namespace tint
 
 #endif  // SRC_TINT_UTILS_CONTAINERS_VECTOR_H_

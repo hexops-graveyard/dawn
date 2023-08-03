@@ -103,14 +103,12 @@ struct DependencyEdgeCmp {
         return lhs.from == rhs.from && lhs.to == rhs.to;
     }
     /// Hashing operator
-    inline std::size_t operator()(const DependencyEdge& d) const {
-        return utils::Hash(d.from, d.to);
-    }
+    inline std::size_t operator()(const DependencyEdge& d) const { return Hash(d.from, d.to); }
 };
 
 /// A map of DependencyEdge to DependencyInfo
 using DependencyEdges =
-    utils::Hashmap<DependencyEdge, DependencyInfo, 64, DependencyEdgeCmp, DependencyEdgeCmp>;
+    Hashmap<DependencyEdge, DependencyInfo, 64, DependencyEdgeCmp, DependencyEdgeCmp>;
 
 /// Global describes a module-scope variable, type or function.
 struct Global {
@@ -119,15 +117,15 @@ struct Global {
     /// The declaration ast::Node
     const ast::Node* node;
     /// A list of dependencies that this global depends on
-    utils::Vector<Global*, 8> deps;
+    Vector<Global*, 8> deps;
 };
 
 /// A map of global name to Global
-using GlobalMap = utils::Hashmap<Symbol, Global*, 16>;
+using GlobalMap = Hashmap<Symbol, Global*, 16>;
 
 /// Raises an ICE that a global ast::Node type was not handled by this system.
-void UnhandledNode(diag::List& diagnostics, const ast::Node* node) {
-    TINT_ICE(Resolver, diagnostics) << "unhandled node type: " << node->TypeInfo().name;
+void UnhandledNode(const ast::Node* node) {
+    TINT_ICE() << "unhandled node type: " << node->TypeInfo().name;
 }
 
 /// Raises an error diagnostic with the given message and source.
@@ -196,7 +194,7 @@ class DependencyScanner {
                 // Enable directives do not affect the dependency graph.
             },
             [&](const ast::ConstAssert* assertion) { TraverseExpression(assertion->condition); },
-            [&](Default) { UnhandledNode(diagnostics_, global->node); });
+            [&](Default) { UnhandledNode(global->node); });
     }
 
   private:
@@ -242,7 +240,7 @@ class DependencyScanner {
 
     /// Traverses the statements, performing symbol resolution and determining
     /// global dependencies.
-    void TraverseStatements(utils::VectorRef<const ast::Statement*> stmts) {
+    void TraverseStatements(VectorRef<const ast::Statement*> stmts) {
         for (auto* s : stmts) {
             TraverseStatement(s);
         }
@@ -320,7 +318,7 @@ class DependencyScanner {
             [&](Default) {
                 if (TINT_UNLIKELY((!stmt->IsAnyOf<ast::BreakStatement, ast::ContinueStatement,
                                                   ast::DiscardStatement>()))) {
-                    UnhandledNode(diagnostics_, stmt);
+                    UnhandledNode(stmt);
                 }
             });
     }
@@ -343,9 +341,10 @@ class DependencyScanner {
             return;
         }
 
-        utils::Vector<const ast::Expression*, 8> pending{root_expr};
+        Vector<const ast::Expression*, 8> pending{root_expr};
         while (!pending.IsEmpty()) {
-            ast::TraverseExpressions(pending.Pop(), diagnostics_, [&](const ast::Expression* expr) {
+            auto* next = pending.Pop();
+            bool ok = ast::TraverseExpressions(next, [&](const ast::Expression* expr) {
                 Switch(
                     expr,
                     [&](const ast::IdentifierExpression* e) {
@@ -360,12 +359,16 @@ class DependencyScanner {
                     [&](const ast::BitcastExpression* cast) { TraverseExpression(cast->type); });
                 return ast::TraverseAction::Descend;
             });
+            if (!ok) {
+                AddError(diagnostics_, "TraverseExpressions failed", next->source);
+                return;
+            }
         }
     }
 
     /// Traverses the attribute list, performing symbol resolution and
     /// determining global dependencies.
-    void TraverseAttributes(utils::VectorRef<const ast::Attribute*> attrs) {
+    void TraverseAttributes(VectorRef<const ast::Attribute*> attrs) {
         for (auto* attr : attrs) {
             TraverseAttribute(attr);
         }
@@ -436,7 +439,7 @@ class DependencyScanner {
             return;
         }
 
-        UnhandledNode(diagnostics_, attr);
+        UnhandledNode(attr);
     }
 
     /// The type of builtin that a symbol could represent.
@@ -579,7 +582,7 @@ class DependencyScanner {
         graph_.resolved_identifiers.Add(from, ResolvedIdentifier(resolved));
     }
 
-    using VariableMap = utils::Hashmap<Symbol, const ast::Variable*, 32>;
+    using VariableMap = Hashmap<Symbol, const ast::Variable*, 32>;
     const GlobalMap& globals_;
     diag::List& diagnostics_;
     DependencyGraph& graph_;
@@ -588,7 +591,7 @@ class DependencyScanner {
     ScopeStack<Symbol, const ast::Node*> scope_stack_;
     Global* current_global_ = nullptr;
 
-    utils::Hashmap<Symbol, BuiltinInfo, 64> builtin_info_map;
+    Hashmap<Symbol, BuiltinInfo, 64> builtin_info_map;
 };
 
 /// The global dependency analysis system
@@ -638,7 +641,7 @@ struct DependencyAnalysis {
             [&](const ast::Enable*) { return Symbol(); },
             [&](const ast::ConstAssert*) { return Symbol(); },
             [&](Default) {
-                UnhandledNode(diagnostics_, node);
+                UnhandledNode(node);
                 return Symbol{};
             });
     }
@@ -662,8 +665,8 @@ struct DependencyAnalysis {
             [&](const ast::Variable* v) { return v->Kind(); },        //
             [&](const ast::ConstAssert*) { return "const_assert"; },  //
             [&](Default) {
-                UnhandledNode(diagnostics_, node);
-                return "<error>";
+                UnhandledNode(node);
+                return "<unknown>";
             });
     }
 
@@ -709,7 +712,7 @@ struct DependencyAnalysis {
             return;
         }
 
-        utils::Vector<Entry, 16> stack{Entry{root, 0}};
+        Vector<Entry, 16> stack{Entry{root, 0}};
         while (true) {
             auto& entry = stack.Back();
             // Have we exhausted the dependencies of entry.global?
@@ -755,7 +758,7 @@ struct DependencyAnalysis {
                 // Skip directives here, as they are already added.
                 continue;
             }
-            utils::UniqueVector<const Global*, 8> stack;
+            UniqueVector<const Global*, 8> stack;
             TraverseDependencies(
                 global,
                 [&](const Global* g) {  // Enter
@@ -781,8 +784,7 @@ struct DependencyAnalysis {
 
             if (TINT_UNLIKELY(!stack.IsEmpty())) {
                 // Each stack.push() must have a corresponding stack.pop_back().
-                TINT_ICE(Resolver, diagnostics_)
-                    << "stack not empty after returning from TraverseDependencies()";
+                TINT_ICE() << "stack not empty after returning from TraverseDependencies()";
             }
         }
     }
@@ -795,9 +797,8 @@ struct DependencyAnalysis {
         if (TINT_LIKELY(info)) {
             return *info;
         }
-        TINT_ICE(Resolver, diagnostics_)
-            << "failed to find dependency info for edge: '" << NameOf(from->node) << "' -> '"
-            << NameOf(to->node) << "'";
+        TINT_ICE() << "failed to find dependency info for edge: '" << NameOf(from->node) << "' -> '"
+                   << NameOf(to->node) << "'";
         return {};
     }
 
@@ -805,8 +806,8 @@ struct DependencyAnalysis {
     /// @param root is the global that starts the cyclic dependency, which must be
     /// found in `stack`.
     /// @param stack is the global dependency stack that contains a loop.
-    void CyclicDependencyFound(const Global* root, utils::VectorRef<const Global*> stack) {
-        utils::StringStream msg;
+    void CyclicDependencyFound(const Global* root, VectorRef<const Global*> stack) {
+        StringStream msg;
         msg << "cyclic dependency found: ";
         constexpr size_t kLoopNotStarted = ~0u;
         size_t loop_start = kLoopNotStarted;
@@ -862,7 +863,7 @@ struct DependencyAnalysis {
     DependencyGraph& graph_;
 
     /// Allocator of Globals
-    utils::BlockAllocator<Global> allocator_;
+    BlockAllocator<Global> allocator_;
 
     /// Global map, keyed by name. Populated by GatherGlobals().
     GlobalMap globals_;
@@ -871,10 +872,10 @@ struct DependencyAnalysis {
     DependencyEdges dependency_edges_;
 
     /// Globals in declaration order. Populated by GatherGlobals().
-    utils::Vector<Global*, 64> declaration_order_;
+    Vector<Global*, 64> declaration_order_;
 
     /// Globals in sorted dependency order. Populated by SortGlobals().
-    utils::UniqueVector<const ast::Node*, 64> sorted_;
+    UniqueVector<const ast::Node*, 64> sorted_;
 };
 
 }  // namespace
@@ -890,7 +891,7 @@ bool DependencyGraph::Build(const ast::Module& module,
     return da.Run(module);
 }
 
-std::string ResolvedIdentifier::String(diag::List& diagnostics) const {
+std::string ResolvedIdentifier::String() const {
     if (auto* node = Node()) {
         return Switch(
             node,
@@ -916,40 +917,39 @@ std::string ResolvedIdentifier::String(diag::List& diagnostics) const {
                 return "parameter '" + n->name->symbol.Name() + "'";
             },
             [&](Default) {
-                TINT_UNREACHABLE(Resolver, diagnostics)
-                    << "unhandled ast::Node: " << node->TypeInfo().name;
+                TINT_UNREACHABLE() << "unhandled ast::Node: " << node->TypeInfo().name;
                 return "<unknown>";
             });
     }
     if (auto builtin_fn = BuiltinFunction(); builtin_fn != builtin::Function::kNone) {
-        return "builtin function '" + utils::ToString(builtin_fn) + "'";
+        return "builtin function '" + tint::ToString(builtin_fn) + "'";
     }
     if (auto builtin_ty = BuiltinType(); builtin_ty != builtin::Builtin::kUndefined) {
-        return "builtin type '" + utils::ToString(builtin_ty) + "'";
+        return "builtin type '" + tint::ToString(builtin_ty) + "'";
     }
     if (auto builtin_val = BuiltinValue(); builtin_val != builtin::BuiltinValue::kUndefined) {
-        return "builtin value '" + utils::ToString(builtin_val) + "'";
+        return "builtin value '" + tint::ToString(builtin_val) + "'";
     }
     if (auto access = Access(); access != builtin::Access::kUndefined) {
-        return "access '" + utils::ToString(access) + "'";
+        return "access '" + tint::ToString(access) + "'";
     }
     if (auto addr = AddressSpace(); addr != builtin::AddressSpace::kUndefined) {
-        return "address space '" + utils::ToString(addr) + "'";
+        return "address space '" + tint::ToString(addr) + "'";
     }
     if (auto type = InterpolationType(); type != builtin::InterpolationType::kUndefined) {
-        return "interpolation type '" + utils::ToString(type) + "'";
+        return "interpolation type '" + tint::ToString(type) + "'";
     }
     if (auto smpl = InterpolationSampling(); smpl != builtin::InterpolationSampling::kUndefined) {
-        return "interpolation sampling '" + utils::ToString(smpl) + "'";
+        return "interpolation sampling '" + tint::ToString(smpl) + "'";
     }
     if (auto fmt = TexelFormat(); fmt != builtin::TexelFormat::kUndefined) {
-        return "texel format '" + utils::ToString(fmt) + "'";
+        return "texel format '" + tint::ToString(fmt) + "'";
     }
     if (auto* unresolved = Unresolved()) {
         return "unresolved identifier '" + unresolved->name + "'";
     }
 
-    TINT_UNREACHABLE(Resolver, diagnostics) << "unhandled ResolvedIdentifier";
+    TINT_UNREACHABLE() << "unhandled ResolvedIdentifier";
     return "<unknown>";
 }
 

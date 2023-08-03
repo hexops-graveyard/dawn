@@ -15,8 +15,8 @@
 #include "src/tint/lang/core/type/reference.h"
 
 #include "src/tint/lang/core/type/manager.h"
-#include "src/tint/utils/debug/debug.h"
 #include "src/tint/utils/diagnostic/diagnostic.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/math/hash.h"
 #include "src/tint/utils/text/string_stream.h"
 
@@ -27,16 +27,13 @@ namespace tint::type {
 Reference::Reference(builtin::AddressSpace address_space,
                      const Type* subtype,
                      builtin::Access access)
-    : Base(utils::Hash(utils::TypeInfo::Of<Reference>().full_hashcode,
-                       address_space,
-                       subtype,
-                       access),
+    : Base(Hash(tint::TypeInfo::Of<Reference>().full_hashcode, address_space, subtype, access),
            type::Flags{}),
       subtype_(subtype),
       address_space_(address_space),
       access_(access) {
-    TINT_ASSERT(Type, !subtype->Is<Reference>());
-    TINT_ASSERT(Type, access != builtin::Access::kUndefined);
+    TINT_ASSERT(!subtype->Is<Reference>());
+    TINT_ASSERT(access != builtin::Access::kUndefined);
 }
 
 bool Reference::Equals(const UniqueNode& other) const {
@@ -48,7 +45,7 @@ bool Reference::Equals(const UniqueNode& other) const {
 }
 
 std::string Reference::FriendlyName() const {
-    utils::StringStream out;
+    StringStream out;
     out << "ref<";
     if (address_space_ != builtin::AddressSpace::kUndefined) {
         out << address_space_ << ", ";

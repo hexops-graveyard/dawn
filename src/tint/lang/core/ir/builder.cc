@@ -19,6 +19,7 @@
 #include "src/tint/lang/core/constant/scalar.h"
 #include "src/tint/lang/core/type/pointer.h"
 #include "src/tint/lang/core/type/reference.h"
+#include "src/tint/utils/ice/ice.h"
 
 namespace tint::ir {
 
@@ -58,7 +59,7 @@ ir::Loop* Builder::Loop() {
     return Append(ir.instructions.Create<ir::Loop>(Block(), MultiInBlock(), MultiInBlock()));
 }
 
-Block* Builder::Case(ir::Switch* s, utils::VectorRef<Switch::CaseSelector> selectors) {
+Block* Builder::Case(ir::Switch* s, VectorRef<Switch::CaseSelector> selectors) {
     auto* block = Block();
     s->Cases().Push(Switch::Case{std::move(selectors), block});
     block->SetParent(s);
@@ -66,7 +67,7 @@ Block* Builder::Case(ir::Switch* s, utils::VectorRef<Switch::CaseSelector> selec
 }
 
 Block* Builder::Case(ir::Switch* s, std::initializer_list<Switch::CaseSelector> selectors) {
-    return Case(s, utils::Vector<Switch::CaseSelector, 4>(selectors));
+    return Case(s, Vector<Switch::CaseSelector, 4>(selectors));
 }
 
 ir::Discard* Builder::Discard() {
@@ -85,6 +86,12 @@ ir::Var* Builder::Var(std::string_view name, const type::Pointer* type) {
 
 ir::BlockParam* Builder::BlockParam(const type::Type* type) {
     return ir.values.Create<ir::BlockParam>(type);
+}
+
+ir::BlockParam* Builder::BlockParam(std::string_view name, const type::Type* type) {
+    auto* param = ir.values.Create<ir::BlockParam>(type);
+    ir.SetName(param, name);
+    return param;
 }
 
 ir::FunctionParam* Builder::FunctionParam(const type::Type* type) {
@@ -107,10 +114,10 @@ ir::Unreachable* Builder::Unreachable() {
 
 const type::Type* Builder::VectorPtrElementType(const type::Type* type) {
     auto* vec_ptr_ty = type->As<type::Pointer>();
-    TINT_ASSERT(IR, vec_ptr_ty);
+    TINT_ASSERT(vec_ptr_ty);
     if (TINT_LIKELY(vec_ptr_ty)) {
         auto* vec_ty = vec_ptr_ty->StoreType()->As<type::Vector>();
-        TINT_ASSERT(IR, vec_ty);
+        TINT_ASSERT(vec_ty);
         if (TINT_LIKELY(vec_ty)) {
             return vec_ty->type();
         }

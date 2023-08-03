@@ -18,10 +18,10 @@
 
 #include "src/tint/lang/core/type/manager.h"
 #include "src/tint/lang/core/type/texture_dimension.h"
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/math/hash.h"
+#include "src/tint/utils/symbol/symbol_table.h"
 #include "src/tint/utils/text/string_stream.h"
-#include "src/tint/utils/text/symbol_table.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::type::Array);
 
@@ -60,7 +60,7 @@ Array::Array(const Type* element,
              uint32_t size,
              uint32_t stride,
              uint32_t implicit_stride)
-    : Base(utils::Hash(utils::TypeInfo::Of<Array>().full_hashcode, count, align, size, stride),
+    : Base(Hash(tint::TypeInfo::Of<Array>().full_hashcode, count, align, size, stride),
            FlagsFrom(element, count)),
       element_(element),
       count_(count),
@@ -68,7 +68,7 @@ Array::Array(const Type* element,
       size_(size),
       stride_(stride),
       implicit_stride_(implicit_stride) {
-    TINT_ASSERT(Type, element_);
+    TINT_ASSERT(element_);
 }
 
 bool Array::Equals(const UniqueNode& other) const {
@@ -82,7 +82,7 @@ bool Array::Equals(const UniqueNode& other) const {
 }
 
 std::string Array::FriendlyName() const {
-    utils::StringStream out;
+    StringStream out;
     if (!IsStrideImplicit()) {
         out << "@stride(" << stride_ << ") ";
     }

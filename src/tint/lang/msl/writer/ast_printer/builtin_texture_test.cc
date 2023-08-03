@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/msl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/msl/writer/ast_printer/helper_test.h"
 #include "src/tint/lang/wgsl/ast/builtin_texture_helper_test.h"
 #include "src/tint/lang/wgsl/ast/call_statement.h"
 #include "src/tint/utils/text/string_stream.h"
@@ -280,12 +280,12 @@ TEST_P(MslGeneratorBuiltinTextureTest, Call) {
     auto* stmt = param.returns_value ? static_cast<const ast::Statement*>(Assign(Phony(), call))
                                      : static_cast<const ast::Statement*>(CallStmt(call));
 
-    Func("main", utils::Empty, ty.void_(), utils::Vector{stmt},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("main", tint::Empty, ty.void_(), Vector{stmt},
+         Vector{Stage(ast::PipelineStage::kFragment)});
 
     ASTPrinter& gen = Build();
 
-    utils::StringStream out;
+    StringStream out;
     ASSERT_TRUE(gen.EmitExpression(out, call)) << gen.Diagnostics();
 
     auto expected = expected_texture_overload(param.overload);

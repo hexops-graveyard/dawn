@@ -30,13 +30,15 @@
 #include "src/tint/lang/wgsl/ast/transform/vertex_pulling.h"
 #include "src/tint/lang/wgsl/helpers/flatten_bindings.h"
 #include "src/tint/lang/wgsl/inspector/inspector.h"
+#include "src/tint/utils/diagnostic/formatter.h"
+#include "src/tint/utils/diagnostic/printer.h"
 #include "tint/array_length_from_uniform_options.h"
 #include "tint/binding_point.h"
 #include "tint/binding_remapper_options.h"
 #include "tint/external_texture_options.h"
 
 #if TINT_BUILD_SPV_READER
-#include "src/tint/lang/spirv/reader/parser.h"
+#include "src/tint/lang/spirv/reader/reader.h"
 #endif  // TINT_BUILD_SPV_READER
 
 #if TINT_BUILD_WGSL_READER

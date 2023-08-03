@@ -14,8 +14,9 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest-spi.h"
-#include "src/tint/lang/wgsl/ast/clone_context.h"
-#include "src/tint/lang/wgsl/ast/test_helper.h"
+#include "src/tint/lang/wgsl/ast/helper_test.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 namespace tint::ast {
 namespace {
@@ -23,7 +24,7 @@ namespace {
 using ModuleTest = TestHelper;
 
 TEST_F(ModuleTest, Creation) {
-    EXPECT_EQ(Program(std::move(*this)).AST().Functions().Length(), 0u);
+    EXPECT_EQ(resolver::Resolve(*this).AST().Functions().Length(), 0u);
 }
 
 TEST_F(ModuleTest, LookupFunction) {
@@ -61,8 +62,8 @@ TEST_F(ModuleTest, Assert_DifferentGenerationID_Function) {
         {
             ProgramBuilder b1;
             ProgramBuilder b2;
-            b1.AST().AddFunction(b2.create<Function>(b2.Ident("func"), utils::Empty, b2.ty.f32(),
-                                                     b2.Block(), utils::Empty, utils::Empty));
+            b1.AST().AddFunction(b2.create<Function>(b2.Ident("func"), tint::Empty, b2.ty.f32(),
+                                                     b2.Block(), tint::Empty, tint::Empty));
         },
         "internal compiler error");
 }
@@ -93,14 +94,14 @@ TEST_F(ModuleTest, CloneOrder) {
         b.Func("F", {}, b.ty.void_(), {});
         b.Alias("A", b.ty.u32());
         b.GlobalVar("V", b.ty.i32(), builtin::AddressSpace::kPrivate);
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }();
 
     // Clone the program, using ReplaceAll() to create new module-scope
     // declarations. We want to test that these are added just before the
     // declaration that triggered the ReplaceAll().
     ProgramBuilder cloned;
-    CloneContext ctx(&cloned, &p);
+    program::CloneContext ctx(&cloned, &p);
     ctx.ReplaceAll([&](const Function*) -> const Function* {
         ctx.dst->Alias("inserted_before_F", cloned.ty.u32());
         return nullptr;
@@ -136,19 +137,18 @@ TEST_F(ModuleTest, Directives) {
     auto* enable_2 = Enable(builtin::Extension::kChromiumExperimentalFullPtrParameters);
     auto* diagnostic_2 = DiagnosticDirective(builtin::DiagnosticSeverity::kOff, "bar");
 
-    this->SetResolveOnBuild(false);
     Program program(std::move(*this));
-    EXPECT_THAT(program.AST().GlobalDeclarations(), ::testing::ContainerEq(utils::Vector{
+    EXPECT_THAT(program.AST().GlobalDeclarations(), ::testing::ContainerEq(tint::Vector{
                                                         enable_1,
                                                         diagnostic_1,
                                                         enable_2,
                                                         diagnostic_2,
                                                     }));
-    EXPECT_THAT(program.AST().Enables(), ::testing::ContainerEq(utils::Vector{
+    EXPECT_THAT(program.AST().Enables(), ::testing::ContainerEq(tint::Vector{
                                              enable_1,
                                              enable_2,
                                          }));
-    EXPECT_THAT(program.AST().DiagnosticDirectives(), ::testing::ContainerEq(utils::Vector{
+    EXPECT_THAT(program.AST().DiagnosticDirectives(), ::testing::ContainerEq(tint::Vector{
                                                           diagnostic_1,
                                                           diagnostic_2,
                                                       }));

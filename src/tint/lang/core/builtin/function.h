@@ -25,7 +25,7 @@
 
 #include <string>
 
-#include "src/tint/utils/text/string_stream.h"
+#include "src/tint/utils/traits/traits.h"
 
 // \cond DO_NOT_DOCUMENT
 namespace tint::builtin {
@@ -146,6 +146,7 @@ enum class Function {
     kAtomicXor,
     kAtomicExchange,
     kAtomicCompareExchangeWeak,
+    kSubgroupBallot,
     kTintMaterialize,
 };
 
@@ -161,7 +162,10 @@ const char* str(Function i);
 
 /// Emits the name of the builtin function type. The spelling, including case,
 /// matches the name in the WGSL spec.
-utils::StringStream& operator<<(utils::StringStream& out, Function i);
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& o, Function i) {
+    return o << str(i);
+}
 
 /// All builtin functions
 constexpr Function kFunctions[] = {
@@ -278,6 +282,7 @@ constexpr Function kFunctions[] = {
     Function::kAtomicXor,
     Function::kAtomicExchange,
     Function::kAtomicCompareExchangeWeak,
+    Function::kSubgroupBallot,
     Function::kTintMaterialize,
 };
 
@@ -396,6 +401,7 @@ constexpr const char* kFunctionStrings[] = {
     "atomicXor",
     "atomicExchange",
     "atomicCompareExchangeWeak",
+    "subgroupBallot",
     "_tint_materialize",
 };
 
@@ -448,6 +454,11 @@ bool IsAtomicBuiltin(Function f);
 /// @param f the builtin type
 /// @returns true if the given `f` is a DP4a builtin
 bool IsDP4aBuiltin(Function f);
+
+/// Determines if the given `f` is a subgroup builtin.
+/// @param f the builtin type
+/// @returns true if the given `f` is a subgroup builtin
+bool IsSubgroupBuiltin(Function f);
 
 /// Determines if the given `f` may have side-effects (i.e. writes to at least one of its inputs)
 /// @returns true if intrinsic may have side-effects

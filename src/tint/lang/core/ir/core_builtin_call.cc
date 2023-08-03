@@ -16,7 +16,7 @@
 
 #include <utility>
 
-#include "src/tint/utils/debug/debug.h"
+#include "src/tint/utils/ice/ice.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ir::CoreBuiltinCall);
 
@@ -24,10 +24,10 @@ namespace tint::ir {
 
 CoreBuiltinCall::CoreBuiltinCall(InstructionResult* result,
                                  builtin::Function func,
-                                 utils::VectorRef<Value*> arguments)
+                                 VectorRef<Value*> arguments)
     : Base(result, arguments), func_(func) {
-    TINT_ASSERT(IR, func != builtin::Function::kNone);
-    TINT_ASSERT(IR, func != builtin::Function::kTintMaterialize);
+    TINT_ASSERT(func != builtin::Function::kNone);
+    TINT_ASSERT(func != builtin::Function::kTintMaterialize);
 }
 
 CoreBuiltinCall::~CoreBuiltinCall() = default;

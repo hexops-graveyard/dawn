@@ -43,7 +43,7 @@ enum class BinaryOp {
 };
 
 /// An binary expression
-class BinaryExpression final : public utils::Castable<BinaryExpression, Expression> {
+class BinaryExpression final : public Castable<BinaryExpression, Expression> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -113,7 +113,7 @@ class BinaryExpression final : public utils::Castable<BinaryExpression, Expressi
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const BinaryExpression* Clone(CloneContext* ctx) const override;
+    const BinaryExpression* Clone(CloneContext& ctx) const override;
 
     /// the binary op type
     const BinaryOp op;
@@ -300,7 +300,8 @@ constexpr const char* Operator(BinaryOp op) {
 /// @param out the stream to write to
 /// @param op the BinaryOp
 /// @return the stream so calls can be chained
-inline utils::StringStream& operator<<(utils::StringStream& out, BinaryOp op) {
+template <typename STREAM, typename = traits::EnableIfIsOStream<STREAM>>
+auto& operator<<(STREAM& out, BinaryOp op) {
     out << FriendlyName(op);
     return out;
 }

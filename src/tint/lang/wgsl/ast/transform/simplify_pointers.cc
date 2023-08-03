@@ -20,7 +20,9 @@
 #include <vector>
 
 #include "src/tint/lang/wgsl/ast/transform/unshadow.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/statement.h"
@@ -53,7 +55,7 @@ struct SimplifyPointers::State {
     /// The target program builder
     ProgramBuilder b;
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
 
     /// Constructor
     /// @param program the source program
@@ -129,7 +131,7 @@ struct SimplifyPointers::State {
     /// @returns the new program or SkipTransform if the transform is not required
     ApplyResult Run() {
         // A map of saved expressions to their saved variable name
-        utils::Hashmap<const Expression*, Symbol, 8> saved_vars;
+        Hashmap<const Expression*, Symbol, 8> saved_vars;
 
         bool needs_transform = false;
         for (auto* ty : ctx.src->Types()) {
@@ -160,7 +162,7 @@ struct SimplifyPointers::State {
 
                     // Scan the initializer expression for array index expressions that need
                     // to be hoist to temporary "saved" variables.
-                    utils::Vector<const VariableDeclStatement*, 8> saved;
+                    tint::Vector<const VariableDeclStatement*, 8> saved;
                     CollectSavedArrayIndices(
                         var->Declaration()->initializer, [&](const Expression* idx_expr) {
                             // We have a sub-expression that needs to be saved.
@@ -249,7 +251,7 @@ struct SimplifyPointers::State {
         });
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 };
 

@@ -16,8 +16,8 @@
 
 #include "src/tint/lang/core/type/manager.h"
 #include "src/tint/lang/core/type/texture_dimension.h"
-#include "src/tint/utils/debug/debug.h"
 #include "src/tint/utils/diagnostic/diagnostic.h"
+#include "src/tint/utils/ice/ice.h"
 #include "src/tint/utils/math/hash.h"
 #include "src/tint/utils/text/string_stream.h"
 
@@ -26,9 +26,9 @@ TINT_INSTANTIATE_TYPEINFO(tint::type::MultisampledTexture);
 namespace tint::type {
 
 MultisampledTexture::MultisampledTexture(TextureDimension dim, const Type* type)
-    : Base(utils::Hash(utils::TypeInfo::Of<MultisampledTexture>().full_hashcode, dim, type), dim),
+    : Base(Hash(tint::TypeInfo::Of<MultisampledTexture>().full_hashcode, dim, type), dim),
       type_(type) {
-    TINT_ASSERT(Type, type_);
+    TINT_ASSERT(type_);
 }
 
 MultisampledTexture::~MultisampledTexture() = default;
@@ -41,7 +41,7 @@ bool MultisampledTexture::Equals(const UniqueNode& other) const {
 }
 
 std::string MultisampledTexture::FriendlyName() const {
-    utils::StringStream out;
+    StringStream out;
     out << "texture_multisampled_" << dim() << "<" << type_->FriendlyName() << ">";
     return out.str();
 }

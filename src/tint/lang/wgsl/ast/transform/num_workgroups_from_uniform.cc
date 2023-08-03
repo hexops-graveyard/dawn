@@ -21,7 +21,9 @@
 
 #include "src/tint/lang/core/builtin/builtin_value.h"
 #include "src/tint/lang/wgsl/ast/transform/canonicalize_entry_point_io.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/utils/math/hash.h"
 
@@ -54,7 +56,7 @@ struct Accessor {
     }
     /// Hash function
     struct Hasher {
-        size_t operator()(const Accessor& a) const { return utils::Hash(a.param, a.member); }
+        size_t operator()(const Accessor& a) const { return Hash(a.param, a.member); }
     };
 };
 
@@ -67,13 +69,13 @@ Transform::ApplyResult NumWorkgroupsFromUniform::Apply(const Program* src,
                                                        const DataMap& inputs,
                                                        DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     auto* cfg = inputs.Get<Config>();
     if (cfg == nullptr) {
         b.Diagnostics().add_error(diag::System::Transform,
                                   "missing transform data for " + std::string(TypeInfo().name));
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
     if (!ShouldRun(src)) {
@@ -130,7 +132,7 @@ Transform::ApplyResult NumWorkgroupsFromUniform::Apply(const Program* src,
     auto get_ubo = [&] {
         if (!num_workgroups_ubo) {
             auto* num_workgroups_struct =
-                b.Structure(b.Sym(), utils::Vector{
+                b.Structure(b.Sym(), tint::Vector{
                                          b.Member(kNumWorkgroupsMemberName, b.ty.vec3(b.ty.u32())),
                                      });
 
@@ -182,7 +184,7 @@ Transform::ApplyResult NumWorkgroupsFromUniform::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 NumWorkgroupsFromUniform::Config::Config(std::optional<BindingPoint> ubo_bp)

@@ -65,7 +65,7 @@ namespace {
 
 void AppendResourceBindings(std::vector<ResourceBinding>* dest,
                             const std::vector<ResourceBinding>& orig) {
-    TINT_ASSERT(Inspector, dest);
+    TINT_ASSERT(dest);
     if (!dest) {
         return;
     }
@@ -77,7 +77,7 @@ void AppendResourceBindings(std::vector<ResourceBinding>* dest,
 std::tuple<ComponentType, CompositionType> CalculateComponentAndComposition(
     const type::Type* type) {
     // entry point in/out variables must of numeric scalar or vector types.
-    TINT_ASSERT(Inspector, type->is_numeric_scalar_or_vector());
+    TINT_ASSERT(type->is_numeric_scalar_or_vector());
 
     ComponentType componentType = Switch(
         type->DeepestElement(),  //
@@ -86,8 +86,7 @@ std::tuple<ComponentType, CompositionType> CalculateComponentAndComposition(
         [&](const type::I32*) { return ComponentType::kI32; },
         [&](const type::U32*) { return ComponentType::kU32; },
         [&](Default) {
-            tint::diag::List diagnostics;
-            TINT_UNREACHABLE(Inspector, diagnostics) << "unhandled component type";
+            TINT_UNREACHABLE() << "unhandled component type";
             return ComponentType::kUnknown;
         });
 
@@ -107,8 +106,7 @@ std::tuple<ComponentType, CompositionType> CalculateComponentAndComposition(
                 break;
             }
             default: {
-                tint::diag::List diagnostics;
-                TINT_UNREACHABLE(Inspector, diagnostics) << "unhandled composition type";
+                TINT_UNREACHABLE() << "unhandled composition type";
                 compositionType = CompositionType::kUnknown;
                 break;
             }
@@ -128,8 +126,8 @@ Inspector::~Inspector() = default;
 
 EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
     EntryPoint entry_point;
-    TINT_ASSERT(Inspector, func != nullptr);
-    TINT_ASSERT(Inspector, func->IsEntryPoint());
+    TINT_ASSERT(func != nullptr);
+    TINT_ASSERT(func->IsEntryPoint());
 
     auto* sem = program_->Sem().Get(func);
 
@@ -156,8 +154,8 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
             break;
         }
         default: {
-            TINT_UNREACHABLE(Inspector, diagnostics_)
-                << "invalid pipeline stage for entry point '" << entry_point.name << "'";
+            TINT_UNREACHABLE() << "invalid pipeline stage for entry point '" << entry_point.name
+                               << "'";
             break;
         }
     }
@@ -200,7 +198,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
             override.name = name;
             override.id = global->OverrideId();
             auto* type = var->Type();
-            TINT_ASSERT(Inspector, type->Is<type::Scalar>());
+            TINT_ASSERT(type->Is<type::Scalar>());
             if (type->is_bool_scalar_or_vector()) {
                 override.type = Override::Type::kBool;
             } else if (type->is_float_scalar()) {
@@ -214,7 +212,7 @@ EntryPoint Inspector::GetEntryPoint(const tint::ast::Function* func) {
             } else if (type->is_unsigned_integer_scalar()) {
                 override.type = Override::Type::kUint32;
             } else {
-                TINT_UNREACHABLE(Inspector, diagnostics_);
+                TINT_UNREACHABLE();
             }
 
             override.is_initialized = global->Declaration()->initializer;
@@ -456,7 +454,7 @@ std::vector<ResourceBinding> Inspector::GetWriteOnlyStorageTextureResourceBindin
 
 std::vector<ResourceBinding> Inspector::GetTextureResourceBindings(
     const std::string& entry_point,
-    const tint::utils::TypeInfo* texture_type,
+    const tint::TypeInfo* texture_type,
     ResourceBinding::ResourceType resource_type) {
     auto* func = FindEntryPointByName(entry_point);
     if (!func) {
@@ -485,25 +483,24 @@ std::vector<ResourceBinding> Inspector::GetTextureResourceBindings(
 
 std::vector<ResourceBinding> Inspector::GetDepthTextureResourceBindings(
     const std::string& entry_point) {
-    return GetTextureResourceBindings(entry_point, &utils::TypeInfo::Of<type::DepthTexture>(),
+    return GetTextureResourceBindings(entry_point, &tint::TypeInfo::Of<type::DepthTexture>(),
                                       ResourceBinding::ResourceType::kDepthTexture);
 }
 
 std::vector<ResourceBinding> Inspector::GetDepthMultisampledTextureResourceBindings(
     const std::string& entry_point) {
     return GetTextureResourceBindings(entry_point,
-                                      &utils::TypeInfo::Of<type::DepthMultisampledTexture>(),
+                                      &tint::TypeInfo::Of<type::DepthMultisampledTexture>(),
                                       ResourceBinding::ResourceType::kDepthMultisampledTexture);
 }
 
 std::vector<ResourceBinding> Inspector::GetExternalTextureResourceBindings(
     const std::string& entry_point) {
-    return GetTextureResourceBindings(entry_point, &utils::TypeInfo::Of<type::ExternalTexture>(),
+    return GetTextureResourceBindings(entry_point, &tint::TypeInfo::Of<type::ExternalTexture>(),
                                       ResourceBinding::ResourceType::kExternalTexture);
 }
 
-utils::VectorRef<SamplerTexturePair> Inspector::GetSamplerTextureUses(
-    const std::string& entry_point) {
+VectorRef<SamplerTexturePair> Inspector::GetSamplerTextureUses(const std::string& entry_point) {
     auto* func = FindEntryPointByName(entry_point);
     if (!func) {
         return {};
@@ -556,7 +553,7 @@ uint32_t Inspector::GetWorkgroupStorageSize(const std::string& entry_point) {
             // turn specified as an upper bound for Vulkan layout sizing. Since D3D
             // and Metal are even less specific, we assume Vulkan behavior as a
             // good-enough approximation everywhere.
-            total_size += utils::RoundUp(align, size);
+            total_size += tint::RoundUp(align, size);
         }
     }
 
@@ -568,7 +565,7 @@ std::vector<std::string> Inspector::GetUsedExtensionNames() {
     std::vector<std::string> out;
     out.reserve(extensions.Length());
     for (auto ext : extensions) {
-        out.push_back(utils::ToString(ext));
+        out.push_back(tint::ToString(ext));
     }
     return out;
 }
@@ -581,7 +578,7 @@ std::vector<std::pair<std::string, Source>> Inspector::GetEnableDirectives() {
     for (auto* node : global_decls) {
         if (auto* enable = node->As<ast::Enable>()) {
             for (auto* ext : enable->extensions) {
-                result.push_back({utils::ToString(ext->name), ext->source});
+                result.push_back({tint::ToString(ext->name), ext->source});
             }
         }
     }
@@ -606,7 +603,7 @@ const ast::Function* Inspector::FindEntryPointByName(const std::string& name) {
 
 void Inspector::AddEntryPointInOutVariables(std::string name,
                                             const type::Type* type,
-                                            utils::VectorRef<const ast::Attribute*> attributes,
+                                            VectorRef<const ast::Attribute*> attributes,
                                             std::optional<uint32_t> location,
                                             std::vector<StageVariable>& variables) const {
     // Skip builtins.
@@ -633,7 +630,7 @@ void Inspector::AddEntryPointInOutVariables(std::string name,
     std::tie(stage_variable.component_type, stage_variable.composition_type) =
         CalculateComponentAndComposition(type);
 
-    TINT_ASSERT(Inspector, location.has_value());
+    TINT_ASSERT(location.has_value());
     stage_variable.has_location_attribute = true;
     stage_variable.location_attribute = location.value();
 
@@ -645,7 +642,7 @@ void Inspector::AddEntryPointInOutVariables(std::string name,
 
 bool Inspector::ContainsBuiltin(builtin::BuiltinValue builtin,
                                 const type::Type* type,
-                                utils::VectorRef<const ast::Attribute*> attributes) const {
+                                VectorRef<const ast::Attribute*> attributes) const {
     auto* unwrapped_type = type->UnwrapRef();
 
     if (auto* struct_ty = unwrapped_type->As<sem::Struct>()) {
@@ -785,8 +782,8 @@ void Inspector::GenerateSamplerTargets() {
         return;
     }
 
-    sampler_targets_ = std::make_unique<
-        std::unordered_map<std::string, utils::UniqueVector<SamplerTexturePair, 4>>>();
+    sampler_targets_ =
+        std::make_unique<std::unordered_map<std::string, UniqueVector<SamplerTexturePair, 4>>>();
 
     auto& sem = program_->Sem();
 
@@ -849,7 +846,7 @@ void Inspector::GenerateSamplerTargets() {
 
 std::tuple<InterpolationType, InterpolationSampling> Inspector::CalculateInterpolationData(
     const type::Type* type,
-    utils::VectorRef<const ast::Attribute*> attributes) const {
+    VectorRef<const ast::Attribute*> attributes) const {
     auto* interpolation_attribute = ast::GetAttribute<ast::InterpolateAttribute>(attributes);
     if (type->is_integer_scalar_or_vector()) {
         return {InterpolationType::kFlat, InterpolationSampling::kNone};
@@ -914,8 +911,7 @@ std::tuple<InterpolationType, InterpolationSampling> Inspector::CalculateInterpo
 template <size_t N, typename F>
 void Inspector::GetOriginatingResources(std::array<const ast::Expression*, N> exprs, F&& callback) {
     if (TINT_UNLIKELY(!program_->IsValid())) {
-        TINT_ICE(Inspector, diagnostics_)
-            << "attempting to get originating resources in invalid program";
+        TINT_ICE() << "attempting to get originating resources in invalid program";
         return;
     }
 
@@ -923,7 +919,7 @@ void Inspector::GetOriginatingResources(std::array<const ast::Expression*, N> ex
 
     std::array<const sem::GlobalVariable*, N> globals{};
     std::array<const sem::Parameter*, N> parameters{};
-    utils::UniqueVector<const ast::CallExpression*, 8> callsites;
+    UniqueVector<const ast::CallExpression*, 8> callsites;
 
     for (size_t i = 0; i < N; i++) {
         const sem::Variable* root_ident = sem.GetVal(exprs[i])->RootIdentifier();
@@ -941,9 +937,8 @@ void Inspector::GetOriginatingResources(std::array<const ast::Expression*, N> ex
             }
             parameters[i] = param;
         } else {
-            TINT_ICE(Inspector, diagnostics_)
-                << "cannot resolve originating resource with expression type "
-                << exprs[i]->TypeInfo().name;
+            TINT_ICE() << "cannot resolve originating resource with expression type "
+                       << exprs[i]->TypeInfo().name;
             return;
         }
     }

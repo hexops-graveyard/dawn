@@ -19,8 +19,10 @@
 #include <utility>
 
 #include "src/tint/lang/core/type/reference.h"
-#include "src/tint/lang/wgsl/ast/transform/utils/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/ast/transform/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/block_statement.h"
 #include "src/tint/lang/wgsl/sem/builtin.h"
 #include "src/tint/lang/wgsl/sem/call.h"
@@ -197,7 +199,7 @@ struct Robustness::State {
         }
 
         ctx.Clone();
-        return Program(std::move(b));
+        return resolver::Resolve(b);
     }
 
   private:
@@ -208,13 +210,13 @@ struct Robustness::State {
     /// The target program builder
     ProgramBuilder b{};
     /// The clone context
-    CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx = {&b, src, /* auto_clone_symbols */ true};
     /// Helper for hoisting declarations
     HoistToDeclBefore hoist{ctx};
     /// Alias to the source program's semantic info
     const sem::Info& sem = ctx.src->Sem();
     /// Map of expression to predicate condition
-    utils::Hashmap<const Expression*, Symbol, 32> predicates{};
+    Hashmap<const Expression*, Symbol, 32> predicates{};
 
     /// @return the `u32` typed expression that represents the maximum indexable value for the index
     /// accessor @p expr, or nullptr if there is no robustness limit for this expression.
@@ -261,9 +263,8 @@ struct Robustness::State {
                 return nullptr;
             },
             [&](Default) -> const Expression* {
-                TINT_ICE(Transform, b.Diagnostics())
-                    << "unhandled object type in robustness of array index: "
-                    << obj_type->UnwrapRef()->FriendlyName();
+                TINT_ICE() << "unhandled object type in robustness of array index: "
+                           << obj_type->UnwrapRef()->FriendlyName();
                 return nullptr;
             });
     }
@@ -641,7 +642,7 @@ struct Robustness::State {
             default:
                 break;
         }
-        TINT_UNREACHABLE(Transform, b.Diagnostics()) << "unhandled address space" << address_space;
+        TINT_UNREACHABLE() << "unhandled address space" << address_space;
         return Action::kDefault;
     }
 
@@ -687,7 +688,7 @@ struct Robustness::State {
     /// TODO(tint:1890): make this function work with unrestricted pointer paramters. Note that this
     /// depends on transform::DirectVariableAccess to have been run first.
     bool IsIgnoredResourceBinding(const sem::Variable* variable) const {
-        auto* globalVariable = utils::As<sem::GlobalVariable>(variable);
+        auto* globalVariable = tint::As<sem::GlobalVariable>(variable);
         if (globalVariable == nullptr) {
             return false;
         }

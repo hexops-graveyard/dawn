@@ -27,7 +27,7 @@ class Identifier;
 namespace tint::ast {
 
 /// A diagnostic rule name used for diagnostic directives and attributes.
-class DiagnosticRuleName final : public utils::Castable<DiagnosticRuleName, Node> {
+class DiagnosticRuleName final : public Castable<DiagnosticRuleName, Node> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -51,7 +51,7 @@ class DiagnosticRuleName final : public utils::Castable<DiagnosticRuleName, Node
     /// Clones this node and all transitive child nodes using the `CloneContext` `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const DiagnosticRuleName* Clone(CloneContext* ctx) const override;
+    const DiagnosticRuleName* Clone(CloneContext& ctx) const override;
 
     /// @return the full name of this diagnostic rule, either as `name` or `category.name`.
     std::string String() const;

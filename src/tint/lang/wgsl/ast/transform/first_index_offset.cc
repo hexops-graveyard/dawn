@@ -19,7 +19,9 @@
 #include <utility>
 
 #include "src/tint/lang/core/builtin/builtin_value.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 #include "src/tint/lang/wgsl/sem/function.h"
 #include "src/tint/lang/wgsl/sem/member_accessor_expression.h"
 #include "src/tint/lang/wgsl/sem/struct.h"
@@ -67,7 +69,7 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
     }
 
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     // Get the uniform buffer binding point
     uint32_t ub_binding = binding_;
@@ -125,7 +127,7 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
 
     if (has_vertex_index || has_instance_index) {
         // Add uniform buffer members and calculate byte offsets
-        utils::Vector<const StructMember*, 8> members;
+        tint::Vector<const StructMember*, 8> members;
         members.Push(b.Member(kFirstVertexName, b.ty.u32()));
         members.Push(b.Member(kFirstInstanceName, b.ty.u32()));
         auto* struct_ = b.Structure(b.Sym(), std::move(members));
@@ -133,7 +135,7 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
         // Create a global to hold the uniform buffer
         Symbol buffer_name = b.Sym();
         b.GlobalVar(buffer_name, b.ty.Of(struct_), builtin::AddressSpace::kUniform,
-                    utils::Vector{
+                    tint::Vector{
                         b.Binding(AInt(ub_binding)),
                         b.Group(AInt(ub_group)),
                     });
@@ -164,7 +166,7 @@ Transform::ApplyResult FirstIndexOffset::Apply(const Program* src,
     outputs.Add<Data>(has_vertex_index, has_instance_index);
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform

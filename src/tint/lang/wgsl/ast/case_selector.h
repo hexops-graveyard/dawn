@@ -23,7 +23,7 @@
 namespace tint::ast {
 
 /// A case selector
-class CaseSelector final : public utils::Castable<CaseSelector, Node> {
+class CaseSelector final : public Castable<CaseSelector, Node> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -41,7 +41,7 @@ class CaseSelector final : public utils::Castable<CaseSelector, Node> {
     /// Clones this node and all transitive child nodes using the `CloneContext` `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const CaseSelector* Clone(CloneContext* ctx) const override;
+    const CaseSelector* Clone(CloneContext& ctx) const override;
 
     /// The selector, nullptr for a default selector
     const Expression* const expr = nullptr;

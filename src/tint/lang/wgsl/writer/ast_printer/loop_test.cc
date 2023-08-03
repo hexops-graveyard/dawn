@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "src/tint/lang/wgsl/writer/ast_printer/test_helper.h"
+#include "src/tint/lang/wgsl/writer/ast_printer/helper_test.h"
 
 #include "gmock/gmock.h"
 
@@ -28,8 +28,7 @@ TEST_F(WgslASTPrinterTest, Emit_Loop) {
     auto* continuing = Block();
     auto* l = Loop(body, continuing);
 
-    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("F", tint::Empty, ty.void_(), Vector{l}, Vector{Stage(ast::PipelineStage::kFragment)});
 
     ASTPrinter& gen = Build();
 
@@ -50,8 +49,7 @@ TEST_F(WgslASTPrinterTest, Emit_LoopWithContinuing) {
     auto* continuing = Block(CallStmt(Call("a_statement")));
     auto* l = Loop(body, continuing);
 
-    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("F", tint::Empty, ty.void_(), Vector{l}, Vector{Stage(ast::PipelineStage::kFragment)});
 
     ASTPrinter& gen = Build();
 
@@ -76,8 +74,7 @@ TEST_F(WgslASTPrinterTest, Emit_LoopWithContinuing_BreakIf) {
     auto* continuing = Block(CallStmt(Call("a_statement")), BreakIf(true));
     auto* l = Loop(body, continuing);
 
-    Func("F", utils::Empty, ty.void_(), utils::Vector{l},
-         utils::Vector{Stage(ast::PipelineStage::kFragment)});
+    Func("F", tint::Empty, ty.void_(), Vector{l}, Vector{Stage(ast::PipelineStage::kFragment)});
 
     ASTPrinter& gen = Build();
 

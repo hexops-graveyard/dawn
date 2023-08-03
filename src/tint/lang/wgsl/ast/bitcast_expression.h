@@ -21,7 +21,7 @@
 namespace tint::ast {
 
 /// A bitcast expression
-class BitcastExpression final : public utils::Castable<BitcastExpression, Expression> {
+class BitcastExpression final : public Castable<BitcastExpression, Expression> {
   public:
     /// Constructor
     /// @param pid the identifier of the program that owns this node
@@ -42,7 +42,7 @@ class BitcastExpression final : public utils::Castable<BitcastExpression, Expres
     /// `ctx`.
     /// @param ctx the clone context
     /// @return the newly cloned node
-    const BitcastExpression* Clone(CloneContext* ctx) const override;
+    const BitcastExpression* Clone(CloneContext& ctx) const override;
 
     /// the target cast type
     const Type type;

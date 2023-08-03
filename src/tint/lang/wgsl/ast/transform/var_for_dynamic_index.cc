@@ -16,8 +16,10 @@
 
 #include <utility>
 
-#include "src/tint/lang/wgsl/ast/transform/utils/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/ast/transform/hoist_to_decl_before.h"
+#include "src/tint/lang/wgsl/program/clone_context.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
+#include "src/tint/lang/wgsl/resolver/resolve.h"
 
 TINT_INSTANTIATE_TYPEINFO(tint::ast::transform::VarForDynamicIndex);
 
@@ -31,7 +33,7 @@ Transform::ApplyResult VarForDynamicIndex::Apply(const Program* src,
                                                  const DataMap&,
                                                  DataMap&) const {
     ProgramBuilder b;
-    CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
+    program::CloneContext ctx{&b, src, /* auto_clone_symbols */ true};
 
     HoistToDeclBefore hoist_to_decl_before(ctx);
 
@@ -64,7 +66,7 @@ Transform::ApplyResult VarForDynamicIndex::Apply(const Program* src,
     for (auto* node : src->ASTNodes().Objects()) {
         if (auto* access_expr = node->As<IndexAccessorExpression>()) {
             if (!dynamic_index_to_var(access_expr)) {
-                return Program(std::move(b));
+                return resolver::Resolve(b);
             }
             index_accessor_found = true;
         }
@@ -74,7 +76,7 @@ Transform::ApplyResult VarForDynamicIndex::Apply(const Program* src,
     }
 
     ctx.Clone();
-    return Program(std::move(b));
+    return resolver::Resolve(b);
 }
 
 }  // namespace tint::ast::transform
