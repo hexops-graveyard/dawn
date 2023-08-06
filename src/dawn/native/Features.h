@@ -52,6 +52,23 @@ enum class Feature {
     MSAARenderToSingleSampled,
     DualSourceBlending,
     D3D11MultithreadProtected,
+    ANGLETextureSharing,
+
+    SharedTextureMemoryVkDedicatedAllocation,
+    SharedTextureMemoryAHardwareBuffer,
+    SharedTextureMemoryDmaBuf,
+    SharedTextureMemoryOpaqueFD,
+    SharedTextureMemoryZirconHandle,
+    SharedTextureMemoryDXGISharedHandle,
+    SharedTextureMemoryD3D11Texture2D,
+    SharedTextureMemoryIOSurface,
+    SharedTextureMemoryEGLImage,
+
+    SharedFenceVkSemaphoreOpaqueFD,
+    SharedFenceVkSemaphoreSyncFD,
+    SharedFenceVkSemaphoreZirconHandle,
+    SharedFenceDXGISharedHandle,
+    SharedFenceMTLSharedEvent,
 
     EnumCount,
     InvalidEnum = EnumCount,

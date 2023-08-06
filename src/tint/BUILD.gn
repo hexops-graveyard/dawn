@@ -2321,6 +2321,7 @@ if (tint_build_unittests) {
 
     if (tint_build_ir) {
       sources += [
+        "lang/msl/writer/printer/binary_test.cc",
         "lang/msl/writer/printer/constant_test.cc",
         "lang/msl/writer/printer/function_test.cc",
         "lang/msl/writer/printer/helper_test.h",
@@ -2328,6 +2329,7 @@ if (tint_build_unittests) {
         "lang/msl/writer/printer/let_test.cc",
         "lang/msl/writer/printer/return_test.cc",
         "lang/msl/writer/printer/type_test.cc",
+        "lang/msl/writer/printer/var_test.cc",
       ]
       deps += [
         ":libtint_ir_src",

@@ -27,11 +27,14 @@
 
 // Forward declarations
 namespace tint::ir {
+class Binary;
 class ExitIf;
 class If;
 class Let;
+class Load;
 class Return;
 class Unreachable;
+class Var;
 }  // namespace tint::ir
 
 namespace tint::msl::writer {
@@ -71,12 +74,22 @@ class Printer : public tint::TextGenerator {
     /// Emit a let instruction
     /// @param l the let instruction
     void EmitLet(ir::Let* l);
+    /// Emit a var instruction
+    /// @param v the var instruction
+    void EmitVar(ir::Var* v);
+    /// Emit a load instruction
+    /// @param l the load instruction
+    void EmitLoad(ir::Load* l);
 
     /// Emit a return instruction
     /// @param r the return instruction
     void EmitReturn(ir::Return* r);
     /// Emit an unreachable instruction
     void EmitUnreachable();
+
+    /// Emit a binary instruction
+    /// @param b the binary instruction
+    void EmitBinary(ir::Binary* b);
 
     /// Emit a type
     /// @param out the stream to emit too
@@ -125,6 +138,11 @@ class Printer : public tint::TextGenerator {
     /// @param out the stream to write the constant too
     /// @param c the constant to emit
     void EmitConstant(StringStream& out, const constant::Value* c);
+
+    /// Emits the zero value for the given type
+    /// @param out the stream to emit too
+    /// @param ty the type
+    void EmitZeroValue(StringStream& out, const type::Type* ty);
 
     /// @returns the name of the templated `tint_array` helper type, generating it if needed
     const std::string& ArrayTemplateName();
@@ -192,6 +210,9 @@ class Printer : public tint::TextGenerator {
     /// IR values to their representation
     Hashmap<ir::Value*, ValueBinding, 32> bindings_;
 
+    /// Values that can be inlined.
+    Hashset<ir::Value*, 64> can_inline_;
+
     /// Returns the expression for the given value
     /// @param value the value to lookup
     /// @param want_ptr_kind the pointer information for the return
@@ -215,6 +236,10 @@ class Printer : public tint::TextGenerator {
     /// @param name the name for the value
     /// @param ptr_kind defines how pointer values are represented by @p expr.
     void Bind(ir::Value* value, Symbol name, PtrKind ptr_kind = PtrKind::kRef);
+
+    /// Marks instructions in a block for inlineability
+    /// @param block the block
+    void MarkInlinable(ir::Block* block);
 };
 
 }  // namespace tint::msl::writer
