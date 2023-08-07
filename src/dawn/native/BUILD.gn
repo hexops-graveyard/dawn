@@ -371,7 +371,6 @@ source_set("sources") {
   ]
 
   if (dawn_use_x11) {
-    libs += [ "X11" ]
     sources += [
       "XlibXcbFunctions.cpp",
       "XlibXcbFunctions.h",
