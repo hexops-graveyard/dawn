@@ -460,7 +460,7 @@ bool WriteFile(const std::string& output_file, const std::string mode, const Con
 #if TINT_BUILD_SPV_WRITER
 std::string Disassemble(const std::vector<uint32_t>& data) {
     std::string spv_errors;
-    spv_target_env target_env = SPV_ENV_UNIVERSAL_1_0;
+    spv_target_env target_env = SPV_ENV_VULKAN_1_1;
 
     auto msg_consumer = [&spv_errors](spv_message_level_t level, const char*,
                                       const spv_position_t& position, const char* message) {
@@ -724,7 +724,7 @@ bool GenerateHlsl(const tint::Program* program, const Options& options) {
                 auto enable_list = program->AST().Enables();
                 bool dxc_require_16bit_types = false;
                 for (auto* enable : enable_list) {
-                    if (enable->HasExtension(tint::builtin::Extension::kF16)) {
+                    if (enable->HasExtension(tint::core::Extension::kF16)) {
                         dxc_require_16bit_types = true;
                         break;
                     }

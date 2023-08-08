@@ -463,15 +463,7 @@ uint64_t BufferBase::APIGetSize() const {
 }
 
 MaybeError BufferBase::CopyFromStagingBuffer() {
-    ASSERT(mStagingBuffer != nullptr);
-    if (mSize == 0) {
-        // Staging buffer is not created if zero size.
-        ASSERT(mStagingBuffer == nullptr);
-        return {};
-    }
-
-    // D3D11 requires that buffers are unmapped before being used in a copy.
-    DAWN_TRY(mStagingBuffer->Unmap());
+    ASSERT(mStagingBuffer != nullptr && mSize != 0);
 
     DAWN_TRY(
         GetDevice()->CopyFromStagingToBuffer(mStagingBuffer.Get(), 0, this, 0, GetAllocatedSize()));

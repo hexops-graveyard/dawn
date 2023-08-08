@@ -82,9 +82,9 @@ list(APPEND TINT_LIB_SRCS
   ../../include/tint/tint.h
   lang/wgsl/ast/clone_context.cc
   lang/wgsl/ast/clone_context.h
-  lang/core/builtin/fluent_types.h
-  lang/core/builtin/number.cc
-  lang/core/builtin/number.h
+  lang/core/fluent_types.h
+  lang/core/number.cc
+  lang/core/number.h
   lang/core/constant/clone_context.h
   lang/core/constant/composite.cc
   lang/core/constant/composite.h
@@ -516,9 +516,9 @@ list(APPEND TINT_LIB_SRCS
   lang/wgsl/resolver/const_eval.h
   lang/wgsl/resolver/dependency_graph.cc
   lang/wgsl/resolver/dependency_graph.h
-  lang/wgsl/resolver/intrinsic_table.cc
-  lang/wgsl/resolver/intrinsic_table.h
-  lang/wgsl/resolver/intrinsic_table.inl
+  lang/core/intrinsic/table.cc
+  lang/core/intrinsic/table.h
+  lang/core/intrinsic/table.inl
   lang/wgsl/resolver/resolve.cc
   lang/wgsl/resolver/resolve.h
   lang/wgsl/resolver/resolver.cc
@@ -577,18 +577,18 @@ list(APPEND TINT_LIB_SRCS
   utils/traits/traits.h
 )
 
-tint_generated(lang/core/builtin/access BENCH TEST)
-tint_generated(lang/core/builtin/address_space BENCH TEST)
-tint_generated(lang/core/builtin/attribute BENCH TEST)
-tint_generated(lang/core/builtin/builtin BENCH TEST)
-tint_generated(lang/core/builtin/builtin_value BENCH TEST)
-tint_generated(lang/core/builtin/diagnostic_rule BENCH TEST)
-tint_generated(lang/core/builtin/diagnostic_severity BENCH TEST)
-tint_generated(lang/core/builtin/extension BENCH TEST)
-tint_generated(lang/core/builtin/function)
-tint_generated(lang/core/builtin/interpolation_sampling BENCH TEST)
-tint_generated(lang/core/builtin/interpolation_type BENCH TEST)
-tint_generated(lang/core/builtin/texel_format BENCH TEST)
+tint_generated(lang/core/access BENCH TEST)
+tint_generated(lang/core/address_space BENCH TEST)
+tint_generated(lang/core/attribute BENCH TEST)
+tint_generated(lang/core/builtin BENCH TEST)
+tint_generated(lang/core/builtin_value BENCH TEST)
+tint_generated(lang/core/diagnostic_rule BENCH TEST)
+tint_generated(lang/core/diagnostic_severity BENCH TEST)
+tint_generated(lang/core/extension BENCH TEST)
+tint_generated(lang/core/function)
+tint_generated(lang/core/interpolation_sampling BENCH TEST)
+tint_generated(lang/core/interpolation_type BENCH TEST)
+tint_generated(lang/core/texel_format BENCH TEST)
 
 tint_generated(lang/wgsl/resolver/ctor_conv_intrinsic)
 tint_generated(lang/wgsl/sem/parameter_usage)
@@ -872,10 +872,14 @@ if(${TINT_BUILD_IR})
     lang/core/ir/var.h
     lang/core/ir/transform/add_empty_entry_point.cc
     lang/core/ir/transform/add_empty_entry_point.h
+    lang/core/ir/transform/bgra8unorm_polyfill.cc
+    lang/core/ir/transform/bgra8unorm_polyfill.h
     lang/core/ir/transform/binding_remapper.cc
     lang/core/ir/transform/binding_remapper.h
     lang/core/ir/transform/block_decorated_structs.cc
     lang/core/ir/transform/block_decorated_structs.h
+    lang/core/ir/transform/builtin_polyfill.cc
+    lang/core/ir/transform/builtin_polyfill.h
     lang/core/ir/transform/demote_to_helper.cc
     lang/core/ir/transform/demote_to_helper.h
     lang/core/ir/transform/shader_io.cc
@@ -966,7 +970,7 @@ endif()
 ################################################################################
 if(TINT_BUILD_TESTS)
   list(APPEND TINT_TEST_SRCS
-    lang/core/builtin/number_test.cc
+    lang/core/number_test.cc
     lang/core/constant/composite_test.cc
     lang/core/constant/manager_test.cc
     lang/core/constant/scalar_test.cc
@@ -1110,7 +1114,7 @@ if(TINT_BUILD_TESTS)
     lang/wgsl/resolver/host_shareable_validation_test.cc
     lang/wgsl/resolver/increment_decrement_validation_test.cc
     lang/wgsl/resolver/inferred_type_test.cc
-    lang/wgsl/resolver/intrinsic_table_test.cc
+    lang/core/intrinsic/table_test.cc
     lang/wgsl/resolver/is_host_shareable_test.cc
     lang/wgsl/resolver/is_storeable_test.cc
     lang/wgsl/resolver/load_test.cc
@@ -1127,6 +1131,7 @@ if(TINT_BUILD_TESTS)
     lang/wgsl/resolver/struct_address_space_use_test.cc
     lang/wgsl/resolver/struct_layout_test.cc
     lang/wgsl/resolver/struct_pipeline_stage_use_test.cc
+    lang/wgsl/resolver/subgroups_extension_test.cc
     lang/wgsl/resolver/type_validation_test.cc
     lang/wgsl/resolver/unresolved_identifier_test.cc
     lang/wgsl/resolver/validation_test.cc
@@ -1677,8 +1682,10 @@ if(TINT_BUILD_TESTS)
       lang/core/ir/switch_test.cc
       lang/core/ir/swizzle_test.cc
       lang/core/ir/transform/add_empty_entry_point_test.cc
+      lang/core/ir/transform/bgra8unorm_polyfill_test.cc
       lang/core/ir/transform/binding_remapper_test.cc
       lang/core/ir/transform/block_decorated_structs_test.cc
+      lang/core/ir/transform/builtin_polyfill_test.cc
       lang/core/ir/transform/demote_to_helper_test.cc
       lang/core/ir/transform/std140_test.cc
       lang/core/ir/unary_test.cc

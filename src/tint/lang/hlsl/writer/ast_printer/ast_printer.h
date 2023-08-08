@@ -21,7 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
-#include "src/tint/lang/core/builtin/builtin_value.h"
+#include "src/tint/lang/core/builtin_value.h"
 #include "src/tint/lang/hlsl/writer/common/options.h"
 #include "src/tint/lang/wgsl/ast/transform/decompose_memory_access.h"
 #include "src/tint/lang/wgsl/program/program_builder.h"
@@ -282,6 +282,14 @@ class ASTPrinter : public tint::TextGenerator {
     bool EmitDP4aCall(StringStream& out,
                       const ast::CallExpression* expr,
                       const sem::Builtin* builtin);
+    /// Handles generating a call to subgroup builtins.
+    /// @param out the output of the expression stream
+    /// @param expr the call expression
+    /// @param builtin the semantic information for the builtin
+    /// @returns true if the call expression is emitted
+    bool EmitSubgroupCall(StringStream& out,
+                          const ast::CallExpression* expr,
+                          const sem::Builtin* builtin);
     /// Handles a case statement
     /// @param s the switch statement
     /// @param case_idx the index of the switch case in the switch statement
@@ -413,8 +421,8 @@ class ASTPrinter : public tint::TextGenerator {
     /// @returns true if the type is emitted
     bool EmitType(StringStream& out,
                   const type::Type* type,
-                  builtin::AddressSpace address_space,
-                  builtin::Access access,
+                  core::AddressSpace address_space,
+                  core::Access access,
                   const std::string& name,
                   bool* name_printed = nullptr);
     /// Handles generating type and name
@@ -426,8 +434,8 @@ class ASTPrinter : public tint::TextGenerator {
     /// @returns true if the type is emitted
     bool EmitTypeAndName(StringStream& out,
                          const type::Type* type,
-                         builtin::AddressSpace address_space,
-                         builtin::Access access,
+                         core::AddressSpace address_space,
+                         core::Access access,
                          const std::string& name);
     /// Handles generating a structure declaration. If the structure has already been emitted, then
     /// this function will simply return `true` without emitting anything.
@@ -495,14 +503,14 @@ class ASTPrinter : public tint::TextGenerator {
     /// Converts a builtin to an attribute name
     /// @param builtin the builtin to convert
     /// @returns the string name of the builtin or blank on error
-    std::string builtin_to_attribute(builtin::BuiltinValue builtin) const;
+    std::string builtin_to_attribute(core::BuiltinValue builtin) const;
 
     /// Converts interpolation attributes to a HLSL modifiers
     /// @param type the interpolation type
     /// @param sampling the interpolation sampling
     /// @returns the string name of the attribute or blank on error
-    std::string interpolation_to_modifiers(builtin::InterpolationType type,
-                                           builtin::InterpolationSampling sampling) const;
+    std::string interpolation_to_modifiers(core::InterpolationType type,
+                                           core::InterpolationSampling sampling) const;
 
   private:
     enum class VarType { kIn, kOut };
