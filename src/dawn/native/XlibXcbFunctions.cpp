@@ -17,7 +17,10 @@
 namespace dawn::native {
 
 XlibXcbFunctions::XlibXcbFunctions() {
-    if (!mLib.Open("libX11-xcb.so.1") || !mLib.GetProc(&xGetXCBConnection, "XGetXCBConnection")) {
+    if (!mLib.Open("libX11-xcb.so.1") ||
+        !mLib.GetProc(&xGetXCBConnection, "XGetXCBConnection") ||
+        !mLib.GetProc(&xSetErrorHandler, "XSetErrorHandler") ||
+        !mLib.GetProc(&xGetWindowAttributes, "XGetWindowAttributes")) {
         mLib.Close();
     }
 }
