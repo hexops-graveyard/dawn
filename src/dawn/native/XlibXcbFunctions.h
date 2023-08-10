@@ -36,8 +36,6 @@ class XlibXcbFunctions {
 
     // Functions from x11-xcb
     decltype(&::XGetXCBConnection) xGetXCBConnection = nullptr;
-    decltype(&::XSetErrorHandler) xSetErrorHandler = nullptr;
-    decltype(&::XGetWindowAttributes) xGetWindowAttributes = nullptr;
 
   private:
     DynamicLib mLib;
