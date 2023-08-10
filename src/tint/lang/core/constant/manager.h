@@ -23,14 +23,14 @@
 #include "src/tint/utils/containers/unique_allocator.h"
 #include "src/tint/utils/math/hash.h"
 
-namespace tint::constant {
+namespace tint::core::constant {
 class Splat;
 
 template <typename T>
 class Scalar;
-}  // namespace tint::constant
+}  // namespace tint::core::constant
 
-namespace tint::constant {
+namespace tint::core::constant {
 
 /// The constant manager holds a type manager and all the pointers to the known constant values.
 class Manager final {
@@ -63,7 +63,7 @@ class Manager final {
     static Manager Wrap(const Manager& inner) {
         Manager out;
         out.values_.Wrap(inner.values_);
-        out.types = type::Manager::Wrap(inner.types);
+        out.types = core::type::Manager::Wrap(inner.types);
         return out;
     }
 
@@ -89,7 +89,7 @@ class Manager final {
     /// @param type the composite type
     /// @param elements the composite elements
     /// @returns the value pointer
-    const constant::Value* Composite(const type::Type* type,
+    const constant::Value* Composite(const core::type::Type* type,
                                      VectorRef<const constant::Value*> elements);
 
     /// Constructs a splat constant.
@@ -97,7 +97,9 @@ class Manager final {
     /// @param element the splat element
     /// @param n the number of elements
     /// @returns the value pointer
-    const constant::Splat* Splat(const type::Type* type, const constant::Value* element, size_t n);
+    const constant::Splat* Splat(const core::type::Type* type,
+                                 const constant::Value* element,
+                                 size_t n);
 
     /// @param value the constant value
     /// @return a Scalar holding the i32 value @p value
@@ -128,7 +130,7 @@ class Manager final {
     const Scalar<AInt>* Get(AInt value);
 
     /// The type manager
-    type::Manager types;
+    core::type::Manager types;
 
   private:
     /// A specialization of Hasher for constant::Value
@@ -152,6 +154,6 @@ class Manager final {
     UniqueAllocator<Value, Hasher, Equal> values_;
 };
 
-}  // namespace tint::constant
+}  // namespace tint::core::constant
 
 #endif  // SRC_TINT_LANG_CORE_CONSTANT_MANAGER_H_

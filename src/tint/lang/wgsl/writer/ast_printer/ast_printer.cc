@@ -334,9 +334,9 @@ void ASTPrinter::EmitStructType(const ast::Struct* str) {
     }
     Line() << "struct " << str->name->symbol.Name() << " {";
 
-    Hashset<std::string_view, 8> member_names;
+    Hashset<std::string, 8> member_names;
     for (auto* mem : str->members) {
-        member_names.Add(mem->name->symbol.NameView());
+        member_names.Add(std::string(mem->name->symbol.NameView()));
     }
     size_t padding_idx = 0;
     auto new_padding_name = [&] {
@@ -543,83 +543,81 @@ void ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr
     out << ")";
 }
 
-void ASTPrinter::EmitBinaryOp(StringStream& out, const ast::BinaryOp op) {
+void ASTPrinter::EmitBinaryOp(StringStream& out, const core::BinaryOp op) {
     switch (op) {
-        case ast::BinaryOp::kAnd:
+        case core::BinaryOp::kAnd:
             out << "&";
-            break;
-        case ast::BinaryOp::kOr:
+            return;
+        case core::BinaryOp::kOr:
             out << "|";
-            break;
-        case ast::BinaryOp::kXor:
+            return;
+        case core::BinaryOp::kXor:
             out << "^";
-            break;
-        case ast::BinaryOp::kLogicalAnd:
+            return;
+        case core::BinaryOp::kLogicalAnd:
             out << "&&";
-            break;
-        case ast::BinaryOp::kLogicalOr:
+            return;
+        case core::BinaryOp::kLogicalOr:
             out << "||";
-            break;
-        case ast::BinaryOp::kEqual:
+            return;
+        case core::BinaryOp::kEqual:
             out << "==";
-            break;
-        case ast::BinaryOp::kNotEqual:
+            return;
+        case core::BinaryOp::kNotEqual:
             out << "!=";
-            break;
-        case ast::BinaryOp::kLessThan:
+            return;
+        case core::BinaryOp::kLessThan:
             out << "<";
-            break;
-        case ast::BinaryOp::kGreaterThan:
+            return;
+        case core::BinaryOp::kGreaterThan:
             out << ">";
-            break;
-        case ast::BinaryOp::kLessThanEqual:
+            return;
+        case core::BinaryOp::kLessThanEqual:
             out << "<=";
-            break;
-        case ast::BinaryOp::kGreaterThanEqual:
+            return;
+        case core::BinaryOp::kGreaterThanEqual:
             out << ">=";
-            break;
-        case ast::BinaryOp::kShiftLeft:
+            return;
+        case core::BinaryOp::kShiftLeft:
             out << "<<";
-            break;
-        case ast::BinaryOp::kShiftRight:
+            return;
+        case core::BinaryOp::kShiftRight:
             out << ">>";
-            break;
-        case ast::BinaryOp::kAdd:
+            return;
+        case core::BinaryOp::kAdd:
             out << "+";
-            break;
-        case ast::BinaryOp::kSubtract:
+            return;
+        case core::BinaryOp::kSubtract:
             out << "-";
-            break;
-        case ast::BinaryOp::kMultiply:
+            return;
+        case core::BinaryOp::kMultiply:
             out << "*";
-            break;
-        case ast::BinaryOp::kDivide:
+            return;
+        case core::BinaryOp::kDivide:
             out << "/";
-            break;
-        case ast::BinaryOp::kModulo:
+            return;
+        case core::BinaryOp::kModulo:
             out << "%";
-            break;
-        case ast::BinaryOp::kNone:
-            diagnostics_.add_error(diag::System::Writer, "missing binary operation type");
-            break;
+            return;
     }
+    TINT_ICE() << "invalid binary op " << op;
 }
 
 void ASTPrinter::EmitUnaryOp(StringStream& out, const ast::UnaryOpExpression* expr) {
     switch (expr->op) {
-        case ast::UnaryOp::kAddressOf:
+        case core::UnaryOp::kAddressOf:
             out << "&";
             break;
-        case ast::UnaryOp::kComplement:
+        case core::UnaryOp::kComplement:
             out << "~";
             break;
-        case ast::UnaryOp::kIndirection:
+        case core::UnaryOp::kIndirection:
             out << "*";
             break;
-        case ast::UnaryOp::kNot:
+        case core::UnaryOp::kNot:
             out << "!";
             break;
-        case ast::UnaryOp::kNegation:
+        case core::UnaryOp::kNegation:
             out << "-";
             break;
     }

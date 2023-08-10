@@ -39,7 +39,7 @@ struct State {
     ir::Builder b{*ir};
 
     /// The type manager.
-    type::Manager& ty{ir->Types()};
+    core::type::Manager& ty{ir->Types()};
 
     /// The "has not returned" flag.
     ir::Var* continue_execution = nullptr;
@@ -80,7 +80,7 @@ struct State {
         fn->Block()->Prepend(continue_execution);
 
         // Create a variable to hold the return value if needed.
-        if (!fn->ReturnType()->Is<type::Void>()) {
+        if (!fn->ReturnType()->Is<core::type::Void>()) {
             return_val = b.Var("return_value", ty.ptr(function, fn->ReturnType()));
             fn->Block()->Prepend(return_val);
         }
@@ -154,7 +154,7 @@ struct State {
                 if (holds_return_.Contains(ctrl)) {
                     // Control instruction transitively holds a return.
                     ctrl->ForeachBlock([&](ir::Block* ctrl_block) { ProcessBlock(ctrl_block); });
-                    if (next && next != fn_return &&
+                    if (next && (next != fn_return || fn_return->Value()) &&
                         !tint::IsAnyOf<ir::Exit, ir::Unreachable>(next)) {
                         inner_if = CreateIfContinueExecution(ctrl);
                     }

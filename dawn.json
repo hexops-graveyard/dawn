@@ -136,11 +136,11 @@
         "extensible": "out",
         "members": [
             {"name": "vendor ID", "type": "uint32_t"},
-            {"name": "vendor name", "type": "char", "annotation": "const*", "length": "strlen"},
-            {"name": "architecture", "type": "char", "annotation": "const*", "length": "strlen"},
+            {"name": "vendor name", "type": "char", "annotation": "const*", "length": "strlen", "default": "nullptr"},
+            {"name": "architecture", "type": "char", "annotation": "const*", "length": "strlen", "default": "nullptr"},
             {"name": "device ID", "type": "uint32_t"},
-            {"name": "name", "type": "char", "annotation": "const*", "length": "strlen"},
-            {"name": "driver description", "type": "char", "annotation": "const*", "length": "strlen"},
+            {"name": "name", "type": "char", "annotation": "const*", "length": "strlen", "default": "nullptr"},
+            {"name": "driver description", "type": "char", "annotation": "const*", "length": "strlen", "default": "nullptr"},
             {"name": "adapter type", "type": "adapter type"},
             {"name": "backend type", "type": "backend type"},
             {"name": "compatibility mode", "type": "bool", "default": "false", "tags": ["dawn", "emscripten"]}
@@ -1794,7 +1794,6 @@
             {"value": 10, "name": "RG11B10 ufloat renderable"},
             {"value": 11, "name": "BGRA8 unorm storage"},
             {"value": 12, "name": "float32 filterable"},
-            {"value": 1001, "name": "dawn shader float 16", "tags": ["dawn"]},
             {"value": 1002, "name": "dawn internal usages", "tags": ["dawn"]},
             {"value": 1003, "name": "dawn multi planar formats", "tags": ["dawn"]},
             {"value": 1004, "name": "dawn native", "tags": ["dawn", "native"]},

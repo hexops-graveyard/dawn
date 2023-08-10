@@ -16,8 +16,8 @@
 #define SRC_TINT_LANG_WGSL_SEM_VALUE_EXPRESSION_H_
 
 #include "src/tint/lang/core/constant/value.h"
+#include "src/tint/lang/core/evaluation_stage.h"
 #include "src/tint/lang/wgsl/sem/behavior.h"
-#include "src/tint/lang/wgsl/sem/evaluation_stage.h"
 #include "src/tint/lang/wgsl/sem/expression.h"
 
 // Forward declarations
@@ -40,10 +40,10 @@ class ValueExpression : public Castable<ValueExpression, Expression> {
     /// @param has_side_effects true if this expression may have side-effects
     /// @param root_ident the (optional) root identifier for this expression
     ValueExpression(const ast::Expression* declaration,
-                    const type::Type* type,
-                    EvaluationStage stage,
+                    const core::type::Type* type,
+                    core::EvaluationStage stage,
                     const Statement* statement,
-                    const constant::Value* constant,
+                    const core::constant::Value* constant,
                     bool has_side_effects,
                     const Variable* root_ident = nullptr);
 
@@ -51,13 +51,13 @@ class ValueExpression : public Castable<ValueExpression, Expression> {
     ~ValueExpression() override;
 
     /// @return the resolved type of the expression
-    const type::Type* Type() const { return type_; }
+    const core::type::Type* Type() const { return type_; }
 
     /// @return the earliest evaluation stage for the expression
-    EvaluationStage Stage() const { return stage_; }
+    core::EvaluationStage Stage() const { return stage_; }
 
     /// @return the constant value of this expression
-    const constant::Value* ConstantValue() const { return constant_; }
+    const core::constant::Value* ConstantValue() const { return constant_; }
 
     /// Returns the variable or parameter that this expression derives from.
     /// For reference and pointer expressions, this will either be the originating
@@ -89,9 +89,9 @@ class ValueExpression : public Castable<ValueExpression, Expression> {
     const Variable* root_identifier_;
 
   private:
-    const type::Type* const type_;
-    const EvaluationStage stage_;
-    const constant::Value* const constant_;
+    const core::type::Type* const type_;
+    const core::EvaluationStage stage_;
+    const core::constant::Value* const constant_;
     sem::Behaviors behaviors_{sem::Behavior::kNext};
     const bool has_side_effects_;
 };

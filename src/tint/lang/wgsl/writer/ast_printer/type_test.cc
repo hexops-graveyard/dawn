@@ -205,6 +205,67 @@ TEST_F(WgslASTPrinterTest, EmitType_StructOffsetDecl) {
 )");
 }
 
+TEST_F(WgslASTPrinterTest, EmitType_StructOffsetDecl_ExceedStaticVectorSize) {
+    auto* s = Structure("S", Vector{
+                                 Member("a", ty.i32(), Vector{MemberOffset(i32(8 * 0))}),
+                                 Member("b", ty.i32(), Vector{MemberOffset(i32(8 * 1))}),
+                                 Member("c", ty.i32(), Vector{MemberOffset(i32(8 * 2))}),
+                                 Member("d", ty.i32(), Vector{MemberOffset(i32(8 * 3))}),
+                                 Member("e", ty.i32(), Vector{MemberOffset(i32(8 * 4))}),
+                                 Member("f", ty.i32(), Vector{MemberOffset(i32(8 * 5))}),
+                                 Member("g", ty.i32(), Vector{MemberOffset(i32(8 * 6))}),
+                                 Member("h", ty.i32(), Vector{MemberOffset(i32(8 * 7))}),
+                                 Member("i", ty.i32(), Vector{MemberOffset(i32(8 * 8))}),
+                                 Member("j", ty.i32(), Vector{MemberOffset(i32(8 * 9))}),
+                             });
+
+    ASTPrinter& gen = Build();
+
+    gen.EmitStructType(s);
+    EXPECT_THAT(gen.Diagnostics(), testing::IsEmpty());
+    EXPECT_EQ(gen.Result(), R"(struct S {
+  /* @offset(0i) */
+  a : i32,
+  @size(4)
+  padding_0 : u32,
+  /* @offset(8i) */
+  b : i32,
+  @size(4)
+  padding_1 : u32,
+  /* @offset(16i) */
+  c : i32,
+  @size(4)
+  padding_2 : u32,
+  /* @offset(24i) */
+  d : i32,
+  @size(4)
+  padding_3 : u32,
+  /* @offset(32i) */
+  e : i32,
+  @size(4)
+  padding_4 : u32,
+  /* @offset(40i) */
+  f : i32,
+  @size(4)
+  padding_5 : u32,
+  /* @offset(48i) */
+  g : i32,
+  @size(4)
+  padding_6 : u32,
+  /* @offset(56i) */
+  h : i32,
+  @size(4)
+  padding_7 : u32,
+  /* @offset(64i) */
+  i : i32,
+  @size(4)
+  padding_8 : u32,
+  /* @offset(72i) */
+  j : i32,
+}
+)");
+}
+
 TEST_F(WgslASTPrinterTest, EmitType_StructOffsetDecl_WithSymbolCollisions) {
     auto* s = Structure("S", Vector{
                                  Member("tint_0_padding", ty.i32(), Vector{MemberOffset(8_a)}),
@@ -340,7 +401,7 @@ TEST_F(WgslASTPrinterTest, EmitType_Vector_F16) {
 }
 
 struct TextureData {
-    type::TextureDimension dim;
+    core::type::TextureDimension dim;
     const char* name;
 };
 inline std::ostream& operator<<(std::ostream& out, TextureData data) {
@@ -364,10 +425,11 @@ TEST_P(WgslGenerator_DepthTextureTest, EmitType_DepthTexture) {
 INSTANTIATE_TEST_SUITE_P(
     WgslASTPrinterTest,
     WgslGenerator_DepthTextureTest,
-    testing::Values(TextureData{type::TextureDimension::k2d, "texture_depth_2d"},
-                    TextureData{type::TextureDimension::k2dArray, "texture_depth_2d_array"},
-                    TextureData{type::TextureDimension::kCube, "texture_depth_cube"},
-                    TextureData{type::TextureDimension::kCubeArray, "texture_depth_cube_array"}));
+    testing::Values(TextureData{core::type::TextureDimension::k2d, "texture_depth_2d"},
+                    TextureData{core::type::TextureDimension::k2dArray, "texture_depth_2d_array"},
+                    TextureData{core::type::TextureDimension::kCube, "texture_depth_cube"},
+                    TextureData{core::type::TextureDimension::kCubeArray,
+                                "texture_depth_cube_array"}));
 
 using WgslGenerator_SampledTextureTest = TestParamHelper<TextureData>;
 TEST_P(WgslGenerator_SampledTextureTest, EmitType_SampledTexture_F32) {
@@ -414,12 +476,12 @@ TEST_P(WgslGenerator_SampledTextureTest, EmitType_SampledTexture_U32) {
 INSTANTIATE_TEST_SUITE_P(
     WgslASTPrinterTest,
     WgslGenerator_SampledTextureTest,
-    testing::Values(TextureData{type::TextureDimension::k1d, "texture_1d"},
-                    TextureData{type::TextureDimension::k2d, "texture_2d"},
-                    TextureData{type::TextureDimension::k2dArray, "texture_2d_array"},
-                    TextureData{type::TextureDimension::k3d, "texture_3d"},
-                    TextureData{type::TextureDimension::kCube, "texture_cube"},
-                    TextureData{type::TextureDimension::kCubeArray, "texture_cube_array"}));
+    testing::Values(TextureData{core::type::TextureDimension::k1d, "texture_1d"},
+                    TextureData{core::type::TextureDimension::k2d, "texture_2d"},
+                    TextureData{core::type::TextureDimension::k2dArray, "texture_2d_array"},
+                    TextureData{core::type::TextureDimension::k3d, "texture_3d"},
+                    TextureData{core::type::TextureDimension::kCube, "texture_cube"},
+                    TextureData{core::type::TextureDimension::kCubeArray, "texture_cube_array"}));
 
 using WgslGenerator_MultiampledTextureTest = TestParamHelper<TextureData>;
 TEST_P(WgslGenerator_MultiampledTextureTest, EmitType_MultisampledTexture_F32) {
@@ -465,12 +527,12 @@ TEST_P(WgslGenerator_MultiampledTextureTest, EmitType_MultisampledTexture_U32) {
 }
 INSTANTIATE_TEST_SUITE_P(WgslASTPrinterTest,
                          WgslGenerator_MultiampledTextureTest,
-                         testing::Values(TextureData{type::TextureDimension::k2d,
+                         testing::Values(TextureData{core::type::TextureDimension::k2d,
                                                      "texture_multisampled_2d"}));
 
 struct StorageTextureData {
     core::TexelFormat fmt;
-    type::TextureDimension dim;
+    core::type::TextureDimension dim;
     core::Access access;
     const char* name;
 };
@@ -496,13 +558,13 @@ INSTANTIATE_TEST_SUITE_P(
     WgslASTPrinterTest,
     WgslGenerator_StorageTextureTest,
     testing::Values(
-        StorageTextureData{core::TexelFormat::kRgba8Sint, type::TextureDimension::k1d,
+        StorageTextureData{core::TexelFormat::kRgba8Sint, core::type::TextureDimension::k1d,
                            core::Access::kWrite, "texture_storage_1d<rgba8sint, write>"},
-        StorageTextureData{core::TexelFormat::kRgba8Sint, type::TextureDimension::k2d,
+        StorageTextureData{core::TexelFormat::kRgba8Sint, core::type::TextureDimension::k2d,
                            core::Access::kWrite, "texture_storage_2d<rgba8sint, write>"},
-        StorageTextureData{core::TexelFormat::kRgba8Sint, type::TextureDimension::k2dArray,
+        StorageTextureData{core::TexelFormat::kRgba8Sint, core::type::TextureDimension::k2dArray,
                            core::Access::kWrite, "texture_storage_2d_array<rgba8sint, write>"},
-        StorageTextureData{core::TexelFormat::kRgba8Sint, type::TextureDimension::k3d,
+        StorageTextureData{core::TexelFormat::kRgba8Sint, core::type::TextureDimension::k3d,
                            core::Access::kWrite, "texture_storage_3d<rgba8sint, write>"}));
 
 struct ImageFormatData {
@@ -546,7 +608,7 @@ INSTANTIATE_TEST_SUITE_P(
                     ImageFormatData{core::TexelFormat::kRgba32Float, "rgba32float"}));
 
 TEST_F(WgslASTPrinterTest, EmitType_Sampler) {
-    auto sampler = ty.sampler(type::SamplerKind::kSampler);
+    auto sampler = ty.sampler(core::type::SamplerKind::kSampler);
     auto type = Alias("make_type_reachable", sampler)->type;
 
     ASTPrinter& gen = Build();
@@ -558,7 +620,7 @@ TEST_F(WgslASTPrinterTest, EmitType_Sampler) {
 }
 
 TEST_F(WgslASTPrinterTest, EmitType_SamplerComparison) {
-    auto sampler = ty.sampler(type::SamplerKind::kComparisonSampler);
+    auto sampler = ty.sampler(core::type::SamplerKind::kComparisonSampler);
     auto type = Alias("make_type_reachable", sampler)->type;
 
     ASTPrinter& gen = Build();

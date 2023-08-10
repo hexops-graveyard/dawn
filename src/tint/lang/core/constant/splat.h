@@ -20,7 +20,7 @@
 #include "src/tint/utils/containers/vector.h"
 #include "src/tint/utils/rtti/castable.h"
 
-namespace tint::constant {
+namespace tint::core::constant {
 
 /// Splat holds a single value, duplicated as all children.
 ///
@@ -32,11 +32,11 @@ class Splat : public Castable<Splat, Value> {
     /// @param t the splat type
     /// @param e the splat element
     /// @param n the number of items in the splat
-    Splat(const type::Type* t, const Value* e, size_t n);
+    Splat(const core::type::Type* t, const Value* e, size_t n);
     ~Splat() override;
 
     /// @returns the type of the splat
-    const type::Type* Type() const override { return type; }
+    const core::type::Type* Type() const override { return type; }
 
     /// Retrieve item at index @p i
     /// @param i the index to retrieve
@@ -60,7 +60,7 @@ class Splat : public Castable<Splat, Value> {
     const Splat* Clone(CloneContext& ctx) const override;
 
     /// The type of the splat element
-    type::Type const* const type;
+    core::type::Type const* const type;
     /// The element stored in the splat
     const Value* el;
     /// The number of items in the splat
@@ -71,6 +71,6 @@ class Splat : public Castable<Splat, Value> {
     std::variant<std::monostate, AInt, AFloat> InternalValue() const override { return {}; }
 };
 
-}  // namespace tint::constant
+}  // namespace tint::core::constant
 
 #endif  // SRC_TINT_LANG_CORE_CONSTANT_SPLAT_H_

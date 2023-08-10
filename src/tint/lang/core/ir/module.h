@@ -79,13 +79,13 @@ class Module {
     void SetName(Value* value, Symbol name);
 
     /// @return the type manager for the module
-    type::Manager& Types() { return constant_values.types; }
+    core::type::Manager& Types() { return constant_values.types; }
 
     /// The block allocator
     BlockAllocator<Block> blocks;
 
     /// The constant value manager
-    constant::Manager constant_values;
+    core::constant::Manager constant_values;
 
     /// The instruction allocator
     BlockAllocator<Instruction> instructions;
@@ -102,8 +102,8 @@ class Module {
     /// The symbol table for the module
     SymbolTable symbols{prog_id_};
 
-    /// The map of constant::Value to their ir::Constant.
-    Hashmap<const constant::Value*, ir::Constant*, 16> constants;
+    /// The map of core::constant::Value to their ir::Constant.
+    Hashmap<const core::constant::Value*, ir::Constant*, 16> constants;
 
     /// If the module generated a validation error, will store the file for the disassembly text.
     std::unique_ptr<Source::File> disassembly_file;

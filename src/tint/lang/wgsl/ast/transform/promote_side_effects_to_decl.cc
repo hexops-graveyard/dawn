@@ -290,7 +290,9 @@ class DecomposeSideEffects::CollectHoistsState : public StateBase {
                         }
                         // Don't hoist textures / samplers as they can't be placed into a let, nor
                         // can they have side effects.
-                        if (var_user->Variable()->Type()->IsAnyOf<type::Texture, type::Sampler>()) {
+                        if (var_user->Variable()
+                                ->Type()
+                                ->IsAnyOf<core::type::Texture, core::type::Sampler>()) {
                             return false;
                         }
                         return true;
@@ -315,7 +317,7 @@ class DecomposeSideEffects::CollectHoistsState : public StateBase {
                 auto r = process(e->expr);
                 // Don't hoist address-of expressions.
                 // E.g. for "g(&b, a(0))", we hoist "a(0)" only.
-                if (e->op == UnaryOp::kAddressOf) {
+                if (e->op == core::UnaryOp::kAddressOf) {
                     return false;
                 }
                 return r;

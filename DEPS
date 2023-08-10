@@ -125,7 +125,7 @@ deps = {
   },
   # This is a dependency of //testing
   'third_party/catapult': {
-    'url': '{chromium_git}/catapult.git@c1e70d412ce01fb194f73f7abfdac710aae87dae',
+    'url': '{chromium_git}/catapult.git@dd218dfd815774289f8a81015f7a3131f72afbde',
     'condition': 'dawn_standalone',
   },
   'third_party/google_benchmark/src': {
@@ -135,11 +135,11 @@ deps = {
 
   # Jinja2 and MarkupSafe for the code generator
   'third_party/jinja2': {
-    'url': '{chromium_git}/chromium/src/third_party/jinja2@ee69aa00ee8536f61db6a451f3858745cf587de6',
+    'url': '{chromium_git}/chromium/src/third_party/jinja2@515dd10de9bf63040045902a4a310d2ba25213a0',
     'condition': 'dawn_standalone',
   },
   'third_party/markupsafe': {
-    'url': '{chromium_git}/chromium/src/third_party/markupsafe@0944e71f4b2cb9a871bcbe353f95e889b64a611a',
+    'url': '{chromium_git}/chromium/src/third_party/markupsafe@006709ba3ed87660a17bd4548c45663628f5ed85',
     'condition': 'dawn_standalone',
   },
 
@@ -154,12 +154,12 @@ deps = {
   },
 
   'third_party/angle': {
-    'url': '{chromium_git}/angle/angle@f7d7be8d2ff0bbee438b6030419a0b13082de198',
+    'url': '{chromium_git}/angle/angle@d7e914da5f99966a3358aab956af8eea988711c8',
     'condition': 'dawn_standalone',
   },
 
   'third_party/swiftshader': {
-    'url': '{swiftshader_git}/SwiftShader@729e92f8ae07d7b695bdcf346318dec4d11d899e',
+    'url': '{swiftshader_git}/SwiftShader@c315c894b9d529b8e7d3753b1217630aa8821d75',
     'condition': 'dawn_standalone',
   },
 
@@ -169,7 +169,7 @@ deps = {
   },
 
   'third_party/zlib': {
-    'url': '{chromium_git}/chromium/src/third_party/zlib@64bbf988543996eb8df9a86877b32917187eba8f',
+    'url': '{chromium_git}/chromium/src/third_party/zlib@526382e41c9c5275dc329db4328b54e4f344a204',
     'condition': 'dawn_standalone',
   },
 
@@ -179,7 +179,7 @@ deps = {
   },
 
   'third_party/dxc': {
-    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@a5b0488bc5b20659662bdfdad134c13cb376189b',
+    'url': '{chromium_git}/external/github.com/microsoft/DirectXShaderCompiler@d9c07e90e1a7fa2654d4b52e6f5704b986549c15',
   },
   'third_party/dxheaders': {
     # The non-Windows build of DXC depends on DirectX-Headers, and at a specific commit (not ToT)
@@ -481,7 +481,6 @@ hooks = [
               '--rewrapper_cfg_project',
               Var('rewrapper_cfg_project'),
               '--quiet',
-              '--hook',
               ],
  },
 ]

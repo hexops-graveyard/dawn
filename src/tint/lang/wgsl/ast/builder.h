@@ -1127,16 +1127,18 @@ class Builder {
 
         /// @param kind the kind of sampler
         /// @returns the sampler
-        ast::Type sampler(type::SamplerKind kind) const { return sampler(builder->source_, kind); }
+        ast::Type sampler(core::type::SamplerKind kind) const {
+            return sampler(builder->source_, kind);
+        }
 
         /// @param source the Source of the node
         /// @param kind the kind of sampler
         /// @returns the sampler
-        ast::Type sampler(const Source& source, type::SamplerKind kind) const {
+        ast::Type sampler(const Source& source, core::type::SamplerKind kind) const {
             switch (kind) {
-                case type::SamplerKind::kSampler:
+                case core::type::SamplerKind::kSampler:
                     return (*this)(source, "sampler");
-                case type::SamplerKind::kComparisonSampler:
+                case core::type::SamplerKind::kComparisonSampler:
                     return (*this)(source, "sampler_comparison");
             }
             TINT_ICE() << "invalid sampler kind " << kind;
@@ -1145,22 +1147,22 @@ class Builder {
 
         /// @param dims the dimensionality of the texture
         /// @returns the depth texture
-        ast::Type depth_texture(type::TextureDimension dims) const {
+        ast::Type depth_texture(core::type::TextureDimension dims) const {
             return depth_texture(builder->source_, dims);
         }
 
         /// @param source the Source of the node
         /// @param dims the dimensionality of the texture
         /// @returns the depth texture
-        ast::Type depth_texture(const Source& source, type::TextureDimension dims) const {
+        ast::Type depth_texture(const Source& source, core::type::TextureDimension dims) const {
             switch (dims) {
-                case type::TextureDimension::k2d:
+                case core::type::TextureDimension::k2d:
                     return (*this)(source, "texture_depth_2d");
-                case type::TextureDimension::k2dArray:
+                case core::type::TextureDimension::k2dArray:
                     return (*this)(source, "texture_depth_2d_array");
-                case type::TextureDimension::kCube:
+                case core::type::TextureDimension::kCube:
                     return (*this)(source, "texture_depth_cube");
-                case type::TextureDimension::kCubeArray:
+                case core::type::TextureDimension::kCubeArray:
                     return (*this)(source, "texture_depth_cube_array");
                 default:
                     break;
@@ -1171,7 +1173,7 @@ class Builder {
 
         /// @param dims the dimensionality of the texture
         /// @returns the multisampled depth texture
-        ast::Type depth_multisampled_texture(type::TextureDimension dims) const {
+        ast::Type depth_multisampled_texture(core::type::TextureDimension dims) const {
             return depth_multisampled_texture(builder->source_, dims);
         }
 
@@ -1179,8 +1181,8 @@ class Builder {
         /// @param dims the dimensionality of the texture
         /// @returns the multisampled depth texture
         ast::Type depth_multisampled_texture(const Source& source,
-                                             type::TextureDimension dims) const {
-            if (dims == type::TextureDimension::k2d) {
+                                             core::type::TextureDimension dims) const {
+            if (dims == core::type::TextureDimension::k2d) {
                 return (*this)(source, "texture_depth_multisampled_2d");
             }
             TINT_ICE() << "invalid depth_multisampled_texture dimensions: " << dims;
@@ -1190,7 +1192,7 @@ class Builder {
         /// @param dims the dimensionality of the texture
         /// @param subtype the texture subtype.
         /// @returns the sampled texture
-        ast::Type sampled_texture(type::TextureDimension dims, ast::Type subtype) const {
+        ast::Type sampled_texture(core::type::TextureDimension dims, ast::Type subtype) const {
             return sampled_texture(builder->source_, dims, subtype);
         }
 
@@ -1199,20 +1201,20 @@ class Builder {
         /// @param subtype the texture subtype.
         /// @returns the sampled texture
         ast::Type sampled_texture(const Source& source,
-                                  type::TextureDimension dims,
+                                  core::type::TextureDimension dims,
                                   ast::Type subtype) const {
             switch (dims) {
-                case type::TextureDimension::k1d:
+                case core::type::TextureDimension::k1d:
                     return (*this)(source, "texture_1d", subtype);
-                case type::TextureDimension::k2d:
+                case core::type::TextureDimension::k2d:
                     return (*this)(source, "texture_2d", subtype);
-                case type::TextureDimension::k3d:
+                case core::type::TextureDimension::k3d:
                     return (*this)(source, "texture_3d", subtype);
-                case type::TextureDimension::k2dArray:
+                case core::type::TextureDimension::k2dArray:
                     return (*this)(source, "texture_2d_array", subtype);
-                case type::TextureDimension::kCube:
+                case core::type::TextureDimension::kCube:
                     return (*this)(source, "texture_cube", subtype);
-                case type::TextureDimension::kCubeArray:
+                case core::type::TextureDimension::kCubeArray:
                     return (*this)(source, "texture_cube_array", subtype);
                 default:
                     break;
@@ -1224,7 +1226,7 @@ class Builder {
         /// @param dims the dimensionality of the texture
         /// @param subtype the texture subtype.
         /// @returns the multisampled texture
-        ast::Type multisampled_texture(type::TextureDimension dims, ast::Type subtype) const {
+        ast::Type multisampled_texture(core::type::TextureDimension dims, ast::Type subtype) const {
             return multisampled_texture(builder->source_, dims, subtype);
         }
 
@@ -1233,9 +1235,9 @@ class Builder {
         /// @param subtype the texture subtype.
         /// @returns the multisampled texture
         ast::Type multisampled_texture(const Source& source,
-                                       type::TextureDimension dims,
+                                       core::type::TextureDimension dims,
                                        ast::Type subtype) const {
-            if (dims == type::TextureDimension::k2d) {
+            if (dims == core::type::TextureDimension::k2d) {
                 return (*this)(source, "texture_multisampled_2d", subtype);
             }
             TINT_ICE() << "invalid multisampled_texture dimensions: " << dims;
@@ -1246,7 +1248,7 @@ class Builder {
         /// @param format the texel format of the texture
         /// @param access the access control of the texture
         /// @returns the storage texture
-        ast::Type storage_texture(type::TextureDimension dims,
+        ast::Type storage_texture(core::type::TextureDimension dims,
                                   core::TexelFormat format,
                                   core::Access access) const {
             return storage_texture(builder->source_, dims, format, access);
@@ -1258,17 +1260,17 @@ class Builder {
         /// @param access the access control of the texture
         /// @returns the storage texture
         ast::Type storage_texture(const Source& source,
-                                  type::TextureDimension dims,
+                                  core::type::TextureDimension dims,
                                   core::TexelFormat format,
                                   core::Access access) const {
             switch (dims) {
-                case type::TextureDimension::k1d:
+                case core::type::TextureDimension::k1d:
                     return (*this)(source, "texture_storage_1d", format, access);
-                case type::TextureDimension::k2d:
+                case core::type::TextureDimension::k2d:
                     return (*this)(source, "texture_storage_2d", format, access);
-                case type::TextureDimension::k2dArray:
+                case core::type::TextureDimension::k2dArray:
                     return (*this)(source, "texture_storage_2d_array", format, access);
-                case type::TextureDimension::k3d:
+                case core::type::TextureDimension::k3d:
                     return (*this)(source, "texture_storage_3d", format, access);
                 default:
                     break;
@@ -1861,7 +1863,7 @@ class Builder {
     /// @return an ast::UnaryOpExpression that takes the address of `expr`
     template <typename EXPR>
     const ast::UnaryOpExpression* AddressOf(const Source& source, EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(source, ast::UnaryOp::kAddressOf,
+        return create<ast::UnaryOpExpression>(source, core::UnaryOp::kAddressOf,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1869,7 +1871,7 @@ class Builder {
     /// @return an ast::UnaryOpExpression that takes the address of `expr`
     template <typename EXPR>
     const ast::UnaryOpExpression* AddressOf(EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(ast::UnaryOp::kAddressOf,
+        return create<ast::UnaryOpExpression>(core::UnaryOp::kAddressOf,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1878,7 +1880,7 @@ class Builder {
     /// @return an ast::UnaryOpExpression that dereferences the pointer `expr`
     template <typename EXPR>
     const ast::UnaryOpExpression* Deref(const Source& source, EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(source, ast::UnaryOp::kIndirection,
+        return create<ast::UnaryOpExpression>(source, core::UnaryOp::kIndirection,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1886,7 +1888,7 @@ class Builder {
     /// @return an ast::UnaryOpExpression that dereferences the pointer `expr`
     template <typename EXPR>
     const ast::UnaryOpExpression* Deref(EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(ast::UnaryOp::kIndirection,
+        return create<ast::UnaryOpExpression>(core::UnaryOp::kIndirection,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1895,7 +1897,7 @@ class Builder {
     /// expression
     template <typename EXPR>
     const ast::UnaryOpExpression* Not(EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(ast::UnaryOp::kNot, Expr(std::forward<EXPR>(expr)));
+        return create<ast::UnaryOpExpression>(core::UnaryOp::kNot, Expr(std::forward<EXPR>(expr)));
     }
 
     /// @param source the source information
@@ -1904,7 +1906,7 @@ class Builder {
     /// expression
     template <typename EXPR>
     const ast::UnaryOpExpression* Not(const Source& source, EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(source, ast::UnaryOp::kNot,
+        return create<ast::UnaryOpExpression>(source, core::UnaryOp::kNot,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1913,7 +1915,7 @@ class Builder {
     /// input expression
     template <typename EXPR>
     const ast::UnaryOpExpression* Complement(EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(ast::UnaryOp::kComplement,
+        return create<ast::UnaryOpExpression>(core::UnaryOp::kComplement,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -1922,7 +1924,7 @@ class Builder {
     /// input expression
     template <typename EXPR>
     const ast::UnaryOpExpression* Negation(EXPR&& expr) {
-        return create<ast::UnaryOpExpression>(ast::UnaryOp::kNegation,
+        return create<ast::UnaryOpExpression>(core::UnaryOp::kNegation,
                                               Expr(std::forward<EXPR>(expr)));
     }
 
@@ -2001,7 +2003,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` summing the arguments `lhs` and `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Add(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kAdd, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kAdd, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2011,7 +2013,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` summing the arguments `lhs` and `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Add(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kAdd,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kAdd,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2021,7 +2023,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` bitwise anding `lhs` and `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* And(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kAnd, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kAnd, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2030,7 +2032,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` bitwise or-ing `lhs` and `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Or(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kOr, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kOr, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2039,8 +2041,8 @@ class Builder {
     /// @returns a `ast::BinaryExpression` subtracting `rhs` from `lhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Sub(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kSubtract, Expr(std::forward<LHS>(lhs)),
-                                             Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(
+            core::BinaryOp::kSubtract, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param lhs the left hand argument to the multiplication operation
@@ -2048,8 +2050,8 @@ class Builder {
     /// @returns a `ast::BinaryExpression` multiplying `rhs` from `lhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Mul(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kMultiply, Expr(std::forward<LHS>(lhs)),
-                                             Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(
+            core::BinaryOp::kMultiply, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param source the source information
@@ -2058,7 +2060,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` multiplying `rhs` from `lhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Mul(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kMultiply,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kMultiply,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2068,7 +2070,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` dividing `lhs` by `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Div(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kDivide, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kDivide, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2078,7 +2080,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` dividing `lhs` by `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Div(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kDivide,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kDivide,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2088,7 +2090,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` applying modulo of `lhs` by `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Mod(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kModulo, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kModulo, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2097,8 +2099,9 @@ class Builder {
     /// @returns a `ast::BinaryExpression` bit shifting right `lhs` by `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Shr(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(
-            ast::BinaryOp::kShiftRight, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(core::BinaryOp::kShiftRight,
+                                             Expr(std::forward<LHS>(lhs)),
+                                             Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param lhs the left hand argument to the bit shift left operation
@@ -2107,7 +2110,7 @@ class Builder {
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Shl(LHS&& lhs, RHS&& rhs) {
         return create<ast::BinaryExpression>(
-            ast::BinaryOp::kShiftLeft, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
+            core::BinaryOp::kShiftLeft, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param source the source information
@@ -2116,7 +2119,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` bit shifting left `lhs` by `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Shl(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kShiftLeft,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kShiftLeft,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2126,7 +2129,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` bitwise xor-ing `lhs` and `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Xor(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kXor, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kXor, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2135,8 +2138,9 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` && `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LogicalAnd(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(
-            ast::BinaryOp::kLogicalAnd, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(core::BinaryOp::kLogicalAnd,
+                                             Expr(std::forward<LHS>(lhs)),
+                                             Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param source the source information
@@ -2145,7 +2149,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` && `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LogicalAnd(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kLogicalAnd,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kLogicalAnd,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2156,7 +2160,7 @@ class Builder {
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LogicalOr(LHS&& lhs, RHS&& rhs) {
         return create<ast::BinaryExpression>(
-            ast::BinaryOp::kLogicalOr, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
+            core::BinaryOp::kLogicalOr, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param source the source information
@@ -2165,7 +2169,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` || `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LogicalOr(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kLogicalOr,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kLogicalOr,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2175,7 +2179,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` > `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* GreaterThan(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kGreaterThan,
+        return create<ast::BinaryExpression>(core::BinaryOp::kGreaterThan,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2185,7 +2189,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` >= `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* GreaterThanEqual(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kGreaterThanEqual,
+        return create<ast::BinaryExpression>(core::BinaryOp::kGreaterThanEqual,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2195,8 +2199,8 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` < `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LessThan(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kLessThan, Expr(std::forward<LHS>(lhs)),
-                                             Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(
+            core::BinaryOp::kLessThan, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param lhs the left hand argument to the less than or equal operation
@@ -2204,7 +2208,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` of `lhs` <= `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* LessThanEqual(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kLessThanEqual,
+        return create<ast::BinaryExpression>(core::BinaryOp::kLessThanEqual,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2214,7 +2218,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` comparing `lhs` equal to `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Equal(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kEqual, Expr(std::forward<LHS>(lhs)),
+        return create<ast::BinaryExpression>(core::BinaryOp::kEqual, Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
 
@@ -2224,7 +2228,7 @@ class Builder {
     /// @returns a `ast::BinaryExpression` comparing `lhs` equal to `rhs`
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* Equal(const Source& source, LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(source, ast::BinaryOp::kEqual,
+        return create<ast::BinaryExpression>(source, core::BinaryOp::kEqual,
                                              Expr(std::forward<LHS>(lhs)),
                                              Expr(std::forward<RHS>(rhs)));
     }
@@ -2235,8 +2239,8 @@ class Builder {
     ///          disequality
     template <typename LHS, typename RHS>
     const ast::BinaryExpression* NotEqual(LHS&& lhs, RHS&& rhs) {
-        return create<ast::BinaryExpression>(ast::BinaryOp::kNotEqual, Expr(std::forward<LHS>(lhs)),
-                                             Expr(std::forward<RHS>(rhs)));
+        return create<ast::BinaryExpression>(
+            core::BinaryOp::kNotEqual, Expr(std::forward<LHS>(lhs)), Expr(std::forward<RHS>(rhs)));
     }
 
     /// @param source the source information
@@ -2724,7 +2728,7 @@ class Builder {
     const ast::CompoundAssignmentStatement* CompoundAssign(const Source& source,
                                                            LhsExpressionInit&& lhs,
                                                            RhsExpressionInit&& rhs,
-                                                           ast::BinaryOp op) {
+                                                           core::BinaryOp op) {
         return create<ast::CompoundAssignmentStatement>(
             source, Expr(std::forward<LhsExpressionInit>(lhs)),
             Expr(std::forward<RhsExpressionInit>(rhs)), op);
@@ -2739,7 +2743,7 @@ class Builder {
     template <typename LhsExpressionInit, typename RhsExpressionInit>
     const ast::CompoundAssignmentStatement* CompoundAssign(LhsExpressionInit&& lhs,
                                                            RhsExpressionInit&& rhs,
-                                                           ast::BinaryOp op) {
+                                                           core::BinaryOp op) {
         return create<ast::CompoundAssignmentStatement>(Expr(std::forward<LhsExpressionInit>(lhs)),
                                                         Expr(std::forward<RhsExpressionInit>(rhs)),
                                                         op);

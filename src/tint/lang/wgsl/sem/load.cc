@@ -23,13 +23,13 @@ namespace tint::sem {
 Load::Load(const ValueExpression* ref, const Statement* statement)
     : Base(/* declaration */ ref->Declaration(),
            /* type */ ref->Type()->UnwrapRef(),
-           /* stage */ EvaluationStage::kRuntime,  // Loads can only be runtime
+           /* stage */ core::EvaluationStage::kRuntime,  // Loads can only be runtime
            /* statement */ statement,
            /* constant */ nullptr,
            /* has_side_effects */ ref->HasSideEffects(),
            /* root_ident */ ref->RootIdentifier()),
       reference_(ref) {
-    TINT_ASSERT(ref->Type()->Is<type::Reference>());
+    TINT_ASSERT(ref->Type()->Is<core::type::Reference>());
 }
 
 Load::~Load() = default;

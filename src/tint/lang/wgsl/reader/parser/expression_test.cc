@@ -43,7 +43,7 @@ TEST_F(WGSLParserTest, Expression_Or_Parses) {
 
     ASSERT_TRUE(e->Is<ast::BinaryExpression>());
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLogicalOr, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLogicalOr, rel->op);
 
     ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->lhs->As<ast::IdentifierExpression>();
@@ -65,7 +65,7 @@ TEST_F(WGSLParserTest, Expression_Or_Parses_Multiple) {
     // lhs: (a || true)
     // rhs: b
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLogicalOr, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLogicalOr, rel->op);
 
     ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->rhs->As<ast::IdentifierExpression>();
@@ -75,7 +75,7 @@ TEST_F(WGSLParserTest, Expression_Or_Parses_Multiple) {
     // lhs: a
     // rhs: true
     rel = rel->lhs->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLogicalOr, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLogicalOr, rel->op);
 
     ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
     ident_expr = rel->lhs->As<ast::IdentifierExpression>();
@@ -110,7 +110,7 @@ TEST_F(WGSLParserTest, Expression_And_Parses) {
 
     ASSERT_TRUE(e->Is<ast::BinaryExpression>());
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLogicalAnd, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLogicalAnd, rel->op);
 
     ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->lhs->As<ast::IdentifierExpression>();
@@ -132,7 +132,7 @@ TEST_F(WGSLParserTest, Expression_And_Parses_Multple) {
     // lhs: (a && true)
     // rhs: b
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLogicalAnd, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLogicalAnd, rel->op);
 
     ASSERT_TRUE(rel->rhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->rhs->As<ast::IdentifierExpression>();
@@ -190,7 +190,7 @@ TEST_F(WGSLParserTest, Expression_Bitwise) {
 
     ASSERT_TRUE(e->Is<ast::BinaryExpression>());
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kAnd, rel->op);
+    EXPECT_EQ(core::BinaryOp::kAnd, rel->op);
 
     ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->lhs->As<ast::IdentifierExpression>();
@@ -211,7 +211,7 @@ TEST_F(WGSLParserTest, Expression_Relational) {
 
     ASSERT_TRUE(e->Is<ast::BinaryExpression>());
     auto* rel = e->As<ast::BinaryExpression>();
-    EXPECT_EQ(ast::BinaryOp::kLessThanEqual, rel->op);
+    EXPECT_EQ(core::BinaryOp::kLessThanEqual, rel->op);
 
     ASSERT_TRUE(rel->lhs->Is<ast::IdentifierExpression>());
     auto* ident_expr = rel->lhs->As<ast::IdentifierExpression>();
@@ -299,7 +299,7 @@ TEST_F(WGSLParserTest, Expression_NegatedNumber) {
 
     ASSERT_TRUE(e->Is<ast::UnaryOpExpression>());
     auto* b = e->As<ast::UnaryOpExpression>();
-    EXPECT_EQ(b->op, ast::UnaryOp::kNegation);
+    EXPECT_EQ(b->op, core::UnaryOp::kNegation);
 
     ASSERT_TRUE(b->expr->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(b->expr->As<ast::IntLiteralExpression>()->value, 1);
@@ -327,7 +327,7 @@ TEST_F(WGSLParserTest, Expression_MinI32) {
 
     ASSERT_TRUE(e->Is<ast::UnaryOpExpression>());
     auto* b = e->As<ast::UnaryOpExpression>();
-    EXPECT_EQ(b->op, ast::UnaryOp::kNegation);
+    EXPECT_EQ(b->op, core::UnaryOp::kNegation);
 
     ASSERT_TRUE(b->expr->Is<ast::IntLiteralExpression>());
     EXPECT_EQ(b->expr->As<ast::IntLiteralExpression>()->value, 2147483648);
@@ -382,7 +382,7 @@ TEST_F(WGSLParserTest, Expression_MinF32) {
 
     ASSERT_TRUE(e->Is<ast::UnaryOpExpression>());
     auto* b = e->As<ast::UnaryOpExpression>();
-    EXPECT_EQ(b->op, ast::UnaryOp::kNegation);
+    EXPECT_EQ(b->op, core::UnaryOp::kNegation);
 
     ASSERT_TRUE(b->expr->Is<ast::FloatLiteralExpression>());
     EXPECT_EQ(b->expr->As<ast::FloatLiteralExpression>()->value,

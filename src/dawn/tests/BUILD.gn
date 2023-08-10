@@ -305,6 +305,7 @@ dawn_test("dawn_unittests") {
     "unittests/LimitsTests.cpp",
     "unittests/LinkedListTests.cpp",
     "unittests/MathTests.cpp",
+    "unittests/MutexProtectedTests.cpp",
     "unittests/MutexTests.cpp",
     "unittests/NumericTests.cpp",
     "unittests/ObjectBaseTests.cpp",
@@ -709,6 +710,7 @@ source_set("white_box_tests_sources") {
 
   if (dawn_enable_opengles) {
     sources += [ "white_box/EGLImageWrappingTests.cpp" ]
+    sources += [ "white_box/GLTextureWrappingTests.cpp" ]
     include_dirs = [ "//third_party/khronos" ]
   }
 

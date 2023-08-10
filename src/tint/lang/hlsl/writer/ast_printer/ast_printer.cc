@@ -412,7 +412,7 @@ bool ASTPrinter::Generate() {
 }
 
 bool ASTPrinter::EmitDynamicVectorAssignment(const ast::AssignmentStatement* stmt,
-                                             const type::Vector* vec) {
+                                             const core::type::Vector* vec) {
     auto name = tint::GetOrCreate(dynamic_vector_write_, vec, [&]() -> std::string {
         std::string fn;
         {
@@ -485,7 +485,7 @@ bool ASTPrinter::EmitDynamicVectorAssignment(const ast::AssignmentStatement* stm
 }
 
 bool ASTPrinter::EmitDynamicMatrixVectorAssignment(const ast::AssignmentStatement* stmt,
-                                                   const type::Matrix* mat) {
+                                                   const core::type::Matrix* mat) {
     auto name = tint::GetOrCreate(dynamic_matrix_vector_write_, mat, [&]() -> std::string {
         std::string fn;
         {
@@ -551,7 +551,7 @@ bool ASTPrinter::EmitDynamicMatrixVectorAssignment(const ast::AssignmentStatemen
 }
 
 bool ASTPrinter::EmitDynamicMatrixScalarAssignment(const ast::AssignmentStatement* stmt,
-                                                   const type::Matrix* mat) {
+                                                   const core::type::Matrix* mat) {
     auto* lhs_row_access = stmt->lhs->As<ast::IndexAccessorExpression>();
     auto* lhs_col_access = lhs_row_access->object->As<ast::IndexAccessorExpression>();
 
@@ -610,7 +610,7 @@ bool ASTPrinter::EmitDynamicMatrixScalarAssignment(const ast::AssignmentStatemen
                                 default: {
                                     auto* vec = TypeOf(lhs_row_access->object)
                                                     ->UnwrapRef()
-                                                    ->As<type::Vector>();
+                                                    ->As<core::type::Vector>();
                                     TINT_UNREACHABLE() << "invalid vector size " << vec->Width();
                                     break;
                                 }
@@ -686,12 +686,12 @@ bool ASTPrinter::EmitBitcast(StringStream& out, const ast::BitcastExpression* ex
     }
 
     // Handle the f16 types using polyfill functions
-    if (src_el_type->Is<type::F16>() || dst_el_type->Is<type::F16>()) {
+    if (src_el_type->Is<core::type::F16>() || dst_el_type->Is<core::type::F16>()) {
         auto f16_bitcast_polyfill = [&]() {
-            if (src_el_type->Is<type::F16>()) {
+            if (src_el_type->Is<core::type::F16>()) {
                 // Source type must be vec2<f16> or vec4<f16>, since type f16 and vec3<f16> can only
                 // have identity bitcast.
-                auto* src_vec = src_type->As<type::Vector>();
+                auto* src_vec = src_type->As<core::type::Vector>();
                 TINT_ASSERT(src_vec);
                 TINT_ASSERT(((src_vec->Width() == 2u) || (src_vec->Width() == 4u)));
 
@@ -755,14 +755,15 @@ bool ASTPrinter::EmitBitcast(StringStream& out, const ast::BitcastExpression* ex
                     });
             } else {
                 // Destination type must be vec2<f16> or vec4<f16>.
-                auto* dst_vec = dst_type->As<type::Vector>();
+                auto* dst_vec = dst_type->As<core::type::Vector>();
                 TINT_ASSERT((dst_vec && ((dst_vec->Width() == 2u) || (dst_vec->Width() == 4u)) &&
-                             dst_el_type->Is<type::F16>()));
+                             dst_el_type->Is<core::type::F16>()));
                 // Source type must be f32/i32/u32 or vec2<f32/i32/u32>.
-                auto* src_vec = src_type->As<type::Vector>();
-                TINT_ASSERT((src_type->IsAnyOf<type::I32, type::U32, type::F32>() ||
-                             (src_vec && src_vec->Width() == 2u &&
-                              src_el_type->IsAnyOf<type::I32, type::U32, type::F32>())));
+                auto* src_vec = src_type->As<core::type::Vector>();
+                TINT_ASSERT(
+                    (src_type->IsAnyOf<core::type::I32, core::type::U32, core::type::F32>() ||
+                     (src_vec && src_vec->Width() == 2u &&
+                      src_el_type->IsAnyOf<core::type::I32, core::type::U32, core::type::F32>())));
                 std::string src_type_suffix = (src_vec ? "2" : "");
 
                 // Bitcast other types to f16 types by reinterpreting their bits as f16 using
@@ -849,7 +850,7 @@ bool ASTPrinter::EmitBitcast(StringStream& out, const ast::BitcastExpression* ex
     }
 
     // Otherwise, bitcasting between non-f16 types.
-    TINT_ASSERT((!src_el_type->Is<type::F16>() && !dst_el_type->Is<type::F16>()));
+    TINT_ASSERT((!src_el_type->Is<core::type::F16>() && !dst_el_type->Is<core::type::F16>()));
     out << "as";
     if (!EmitType(out, dst_el_type, core::AddressSpace::kUndefined, core::Access::kReadWrite, "")) {
         return false;
@@ -867,7 +868,7 @@ bool ASTPrinter::EmitAssign(const ast::AssignmentStatement* stmt) {
         // BUG(crbug.com/tint/1333): work around assignment of scalar to matrices
         // with at least one dynamic index
         if (auto* lhs_sub_access = lhs_access->object->As<ast::IndexAccessorExpression>()) {
-            if (auto* mat = TypeOf(lhs_sub_access->object)->UnwrapRef()->As<type::Matrix>()) {
+            if (auto* mat = TypeOf(lhs_sub_access->object)->UnwrapRef()->As<core::type::Matrix>()) {
                 auto* rhs_row_idx_sem = builder_.Sem().GetVal(lhs_access->index);
                 auto* rhs_col_idx_sem = builder_.Sem().GetVal(lhs_sub_access->index);
                 if (!rhs_row_idx_sem->ConstantValue() || !rhs_col_idx_sem->ConstantValue()) {
@@ -878,7 +879,7 @@ bool ASTPrinter::EmitAssign(const ast::AssignmentStatement* stmt) {
         // BUG(crbug.com/tint/1333): work around assignment of vector to matrices
         // with dynamic indices
         const auto* lhs_access_type = TypeOf(lhs_access->object)->UnwrapRef();
-        if (auto* mat = lhs_access_type->As<type::Matrix>()) {
+        if (auto* mat = lhs_access_type->As<core::type::Matrix>()) {
             auto* lhs_index_sem = builder_.Sem().GetVal(lhs_access->index);
             if (!lhs_index_sem->ConstantValue()) {
                 return EmitDynamicMatrixVectorAssignment(stmt, mat);
@@ -886,7 +887,7 @@ bool ASTPrinter::EmitAssign(const ast::AssignmentStatement* stmt) {
         }
         // BUG(crbug.com/tint/534): work around assignment to vectors with dynamic
         // indices
-        if (auto* vec = lhs_access_type->As<type::Vector>()) {
+        if (auto* vec = lhs_access_type->As<core::type::Vector>()) {
             auto* rhs_sem = builder_.Sem().GetVal(lhs_access->index);
             if (!rhs_sem->ConstantValue()) {
                 return EmitDynamicVectorAssignment(stmt, vec);
@@ -907,7 +908,7 @@ bool ASTPrinter::EmitAssign(const ast::AssignmentStatement* stmt) {
 }
 
 bool ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr) {
-    if (expr->op == ast::BinaryOp::kLogicalAnd || expr->op == ast::BinaryOp::kLogicalOr) {
+    if (expr->op == core::BinaryOp::kLogicalAnd || expr->op == core::BinaryOp::kLogicalOr) {
         auto name = UniqueIdentifier(kTempNamePrefix);
 
         {
@@ -919,7 +920,7 @@ bool ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr
             pre << ";";
         }
 
-        if (expr->op == ast::BinaryOp::kLogicalOr) {
+        if (expr->op == core::BinaryOp::kLogicalOr) {
             Line() << "if (!" << name << ") {";
         } else {
             Line() << "if (" << name << ") {";
@@ -945,10 +946,10 @@ bool ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr
     auto* rhs_type = TypeOf(expr->rhs)->UnwrapRef();
     // Multiplying by a matrix requires the use of `mul` in order to get the
     // type of multiply we desire.
-    if (expr->op == ast::BinaryOp::kMultiply &&
-        ((lhs_type->Is<type::Vector>() && rhs_type->Is<type::Matrix>()) ||
-         (lhs_type->Is<type::Matrix>() && rhs_type->Is<type::Vector>()) ||
-         (lhs_type->Is<type::Matrix>() && rhs_type->Is<type::Matrix>()))) {
+    if (expr->op == core::BinaryOp::kMultiply &&
+        ((lhs_type->Is<core::type::Vector>() && rhs_type->Is<core::type::Matrix>()) ||
+         (lhs_type->Is<core::type::Matrix>() && rhs_type->Is<core::type::Vector>()) ||
+         (lhs_type->Is<core::type::Matrix>() && rhs_type->Is<core::type::Matrix>()))) {
         // Matrices are transposed, so swap LHS and RHS.
         out << "mul(";
         if (!EmitExpression(out, expr->rhs)) {
@@ -971,43 +972,43 @@ bool ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr
     out << " ";
 
     switch (expr->op) {
-        case ast::BinaryOp::kAnd:
+        case core::BinaryOp::kAnd:
             out << "&";
             break;
-        case ast::BinaryOp::kOr:
+        case core::BinaryOp::kOr:
             out << "|";
             break;
-        case ast::BinaryOp::kXor:
+        case core::BinaryOp::kXor:
             out << "^";
             break;
-        case ast::BinaryOp::kLogicalAnd:
-        case ast::BinaryOp::kLogicalOr: {
+        case core::BinaryOp::kLogicalAnd:
+        case core::BinaryOp::kLogicalOr: {
             // These are both handled above.
             TINT_UNREACHABLE();
             return false;
         }
-        case ast::BinaryOp::kEqual:
+        case core::BinaryOp::kEqual:
             out << "==";
             break;
-        case ast::BinaryOp::kNotEqual:
+        case core::BinaryOp::kNotEqual:
             out << "!=";
             break;
-        case ast::BinaryOp::kLessThan:
+        case core::BinaryOp::kLessThan:
             out << "<";
             break;
-        case ast::BinaryOp::kGreaterThan:
+        case core::BinaryOp::kGreaterThan:
             out << ">";
             break;
-        case ast::BinaryOp::kLessThanEqual:
+        case core::BinaryOp::kLessThanEqual:
             out << "<=";
             break;
-        case ast::BinaryOp::kGreaterThanEqual:
+        case core::BinaryOp::kGreaterThanEqual:
             out << ">=";
             break;
-        case ast::BinaryOp::kShiftLeft:
+        case core::BinaryOp::kShiftLeft:
             out << "<<";
             break;
-        case ast::BinaryOp::kShiftRight:
+        case core::BinaryOp::kShiftRight:
             // TODO(dsinclair): MSL is based on C++14, and >> in C++14 has
             // implementation-defined behaviour for negative LHS.  We may have to
             // generate extra code to implement WGSL-specified behaviour for negative
@@ -1015,24 +1016,21 @@ bool ASTPrinter::EmitBinary(StringStream& out, const ast::BinaryExpression* expr
             out << R"(>>)";
             break;
 
-        case ast::BinaryOp::kAdd:
+        case core::BinaryOp::kAdd:
             out << "+";
             break;
-        case ast::BinaryOp::kSubtract:
+        case core::BinaryOp::kSubtract:
             out << "-";
             break;
-        case ast::BinaryOp::kMultiply:
+        case core::BinaryOp::kMultiply:
             out << "*";
             break;
-        case ast::BinaryOp::kDivide:
+        case core::BinaryOp::kDivide:
             out << "/";
             break;
-        case ast::BinaryOp::kModulo:
+        case core::BinaryOp::kModulo:
             out << "%";
             break;
-        case ast::BinaryOp::kNone:
-            diagnostics_.add_error(diag::System::Writer, "missing binary operation type");
-            return false;
     }
     out << " ";
 
@@ -1285,7 +1283,7 @@ bool ASTPrinter::EmitValueConstructor(StringStream& out,
 
     // Single parameter matrix initializers must be identity initializer.
     // It could also be conversions between f16 and f32 matrix when f16 is properly supported.
-    if (type->Is<type::Matrix>() && call->Arguments().Length() == 1) {
+    if (type->Is<core::type::Matrix>() && call->Arguments().Length() == 1) {
         if (!ctor->Parameters()[0]->Type()->UnwrapRef()->is_float_matrix()) {
             TINT_UNREACHABLE()
                 << "found a single-parameter matrix initializer that is not identity initializer";
@@ -1293,13 +1291,13 @@ bool ASTPrinter::EmitValueConstructor(StringStream& out,
         }
     }
 
-    bool brackets = type->IsAnyOf<type::Array, type::Struct>();
+    bool brackets = type->IsAnyOf<core::type::Array, core::type::Struct>();
 
     // For single-value vector initializers, swizzle the scalar to the right
     // vector dimension using .x
-    const bool is_single_value_vector_init = type->is_scalar_vector() &&
-                                             call->Arguments().Length() == 1 &&
-                                             ctor->Parameters()[0]->Type()->Is<type::Scalar>();
+    const bool is_single_value_vector_init =
+        type->is_scalar_vector() && call->Arguments().Length() == 1 &&
+        ctor->Parameters()[0]->Type()->Is<core::type::Scalar>();
 
     if (brackets) {
         out << "{";
@@ -1327,7 +1325,7 @@ bool ASTPrinter::EmitValueConstructor(StringStream& out,
     }
 
     if (is_single_value_vector_init) {
-        out << ")." << std::string(type->As<type::Vector>()->Width(), 'x');
+        out << ")." << std::string(type->As<core::type::Vector>()->Width(), 'x');
     }
 
     out << (brackets ? "}" : ")");
@@ -1356,7 +1354,7 @@ bool ASTPrinter::EmitUniformBufferAccess(
     bool scalar_offset_constant = false;
 
     if (auto* val = builder_.Sem().GetVal(offset)->ConstantValue()) {
-        TINT_ASSERT(val->Type()->Is<type::U32>());
+        TINT_ASSERT(val->Type()->Is<core::type::U32>());
         scalar_offset_bytes = static_cast<uint32_t>(val->ValueAs<AInt>());
         scalar_offset_index = scalar_offset_bytes / 4;  // bytes -> scalar index
         scalar_offset_constant = true;
@@ -1926,7 +1924,7 @@ bool ASTPrinter::EmitStorageAtomicIntrinsic(
             return true;
         }
         case Op::kAtomicCompareExchangeWeak: {
-            if (!EmitStructType(&helpers_, result_ty->As<type::Struct>())) {
+            if (!EmitStructType(&helpers_, result_ty->As<core::type::Struct>())) {
                 return false;
             }
 
@@ -1993,7 +1991,7 @@ bool ASTPrinter::EmitWorkgroupAtomicCall(StringStream& out,
                                          const sem::Builtin* builtin) {
     std::string result = UniqueIdentifier("atomic_result");
 
-    if (!builtin->ReturnType()->Is<type::Void>()) {
+    if (!builtin->ReturnType()->Is<core::type::Void>()) {
         auto pre = Line();
         if (!EmitTypeAndName(pre, builtin->ReturnType(), core::AddressSpace::kUndefined,
                              core::Access::kUndefined, result)) {
@@ -2085,7 +2083,7 @@ bool ASTPrinter::EmitWorkgroupAtomicCall(StringStream& out,
             return true;
         }
         case core::Function::kAtomicCompareExchangeWeak: {
-            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
+            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<core::type::Struct>())) {
                 return false;
             }
 
@@ -2196,13 +2194,13 @@ bool ASTPrinter::EmitModfCall(StringStream& out,
             auto in = params[0];
 
             std::string width;
-            if (auto* vec = ty->As<type::Vector>()) {
+            if (auto* vec = ty->As<core::type::Vector>()) {
                 width = std::to_string(vec->Width());
             }
 
             // Emit the builtin return type unique to this overload. This does not
             // exist in the AST, so it will not be generated in Generate().
-            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
+            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<core::type::Struct>())) {
                 return false;
             }
 
@@ -2229,18 +2227,18 @@ bool ASTPrinter::EmitFrexpCall(StringStream& out,
             auto in = params[0];
 
             std::string width;
-            if (auto* vec = ty->As<type::Vector>()) {
+            if (auto* vec = ty->As<core::type::Vector>()) {
                 width = std::to_string(vec->Width());
             }
 
             // Emit the builtin return type unique to this overload. This does not
             // exist in the AST, so it will not be generated in Generate().
-            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<type::Struct>())) {
+            if (!EmitStructType(&helpers_, builtin->ReturnType()->As<core::type::Struct>())) {
                 return false;
             }
 
             std::string member_type;
-            if (Is<type::F16>(ty->DeepestElement())) {
+            if (Is<core::type::F16>(ty->DeepestElement())) {
                 member_type = width.empty() ? "float16_t" : ("vector<float16_t, " + width + ">");
             } else {
                 member_type = "float" + width;
@@ -2304,7 +2302,7 @@ bool ASTPrinter::EmitQuantizeToF16Call(StringStream& out,
                                        const sem::Builtin* builtin) {
     // Cast to f16 and back
     std::string width;
-    if (auto* vec = builtin->ReturnType()->As<type::Vector>()) {
+    if (auto* vec = builtin->ReturnType()->As<core::type::Vector>()) {
         width = std::to_string(vec->Width());
     }
     out << "f16tof32(f32tof16"
@@ -2517,7 +2515,7 @@ bool ASTPrinter::EmitSubgroupCall(StringStream& out,
 bool ASTPrinter::EmitTextureCall(StringStream& out,
                                  const sem::Call* call,
                                  const sem::Builtin* builtin) {
-    using Usage = sem::ParameterUsage;
+    using Usage = core::ParameterUsage;
 
     auto& signature = builtin->Signature();
     auto* expr = call->Declaration();
@@ -2535,7 +2533,7 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
         return false;
     }
 
-    auto* texture_type = TypeOf(texture)->UnwrapRef()->As<type::Texture>();
+    auto* texture_type = TypeOf(texture)->UnwrapRef()->As<core::type::Texture>();
 
     switch (builtin->Type()) {
         case core::Function::kTextureDimensions:
@@ -2543,35 +2541,35 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
         case core::Function::kTextureNumLevels:
         case core::Function::kTextureNumSamples: {
             // All of these builtins use the GetDimensions() method on the texture
-            bool is_ms =
-                texture_type->IsAnyOf<type::MultisampledTexture, type::DepthMultisampledTexture>();
+            bool is_ms = texture_type->IsAnyOf<core::type::MultisampledTexture,
+                                               core::type::DepthMultisampledTexture>();
             int num_dimensions = 0;
             std::string swizzle;
 
             switch (builtin->Type()) {
                 case core::Function::kTextureDimensions:
                     switch (texture_type->dim()) {
-                        case type::TextureDimension::kNone:
+                        case core::type::TextureDimension::kNone:
                             TINT_ICE() << "texture dimension is kNone";
                             return false;
-                        case type::TextureDimension::k1d:
+                        case core::type::TextureDimension::k1d:
                             num_dimensions = 1;
                             break;
-                        case type::TextureDimension::k2d:
+                        case core::type::TextureDimension::k2d:
                             num_dimensions = is_ms ? 3 : 2;
                             swizzle = is_ms ? ".xy" : "";
                             break;
-                        case type::TextureDimension::k2dArray:
+                        case core::type::TextureDimension::k2dArray:
                             num_dimensions = is_ms ? 4 : 3;
                             swizzle = ".xy";
                             break;
-                        case type::TextureDimension::k3d:
+                        case core::type::TextureDimension::k3d:
                             num_dimensions = 3;
                             break;
-                        case type::TextureDimension::kCube:
+                        case core::type::TextureDimension::kCube:
                             num_dimensions = 2;
                             break;
-                        case type::TextureDimension::kCubeArray:
+                        case core::type::TextureDimension::kCubeArray:
                             num_dimensions = 3;
                             swizzle = ".xy";
                             break;
@@ -2582,11 +2580,11 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
                         default:
                             TINT_ICE() << "texture dimension is not arrayed";
                             return false;
-                        case type::TextureDimension::k2dArray:
+                        case core::type::TextureDimension::k2dArray:
                             num_dimensions = is_ms ? 4 : 3;
                             swizzle = ".z";
                             break;
-                        case type::TextureDimension::kCubeArray:
+                        case core::type::TextureDimension::kCubeArray:
                             num_dimensions = 3;
                             swizzle = ".z";
                             break;
@@ -2597,18 +2595,18 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
                         default:
                             TINT_ICE() << "texture dimension does not support mips";
                             return false;
-                        case type::TextureDimension::k1d:
+                        case core::type::TextureDimension::k1d:
                             num_dimensions = 2;
                             swizzle = ".y";
                             break;
-                        case type::TextureDimension::k2d:
-                        case type::TextureDimension::kCube:
+                        case core::type::TextureDimension::k2d:
+                        case core::type::TextureDimension::kCube:
                             num_dimensions = 3;
                             swizzle = ".z";
                             break;
-                        case type::TextureDimension::k2dArray:
-                        case type::TextureDimension::k3d:
-                        case type::TextureDimension::kCubeArray:
+                        case core::type::TextureDimension::k2dArray:
+                        case core::type::TextureDimension::k3d:
+                        case core::type::TextureDimension::kCubeArray:
                             num_dimensions = 4;
                             swizzle = ".w";
                             break;
@@ -2619,11 +2617,11 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
                         default:
                             TINT_ICE() << "texture dimension does not support multisampling";
                             return false;
-                        case type::TextureDimension::k2d:
+                        case core::type::TextureDimension::k2d:
                             num_dimensions = 3;
                             swizzle = ".z";
                             break;
-                        case type::TextureDimension::k2dArray:
+                        case core::type::TextureDimension::k2dArray:
                             num_dimensions = 4;
                             swizzle = ".w";
                             break;
@@ -2746,13 +2744,13 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
         case core::Function::kTextureLoad:
             out << ".Load(";
             // Multisampled textures do not support mip-levels.
-            if (!texture_type->Is<type::MultisampledTexture>()) {
+            if (!texture_type->Is<core::type::MultisampledTexture>()) {
                 pack_level_in_coords = true;
             }
             break;
         case core::Function::kTextureGather:
             out << ".Gather";
-            if (builtin->Parameters()[0]->Usage() == sem::ParameterUsage::kComponent) {
+            if (builtin->Parameters()[0]->Usage() == core::ParameterUsage::kComponent) {
                 switch (call->Arguments()[0]->ConstantValue()->ValueAs<AInt>()) {
                     case 0:
                         out << "Red";
@@ -2797,11 +2795,11 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
     }
 
     auto emit_vector_appended_with_i32_zero = [&](const ast::Expression* vector) {
-        auto* i32 = builder_.create<type::I32>();
+        auto* i32 = builder_.create<core::type::I32>();
         auto* zero = builder_.Expr(0_i);
         auto* stmt = builder_.Sem().Get(vector)->Stmt();
         builder_.Sem().Add(zero, builder_.create<sem::ValueExpression>(
-                                     zero, i32, sem::EvaluationStage::kRuntime, stmt,
+                                     zero, i32, core::EvaluationStage::kRuntime, stmt,
                                      /* constant_value */ nullptr,
                                      /* has_side_effects */ false));
         auto* packed = tint::writer::AppendVector(&builder_, vector, zero);
@@ -2865,7 +2863,7 @@ bool ASTPrinter::EmitTextureCall(StringStream& out,
         // HLSL builtin, we need to swizzle the expression to generate the correct
         // number of components.
         uint32_t wgsl_ret_width = 1;
-        if (auto* vec = builtin->ReturnType()->As<type::Vector>()) {
+        if (auto* vec = builtin->ReturnType()->As<core::type::Vector>()) {
             wgsl_ret_width = vec->Width();
         }
         if (wgsl_ret_width < hlsl_ret_width) {
@@ -3108,7 +3106,7 @@ bool ASTPrinter::EmitFunction(const ast::Function* func) {
         auto name = func->name->symbol.Name();
         // If the function returns an array, then we need to declare a typedef for
         // this.
-        if (sem->ReturnType()->Is<type::Array>()) {
+        if (sem->ReturnType()->Is<core::type::Array>()) {
             auto typedef_name = UniqueIdentifier(name + "_ret");
             auto pre = Line();
             pre << "typedef ";
@@ -3139,7 +3137,7 @@ bool ASTPrinter::EmitFunction(const ast::Function* func) {
             auto address_space = core::AddressSpace::kUndefined;
             auto access = core::Access::kUndefined;
 
-            if (auto* ptr = type->As<type::Pointer>()) {
+            if (auto* ptr = type->As<core::type::Pointer>()) {
                 type = ptr->StoreType();
                 switch (ptr->AddressSpace()) {
                     case core::AddressSpace::kStorage:
@@ -3171,7 +3169,7 @@ bool ASTPrinter::EmitFunction(const ast::Function* func) {
         out << ") {";
     }
 
-    if (sem->DiscardStatement() && !sem->ReturnType()->Is<type::Void>()) {
+    if (sem->DiscardStatement() && !sem->ReturnType()->Is<core::type::Void>()) {
         // BUG(crbug.com/tint/1081): work around non-void functions with discard
         // failing compilation sometimes
         if (!EmitFunctionBodyWithDiscard(func)) {
@@ -3195,7 +3193,7 @@ bool ASTPrinter::EmitFunctionBodyWithDiscard(const ast::Function* func) {
     // there is always an (unused) return statement.
 
     auto* sem = builder_.Sem().Get(func);
-    TINT_ASSERT(sem->DiscardStatement() && !sem->ReturnType()->Is<type::Void>());
+    TINT_ASSERT(sem->DiscardStatement() && !sem->ReturnType()->Is<core::type::Void>());
 
     ScopedIndent si(this);
     Line() << "if (true) {";
@@ -3313,12 +3311,12 @@ bool ASTPrinter::EmitHandleVariable(const ast::Var* var, const sem::Variable* se
 
     const char* register_space = nullptr;
 
-    if (unwrapped_type->Is<type::Texture>()) {
+    if (unwrapped_type->Is<core::type::Texture>()) {
         register_space = "t";
-        if (unwrapped_type->Is<type::StorageTexture>()) {
+        if (unwrapped_type->Is<core::type::StorageTexture>()) {
             register_space = "u";
         }
-    } else if (unwrapped_type->Is<type::Sampler>()) {
+    } else if (unwrapped_type->Is<core::type::Sampler>()) {
         register_space = "s";
     }
 
@@ -3486,7 +3484,7 @@ bool ASTPrinter::EmitEntryPointFunction(const ast::Function* func) {
         for (auto* var : func->params) {
             auto* sem = builder_.Sem().Get(var);
             auto* type = sem->Type();
-            if (TINT_UNLIKELY(!type->Is<type::Struct>())) {
+            if (TINT_UNLIKELY(!type->Is<core::type::Struct>())) {
                 // ICE likely indicates that the CanonicalizeEntryPointIO transform was
                 // not run, or a builtin parameter was added after it was run.
                 TINT_ICE() << "Unsupported non-struct entry point parameter";
@@ -3527,35 +3525,35 @@ bool ASTPrinter::EmitEntryPointFunction(const ast::Function* func) {
 }
 
 bool ASTPrinter::EmitConstant(StringStream& out,
-                              const constant::Value* constant,
+                              const core::constant::Value* constant,
                               bool is_variable_initializer) {
     return Switch(
         constant->Type(),  //
-        [&](const type::Bool*) {
+        [&](const core::type::Bool*) {
             out << (constant->ValueAs<AInt>() ? "true" : "false");
             return true;
         },
-        [&](const type::F32*) {
+        [&](const core::type::F32*) {
             PrintF32(out, constant->ValueAs<f32>());
             return true;
         },
-        [&](const type::F16*) {
+        [&](const core::type::F16*) {
             // emit a f16 scalar with explicit float16_t type declaration.
             out << "float16_t(";
             PrintF16(out, constant->ValueAs<f16>());
             out << ")";
             return true;
         },
-        [&](const type::I32*) {
+        [&](const core::type::I32*) {
             out << constant->ValueAs<AInt>();
             return true;
         },
-        [&](const type::U32*) {
+        [&](const core::type::U32*) {
             out << constant->ValueAs<AInt>() << "u";
             return true;
         },
-        [&](const type::Vector* v) {
-            if (auto* splat = constant->As<constant::Splat>()) {
+        [&](const core::type::Vector* v) {
+            if (auto* splat = constant->As<core::constant::Splat>()) {
                 {
                     ScopedParen sp(out);
                     if (!EmitConstant(out, splat->el, is_variable_initializer)) {
@@ -3585,7 +3583,7 @@ bool ASTPrinter::EmitConstant(StringStream& out,
             }
             return true;
         },
-        [&](const type::Matrix* m) {
+        [&](const core::type::Matrix* m) {
             if (!EmitType(out, m, core::AddressSpace::kUndefined, core::Access::kUndefined, "")) {
                 return false;
             }
@@ -3602,7 +3600,7 @@ bool ASTPrinter::EmitConstant(StringStream& out,
             }
             return true;
         },
-        [&](const type::Array* a) {
+        [&](const core::type::Array* a) {
             if (constant->AllZero()) {
                 out << "(";
                 if (!EmitType(out, a, core::AddressSpace::kUndefined, core::Access::kUndefined,
@@ -3619,7 +3617,7 @@ bool ASTPrinter::EmitConstant(StringStream& out,
             auto count = a->ConstantCount();
             if (!count) {
                 diagnostics_.add_error(diag::System::Writer,
-                                       type::Array::kErrExpectedConstantCount);
+                                       core::type::Array::kErrExpectedConstantCount);
                 return false;
             }
 
@@ -3634,7 +3632,7 @@ bool ASTPrinter::EmitConstant(StringStream& out,
 
             return true;
         },
-        [&](const type::Struct* s) {
+        [&](const core::type::Struct* s) {
             if (!EmitStructType(&helpers_, s)) {
                 return false;
             }
@@ -3721,30 +3719,30 @@ bool ASTPrinter::EmitLiteral(StringStream& out, const ast::LiteralExpression* li
         });
 }
 
-bool ASTPrinter::EmitValue(StringStream& out, const type::Type* type, int value) {
+bool ASTPrinter::EmitValue(StringStream& out, const core::type::Type* type, int value) {
     return Switch(
         type,
-        [&](const type::Bool*) {
+        [&](const core::type::Bool*) {
             out << (value == 0 ? "false" : "true");
             return true;
         },
-        [&](const type::F32*) {
+        [&](const core::type::F32*) {
             out << value << ".0f";
             return true;
         },
-        [&](const type::F16*) {
+        [&](const core::type::F16*) {
             out << "float16_t(" << value << ".0h)";
             return true;
         },
-        [&](const type::I32*) {
+        [&](const core::type::I32*) {
             out << value;
             return true;
         },
-        [&](const type::U32*) {
+        [&](const core::type::U32*) {
             out << value << "u";
             return true;
         },
-        [&](const type::Vector* vec) {
+        [&](const core::type::Vector* vec) {
             if (!EmitType(out, type, core::AddressSpace::kUndefined, core::Access::kReadWrite,
                           "")) {
                 return false;
@@ -3760,7 +3758,7 @@ bool ASTPrinter::EmitValue(StringStream& out, const type::Type* type, int value)
             }
             return true;
         },
-        [&](const type::Matrix* mat) {
+        [&](const core::type::Matrix* mat) {
             if (!EmitType(out, type, core::AddressSpace::kUndefined, core::Access::kReadWrite,
                           "")) {
                 return false;
@@ -3776,13 +3774,13 @@ bool ASTPrinter::EmitValue(StringStream& out, const type::Type* type, int value)
             }
             return true;
         },
-        [&](const type::Struct*) {
+        [&](const core::type::Struct*) {
             out << "(";
             TINT_DEFER(out << ")" << value);
             return EmitType(out, type, core::AddressSpace::kUndefined, core::Access::kUndefined,
                             "");
         },
-        [&](const type::Array*) {
+        [&](const core::type::Array*) {
             out << "(";
             TINT_DEFER(out << ")" << value);
             return EmitType(out, type, core::AddressSpace::kUndefined, core::Access::kUndefined,
@@ -3795,7 +3793,7 @@ bool ASTPrinter::EmitValue(StringStream& out, const type::Type* type, int value)
         });
 }
 
-bool ASTPrinter::EmitZeroValue(StringStream& out, const type::Type* type) {
+bool ASTPrinter::EmitZeroValue(StringStream& out, const core::type::Type* type) {
     return EmitValue(out, type, 0);
 }
 
@@ -4155,7 +4153,7 @@ bool ASTPrinter::EmitSwitch(const ast::SwitchStatement* stmt) {
 }
 
 bool ASTPrinter::EmitType(StringStream& out,
-                          const type::Type* type,
+                          const core::type::Type* type,
                           core::AddressSpace address_space,
                           core::Access access,
                           const std::string& name,
@@ -4184,11 +4182,11 @@ bool ASTPrinter::EmitType(StringStream& out,
 
     return Switch(
         type,
-        [&](const type::Array* ary) {
-            const type::Type* base_type = ary;
+        [&](const core::type::Array* ary) {
+            const core::type::Type* base_type = ary;
             std::vector<uint32_t> sizes;
-            while (auto* arr = base_type->As<type::Array>()) {
-                if (TINT_UNLIKELY(arr->Count()->Is<type::RuntimeArrayCount>())) {
+            while (auto* arr = base_type->As<core::type::Array>()) {
+                if (TINT_UNLIKELY(arr->Count()->Is<core::type::RuntimeArrayCount>())) {
                     TINT_ICE()
                         << "runtime arrays may only exist in storage buffers, which should have "
                            "been transformed into a ByteAddressBuffer";
@@ -4197,7 +4195,7 @@ bool ASTPrinter::EmitType(StringStream& out,
                 const auto count = arr->ConstantCount();
                 if (!count) {
                     diagnostics_.add_error(diag::System::Writer,
-                                           type::Array::kErrExpectedConstantCount);
+                                           core::type::Array::kErrExpectedConstantCount);
                     return false;
                 }
 
@@ -4218,24 +4216,24 @@ bool ASTPrinter::EmitType(StringStream& out,
             }
             return true;
         },
-        [&](const type::Bool*) {
+        [&](const core::type::Bool*) {
             out << "bool";
             return true;
         },
-        [&](const type::F32*) {
+        [&](const core::type::F32*) {
             out << "float";
             return true;
         },
-        [&](const type::F16*) {
+        [&](const core::type::F16*) {
             out << "float16_t";
             return true;
         },
-        [&](const type::I32*) {
+        [&](const core::type::I32*) {
             out << "int";
             return true;
         },
-        [&](const type::Matrix* mat) {
-            if (mat->type()->Is<type::F16>()) {
+        [&](const core::type::Matrix* mat) {
+            if (mat->type()->Is<core::type::F16>()) {
                 // Use matrix<type, N, M> for f16 matrix
                 out << "matrix<";
                 if (!EmitType(out, mat->type(), address_space, access, "")) {
@@ -4257,12 +4255,12 @@ bool ASTPrinter::EmitType(StringStream& out,
             out << mat->columns() << "x" << mat->rows();
             return true;
         },
-        [&](const type::Pointer*) {
+        [&](const core::type::Pointer*) {
             TINT_ICE() << "Attempting to emit pointer type. These should have "
                           "been removed with the SimplifyPointers transform";
             return false;
         },
-        [&](const type::Sampler* sampler) {
+        [&](const core::type::Sampler* sampler) {
             out << "Sampler";
             if (sampler->IsComparison()) {
                 out << "Comparison";
@@ -4270,20 +4268,20 @@ bool ASTPrinter::EmitType(StringStream& out,
             out << "State";
             return true;
         },
-        [&](const type::Struct* str) {
+        [&](const core::type::Struct* str) {
             out << StructName(str);
             return true;
         },
-        [&](const type::Texture* tex) {
-            if (TINT_UNLIKELY(tex->Is<type::ExternalTexture>())) {
+        [&](const core::type::Texture* tex) {
+            if (TINT_UNLIKELY(tex->Is<core::type::ExternalTexture>())) {
                 TINT_ICE() << "Multiplanar external texture transform was not run.";
                 return false;
             }
 
-            auto* storage = tex->As<type::StorageTexture>();
-            auto* ms = tex->As<type::MultisampledTexture>();
-            auto* depth_ms = tex->As<type::DepthMultisampledTexture>();
-            auto* sampled = tex->As<type::SampledTexture>();
+            auto* storage = tex->As<core::type::StorageTexture>();
+            auto* ms = tex->As<core::type::MultisampledTexture>();
+            auto* depth_ms = tex->As<core::type::DepthMultisampledTexture>();
+            auto* sampled = tex->As<core::type::SampledTexture>();
 
             if (storage && storage->access() != core::Access::kRead) {
                 out << "RW";
@@ -4291,22 +4289,22 @@ bool ASTPrinter::EmitType(StringStream& out,
             out << "Texture";
 
             switch (tex->dim()) {
-                case type::TextureDimension::k1d:
+                case core::type::TextureDimension::k1d:
                     out << "1D";
                     break;
-                case type::TextureDimension::k2d:
+                case core::type::TextureDimension::k2d:
                     out << ((ms || depth_ms) ? "2DMS" : "2D");
                     break;
-                case type::TextureDimension::k2dArray:
+                case core::type::TextureDimension::k2dArray:
                     out << ((ms || depth_ms) ? "2DMSArray" : "2DArray");
                     break;
-                case type::TextureDimension::k3d:
+                case core::type::TextureDimension::k3d:
                     out << "3D";
                     break;
-                case type::TextureDimension::kCube:
+                case core::type::TextureDimension::kCube:
                     out << "Cube";
                     break;
-                case type::TextureDimension::kCubeArray:
+                case core::type::TextureDimension::kCubeArray:
                     out << "CubeArray";
                     break;
                 default:
@@ -4327,11 +4325,11 @@ bool ASTPrinter::EmitType(StringStream& out,
             } else if (sampled || ms) {
                 auto* subtype = sampled ? sampled->type() : ms->type();
                 out << "<";
-                if (subtype->Is<type::F32>()) {
+                if (subtype->Is<core::type::F32>()) {
                     out << "float4";
-                } else if (subtype->Is<type::I32>()) {
+                } else if (subtype->Is<core::type::I32>()) {
                     out << "int4";
-                } else if (TINT_LIKELY(subtype->Is<type::U32>())) {
+                } else if (TINT_LIKELY(subtype->Is<core::type::U32>())) {
                     out << "uint4";
                 } else {
                     TINT_ICE() << "Unsupported multisampled texture type";
@@ -4341,19 +4339,19 @@ bool ASTPrinter::EmitType(StringStream& out,
             }
             return true;
         },
-        [&](const type::U32*) {
+        [&](const core::type::U32*) {
             out << "uint";
             return true;
         },
-        [&](const type::Vector* vec) {
+        [&](const core::type::Vector* vec) {
             auto width = vec->Width();
-            if (vec->type()->Is<type::F32>() && width >= 1 && width <= 4) {
+            if (vec->type()->Is<core::type::F32>() && width >= 1 && width <= 4) {
                 out << "float" << width;
-            } else if (vec->type()->Is<type::I32>() && width >= 1 && width <= 4) {
+            } else if (vec->type()->Is<core::type::I32>() && width >= 1 && width <= 4) {
                 out << "int" << width;
-            } else if (vec->type()->Is<type::U32>() && width >= 1 && width <= 4) {
+            } else if (vec->type()->Is<core::type::U32>() && width >= 1 && width <= 4) {
                 out << "uint" << width;
-            } else if (vec->type()->Is<type::Bool>() && width >= 1 && width <= 4) {
+            } else if (vec->type()->Is<core::type::Bool>() && width >= 1 && width <= 4) {
                 out << "bool" << width;
             } else {
                 // For example, use "vector<float16_t, N>" for f16 vector.
@@ -4365,10 +4363,10 @@ bool ASTPrinter::EmitType(StringStream& out,
             }
             return true;
         },
-        [&](const type::Atomic* atomic) {
+        [&](const core::type::Atomic* atomic) {
             return EmitType(out, atomic->Type(), address_space, access, name);
         },
-        [&](const type::Void*) {
+        [&](const core::type::Void*) {
             out << "void";
             return true;
         },
@@ -4379,7 +4377,7 @@ bool ASTPrinter::EmitType(StringStream& out,
 }
 
 bool ASTPrinter::EmitTypeAndName(StringStream& out,
-                                 const type::Type* type,
+                                 const core::type::Type* type,
                                  core::AddressSpace address_space,
                                  core::Access access,
                                  const std::string& name) {
@@ -4393,7 +4391,7 @@ bool ASTPrinter::EmitTypeAndName(StringStream& out,
     return true;
 }
 
-bool ASTPrinter::EmitStructType(TextBuffer* b, const type::Struct* str) {
+bool ASTPrinter::EmitStructType(TextBuffer* b, const core::type::Struct* str) {
     auto it = emitted_structs_.emplace(str);
     if (!it.second) {
         return true;
@@ -4415,14 +4413,16 @@ bool ASTPrinter::EmitStructType(TextBuffer* b, const type::Struct* str) {
                 if (TINT_UNLIKELY(pipeline_stage_uses.size() != 1)) {
                     TINT_ICE() << "invalid entry point IO struct uses";
                 }
-                if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexInput)) {
+                if (pipeline_stage_uses.count(core::type::PipelineStageUsage::kVertexInput)) {
                     post += " : TEXCOORD" + std::to_string(location.value());
-                } else if (pipeline_stage_uses.count(type::PipelineStageUsage::kVertexOutput)) {
+                } else if (pipeline_stage_uses.count(
+                               core::type::PipelineStageUsage::kVertexOutput)) {
                     post += " : TEXCOORD" + std::to_string(location.value());
-                } else if (pipeline_stage_uses.count(type::PipelineStageUsage::kFragmentInput)) {
+                } else if (pipeline_stage_uses.count(
+                               core::type::PipelineStageUsage::kFragmentInput)) {
                     post += " : TEXCOORD" + std::to_string(location.value());
                 } else if (TINT_LIKELY(pipeline_stage_uses.count(
-                               type::PipelineStageUsage::kFragmentOutput))) {
+                               core::type::PipelineStageUsage::kFragmentOutput))) {
                     if (auto index = attributes.index) {
                         post += " : SV_Target" + std::to_string(location.value() + index.value());
                     } else {
@@ -4471,16 +4471,16 @@ bool ASTPrinter::EmitStructType(TextBuffer* b, const type::Struct* str) {
 
 bool ASTPrinter::EmitUnaryOp(StringStream& out, const ast::UnaryOpExpression* expr) {
     switch (expr->op) {
-        case ast::UnaryOp::kIndirection:
-        case ast::UnaryOp::kAddressOf:
+        case core::UnaryOp::kIndirection:
+        case core::UnaryOp::kAddressOf:
             return EmitExpression(out, expr->expr);
-        case ast::UnaryOp::kComplement:
+        case core::UnaryOp::kComplement:
             out << "~";
             break;
-        case ast::UnaryOp::kNot:
+        case core::UnaryOp::kNot:
             out << "!";
             break;
-        case ast::UnaryOp::kNegation:
+        case core::UnaryOp::kNegation:
             out << "-";
             break;
     }
@@ -4565,7 +4565,7 @@ bool ASTPrinter::CallBuiltinHelper(StringStream& out,
                     }
                     auto param_name = "param_" + std::to_string(parameter_names.size());
                     const auto* ty = param->Type();
-                    if (auto* ptr = ty->As<type::Pointer>()) {
+                    if (auto* ptr = ty->As<core::type::Pointer>()) {
                         decl << "inout ";
                         ty = ptr->StoreType();
                     }
@@ -4611,7 +4611,7 @@ bool ASTPrinter::CallBuiltinHelper(StringStream& out,
     return true;
 }
 
-std::string ASTPrinter::StructName(const type::Struct* s) {
+std::string ASTPrinter::StructName(const core::type::Struct* s) {
     auto name = s->Name().Name();
     if (HasPrefix(name, "__")) {
         name = tint::GetOrCreate(builtin_struct_names_, s,

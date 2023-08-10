@@ -102,11 +102,11 @@ struct SimplifyPointers::State {
         while (true) {
             if (auto* unary = op.expr->As<UnaryOpExpression>()) {
                 switch (unary->op) {
-                    case UnaryOp::kIndirection:
+                    case core::UnaryOp::kIndirection:
                         op.indirections++;
                         op.expr = unary->expr;
                         continue;
-                    case UnaryOp::kAddressOf:
+                    case core::UnaryOp::kAddressOf:
                         op.indirections--;
                         op.expr = unary->expr;
                         continue;
@@ -118,7 +118,7 @@ struct SimplifyPointers::State {
                 auto* var = user->Variable();
                 if (var->Is<sem::LocalVariable>() &&  //
                     var->Declaration()->Is<Let>() &&  //
-                    var->Type()->Is<type::Pointer>()) {
+                    var->Type()->Is<core::type::Pointer>()) {
                     op.expr = var->Declaration()->initializer;
                     continue;
                 }
@@ -135,7 +135,7 @@ struct SimplifyPointers::State {
 
         bool needs_transform = false;
         for (auto* ty : ctx.src->Types()) {
-            if (ty->Is<type::Pointer>()) {
+            if (ty->Is<core::type::Pointer>()) {
                 // Program contains pointers which need removing.
                 needs_transform = true;
                 break;
@@ -154,7 +154,7 @@ struct SimplifyPointers::State {
                     }
 
                     auto* var = ctx.src->Sem().Get(let->variable);
-                    if (!var->Type()->Is<type::Pointer>()) {
+                    if (!var->Type()->Is<core::type::Pointer>()) {
                         return;  // Not a pointer type. Ignore.
                     }
 
@@ -208,7 +208,7 @@ struct SimplifyPointers::State {
                     RemoveStatement(ctx, let);
                 },
                 [&](const UnaryOpExpression* op) {
-                    if (op->op == UnaryOp::kAddressOf) {
+                    if (op->op == core::UnaryOp::kAddressOf) {
                         // Transform can be skipped if no address-of operator is used, as there
                         // will be no pointers that can be inlined.
                         needs_transform = true;

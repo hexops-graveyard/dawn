@@ -82,6 +82,8 @@ list(APPEND TINT_LIB_SRCS
   ../../include/tint/tint.h
   lang/wgsl/ast/clone_context.cc
   lang/wgsl/ast/clone_context.h
+  lang/core/binary_op.cc
+  lang/core/binary_op.h
   lang/core/fluent_types.h
   lang/core/number.cc
   lang/core/number.h
@@ -167,6 +169,8 @@ list(APPEND TINT_LIB_SRCS
   lang/core/type/vector.h
   lang/core/type/void.cc
   lang/core/type/void.h
+  lang/core/unary_op.cc
+  lang/core/unary_op.h
   lang/wgsl/ast/accessor_expression.cc
   lang/wgsl/ast/accessor_expression.h
   lang/wgsl/ast/alias.cc
@@ -415,8 +419,6 @@ list(APPEND TINT_LIB_SRCS
   lang/wgsl/ast/type.h
   lang/wgsl/ast/type_decl.cc
   lang/wgsl/ast/type_decl.h
-  lang/wgsl/ast/unary_op.cc
-  lang/wgsl/ast/unary_op.h
   lang/wgsl/ast/unary_op_expression.cc
   lang/wgsl/ast/unary_op_expression.h
   lang/wgsl/ast/var.cc
@@ -467,10 +469,9 @@ list(APPEND TINT_LIB_SRCS
   lang/wgsl/sem/call.h
   lang/wgsl/sem/call_target.cc
   lang/wgsl/sem/call_target.h
-  lang/wgsl/sem/evaluation_stage.h
+  lang/core/evaluation_stage.h
   lang/wgsl/sem/expression.cc
   lang/wgsl/sem/expression.h
-  lang/wgsl/sem/external_texture.h
   lang/wgsl/sem/for_loop_statement.cc
   lang/wgsl/sem/for_loop_statement.h
   lang/wgsl/sem/function.cc
@@ -512,13 +513,17 @@ list(APPEND TINT_LIB_SRCS
   lang/wgsl/sem/variable.cc
   lang/wgsl/sem/while_statement.cc
   lang/wgsl/sem/while_statement.h
-  lang/wgsl/resolver/const_eval.cc
-  lang/wgsl/resolver/const_eval.h
-  lang/wgsl/resolver/dependency_graph.cc
-  lang/wgsl/resolver/dependency_graph.h
+  lang/core/constant/eval.cc
+  lang/core/constant/eval.h
+  lang/core/intrinsic/ctor_conv.cc
+  lang/core/intrinsic/ctor_conv.h
+  lang/core/intrinsic/data/data.cc
+  lang/core/intrinsic/data/data.h
+  lang/core/intrinsic/data/type_matchers.h
   lang/core/intrinsic/table.cc
   lang/core/intrinsic/table.h
-  lang/core/intrinsic/table.inl
+  lang/wgsl/resolver/dependency_graph.cc
+  lang/wgsl/resolver/dependency_graph.h
   lang/wgsl/resolver/resolve.cc
   lang/wgsl/resolver/resolve.h
   lang/wgsl/resolver/resolver.cc
@@ -590,8 +595,8 @@ tint_generated(lang/core/interpolation_sampling BENCH TEST)
 tint_generated(lang/core/interpolation_type BENCH TEST)
 tint_generated(lang/core/texel_format BENCH TEST)
 
-tint_generated(lang/wgsl/resolver/ctor_conv_intrinsic)
-tint_generated(lang/wgsl/sem/parameter_usage)
+tint_generated(lang/core/intrinsic/ctor_conv)
+tint_generated(lang/core/parameter_usage)
 
 if(UNIX)
   list(APPEND TINT_LIB_SRCS utils/diagnostic/printer_posix.cc)
@@ -776,7 +781,6 @@ if(${TINT_BUILD_IR})
     lang/core/ir/access.h
     lang/core/ir/binary.cc
     lang/core/ir/binary.h
-    lang/core/ir/binding_point.h
     lang/core/ir/bitcast.cc
     lang/core/ir/bitcast.h
     lang/core/ir/block.cc
@@ -1092,16 +1096,16 @@ if(TINT_BUILD_TESTS)
     lang/wgsl/resolver/compound_assignment_validation_test.cc
     lang/wgsl/resolver/compound_statement_test.cc
     lang/wgsl/resolver/const_assert_test.cc
-    lang/wgsl/resolver/const_eval_binary_op_test.cc
-    lang/wgsl/resolver/const_eval_bitcast_test.cc
-    lang/wgsl/resolver/const_eval_builtin_test.cc
-    lang/wgsl/resolver/const_eval_construction_test.cc
-    lang/wgsl/resolver/const_eval_conversion_test.cc
-    lang/wgsl/resolver/const_eval_indexing_test.cc
-    lang/wgsl/resolver/const_eval_member_access_test.cc
-    lang/wgsl/resolver/const_eval_runtime_semantics_test.cc
-    lang/wgsl/resolver/const_eval_test.h
-    lang/wgsl/resolver/const_eval_unary_op_test.cc
+    lang/core/constant/eval_binary_op_test.cc
+    lang/core/constant/eval_bitcast_test.cc
+    lang/core/constant/eval_builtin_test.cc
+    lang/core/constant/eval_construction_test.cc
+    lang/core/constant/eval_conversion_test.cc
+    lang/core/constant/eval_indexing_test.cc
+    lang/core/constant/eval_member_access_test.cc
+    lang/core/constant/eval_runtime_semantics_test.cc
+    lang/core/constant/eval_test.h
+    lang/core/constant/eval_unary_op_test.cc
     lang/wgsl/resolver/control_block_validation_test.cc
     lang/wgsl/resolver/dependency_graph_test.cc
     lang/wgsl/resolver/diagnostic_control_test.cc

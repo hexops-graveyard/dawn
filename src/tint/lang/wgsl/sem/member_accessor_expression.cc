@@ -24,10 +24,10 @@ TINT_INSTANTIATE_TYPEINFO(tint::sem::Swizzle);
 namespace tint::sem {
 
 MemberAccessorExpression::MemberAccessorExpression(const ast::MemberAccessorExpression* declaration,
-                                                   const type::Type* type,
-                                                   EvaluationStage stage,
+                                                   const core::type::Type* type,
+                                                   core::EvaluationStage stage,
                                                    const Statement* statement,
-                                                   const constant::Value* constant,
+                                                   const core::constant::Value* constant,
                                                    const ValueExpression* object,
                                                    bool has_side_effects,
                                                    const Variable* root_ident /* = nullptr */)
@@ -36,11 +36,11 @@ MemberAccessorExpression::MemberAccessorExpression(const ast::MemberAccessorExpr
 MemberAccessorExpression::~MemberAccessorExpression() = default;
 
 StructMemberAccess::StructMemberAccess(const ast::MemberAccessorExpression* declaration,
-                                       const type::Type* type,
+                                       const core::type::Type* type,
                                        const Statement* statement,
-                                       const constant::Value* constant,
+                                       const core::constant::Value* constant,
                                        const ValueExpression* object,
-                                       const type::StructMember* member,
+                                       const core::type::StructMember* member,
                                        bool has_side_effects,
                                        const Variable* root_ident /* = nullptr */)
     : Base(declaration,
@@ -56,9 +56,9 @@ StructMemberAccess::StructMemberAccess(const ast::MemberAccessorExpression* decl
 StructMemberAccess::~StructMemberAccess() = default;
 
 Swizzle::Swizzle(const ast::MemberAccessorExpression* declaration,
-                 const type::Type* type,
+                 const core::type::Type* type,
                  const Statement* statement,
-                 const constant::Value* constant,
+                 const core::constant::Value* constant,
                  const ValueExpression* object,
                  VectorRef<uint32_t> indices,
                  bool has_side_effects,

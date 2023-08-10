@@ -16,7 +16,7 @@
 
 #include "src/tint/lang/core/constant/helper_test.h"
 
-namespace tint::constant {
+namespace tint::core::constant {
 namespace {
 
 using namespace tint::number_suffixes;  // NOLINT
@@ -167,13 +167,13 @@ TEST_F(ConstantTest_Scalar, Clone) {
     auto* val = constants.Get(12_i);
 
     constant::Manager mgr;
-    constant::CloneContext ctx{type::CloneContext{{nullptr}, {nullptr, &mgr.types}}, mgr};
+    constant::CloneContext ctx{core::type::CloneContext{{nullptr}, {nullptr, &mgr.types}}, mgr};
 
     auto* r = val->Clone(ctx);
     ASSERT_NE(r, nullptr);
-    EXPECT_TRUE(r->type->Is<type::I32>());
+    EXPECT_TRUE(r->type->Is<core::type::I32>());
     EXPECT_EQ(r->value, 12);
 }
 
 }  // namespace
-}  // namespace tint::constant
+}  // namespace tint::core::constant

@@ -42,8 +42,9 @@ MutationList MutationFinderChangeUnaryOperators::FindMutations(
 
         // Get the type of the unary expression.
         const auto* type = program.Sem().Get(unary_expr)->Type();
-        const auto* basic_type =
-            type->Is<type::Reference>() ? type->As<type::Reference>()->StoreType() : type;
+        const auto* basic_type = type->Is<core::type::Reference>()
+                                     ? type->As<core::type::Reference>()->StoreType()
+                                     : type;
 
         // Only signed integer or vector of signed integer can be mutated.
         if (!basic_type->is_signed_integer_scalar_or_vector()) {
@@ -51,8 +52,8 @@ MutationList MutationFinderChangeUnaryOperators::FindMutations(
         }
 
         // Only complement and negation operators can be swapped.
-        if (!(unary_expr->op == ast::UnaryOp::kComplement ||
-              unary_expr->op == ast::UnaryOp::kNegation)) {
+        if (!(unary_expr->op == core::UnaryOp::kComplement ||
+              unary_expr->op == core::UnaryOp::kNegation)) {
             continue;
         }
 

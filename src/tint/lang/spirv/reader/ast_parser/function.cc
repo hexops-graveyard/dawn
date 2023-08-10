@@ -164,17 +164,17 @@ inline spv::Op opcode(const spvtools::opt::Instruction* inst) {
 // @param opcode SPIR-V opcode
 // @param ast_unary_op return parameter
 // @returns true if it was a unary operation
-bool GetUnaryOp(spv::Op opcode, ast::UnaryOp* ast_unary_op) {
+bool GetUnaryOp(spv::Op opcode, core::UnaryOp* ast_unary_op) {
     switch (opcode) {
         case spv::Op::OpSNegate:
         case spv::Op::OpFNegate:
-            *ast_unary_op = ast::UnaryOp::kNegation;
+            *ast_unary_op = core::UnaryOp::kNegation;
             return true;
         case spv::Op::OpLogicalNot:
-            *ast_unary_op = ast::UnaryOp::kNot;
+            *ast_unary_op = core::UnaryOp::kNot;
             return true;
         case spv::Op::OpNot:
-            *ast_unary_op = ast::UnaryOp::kComplement;
+            *ast_unary_op = core::UnaryOp::kComplement;
             return true;
         default:
             break;
@@ -205,15 +205,15 @@ const char* GetUnaryBuiltInFunctionName(spv::Op opcode) {
 
 // Converts a SPIR-V opcode to its corresponding AST binary opcode, if any
 // @param opcode SPIR-V opcode
-// @returns the AST binary op for the given opcode, or kNone
-ast::BinaryOp ConvertBinaryOp(spv::Op opcode) {
+// @returns the AST binary op for the given opcode, or std::nullopt
+std::optional<core::BinaryOp> ConvertBinaryOp(spv::Op opcode) {
     switch (opcode) {
         case spv::Op::OpIAdd:
         case spv::Op::OpFAdd:
-            return ast::BinaryOp::kAdd;
+            return core::BinaryOp::kAdd;
         case spv::Op::OpISub:
         case spv::Op::OpFSub:
-            return ast::BinaryOp::kSubtract;
+            return core::BinaryOp::kSubtract;
         case spv::Op::OpIMul:
         case spv::Op::OpFMul:
         case spv::Op::OpVectorTimesScalar:
@@ -221,80 +221,80 @@ ast::BinaryOp ConvertBinaryOp(spv::Op opcode) {
         case spv::Op::OpVectorTimesMatrix:
         case spv::Op::OpMatrixTimesVector:
         case spv::Op::OpMatrixTimesMatrix:
-            return ast::BinaryOp::kMultiply;
+            return core::BinaryOp::kMultiply;
         case spv::Op::OpUDiv:
         case spv::Op::OpSDiv:
         case spv::Op::OpFDiv:
-            return ast::BinaryOp::kDivide;
+            return core::BinaryOp::kDivide;
         case spv::Op::OpUMod:
         case spv::Op::OpSMod:
         case spv::Op::OpFRem:
-            return ast::BinaryOp::kModulo;
+            return core::BinaryOp::kModulo;
         case spv::Op::OpLogicalEqual:
         case spv::Op::OpIEqual:
         case spv::Op::OpFOrdEqual:
-            return ast::BinaryOp::kEqual;
+            return core::BinaryOp::kEqual;
         case spv::Op::OpLogicalNotEqual:
         case spv::Op::OpINotEqual:
         case spv::Op::OpFOrdNotEqual:
-            return ast::BinaryOp::kNotEqual;
+            return core::BinaryOp::kNotEqual;
         case spv::Op::OpBitwiseAnd:
-            return ast::BinaryOp::kAnd;
+            return core::BinaryOp::kAnd;
         case spv::Op::OpBitwiseOr:
-            return ast::BinaryOp::kOr;
+            return core::BinaryOp::kOr;
         case spv::Op::OpBitwiseXor:
-            return ast::BinaryOp::kXor;
+            return core::BinaryOp::kXor;
         case spv::Op::OpLogicalAnd:
-            return ast::BinaryOp::kAnd;
+            return core::BinaryOp::kAnd;
         case spv::Op::OpLogicalOr:
-            return ast::BinaryOp::kOr;
+            return core::BinaryOp::kOr;
         case spv::Op::OpUGreaterThan:
         case spv::Op::OpSGreaterThan:
         case spv::Op::OpFOrdGreaterThan:
-            return ast::BinaryOp::kGreaterThan;
+            return core::BinaryOp::kGreaterThan;
         case spv::Op::OpUGreaterThanEqual:
         case spv::Op::OpSGreaterThanEqual:
         case spv::Op::OpFOrdGreaterThanEqual:
-            return ast::BinaryOp::kGreaterThanEqual;
+            return core::BinaryOp::kGreaterThanEqual;
         case spv::Op::OpULessThan:
         case spv::Op::OpSLessThan:
         case spv::Op::OpFOrdLessThan:
-            return ast::BinaryOp::kLessThan;
+            return core::BinaryOp::kLessThan;
         case spv::Op::OpULessThanEqual:
         case spv::Op::OpSLessThanEqual:
         case spv::Op::OpFOrdLessThanEqual:
-            return ast::BinaryOp::kLessThanEqual;
+            return core::BinaryOp::kLessThanEqual;
         default:
             break;
     }
     // It's not clear what OpSMod should map to.
     // https://bugs.chromium.org/p/tint/issues/detail?id=52
-    return ast::BinaryOp::kNone;
+    return std::nullopt;
 }
 
 // If the given SPIR-V opcode is a floating point unordered comparison,
 // then returns the binary float comparison for which it is the negation.
-// Othewrise returns BinaryOp::kNone.
+// Otherwise returns std::nullopt.
 // @param opcode SPIR-V opcode
 // @returns operation corresponding to negated version of the SPIR-V opcode
-ast::BinaryOp NegatedFloatCompare(spv::Op opcode) {
+std::optional<core::BinaryOp> NegatedFloatCompare(spv::Op opcode) {
     switch (opcode) {
         case spv::Op::OpFUnordEqual:
-            return ast::BinaryOp::kNotEqual;
+            return core::BinaryOp::kNotEqual;
         case spv::Op::OpFUnordNotEqual:
-            return ast::BinaryOp::kEqual;
+            return core::BinaryOp::kEqual;
         case spv::Op::OpFUnordLessThan:
-            return ast::BinaryOp::kGreaterThanEqual;
+            return core::BinaryOp::kGreaterThanEqual;
         case spv::Op::OpFUnordLessThanEqual:
-            return ast::BinaryOp::kGreaterThan;
+            return core::BinaryOp::kGreaterThan;
         case spv::Op::OpFUnordGreaterThan:
-            return ast::BinaryOp::kLessThanEqual;
+            return core::BinaryOp::kLessThanEqual;
         case spv::Op::OpFUnordGreaterThanEqual:
-            return ast::BinaryOp::kLessThan;
+            return core::BinaryOp::kLessThan;
         default:
             break;
     }
-    return ast::BinaryOp::kNone;
+    return std::nullopt;
 }
 
 // Returns the WGSL standard library function for the given
@@ -3201,7 +3201,7 @@ bool FunctionEmitter::EmitNormalTerminator(const BlockInfo& block_info) {
                 } else {
                     AddStatement(create<ast::BreakIfStatement>(
                         Source{},
-                        create<ast::UnaryOpExpression>(Source{}, ast::UnaryOp::kNot, cond)));
+                        create<ast::UnaryOpExpression>(Source{}, core::UnaryOp::kNot, cond)));
                 }
                 return true;
 
@@ -3787,8 +3787,7 @@ TypedExpression FunctionEmitter::MaybeEmitCombinatorialValue(
         }
     }
 
-    auto binary_op = ConvertBinaryOp(op);
-    if (binary_op != ast::BinaryOp::kNone) {
+    if (auto binary_op = ConvertBinaryOp(op)) {
         auto arg0 = MakeOperand(inst, 0);
         auto arg1 =
             parser_impl_.RectifySecondOperandSignedness(inst, arg0.type, MakeOperand(inst, 1));
@@ -3796,12 +3795,12 @@ TypedExpression FunctionEmitter::MaybeEmitCombinatorialValue(
             return {};
         }
         auto* binary_expr =
-            create<ast::BinaryExpression>(Source{}, binary_op, arg0.expr, arg1.expr);
+            create<ast::BinaryExpression>(Source{}, *binary_op, arg0.expr, arg1.expr);
         TypedExpression result{ast_type, binary_expr};
         return parser_impl_.RectifyForcedResultType(result, inst, arg0.type);
     }
 
-    auto unary_op = ast::UnaryOp::kNegation;
+    auto unary_op = core::UnaryOp::kNegation;
     if (GetUnaryOp(op, &unary_op)) {
         auto arg0 = MakeOperand(inst, 0);
         auto* unary_expr = create<ast::UnaryOpExpression>(Source{}, unary_op, arg0.expr);
@@ -3848,34 +3847,34 @@ TypedExpression FunctionEmitter::MaybeEmitCombinatorialValue(
         // since the shift is modulo the bit width of the first operand.
         auto arg1 = parser_impl_.AsUnsigned(MakeOperand(inst, 1));
 
+        std::optional<core::BinaryOp> binary_op;
         switch (op) {
             case spv::Op::OpShiftLeftLogical:
-                binary_op = ast::BinaryOp::kShiftLeft;
+                binary_op = core::BinaryOp::kShiftLeft;
                 break;
             case spv::Op::OpShiftRightLogical:
                 arg0 = parser_impl_.AsUnsigned(arg0);
-                binary_op = ast::BinaryOp::kShiftRight;
+                binary_op = core::BinaryOp::kShiftRight;
                 break;
             case spv::Op::OpShiftRightArithmetic:
                 arg0 = parser_impl_.AsSigned(arg0);
-                binary_op = ast::BinaryOp::kShiftRight;
+                binary_op = core::BinaryOp::kShiftRight;
                 break;
             default:
                 break;
         }
         TypedExpression result{
-            ast_type, create<ast::BinaryExpression>(Source{}, binary_op, arg0.expr, arg1.expr)};
+            ast_type, create<ast::BinaryExpression>(Source{}, *binary_op, arg0.expr, arg1.expr)};
         return parser_impl_.RectifyForcedResultType(result, inst, arg0.type);
     }
 
-    auto negated_op = NegatedFloatCompare(op);
-    if (negated_op != ast::BinaryOp::kNone) {
+    if (auto negated_op = NegatedFloatCompare(op)) {
         auto arg0 = MakeOperand(inst, 0);
         auto arg1 = MakeOperand(inst, 1);
         auto* binary_expr =
-            create<ast::BinaryExpression>(Source{}, negated_op, arg0.expr, arg1.expr);
+            create<ast::BinaryExpression>(Source{}, *negated_op, arg0.expr, arg1.expr);
         auto* negated_expr =
-            create<ast::UnaryOpExpression>(Source{}, ast::UnaryOp::kNot, binary_expr);
+            create<ast::UnaryOpExpression>(Source{}, core::UnaryOp::kNot, binary_expr);
         return {ast_type, negated_expr};
     }
 
@@ -4020,11 +4019,11 @@ TypedExpression FunctionEmitter::EmitGlslStd450ExtInst(const spvtools::opt::Inst
                     builder_.Call(
                         Source{}, "select",
                         tint::Vector{
-                            create<ast::UnaryOpExpression>(Source{}, ast::UnaryOp::kNegation,
+                            create<ast::UnaryOpExpression>(Source{}, core::UnaryOp::kNegation,
                                                            normal.expr),
                             normal.expr,
                             create<ast::BinaryExpression>(
-                                Source{}, ast::BinaryOp::kLessThan,
+                                Source{}, core::BinaryOp::kLessThan,
                                 builder_.Mul({}, incident.expr, nref.expr), builder_.Expr(0_f)),
                         }),
                 };
@@ -5663,9 +5662,9 @@ bool FunctionEmitter::EmitImageAccess(const spvtools::opt::Instruction& inst) {
                           << inst.PrettyPrint();
         }
         switch (texture_type->dims) {
-            case type::TextureDimension::k2d:
-            case type::TextureDimension::k2dArray:
-            case type::TextureDimension::k3d:
+            case core::type::TextureDimension::k2d:
+            case core::type::TextureDimension::k2dArray:
+            case core::type::TextureDimension::k3d:
                 break;
             default:
                 return Fail() << "ConstOffset is only permitted for 2D, 2D Arrayed, "
@@ -5788,14 +5787,14 @@ bool FunctionEmitter::EmitImageQuery(const spvtools::opt::Instruction& inst) {
             const ast::Expression* dims_call =
                 builder_.Call("textureDimensions", std::move(dims_args));
             auto dims = texture_type->dims;
-            if ((dims == type::TextureDimension::kCube) ||
-                (dims == type::TextureDimension::kCubeArray)) {
+            if ((dims == core::type::TextureDimension::kCube) ||
+                (dims == core::type::TextureDimension::kCubeArray)) {
                 // textureDimension returns a 3-element vector but SPIR-V expects 2.
                 dims_call =
                     create<ast::MemberAccessorExpression>(Source{}, dims_call, PrefixSwizzle(2));
             }
             exprs.Push(dims_call);
-            if (type::IsTextureArray(dims)) {
+            if (core::type::IsTextureArray(dims)) {
                 auto num_layers = builder_.Call("textureNumLayers", GetImageExpression(inst));
                 exprs.Push(num_layers);
             }
@@ -5980,10 +5979,10 @@ FunctionEmitter::ExpressionList FunctionEmitter::MakeCoordinateOperandsForImageA
     if (!texture_type) {
         return {};
     }
-    type::TextureDimension dim = texture_type->dims;
+    core::type::TextureDimension dim = texture_type->dims;
     // Number of regular coordinates.
-    uint32_t num_axes = static_cast<uint32_t>(type::NumCoordinateAxes(dim));
-    bool is_arrayed = type::IsTextureArray(dim);
+    uint32_t num_axes = static_cast<uint32_t>(core::type::NumCoordinateAxes(dim));
+    bool is_arrayed = core::type::IsTextureArray(dim);
     if ((num_axes == 0) || (num_axes > 3)) {
         Fail() << "unsupported image dimensionality for " << texture_type->TypeInfo().name
                << " prompted by " << inst.PrettyPrint();
@@ -6230,7 +6229,7 @@ TypedExpression FunctionEmitter::MakeOuterProduct(const spvtools::opt::Instructi
         for (uint32_t irow = 0; irow < result_ty->rows; irow++) {
             auto* column_factor =
                 create<ast::MemberAccessorExpression>(Source{}, col.expr, Swizzle(irow));
-            auto* elem = create<ast::BinaryExpression>(Source{}, ast::BinaryOp::kMultiply,
+            auto* elem = create<ast::BinaryExpression>(Source{}, core::BinaryOp::kMultiply,
                                                        row_factor, column_factor);
             result_row.Push(elem);
         }
@@ -6383,7 +6382,7 @@ TypedExpression FunctionEmitter::AddressOf(TypedExpression expr) {
     }
     return {
         ty_.Pointer(ref->address_space, ref->type),
-        create<ast::UnaryOpExpression>(Source{}, ast::UnaryOp::kAddressOf, expr.expr),
+        create<ast::UnaryOpExpression>(Source{}, core::UnaryOp::kAddressOf, expr.expr),
     };
 }
 
@@ -6395,7 +6394,7 @@ TypedExpression FunctionEmitter::Dereference(TypedExpression expr) {
     }
     return {
         ptr->type,
-        create<ast::UnaryOpExpression>(Source{}, ast::UnaryOp::kIndirection, expr.expr),
+        create<ast::UnaryOpExpression>(Source{}, core::UnaryOp::kIndirection, expr.expr),
     };
 }
 

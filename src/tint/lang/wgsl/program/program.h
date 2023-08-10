@@ -67,13 +67,13 @@ class Program {
     ast::NodeID HighestASTNodeID() const { return highest_node_id_; }
 
     /// @returns a reference to the program's constants
-    const constant::Manager& Constants() const {
+    const core::constant::Manager& Constants() const {
         AssertNotMoved();
         return constants_;
     }
 
     /// @returns a reference to the program's types
-    const type::Manager& Types() const {
+    const core::type::Manager& Types() const {
         AssertNotMoved();
         return constants_.types;
     }
@@ -136,20 +136,20 @@ class Program {
     /// @param expr the AST expression
     /// @return the resolved semantic type for the expression, or nullptr if the
     /// expression has no resolved type.
-    const type::Type* TypeOf(const ast::Expression* expr) const;
+    const core::type::Type* TypeOf(const ast::Expression* expr) const;
 
     /// Helper for returning the resolved semantic type of the variable `var`.
     /// @param var the AST variable
     /// @return the resolved semantic type for the variable, or nullptr if the
     /// variable has no resolved type.
-    const type::Type* TypeOf(const ast::Variable* var) const;
+    const core::type::Type* TypeOf(const ast::Variable* var) const;
 
     /// Helper for returning the resolved semantic type of the AST type
     /// declaration `type_decl`.
     /// @param type_decl the AST type declaration
     /// @return the resolved semantic type for the type declaration, or nullptr if
     /// the type declaration has no resolved type.
-    const type::Type* TypeOf(const ast::TypeDecl* type_decl) const;
+    const core::type::Type* TypeOf(const ast::TypeDecl* type_decl) const;
 
     /// A function that can be used to print a program
     using Printer = std::string (*)(const Program*);
@@ -165,7 +165,7 @@ class Program {
 
     GenerationID id_;
     ast::NodeID highest_node_id_;
-    constant::Manager constants_;
+    core::constant::Manager constants_;
     ASTNodeAllocator ast_nodes_;
     SemNodeAllocator sem_nodes_;
     ast::Module* ast_ = nullptr;

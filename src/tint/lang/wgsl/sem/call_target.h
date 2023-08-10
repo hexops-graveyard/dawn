@@ -33,7 +33,7 @@ struct CallTargetSignature {
     /// Constructor
     /// @param ret_ty the call target return type
     /// @param params the call target parameters
-    CallTargetSignature(const type::Type* ret_ty, VectorRef<const Parameter*> params);
+    CallTargetSignature(const core::type::Type* ret_ty, VectorRef<const Parameter*> params);
 
     /// Copy constructor
     CallTargetSignature(const CallTargetSignature&);
@@ -42,7 +42,7 @@ struct CallTargetSignature {
     ~CallTargetSignature();
 
     /// The type of the call target return value
-    const type::Type* return_type = nullptr;
+    const core::type::Type* return_type = nullptr;
     /// The parameters of the call target
     tint::Vector<const sem::Parameter*, 8> parameters;
 
@@ -54,12 +54,12 @@ struct CallTargetSignature {
     /// @param usage the parameter usage to find
     /// @returns the index of the parameter with the given usage, or -1 if no
     /// parameter with the given usage exists.
-    int IndexOf(ParameterUsage usage) const;
+    int IndexOf(core::ParameterUsage usage) const;
 
     /// @param usage  the parameter usage to find
     /// @returns the the parameter with the given usage, or nullptr if no parameter with the given
     /// usage exists.
-    inline const sem::Parameter* Parameter(ParameterUsage usage) const {
+    inline const sem::Parameter* Parameter(core::ParameterUsage usage) const {
         auto idx = IndexOf(usage);
         return (idx >= 0) ? parameters[static_cast<size_t>(idx)] : nullptr;
     }
@@ -73,7 +73,7 @@ class CallTarget : public Castable<CallTarget, Node> {
     /// @param stage the earliest evaluation stage for a call to this target
     /// @param must_use the result of the call target must be used, i.e. it cannot be used as a call
     /// statement.
-    CallTarget(EvaluationStage stage, bool must_use);
+    CallTarget(core::EvaluationStage stage, bool must_use);
 
     /// Constructor
     /// @param return_type the return type of the call target
@@ -81,9 +81,9 @@ class CallTarget : public Castable<CallTarget, Node> {
     /// @param stage the earliest evaluation stage for a call to this target
     /// @param must_use the result of the call target must be used, i.e. it cannot be used as a call
     /// statement.
-    CallTarget(const type::Type* return_type,
+    CallTarget(const core::type::Type* return_type,
                VectorRef<Parameter*> parameters,
-               EvaluationStage stage,
+               core::EvaluationStage stage,
                bool must_use);
 
     /// Copy constructor
@@ -94,10 +94,10 @@ class CallTarget : public Castable<CallTarget, Node> {
 
     /// Sets the call target's return type
     /// @param ty the parameter
-    void SetReturnType(const type::Type* ty) { signature_.return_type = ty; }
+    void SetReturnType(const core::type::Type* ty) { signature_.return_type = ty; }
 
     /// @return the return type of the call target
-    const type::Type* ReturnType() const { return signature_.return_type; }
+    const core::type::Type* ReturnType() const { return signature_.return_type; }
 
     /// Adds a parameter to the call target
     /// @param parameter the parameter
@@ -113,7 +113,7 @@ class CallTarget : public Castable<CallTarget, Node> {
     const CallTargetSignature& Signature() const { return signature_; }
 
     /// @return the earliest evaluation stage for a call to this target
-    EvaluationStage Stage() const { return stage_; }
+    core::EvaluationStage Stage() const { return stage_; }
 
     /// @returns true if the result of the call target must be used, i.e. it cannot be used as a
     /// call statement.
@@ -121,7 +121,7 @@ class CallTarget : public Castable<CallTarget, Node> {
 
   private:
     CallTargetSignature signature_;
-    EvaluationStage stage_;
+    core::EvaluationStage stage_;
     const bool must_use_;
 };
 

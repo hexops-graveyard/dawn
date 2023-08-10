@@ -136,8 +136,8 @@ class Impl {
     ir::Builder builder_{mod};
 
     // The clone context used to clone data from #program_
-    constant::CloneContext clone_ctx_{
-        /* type_ctx */ type::CloneContext{
+    core::constant::CloneContext clone_ctx_{
+        /* type_ctx */ core::type::CloneContext{
             /* src */ {&program_->Symbols()},
             /* dst */ {&builder_.ir.symbols, &builder_.ir.Types()},
         },
@@ -528,7 +528,7 @@ class Impl {
                         : builder_.Constant(1_u);
 
         EmitCompoundAssignment(lhs, one,
-                               stmt->increment ? ast::BinaryOp::kAdd : ast::BinaryOp::kSubtract);
+                               stmt->increment ? core::BinaryOp::kAdd : core::BinaryOp::kSubtract);
     }
 
     void EmitCompoundAssignment(const ast::CompoundAssignmentStatement* stmt) {
@@ -542,7 +542,7 @@ class Impl {
         EmitCompoundAssignment(lhs, rhs, stmt->op);
     }
 
-    void EmitCompoundAssignment(ValueOrVecElAccess lhs, ir::Value* rhs, ast::BinaryOp op) {
+    void EmitCompoundAssignment(ValueOrVecElAccess lhs, ir::Value* rhs, core::BinaryOp op) {
         auto b = builder_.Append(current_block_);
         if (auto* v = std::get_if<ir::Value*>(&lhs)) {
             auto* load = b.Load(*v);
@@ -919,8 +919,10 @@ class Impl {
 
                 // The access result type should match the source result type. If the source is a
                 // pointer, we generate a pointer.
-                const type::Type* ty = sem->Type()->UnwrapRef()->Clone(impl.clone_ctx_.type_ctx);
-                if (auto* ptr = obj->Type()->As<type::Pointer>(); ptr && !ty->Is<type::Pointer>()) {
+                const core::type::Type* ty =
+                    sem->Type()->UnwrapRef()->Clone(impl.clone_ctx_.type_ctx);
+                if (auto* ptr = obj->Type()->As<core::type::Pointer>();
+                    ptr && !ty->Is<core::type::Pointer>()) {
                     ty = impl.builder_.ir.Types().ptr(ptr->AddressSpace(), ty, ptr->Access());
                 }
 
@@ -1013,19 +1015,19 @@ class Impl {
                 auto* ty = sem->Type()->Clone(impl.clone_ctx_.type_ctx);
                 ir::Instruction* inst = nullptr;
                 switch (expr->op) {
-                    case ast::UnaryOp::kAddressOf:
-                    case ast::UnaryOp::kIndirection:
+                    case core::UnaryOp::kAddressOf:
+                    case core::UnaryOp::kIndirection:
                         // 'address-of' and 'indirection' just fold away and we propagate the
                         // pointer.
                         Bind(expr, val);
                         return;
-                    case ast::UnaryOp::kComplement:
+                    case core::UnaryOp::kComplement:
                         inst = impl.builder_.Complement(ty, val);
                         break;
-                    case ast::UnaryOp::kNegation:
+                    case core::UnaryOp::kNegation:
                         inst = impl.builder_.Negation(ty, val);
                         break;
-                    case ast::UnaryOp::kNot:
+                    case core::UnaryOp::kNot:
                         inst = impl.builder_.Not(ty, val);
                         break;
                 }
@@ -1141,12 +1143,12 @@ class Impl {
                     return std::nullopt;
                 }
 
-                auto* ref = access->Object()->Type()->As<type::Reference>();
+                auto* ref = access->Object()->Type()->As<core::type::Reference>();
                 if (!ref) {
                     return std::nullopt;
                 }
 
-                if (!ref->StoreType()->Is<type::Vector>()) {
+                if (!ref->StoreType()->Is<core::type::Vector>()) {
                     return std::nullopt;
                 }
                 return tint::Switch(
@@ -1182,7 +1184,7 @@ class Impl {
                 auto* result = b.InstructionResult(b.ir.Types().bool_());
                 if_inst->SetResults(result);
 
-                if (expr->op == ast::BinaryOp::kLogicalAnd) {
+                if (expr->op == core::BinaryOp::kLogicalAnd) {
                     if_inst->False()->Append(b.ExitIf(if_inst, b.Constant(false)));
                     PushBlock(if_inst->True());
                 } else {
@@ -1216,8 +1218,8 @@ class Impl {
                 tint::Switch(
                     expr,  //
                     [&](const ast::BinaryExpression* e) {
-                        if (e->op == ast::BinaryOp::kLogicalAnd ||
-                            e->op == ast::BinaryOp::kLogicalOr) {
+                        if (e->op == core::BinaryOp::kLogicalAnd ||
+                            e->op == core::BinaryOp::kLogicalOr) {
                             tasks.Push([=] { EndShortCircuit(e); });
                             tasks.Push([=] { Process(e->rhs); });
                             tasks.Push([=] { BeginShortCircuit(e); });
@@ -1280,8 +1282,8 @@ class Impl {
         return tint::Switch(  //
             var,
             [&](const ast::Var* v) {
-                auto* ref = sem->Type()->As<type::Reference>();
-                auto* ty = builder_.ir.Types().Get<type::Pointer>(
+                auto* ref = sem->Type()->As<core::type::Reference>();
+                auto* ty = builder_.ir.Types().Get<core::type::Pointer>(
                     ref->AddressSpace(), ref->StoreType()->Clone(clone_ctx_.type_ctx),
                     ref->Access());
 
@@ -1337,7 +1339,7 @@ class Impl {
             },
             [&](const ast::Const*) {
                 // Skip. This should be handled by const-eval already, so the const will be a
-                // `constant::` value at the usage sites. Can just ignore the `const` variable
+                // `core::constant::` value at the usage sites. Can just ignore the `const` variable
                 // as it should never be used.
                 //
                 // TODO(dsinclair): Probably want to store the const variable somewhere and then
@@ -1349,46 +1351,46 @@ class Impl {
             });
     }
 
-    ir::Binary* BinaryOp(const type::Type* ty, ir::Value* lhs, ir::Value* rhs, ast::BinaryOp op) {
+    ir::Binary* BinaryOp(const core::type::Type* ty,
+                         ir::Value* lhs,
+                         ir::Value* rhs,
+                         core::BinaryOp op) {
         switch (op) {
-            case ast::BinaryOp::kAnd:
+            case core::BinaryOp::kAnd:
                 return builder_.And(ty, lhs, rhs);
-            case ast::BinaryOp::kOr:
+            case core::BinaryOp::kOr:
                 return builder_.Or(ty, lhs, rhs);
-            case ast::BinaryOp::kXor:
+            case core::BinaryOp::kXor:
                 return builder_.Xor(ty, lhs, rhs);
-            case ast::BinaryOp::kEqual:
+            case core::BinaryOp::kEqual:
                 return builder_.Equal(ty, lhs, rhs);
-            case ast::BinaryOp::kNotEqual:
+            case core::BinaryOp::kNotEqual:
                 return builder_.NotEqual(ty, lhs, rhs);
-            case ast::BinaryOp::kLessThan:
+            case core::BinaryOp::kLessThan:
                 return builder_.LessThan(ty, lhs, rhs);
-            case ast::BinaryOp::kGreaterThan:
+            case core::BinaryOp::kGreaterThan:
                 return builder_.GreaterThan(ty, lhs, rhs);
-            case ast::BinaryOp::kLessThanEqual:
+            case core::BinaryOp::kLessThanEqual:
                 return builder_.LessThanEqual(ty, lhs, rhs);
-            case ast::BinaryOp::kGreaterThanEqual:
+            case core::BinaryOp::kGreaterThanEqual:
                 return builder_.GreaterThanEqual(ty, lhs, rhs);
-            case ast::BinaryOp::kShiftLeft:
+            case core::BinaryOp::kShiftLeft:
                 return builder_.ShiftLeft(ty, lhs, rhs);
-            case ast::BinaryOp::kShiftRight:
+            case core::BinaryOp::kShiftRight:
                 return builder_.ShiftRight(ty, lhs, rhs);
-            case ast::BinaryOp::kAdd:
+            case core::BinaryOp::kAdd:
                 return builder_.Add(ty, lhs, rhs);
-            case ast::BinaryOp::kSubtract:
+            case core::BinaryOp::kSubtract:
                 return builder_.Subtract(ty, lhs, rhs);
-            case ast::BinaryOp::kMultiply:
+            case core::BinaryOp::kMultiply:
                 return builder_.Multiply(ty, lhs, rhs);
-            case ast::BinaryOp::kDivide:
+            case core::BinaryOp::kDivide:
                 return builder_.Divide(ty, lhs, rhs);
-            case ast::BinaryOp::kModulo:
+            case core::BinaryOp::kModulo:
                 return builder_.Modulo(ty, lhs, rhs);
-            case ast::BinaryOp::kLogicalAnd:
-            case ast::BinaryOp::kLogicalOr:
+            case core::BinaryOp::kLogicalAnd:
+            case core::BinaryOp::kLogicalOr:
                 TINT_ICE() << "short circuit op should have already been handled";
-                return nullptr;
-            case ast::BinaryOp::kNone:
-                TINT_ICE() << "missing binary operand type";
                 return nullptr;
         }
         TINT_UNREACHABLE();

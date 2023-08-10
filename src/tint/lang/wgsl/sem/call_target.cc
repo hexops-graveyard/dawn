@@ -23,11 +23,12 @@ TINT_INSTANTIATE_TYPEINFO(tint::sem::CallTarget);
 
 namespace tint::sem {
 
-CallTarget::CallTarget(EvaluationStage stage, bool must_use) : stage_(stage), must_use_(must_use) {}
+CallTarget::CallTarget(core::EvaluationStage stage, bool must_use)
+    : stage_(stage), must_use_(must_use) {}
 
-CallTarget::CallTarget(const type::Type* return_type,
+CallTarget::CallTarget(const core::type::Type* return_type,
                        VectorRef<Parameter*> parameters,
-                       EvaluationStage stage,
+                       core::EvaluationStage stage,
                        bool must_use)
     : stage_(stage), must_use_(must_use) {
     SetReturnType(return_type);
@@ -42,13 +43,13 @@ CallTarget::~CallTarget() = default;
 
 CallTargetSignature::CallTargetSignature() = default;
 
-CallTargetSignature::CallTargetSignature(const type::Type* ret_ty,
+CallTargetSignature::CallTargetSignature(const core::type::Type* ret_ty,
                                          VectorRef<const sem::Parameter*> params)
     : return_type(ret_ty), parameters(std::move(params)) {}
 CallTargetSignature::CallTargetSignature(const CallTargetSignature&) = default;
 CallTargetSignature::~CallTargetSignature() = default;
 
-int CallTargetSignature::IndexOf(ParameterUsage usage) const {
+int CallTargetSignature::IndexOf(core::ParameterUsage usage) const {
     for (size_t i = 0; i < parameters.Length(); i++) {
         if (parameters[i]->Usage() == usage) {
             return static_cast<int>(i);

@@ -50,7 +50,7 @@ ProgramBuilder ProgramBuilder::Wrap(const Program* program) {
     ProgramBuilder builder;
     builder.id_ = program->ID();
     builder.last_ast_node_id_ = program->HighestASTNodeID();
-    builder.constants = constant::Manager::Wrap(program->Constants());
+    builder.constants = core::constant::Manager::Wrap(program->Constants());
     builder.ast_ =
         builder.create<ast::Module>(program->AST().source, program->AST().GlobalDeclarations());
     builder.sem_ = sem::Info::Wrap(program->Sem());
@@ -65,19 +65,19 @@ void ProgramBuilder::AssertNotMoved() const {
     }
 }
 
-const type::Type* ProgramBuilder::TypeOf(const ast::Expression* expr) const {
+const core::type::Type* ProgramBuilder::TypeOf(const ast::Expression* expr) const {
     return tint::Switch(
         Sem().Get(expr),  //
         [](const sem::ValueExpression* e) { return e->Type(); },
         [](const sem::TypeExpression* e) { return e->Type(); });
 }
 
-const type::Type* ProgramBuilder::TypeOf(const ast::Variable* var) const {
+const core::type::Type* ProgramBuilder::TypeOf(const ast::Variable* var) const {
     auto* sem = Sem().Get(var);
     return sem ? sem->Type() : nullptr;
 }
 
-const type::Type* ProgramBuilder::TypeOf(const ast::TypeDecl* type_decl) const {
+const core::type::Type* ProgramBuilder::TypeOf(const ast::TypeDecl* type_decl) const {
     return Sem().Get(type_decl);
 }
 

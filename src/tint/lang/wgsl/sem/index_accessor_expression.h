@@ -36,12 +36,12 @@ class IndexAccessorExpression final : public Castable<IndexAccessorExpression, A
     /// @param has_side_effects whether this expression may have side effects
     /// @param root_ident the (optional) root identifier for this expression
     IndexAccessorExpression(const ast::IndexAccessorExpression* declaration,
-                            const type::Type* type,
-                            EvaluationStage stage,
+                            const core::type::Type* type,
+                            core::EvaluationStage stage,
                             const ValueExpression* object,
                             const ValueExpression* index,
                             const Statement* statement,
-                            const constant::Value* constant,
+                            const core::constant::Value* constant,
                             bool has_side_effects,
                             const Variable* root_ident = nullptr);
 

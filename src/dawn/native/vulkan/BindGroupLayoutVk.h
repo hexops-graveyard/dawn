@@ -17,6 +17,7 @@
 
 #include <vector>
 
+#include "dawn/common/MutexProtected.h"
 #include "dawn/common/SlabAllocator.h"
 #include "dawn/common/vulkan_platform.h"
 #include "dawn/native/BindGroupLayoutInternal.h"
@@ -70,8 +71,8 @@ class BindGroupLayout final : public BindGroupLayoutInternalBase {
 
     VkDescriptorSetLayout mHandle = VK_NULL_HANDLE;
 
-    SlabAllocator<BindGroup> mBindGroupAllocator;
-    Ref<DescriptorSetAllocator> mDescriptorSetAllocator;
+    MutexProtected<SlabAllocator<BindGroup>> mBindGroupAllocator;
+    MutexProtected<Ref<DescriptorSetAllocator>> mDescriptorSetAllocator;
 };
 
 }  // namespace dawn::native::vulkan

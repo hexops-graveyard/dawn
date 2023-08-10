@@ -47,29 +47,48 @@ struct tint_array {
 template <typename BASE>
 class MslPrinterTestHelperBase : public BASE {
   public:
-    MslPrinterTestHelperBase() : generator_(&mod) {}
+    MslPrinterTestHelperBase() : writer_(&mod) {}
 
     /// The test module.
     ir::Module mod;
     /// The test builder.
     ir::Builder b{mod};
     /// The type manager.
-    type::Manager& ty{mod.Types()};
+    core::type::Manager& ty{mod.Types()};
+
+  protected:
+    /// The MSL writer.
+    Printer writer_;
+
+    /// Validation errors
+    std::string err_;
+
+    /// Generated MSL
+    std::string output_;
+
+    /// Run the writer on the IR module and validate the result.
+    /// @returns true if generation and validation succeeded
+    bool Generate() {
+        // auto raised = raise::Raise(&mod);
+        // if (!raised) {
+        //     err_ = raised.Failure();
+        //     return false;
+        // }
+
+        auto result = writer_.Generate();
+        if (!result) {
+            err_ = result.Failure();
+            return false;
+        }
+        output_ = writer_.Result();
+
+        return true;
+    }
 
     /// @returns the metal header string
     std::string MetalHeader() const { return kMetalHeader; }
     /// @return the metal array string
     std::string MetalArray() const { return kMetalArray; }
-
-  protected:
-    /// The MSL generator.
-    Printer generator_;
-
-    /// Validation errors
-    std::string err_;
-
-    /// @returns the error string from the validation
-    std::string Error() const { return err_; }
 };
 
 using MslPrinterTest = MslPrinterTestHelperBase<testing::Test>;

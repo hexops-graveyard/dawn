@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "absl/numeric/bits.h"
 #include "dawn/common/Constants.h"
 #include "dawn/common/Math.h"
 #include "dawn/native/DynamicUploader.h"
@@ -450,13 +451,7 @@ void Texture::TrackUsageAndTransitionNow(CommandRecordingContext* commandContext
 
     std::vector<D3D12_RESOURCE_BARRIER> barriers;
 
-    // TODO(enga): Consider adding a Count helper.
-    uint32_t aspectCount = 0;
-    for (Aspect aspect : IterateEnumMask(range.aspects)) {
-        aspectCount++;
-        DAWN_UNUSED(aspect);
-    }
-
+    uint32_t aspectCount = absl::popcount(static_cast<uint8_t>(range.aspects));
     barriers.reserve(range.levelCount * range.layerCount * aspectCount);
 
     TransitionUsageAndGetResourceBarrier(commandContext, &barriers, newState, range);
@@ -545,10 +540,13 @@ void Texture::TransitionSubresourceRange(std::vector<D3D12_RESOURCE_BARRIER>* ba
     barrier.Transition.StateBefore = lastState;
     barrier.Transition.StateAfter = newState;
 
-    bool isFullRange = range.baseArrayLayer == 0 && range.baseMipLevel == 0 &&
-                       range.layerCount == GetArrayLayers() &&
-                       range.levelCount == GetNumMipLevels() &&
-                       range.aspects == GetFormat().aspects;
+    // Currently Stencil8 is implemented with DXGI_FORMAT_D24_UNORM_S8_UINT, while we can only
+    // choose the stencil aspect for Stencil8 textures, so actually we cannot select the full
+    // subresource range on the Stencil8 textures.
+    bool isFullRange =
+        range.baseArrayLayer == 0 && range.baseMipLevel == 0 &&
+        range.layerCount == GetArrayLayers() && range.levelCount == GetNumMipLevels() &&
+        range.aspects == GetFormat().aspects && GetFormat().format != wgpu::TextureFormat::Stencil8;
 
     // Use a single transition for all subresources if possible.
     if (isFullRange) {
